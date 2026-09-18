@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      smoke-only:
+        type: boolean
+        default: false
+        description: Only run Postgres Latest to do a quick resource-efficient sanity check, intended to be set for PRs.
 
   # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
@@ -54,7 +58,7 @@ env:
 
 jobs:
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'h2') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'h2') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -98,7 +102,7 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -163,7 +167,7 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -250,6 +254,10 @@ jobs:
             junit-name: semantic-search-tests-postgres-latest
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
+        exclude: >-
+          ${{ inputs.smoke-only
+          && fromJSON('[{"version":{"name":"Postgres 14.x with pgvector pg17"}}]')
+          || fromJSON('[]') }}
         job:
           - name: Semantic Search Tests
             build-static-viz: false
@@ -302,7 +310,7 @@ jobs:
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

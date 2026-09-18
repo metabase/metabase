@@ -126,7 +126,7 @@ describe("route-guards", () => {
 
   describe("CanAccessSettings", () => {
     const DATABASES_PATH: AdminPath = {
-      name: "Databases",
+      getName: () => "Databases",
       path: "/admin/databases",
       key: "databases",
     };

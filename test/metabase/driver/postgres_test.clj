@@ -472,7 +472,8 @@
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
         (let [field-clause [:field
-                            {:binning
+                            {:lib/uuid (str (random-uuid))
+                             :binning
                              {:strategy  :num-bins
                               :num-bins  100
                               :min-value 0.75

@@ -119,16 +119,6 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
-    ;; TODO we should remove these models from here once serialization is supported
-    :model/Transform
-    :model/TransformRun
-    :model/TransformRunCancelation
-    :model/TransformDagRun
-    :model/TransformJob
-    :model/TransformJobRun
-    :model/TransformJobTransformTag
-    :model/TransformTag
-    :model/TransformTransformTag
     :model/Undo
     :model/UserKeyValue})
 
@@ -149,3 +139,59 @@
     (is (contains? copy-models model)
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
   (is (apply distinct? (map t2/table-name copy/entities))))
+
+(def ^:private foreign-key-coverage-exceptions
+  "Known exceptions to foreign-key coverage."
+  ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
+  #{{:child_table "core_user", :parent_table "tenant"}})
+
+(def ^:private fk-graph-sql
+  "Foreign keys from the test's H2 database."
+  "SELECT DISTINCT LOWER(child.TABLE_NAME) AS child_table, LOWER(parent.TABLE_NAME) AS parent_table
+     FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+     JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS child
+       ON child.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+      AND child.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
+     JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS parent
+       ON parent.CONSTRAINT_NAME = rc.UNIQUE_CONSTRAINT_NAME
+      AND parent.CONSTRAINT_SCHEMA = rc.UNIQUE_CONSTRAINT_SCHEMA")
+
+(deftest copied-tables-include-foreign-key-targets-test
+  (testing "every foreign key from a copied table references another copied table"
+    (let [source (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (let [copied   (into #{} (map (comp name t2/table-name)) copy/entities)
+              edges    (jdbc/query {:datasource source} [fk-graph-sql])
+              dangling (for [{:keys [child_table parent_table] :as edge} edges
+                             :when (and (copied child_table)
+                                        (not (copied parent_table))
+                                        (not (foreign-key-coverage-exceptions edge)))]
+                         edge)]
+          (testing "the metadata query includes app tables"
+            (is (some #(= "metabase_table" (:child_table %)) edges)))
+          (is (empty? dangling)
+              "Copied tables reference tables that are not copied"))
+        (finally
+          (shutdown! source))))))
+
+(def ^:private autoinc-id-tables-sql
+  "Tables whose `id` column auto-increments, from the test's H2 database."
+  "SELECT LOWER(TABLE_NAME) AS table_name
+     FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE COLUMN_NAME = 'ID' AND IS_IDENTITY = 'YES'")
+
+(deftest entities-without-autoinc-ids-covers-every-copied-table-test
+  (testing "entities-without-autoinc-ids names exactly the copied tables whose id does not auto-increment"
+    (let [source (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (let [autoinc (into #{} (map :table_name) (jdbc/query {:datasource source} [autoinc-id-tables-sql]))]
+          (testing "the metadata query includes app tables"
+            (is (contains? autoinc "metabase_table")))
+          (is (= (into #{} (remove (comp autoinc name t2/table-name)) copy/entities)
+                 @#'copy/entities-without-autoinc-ids)
+              (format "%s decides which tables get their id sequence reset after a load"
+                      `copy/entities-without-autoinc-ids)))
+        (finally
+          (shutdown! source))))))

@@ -40,7 +40,7 @@
 (api.macros/defendpoint :get "/:type/"
   "Gets all records of the given type.
   Any parameters passed will be used for equals filters"
-  [{:keys [type]} :- [:map [:type ms/NonBlankString]]
+  [{:keys [type]} :- [:map {:closed true} [:type ms/NonBlankString]]
    query-args]
   (filter (fn [obj]
             (every? (fn [[query-k query-v]]
@@ -54,7 +54,7 @@
 
 (api.macros/defendpoint :get "/:type/:id"
   "Returns an existing record"
-  [{:keys [type id]} :- [:map
+  [{:keys [type id]} :- [:map {:closed true}
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]]
   (-> (api/check-404 (t2/query-one {:select [:id :content]
@@ -65,7 +65,7 @@
 
 (api.macros/defendpoint :post "/:type/"
   "Create a new record."
-  [{:keys [type]} :- [:map
+  [{:keys [type]} :- [:map {:closed true}
                       [:type ms/NonBlankString]]
    _query-params
    body]
@@ -76,7 +76,7 @@
 
 (api.macros/defendpoint :put "/:type/:id"
   "Updates an existing record."
-  [{:keys [type id]} :- [:map
+  [{:keys [type id]} :- [:map {:closed true}
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]
    _query-params
@@ -88,21 +88,19 @@
 
 (api.macros/defendpoint :delete "/:type/:id"
   "Deletes an existing record."
-  [{:keys [type id]} :- [:map
+  [{:keys [type id]} :- [:map {:closed true}
                          [:type ms/NonBlankString]
                          [:id ms/PositiveInt]]
    _query-params
    body]
   (api/check-404 (t2/delete! (prototype-table) id))
-
   {:id id})
 
 (api.macros/defendpoint :delete "/:type/all"
   "Deletes all records of this type. Helpful for resetting to a clean state."
-  [{:keys [type]} :- [:map
+  [{:keys [type]} :- [:map {:closed true}
                       [:type ms/NonBlankString]]
    _query-params
    body]
   (t2/delete! (prototype-table) :type type)
-
   {:message "All records deleted" :type type})

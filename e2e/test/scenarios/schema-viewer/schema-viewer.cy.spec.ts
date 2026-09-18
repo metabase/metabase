@@ -506,7 +506,7 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     cy.log(
       "Click 'Schema viewer' tab in the Data Studio sidebar — opens the bare schema viewer URL",
     );
-    cy.visit("/data-studio");
+    H.DataStudio.visit();
     H.DataStudio.nav().findByText("Schema viewer").click();
     cy.url().should("include", "/data-studio/schema-viewer");
     cy.findByTestId("schema-picker-button")

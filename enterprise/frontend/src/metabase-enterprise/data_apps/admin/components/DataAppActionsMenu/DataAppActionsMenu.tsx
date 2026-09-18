@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useConfirmation, useToast } from "metabase/common/hooks";
+import { Link } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import {
   useDeleteDataAppMutation,
@@ -62,6 +63,24 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
         </Menu.Target>
 
         <Menu.Dropdown>
+          {app.resource_collection_id != null && (
+            <Menu.Item
+              component={Link}
+              to={`/collection/${app.resource_collection_id}`}
+            >
+              {t`View resources`}
+            </Menu.Item>
+          )}
+
+          {app.permission_group_id != null && (
+            <Menu.Item
+              component={Link}
+              to={`/admin/settings/apps/${app.name}/users`}
+            >
+              {t`Manage user access`}
+            </Menu.Item>
+          )}
+
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}
           </Menu.Item>

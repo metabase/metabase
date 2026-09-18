@@ -28,11 +28,11 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
 (defn- validate-mbql5-definition
-  "Validate that an MBQL 5 segment definition has the correct structure."
+  "Validate that an MBQL 5 segment definition has the correct structure. Normalizing a definition that cannot be made
+  into a query yields an empty map, which is as invalid as any other broken definition."
   [definition]
-  (when (seq definition)
-    (mu/validate-throw ::segments.schema/definition definition)
-    definition))
+  (mu/validate-throw ::segments.schema/definition definition)
+  definition)
 
 (defn- normalize-segment-definition
   "Normalize segment definition.

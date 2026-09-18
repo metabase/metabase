@@ -26,14 +26,16 @@ import {
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...fieldSetting("scalar.field", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Primary number`,
+    get title() {
+      return t`Primary number`;
+    },
     fieldFilter: isSuitableScalarColumn,
   }),
   "scalar.comparisons": {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Comparisons`,
+    get title() {
+      return t`Comparisons`;
+    },
     widget: "smartScalarComparison",
     getValue: (series, vizSettings) => getComparisons(series, vizSettings),
     isValid: (series, vizSettings) => validateComparisons(series, vizSettings),
@@ -53,24 +55,27 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   },
   "scalar.switch_positive_negative": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Switch positive / negative colors?`,
+    get title() {
+      return t`Switch positive / negative colors?`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
   },
   "scalar.compact_primary_number": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Compact number`,
+    get title() {
+      return t`Compact number`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
   },
   "scalar.show_comparison_value": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Show comparison value`,
+    get title() {
+      return t`Show comparison value`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.show_comparison_value"],

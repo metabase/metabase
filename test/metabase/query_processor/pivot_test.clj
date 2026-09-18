@@ -539,6 +539,40 @@
           (is (= (sort pgs) pgs)
               "rows should appear in non-decreasing pivot-grouping order"))))))
 
+(deftest ^:parallel pivot-with-fields-and-summary-in-same-stage-test
+  (testing "Pivot completes when the summary stage also carries an explicit :fields clause (#81203)"
+    (let [mp        (mt/metadata-provider)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          created   (lib.metadata/field mp (mt/id :orders :created_at))
+          product   (lib.metadata/field mp (mt/id :orders :product_id))
+          total     (lib.metadata/field mp (mt/id :orders :total))
+          ;; :fields carries a subset of stage-0 columns (what the notebook column picker leaves behind
+          ;; when some columns are unselected); :aggregation + :breakout are added on the same stage.
+          query     (-> (lib/query mp orders)
+                        (lib/with-fields [created product total])
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib/with-temporal-bucket created :month))
+                        (lib/breakout product))
+          bo-names  (mapv :name (filter :lib/breakout? (lib/returned-columns query)))
+          count-nm  (:name (first (filter #(= (:lib/source %) :source/aggregations)
+                                          (lib/returned-columns query))))
+          viz       {:pivot_table.column_split {:rows    [(first bo-names)]
+                                                :columns [(second bo-names)]
+                                                :values  [count-nm]}}]
+      (testing "sanity: the QP drops :fields on summary stages, so regular execution returns breakouts + agg"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name count-nm}]}}
+                (qp.core/process-query query))))
+      (testing "pivot returns breakouts + pivot-grouping + aggregation"
+        (is (=? {:status :completed
+                 :data   {:cols [{:name (first bo-names)}
+                                 {:name (second bo-names)}
+                                 {:name "pivot-grouping"}
+                                 {:name count-nm}]}}
+                (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz}))))))))
+
 ;;; ---- wrap-nested-field-breakouts ----
 
 (def ^:private json-mock-metadata-provider

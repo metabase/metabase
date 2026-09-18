@@ -219,8 +219,6 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="lg">
               <Group gap="lg" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && <Loader size="xs" />}
-
                 {!isSorting && hasFields && (
                   <ResponsiveButton
                     icon="sort_arrows"
@@ -243,6 +241,8 @@ const TableSectionBase = ({
                     onClick={() => setIsSorting(false)}
                   >{t`Done`}</ResponsiveButton>
                 )}
+
+                {isUpdatingSorting && <Loader size="xs" />}
               </Group>
 
               {!hasFields && (

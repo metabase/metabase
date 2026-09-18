@@ -5,15 +5,15 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.tenants.core :as tenants]
+   [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:private UserAttributes
+  "Login attributes keyed by the attribute names the admin chose, so string-keyed; they are stored as JSON."
   (mu/with-api-error-message
-   [:map-of
-    :keyword
-    :any]
+   users.schema/LoginAttributes
    (deferred-tru "value must be a valid user attributes map (name -> value)")))
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
@@ -25,10 +25,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/attributes"
   "Update the `login_attributes` for a User. Only personal users can have attributes."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [login_attributes]} :- [:map
+   {:keys [login_attributes]} :- [:map {:closed true}
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (sandbox.db/personal-user id))
   (pos? (sandbox.db/set-user-login-attributes! id login_attributes)))

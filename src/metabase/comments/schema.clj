@@ -1,34 +1,82 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::prose-mirror-node.attrs
+  "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put
+  there. Every key, declared or not, is a string, so the map never mixes keyword and string keys."
+  (ms/string-keyed-object
+   ["model"    {:optional true} [:maybe :string]]
+   ["entityId" {:optional true} [:maybe [:or :int :string]]]
+   ["label"    {:optional true} [:maybe :string]]
+   ["level"    {:optional true} [:maybe :int]]))
+
+(mr/def ::prose-mirror-node
+  "One node of the ProseMirror/TipTap document a comment is written in, in the shape ProseMirror's `Node.toJSON`
+  emits: a `:type`, the children it contains, the marks applied to it, and `:text` on text nodes. Those five keys are
+  the whole of the ProseMirror JSON node format; `:attrs` varies by node type. Marks are nodes too as far as this
+  schema is concerned -- a mark carries only `:type` and `:attrs`, which is a subset of a node."
+  [:map {:closed true}
+   [:type                     :string]
+   [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.attrs]]]
+   [:content {:optional true} [:sequential [:ref ::prose-mirror-node]]]
+   [:marks   {:optional true} [:sequential [:ref ::prose-mirror-node]]]
+   [:text    {:optional true} :string]])
+
 (mr/def ::comment.content
-  "The `:content` column of a Comment, decoded."
-  :map)
+  "The `:content` column of a Comment, decoded: the ProseMirror document the comment was written in."
+  ::prose-mirror-node)
+
+(mr/def ::prose-mirror-node.json-attrs
+  "The `attrs` of a ProseMirror node as decoded JSON, before normalization stringifies its keys: the keys belong to the
+  editor's node type and may be keywords or strings."
+  [:map {:closed false, ::mr/deliberately-open true, :description "ProseMirror node attrs"}])
+
+(mr/def ::prose-mirror-node.json
+  "A ProseMirror node as decoded JSON, before normalization stringifies the keys of its `attrs`."
+  [:map {:closed true}
+   [:type                     :string]
+   [:attrs   {:optional true} [:maybe [:ref ::prose-mirror-node.json-attrs]]]
+   [:content {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
+   [:marks   {:optional true} [:sequential [:ref ::prose-mirror-node.json]]]
+   [:text    {:optional true} :string]])
+
+(mu/defn normalize-content :- [:maybe ::comment.content]
+  "Normalize a comment's content on its way in from the API or out of the application database."
+  [content :- [:maybe ::prose-mirror-node.json]]
+  (some->> content (lib/normalize ::comment.content)))
+
+(mr/def ::comment.highlight
+  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
+  pick out the point — so the client can re-find it in a result set it is separately authorized to
+  read."
+  [:map {:closed true}
+   [:columnName {:optional true} [:maybe :string]]
+   [:dimensions {:optional true}
+    [:maybe [:sequential [:map {:closed true}
+                          [:columnName {:optional true} [:maybe :string]]
+                          [:value      {:optional true} [:ref ::lib.schema.literal/literal]]]]]]])
 
 (mr/def ::comment.context
   "The `:context` column of a Comment, decoded."
-  :map)
+  [:map {:closed true}
+   [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:highlighted           {:optional true} [:maybe ::comment.highlight]]
+   [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]])
 
 (mr/def ::comment
   "A Comment as selected from the app DB: every column of `:comment`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:parent_comment_id [:maybe ms/PositiveInt]]
-   [:target_type       [:or :keyword :string]]
-   [:target_id         ms/PositiveInt]
-   [:child_target_id   [:maybe :string]]
-   [:creator_id        ::lib.schema.id/user]
-   [:content           ::comment.content]
-   [:is_resolved       :boolean]
-   [:created_at        ms/TemporalInstant]
-   [:updated_at        ms/TemporalInstant]
-   [:deleted_at        [:maybe ms/TemporalInstant]]
-   [:content_html      [:maybe :string]]
-   [:context           [:maybe ::comment.context]]])
+  [:merge
+   ::comment.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::comment.update
   "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
@@ -48,12 +96,10 @@
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:comment_id ms/PositiveInt]
-   [:user_id    ::lib.schema.id/user]
-   [:emoji      :string]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::comment-reaction.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::comment-reaction.update
   "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."

@@ -3,8 +3,8 @@
   [[metabase.analyze.core/infer-data-sensitivity]], writing `:PUBLIC` when no rule matches so each field is scanned
   once. Selects fields whose `data_sensitivity` is `NULL` (or `PUBLIC` too under `force?`) across every active table
   in the database, hidden and cruft tables included. Inert unless [[metabase.sync.settings/data-sensitivity-scan-enabled]]
-  is true, except through [[scan-data-sensitivity!]]. User-set labels are protected by the `FieldUserSettings`
-  overlay applied on every Field update. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
+  is true, except through [[scan-data-sensitivity!]]. User-set labels live in `FieldUserSettings`, which readers apply
+  over the classifier's label, so the classifier never overwrites them. [[reset-data-sensitivity!]] clears the classifier's own labels so a rule
   change can reach fields that already carry a category."
   (:require
    [metabase.analyze.core :as analyze]
@@ -31,7 +31,7 @@
   {:fields-scanned 0 :fields-labeled 0 :fields-failed 0})
 
 (def ^:private ScanOptions
-  [:map
+  [:map {:closed true}
    [:force?          {:optional true} [:maybe :boolean]]
    [:ignore-setting? {:optional true} [:maybe :boolean]]])
 
@@ -40,8 +40,8 @@
        (not (sync.settings/data-sensitivity-scan-enabled))))
 
 (mu/defn- fields-to-scan :- [:sequential i/FieldInstance]
-  [table :- i/TableInstance
-   force?]
+  [table  :- i/TableInstance
+   force? :- [:maybe :boolean]]
   (sync.db/fields-to-scan-for-data-sensitivity (u/the-id table) force?))
 
 (mu/defn- classify-and-save!
@@ -77,14 +77,17 @@
 
 (mu/defn- table-ids-with-unscanned-fields :- [:maybe [:set pos-int?]]
   [database :- i/DatabaseInstance
-   force?]
+   force?   :- [:maybe :boolean]]
   (sync.db/table-ids-with-fields-to-scan-for-data-sensitivity (u/the-id database) force?))
+
+(def ^:private LogProgressFn
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn scan-fields-for-db! :- Stats
   "Label every unscanned Field in every active table of `database`. `log-fn` is accepted for parity with the other
   analyze steps and not called: the step reports per table through the log, not the progress bar."
   [database :- i/DatabaseInstance
-   _log-fn
+   _log-fn  :- [:maybe LogProgressFn]
    & {:keys [force? ignore-setting?]} :- [:maybe ScanOptions]]
   (if (skip? ignore-setting?)
     zero-stats
@@ -109,13 +112,10 @@
     n))
 
 (mu/defn scan-data-sensitivity! :- Stats
-  "REPL entry point: scan a Database or a single Table regardless of the `data-sensitivity-scan-enabled` setting.
-  With `:force? true` fields already labeled `:PUBLIC` are rescanned too; fields carrying a category are not. With
-  `:reset? true` every classifier-written label is cleared first via [[reset-data-sensitivity!]] so the whole scope
-  is recomputed under the current rules, and `:fields-reset` is added to the stats. User-set labels survive in
-  every mode because the `FieldUserSettings` overlay is applied on every Field update."
+  "Scan `database-or-table` for data sensitivity regardless of the setting; `:force?` rescans `:PUBLIC` Fields and
+  `:reset?` clears the classifier's labels first."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]
-   & {:keys [force? reset?]} :- [:maybe [:map
+   & {:keys [force? reset?]} :- [:maybe [:map {:closed true}
                                          [:force? {:optional true} [:maybe :boolean]]
                                          [:reset? {:optional true} [:maybe :boolean]]]]]
   (let [reset (when reset? (reset-data-sensitivity! database-or-table))

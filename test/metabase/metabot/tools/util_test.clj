@@ -275,9 +275,9 @@
                    :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
                    :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id))))
+        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id :db_id))))
         (is (thrown? clojure.lang.ExceptionInfo
-                     (metabot.tools.util/get-table inactive-table-id)))))))
+                     (metabot.tools.util/get-table inactive-table-id :db_id)))))))
 
 (deftest find-column-by-field-id-test
   (testing "finds column by integer field ID"

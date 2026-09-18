@@ -26,7 +26,7 @@ Monitor contains three sections:
 - **[Erroring questions](./erroring-questions.md)**\*: See questions that returned an error the last time they ran.
 - **[Alerts management](./alerts-management.md)**: View and manage every alert in your Metabase, including failing and ownerless alerts.
 
-\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing/). On other plans, these tabs show an upgrade page.
+\* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing). On other plans, these tabs show an upgrade page.
 
 ### Logs and activity
 
@@ -37,7 +37,7 @@ Monitor contains three sections:
 
 ### AI auditing
 
-The AI auditing tabs are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+The AI auditing tabs are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing).
 
 - **[Usage stats](../ai/usage-auditing.md#usage-stats)**: See AI feature usage, including tokens and messages.
 - **[Conversations](../ai/usage-auditing.md#conversations)**: Review people's conversations with Metabot.
@@ -52,4 +52,4 @@ Who can see each Monitor page depends on their group:
 - **[Data Analysts](../people-and-groups/managing.md#data-analysts) group** can view Dependency diagnostics.\*
 - **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics and Alerts management.\*
 
-\* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+\* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing).

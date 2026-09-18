@@ -10,6 +10,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 const getDefaultPluginDbRouting = () => ({
   // Unjustified type cast. FIXME
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
@@ -27,7 +29,7 @@ const getDefaultPluginDbRouting = () => ({
   ): "default" | "hidden" | "disabled" => "default",
 });
 
-export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
+export const PLUGIN_DB_ROUTING = definePluginSlot(getDefaultPluginDbRouting);
 
 const getDefaultPluginDatabaseReplication = () => ({
   // Unjustified type cast. FIXME
@@ -36,8 +38,9 @@ const getDefaultPluginDatabaseReplication = () => ({
   }>,
 });
 
-export const PLUGIN_DATABASE_REPLICATION =
-  getDefaultPluginDatabaseReplication();
+export const PLUGIN_DATABASE_REPLICATION = definePluginSlot(
+  getDefaultPluginDatabaseReplication,
+);
 
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
@@ -55,16 +58,6 @@ const getDefaultPluginTableEditing = () => ({
   }>,
 });
 
-export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_DB_ROUTING, getDefaultPluginDbRouting());
-  Object.assign(
-    PLUGIN_DATABASE_REPLICATION,
-    getDefaultPluginDatabaseReplication(),
-  );
-  Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
-}
+export const PLUGIN_TABLE_EDITING = definePluginSlot(
+  getDefaultPluginTableEditing,
+);

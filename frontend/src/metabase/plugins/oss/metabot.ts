@@ -2,6 +2,8 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
+import { definePluginSlot } from "../slot";
+
 export type MetabaseAIProviderSetupProps = {
   onConnect?: VoidFunction;
   onCancel?: VoidFunction;
@@ -20,11 +22,4 @@ export const PLUGIN_METABOT: {
   isEnabled: boolean;
   MetabaseAIProviderSetup: ComponentType<MetabaseAIProviderSetupProps>;
   hasMetabaseManagedProviderDetails: () => boolean;
-} = getDefaultPluginMetabot();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_METABOT, getDefaultPluginMetabot());
-}
+} = definePluginSlot(getDefaultPluginMetabot);

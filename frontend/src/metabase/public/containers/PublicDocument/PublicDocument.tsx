@@ -100,7 +100,7 @@ export const PublicDocument = () => {
       editable: false,
       immediatelyRender: false,
     },
-    [document?.document],
+    [],
   );
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import type { State } from "metabase/redux/store";
 import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 
 export type SourceReplacementTriggeredFrom = "table_list" | "dependency_graph";
 
@@ -44,8 +45,4 @@ const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   TransformToolsMenu: PluginPlaceholder,
 });
 
-export const PLUGIN_REPLACEMENT = getDefaultReplacementPlugin();
-
-export function reinitialize() {
-  Object.assign(PLUGIN_REPLACEMENT, getDefaultReplacementPlugin());
-}
+export const PLUGIN_REPLACEMENT = definePluginSlot(getDefaultReplacementPlugin);

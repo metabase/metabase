@@ -140,7 +140,7 @@
                        :model/NativeQuerySnippet snippet {:name "Existing Snippet" :content "SELECT 1" :collection_id coll-id}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Should have no snippet tracking entries initially")
-          (rs-events/enable-snippet-tracking!)
+          (rs-events/enable-library-tracking!)
           ;; Verify tracking entries created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
@@ -173,7 +173,7 @@
           (is (= 2 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "NativeQuerySnippet"]]
                              :model_id [:in [coll-id (:id snippet)]]))
               "Should have 2 tracking entries")
-          (rs-events/disable-snippet-tracking!)
+          (rs-events/disable-library-tracking!)
           ;; Verify tracking entries removed
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Snippet tracking entries should be removed")

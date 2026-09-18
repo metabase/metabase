@@ -44,8 +44,8 @@
 
 (def ^:private title-json-schema
   {:type       "object"
-   :properties {:title {:type        "string"
-                        :description "A short title for the conversation. No quotes or extra explanation."}}
+   :properties {"title" {:type        "string"
+                         :description "A short title for the conversation. No quotes or extra explanation."}}
    :required   ["title"]
    :additionalProperties false})
 

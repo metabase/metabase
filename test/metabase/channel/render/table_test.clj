@@ -277,7 +277,7 @@
     (let [data    {:cols             [{:name "A" :display_name "A" :base_type :type/Integer :semantic_type nil}]
                    :rows             [[5] [10]]
                    :format-rows?     true
-                   :results_metadata {:columns [{:name "A" :base_type :type/Integer
+                   :results_metadata {:columns [{:name "A" :display_name "A" :base_type :type/Integer
                                                  :fingerprint {:global {:distinct-count 2}}}]}
                    :viz-settings     {::mb.viz/column-settings
                                       {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
@@ -295,8 +295,10 @@
         (is (seq (hik.s/select (hik.s/find-in-text #"^5$") doc)))
         (is (seq (hik.s/select (hik.s/find-in-text #"^10$") doc)))))))
 
-(defn- render-table [dashcard results]
-  (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+(defn- render-table [viz-settings results]
+  (channel.render/render-pulse-card :attachment "America/Los_Angeles"
+                                    (update render.tu/test-card :visualization_settings merge viz-settings)
+                                    nil results))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]
@@ -309,8 +311,7 @@
       (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
-                           {:visualization_settings {:table.columns
-                                                     [{:name "a" :enabled true}]}}
+                           {:table.columns [{:name "a" :enabled true}]}
                            {:data {:cols [{:name         "a",
                                            :display_name "a",
                                            :base_type    :type/BigInteger
@@ -318,3 +319,28 @@
                                    :rows (repeat 200 ["I will keep default limits."])}})
                           :content
                           (render.tu/nodes-with-text "I will keep default limits.")))))))))
+
+(deftest ^:parallel text-wrapping-fallback-width-test
+  (testing "a text-wrapping column with no explicit table.column_widths (UXW-4714)"
+    (let [columns    [{:name "desc"}]
+          viz        {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}}
+          styles-for #(get (table/column->viz-setting-styles columns viz) "desc")]
+      (testing "defaults to a fixed fallback width, so email/Slack clients (which don't auto-wrap) wrap"
+        (let [s (styles-for)]
+          (is (= "normal" (:white-space s)))
+          (is (= "780px" (:width s)))
+          (is (= "780px !important" (:max-width s)))))
+      (testing "binding *text-wrapping-fallback-width* to nil omits the fixed width, so an auto-wrapping renderer (the PDF) sizes the column to the table"
+        (binding [table/*text-wrapping-fallback-width* nil]
+          (let [s (styles-for)]
+            (is (= "normal" (:white-space s)))
+            (is (not (contains? s :width)))
+            (is (not (contains? s :max-width))))))))
+  (testing "an explicit table.column_widths gives min-width and ignores the fallback var entirely"
+    (let [columns [{:name "desc"}]
+          viz     {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}
+                   :table.column_widths [200]}]
+      (binding [table/*text-wrapping-fallback-width* nil]
+        (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
+          (is (contains? s :min-width))
+          (is (not (contains? s :width))))))))

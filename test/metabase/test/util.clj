@@ -33,6 +33,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
+   [metabase.search.spec :as search.spec]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -152,7 +153,7 @@
    (fn [_] (default-timestamped
             {:target_type "document"
              :creator_id  (rasta-id)
-             :content     {:text (u.random/random-name)}}))
+             :content     {:type "text", :text (u.random/random-name)}}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -951,6 +952,21 @@
     model
     [model (first (t2/primary-keys model))]))
 
+(defn- delete-new-rows!
+  "Delete the rows of `model` whose `pk` exceeds `old-max-id`, skipping Toucan hooks. Returns the row count."
+  [model pk old-max-id]
+  (t2/query-one {:delete-from (t2/table-name model)
+                 :where       [:and
+                               ;; The first use in a test run may have no previous maximum ID.
+                               (if old-max-id [:> pk old-max-id] true)
+                               (with-model-cleanup-additional-conditions model)]}))
+
+(defn- search-relevant-models
+  "Models whose rows, deleted with raw SQL, can leave stale rows in the search index."
+  []
+  ;; Deleting a user cascades to their personal collection, which is indexed.
+  (conj (set (keys (search.spec/model-hooks))) :model/User))
+
 (defn- reindex-search-index! []
   ;; Wiping and repopulating the whole index table can deadlock against a concurrent writer — search ingestion from
   ;; another test's writes, or another test's cleanup doing this same thing. The loser of a deadlock has lost nothing
@@ -982,17 +998,14 @@
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map (comp name first) models))) "\n")
         (f))
       (finally
-        (doseq [[model pk] models
-                ;; might not have an old max ID if this is the first time the macro is used in this test run.
-                :let [old-max-id (get model->old-max-id model)
-                      max-id-condition (if old-max-id [:> pk old-max-id] true)
-                      additional-conditions (with-model-cleanup-additional-conditions model)
-                      where-clause [:and max-id-condition additional-conditions]]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where where-clause}))
-        ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (reindex-search-index!)))))
+        (let [search-relevant? (search-relevant-models)
+              reindex?        (some (comp search-relevant? first) models)]
+          (doseq [[model pk] models]
+            (delete-new-rows! model pk (get model->old-max-id model)))
+          ;; Search has no delete hook, so a row the body deleted may still have its document in the index.
+          ;; Reindex whenever the cleanup scope touches search, even when nothing is left to delete here.
+          (when reindex?
+            (reindex-search-index!)))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
@@ -1042,23 +1055,31 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
+(deftest with-model-cleanup-reindexes-search-models-test
+  (testing "a search-relevant cleanup reindexes even when the body already removed every new row"
+    (let [reindexes (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [reindex-search-index! #(swap! reindexes inc)]
+        (with-model-cleanup [:model/Card]))
+      (is (= 1 @reindexes)))))
+
 (deftest reindex-search-index!-test
   (testing "a transient appdb failure is retried"
     (let [attempts (atom 0)]
       ;; Diehard also consults `:retry-if` on success, with a nil exception — a `(constantly true)` stub would retry
       ;; the successful attempt too. The real predicate returns false for nil.
-      (with-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
-                    search/reindex!                  (fn [& _]
-                                                       (when (= 1 (swap! attempts inc))
-                                                         (throw (java.sql.SQLException. "Deadlock detected"))))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
+                                              search/reindex!                  (fn [& _]
+                                                                                 (when (= 1 (swap! attempts inc))
+                                                                                   (throw (java.sql.SQLException. "Deadlock detected"))))]
         (#'reindex-search-index!)
         (is (= 2 @attempts)))))
   (testing "any other failure is not"
     (let [attempts (atom 0)]
-      (with-redefs [transient-error/transient-error? (constantly false)
-                    search/reindex!                  (fn [& _]
-                                                       (swap! attempts inc)
-                                                       (throw (java.sql.SQLException. "Syntax error")))]
+      (dynamic-redefs/with-dynamic-fn-redefs [transient-error/transient-error? (constantly false)
+                                              search/reindex!                  (fn [& _]
+                                                                                 (swap! attempts inc)
+                                                                                 (throw (java.sql.SQLException. "Syntax error")))]
         (is (thrown? java.sql.SQLException (#'reindex-search-index!)))
         (is (= 1 @attempts))))))
 

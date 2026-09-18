@@ -158,12 +158,25 @@
         (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
         (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
               read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
-          (testing "the label is written as the bare enum string on both files"
+          (testing "the label is written as the bare enum string on the Field and inside the Table's settings"
             (is (= "PII" (:data_sensitivity (read-yaml "email.yaml"))))
-            (is (= "PII" (:data_sensitivity (read-yaml "email___fieldusersettings.yaml")))))
+            (is (= "PII" (-> (yaml/from-file (io/file fields-dir ".." "customers___tableusersettings.yaml"))
+                             :fields first :data_sensitivity))))
           (testing "an unlabeled field's file has no data_sensitivity line"
             (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
 
+(deftest inline-user-settings-storage-path-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                       :model/Table             table {:name "Customers" :db_id (:id db)}
+                       :model/Field             email {:name "Email" :table_id (:id table)}
+                       :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}]
+      (let [[tus] (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id :filter-ids [(:id table)]}))]
+        (is (= 1 (count (:fields tus))))
+        (testing "git sync writes the entity at the Table's own path"
+          (is (= "Customers" (-> (serdes/storage-path tus {:inline-user-settings true}) peek :label))))
+        (testing "the CLI export writes it beside the Table's file"
+          (is (= "Customers___tableusersettings" (-> (serdes/storage-path tus {}) peek :label))))))))
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

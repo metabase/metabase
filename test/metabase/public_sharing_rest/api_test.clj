@@ -42,6 +42,12 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
+(defn- field-effective-type
+  "A Field's `:effective_type` as the API returns it. It varies with the driver,
+  so a `:param_fields` expectation reads it rather than naming a value."
+  [field-id]
+  (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
+
 (defn- categories-id-target
   "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
   Categories primary key in public columns, with the `:name_field` that labels its
@@ -51,6 +57,8 @@
    :table_id           (mt/id :categories)
    :display_name       "ID"
    :base_type          "type/BigInteger"
+   :effective_type     (field-effective-type (mt/id :categories :id))
+   :settings           nil
    :name               "ID"
    :semantic_type      "type/PK"
    :has_field_values   "none"
@@ -59,6 +67,8 @@
                         :table_id           (mt/id :categories)
                         :display_name       "Name"
                         :base_type          "type/Text"
+                        :effective_type     (field-effective-type (mt/id :categories :name))
+                        :settings           nil
                         :name               "NAME"
                         :semantic_type      "type/Name"
                         :has_field_values   "list"
@@ -383,9 +393,9 @@
                                                  :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
                                                  :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
                                                  :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
-   :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
-                      {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
-                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+   :parameters       [{:type "date", :name "a", :id "a" :default "A param"}
+                      {:type "date", :name "b", :id "b" :default "B param"}
+                      {:type "date", :name "c", :id "c" :default "C param"
                        :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
    :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
 
@@ -399,7 +409,6 @@
       (mt/with-temp [:model/Card card (assoc (card-with-embedded-params) :public_uuid (str (random-uuid)))]
         (is (= [{:type         "date/single",
                  :name         "a",
-                 :display_name "a",
                  :id           "a",
                  :default      "A TAG",
                  :target       ["variable" ["template-tag" "a"]],
@@ -407,7 +416,6 @@
                  :required     false}
                 {:type         "date/single",
                  :name         "b",
-                 :display_name "b",
                  :id           "b",
                  :default      "B TAG",
                  :target       ["variable" ["template-tag" "b"]],
@@ -417,7 +425,6 @@
                 ;; merge of both places
                 {:type                 "date/single",
                  :name                 "c",
-                 :display_name         "c",
                  :slug                 "c",
                  ;; order importance: the default from template-tag is in the final result
                  :default              "C TAG",
@@ -1533,6 +1540,8 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
@@ -1573,6 +1582,8 @@
                                    :table_id           (mt/id :venues)
                                    :display_name       "Category ID"
                                    :base_type          "type/Integer"
+                                   :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                   :settings           nil
                                    :name               "CATEGORY_ID"
                                    :semantic_type      "type/FK"
                                    :has_field_values   "none"
@@ -1589,6 +1600,8 @@
                              :table_id           (mt/id :venues)
                              :display_name       "ID"
                              :base_type          "type/BigInteger"
+                             :effective_type     (field-effective-type (mt/id :venues :id))
+                             :settings           nil
                              :name               "ID"
                              :semantic_type      "type/PK"
                              :has_field_values   "none"
@@ -1597,6 +1610,8 @@
                              :table_id           (mt/id :venues)
                              :display_name       "Name"
                              :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :venues :name))
+                             :settings           nil
                              :name               "NAME"
                              :semantic_type      "type/Name"
                              :has_field_values   "list"
@@ -1605,6 +1620,8 @@
                              :table_id           (mt/id :venues)
                              :display_name       "Category ID"
                              :base_type          "type/Integer"
+                             :effective_type     (field-effective-type (mt/id :venues :category_id))
+                             :settings           nil
                              :name               "CATEGORY_ID"
                              :semantic_type      "type/FK"
                              :has_field_values   "none"
@@ -1614,6 +1631,8 @@
                              :table_id           (mt/id :categories)
                              :display_name       "Name"
                              :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :categories :name))
+                             :settings           nil
                              :name               "NAME"
                              :semantic_type      "type/Name"
                              :has_field_values   "list"

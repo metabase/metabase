@@ -27,8 +27,8 @@ _Admin > AI_
 
 You pick which AI providers Metabase can use:
 
-- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [bring your own AI API key](#bring-your-own-api-key).
-- On **Metabase Cloud**, you can [bring your own AI API key](#bring-your-own-api-key), [use the Metabase AI service](#metabase-ai-service), or both.
+- If you're **self-hosting Metabase** and want to use Metabot, you'll need to [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials.
+- On **Metabase Cloud**, you can [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials, [use the Metabase AI service](#metabase-ai-service), or both.
 
 The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](mcp.md#with-the-mcp-server-your-client-provides-the-ai).
 
@@ -49,16 +49,16 @@ To use the Metabase AI service for Metabot:
 
 To remove the service: click the **...** next to **Metabase AI service** in the provider list, then click **Remove**.
 
-### Bring your own API key
+### Connect to an AI provider
 
-You can bring your own credentials for any [supported AI provider](./providers.md).
+You can use your own credentials with any [supported AI provider](./providers.md). Most take an API key, but not all: Amazon Bedrock takes an AWS access key pair, and Google Gemini Enterprise a service account key file or an OAuth token.
 
-To connect a provider with your own API key:
+To connect a provider with your own credentials:
 
 1. Go to **Admin > AI**.
 2. Click **Add a provider**.
 3. Pick your provider.
-4. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
+4. Fill in its credentials. The **Where do I find this?** links open the provider's key management pages in a new tab.
 5. Click **Connect**.
 
 If you've already copied a key, one neat thing: just paste the key anywhere on the provider grid, and Metabase selects the matching provider and fills in the key for you. Check to make sure the provider matches.
@@ -147,7 +147,7 @@ The **Enable Embedded Metabot** toggle turns embedded Metabot on or off. The tog
 
 _Available on both the Internal and Embedded tabs, configured independently._
 
-Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
+Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models/models.md) and [metrics](../data-modeling/semantic-layer/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
@@ -169,7 +169,7 @@ If you're embedding the Metabot component in an app, you can point embedded Meta
 
 Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything. And once you set a collection, tables drop out of embedded Metabot's search results, so pick a collection with the metrics and models you want people building on.
 
-This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and [Library](../data-studio/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
+This setting narrows where embedded Metabot searches; it's _not_ a substitute for setting permissions. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and [Library](../data-modeling/semantic-layer/library.md) content, but it doesn't confine them to the collection you picked. To control what data people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
 
 ### Prompt suggestions
 
@@ -197,9 +197,9 @@ The best thing you can do to improve Metabot's performance is to prep your data 
 
 ### Add descriptions for your data and content
 
-Add descriptions to your [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
+Add descriptions to your [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/semantic-layer/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
 
-Admins can also curate [table metadata](../data-modeling/metadata-editing.md) by adding descriptions for tables and their fields.
+Admins can also curate [table metadata](../data-modeling/metadata/metadata-editing.md) by adding descriptions for tables and their fields.
 
 For example, here's a decent description for an ID field that provides additional context for the data:
 
@@ -213,7 +213,7 @@ You can even ask Metabot to write descriptions for you. But Metabot will only ha
 
 Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
 
-Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/semantic-types.md). You can also set semantic types for [models](../data-modeling/models.md#add-metadata-to-columns-in-a-model).
+Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/metadata/semantic-types.md). You can also set semantic types for [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
 
 ### Define domain-specific terms in the glossary
 
@@ -233,7 +233,7 @@ If you're using the Metabase AI service, you can see how many Metabot requests p
 
 If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
-If you're using your own API key, you can track usage and costs through your AI provider's dashboard.
+If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 
 On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](usage-auditing.md) with detailed breakdown of AI usage by user, tool, feature etc.
 

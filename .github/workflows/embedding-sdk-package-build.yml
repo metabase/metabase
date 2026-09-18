@@ -24,6 +24,8 @@ jobs:
           # unrelated to embedding (EMB-765)
           echo "::remove-matcher owner=tsc::"
           bun run build-embedding-sdk-package
+      - name: Smoke test the packed SDK CLI
+        run: node bin/embedding-sdk/test-sdk-package.mjs
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v7
         with:

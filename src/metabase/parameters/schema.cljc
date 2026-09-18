@@ -1,19 +1,19 @@
 (ns metabase.parameters.schema
   (:require
    #?@(:clj
-       ([metabase.models.interface :as mi]
+       ([metabase.lib.core :as lib]
+        [metabase.models.interface :as mi]
         [metabase.util.json :as json]))
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::human-readable-remapping-map
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
-  [:map-of {:min 1} :any [:maybe :string]])
+  [:map-of {:min 1} ::lib.schema.literal/param-value [:maybe :string]])
 
 (mr/def ::legacy-ref
   [:multi {:dispatch (fn [x]
@@ -41,8 +41,8 @@
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   [:map
-   {:decode/normalize normalize-values-source-config}
-   [:values      {:optional true} [:* :any]]
+   {:closed true :decode/normalize normalize-values-source-config}
+   [:values      {:optional true} [:* [:schema [:ref ::lib.schema.parameter/values-source-config.value]]]]
    [:card_id     {:optional true} ::lib.schema.id/card]
    [:value_field {:optional true} [:ref ::legacy-ref]]
    [:label_field {:optional true} [:ref ::legacy-ref]]])
@@ -61,7 +61,7 @@
                       [:values_source_type :string]
                       [:values_source_config
                        [:map {:closed true}
-                        [:values {:optional true} [:* :any]]]]]]]))
+                        [:values {:optional true} [:* [:schema [:ref ::lib.schema.parameter/values-source-config.value]]]]]]]]]))
 
 (mr/def ::values-source-type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
@@ -75,12 +75,14 @@
   queries."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
-   {:description      "parameter must be a map with :id and :type keys"
+   {:closed true
+    :description      "parameter must be a map with :id and :type keys"
     :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:default              {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:display-name         {:optional true} [:maybe :string]]
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
+   [:hasVariableTemplateTagTarget {:optional true} [:maybe :boolean]]
    [:id                   ::lib.schema.parameter/id]
    ;; whether the widget lets you pick more than one value. Saved on the parameter by the "A single value"/"Multiple
    ;; values" picker, and read back by the frontend to choose the widget, so it has to survive a round trip.
@@ -90,6 +92,7 @@
                                                     [:set [:ref ::parameter-mapping]]]]]
    [:name                 {:optional true} :string]
    [:options              {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]
+   [:position             {:optional true} [:maybe :int]]
    [:required             {:optional true} [:maybe :boolean]]
    ;; ok now I know you're trying to mess with me with this camelCase key
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
@@ -104,18 +107,8 @@
    [:values_source_type   {:optional true} [:maybe ::values-source-type]]])
 ;;; TODO (Cam 10/20/25) -- does this need to include `widget-type` as well? Or is that only set for template tags?
 
-(mu/defn normalize-parameter :- ::parameter
-  "Normalize `parameter` when coming out of the application database or in via an API request."
-  [parameter]
-  (lib/normalize ::parameter parameter))
-
 (mr/def ::parameters
   [:sequential [:ref ::parameter]])
-
-(mu/defn normalize-parameters :- ::parameters
-  "Normalize `parameters` when coming out of the application database or in via an API request."
-  [parameters]
-  (lib/normalize ::parameters parameters))
 
 (mr/def ::parameter-with-optional-type
   [:merge
@@ -125,13 +118,6 @@
 
 (mr/def ::parameters-with-optional-types
   [:sequential ::parameter-with-optional-type])
-
-(mu/defn normalize-parameters-without-adding-default-types :- ::parameters-with-optional-types
-  "The same as [[normalize-parameters]], but does not add a default `:type` if it is missing. Needed in some cases
-  where we infer the type based on the `:widget-type` in the saved parameter declarations inside a Card or Dashboard,
-  e.g. when running an embedded Card with the Card QP."
-  [parameters]
-  (lib/normalize ::parameters-with-optional-types parameters))
 
 #?(:clj
    (defn json-encoded
@@ -147,20 +133,22 @@
 #?(:clj
    (def transform-parameters
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
-     {:in  (comp mi/json-in normalize-parameters)
-      :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)}))
+     {:in  (comp mi/json-in #(lib/normalize ::parameters %))
+      :out (comp (mi/catch-normalization-exceptions #(lib/normalize ::parameters %)) mi/json-out-with-keywordization)}))
 
 (mr/def ::parameter-with-value
   "A parameter *value* supplied when running a query, as opposed to a stored parameter declaration. These are the keys
   the frontend's `normalizeParameters` sends. Distinct from `::lib.schema.parameter/parameter`, which requires `:type`
   and normalizes the value."
   [:map
-   {:description      "parameter must be a map with an :id key"
+   {:closed true
+    :description      "parameter must be a map with an :id key"
     :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:id      ::lib.schema.common/non-blank-string]
    ;; the name of the template tag this value is for, when it can't be inferred from `:target`
    [:name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:slug    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:sectionId {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:type    {:optional true} [:maybe [:ref ::lib.schema.parameter/type]]]
    [:value   {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
@@ -184,10 +172,21 @@
    (mr/def ::api.parameter-values
      (json-encoded ::parameter-values)))
 
+(mr/def ::parameter-with-stored-value
+  "A parameter whose value is remembered for a user: the keys a client sends, or a Dashboard's stored declaration
+  carrying the value the query ran with."
+  [:or
+   [:ref ::parameter-with-value]
+   [:merge
+    [:ref ::parameter]
+    [:map {:closed true}
+     [:value {:optional true} [:ref ::lib.schema.parameter/parameter.value]]]]])
+
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
   [:map
-   {:decode/normalize (fn [mapping]
+   {:closed true
+    :decode/normalize (fn [mapping]
                         (when (map? mapping)
                           (let [mapping (lib.schema.common/normalize-map-no-kebab-case mapping)]
                             (cond-> mapping
@@ -197,25 +196,15 @@
    [:target       ::lib.schema.parameter/target]
    [:card_id      {:optional true} [:maybe ::lib.schema.id/card]]])
 
-(mu/defn normalize-parameter-mapping :- ::parameter-mapping
-  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameter-mapping]
-  (lib/normalize ::parameter-mapping parameter-mapping))
-
 (mr/def ::parameter-mappings
   [:sequential [:ref ::parameter-mapping]])
-
-(mu/defn normalize-parameter-mappings :- [:maybe ::parameter-mappings]
-  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameter-mappings :- [:maybe [:sequential :map]]]
-  (when parameter-mappings
-    (lib/normalize ::parameter-mappings parameter-mappings)))
 
 #?(:clj
    (def transform-parameter-mappings
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameter mappings."
-     {:in  (comp mi/json-in normalize-parameter-mappings)
-      :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)}))
+     {:in  (comp mi/json-in #(some->> % (lib/normalize ::parameter-mappings)))
+      :out (comp (mi/catch-normalization-exceptions #(some->> % (lib/normalize ::parameter-mappings)))
+                 mi/json-out-with-keywordization)}))
 
 (mr/def ::parameter-mapping-with-dashcard
   "A `::parameter-mapping` resolved against the DashboardCard that carries it. The `:dashcard` is attached server-side
@@ -224,4 +213,12 @@
   [:merge
    [:ref ::parameter-mapping]
    [:map
-    [:dashcard :map]]])
+    [:dashcard {:optional true} [:ref :metabase.dashboards.schema/dashboard-card]]]])
+
+(mr/def ::resolved-parameter
+  "A dashboard parameter with its `:mappings` resolved against the DashboardCards that carry them, as the
+  `:resolved-params` hydration builds it."
+  [:merge
+   [:ref ::parameter]
+   [:map {:closed true}
+    [:mappings {:optional true} [:maybe [:set [:ref ::parameter-mapping-with-dashcard]]]]]])

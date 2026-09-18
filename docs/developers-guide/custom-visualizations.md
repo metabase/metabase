@@ -28,7 +28,7 @@ Building a custom viz from scaffolding to adding it to your Metabase looks somet
 
 - Node.js 22 or newer.
 - Familiarity with React and TypeScript.
-- A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing/) to load your plugin into.
+- A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing) to load your plugin into.
 
 ## Scaffold a custom visualization project
 
@@ -72,7 +72,7 @@ The scaffold ships a complete, working example: a chart that shows a thumbs-up e
 
 To develop your plugin against a live Metabase with hot reload:
 
-1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing/) token.
+1. Start Metabase with the `MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED` environment variable set to `true`. Dev mode is meant for local development, so you can only turn it on with this environment variable. Like any Metabase that runs custom visualizations, this local instance needs a [Pro or Enterprise](https://www.metabase.com/pricing) token.
 2. Run `npm run dev` in your project. By default, the dev server listens on `http://localhost:5174`.
 3. In Metabase, go to **Admin** > **Settings** > **Custom visualizations** > **Development** and set the **Dev server URL** to your dev server's address.
 

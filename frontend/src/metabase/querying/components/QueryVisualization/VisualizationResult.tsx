@@ -105,7 +105,6 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       queryBuilderMode={queryBuilderMode}
       showTitle={false}
       canToggleSeriesVisibility
-      metadata={question.metadata()}
       timelineEvents={timelineEvents}
       selectedTimelineEventIds={selectedTimelineEventIds}
       getExtraDataForClick={getExtraDataForClick}

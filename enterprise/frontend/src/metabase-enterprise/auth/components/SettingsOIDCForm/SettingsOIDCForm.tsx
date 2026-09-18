@@ -3,15 +3,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import {
-  CollapsibleSettingsSection,
-  SETTINGS_CARD_DESCRIPTION_PROPS,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidgetView } from "metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView";
 import { SETTINGS_FIELD_DESCRIPTION_PROPS } from "metabase/admin/settings/utils";
 import {
@@ -33,6 +24,14 @@ import {
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Button, Flex, Stack } from "metabase/ui";
 import {
   type CustomOidcConfig,
@@ -43,7 +42,7 @@ import {
   useGetCustomOidcProvidersQuery,
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
-import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { Group, GroupId } from "metabase-types/api";
 
 const DEFAULT_SCOPES = ["openid", "email", "profile"];
@@ -367,15 +366,6 @@ export function SettingsOIDCForm() {
 
   return (
     <SettingsPageWrapper title={t`OpenID Connect`}>
-      <SettingsSection>
-        <AdminSettingInput
-          name="oidc-user-provisioning-enabled?"
-          title={t`User provisioning`}
-          inputType="radio"
-          options={provisioningOptions("OIDC")}
-        />
-      </SettingsSection>
-
       <FormProvider
         initialValues={initialValues}
         onSubmit={handleSubmit}
@@ -435,6 +425,12 @@ export function SettingsOIDCForm() {
                   />
                 </Stack>
               </SettingsSection>
+
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="oidc-user-provisioning-enabled?"
+                providerName="OIDC"
+              />
 
               {isExisting && (
                 <SettingsSection

@@ -1,6 +1,6 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -92,6 +92,6 @@ export const getLabelsFormatter = (
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
     isEmpty(value)
-      ? NULL_DISPLAY_VALUE
+      ? getNullDisplayValue()
       : String(formatValue(value, { column }));
 };

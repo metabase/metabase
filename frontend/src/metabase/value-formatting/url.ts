@@ -1,5 +1,4 @@
 import { removeNewLines } from "metabase/utils/formatting";
-import { isURL } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";
 
 import { getDataFromClicked } from "./click-data";
@@ -8,6 +7,7 @@ import { getJsxLinkRenderer } from "./registry";
 import {
   type FormatValueOptions,
   formatValue,
+  getColumnTypePredicates,
   getRemappedValue,
 } from "./value";
 
@@ -24,6 +24,9 @@ export function isDefaultLinkProtocol(protocol: string) {
 }
 
 export function getUrlProtocol(url: string) {
+  if (!url.includes(":")) {
+    return undefined;
+  }
   try {
     const { protocol } = new URL(url);
     return protocol;
@@ -32,7 +35,10 @@ export function getUrlProtocol(url: string) {
   }
 }
 
-export function formatUrl(value: string, options: FormatValueOptions = {}) {
+export function formatUrl(
+  value: unknown,
+  options: FormatValueOptions = {},
+): React.ReactElement | string | number | null {
   const { jsx, rich, column, collapseNewlines, copyLinkUrl } = options;
 
   const url = getLinkUrl(value, options);
@@ -43,15 +49,18 @@ export function formatUrl(value: string, options: FormatValueOptions = {}) {
     return jsxLinkRenderer(url, text);
   } else if (url && copyLinkUrl) {
     return url;
-  } else if (!url && !isURL(column)) {
+  } else if (!url && !getColumnTypePredicates(column).isURL) {
     // Even when no URL is found, return a formatted value
     return formatValue(value, { ...options, view_as: null });
   } else {
-    return collapseNewlines ? removeNewLines(value) : value;
+    const text = collapseNewlines ? removeNewLines(value) : value;
+    return typeof text === "string" || typeof text === "number" || text === null
+      ? text
+      : String(text);
   }
 }
 
-function getLinkText(value: string, options: ColumnSettings) {
+function getLinkText(value: unknown, options: ColumnSettings) {
   const { view_as, link_text, clicked, collapseNewlines } = options;
 
   const isExplicitLink = view_as === "link";
@@ -70,7 +79,7 @@ function getLinkText(value: string, options: ColumnSettings) {
 }
 
 function getLinkUrl(
-  value: string,
+  value: unknown,
   { view_as, link_url, clicked, column }: ColumnSettings,
 ) {
   const isExplicitLink = view_as === "link";
@@ -78,6 +87,10 @@ function getLinkUrl(
 
   if (isExplicitLink && hasCustomizedUrl) {
     return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
+  }
+
+  if (typeof value !== "string") {
+    return null;
   }
 
   const protocol = getUrlProtocol(value);
@@ -98,7 +111,10 @@ function getLinkUrl(
     return value;
   }
 
-  if (view_as === undefined && (isURL(column) || isDefaultProtocol)) {
+  if (
+    view_as === undefined &&
+    (getColumnTypePredicates(column).isURL || isDefaultProtocol)
+  ) {
     return value;
   }
 

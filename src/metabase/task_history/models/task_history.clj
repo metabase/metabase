@@ -11,6 +11,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -75,7 +76,7 @@
 
 (def FilterParams
   "Schema for filter for task history."
-  [:map
+  [:map {:closed true}
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
@@ -84,20 +85,25 @@
 
 (def SortParams
   "Sorting map schema."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
+
+(def FilterAndSortParams
+  "The query params of `GET /api/task`: [[FilterParams]] and [[SortParams]] together. `:merge` merges the two maps'
+  properties, so the result is closed like both of its halves."
+  [:merge FilterParams SortParams])
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
-   {:keys [status task sort_column sort_direction]} :- [:maybe [:merge FilterParams SortParams]]]
+   {:keys [status task sort_column sort_direction]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-histories status task (or sort_column :started_at) (or sort_direction :desc) limit offset))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
-  [{:keys [status task]} :- FilterParams]
+  [{:keys [status task]} :- [:maybe FilterAndSortParams]]
   (task-history.db/task-history-count status task))
 
 (defn unique-tasks
@@ -119,9 +125,11 @@
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
-   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
-   [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
+   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any]
+                                               ::task-history.schema/task-history.update]]]
+   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo (ms/InstanceOfClass Throwable)]
+                                               ::task-history.schema/task-history.update]]]
+   [:task_details    {:optional true} [:maybe ::task-history.schema/task-history.task-details]]]) ; additional map of details to include in the recorded row
 
 (defn- ns->ms [nanoseconds]
   (long (/ nanoseconds 1e6)))
@@ -202,7 +210,8 @@
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
-  [info :- TaskHistoryInfo f]
+  [info :- TaskHistoryInfo
+   f    :- ifn?]
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)

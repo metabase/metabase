@@ -46,7 +46,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 
 The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content. Use the Library to separate authoritative, reusable components from ad-hoc analyses.
 
-See [Library organization](../data-studio/library.md#library-organization).
+See [Library organization](../data-modeling/semantic-layer/library.md#library-organization).
 
 ## Collection permissions
 
@@ -149,4 +149,4 @@ You can upload data to collections. See [Uploading data](./uploads.md).
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env#one-collection-per-environment)
 
 [dashboards]: ../dashboards/introduction.md
-[models]: ../data-modeling/models.md
+[models]: ../data-modeling/models/models.md

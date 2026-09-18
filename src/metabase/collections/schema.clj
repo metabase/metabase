@@ -100,23 +100,36 @@
 
 (mr/def ::collection
   "A Collection as selected from the app DB: every column of `:collection`."
+  [:merge
+   ::collection.update
+   [:map {:closed true}
+    [:id                   ::lib.schema.id/collection]
+    [:can_write            {:optional true} :boolean]
+    [:is_personal          {:optional true} [:maybe :boolean]]
+    [:effective_location   {:optional true} [:maybe :string]]]])
+
+(mr/def ::root-collection
+  "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it."
   [:map {:closed true}
-   [:id                   ::lib.schema.id/collection]
-   [:name                 :string]
-   [:description          [:maybe :string]]
-   [:archived             :boolean]
-   [:location             :string]
-   [:personal_owner_id    [:maybe ::lib.schema.id/user]]
-   [:slug                 :string]
-   [:namespace            [:maybe [:or :keyword :string]]]
-   [:authority_level      [:maybe [:or :keyword :string]]]
-   [:entity_id            :string]
-   [:created_at           ms/TemporalInstant]
-   [:type                 [:maybe [:or :keyword :string]]]
-   [:is_sample            :boolean]
-   [:archive_operation_id [:maybe :string]]
-   [:archived_directly    [:maybe :boolean]]
-   [:is_remote_synced     [:maybe :boolean]]])
+   [:metabase.collections.models.collection.root/is-root? [:= true]]
+   [:authority_level     {:optional true} [:maybe [:or :keyword :string]]]
+   [:id                  {:optional true} [:= "root"]]
+   [:name                {:optional true} :string]
+   [:namespace           {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_personal         {:optional true} :boolean]
+   [:is_remote_synced    {:optional true} :boolean]
+   [:can_write           {:optional true} :boolean]
+   [:parent_id           {:optional true} :nil]
+   [:effective_location  {:optional true} [:maybe :string]]
+   [:effective_ancestors {:optional true} [:sequential [:ref ::collection]]]
+   [:can_restore         {:optional true} :boolean]
+   [:can_delete          {:optional true} :boolean]])
+
+(mr/def ::collection-or-root
+  "A Collection row, or the Root Collection placeholder."
+  [:multi {:dispatch (fn [x] (if (:metabase.collections.models.collection.root/is-root? x) :root :row))}
+   [:root [:ref ::root-collection]]
+   [:row  [:ref ::collection]]])
 
 (mr/def ::collection.update
   "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional."

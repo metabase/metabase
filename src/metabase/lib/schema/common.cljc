@@ -96,17 +96,44 @@
   (cond-> x
     (keyword? x) u/qualified-name))
 
+(mr/def ::clause-arg
+  "One arg of an MBQL clause in any normalization state: a literal, a keyword such as a temporal unit, an options map
+   (possibly string-keyed), or a nested clause or sequence of clauses."
+  [:or
+   :nil
+   :keyword
+   :metabase.lib.schema.literal/literal
+   [:ref ::clause-options]
+   [:sequential [:ref ::clause-arg]]])
+
+(mr/def ::any-clause
+  "An MBQL clause `[tag & args]` in any normalization state -- `tag` a keyword, or a string before normalization
+   keywordizes it -- e.g. not yet uuid'd, or still carrying legacy args."
+  [:cat [:or :keyword :string] [:* ::clause-arg]])
+
+(mr/def ::possibly-unnormalized-clause
+  "A (possibly not-yet-normalized) MBQL clause `[tag & args]` -- `tag` a keyword, or a string before normalization
+   keywordizes it -- or a literal value."
+  [:or
+   :metabase.lib.schema.literal/literal
+   ::any-clause])
+
+(mr/def ::clause-tag-candidate
+  "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
+
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
-  [x]
+  [x :- ::clause-tag-candidate]
   (when (and (vector? x)
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
-(mu/defn is-clause?
+(mu/defn is-clause? :- :boolean
   "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
-  [tag :- :keyword x]
+  [tag :- :keyword
+   x   :- ::clause-tag-candidate]
   (= (mbql-clause-tag x) tag))
 
 (mr/def ::non-blank-string
@@ -125,6 +152,34 @@
   [:fn
    {:error/message "positive number"}
    (every-pred number? pos?)])
+
+(mr/def ::visualization-settings
+  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
+  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
+  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
+  only."
+  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
+
+(mr/def ::clause-options
+  "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
+  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
+
+(mr/def ::database-details
+  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+
+(mr/def ::database-settings
+  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+
+(mr/def ::exception-data
+  "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+
+(mr/def ::field-value
+  "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+                                                       #(instance? java.time.temporal.Temporal %)])]])
 
 (mr/def ::uuid
   [:string
@@ -179,7 +234,7 @@
 ;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
 
 (mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
-  [x]
+  [x :- [:or :nil :string :keyword]]
   (normalize-keyword x))
 
 (defn normalize-base-type
@@ -282,7 +337,19 @@
       {:error/message \":native is not allowed in an MBQL stage\"
        :decode/normalize #(cond-> % (map? %) (dissoc :native))}
       #(not (when (map? %) (contains? :native)))]]"
-  [k->message :- [:map-of :keyword :string]]
+  [k->message :- [:map-of [:enum
+                           :query :source-table :source-card :fields :filter :filters :breakout :aggregation
+                           :limit :order-by :offset :page :args :native :aggregation-idents :breakout-idents
+                           :expression-idents :source-metadata :source-query :type :database :lib/options
+                           :expressions :pivot :joins :ident :lib/expression-name :lib/join-alias :fk-field-id
+                           :binning :field-ref :model/inner-ident :source :source-alias :unit
+                           :metabase.lib.join/join-alias :metabase.lib.field/binning
+                           :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
+                           :metabase.lib.field/simple-display-name
+                           :metabase.lib.query/transformation-added-base-type
+                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :model/inner_ident :stages :lib/model-display-name]
+                  :string]]
   (let [fn-schemas (map (fn [[k message]]
                           [:fn
                            {:error/message    message
@@ -302,13 +369,26 @@
       (first fn-schemas)
       (into [:and] fn-schemas))))
 
+(mr/def ::add-alias-info.source-table
+  "Value of the `:metabase.query-processor.util.add-alias-info/source-table` option
+  that [[metabase.query-processor.util.add-alias-info]] adds to a `:field` ref: the ID of the Table the field comes
+  from, the (escaped) alias of the join or source query it comes from, or one of the two sentinel keywords that
+  namespace uses for 'the source query' and 'nowhere in particular'."
+  [:or
+   :string
+   [:ref :metabase.lib.schema.id/table]
+   [:enum
+    :metabase.query-processor.util.add-alias-info/source
+    :metabase.query-processor.util.add-alias-info/none]])
+
 (mr/def ::options
   [:and
    {:default {}}
    [:map
     {:decode/normalize   #'normalize-options-map
      :decode/api         #'remove-internal-keys
-     :encode/for-hashing #'encode-map-for-hashing}
+     :encode/for-hashing #'encode-map-for-hashing
+     :closed             true}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
@@ -329,18 +409,43 @@
     ;; `:time-interval`
     [:include-current     {:optional true} :boolean]
     ;; the name an aggregation is referenced by
-    [:lib/source-name     {:optional true} ::non-blank-string]]
+    [:lib/source-name     {:optional true} ::non-blank-string]
+    [:default             {:optional true} [:ref :metabase.lib.schema.expression/expression]]
+    [:join-alias          {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:qp/ignore-coercion {:optional true} :boolean]
+    [:qp/allow-coercion-for-columns-without-integer-qp.add.source-table {:optional true} :boolean]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::coercion-strategy]]
+    [:metabase.query-processor.util.add-alias-info/source-table  {:optional true} [:ref ::add-alias-info.source-table]]
+    [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/nfc-path      {:optional true} [:sequential :string]]
+    [:metabase.query-processor.util.add-alias-info/resolved      {:optional true} [:ref :metabase.lib.schema.metadata/column]]
+    [:metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field {:optional true} :boolean]
+    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.driver.sql.query-processor/forced-alias {:optional true} :boolean]
+    [:metabase.driver.sql.query-processor/add-cast     {:optional true} :keyword]
+    [:metabase.driver.sql.query-processor/wrap-in-case {:optional true} :boolean]
+    [:metabase.driver.sql.parameters.substitution/compiling-field-filter? {:optional true} :boolean]
+    [:metabase.driver.sqlserver/optimized-bucketing? {:optional true} :boolean]
+    [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:metabase.mcp.v2.query/keyset {:optional true} :boolean]
+    [:temporal-unit                      {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:inherited-temporal-unit            {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:lib/original-effective-type        {:optional true} [:maybe ::base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+    [:source-field                       {:optional true} [:ref :metabase.lib.schema.id/field]]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
 (mr/def ::external-op
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :lib/external-op]]
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:schema {:decode/normalize vec} [:sequential :any]]]
-   [:options  {:optional true} ::options]])
+   [:args     [:schema {:decode/normalize vec} [:sequential [:ref :metabase.lib.common/op-arg]]]]
+   [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
 
 #?(:clj
    (defn- instance-of-class* [& classes]

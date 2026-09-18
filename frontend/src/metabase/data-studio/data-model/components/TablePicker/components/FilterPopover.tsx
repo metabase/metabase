@@ -78,6 +78,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
         <DataSourceInput
           clearable
           showMetabaseTransform
+          showUnknown={false}
           value={form.dataSource}
           onChange={(dataSource) => {
             setForm((form) => ({ ...form, dataSource }));

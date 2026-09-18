@@ -1,12 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import {
-  getMetadata,
-  selectQuestionFromCardBuilder,
-} from "metabase/metadata-store";
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import { isSavedQuestionChanged } from "metabase/querying/common/utils/question";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 
 import type { QueryBuilderStoreState } from "./state";
 
@@ -47,17 +43,12 @@ export const getOriginalQuestion = createSelector(
 );
 
 export const getQuestionWithoutComposing = createSelector(
-  // getMetadata stays an input here on purpose. It takes an optional second
-  // argument, which reselect merges into this selector's signature and on
-  // through getQuestion to app/selectors getCollectionId. Swapping it for a
-  // one-argument selector makes getCollectionId reject useSelector's single
-  // argument, so this site waits for that chain to be typed.
-  [getCard, getMetadata, getParameterValues],
-  (card, metadata, parameterValues) => {
-    if (!card || !metadata) {
+  [getCard, getQuestionBuilder, getParameterValues],
+  (card, buildQuestion, parameterValues) => {
+    if (!card) {
       return;
     }
-    return new Question(card, metadata, parameterValues);
+    return buildQuestion(card, parameterValues);
   },
 );
 

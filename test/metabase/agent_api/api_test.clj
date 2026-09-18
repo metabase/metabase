@@ -10,6 +10,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -81,6 +82,68 @@
                     :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
+
+(deftest agent-api-401-for-an-unusable-bearer-token-carries-invalid-token-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a 401 for a bearer token that does not authenticate to carry an
+            `invalid_token` challenge. The session middleware declines such a token silently, leaving the agent API
+            to answer the request, so the challenge has to come from there."
+    ;; site-url: resolving the bearer token builds the OAuth provider, whose config derives its issuer from it
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (client/client-full-response
+                      :get 401 "agent/v1/ping"
+                      {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+        (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+        ;; which of the JWT failures the body names depends on whether a shared secret is configured; the challenge
+        ;; is the same either way
+        (is (string? (get-in response [:body :message])))))))
+
+(deftest agent-api-401-when-no-jwt-provider-is-registered-test
+  (testing "GHY-4542: the JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and
+            `auth-identity/authenticate` has no method to dispatch to. A bearer token the OAuth bridge declined
+            reaches that dispatch, and the agent API has to answer it with the 401 `invalid_token` challenge rather
+            than let the dispatch throw and serve a 500 carrying a stack trace."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (with-redefs-fn {#'agent-api.api/jwt-provider-available? (constantly false)}
+        (fn []
+          (let [response (client/client-full-response
+                          :get 401 "agent/v1/ping"
+                          {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+            (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+            (is (= "jwt_not_configured" (get-in response [:body :error])))))))))
+
+(deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
+  (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
+            says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the
+            agent API gives before it has a token to judge carry a plain `Bearer` challenge, with unchanged bodies."
+    (testing "no credentials at all"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping")]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "missing_authorization"
+                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+               (:body response)))))
+    (testing "an Authorization header that does not use the Bearer scheme"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping"
+                                                  {:request-options {:headers {"authorization" "Basic dXNlcjpwYXNz"}}})]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "invalid_authorization_format"
+                :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
+               (:body response)))))))
+
+(deftest enforce-authentication-does-not-widen-oauth-request-without-scopes-test
+  (testing "GHY-4542: the agent API defaults nil `:token-scopes` on an authenticated request to unrestricted, which
+            is right for a session but would hand an OAuth-authenticated request with no scopes full access and
+            defeat the scope middleware's own fail-closed check. That request keeps nil and is refused by the
+            endpoint's scope check."
+    (let [enforce-authentication #'agent-api.api/enforce-authentication
+          handler                (enforce-authentication
+                                  ((api.scope/enforce-scope "agent:search") (fn [_ respond _] (respond {:status 200}))))
+          status                 (fn [request]
+                                   (let [p (promise)]
+                                     (handler request #(deliver p (:status %)) #(deliver p %))
+                                     (deref p 10000 ::timeout)))]
+      (is (= 403 (status {:metabase-user-id (mt/user->id :rasta) :authenticated-via-oauth? true})))
+      (testing "a session request with nil token-scopes is still unrestricted"
+        (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
 (deftest agent-api-enabled-setting-test
   (testing "External Agent API routes return 403 when disabled"
@@ -1859,15 +1922,16 @@
       (is (some? (-> resp :resources first :error))))))
 
 (deftest decode-and-validate-query-strips-extra-keys-test
-  (testing "base64 query payloads are decoded, validated, and stripped of undeclared properties"
-    (let [encoded (u/encode-base64 (json/encode {:database (mt/id)
-                                                 :type     "query"
-                                                 :query    {:source-table (mt/id :orders)
-                                                            :a            1
-                                                            :a/b          2}}))
+  (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"
+    ;; `:qp/source-card-id` and `:qp/stage-had-source-card` are keys the QP adds to a query while it runs and that
+    ;; permissions later read, so a client must never be able to send them in.
+    (let [encoded (u/encode-base64 (json/encode {:database          (mt/id)
+                                                 :type              "query"
+                                                 :qp/source-card-id 1
+                                                 :query             {:source-table              (mt/id :orders)
+                                                                     :qp/stage-had-source-card 1}}))
           q       (#'agent-api.api/decode-and-validate-query encoded)]
       (is (= :mbql/query (:lib/type q)))
-      (is (not (contains? q :a)))
-      (is (not (contains? q :a/b)))
-      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages q))
-          "undeclared properties are stripped from every stage"))))
+      (is (not (contains? q :qp/source-card-id)))
+      (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
+          "internal keys are stripped from every stage"))))

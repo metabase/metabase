@@ -1,9 +1,12 @@
 (ns metabase.settings.models.setting.multi-setting-test
   (:require
    [clojure.test :refer :all]
+   [metabase.audit-app.events.audit-log]
    [metabase.settings.models.setting :as setting]
    [metabase.settings.models.setting.multi-setting :as multi-setting]
    [metabase.test.fixtures :as fixtures]))
+
+(comment metabase.audit-app.events.audit-log/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 

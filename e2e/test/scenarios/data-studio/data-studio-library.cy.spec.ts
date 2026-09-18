@@ -41,6 +41,8 @@ describe("scenarios > data studio > library", () => {
     H.popover()
       .findByText(/Data studio/)
       .click();
+    // Let the Data Studio index redirect settle.
+    cy.location("pathname").should("not.eq", "/data-studio");
 
     cy.log(
       "Verify tracking event when opening Data Studio from the profile menu",

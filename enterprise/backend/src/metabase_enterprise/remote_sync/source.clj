@@ -13,9 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util.yaml :as yaml]
-   [methodical.core :as methodical])
-  (:import
-   (java.io File)))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,13 +68,18 @@
                                             (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
+(defn storage-context
+  "The serdes storage context for git sync: a Table's user settings file stands in for the Table's own."
+  []
+  (assoc (serdes/storage-base-context) :inline-user-settings true))
+
 (defn entity->path
   "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
-    (str/join File/separator (concat dirnames [basename]))))
+    (str/join "/" (concat dirnames [basename]))))
 
 (defn entity->content
   "The serialized YAML string for an extracted `entity`."
@@ -86,7 +89,7 @@
 
 (defn entity->file-spec
   "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
-  `opts` (from `serdes/storage-base-context`)."
+  `opts` (from [[storage-context]])."
   [opts entity]
   {:path    (entity->path opts entity)
    :content (entity->content entity)})
@@ -101,7 +104,7 @@
   can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
   [row]
   (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))
+    (content-hash (:content (entity->file-spec (storage-context) entity)))))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress
@@ -110,7 +113,7 @@
 
   Throws Exception if any entity in the stream is an Exception instance."
   [stream task-id]
-  (let [opts (serdes/storage-base-context)
+  (let [opts (storage-context)
         stream-count (bounded-count 10000 stream)]
     (into []
           (map-indexed (fn [idx entity]
