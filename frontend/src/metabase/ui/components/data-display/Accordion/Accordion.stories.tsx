@@ -68,6 +68,7 @@ const STATES = [
   { id: "open-hover", label: "Open, hover", open: true },
   { id: "open-pressed", label: "Open, pressed", open: true },
   { id: "disabled", label: "Disabled", disabled: true },
+  { id: "disabled-hover", label: "Disabled, hover", disabled: true },
 ] satisfies {
   id: string;
   label: string;
@@ -128,7 +129,9 @@ export const Overview = {
   render: OverviewTemplate,
   parameters: {
     pseudo: {
-      hover: ["closed-hover", "open-hover"].map(controlSelector),
+      hover: ["closed-hover", "open-hover", "disabled-hover"].map(
+        controlSelector,
+      ),
       active: ["closed-pressed", "open-pressed"].map(controlSelector),
     },
     controls: { include: ["theme"] },
