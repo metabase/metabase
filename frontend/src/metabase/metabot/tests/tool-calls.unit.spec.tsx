@@ -70,6 +70,41 @@ describe("metabot > tool calls", () => {
     expect(screen.getByText("Inspected the visualization")).not.toBeVisible();
   });
 
+  it("should show a dashboard loader card while create_dashboard is running", async () => {
+    setup();
+
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "create_dashboard",
+            input: { name: "People" },
+          };
+          await pause.promise;
+          yield { type: "tool-output-available", toolCallId: "x", output: "" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("Make me a dashboard about people");
+
+    const loader = await screen.findByTestId("metabot-inline-dashboard-loader");
+    expect(loader).toHaveTextContent("People");
+    expect(loader).toHaveTextContent("Making a dashboard...");
+
+    pause.resolve();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-inline-dashboard-loader"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should settle the chain when answer text arrives and start a fresh one for later tools", async () => {
     setup();
 

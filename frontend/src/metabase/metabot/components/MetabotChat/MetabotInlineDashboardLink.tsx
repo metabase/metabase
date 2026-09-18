@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -12,10 +13,12 @@ import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
 import {
   Anchor,
+  Box,
   Button,
   Center,
   Flex,
   Icon,
+  Loader,
   Paper,
   Stack,
   Text,
@@ -44,6 +47,53 @@ export function MetabotInlineDashboardLink({
       : Urls.generatedDashboard(value, conversationId);
 
   return (
+    <DashboardCard data-testid="metabot-inline-dashboard-link">
+      <Anchor
+        className={S.link}
+        component={ForwardRefLink}
+        to={url}
+        c="text-primary"
+        underline="never"
+        flex={1}
+        miw={0}
+        aria-label={t`Open dashboard`}
+      >
+        <DashboardCardSummary title={value.title} subtitle={t`Dashboard`} />
+      </Anchor>
+      {"dashcards" in value && !readonly && (
+        <SaveDashboardAction
+          dashboard={value}
+          conversationId={conversationId}
+          savedDashboardId={savedDashboardId}
+        />
+      )}
+      <Icon name="external" size={16} c="icon-disabled" flex="0 0 auto" />
+    </DashboardCard>
+  );
+}
+
+export function MetabotInlineDashboardLoader({ title }: { title?: string }) {
+  return (
+    <DashboardCard data-testid="metabot-inline-dashboard-loader">
+      <Box flex={1} miw={0}>
+        <DashboardCardSummary
+          title={title ?? t`Dashboard`}
+          subtitle={t`Making a dashboard...`}
+        />
+      </Box>
+      <Loader type="dots" size="xs" c="text-secondary" flex="0 0 auto" />
+    </DashboardCard>
+  );
+}
+
+function DashboardCard({
+  children,
+  ...props
+}: {
+  children: ReactNode;
+  "data-testid": string;
+}) {
+  return (
     <Paper
       className={S.root}
       pos="relative"
@@ -52,50 +102,43 @@ export function MetabotInlineDashboardLink({
       bd="1px solid var(--mb-color-border-neutral)"
       p="xl"
       pr="xxl"
-      data-testid="metabot-inline-dashboard-link"
+      {...props}
     >
       <Flex align="center" gap="md">
-        <Anchor
-          className={S.link}
-          component={ForwardRefLink}
-          to={url}
-          c="text-primary"
-          underline="never"
-          flex={1}
-          miw={0}
-          aria-label={t`Open dashboard`}
-        >
-          <Flex align="center" gap="md">
-            <Center
-              w={40}
-              h={40}
-              bdrs="50%"
-              bg="background_surface-brand-subtle"
-              c="core-brand"
-              flex="0 0 auto"
-            >
-              <Icon name="dashboard" size={16} />
-            </Center>
-            <Stack gap="xxs" miw={0}>
-              <Text fw="bold" size="lg" lh="20px" truncate>
-                {value.title}
-              </Text>
-              <Text c="text-secondary" size="sm" lh="16px">
-                {t`Dashboard`}
-              </Text>
-            </Stack>
-          </Flex>
-        </Anchor>
-        {"dashcards" in value && !readonly && (
-          <SaveDashboardAction
-            dashboard={value}
-            conversationId={conversationId}
-            savedDashboardId={savedDashboardId}
-          />
-        )}
-        <Icon name="external" size={16} c="icon-disabled" flex="0 0 auto" />
+        {children}
       </Flex>
     </Paper>
+  );
+}
+
+function DashboardCardSummary({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Flex align="center" gap="md">
+      <Center
+        w={40}
+        h={40}
+        bdrs="50%"
+        bg="background_surface-brand-subtle"
+        c="core-brand"
+        flex="0 0 auto"
+      >
+        <Icon name="dashboard_layout" size={16} />
+      </Center>
+      <Stack gap="xxs" miw={0}>
+        <Text fw="bold" size="lg" lh="20px" truncate>
+          {title}
+        </Text>
+        <Text c="text-secondary" size="sm" lh="16px">
+          {subtitle}
+        </Text>
+      </Stack>
+    </Flex>
   );
 }
 

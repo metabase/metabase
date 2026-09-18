@@ -79,6 +79,7 @@ export type IconName =
   | "data_studio"
   | "dash"
   | "dashboard"
+  | "dashboard_layout"
   | "curve"
   | "document"
   | "download"

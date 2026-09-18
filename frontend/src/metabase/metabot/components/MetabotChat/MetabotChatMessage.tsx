@@ -46,6 +46,7 @@ import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import { MetabotInlineDashboardLoader } from "./MetabotInlineDashboardLink";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -76,6 +77,24 @@ const isUserVisiblePart = (part: MetabotMessagePart): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "chain_of_thought" }, () => true)
     .exhaustive();
+
+const isPendingDashboardToolCall = (
+  part: MetabotMessagePart,
+): part is MetabotDebugToolCallMessage =>
+  part.type === "tool_call" &&
+  part.name === "create_dashboard" &&
+  part.status === "started";
+
+const getToolCallTitleArg = (args: string | undefined): string | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(args ?? "");
+    const hasName =
+      typeof parsed === "object" && parsed !== null && "name" in parsed;
+    return hasName && typeof parsed.name === "string" ? parsed.name : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const useMessageText = (message: MetabotMessage) =>
   useMemo(
@@ -238,9 +257,13 @@ const AgentPart = ({
         conversationId={conversationId}
       />
     ))
-    .with({ type: "tool_call" }, (p) => (
-      <AgentToolCallPart part={p} onSelect={onToolCallSelect} />
-    ))
+    .with({ type: "tool_call" }, (p) =>
+      debug ? (
+        <AgentToolCallPart part={p} onSelect={onToolCallSelect} />
+      ) : (
+        <MetabotInlineDashboardLoader title={getToolCallTitleArg(p.args)} />
+      ),
+    )
     .with({ type: "chain_of_thought" }, (p) => (
       <MetabotChainOfThought part={p} supportsReasoning={supportsReasoning} />
     ))
@@ -390,9 +413,16 @@ export const AgentMessage = ({
     message.status.type === "errored" || message.status.type === "aborted";
   const canActOnMessage = !readonly && !!messageId;
 
+  const isTurnActive =
+    message.status.type === "streaming" ||
+    message.status.type === "in_progress";
   const visibleParts = debug
     ? message.parts
-    : message.parts.filter(isUserVisiblePart);
+    : message.parts.filter(
+        (part) =>
+          isUserVisiblePart(part) ||
+          (isTurnActive && isPendingDashboardToolCall(part)),
+      );
   // the action bar belongs on the reply's final rendered content, and only once
   // the reply has stopped growing
   const actionsIndex =

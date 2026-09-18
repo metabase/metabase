@@ -6,6 +6,7 @@ type IconName =
   | "sql"
   | "collection"
   | "dashboard"
+  | "dashboard_layout"
   | "question"
   | "model"
   | "archive"

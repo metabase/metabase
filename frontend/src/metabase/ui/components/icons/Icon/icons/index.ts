@@ -77,6 +77,7 @@ import curve_component from "./curve.svg?component";
 import curved_component from "./curved.svg?component";
 import dash_component from "./dash.svg?component";
 import dashboard_component from "./dashboard.svg?component";
+import dashboard_layout_component from "./dashboard_layout.svg?component";
 import data_studio_component from "./data_studio.svg?component";
 import database_component from "./database.svg?component";
 import database_routing_component from "./database_routing.svg?component";
@@ -385,6 +386,7 @@ export const Icons: Record<IconName, React.VFC> = {
   data_studio: data_studio_component,
   dash: dash_component,
   dashboard: dashboard_component,
+  dashboard_layout: dashboard_layout_component,
   curve: curve_component,
   document: document_component,
   download: download_component,
