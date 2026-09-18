@@ -700,6 +700,17 @@ export const getCartesianChartPadding = (
     padding.right += yAxisNameTotalWidth;
   }
 
+  const hasGoalMarker =
+    settings["graph.show_goal"] &&
+    settings["graph.goal_value"] != null &&
+    !renderingContext.isStatic; // Static renders show a label instead.
+
+  if (hasGoalMarker) {
+    const { backgroundRadius, shadowSpread } = CHART_STYLE.goalLine.marker;
+    // The goal marker is centered on the plot's right edge, so half of it overhangs into the padding.
+    padding.right = Math.max(padding.right, backgroundRadius + shadowSpread);
+  }
+
   const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
     input,
     settings,

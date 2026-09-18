@@ -158,6 +158,8 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
+            chartRef.current?.getZr().setCursorStyle("default");
+
             const eventData = getGoalLineHoverData(
               settings,
               event,

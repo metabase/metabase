@@ -26,6 +26,11 @@ export interface RenderingContext {
   fontFamily: string;
   /** Defaults to "light" when not provided. */
   colorScheme?: "light" | "dark";
+  /**
+   * Whether the chart is rendered without interactivity, as in emailed
+   * subscriptions and exports. Such renders cannot rely on hover affordances.
+   */
+  isStatic?: boolean;
 
   theme: VisualizationTheme;
 }

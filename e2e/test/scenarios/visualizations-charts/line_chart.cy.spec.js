@@ -707,7 +707,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("$50.0k").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -732,7 +732,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("50.0k%").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
