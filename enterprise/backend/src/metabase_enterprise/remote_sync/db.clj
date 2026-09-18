@@ -50,7 +50,7 @@
    fk          :- :keyword
    model-id    :- ms/PositiveInt
    conditions  :- Conditions]
-  (apply t2/select model-key fk model-id (mapcat identity conditions)))
+  (apply t2/select model-key fk (long model-id) (mapcat identity conditions)))
 
 (mu/defn ids-where
   "The IDs of the instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
@@ -64,7 +64,7 @@
   [model-key :- :keyword
    column    :- [:enum :name :term]
    value     :- :string]
-  (t2/select-one-fn :entity_id model-key column value))
+  (t2/select-one-fn :entity_id model-key column [:auto/param value]))
 
 (mu/defn count-where
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
