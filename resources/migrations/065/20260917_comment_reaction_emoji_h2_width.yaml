@@ -12,7 +12,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-09-17T00:00:00
+      id: v65.xcewmy
       author: brybacki
       dbms: h2
       comment: Widen comment_reaction.emoji to 20 UTF-16 units on H2, the equivalent of 10 code points elsewhere

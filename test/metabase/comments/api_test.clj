@@ -375,13 +375,17 @@
                  (reactions-of doc-id comment-id))))))))
 
 (deftest too-long-emoji-reaction-test
+  ;; The family of four with light skin tone is 11 code points in 19 UTF-16 units. It is a valid ZWJ sequence that the
+  ;; picker does not offer.
   (testing "POST /api/comment/:comment-id/reaction rejects more than 10 code points"
-    (mt/with-temp [:model/Document {doc-id :id}     {}
-                   :model/Comment  {comment-id :id} {:target_id doc-id}]
-      (is (=? {:errors          {:emoji "Emoji must be 1 to 10 Unicode code points."}
-               :specific-errors {:emoji ["must be 1 to 10 Unicode code points, received: \"abcdefghijk\""]}}
-              (mt/user-http-request :rasta :post 400 (str "comment/" comment-id "/reaction")
-                                    {:emoji "abcdefghijk"}))))))
+    (let [family "\uD83D\uDC68\uD83C\uDFFB\u200D\uD83D\uDC69\uD83C\uDFFB\u200D\uD83D\uDC67\uD83C\uDFFB\u200D\uD83D\uDC66\uD83C\uDFFB"]
+      (is (= [19 11] [(count family) (.codePointCount family 0 (count family))]))
+      (mt/with-temp [:model/Document {doc-id :id}     {}
+                     :model/Comment  {comment-id :id} {:target_id doc-id}]
+        (is (=? {:errors          {:emoji "Emoji must be 1 to 10 Unicode code points."}
+                 :specific-errors {:emoji [(str "must be 1 to 10 Unicode code points, received: " (pr-str family))]}}
+                (mt/user-http-request :rasta :post 400 (str "comment/" comment-id "/reaction")
+                                      {:emoji family})))))))
 
 (deftest multiple-emoji-reactions-test
   ;; Relies on comment_reaction.emoji using an exact (not linguistic) collation on MySQL/MariaDB -- see
