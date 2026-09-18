@@ -61,8 +61,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   ;; legacy usages -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -1016,20 +1014,11 @@
    [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
    pos-int?])
 
-(def ^:private mbql-field-ref-schema
-  "MBQL 5 or legacy `:field` clause. Kept in a var so [[lib/normalize]] reuses one cached coercer; an inline literal
-  with a fresh dispatch fn misses the registry cache on every call."
-  [:multi
-   {:dispatch #(and (vector? %)
-                    (map? (second %)))}
-   [true  :mbql.clause/field]
-   [false ::mbql.s/field]])
-
 (defn- normalize-mbql-ref [mbql]
   (let [tag    (mbql-ref? mbql)
         schema (case tag
                  :field-id  ::mbql-3-field-id-ref
-                 :field     mbql-field-ref-schema
+                 :field     ::resolve/field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
