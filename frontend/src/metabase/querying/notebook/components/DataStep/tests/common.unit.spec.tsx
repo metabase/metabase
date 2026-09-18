@@ -177,9 +177,15 @@ describe("DataStep", () => {
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-disabled");
-      expect(screen.getByLabelText("Tax")).toBeChecked();
+      expect(screen.getByLabelText("Tax")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
     });
 
@@ -189,12 +195,18 @@ describe("DataStep", () => {
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       expect(screen.getByLabelText("ID")).toHaveAttribute(
         "aria-disabled",
         "true",
       );
-      expect(screen.getByLabelText("Tax")).not.toBeChecked();
+      expect(screen.getByLabelText("Tax")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
       expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
     });
 
@@ -204,11 +216,20 @@ describe("DataStep", () => {
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
-      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       expect(screen.getByLabelText("ID")).not.toHaveAttribute("aria-disabled");
-      expect(screen.getByLabelText("Tax")).not.toBeChecked();
+      expect(screen.getByLabelText("Tax")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
       expect(screen.getByLabelText("Tax")).not.toHaveAttribute("aria-disabled");
-      expect(screen.getByLabelText("Total")).toBeChecked();
+      expect(screen.getByLabelText("Total")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
       expect(screen.getByLabelText("Total")).not.toHaveAttribute(
         "aria-disabled",
       );

@@ -94,12 +94,18 @@ describe("FieldPicker", () => {
   it("should reflect selection and disabled state on the options", () => {
     setup({ selectedColumnNames: ["ID"] });
 
-    expect(screen.getByRole("option", { name: "ID" })).toBeChecked();
+    expect(screen.getByRole("option", { name: "ID" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     expect(screen.getByRole("option", { name: "ID" })).toHaveAttribute(
       "aria-disabled",
       "true",
     );
-    expect(screen.getByRole("option", { name: "Tax" })).not.toBeChecked();
+    expect(screen.getByRole("option", { name: "Tax" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
     expect(screen.getByRole("option", { name: "Tax" })).not.toHaveAttribute(
       "aria-disabled",
     );

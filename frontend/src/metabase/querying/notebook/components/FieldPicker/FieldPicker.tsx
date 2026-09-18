@@ -113,7 +113,7 @@ export const FieldPicker = ({
                   value={item.id}
                   disabled={item.isDisabled}
                   aria-label={item.title}
-                  aria-checked={item.isSelected}
+                  aria-selected={item.isSelected}
                   aria-disabled={item.isDisabled || undefined}
                 >
                   <HoverParent className={S.Row}>
