@@ -1,5 +1,6 @@
 const { H } = cy;
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+import type { GroupListQuery } from "metabase-types/api";
 
 describe("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
@@ -141,16 +142,18 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         .should("be.checked");
 
       cy.log("Deleted groups are gone and cleared groups have no members");
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const names = groups.map((group) => group.name);
-        expect(names).to.include.members(["collection", "readonly"]);
-        expect(names).not.to.include("data");
-        expect(names).not.to.include("nosql");
-        const memberCount = (name) =>
-          groups.find((group) => group.name === name).member_count;
-        expect(memberCount("collection")).to.equal(0);
-        expect(memberCount("readonly")).to.equal(0);
-      });
+      cy.request<GroupListQuery[]>("GET", "/api/permissions/group").then(
+        ({ body: groups }) => {
+          const names = groups.map((group) => group.name);
+          expect(names).to.include.members(["collection", "readonly"]);
+          expect(names).not.to.include("data");
+          expect(names).not.to.include("nosql");
+          const memberCount = (name: string) =>
+            groups.find((group) => group.name === name)?.member_count;
+          expect(memberCount("collection")).to.equal(0);
+          expect(memberCount("readonly")).to.equal(0);
+        },
+      );
     });
 
     it("should drop deleted groups from the remaining mappings and clear all mappings when switching to automatic", () => {
@@ -221,7 +224,7 @@ const getJwtCard = () => {
 
 const groupMappingSection = () => cy.findByTestId("jwt-group-schema");
 
-const mappingRow = (name) =>
+const mappingRow = (name: string) =>
   cy.contains('[data-testid="jwt-group-mapping-row"]', name);
 
 const newMappingButton = () => cy.button("New mapping");
@@ -229,12 +232,12 @@ const newMappingButton = () => cy.button("New mapping");
 const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
 // the segmented control keeps its radio inputs hidden, so the visible label takes the click
-const selectGroupMappingMode = (mode) => {
+const selectGroupMappingMode = (mode: string) => {
   groupMappingSection().findByText(mode).click();
 };
 
 // adding a mapping saves it right away, so wait for that write before moving on
-const addMapping = (name, groups) => {
+const addMapping = (name: string, groups: string[]) => {
   newMappingButton().click();
   cy.findByLabelText("JWT group name").type(name);
   groupsPicker().click();
@@ -246,7 +249,11 @@ const addMapping = (name, groups) => {
   mappingRow(name).should("contain", groups.join(", "));
 };
 
-const deleteMapping = (name, consequenceLabel, confirmLabel) => {
+const deleteMapping = (
+  name: string,
+  consequenceLabel: RegExp,
+  confirmLabel: string,
+) => {
   mappingRow(name).findByLabelText("Delete mapping").click();
   H.modal().within(() => {
     cy.findByText("Remove this group mapping?").should("be.visible");

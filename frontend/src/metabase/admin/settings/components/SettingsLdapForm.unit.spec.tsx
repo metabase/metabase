@@ -55,12 +55,14 @@ const setup = async ({
   settingDefinitions = [],
   saveStatus,
   saveMessage,
+  readDelay,
 }: {
   settingValues?: Partial<EnterpriseSettings>;
   // entries here win over the ones derived from settingValues
   settingDefinitions?: SettingDefinition[];
   saveStatus?: number;
   saveMessage?: string;
+  readDelay?: number;
 } = {}) => {
   const settings = createMockSettings(settingValues);
   delete settings["ldap-group-membership-filter"]; // not present in OSS
@@ -72,7 +74,9 @@ const setup = async ({
     ...toDefinitions(settingValues).filter(({ key }) => !listedKeys.has(key)),
   ]);
   // the switch and the mappings read their values back after saving, so the properties mock has to remember writes
-  const settingsStore = setupStatefulSettingsEndpoints(settings);
+  const settingsStore = setupStatefulSettingsEndpoints(settings, {
+    readDelay,
+  });
   if (saveStatus != null) {
     // a rejected write comes back as a plain-text reason, the way the settings endpoint reports a 400
     fetchMock.removeRoute("update-settings");
@@ -375,16 +379,10 @@ describe("SettingsLdapForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("comes alive once the host and user search base are saved", async () => {
+    it("comes alive once the host and user search base are saved, with the mappings still hidden", async () => {
       await setupConfigured();
 
       expect(groupMappingSwitch()).toBeEnabled();
-      expect(groupMappingSwitch()).not.toBeChecked();
-    });
-
-    it("keeps the mappings and the group fields hidden while group mapping is off", async () => {
-      await setupConfigured();
-
       expect(groupMappingSwitch()).not.toBeChecked();
       expect(
         screen.queryByText("Manual group mappings"),
@@ -413,6 +411,29 @@ describe("SettingsLdapForm", () => {
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
+    it("drops an unsaved group search base edit when group mapping is turned off", async () => {
+      await setupConfigured({
+        settingValues: {
+          "ldap-group-sync": true,
+          "ldap-group-base": "ou=groups,dc=example,dc=org",
+        },
+      });
+      const saveButton = () => screen.getByRole("button", { name: /Save/ });
+      const groupBase = () =>
+        screen.getByRole("textbox", { name: /Group search base/ });
+
+      await userEvent.type(groupBase(), "X");
+      expect(saveButton()).toBeEnabled();
+
+      await userEvent.click(groupMappingSwitch());
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+
+      expect(saveButton()).toBeDisabled();
+      await userEvent.click(groupMappingSwitch());
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupBase()).toHaveValue("ou=groups,dc=example,dc=org");
+    });
+
     it("shows the new value and holds the switch while the write is in flight", async () => {
       const { settingsStore } = await setupConfigured();
       // the properties mock answers the write late, so the in-flight state can be seen
@@ -435,6 +456,19 @@ describe("SettingsLdapForm", () => {
       await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
       expect(groupMappingSwitch()).toBeChecked();
       expect(await findRequests("PUT")).toHaveLength(1);
+    });
+
+    it("holds the switch until the settings refetch after the write lands", async () => {
+      // the properties mock answers reads late, so the refetch the write triggers can be seen
+      await setupConfigured({ readDelay: 200 });
+
+      await userEvent.click(groupMappingSwitch());
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+
+      expect(groupMappingSwitch()).toBeChecked();
+      expect(groupMappingSwitch()).toBeDisabled();
+      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toBeChecked();
     });
 
     it("puts the old value back when the write fails", async () => {

@@ -35,7 +35,11 @@ export function JWTGroupMappingSection({
   const groupMapping = useGroupMappingSettings();
   const deletion = useMappingDeletion({ groupMapping, groupLookup });
   const modeSwitch = useGroupMappingMode(groupMapping);
-  const isBusy = groupMapping.isSaving || deletion.isDeleting;
+  // a settings refetch still in flight could overwrite a new write, so the section waits for it too
+  const isBusy =
+    groupMapping.isSaving ||
+    groupMapping.isAdminSettingsFetching ||
+    deletion.isDeleting;
   const [editor, setEditor] = useState<EditorState | null>(null);
 
   const isLocked = lockedEnvNames.length > 0;
