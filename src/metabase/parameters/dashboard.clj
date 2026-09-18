@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
@@ -38,18 +39,31 @@
              field             (param->fields param)]
          (assoc field :value value))))
 
+(defn- check-mapped-card-read-perms
+  "Check that the current user can read `card`, or throw a 403."
+  [card]
+  (when-not (mi/can-read? card)
+    (throw (ex-info (tru "You do not have permissions to view Card {0}." (pr-str (:id card)))
+                    {:status-code 403}))))
+
 (defn filter-values-from-field-refs
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
   are provided (rather than field-ids). This is a common case for nested queries."
   [dashboard param-key]
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
-        results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
+        mappings        (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
                               :let [field-ref ((some-fn lib/parameter-target-field-ref
                                                         lib/parameter-target-expression-ref)
                                                target)]
                               :when field-ref]
-                          (custom-values/values-from-card card field-ref))]
+                          {:card card, :field-ref field-ref})
+        ;; read on the dashboard does not imply read on the Cards its dashcards hold, so check each Card before
+        ;; running it -- otherwise its column values leak to a viewer who cannot read it
+        results         (mapv (fn [{:keys [card field-ref]}]
+                                (check-mapped-card-read-perms card)
+                                (custom-values/values-from-card card field-ref))
+                              mappings)]
     (when-some [values (seq (distinct (mapcat :values results)))]
       (let [has_more_values (boolean (some true? (map :has_more_values results)))]
         {:values          (cond->> values
