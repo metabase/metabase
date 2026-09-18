@@ -11,7 +11,8 @@ import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartDataset } from "../model/types";
 
-export const GOAL_LINE_DASH = [1, 3];
+export const GOAL_LINE_DASH = [2, 2];
+const GOAL_LINE_WIDTH = 1;
 
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {
@@ -196,15 +197,17 @@ export function getGoalLineSeriesOption(
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
       const xEnd = coordSys.width + coordSys.x;
-      const lineColor = renderingContext.getColor("text-secondary");
+      // Snapped to the pixel grid so the line and its shadow below stay crisp
+      // instead of being anti-aliased into each other.
+      const lineY = Math.round(y - GOAL_LINE_WIDTH / 2) + GOAL_LINE_WIDTH / 2;
 
-      const line = {
+      const getLine = (offsetY: number, stroke: string) => ({
         type: "line" as const,
         shape: {
-          x1: xStart,
+          x1: Math.round(xStart),
           x2: xEnd,
-          y1: y,
-          y2: y,
+          y1: lineY + offsetY,
+          y2: lineY + offsetY,
         },
         // Only the marker is a hover target, so the line itself is inert.
         silent: true,
@@ -216,16 +219,22 @@ export function getGoalLineSeriesOption(
         // Pinned so hovering the marker does not lighten the line.
         emphasis: {
           style: {
-            stroke: lineColor,
+            stroke,
           },
         },
         style: {
-          lineWidth: 1,
-          stroke: lineColor,
-          color: lineColor,
+          lineWidth: GOAL_LINE_WIDTH,
+          stroke,
+          color: stroke,
           lineDash: GOAL_LINE_DASH,
         },
-      };
+      });
+
+      const line = getLine(0, renderingContext.getColor("icon-primary"));
+      const lineShadow = getLine(
+        GOAL_LINE_WIDTH,
+        renderingContext.getColor("background_surface-primary"),
+      );
 
       // Static renders have no hover, so they keep the inline label to stay
       // readable. Interactive charts show the marker and reveal the value on
@@ -240,11 +249,11 @@ export function getGoalLineSeriesOption(
             settings,
             renderingContext,
           })
-        : buildGoalLineMarker({ xEnd, y, renderingContext });
+        : buildGoalLineMarker({ xEnd, y: lineY, renderingContext });
 
       return {
         type: "group" as const,
-        children: [line, ...endDecoration],
+        children: [lineShadow, line, ...endDecoration],
       };
     },
   };
