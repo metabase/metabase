@@ -49,13 +49,51 @@
                     [#{} []])
        second))
 
+(def ^:private identifier-clauses
+  "Clause keys whose entries name a column or a table rather than carrying a value.
+
+  A symbol here is a name, and `metabase.app-db.value-guard` refuses a marker in one, so reporting
+  it would ask for a fix that throws at compile. `:order-by` and `:group-by` are included even
+  though the guard allows a marker there: it compiles to `ORDER BY ?` and loses the ordering, so
+  asking for one is still wrong."
+  #{:select :select-distinct :select-top :from :join :left-join :right-join :inner-join :full-join
+    :cross-join :update :insert-into :delete-from :returning :with :with-columns :using
+    :order-by :group-by :partition-by :window})
+
+(defn- comparison-node?
+  "Whether `node` is a keyword-headed comparison -- the one shape inside an identifier clause that
+  does hold values, as in the computed projection `[[:= :engine v] :is_match]`."
+  [node]
+  (and (hooks/vector-node? node)
+       (let [op (some-> (first (:children node)) hooks/sexpr)]
+         (and (keyword? op) (contains? value-operators (symbol (name op)))))))
+
+(declare value-nodes)
+
+(defn- identifier-clause-value-nodes
+  "The value slots reachable inside an identifier clause: a subquery's own clauses, and the
+  arguments of a comparison. The names themselves are not candidates."
+  [node]
+  (cond
+    (hooks/map-node? node)    (value-nodes node)
+    (comparison-node? node)   (value-nodes node)
+    (hooks/vector-node? node) (mapcat identifier-clause-value-nodes (:children node))
+    (hooks/list-node? node)   (mapcat identifier-clause-value-nodes (:children node))
+    :else                     nil))
+
 (defn- value-nodes
   "The nodes sitting in a value slot of `node`, following the clause shapes a query map uses."
   [node]
   (cond
-    ;; A query map -- walk its clause values, not its keys.
+    ;; A query map -- walk its clause values, not its keys. A clause that names columns or tables
+    ;; contributes only what is nested inside it.
     (hooks/map-node? node)
-    (mapcat value-nodes (take-nth 2 (rest (:children node))))
+    (mapcat (fn [[k v]]
+              (if (and (hooks/keyword-node? k)
+                       (contains? identifier-clauses (hooks/sexpr k)))
+                (identifier-clause-value-nodes v)
+                (value-nodes v)))
+            (partition 2 (:children node)))
 
     (hooks/vector-node? node)
     (let [[head & args] (:children node)

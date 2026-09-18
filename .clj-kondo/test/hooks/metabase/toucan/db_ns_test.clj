@@ -264,3 +264,23 @@
   (testing "update!'s FIRST map is still conditions when a changes map follows"
     (is (=? [{:message #"`k`.*"}]
             (lint-query-call '(t2/update! :model/X {:k k} {:v 1}) 'metabase.foo.db)))))
+
+(deftest ^:parallel identifier-clauses-are-not-value-slots-test
+  (testing "a symbol naming a column or a table is not reported"
+    ;; `value-guard` refuses a marker in these clauses, so reporting one asks for a fix that throws
+    ;; at compile. data_studio/db.clj, task_history/db.clj and permissions/db.clj are written this
+    ;; way.
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/query {:select [[output-table-id :table_id]] :from [:t]})
+      '(t2/query {:select [:*] :from [[union-query :subquery]]})
+      '(t2/query {:select [:*] :from [:t] :order-by [[:sort_key sort-direction]]})
+      '(t2/query {:select [:*] :from [:t] :group-by [group-column]})))
+  (testing "a value nested inside an identifier clause is still reported"
+    (are [form] (=? [{:message #"`v`.*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      ;; a computed projection is a real comparison
+      '(t2/query {:select [[[:= :engine v] :is_match]] :from [:t]})
+      ;; so is a CASE sort key
+      '(t2/query {:select [:*] :from [:t] :order-by [[[:case [:= :a v] 1 :else 2] :asc]]})
+      ;; a subquery carries its own where clause
+      '(t2/query {:select [:*] :from [[{:select [:*] :from [:u] :where [:= :k v]} :s]]}))))
