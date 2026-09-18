@@ -1656,23 +1656,21 @@ describe("admin > custom visualizations", () => {
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
 
-    before(() => {
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(
-        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
-        {
-          timeout: TIMEOUT,
-        },
-      );
-    });
-
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
+
+      cy.log("Build the SDK so we can use the repo-local CLI");
+      cy.exec(`mkdir -p ${tmpDir}`);
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
 
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
@@ -1700,8 +1698,7 @@ describe("admin > custom visualizations", () => {
         );
       });
 
-      // Install dependencies in the tmp plugin folder.
-      cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
+      cy.exec(`cd "${projectDir}" && bun install`, { timeout: TIMEOUT });
 
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
@@ -1808,7 +1805,7 @@ describe("admin > custom visualizations", () => {
       );
       cy.task("stopCustomVizDevServer", devServerPid);
       cy.reload();
-      H.main().findByText("18,760").should("be.visible");
+      H.main().findByText("18,760", { timeout: 15000 }).should("be.visible");
     });
   });
 });

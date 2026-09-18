@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const TIMEOUT = 30_000;
+const SHUTDOWN_TIMEOUT = 10_000;
 const POLL_INTERVAL = 250;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function waitForHttpOk(
   url: string,
@@ -22,12 +27,40 @@ async function waitForHttpOk(
     } catch {
       console.log("Dev server not up yet, keep polling");
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+    await sleep(POLL_INTERVAL);
   }
 
   throw new Error(
     `Dev server did not become ready: ${url} (see spawn log at ${logFilePath})`,
   );
+}
+
+async function waitForConnectionRefused(
+  url: string,
+  timeoutMs: number,
+): Promise<boolean> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await fetch(url);
+    } catch {
+      return true;
+    }
+    await sleep(POLL_INTERVAL);
+  }
+
+  return false;
+}
+
+function killProcessGroup(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      process.kill(pid, signal);
+    } catch {}
+  }
 }
 
 type StartCustomVizDevServerArgs = {
@@ -48,7 +81,7 @@ export async function startCustomVizDevServer(
   const port = args.port ?? 5174;
 
   if (running) {
-    stopCustomVizDevServer(running.pid);
+    await stopCustomVizDevServer(running.pid);
   }
 
   const logFilePath = join(tmpdir(), `custom-viz-dev-server-${Date.now()}.log`);
@@ -77,24 +110,33 @@ export async function startCustomVizDevServer(
   return running;
 }
 
-export function stopCustomVizDevServer(pid: number): null {
+export async function stopCustomVizDevServer(pid: number): Promise<null> {
   if (!pid) {
     return null;
   }
 
-  try {
-    process.kill(-pid, "SIGTERM");
-  } catch {
-    try {
-      process.kill(pid, "SIGTERM");
-    } catch {
-      // ignore
-    }
-  }
-
-  if (running?.pid === pid) {
+  const handle = running?.pid === pid ? running : null;
+  if (handle) {
     running = null;
   }
 
-  return null;
+  killProcessGroup(pid, "SIGTERM");
+
+  if (!handle) {
+    return null;
+  }
+
+  const manifestUrl = `${handle.url}/metabase-plugin.json`;
+  if (await waitForConnectionRefused(manifestUrl, SHUTDOWN_TIMEOUT)) {
+    return null;
+  }
+
+  killProcessGroup(pid, "SIGKILL");
+  if (await waitForConnectionRefused(manifestUrl, SHUTDOWN_TIMEOUT)) {
+    return null;
+  }
+
+  throw new Error(
+    `Custom viz dev server still responding after SIGKILL: ${handle.url}`,
+  );
 }
