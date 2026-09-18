@@ -15,6 +15,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -270,9 +271,12 @@
       acc)))
 
 (defn- snippet
+  "`s` cut to at most 80 characters, for a message to quote."
   [s]
   (let [s (str s)]
-    (pr-str (if (> (count s) 80) (str (subs s 0 77) "…") s))))
+    (if (> (count s) 80)
+      (str (message/string-prefix s 77) "…")
+      s)))
 
 (def ^:private max-edit-work
   "Ceiling on `splices × document-KB` for one `document_write` call, the product that sets its cost:
@@ -301,7 +305,8 @@
   [^String markdown]
   (when (documents/contains-table? markdown)
     (common/throw-teaching-error
-     "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}.")))
+     (message/msg [(str "Markdown tables are not supported. Save the query as a question "
+                        "with `display: table` and embed it with {%% card id=… %%}.")]))))
 
 (defn- replace-all
   "Splice every occurrence of `old_str`, right-to-left so a replacement containing `old_str`
@@ -321,10 +326,10 @@
     (loop [ast ast, ser ser, bound Long/MAX_VALUE, iterations 0]
       (when (> iterations (+ 100 (* 2 (count initial-matches))))
         (common/throw-teaching-error
-         (format (str "replace_all could not converge for old_str %s — the replacement keeps re-creating "
-                      "text that matches. Use distinct old_str/new_str pairs or edit the surrounding "
-                      "blocks individually.")
-                 (snippet old_str))))
+         (message/msg [(str "replace_all could not converge for old_str %s — the replacement "
+                            "keeps re-creating text that matches. Use distinct old_str/new_str "
+                            "pairs or edit the surrounding blocks individually.")]
+                      (snippet old_str))))
       (let [matches (match-indexes (:markdown ser) old_str)
             idx     (last (filter #(< % bound) matches))]
         (cond
@@ -347,38 +352,38 @@
   its predecessors have run — its matches are counted against the text they produced."
   [{:keys [ast spent]} {:keys [old_str new_str replace_all]}]
   (when (empty? old_str)
-    (common/throw-teaching-error "old_str must be a non-empty string."))
+    (common/throw-teaching-error (message/msg ["old_str must be a non-empty string."])))
   (let [{:keys [markdown] :as ser} (documents/serialize ast)
         matches                    (match-indexes markdown old_str)]
     (cond
       (empty? matches)
       (common/throw-teaching-error
-       (format (str "old_str %s matches 0 places in the document's current Markdown. The document may "
-                    "have changed since you read it — copy the snippet exactly from the content_markdown "
-                    "this tool (or get_content) returns.")
-               (snippet old_str)))
+       (message/msg [(str "old_str %s matches 0 places in the document's current Markdown. The "
+                          "document may have changed since you read it — copy the snippet "
+                          "exactly from the content_markdown this tool (or get_content) returns.")]
+                    (snippet old_str)))
 
       (and (> (count matches) 1) (not replace_all))
       (common/throw-teaching-error
-       (format (str "old_str %s matches %d places — extend the snippet with more surrounding context so "
-                    "it matches exactly once, or set replace_all: true.")
-               (snippet old_str) (count matches)))
+       (message/msg [(str "old_str %s matches %d places — extend the snippet with more surrounding "
+                          "context so it matches exactly once, or set replace_all: true.")]
+                    (snippet old_str) (count matches)))
 
       :else
       (let [splices (if replace_all (count matches) 1)
             spent   (+ spent (edit-work markdown splices))]
         (when (> spent max-edit-work)
           (common/throw-teaching-error
-           (format (str "The edit for old_str %s would splice %d times across a %dKB document, putting this "
-                        "call past the rewriting work one call can do — the ceiling covers every edit in the "
-                        "call together, not each one on its own. Split the edits across several "
-                        "document_write calls, or, for a replace_all matching everywhere, extend old_str "
-                        "with surrounding context so it matches fewer places. Replacing the whole body with "
-                        "content_markdown rewrites it in a single pass instead — note that a full rewrite "
-                        "re-creates every block, so comment threads anchored to the body are orphaned.")
-                   (snippet old_str)
-                   splices
-                   (quot (count markdown) 1024))))
+           (message/msg [(str "The edit for old_str %s would splice %d times across a %dKB document, putting this "
+                              "call past the rewriting work one call can do — the ceiling covers every edit in "
+                              "the call together, not each one on its own. Split the edits across several "
+                              "document_write calls, or, for a replace_all matching everywhere, extend old_str "
+                              "with surrounding context so it matches fewer places. Replacing the whole body with "
+                              "content_markdown rewrites it in a single pass instead — note that a full rewrite "
+                              "re-creates every block, so comment threads anchored to the body are orphaned.")]
+                        (snippet old_str)
+                        splices
+                        (quot (count markdown) 1024))))
         {:ast   (if replace_all
                   (replace-all ast ser matches old_str new_str)
                   (documents/splice ast ser (first matches) (+ (first matches) (count old_str)) new_str))
@@ -389,11 +394,14 @@
 (defn- create!
   [{:keys [name content_markdown collection_position] :as args}]
   (when (:edits args)
-    (common/throw-teaching-error "edits only apply to method: \"update\" — pass content_markdown to create."))
+    (common/throw-teaching-error (message/msg [(str "edits only apply to method: \"update\" "
+                                                    "— pass content_markdown to create.")])))
   (when (:id args)
-    (common/throw-teaching-error "id only applies to method: \"update\" — create makes a new document."))
+    (common/throw-teaching-error (message/msg [(str "id only applies to method: \"update\" "
+                                                    "— create makes a new document.")])))
   (when (contains? args :archived)
-    (common/throw-teaching-error "archived only applies to method: \"update\" — a new document is never archived."))
+    (common/throw-teaching-error (message/msg [(str "archived only applies to method: \"update\" "
+                                                    "— a new document is never archived.")])))
   (let [collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (api/create-check :model/Document {:collection_id collection-id})
     (let [ast (resolve-smart-links! (documents/parse content_markdown) nil)]
@@ -410,11 +418,12 @@
   [id {:keys [content_markdown edits collection_position archived] :as args}]
   (when (and content_markdown edits)
     (common/throw-teaching-error
-     "Pass exactly one of content_markdown (a deliberate full-body rewrite) or edits (surgical text edits), not both."))
+     (message/msg [(str "Pass exactly one of content_markdown (a deliberate "
+                        "full-body rewrite) or edits (surgical text edits), not both.")])))
   (when-not (or content_markdown edits)
     (common/throw-teaching-error
-     (str "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text "
-          "edits). To change only collection_id/collection_position/archived, pass edits: [].")))
+     (message/msg [(str "An update needs exactly one of content_markdown (full rewrite) or edits (surgical text "
+                        "edits). To change only collection_id/collection_position/archived, pass edits: [].")])))
   (let [existing (v2.resolve/resolve-and-read-with :model/Document id
                                                    (fn [document-id] (documents/get-document document-id)))]
     (when-not (contains? args :archived)
@@ -492,7 +501,7 @@
                           "collection_position"]]]]])
 
 (registry/deftool document-write-tool
-  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; new_str is parsed as Markdown; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: [\"collection_position\"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists changed_blocks and orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened, but this body cannot be edited or rewritten as Markdown — get_content omits content_markdown for it too, and rewriting it from any flattened text would discard the block that has no Markdown form. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal."
+  "Create or update a document. method: \"create\" | \"update\". Documents are Metabase-flavored Markdown: CommonMark plus {% card id=118 name=\"…\" %} block embeds of saved questions you can read (build with question_write first; an unresolvable id fails the write), {% entity id=\"42\" model=\"dashboard\" %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: layout containers (flex, supporting, resize). No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn(\"documents\") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; \"root\" for the root collection) and collection_position. Update: id + exactly one of edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once — extend the snippet or set replace_all; new_str is parsed as Markdown; edited blocks keep their ids and comment anchors) or content_markdown (a full-body rewrite that orphans every comment thread on the body); edits: [] changes only name/collection_id/collection_position/archived (archived: true trashes, false restores). To unset a property, name it in clear: [\"collection_position\"] — a null does not clear. The response lists changed_blocks and orphaned_comment_threads. It carries content_markdown_unavailable in place of content_markdown when the body holds a block with no Markdown form: the write happened, but that body cannot be edited or rewritten as Markdown without discarding the block. Writes are last-write-wins; a stale old_str failing to match is the only staleness signal."
   {:name        "document_write"
    :scope       metabot.scope/agent-content-write
    :annotations {:readOnlyHint false :destructiveHint false}

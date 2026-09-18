@@ -6,25 +6,10 @@
 
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:name            :string]
-   [:display_name    :string]
-   [:allowed_hosts   [:maybe [:sequential :string]]]
-   [:bundle_path     :string]
-   [:bundle          [:maybe [:or bytes? :string]]]
-   [:bundle_hash     [:maybe :string]]
-   [:last_synced_sha [:maybe :string]]
-   [:last_synced_at  [:maybe ms/TemporalInstant]]
-   [:sync_error      [:maybe :string]]
-   [:enabled         :boolean]
-   [:created_at      ms/TemporalInstant]
-   [:updated_at      ms/TemporalInstant]
-   [:description     [:maybe :string]]
-   [:resource_collection_id [:maybe ms/PositiveInt]]
-   [:permission_group_id    [:maybe ms/PositiveInt]]
-   [:table_ids              [:sequential ms/PositiveInt]]
-   [:draft                  :boolean]])
+  [:merge
+   ::data-app.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::data-app.update
   "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id`, all optional."
@@ -42,6 +27,7 @@
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} [:maybe :string]]
+   [:version         {:optional true} ms/PositiveInt]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:permission_group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]

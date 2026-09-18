@@ -5,8 +5,15 @@
    [clojure.test :refer :all]
    [hooks.metabase.toucan.db-ns :as toucan.db-ns]))
 
+(defn- confinement-findings
+  "Only the `t2-query-namespace` findings, so these tests are not affected by the query-hygiene
+  linter that shares this hook."
+  [findings]
+  (filter #(= :metabase/t2-query-namespace (:type %)) findings))
+
 (defn- lint-query-call [form ns-sym & [filename modules]]
-  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}}}
+  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
+                                                               :metabase/unsafe-app-db-query  {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
@@ -25,11 +32,11 @@
               :message #".*`t2/select-one`.*"}]
             (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.models.card))))
   (testing "metabase.<module>.db is allowed"
-    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase.queries.db)))))
   (testing "metabase-enterprise.<module>.db is allowed"
-    (is (empty? (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Card :id 1) 'metabase-enterprise.sandbox.db)))))
   (testing "metabase.driver.<driver>.db is allowed for driver modules"
-    (is (empty? (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db))))
+    (is (empty? (confinement-findings (lint-query-call '(t2/select-one :model/Database :id 1) 'metabase.driver.bigquery-cloud-sdk.db)))))
   (testing "a nested db namespace is not a module db namespace"
     (is (=? [{:type :metabase/t2-query-namespace}]
             (lint-query-call '(t2/query {:select [:*]}) 'metabase.queries.models.db))))
@@ -71,3 +78,61 @@
               (lint-query-call '(t2/query {:select [:*]}) 'metabase.metabot.llm.models.db nil modules))))
     (testing "enterprise modules resolve through the metabase-enterprise root"
       (is (empty? (lint-query-call '(t2/select :model/Card) 'metabase-enterprise.sandbox.db nil modules))))))
+
+(deftest ^:parallel unmarked-value-in-a-db-namespace-test
+  (testing "a symbol reaching a value slot is flagged"
+    (is (=? [{:type    :metabase/unsafe-app-db-query
+              :message #"`locale` reaches a SQL value slot unmarked.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:= :locale locale]}) 'metabase.foo.db))))
+  (testing "a marked value is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
+                                 'metabase.foo.db))))
+  (testing "a literal cannot carry a request value and is not flagged"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale "de"]}) 'metabase.foo.db))))
+  (testing "a column reference is not a value"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :a.id :b.id]}) 'metabase.foo.db))))
+  (testing "values nested under a boolean connective are reached"
+    (is (=? [{:message #"`b`.*"}]
+            (lint-query-call '(t2/select :model/X {:where [:and [:= :x [:auto/param a]] [:= :y b]]})
+                             'metabase.foo.db))))
+  (testing "only db namespaces are linted for unmarked values"
+    (is (empty? (filter #(= :metabase/unsafe-app-db-query (:type %))
+                        (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
+                                         'metabase.foo.models.thing)))))
+  (testing "a test source tree is exempt"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
+                                 'metabase.foo.db "test/metabase/foo/db_test.clj")))))
+
+(deftest ^:parallel kv-arg-style-test
+  (testing "a query written as :column value pairs is flagged whatever the values are"
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query, :message #"Pass this query a map.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X :locale locale)
+      '(t2/select :model/X :archived false)
+      '(t2/select :model/X :locale [:auto/param locale])
+      '(t2/select-one :model/X :id (long id))))
+  (testing "one finding per call, not one per pair"
+    (is (= 1 (count (lint-query-call '(t2/select :model/X :locale locale :msgid msgid)
+                                     'metabase.foo.db)))))
+  (testing "a fn with an argument before the model is still recognised"
+    (is (=? [{:message #"Pass this query a map.*"}]
+            (lint-query-call '(t2/select-one-fn :value :model/Setting :key k) 'metabase.foo.db))))
+  (testing "a map query is not flagged"
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where [:= :locale [:auto/param locale]]})
+      '(t2/update! :model/X {:locale [:auto/param locale]} {:msgstr "x"}))))
+
+(deftest ^:parallel write-calls-are-not-linted-for-values-test
+  (testing "an insert's values are written, not filtered on, so they are not flagged"
+    (are [form] (empty? (filter #(= :metabase/unsafe-app-db-query (:type %))
+                                (lint-query-call form 'metabase.foo.db)))
+      '(t2/insert! :model/X :key k :value v)
+      '(t2/insert-returning-instances! :model/X :key k :value v)))
+  (testing "a select's values are still flagged"
+    (is (=? [{:type :metabase/unsafe-app-db-query}]
+            (lint-query-call '(t2/select :model/X :key k) 'metabase.foo.db)))))
+
+(deftest ^:parallel operator-arity-test
+  (testing "a value operator with an unexpected arity still has its args examined"
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:= :a b c]}) 'metabase.foo.db)))
+    (is (seq (lint-query-call '(t2/select :model/X {:where [:between :a lo hi]}) 'metabase.foo.db)))))

@@ -63,12 +63,10 @@ frontend_specs: &frontend_specs
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "enterprise/frontend/**/*.unit.*"
-  - ".github/**/*.unit.spec.*"
-  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
-  # run the specs that guard it.
-  - ".github/file-paths.yaml"
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
 
 release_source: &release_sources
   - "release/**"
@@ -80,6 +78,7 @@ frontend_all: &frontend_all
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
+  - "loki.config.js"
   - ".loki/**"
   - ".storybook/**"
 
@@ -87,14 +86,52 @@ frontend_unit_infra: &frontend_unit_infra
   - *frontend_configs
   - *frontend_ci
   - "jest.config.js"
-  - "jest.tz.unit.conf.json"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "jest.tz.unit.conf.js"
   - "frontend/test/**"
   - "frontend/**/__mocks__/**"
+  - "frontend/src/embedding-sdk-shared/jest/**"
 
 frontend_loki_infra: &frontend_loki_infra
   - *frontend_configs
   - *shared_ci
   - *frontend_loki_ci
+  - "frontend/build/shared/**"
+  - "frontend/test/__support__/**"
+  - "patches/**"
+  # dependency-cruiser doesn't follow CSS @import, so global styles must run every story.
+  - "frontend/src/metabase/css/**/*.css"
+  # Storybook serves resources/frontend_client as static files, and the stories bundle the app's SVGs.
+  - "resources/frontend_client/**"
+  - "frontend/**/*.svg"
+  - "enterprise/frontend/**/*.svg"
+
+frontend_loki_all:
+  - *frontend_sources
+  - *frontend_loki_infra
+
+# Everything the ci-scripts jest project runs or depends on.
+# test-unit ignores that project, so this filter is the only thing that reruns it.
+ci_scripts:
+  - *frontend_ci
+  - ".nvmrc"
+  # file-paths.unit.spec.ts asserts what this file's own patterns match, so a change to it has to
+  # run the specs that guard it.
+  - ".github/file-paths.yaml"
+  - ".github/scripts/**"
+  - ".github/actions/**"
+  - ".github/workflows/loki.yml"
+  - ".storybook/story-files.cjs"
+  - "frontend/lint/module-boundaries.mjs"
+  - "frontend/lint/shared-tiers.mjs"
+  - "frontend/test/jest-test-paths-filter.ts"
+  - ".dependency-cruiser.cjs"
+  - "jest.config.js"
+  - "jest.base.conf.js"
+  - "jest.esm-packages.js"
+  - "package.json"
+  - "bun.lock"
 
 # e2e harness/support code (commands, support file, runner). Not in the
 # instrumented bundle, so it maps to no covered module — a change here forces a
@@ -269,6 +306,13 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+build_scripts:
+  - ".github/actions/prepare-backend/**"
+  - ".github/file-paths.yaml"
+  - ".github/workflows/build-scripts.yml"
+  - "bin/**"
+  - "deps.edn"
 
 embedder_plugin:
   - ".github/actions/prepare-backend/**"

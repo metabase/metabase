@@ -1151,7 +1151,7 @@ Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipa
 ### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
 
 - Type: string
-- Default: `givenName`
+- Default: `givenname`
 - [Configuration file name](./config-file.md): `ldap-attribute-firstname`
 
 Attribute to use for the user's first name. (usually 'givenName').
@@ -1883,7 +1883,15 @@ Key used to sign MFA challenge tokens. Generated automatically on first use.
 - Default: `off`
 - [Configuration file name](./config-file.md): `mfa-enforcement`
 
-Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily.
+Controls whether two-factor authentication is available to users. :off disables it entirely; :optional allows users to enroll voluntarily, :required mandates users enroll.
+
+### `MB_MFA_REQUIREMENT_DEADLINE`
+
+- Type: timestamp
+- Default: `null`
+- [Configuration file name](./config-file.md): `mfa-requirement-deadline`
+
+Time after which mfa-enforcement will take effect for all users.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 

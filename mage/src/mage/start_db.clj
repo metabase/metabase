@@ -157,6 +157,24 @@
      "gvenzl/oracle-free:latest"
      (str "gvenzl/oracle-xe:" resolved-version))])
 
+;; Client command stuff:
+
+(defmulti ^:private client-cmd
+  {:arglists '([db port])}
+  (fn [db _port] db))
+
+;; TODO: add other databases' commands here
+(defmethod client-cmd :default [_ _] nil)
+
+(defmethod client-cmd :mysql [_ port]
+  (format "mysql --host localhost --port %s --user root --password=\"\" metabase_test" port))
+
+(defmethod client-cmd :mariadb [_ port]
+  (client-cmd :mysql port))
+
+(defmethod client-cmd :postgres [_ port]
+  (format "PGPASSWORD=password psql --user metabase --host localhost --port %s -d metabase" port))
+
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
 
@@ -174,7 +192,10 @@
       (let [deps-edn-alias (->deps-edn-alias database version)]
         (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
         (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
-        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))))
+        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))
+    (when-let [client-command (client-cmd database port)]
+      (println "\nUse this command to connect:")
+      (println client-command))))
 
 (defn- usage
   [{:keys [db-info]}]

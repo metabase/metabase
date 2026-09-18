@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.tools.content]
@@ -49,7 +50,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (:message error) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text)))
 
 (defn- payload
   "Parse the JSON payload line of a successful execute_query response. Throws if the call
@@ -197,7 +198,7 @@
           (is (= 5 (:returned body)))
           (is (true? (:truncated body)))
           (is (string? (:next_cursor body)))
-          (is (str/includes? (steering-line result) "continue with `cursor`")))
+          (is (str/includes? (steering-line result) "continue with \"cursor\"")))
         (testing "GHY-4142: obeying the steering hint makes progress — the cursor serves the next page, same size, no overlap"
           ;; row_limit sizes a cursor page like any other: the cursor carries the boundary, not
           ;; the page size, so a chain that wants a fixed size passes it on every call.
@@ -248,6 +249,42 @@
             (is (= 12 (count ids)) "the chain serves exactly the 12 rows the query asked for")
             (is (= (count ids) (count (distinct ids))))
             (is (apply < ids))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest limited-query-ends-its-own-cursor-chain-test
+  ;; The shape "the first N rows of X, by id" should run as: a PK-only projection ordered
+  ;; ascending with a stage limit, at a page size that divides it evenly. Every page but the
+  ;; last is truncated with a cursor and steers at both affordances — follow `cursor`, or bound
+  ;; with `limit` — and the last page fills exactly yet arrives complete, with no cursor and no
+  ;; steering, because the limit spent down across the chain leaves nothing for the probe row.
+  ;; An agent that paged the same query unbounded would still hold a live cursor at row N.
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid       (str (random-uuid))
+            page-size 5
+            query     (orders-query {:fields   [(field-name-ref :orders :id)]
+                                     :order-by [["asc" {} (field-name-ref :orders :id)]]
+                                     :limit    (* 3 page-size)})
+            page1     (call! sid {:query query :row_limit page-size})
+            page2     (call! sid {:cursor (:next_cursor (payload page1)) :row_limit page-size})
+            page3     (call! sid {:cursor (:next_cursor (payload page2)) :row_limit page-size})]
+        (testing "pages before the limit are truncated, carry a cursor, and steer at both `cursor` and `limit`"
+          (doseq [page [page1 page2]
+                  :let [body (payload page)]]
+            (is (= page-size (:returned body)))
+            (is (true? (:truncated body)))
+            (is (string? (:next_cursor body)))
+            (is (str/includes? (steering-line page) "continue with \"cursor\""))
+            (is (str/includes? (steering-line page) "`limit: N`"))))
+        (testing "the page that exhausts the limit fills exactly and is complete: no cursor, no steering"
+          (let [body (payload page3)]
+            (is (= page-size (:returned body)))
+            (is (false? (:truncated body)))
+            (is (nil? (:next_cursor body)))
+            (is (nil? (steering-line page3)))))
+        (testing "the chain served exactly the first N ids, in order"
+          (is (= (vec (range 1 (inc (* 3 page-size))))
+                 (into [] (mapcat (comp row-ids payload)) [page1 page2 page3]))))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest exact-fill-is-not-truncated-test
@@ -305,7 +342,7 @@
           (is (nil? (:next_cursor body)))
           (is (str/includes? (steering-line result) "narrow the query"))
           (testing "the dead end names an affordance that exists"
-            (is (str/includes? (steering-line result) "raise `row_limit`"))
+            (is (str/includes? (steering-line result) "raise \"row_limit\""))
             (is (not (str/includes? (steering-line result) "export"))
                 "no export tool exists in v2 — steering at one sends the agent after an affordance it does not have"))
           (testing "and does not suggest paging by hand — a keyset over a fan-out join is exactly
@@ -356,7 +393,7 @@
           (is (= 5 (:returned body)))
           (is (true? (:truncated body)))
           (is (nil? (:next_cursor body)))
-          (is (not (str/includes? (steering-line result) "continue with `cursor`"))
+          (is (not (str/includes? (steering-line result) "continue with \"cursor\""))
               "offering a cursor affordance with no cursor would strand the agent")
           (is (str/includes? (steering-line result) "narrow the query")))
         (testing "GHY-4363: projecting the PK alongside restores the cursor — the refusal is about uniqueness, not about `fields`"
@@ -543,7 +580,7 @@
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
       (testing "GHY-4142: a native stage is rejected up front with the execute_sql steer"
-        (is (= "Native queries are not supported here; use execute_sql instead."
+        (is (= "\"Native queries are not supported here; use execute_sql instead.\""
                (error-text (registry/call-tool execute-scope sid "execute_query"
                                                {:query {:lib/type "mbql/query"
                                                         :stages   [{:lib/type "mbql.stage/native"
@@ -588,7 +625,7 @@
       (testing "GHY-4142: a token without the execute scope is denied before dispatch"
         ;; A scope denial is a JSON-RPC error, not `isError` tool content — nothing reaches the handler.
         (let [{:keys [error]} (registry/call-tool #{"agent:content:read"} sid "execute_query" {})]
-          (is (re-find #"^Insufficient scope to call tool: execute_query\." (:message error)))))
+          (is (re-find #"^Insufficient scope to call tool: \"execute_query\"\." (message/render (:message error))))))
       (testing "GHY-4142: the identical call with the execute scope reaches the handler (positive control)"
         ;; It fails input validation — proof it got past the scope gate without minting anything.
         (is (str/starts-with? (error-text (registry/call-tool execute-scope sid "execute_query" {}))
@@ -597,11 +634,10 @@
 (deftest ^:parallel scope-advertisement-test
   (testing "GHY-4142: the execute scope is grantable — advertised via registered-scopes"
     (is (contains? (registry/registered-scopes) "agent:query:run")))
-  (testing "GHY-4142: tools/list visibility follows the scope on both sides"
-    (is (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:query:run"})))
-    (is (not (some #(= "execute_query" (:name %)) (registry/list-tools #{"agent:content:read"})))))
+  (testing "GHY-4543: tools/list shows the tool whatever the token's scopes; the gate is at tools/call"
+    (is (some #(= "execute_query" (:name %)) (registry/list-tools))))
   (testing "GHY-4142: the tool advertises itself read-only"
-    (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools nil)))]
+    (let [tool (first (filter #(= "execute_query" (:name %)) (registry/list-tools)))]
       (is (true? (get-in tool [:annotations :readOnlyHint]))))))
 
 ;;; --------------------------------------------- Numeric-id dialect -----------------------------------------------
@@ -681,9 +717,11 @@
                                               {:query {:lib/type "mbql/query"
                                                        :stages   [{:lib/type     "mbql.stage/mbql"
                                                                    :source-table 999999999}]}}))]
-      (testing "an unknown numeric table id is a teaching error steering to browse_data"
-        (is (str/includes? msg "No table found with id 999999999"))
-        (is (str/includes? msg "browse_data"))))))
+      (testing "GHY-4544: an unknown numeric table id quotes the pipeline's sentence and steers to browse_data as prose"
+        (is (= (str "\"No table found with id 999999999.\"\n"
+                    "Call \"browse_data\" with action \"list_tables\" to list available tables with their numeric ids, "
+                    "then use one as \"source-table\".")
+               msg))))))
 
 (deftest ^:parallel error-hints-name-v2-tools-test
   (mt/with-current-user (mt/user->id :rasta)

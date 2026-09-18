@@ -11,7 +11,11 @@ import {
   getResolveDatasetQueryFromBundle,
 } from "./bundle";
 import { stableStringifyQuery } from "./stable-query-key";
-import type { MetabaseDynamicQuery, MetabaseQueryOptions } from "./types";
+import type {
+  DefinedQuery,
+  MetabaseDynamicQuery,
+  MetabaseQueryOptions,
+} from "./types";
 
 export type UseMetabaseQueryObjectResult = {
   query: MetabaseQueryObject | null;
@@ -28,7 +32,7 @@ type QueryObjectState = {
  * Resolves a data app query into a query object that can be passed to SDK question components.
  */
 export function useMetabaseQueryObject(
-  query: MetabaseQueryOptions<undefined>,
+  query: MetabaseQueryOptions<undefined> & DefinedQuery,
   dynamicQuery?: MetabaseDynamicQuery,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();

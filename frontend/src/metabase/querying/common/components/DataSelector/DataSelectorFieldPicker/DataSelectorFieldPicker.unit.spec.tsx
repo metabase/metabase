@@ -1,15 +1,15 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
+import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
 import {
   ORDERS,
   ORDERS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import type { DataSelectorField, DataSelectorTable } from "../types";
 
 import { DataSelectorFieldPicker } from "./DataSelectorFieldPicker";
 
@@ -19,12 +19,12 @@ const state = createMockState({
   }),
 });
 
-const metadata = getMetadata(state);
+const lookups = getEntityLookups(state);
 
 interface SetupOpts {
-  fields?: Field[];
+  fields?: DataSelectorField[];
   isLoading?: boolean;
-  selectedTable?: Table;
+  selectedTable?: DataSelectorTable;
 }
 
 const setup = ({ fields = [], isLoading, selectedTable }: SetupOpts = {}) => {
@@ -39,6 +39,7 @@ const setup = ({ fields = [], isLoading, selectedTable }: SetupOpts = {}) => {
       selectedTable={selectedTable}
       onBack={onBack}
       onChangeField={jest.fn()}
+      getFieldDisplayName={lookups.fieldName}
     />,
     { storeInitialState: state },
   );
@@ -55,7 +56,7 @@ describe("DataSelectorFieldPicker", () => {
     });
 
     it("uses table display name as title if passed", () => {
-      const selectedTable = checkNotNull(metadata.table(ORDERS_ID));
+      const selectedTable = checkNotNull(lookups.table(ORDERS_ID));
 
       setup({ isLoading: true, selectedTable });
 
@@ -75,11 +76,11 @@ describe("DataSelectorFieldPicker", () => {
 
   describe("loaded", () => {
     it("displays table name and fields", () => {
-      const selectedTable = checkNotNull(metadata.table(ORDERS_ID));
+      const selectedTable = checkNotNull(lookups.table(ORDERS_ID));
 
       setup({
         selectedTable,
-        fields: [checkNotNull(metadata.field(ORDERS.PRODUCT_ID))],
+        fields: [checkNotNull(lookups.field(ORDERS.PRODUCT_ID))],
       });
 
       expect(
@@ -91,10 +92,10 @@ describe("DataSelectorFieldPicker", () => {
 
     it("keeps the search box visible and shows an empty state when no field matches the search (metabase#74670)", () => {
       setup({
-        selectedTable: checkNotNull(metadata.table(ORDERS_ID)),
+        selectedTable: checkNotNull(lookups.table(ORDERS_ID)),
         fields: [
-          checkNotNull(metadata.field(ORDERS.ID)),
-          checkNotNull(metadata.field(ORDERS.TOTAL)),
+          checkNotNull(lookups.field(ORDERS.ID)),
+          checkNotNull(lookups.field(ORDERS.TOTAL)),
         ],
       });
 

@@ -32,6 +32,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.query :as v2.query]
    [metabase.mcp.v2.registry :as registry]
@@ -62,9 +63,8 @@
                    cursor       (conj :cursor))]
     (when-not (= 1 (count provided))
       (common/throw-teaching-error
-       (str "Pass exactly one of query | query_handle | cursor: `query` for a fresh "
-            "MBQL query, `query_handle` to re-run a stored query, `cursor` to continue a "
-            "truncated result.")))
+       (message/msg [(str "Pass exactly one of query | query_handle | cursor: \"query\" for a fresh MBQL query, "
+                          "\"query_handle\" to re-run a stored query, \"cursor\" to continue a truncated result.")])))
     (first provided)))
 
 (defn- resolve-input
@@ -121,6 +121,13 @@
    these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
+(defn- query-failure-message
+  "The teaching message for a QP `result` that didn't complete, carrying its error text quoted."
+  [result]
+  (if-let [error (:error result)]
+    (message/msg ["Query failed: %s"] error)
+    (message/msg ["Query failed: unknown error"])))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation,
    capping this call's rows at `row-limit` (within the backend's 2000/10000 userland
@@ -135,7 +142,7 @@
                            :info        {:executed-by api/*current-user-id*
                                          :context     :agent})))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
+      (common/throw-teaching-error (query-failure-message result)))
     result))
 
 (defn- execute-page!
@@ -201,10 +208,16 @@
 (defn- steering-line
   [returned next-cursor]
   (if next-cursor
-    (format "returned %d rows, more available — continue with `cursor`, or narrow the query (filter/aggregate)"
-            returned)
-    (format "returned %d rows, more available — narrow the query (filter/aggregate), or raise `row_limit` (max %d)"
-            returned max-row-limit)))
+    ;; Names both ways a chain ends. An agent asked for "the first N rows" that only ever sees
+    ;; "continue with `cursor`" counts pages by hand and stops with a live cursor in an unbounded
+    ;; query; a stage `limit` makes the last page arrive complete instead.
+    (message/msg [(str "returned %d rows, more available — continue with \"cursor\" until \"truncated\" is false, "
+                       "re-run with a stage `limit: N` (with \"order-by\") if only the first N rows are needed, "
+                       "or narrow the query (filter/aggregate)")]
+                 returned)
+    (message/msg [(str "returned %d rows, more available — narrow the query "
+                       "(filter/aggregate), or raise \"row_limit\" (max %d)")]
+                 returned max-row-limit)))
 
 (defn- mint-handle!
   "Store `serialized-query` under a fresh handle for the caller, with the page boundary stripped
@@ -225,8 +238,8 @@
                 :returned     0
                 :truncated    false}]
     (common/success-content
-     (str (json/encode counts)
-          "\nQuery validated, not executed — execute or save it later by passing this query_handle."))))
+     (message/msg ["%s" "Query validated, not executed — execute or save it later by passing this query_handle."]
+                  (message/raw (json/encode counts))))))
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
@@ -250,15 +263,16 @@
                            :cols (response-cols cols)
                            :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (steering-line returned next-cursor))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (steering-line returned next-cursor))
+       payload))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
 
 (def ^:private execute-query-args-schema
   [:map {:closed true}
    [:query {:optional true}
-    [:maybe [:map {:description "A fresh query (see the tool description): numeric table/field ids from browse_data, never base64. Exactly one of query | query_handle | cursor."}]]]
+    [:maybe [:map {:description "A fresh structured query (shape and examples in the tool description): numeric table/field ids from browse_data, never base64, never SQL. Exactly one of query | query_handle | cursor."}]]]
    [:query_handle {:optional true}
     [:maybe [:string {:min 1 :description "A query_handle from a previous call — re-validates and re-runs the exact stored query. Exactly one of query | query_handle | cursor."}]]]
    [:cursor {:optional true}
@@ -268,12 +282,12 @@
    [:validate_only {:optional true}
     [:maybe [:boolean {:description "true validates against schema + database metadata and mints a query_handle without executing (default false)."}]]]
    [:row_limit {:optional true}
-    [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
+    [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000) — the page size, not a bound on the result; the bound is limit: N in the query's stage."}]]]])
 
 (registry/deftool execute-query
-  "Validate and execute a query, returning rows plus a query_handle. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size), otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000).
+  "The default way to answer a question from data: validate and execute a structured (MBQL) query, returning rows plus a query_handle. Use it first for any count, sum, group-by, filter, sort, or join, even \"how many X\"; execute_sql is only for window functions, CTEs, set operations, engine-specific functions, an explicit request for SQL, or a rejection you cannot fix. Only this route validates ids, pages with a cursor, and mints handles that save as cards taking dashboard filters as-is. Native SQL is rejected at any depth. Pass exactly one of: query (a fresh query, dialect below), query_handle (re-run a stored query), or cursor (next page). The query_handle holds the whole query, not the page, so save or visualize from any page. On next_cursor, call again with cursor until truncated is false. row_limit is only the page size: the first N rows is a stage limit: N with an order-by, never pages counted by hand.
 
-Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (browse_data get_fields lists every column's id) — never invent or guess ids, never base64. Top level: {\"lib/type\": \"mbql/query\", \"stages\": [...]}; each stage \"lib/type\": \"mbql.stage/mbql\" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <numeric field id>], or a bare column-name string against a previous stage ([\"field\", {}, \"count\"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Simplest aggregate (row count of one table): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": <TABLE_ID>, \"aggregation\": [[\"count\", {}]]}]}. Example (row count by month): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": <TABLE_ID>, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, <FIELD_ID>]]}]}. <TABLE_ID> and <FIELD_ID> are placeholders — ids differ per instance, so resolve yours with browse_data before calling. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn(\"query-dialect\") before authoring a non-trivial query (joins, expressions, multi-stage); learn(\"query-dialect\", \"operators\") lists every operator. Use this, not execute_sql, for any card bound for a filtered dashboard — MBQL cards wire to dashboard filters as-is, raw-SQL cards need template tags first. Native SQL is rejected at any depth — use execute_sql."
+Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_tables / get_fields or search) — never guessed, base64, or schema-qualified. Only the FIRST stage has source-table or source-card (an id); later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <field id>], or [\"field\", {}, \"<column name>\"] against a previous stage. Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example, row count by month (placeholder ids; drop breakout for a plain count): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": <TABLE_ID>, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, <FIELD_ID>]]}]}. get_content's definition include returns this same shape. Call learn(\"query-dialect\") before joins, expressions, multi-stage queries, or limits; learn(\"query-dialect\", \"operators\") lists every operator."
   {:name        "execute_query"
    :scope       metabot.scope/agent-query-run
    :annotations {:readOnlyHint true}
@@ -308,8 +322,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   (when-not (mi/can-read? :model/Database database-id)
     (common/throw-not-found :model/Database database-id))
   (when-not (qp.perms/current-user-has-adhoc-native-query-perms? {:database database-id})
-    (throw (ex-info "You do not have permission to run native queries against this database."
-                    {:status-code 403 :database_id database-id}))))
+    (common/throw-teaching-error
+     (message/msg ["You do not have permission to run native queries against this database."])
+     {:status-code 403 :database_id database-id})))
 
 (defn- value->tag-type
   "The template-tag (and parameter) type for a supplied binding value, from its JSON type. The
@@ -340,16 +355,19 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                            (cond
                              (nil? tag)
                              (common/throw-teaching-error
-                              (format "No {{%s}} template tag in the SQL — template_tag_values keys must name a {{tag}} placeholder that appears in sql. Tags found: %s."
-                                      tag-name
-                                      (if-let [names (seq (map :name tags))]
-                                        (str/join ", " names)
-                                        "none")))
+                              (message/msg [(str "No template tag %s in the SQL — template_tag_values keys must "
+                                                 "name a {{tag}} placeholder that appears in sql. Tags found: %s.")]
+                                           tag-name
+                                           (if-let [names (seq (map :name tags))]
+                                             (common/list-message names)
+                                             (message/raw "none"))))
 
                              (contains? #{:card :snippet} tag-type)
                              (common/throw-teaching-error
-                              (format "{{%s}} is a %s-reference tag — it splices server-side SQL text and cannot be populated through template_tag_values, which binds only plain {{tag}} variables."
-                                      tag-name (name tag-type)))
+                              (message/msg [(str "%s is a %s-reference tag — it splices server-side SQL "
+                                                 "text and cannot be populated through template_tag_values, "
+                                                 "which binds only plain {{tag}} variables.")]
+                                           tag-name (message/raw (name tag-type))))
 
                              :else
                              {:tag (assoc tag :type (value->tag-type value)) :value value})))
@@ -367,18 +385,19 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   ;; where a keyset is unsound — that is why that path refuses to mint a cursor — so suggesting
   ;; one there would hand back the gapped pagination the refusal exists to prevent. Here the
   ;; caller wrote the SQL and knows its key, which is the information the server lacks.
-  (format (str "returned %d rows, more available — narrow the SQL (add filters/aggregation), "
-               "raise `row_limit` (max %d), or page with `ORDER BY <unique key>` + "
-               "`WHERE <key> > <last value returned>`")
-          returned max-row-limit))
+  (message/msg [(str "returned %d rows, more available — narrow the SQL (add filters/aggregation), raise "
+                     "\"row_limit\" (max %d), or page with `ORDER BY <unique key>` + "
+                     "`WHERE <key> > <last value returned>`")]
+               returned max-row-limit))
 
 (def ^:private mbql-hint
-  "Carried as `hint` by an `execute_sql` response whose SQL [[mbql-expressible-sql?]]. A raw-SQL card
-   can't take dashboard filters until rewritten with template tags, so the steer toward MBQL is
-   cheapest before the card exists."
-  (str "This query can be expressed in MBQL; MBQL cards accept dashboard filters without changes. "
-       "If the card will go on a filtered dashboard, build it with execute_query instead "
-       "(learn(\"query-dialect\"))."))
+  "Carried as `hint` by an `execute_sql` response whose SQL [[mbql-expressible-sql?]]. The steer
+   back to the structured route is cheapest right after the SQL ran: the agent has the answer in
+   hand, so the hint costs it nothing now and shapes the next question. A raw-SQL card also can't
+   take dashboard filters until rewritten with template tags, so the steer lands before any card
+   exists."
+  (str "This query is expressible in MBQL: use execute_query, the default route, for questions like this one — "
+       "its cards accept dashboard filters without changes (learn(\"query-dialect\"))."))
 
 (defn- strip-sql-noise
   "Lower-cased `sql` with string literals, double-quoted identifiers, and comments blanked, so the
@@ -399,16 +418,18 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
       u/lower-case-en))
 
 (defn- mbql-expressible-sql?
-  "Whether `sql` is a plain `SELECT … GROUP BY` aggregate MBQL expresses directly: one SELECT
-   statement with a GROUP BY and none of CTEs, window functions, set operations, subselects, or
-   `{{tag}}` placeholders (a tagged query is no longer the same query in MBQL). A conservative regex
-   heuristic, not a parse: a false negative costs one missed hint, a false positive would steer the
-   caller to rewrite SQL that MBQL cannot express."
+  "Whether `sql` is a plain aggregate MBQL expresses directly: one SELECT statement that either
+   GROUPs BY or opens its select list with an aggregate function (`SELECT count(*) FROM …`, the
+   whole-table count an agent reaches for on \"how many X\"), and none of CTEs, window functions,
+   set operations, subselects, or `{{tag}}` placeholders (a tagged query is no longer the same
+   query in MBQL). A conservative regex heuristic, not a parse: a false negative costs one missed
+   hint, a false positive would steer the caller to rewrite SQL that MBQL cannot express."
   [sql]
   (let [s (-> (strip-sql-noise sql) str/trim (str/replace #";\s*$" ""))]
     (boolean
      (and (re-find #"^select\b" s)
-          (re-find #"\bgroup\s+by\b" s)
+          (or (re-find #"\bgroup\s+by\b" s)
+              (re-find #"^select\s+(?:distinct\s+)?(?:count|sum|avg|min|max)\s*\(" s))
           (not (str/includes? s ";"))
           (not (str/includes? s "{{"))
           (not (re-find #"\bwith\b" s))
@@ -423,8 +444,10 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                         :truncated    false}
                  hint (assoc :hint hint))]
     (common/success-content
-     (str (json/encode counts)
-          "\nSQL accepted, not executed — template tags and permissions were checked; the SQL text itself was not validated. Execute, save, or visualize it later by passing this query_handle."))))
+     (message/msg ["%s" (str "SQL accepted, not executed — template tags and permissions "
+                             "were checked; the SQL text itself was not validated. Execute, "
+                             "save, or visualize it later by passing this query_handle.")]
+                  (message/raw (json/encode counts))))))
 
 (defn- execute-sql-response!
   [session-id serialized-query prompt row-limit hint]
@@ -440,8 +463,9 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                           :cols (response-cols cols)
                           :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (sql-steering-line returned))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (sql-steering-line returned))
+       payload))))
 
 (def ^:private execute-sql-args-schema
   [:map {:closed true}
@@ -463,7 +487,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
     [:maybe [:int {:min 1 :max max-row-limit :description "Maximum rows to return in this call (default 100, max 2000)."}]]]])
 
 (registry/deftool execute-sql
-  "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express — a card saved from raw SQL cannot be filtered on a dashboard until rewritten with template tags, so a card bound for a filtered dashboard should be MBQL. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
+  "Escape hatch for execute_query, the default for every question MBQL can express (see its description): execute a raw SQL string against a database, returning rows plus a query_handle. Use only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Raw SQL is checked only by the warehouse (no metadata validation, no teaching errors naming what is wrong), and a card saved from it cannot be filtered on a dashboard until rewritten with template tags. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
   {:name        "execute_sql"
    :scope       metabot.scope/agent-sql-run
    ;; Unlike execute_query, arbitrary SQL can write. These match MCP's defaults for an unannotated
@@ -499,17 +523,17 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
 (defn- card-parameter-label
   [{:keys [id slug]}]
   (if slug
-    (format "%s (slug %s)" (pr-str id) (pr-str slug))
-    (pr-str id)))
+    (message/msg ["%s (slug %s)"] id slug)
+    (message/msg ["%s"] id)))
 
 (defn- throw-unknown-parameter
   [card-params requested]
   (common/throw-teaching-error
    (if (seq card-params)
-     (format "Unknown parameter %s — pass one of this card's parameter ids or slugs: %s."
-             (pr-str requested)
-             (str/join ", " (map card-parameter-label card-params)))
-     (format "Unknown parameter %s — this card has no parameters." (pr-str requested)))))
+     (message/msg ["Unknown parameter %s — pass one of this card's parameter ids or slugs: %s."]
+                  requested
+                  (common/list-message (map card-parameter-label card-params)))
+     (message/msg ["Unknown parameter %s — this card has no parameters."] requested))))
 
 (defn- check-parameter-value!
   "Reject a value whose JSON type can't satisfy the parameter's stored type, as a teaching
@@ -518,10 +542,10 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
   [{param-type :type :keys [id slug]} value]
   (let [family   (or (namespace param-type) (name param-type))
         expected (case family
-                   "number"                 "a number"
-                   "boolean"                "a boolean"
-                   ("date" "temporal-unit") "a string"
-                   "a string, number, or boolean")]
+                   "number"                 (message/raw "a number")
+                   "boolean"                (message/raw "a boolean")
+                   ("date" "temporal-unit") (message/raw "a string")
+                   (message/raw "a string, number, or boolean"))]
     (doseq [v (if (sequential? value) value [value])]
       (let [ok? (case family
                   "number"                 (or (number? v)
@@ -531,8 +555,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                   (or (string? v) (number? v) (boolean? v)))]
         (when-not ok?
           (common/throw-teaching-error
-           (format "Invalid value %s for parameter %s of type %s — expected %s."
-                   (pr-str v) (pr-str (or slug id)) (u/qualified-name param-type) expected)))))))
+           (message/msg ["Invalid value %s for parameter %s of type %s — expected %s."]
+                        v (or slug id) (u/qualified-name param-type) expected)))))))
 
 (defn- resolve-card-parameters
   "Resolve each caller-supplied `{id|slug, value}` against the card's own parameter list (its
@@ -554,7 +578,8 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
             (let [requested (or id slug)
                   _         (when (nil? requested)
                               (common/throw-teaching-error
-                               "Each parameter needs an `id` — the parameter's id or slug — and a `value`."))
+                               (message/msg [(str "Each parameter needs an \"id\" — the "
+                                                  "parameter's id or slug — and a \"value\".")])))
                   stored    (or (m/find-first #(= (:id %) requested) card-params)
                                 (m/find-first #(= (:slug %) requested) card-params)
                                 (throw-unknown-parameter card-params requested))]
@@ -587,13 +612,13 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                                  (fn [query info]
                                    (qp (update query :info merge info) nil)))))]
     (when-not (= (:status result) :completed)
-      (common/throw-teaching-error (str "Query failed: " (or (:error result) "unknown error"))))
+      (common/throw-teaching-error (query-failure-message result)))
     result))
 
 (defn- saved-question-steering-line
   [returned]
-  (format "returned %d rows, more available — narrow with `parameters`, or raise `row_limit` (max %d)"
-          returned max-row-limit))
+  (message/msg ["returned %d rows, more available — narrow with \"parameters\", or raise \"row_limit\" (max %d)"]
+               returned max-row-limit))
 
 (def ^:private scalar-parameter-value-schema
   "A parameter value is a scalar or a list of scalars, never a nested structure — so a value can
@@ -648,5 +673,6 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
                            :cols (response-cols cols)
                            :rows rows)]
     (common/success-content
-     (cond-> (json/encode payload)
-       truncated? (str "\n" (saved-question-steering-line returned))))))
+     (if truncated?
+       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (saved-question-steering-line returned))
+       payload))))

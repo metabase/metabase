@@ -7,11 +7,10 @@
 
 (mr/def ::connection-impersonation
   "A ConnectionImpersonation as selected from the app DB: every column of `:connection_impersonations`."
-  [:map {:closed true}
-   [:id        ms/PositiveInt]
-   [:db_id     ::lib.schema.id/database]
-   [:group_id  ms/PositiveInt]
-   [:attribute [:maybe :string]]])
+  [:merge
+   ::connection-impersonation.update
+   [:map {:closed true}
+    [:id        ms/PositiveInt]]])
 
 (mr/def ::connection-impersonation.update
   "What an update (or insert) of a ConnectionImpersonation accepts: every column of `:connection_impersonations` except `id`, all optional."
