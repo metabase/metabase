@@ -27,7 +27,6 @@ const INITIATED_BY_USER: RemoteSyncTaskUser = {
 const setup = ({
   taskType = "import" as const,
   progress = 0.5,
-  isStalled = false,
   isQuiet = false,
   isCancelled = false,
   minutesSinceLastUpdate = null,
@@ -43,7 +42,6 @@ const setup = ({
 }: {
   taskType?: "import" | "export";
   progress?: number;
-  isStalled?: boolean;
   isQuiet?: boolean;
   isCancelled?: boolean;
   minutesSinceLastUpdate?: number | null;
@@ -67,7 +65,6 @@ const setup = ({
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
-        isStalled={isStalled}
         isQuiet={isQuiet}
         isCancelled={isCancelled}
         minutesSinceLastUpdate={minutesSinceLastUpdate}
@@ -170,90 +167,6 @@ describe("SyncProgressModal", () => {
     });
   });
 
-  describe("interrupted state", () => {
-    it("explains that the server stopped responding and how far the pull got", () => {
-      setup({
-        taskType: "import",
-        progress: 0.32,
-        isStalled: true,
-        minutesSinceLastUpdate: 13,
-      });
-
-      expect(screen.getByText("Sync interrupted")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "The server stopped responding 13 minutes ago. It may have restarted. Content pulled before the interruption was kept. Pull again to finish.",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Stopped at 32% while importing content"),
-      ).toBeInTheDocument();
-      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
-      expect(screen.queryByText(/Please wait/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Still working/)).not.toBeInTheDocument();
-    });
-
-    it("tells an interrupted push to retry rather than claiming partial content", () => {
-      setup({
-        taskType: "export",
-        progress: 0.5,
-        isStalled: true,
-        minutesSinceLastUpdate: 1,
-      });
-
-      expect(
-        screen.getByText(
-          "The server stopped responding 1 minute ago. It may have restarted. Push again to retry.",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Stopped at 50% while exporting content"),
-      ).toBeInTheDocument();
-    });
-
-    it("closes with onDismiss without touching the task", async () => {
-      const onDismiss = jest.fn();
-      setup({ isStalled: true, onDismiss, cancelResponse: { status: 200 } });
-
-      await userEvent.click(
-        screen.getByTestId("sync-interrupted-close-button"),
-      );
-
-      expect(onDismiss).toHaveBeenCalled();
-      expect(await findRequests("POST")).toHaveLength(0);
-    });
-
-    it("lets an admin clear the task, which cancels it and then dismisses", async () => {
-      const onDismiss = jest.fn();
-      setup({ isStalled: true, onDismiss, cancelResponse: { status: 200 } });
-
-      await userEvent.click(screen.getByRole("button", { name: "Clear task" }));
-
-      await waitFor(async () => {
-        const requests = await findRequests("POST");
-        expect(
-          requests.some((r) =>
-            r.url.includes("/api/ee/remote-sync/current-task/cancel"),
-          ),
-        ).toBe(true);
-      });
-      await waitFor(() => {
-        expect(onDismiss).toHaveBeenCalled();
-      });
-    });
-
-    it("offers no clear action to a non-admin", () => {
-      setup({ isStalled: true, isAdmin: false });
-
-      expect(
-        screen.queryByRole("button", { name: "Clear task" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByTestId("sync-interrupted-close-button"),
-      ).toBeInTheDocument();
-    });
-  });
-
   describe("cancelled state", () => {
     it("shows the row's message with a Close button and no progress bar", async () => {
       const onDismiss = jest.fn();
@@ -307,7 +220,7 @@ describe("SyncProgressModal", () => {
 
     it("falls back to the email when the user has no name", () => {
       setup({
-        isStalled: true,
+        isCancelled: true,
         startedAt: STARTED_AT,
         initiatedByUser: {
           ...INITIATED_BY_USER,

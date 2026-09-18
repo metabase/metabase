@@ -110,7 +110,6 @@ const terminalTaskStates: RemoteSyncTaskStatus[] = [
   "successful",
   "errored",
   "cancelled",
-  "timed-out",
 ] as const;
 
 remoteSyncListenerMiddleware.startListening({

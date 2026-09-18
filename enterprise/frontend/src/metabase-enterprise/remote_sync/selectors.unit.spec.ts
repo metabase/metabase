@@ -33,7 +33,7 @@ const stateWith = (
 describe("remote_sync selectors", () => {
   it("getIsCancelled is true only for a cancelled task", () => {
     expect(getIsCancelled(stateWith(task))).toBe(true);
-    expect(getIsCancelled(stateWith({ ...task, status: "timed-out" }))).toBe(
+    expect(getIsCancelled(stateWith({ ...task, status: "successful" }))).toBe(
       false,
     );
     expect(getIsCancelled(stateWith(null))).toBe(false);

@@ -19,7 +19,6 @@ import { getProgressPhaseLabel } from "../utils";
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
   progress: number;
-  isStalled?: boolean;
   isQuiet?: boolean;
   isCancelled?: boolean;
   minutesSinceLastUpdate?: number | null;
@@ -35,7 +34,6 @@ interface SyncProgressModalProps {
 export function SyncProgressModal({
   progress,
   taskType,
-  isStalled = false,
   isQuiet = false,
   isCancelled = false,
   minutesSinceLastUpdate = null,
@@ -140,34 +138,6 @@ export function SyncProgressModal({
     );
   }
 
-  if (isStalled) {
-    return (
-      <Modal onClose={onDismiss} opened size="md" title={t`Sync interrupted`}>
-        <Stack mt="lg" gap="lg">
-          <Text>{getInterruptedMessage(minutesSinceLastUpdate, taskType)}</Text>
-          <StoppedAtLine progress={progress} taskType={taskType} />
-          {startedBy}
-          <Group justify="flex-end">
-            <Button
-              data-testid="sync-interrupted-close-button"
-              onClick={onDismiss}
-              variant={isAdmin ? "default" : "filled"}
-            >{t`Close`}</Button>
-            {isAdmin && (
-              <ActionButton
-                actionFn={onCancel}
-                normalText={t`Clear task`}
-                activeText={t`Clearing…`}
-                failedText={t`Clear task`}
-                variant="filled"
-              />
-            )}
-          </Group>
-        </Stack>
-      </Modal>
-    );
-  }
-
   const { title, progressLabel } = getModalContent(taskType);
 
   return (
@@ -256,26 +226,6 @@ function getQuietMessage(minutesSinceLastUpdate: number | null): string {
     `No progress for ${minutes} minutes. The sync is still running.`,
     minutes,
   );
-}
-
-function getInterruptedMessage(
-  minutesSinceLastUpdate: number | null,
-  taskType: RemoteSyncTaskType,
-): string {
-  const stopped =
-    minutesSinceLastUpdate == null
-      ? t`The server stopped responding during this sync. It may have restarted.`
-      : ngettext(
-          msgid`The server stopped responding ${minutesSinceLastUpdate} minute ago. It may have restarted.`,
-          `The server stopped responding ${minutesSinceLastUpdate} minutes ago. It may have restarted.`,
-          minutesSinceLastUpdate,
-        );
-  const next =
-    taskType === "import"
-      ? t`Content pulled before the interruption was kept. Pull again to finish.`
-      : t`Push again to retry.`;
-
-  return `${stopped} ${next}`;
 }
 
 const getModalContent = (

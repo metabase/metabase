@@ -12,7 +12,6 @@ import {
   getIsCancelled,
   getIsError,
   getIsRunning,
-  getIsStalled,
   getIsSuccess,
   getLastProgressReportAt,
   getProgress,
@@ -34,7 +33,6 @@ export const useSyncStatus = () => {
   const taskType = useSelector(getTaskType);
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
-  const isStalled = useSelector(getIsStalled);
   const isCancelled = useSelector(getIsCancelled);
   const lastProgressReportAt = useSelector(getLastProgressReportAt);
   const startedAt = useSelector(getStartedAt);
@@ -50,7 +48,6 @@ export const useSyncStatus = () => {
 
   const isQuiet =
     isRunning &&
-    !isStalled &&
     minutesSinceLastUpdate !== null &&
     minutesSinceLastUpdate >= SYNC_QUIET_AFTER_MINUTES;
 
@@ -66,16 +63,14 @@ export const useSyncStatus = () => {
 
   // A stopped task has nothing left to poll, so drop it instead of hiding the modal; otherwise the next
   // taskUpdated for the same stale row would reopen it.
-  const isTerminal = isCancelled || isStalled;
   const onDismiss = () =>
-    dispatch(isTerminal ? taskCleared() : modalDismissed());
+    dispatch(isCancelled ? taskCleared() : modalDismissed());
 
   const progressModal =
     showModal && taskType ? (
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
-        isStalled={isStalled}
         isQuiet={isQuiet}
         isCancelled={isCancelled}
         minutesSinceLastUpdate={minutesSinceLastUpdate}

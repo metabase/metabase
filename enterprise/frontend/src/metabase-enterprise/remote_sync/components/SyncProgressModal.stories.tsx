@@ -58,24 +58,6 @@ export const Quiet = () => (
   </ReduxProvider>
 );
 
-export const Interrupted = () => (
-  <ReduxProvider storeInitialState={initialState}>
-    <SyncProgressModal
-      taskType="import"
-      progress={0.32}
-      isStalled
-      minutesSinceLastUpdate={13}
-      startedAt={startedAt}
-      initiatedByUser={initiatedByUser}
-      isError={false}
-      errorMessage=""
-      isSuccess={false}
-      outcome={null}
-      onDismiss={noop}
-    />
-  </ReduxProvider>
-);
-
 export const Cancelled = () => (
   <ReduxProvider storeInitialState={initialState}>
     <SyncProgressModal
