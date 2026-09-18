@@ -693,7 +693,8 @@
         (mt/with-user-in-groups [group {:name "notification perm, no ee code"}
                                  user  [group]]
           (perms/grant-application-permissions! group :subscription)
-          (mt/with-temp [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
+          (mt/with-temp [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
+                         :model/Card       {card-id :id}       {:collection_id collection-id}]
             (mt/with-premium-features #{:advanced-permissions}
               (let [notification (mt/user-http-request user :post 200 "notification"
                                                        {:payload_type "notification/card"
