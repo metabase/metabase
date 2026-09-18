@@ -16,6 +16,7 @@ import { Flex, Loader, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
   ConversationFilters as ApiKeyUsageFilterBar,
+  parseId,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
@@ -26,6 +27,7 @@ import {
 import { useApiKeyUsageHasData } from "metabase-enterprise/monitor/api-key-usage/hooks/useApiKeyUsageHasData";
 import { apiKeyUsageUrlStateConfig } from "metabase-enterprise/monitor/api-key-usage/url-state";
 
+import { ApiKeyFilterSelect } from "./ApiKeyFilterSelect";
 import { ApiKeyUsageEmptyState } from "./ApiKeyUsageEmptyState";
 import {
   ApiKeyUsageContextProvider,
@@ -65,7 +67,7 @@ function RouteContent({
 export function ApiKeyUsageSectionLayout() {
   const location = useLocation();
   const [
-    { date, user, group, tenant, page, sort_column, sort_direction },
+    { date, user, group, tenant, api_key, page, sort_column, sort_direction },
     { patchUrlState },
   ] = useUrlState(location, apiKeyUsageUrlStateConfig);
 
@@ -77,6 +79,7 @@ export function ApiKeyUsageSectionLayout() {
     userOptions,
     groupOptions,
   } = useFilterOptions({ date, user, group, tenant });
+  const apiKeyId = parseId(api_key);
 
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const usageAudit = useAuditTable(VIEW_API_KEY_USAGE);
@@ -91,8 +94,8 @@ export function ApiKeyUsageSectionLayout() {
     [usageAudit.provider, usageAudit.table, groupMembersAudit.table],
   );
   const chartFilters = useMemo(
-    () => ({ dateFilter, userId, groupId }),
-    [dateFilter, groupId, userId],
+    () => ({ dateFilter, apiKeyId, userId, groupId }),
+    [apiKeyId, dateFilter, groupId, userId],
   );
   const sortingOptions = useMemo(
     () => ({ sort_column, sort_direction }),
@@ -150,23 +153,32 @@ export function ApiKeyUsageSectionLayout() {
   const sectionContent = (
     <>
       <PillTabNavigation tabs={tabs} />
-      <ApiKeyUsageFilterBar
-        date={date}
-        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-        user={user}
-        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-        userOptions={userOptions}
-        group={group}
-        onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-        groupOptions={groupOptions}
-        groupNoFilterValue={groupNoFilterValue}
-        // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
-        // this shared filter bar's tenant support properly optional instead of hardcoded off here.
-        tenant={null}
-        onTenantChange={() => {}}
-        tenantOptions={[]}
-        hasTenants={false}
-      />
+      <Flex gap="sm" wrap="wrap" align="center">
+        <ApiKeyFilterSelect
+          value={api_key}
+          onChange={(val) => patchUrlState({ api_key: val, page: 0 })}
+        />
+        <ApiKeyUsageFilterBar
+          date={date}
+          onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+          user={user}
+          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+          userOptions={userOptions}
+          group={group}
+          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+          groupOptions={groupOptions}
+          groupNoFilterValue={groupNoFilterValue}
+          // Tenants aren't a meaningful concept for API-key usage — see EMB-2391, which will make
+          // this shared filter bar's tenant support properly optional instead of hardcoded off here.
+          tenant={null}
+          onTenantChange={() => {}}
+          tenantOptions={[]}
+          hasTenants={false}
+          // The API key filter (above) is the primary way to scope this page; a separate user
+          // filter is redundant now that "Created by" is just a column.
+          hasUsers={false}
+        />
+      </Flex>
       <RouteContent error={error} isInitialLoading={isInitialLoading}>
         {showEmpty ? (
           <ApiKeyUsageEmptyState />
