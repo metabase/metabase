@@ -8,7 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.revisions.core :as revisions]
+   [metabase.revisions.models.revision :as revision]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -64,15 +64,15 @@
 (def ^:private revision-columns
   [:transform_id :name :description :inputs :expectations])
 
-(defmethod revisions/serialize-instance :model/TransformTest
+(defmethod revision/serialize-instance :model/TransformTest
   [_model _id transform-test]
   (select-keys transform-test revision-columns))
 
-(defmethod revisions/revision-readable? :model/TransformTest
+(defmethod revision/revision-readable? :model/TransformTest
   [_model object]
   (mi/can-read? (t2/instance :model/TransformTest object)))
 
-(defmethod revisions/revert-to-revision! :model/TransformTest
+(defmethod revision/revert-to-revision! :model/TransformTest
   [_model id _user-id serialized-instance]
   (transform-testing.db/update-transform-test! id (select-keys serialized-instance revision-columns)))
 
