@@ -48,14 +48,14 @@ describe("GitSettingsModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
       });
-      // Modal title displays "Set up remote sync for your semantic layer"
+      // Modal title displays "Set up remote sync for your Library"
       expect(
-        screen.getByText("Set up remote sync for your semantic layer"),
+        screen.getByText("Set up remote sync for your Library"),
       ).toBeInTheDocument();
       // Modal subtitle displays
       expect(
         screen.getByText(
-          "Keep your semantic layer and transforms safely backed up in Git.",
+          "Keep your Library and transforms safely backed up in Git.",
         ),
       ).toBeInTheDocument();
     });
@@ -71,7 +71,7 @@ describe("GitSettingsModal", () => {
     const { onClose } = setup({ isOpen: true });
 
     expect(
-      screen.getByText("Set up remote sync for your semantic layer"),
+      screen.getByText("Set up remote sync for your Library"),
     ).toBeInTheDocument();
 
     expect(onClose).not.toHaveBeenCalled();

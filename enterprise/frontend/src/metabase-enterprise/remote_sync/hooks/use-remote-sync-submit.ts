@@ -79,7 +79,7 @@ export const useRemoteSyncSubmit = ({
           collectionsMap[newLibrary.id as number] = true;
         } catch (error) {
           sendToast({
-            message: t`Failed to create the semantic layer`,
+            message: t`Failed to create Library`,
             icon: "warning",
           });
           throw error;

@@ -300,7 +300,7 @@ export const getBlockedMessage = (
     case "unsyncable-content":
       return t`Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue.`;
     case "library-missing":
-      return t`Dashboards or questions in this collection rely on snippets, which sync with the semantic layer. Create the semantic layer in Data Studio, then sync it to continue.`;
+      return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue.`;
     case "linked-collections":
       return t`Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well.`;
   }

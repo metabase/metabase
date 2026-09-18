@@ -34,7 +34,7 @@ const useConflictedEntityNames = () => {
     const conflictNameMap: Record<string, string> = {
       transforms: t`Transforms`,
       snippets: t`Snippets and glossary`,
-      library: t`Semantic layer`,
+      library: t`Library`,
     };
 
     for (const conflictKey of conflictKeys) {
@@ -44,7 +44,7 @@ const useConflictedEntityNames = () => {
     }
 
     if (!names?.length) {
-      return t`Semantic layer, Transforms, Snippets and Glossary.`;
+      return t`Library, Transforms, Snippets and Glossary.`;
     }
 
     return names.join(", ");

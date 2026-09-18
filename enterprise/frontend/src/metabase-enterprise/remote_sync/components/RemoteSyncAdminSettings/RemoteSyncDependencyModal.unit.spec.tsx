@@ -354,7 +354,7 @@ describe("RemoteSyncDependencyModal", () => {
 
       const modal = await screen.findByRole("dialog");
       expect(
-        within(modal).getByText(/Create the semantic layer in Data Studio/),
+        within(modal).getByText(/Create the Library in Data Studio/),
       ).toBeInTheDocument();
       expect(within(modal).queryAllByRole("switch")).toHaveLength(0);
       expect(

@@ -744,7 +744,7 @@ describe("Remote Sync", () => {
             cy.findByText("Couldn’t sync selected collection").should(
               "be.visible",
             );
-            cy.findByText(/sync with the semantic layer/).should("be.visible");
+            cy.findByText(/sync with the Library/).should("be.visible");
             cy.findByRole("switch").should("not.exist");
 
             cy.button("Back").click();
