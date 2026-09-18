@@ -4358,8 +4358,10 @@
            lib.schema
            models
            premium-features
+           run-tracking
            sql-tools
            sql-tools.parsing
+           task
            transforms.base
            util
            warehouses}

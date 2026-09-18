@@ -20,6 +20,11 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TransformTest :id id))
 
+(mu/defn transform-test-run :- [:maybe ::transform-testing.schema/transform-test-run]
+  "The TransformTestRun with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/TransformTestRun :id id))
+
 (mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
   "Insert the TransformTest `transform-test` and return the inserted instance."
   [transform-test :- [:merge
@@ -27,6 +32,24 @@
                       [:map {:closed true}
                        [:creator_id ::lib.schema.id/user]]]]
   (t2/insert-returning-instance! :model/TransformTest transform-test))
+
+(mu/defn insert-transform-test-run! :- ::transform-testing.schema/transform-test-run
+  "Insert a started TransformTestRun for `transform-test-id` and return it."
+  [transform-test-id :- ms/PositiveInt
+   initiated-by      :- [:maybe ::lib.schema.id/user]]
+  (t2/insert-returning-instance! :model/TransformTestRun
+                                 {:transform_test_id transform-test-id
+                                  :initiated_by      initiated-by
+                                  :status            :started}))
+
+(mu/defn finish-started-transform-test-run!
+  "Set `status` and the end time of TransformTestRun `run-id` if it is still started."
+  [run-id :- ms/PositiveInt
+   status :- ::transform-testing.schema/run-status]
+  (t2/update! :model/TransformTestRun
+              :id run-id
+              :status "started"
+              {:status status :end_time :%now}))
 
 (mu/defn update-transform-test!
   "Apply `updates` to the TransformTest with `id`."

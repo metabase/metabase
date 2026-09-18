@@ -1,13 +1,15 @@
 (ns metabase-enterprise.transform-testing.models-test
-  "The `:model/TransformTest` column transforms and delete hook. Both JSON columns normalize and
-  validate on the way in and normalize on the way out, so every reader gets values the schema has
-  passed — including a serdes import, which goes through Toucan and never touches an API endpoint."
+  "Transform testing model behavior: TransformTest column transforms and deletion, plus the
+  TransformTestRun heartbeat and terminal-state lifecycle."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.run-tracking :as transform-testing.run-tracking]
    [metabase.events.core :as events]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -210,3 +212,61 @@
                        (comp (filter (comp #{:event/transform-test-delete} first))
                              (map (comp :id :object second)))
                        @published))))))))
+
+;;; --------------------------------------------- Run tracking ---------------------------------------------
+
+(defn- minutes-ago ^OffsetDateTime [^long n]
+  (.minusMinutes (OffsetDateTime/now ZoneOffset/UTC) n))
+
+(defn- recent?
+  [timestamp]
+  (.isAfter ^OffsetDateTime timestamp (minutes-ago 1)))
+
+(deftest transform-test-run-lifecycle-test
+  (mt/with-temp [:model/Transform     {transform-id :id} {}
+                 :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
+    (let [initiated-by (mt/user->id :crowberto)
+          {run-id :id :as started} (transform-testing.run-tracking/start-run! transform-test-id initiated-by)]
+      (testing "a new run is started with database timestamps"
+        (is (= :started (:status started)))
+        (is (= initiated-by (:initiated_by started)))
+        (is (some? (:start_time started)))
+        (is (nil? (:end_time started)))
+        (is (some? (:last_heartbeat started))))
+      (testing "the owning process heartbeats its registered run"
+        (t2/update! :model/TransformTestRun run-id {:last_heartbeat (minutes-ago 10)})
+        (transform-testing.run-tracking/heartbeat-and-reconcile-runs!)
+        (is (recent? (t2/select-one-fn :last_heartbeat :model/TransformTestRun :id run-id))))
+      (testing "finishing sets a terminal status and end time"
+        (is (= 1 (transform-testing.run-tracking/finish-run! run-id :passed)))
+        (let [finished (t2/select-one :model/TransformTestRun :id run-id)]
+          (is (= :passed (:status finished)))
+          (is (some? (:end_time finished))))))))
+
+(deftest reap-orphaned-transform-test-runs-test
+  (mt/with-temp [:model/Transform        {transform-id :id} {}
+                 :model/TransformTest    {transform-test-id :id} {:transform_id transform-id}
+                 :model/TransformTestRun {stale-id :id} {:transform_test_id transform-test-id
+                                                         :last_heartbeat    (minutes-ago 10)}
+                 :model/TransformTestRun {fresh-id :id} {:transform_test_id transform-test-id
+                                                         :last_heartbeat    (minutes-ago 1)}]
+    (testing "only a stale started run is reaped"
+      (is (= [stale-id]
+             (mapv :id (transform-testing.run-tracking/reap-orphaned-runs! 5))))
+      (is (= :timeout (t2/select-one-fn :status :model/TransformTestRun :id stale-id)))
+      (is (some? (t2/select-one-fn :end_time :model/TransformTestRun :id stale-id)))
+      (is (= :started (t2/select-one-fn :status :model/TransformTestRun :id fresh-id))))
+    (testing "a late completion cannot overwrite the cluster reaper's timeout"
+      (is (zero? (transform-testing.run-tracking/finish-run! stale-id :passed)))
+      (is (= :timeout (t2/select-one-fn :status :model/TransformTestRun :id stale-id))))
+    (testing "a second sweep is idempotent"
+      (is (empty? (transform-testing.run-tracking/reap-orphaned-runs! 5))))))
+
+(deftest deleting-transform-test-preserves-runs-test
+  (mt/with-temp [:model/Transform     {transform-id :id} {}
+                 :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
+    (let [{run-id :id} (transform-testing.run-tracking/start-run! transform-test-id)]
+      (t2/delete! :model/TransformTest transform-test-id)
+      (is (nil? (t2/select-one-fn :transform_test_id :model/TransformTestRun :id run-id)))
+      (is (= 1 (transform-testing.run-tracking/finish-run! run-id :passed)))
+      (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))
