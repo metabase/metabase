@@ -154,3 +154,70 @@
                                       :full-access? false}])]
       (is (not (re-find #"class=\"warning\"" html)))
       (is (not (re-find #"complete access to your account" html))))))
+
+(defn- checkbox-tags
+  "The `<input type=\"checkbox\">` tags in `html`, in document order."
+  [html]
+  (re-seq #"<input[^>]*type=\"checkbox\"[^>]*>" html))
+
+(defn- tag-value [tag]
+  (second (re-find #"value=\"([^\"]*)\"" tag)))
+
+(defn- tag-has-attribute? [tag attribute]
+  (boolean (re-find (re-pattern (str "\\s" attribute "[\\s=/>]")) tag)))
+
+(def ^:private checkbox-scopes
+  [{:scope "agent:content:read" :description "Read content" :locked? true}
+   {:scope "agent:sql:run" :description "Run SQL"}
+   {:scope        "mb:full"
+    :description  "Full access to Metabase as your user account"
+    :full-access? true}])
+
+(deftest consent-page-scope-checkboxes-test
+  (testing "GHY-4555: every offered scope gets a checkbox named `granted_scope` whose value is the raw scope, in the given order"
+    (let [tags (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (is (= ["agent:content:read" "agent:sql:run" "mb:full"] (map tag-value tags)))
+      (is (every? #(re-find #"name=\"granted_scope\"" %) tags))))
+  (testing "the checkboxes are inside the form, so ticking one is what gets submitted"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (< (.indexOf ^String html "<form")
+             (.indexOf ^String html "type=\"checkbox\"")
+             (.indexOf ^String html "</form>"))))))
+
+(deftest consent-page-locked-baseline-checkbox-test
+  (testing "GHY-4555: a locked scope is ticked and disabled, and the page says it is always granted"
+    (let [html        (render-with-scopes! checkbox-scopes)
+          [locked]    (checkbox-tags html)]
+      (is (tag-has-attribute? locked "checked"))
+      (is (tag-has-attribute? locked "disabled"))
+      (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
+          "the note sits in the locked scope's row")))
+  (testing "every other scope, including a full-access one, starts unticked and can be ticked"
+    (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (doseq [tag [sql full]]
+        (is (not (tag-has-attribute? tag "checked")) tag)
+        (is (not (tag-has-attribute? tag "disabled")) tag))))
+  (testing "no always-granted note when nothing is locked"
+    (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
+
+(deftest consent-page-full-access-warning-placement-test
+  (testing "GHY-4555: the full-access warning sits in the full-access scope's own row, next to its checkbox"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (re-find #"(?s)value=\"mb:full\"(?:(?!</li>).)*class=\"warning\"" html))
+      (is (not (re-find #"(?s)class=\"warning\".*type=\"checkbox\" value=\"mb:full\"" html))
+          "the warning does not precede the checkbox it is about"))))
+
+(deftest consent-page-script-test
+  (let [html (render-with-scopes! checkbox-scopes)]
+    (testing "GHY-4568: the page's inline script carries the CSP nonce, without which a production CSP blocks it"
+      (is (re-find #"<script nonce=\"test-nonce\">" html)))
+    (testing "GHY-4568: the script debounces the decision and restores the buttons when the page comes back from the bfcache"
+      (let [script (second (re-find #"(?s)<script nonce=\"test-nonce\">(.*?)</script>" html))]
+        (is (re-find #"addEventListener\('submit'" script))
+        (is (re-find #"addEventListener\('pageshow'" script))
+        (testing (str "a disabled button is left out of the submitted form, so the clicked button's `approved` value "
+                      "is copied into a hidden input before the buttons are disabled")
+          (is (re-find #"(?s)name = 'approved'.*disabled = true" script)))))
+    (testing "without the script the buttons still submit their own `approved` value, and Authorize is not disabled"
+      (is (re-find #"<button class=\"deny\" name=\"approved\" type=\"submit\" value=\"false\">" html))
+      (is (re-find #"<button class=\"allow\" name=\"approved\" type=\"submit\" value=\"true\">" html)))))

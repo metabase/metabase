@@ -12,6 +12,7 @@
    [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -19,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
+   [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
@@ -309,7 +311,7 @@
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated.
   Uses [[driver.conn/effective-details]] to select the appropriate details for the current connection context."
-  [{driver :engine, :as database} :- [:maybe :map]]
+  [{driver :engine, :as database} :- [:maybe ::warehouses.schema/database-or-metadata]]
   (when (some? database)
     (hash (connection-details->spec driver (driver.conn/effective-details database)))))
 
@@ -476,7 +478,7 @@
          ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
          ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
          ;; and make sure only one thread will be creating a pool at a given instant.
-         (locking pool-cache-key->connection-pool
+         (locking pool-lock/monitor
            (or
             ;; check if another thread created the pool while we were waiting to acquire the lock
             (get-canonical-pool cache-key details-hash false)

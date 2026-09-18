@@ -45,10 +45,15 @@
 (mu/defn resolve-aggregation-by-name :- ::lib.schema.aggregation/aggregation
   "Attempt to find an aggregation with `ag-name`. This is mostly for dealing with super broken `:field` refs in
   parameters that do stuff like `[:field \"count\" nil]` inside [[metabase.lib.field.resolution]]."
-  ([query stage-number ag-name]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-name      :- :string]
    (resolve-aggregation-by-name query stage-number (aggregations query stage-number) ag-name))
 
-  ([query stage-number ags ag-name :- :string]
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ags          :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+    ag-name      :- :string]
    ;; PERF: Index these by name on the stage?
    (m/find-first
     (fn [aggregation]
@@ -339,7 +344,8 @@
 
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
-  ([query aggregable]
+  ([query      :- ::lib.schema/query
+    aggregable :- ::aggregable]
    (aggregate query -1 aggregable))
 
   ([query        :- ::lib.schema/query
@@ -352,7 +358,7 @@
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
-  ([query]
+  ([query :- ::lib.schema/query]
    (aggregations query -1))
 
   ([query        :- ::lib.schema/query
@@ -361,7 +367,7 @@
 
 (mu/defn aggregations-metadata :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "Get metadata about the aggregations in a given stage of a query."
-  ([query]
+  ([query :- ::lib.schema/query]
    (aggregations-metadata query -1))
 
   ([query        :- ::lib.schema/query
@@ -399,7 +405,7 @@
 (mu/defn available-aggregation-operators :- [:maybe [:sequential ::operator-with-columns]]
   "Returns the available aggregation operators for the stage with `stage-number` of `query`.
   If `stage-number` is omitted, uses the last stage."
-  ([query]
+  ([query :- ::lib.schema/query]
    (available-aggregation-operators query -1))
 
   ([query :- ::lib.schema/query
@@ -427,22 +433,6 @@
                   (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
-  "Returns a standalone aggregation clause for an `aggregation-operator` and
-  a `column`.
-  For aggregations requiring an argument `column` is mandatory, otherwise
-  it is optional."
-  ([aggregation-operator :- ::lib.schema.aggregation/operator]
-   (if-not (:requires-column? aggregation-operator)
-     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
-     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
-                                      (:short aggregation-operator))
-                     {:aggregation-operator aggregation-operator}))))
-
-  ([aggregation-operator :- ::lib.schema.aggregation/operator
-    column]
-   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
-
 (mr/def ::selected-operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
@@ -450,10 +440,26 @@
     [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]
     [:selected? {:optional true} :boolean]]])
 
+(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+  a `column`.
+  For aggregations requiring an argument `column` is mandatory, otherwise
+  it is optional."
+  ([aggregation-operator :- ::selected-operator-with-columns]
+   (if-not (:requires-column? aggregation-operator)
+     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
+     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
+                                      (:short aggregation-operator))
+                     {:aggregation-operator aggregation-operator}))))
+
+  ([aggregation-operator :- ::selected-operator-with-columns
+    column                :- :metabase.lib.common/op-arg]
+   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
+
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential ::selected-operator-with-columns]]
   "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
   [agg-operators :- [:maybe [:sequential ::operator-with-columns]]
-   agg-clause]
+   agg-clause    :- ::lib.schema.aggregation/aggregation]
   (when (seq agg-operators)
     (let [[op _ agg-col] agg-clause
           agg-temporal-unit (-> agg-col lib.options/options :temporal-unit)]
@@ -483,7 +489,8 @@
     (-> (lib/query ...)
         (lib/aggregate (lib/avg ...))
         (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))"
-  ([query ag-index]
+  ([query    :- ::lib.schema/query
+    ag-index :- nat-int?]
    (aggregation-ref query -1 ag-index))
 
   ([query        :- ::lib.schema/query
@@ -531,7 +538,7 @@
 
 (mu/defn remove-all-aggregations :- ::lib.schema/query
   "Remove all aggregations from a query stage."
-  ([query]
+  ([query :- ::lib.schema/query]
    (remove-all-aggregations query -1))
 
   ([query        :- ::lib.schema/query

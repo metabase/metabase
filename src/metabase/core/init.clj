@@ -87,6 +87,7 @@
    [metabase.util.experiment.init]
    [metabase.version.init]
    [metabase.view-log.init]
+   [metabase.warehouse-schema.init]
    [metabase.warehouses.init]
    [metabase.xrays.init]))
 

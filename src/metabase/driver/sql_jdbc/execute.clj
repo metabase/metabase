@@ -47,7 +47,7 @@
 (def ConnectionOptions
   "Malli schema for the options passed to [[do-with-connection-with-options]]."
   [:maybe
-   [:map
+   [:map {:closed true}
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
@@ -260,7 +260,7 @@
 
 (def ^:private DbOrIdOrSpec
   [:and
-   [:or :int :map]
+   [:or :int driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    [:fn
     ;; can't wrap a java.sql.Connection here because we're not
     ;; responsible for its lifecycle and that means you can't use
@@ -361,7 +361,7 @@
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or ::lib.schema.id/database :map]
+   db-or-id-or-spec :- [:or ::lib.schema.id/database driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
@@ -398,8 +398,11 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec
-   ^Connection conn                                       :- (driver-api/instance-of-class Connection)
+   db-or-id-or-spec                                       :- [:or
+                                                              ::lib.schema.id/database
+                                                              driver-api/schema.metadata.database
+                                                              :metabase.lib.schema.common/database-details]
+   ^Connection conn                                      :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-let [db (cond
                   ;; id?

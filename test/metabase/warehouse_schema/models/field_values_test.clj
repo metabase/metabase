@@ -842,7 +842,7 @@
                    :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
                                                 :parent_id parent-id}]
       (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
-        (with-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
                  (distinct-batch/run-distinct-batch table fields))))))))

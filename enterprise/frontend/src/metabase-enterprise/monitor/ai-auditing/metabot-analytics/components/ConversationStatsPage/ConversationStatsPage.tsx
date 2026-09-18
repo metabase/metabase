@@ -8,7 +8,13 @@ import { dayjs } from "metabase/dayjs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { serializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { queryToSearch, useLocation, useNavigate } from "metabase/router";
+import {
+  Navigate,
+  queryToSearch,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "metabase/router";
 import {
   Button,
   Flex,
@@ -25,6 +31,7 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import {
   ConversationFilters,
+  filterUrlStateConfig,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import {
@@ -54,7 +61,7 @@ import {
   tableForMetric,
 } from "./query-utils";
 import type { ChartDataSources, ChartProps } from "./types";
-import { statsUrlStateConfig } from "./utils";
+import { DEFAULT_USAGE_STATS_METRIC, parseUsageStatsMetric } from "./utils";
 
 const sourceTitles: Record<UsageStatsMetric, string> = {
   get conversations() {
@@ -145,9 +152,32 @@ const labelUnknownIpAddress = (value: unknown) =>
 
 export function ConversationStatsPage() {
   const location = useLocation();
+  const params = useParams();
+  const metric = parseUsageStatsMetric(params.metric);
+
+  if (metric === undefined) {
+    return (
+      <Navigate
+        to={`${Urls.monitorAiAuditingUsageMetric(DEFAULT_USAGE_STATS_METRIC)}${location.search}`}
+        replace
+      />
+    );
+  }
+
+  return <UsageStats metric={metric} />;
+}
+
+type UsageStatsProps = {
+  metric: UsageStatsMetric;
+};
+
+function UsageStats({ metric }: UsageStatsProps) {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [{ date, user, group, tenant, metric }, { patchUrlState }] =
-    useUrlState(location, statsUrlStateConfig);
+  const [{ date, user, group, tenant }, { patchUrlState }] = useUrlState(
+    location,
+    filterUrlStateConfig,
+  );
 
   const {
     dateFilter,
@@ -266,6 +296,15 @@ export function ConversationStatsPage() {
     [navigateToConversations, tenantOptions],
   );
 
+  const handleMetricChange = (value: string | null) => {
+    if (value) {
+      navigate({
+        pathname: Urls.monitorAiAuditingUsageMetric(value),
+        search: location.search,
+      });
+    }
+  };
+
   return (
     <MonitorMain>
       <Stack gap="xl">
@@ -273,11 +312,7 @@ export function ConversationStatsPage() {
           {hasDataComplexityFeature ? t`Usage metrics` : t`Usage stats`}
         </MonitorHeaderTitle>
 
-        <Tabs
-          variant="pills"
-          value={metric}
-          onChange={(value) => patchUrlState({ metric: value ?? undefined })}
-        >
+        <Tabs variant="pills" value={metric} onChange={handleMetricChange}>
           <Tabs.List>
             <Tabs.Tab value="conversations">{t`Conversations`}</Tabs.Tab>
             <Tabs.Tab value="tokens">{t`Tokens`}</Tabs.Tab>

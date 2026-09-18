@@ -1,6 +1,7 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -147,8 +148,9 @@
                                   [:map
                                    [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
-  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query query)]
+  [query :- ms/RingRequestBody]
+  (let [query (api.macros/decode-and-validate-params :body ::lib-be.schema/maybe-legacy-query
+                                                     (walk/keywordize-keys query))]
     (mi/instance :model/Query
                  (merge (queries/query->database-and-table-ids query)
                         {:dataset_query query}))))
@@ -207,7 +209,9 @@
 
 (mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity :- Entity entity-id-or-query show]
+  [entity              :- Entity
+   entity-id-or-query  :- ::entity-id-or-query
+   show                :- [:maybe [:or [:= "all"] nat-int?]]]
   (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)

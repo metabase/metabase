@@ -6,6 +6,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
@@ -19,9 +20,11 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -45,9 +48,88 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
+(mr/def ::metadata-column-row
+  "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
+  [:merge
+   :metabase.warehouse-schema.schema/field
+   [:map {:closed true}
+    [:dimension/human_readable_field_id [:maybe ::lib.schema.id/field]]
+    [:dimension/id                      [:maybe pos-int?]]
+    [:dimension/name                    [:maybe :string]]
+    [:dimension/type                    [:maybe :string]]
+    [:values/human_readable_values      [:maybe :string]]
+    [:values/values                     [:maybe :string]]]])
+
+(mr/def ::model-field
+  "A `:model/Field` instance: a Field row, or a Card result metadata column X-Rays tags as a Field."
+  [:or
+   :metabase.warehouse-schema.schema/field
+   :metabase.legacy-mbql.schema/legacy-column-metadata])
+
+(mr/def ::instance
+  "A Toucan 2 instance [[instance->metadata]] converts, by its model, or a legacy result metadata column."
+  [:multi {:dispatch (fn [instance] (or (t2/model instance)
+                                        (when (= (:lib/type instance) :metadata/column) ::lib-column)
+                                        ::legacy-column))
+           :lazy-refs true}
+   [::legacy-column                :metabase.legacy-mbql.schema/legacy-column-metadata]
+   [::lib-column                   ::lib.schema.metadata/column]
+   [:metadata/database             :metabase.warehouses.schema/database]
+   [:metadata/table                :metabase.warehouse-schema.schema/table]
+   [:metadata/native-query-snippet :metabase.native-query-snippets.schema/native-query-snippet]
+   [:metadata/transform            :metabase.transforms.schema/transform]
+   [:metadata/column               ::metadata-column-row]
+   [:metadata/card                 :metabase.queries.schema/card]
+   [:metadata/metric               :metabase.queries.schema/card]
+   [:metadata/segment              :metabase.segments.schema/segment]
+   [:metadata/measure              :metabase.measures.schema/measure]
+   [:model/Database                :metabase.warehouses.schema/database]
+   [:model/Table                   :metabase.warehouse-schema.schema/table]
+   [:model/Field                   ::model-field]
+   [:model/Card                    :metabase.queries.schema/card]
+   [:model/Segment                 :metabase.segments.schema/segment]
+   [:model/Measure                 :metabase.measures.schema/measure]
+   [:model/NativeQuerySnippet      :metabase.native-query-snippets.schema/native-query-snippet]
+   [:model/Transform               :metabase.transforms.schema/transform]])
+
 (def ^:private metadata-type->schema
   {:metadata/card   ::lib.schema.metadata/card
    :metadata/column ::lib.schema.metadata/column})
+
+(def ^:private metadata-type->lib-schema
+  {:metadata/card                 ::lib.schema.metadata/card
+   :metadata/database             ::lib.schema.metadata/database
+   :metadata/measure              ::lib.schema.metadata/measure
+   :metadata/metric               ::lib.schema.metadata/metric
+   :metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet
+   :metadata/segment              ::lib.schema.metadata/segment
+   :metadata/table                ::lib.schema.metadata/table
+   :metadata/transform            ::lib.schema.metadata/transform})
+
+(defn- schema-keys
+  [schema]
+  (let [schema (mc/deref-all (mr/resolve-schema schema))]
+    (case (mc/type schema)
+      :map (into #{} (map first) (mc/children schema))
+      :and (perf/some schema-keys (mc/children schema))
+      nil)))
+
+(def ^:private metadata-type->keys
+  "The keys the Lib metadata schema of a metadata type declares, by metadata type."
+  (u.memo/fast-memo (fn [metadata-type]
+                      (some-> (metadata-type->lib-schema metadata-type) schema-keys))))
+
+(defn- drop-undeclared-columns
+  "`instance` without the unqualified keys the Lib metadata schema of `metadata-type` doesn't declare."
+  [instance metadata-type]
+  (if-let [declared (metadata-type->keys metadata-type)]
+    (reduce-kv (fn [m k _v]
+                 (if (or (qualified-keyword? k) (contains? declared k))
+                   m
+                   (dissoc m k)))
+               instance
+               instance)
+    instance))
 
 ;; TODO (Cam 2026-08-27) Consider whether we should just have this be the normal behavior for normalizing
 ;; application-database-style metadata to Lib-style metadata, e.g. why can't we just use
@@ -58,7 +140,7 @@
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance      :- :map
+  [instance      :- ::instance
    metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
@@ -67,6 +149,7 @@
     (-> instance
         (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
+        (drop-undeclared-columns metadata-type)
         normalize
         u.snake-hating-map/snake-hating-map
         (vary-meta assoc :metabase/toucan-instance instance))))
@@ -113,7 +196,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+          :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -182,7 +266,7 @@
                 :dimension/type
                 :values/human_readable_values
                 :values/values]
-    :from      [[(t2/table-name :model/Field) :field]]
+    :from      [(warehouse-schema-overlay/field-query {:alias :field})]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
                 [(t2/table-name :model/Dimension) :dimension]

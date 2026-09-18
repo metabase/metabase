@@ -60,6 +60,21 @@ describe("VisualizationError (OSS)", () => {
         screen.getByText("Learn how to debug SQL errors"),
       ).toBeInTheDocument();
     });
+
+    it("should render the error action next to the message", () => {
+      const card = createMockCard({
+        dataset_query: {
+          database: database.id,
+          type: "native",
+          native: {
+            query: "SELECT * FROM ORDERS",
+          },
+        },
+      });
+      setup({ database, card, errorAction: "Have Metabot fix it" });
+
+      expect(screen.getByText("Have Metabot fix it")).toBeInTheDocument();
+    });
   });
 
   describe("server errors", () => {

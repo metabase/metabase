@@ -748,7 +748,8 @@
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field
-                                    {:binning
+                                    {:lib/uuid (str (random-uuid))
+                                     :binning
                                      {:strategy :num-bins,
                                       :num-bins 100,
                                       :min-value 0.75,
