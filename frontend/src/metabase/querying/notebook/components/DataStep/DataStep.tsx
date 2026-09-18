@@ -129,7 +129,7 @@ export function DataFieldPopover({
   updateQuery,
 }: DataFieldPopoverProps) {
   return (
-    <Popover position="bottom-start">
+    <Popover position="bottom-start" trapFocus returnFocus>
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
           <IconButtonWrapper

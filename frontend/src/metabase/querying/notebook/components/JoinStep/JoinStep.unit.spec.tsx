@@ -874,15 +874,30 @@ describe("Notebook Editor > Join Step", () => {
         "join-columns-picker",
       );
       await userEvent.click(within(joinColumnsPicker).getByText("Select all"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
 
       await userEvent.click(within(joinColumnsPicker).getByLabelText("ID"));
-      expect(within(joinColumnsPicker).getByLabelText("ID")).not.toBeChecked();
-      expect(within(joinColumnsPicker).getByLabelText("ID")).toBeEnabled();
+      expect(within(joinColumnsPicker).getByLabelText("ID")).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        within(joinColumnsPicker).getByLabelText("ID"),
+      ).not.toHaveAttribute("aria-disabled");
     });
 
     it("should be able to select no columns when adding a new join", async () => {
