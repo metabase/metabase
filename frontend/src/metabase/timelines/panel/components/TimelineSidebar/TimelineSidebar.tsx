@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Button, Icon } from "metabase/ui";
 import {
   hideTimelineEvents,
-  hideTimelines,
   showCreatedTimelineEvent,
   showTimelineEvents,
-  showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
   TimelineEventsVisibilityIntent,
@@ -25,7 +24,7 @@ import type {
 
 import TimelinePanel from "../../containers/TimelinePanel";
 import {
-  filterTimelinesByXAxis,
+  filterTimelinesByXAxes,
   getFocusedTimelines,
   getTimelineSidebarTitle,
 } from "../../utils";
@@ -41,7 +40,10 @@ export interface TimelineSidebarProps {
   partiallyVisibleEventIds?: TimelineEventId[];
   selectedEventIds: TimelineEventId[];
   focusedEventIds?: TimelineEventId[] | null;
-  xAxis?: TimeseriesXAxis | null;
+  /** the axes of the charts this sidebar controls; events outside them are dropped */
+  xAxes?: TimeseriesXAxis[] | null;
+  isLoading?: boolean;
+  error?: unknown;
   /** where events created from this sidebar are reported as coming from */
   eventSource?: TimelineEventSource;
   onUpdateVisibility: (
@@ -61,7 +63,9 @@ export const TimelineSidebar = ({
   partiallyVisibleEventIds,
   selectedEventIds,
   focusedEventIds = null,
-  xAxis = null,
+  xAxes = null,
+  isLoading = false,
+  error,
   eventSource,
   onUpdateVisibility,
   onSelectEvents,
@@ -75,16 +79,16 @@ export const TimelineSidebar = ({
   const displayedTimelines = useMemo(
     () =>
       getFocusedTimelines(
-        filterTimelinesByXAxis(timelines, xAxis),
+        filterTimelinesByXAxes(timelines, xAxes),
         focusedEventIds,
       ),
-    [timelines, xAxis, focusedEventIds],
+    [timelines, xAxes, focusedEventIds],
   );
 
   const title = getTimelineSidebarTitle({
     focusedTimelines: displayedTimelines,
     isFocused,
-    xAxis,
+    xAxis: xAxes?.length === 1 ? xAxes[0] : null,
   });
 
   const handleShowTimelineEvents = useCallback(
@@ -107,24 +111,15 @@ export const TimelineSidebar = ({
     [onUpdateVisibility],
   );
 
+  // the header checkbox reflects the events the card lists, so it acts on those
   const handleShowTimeline = useCallback(
-    (timeline: Timeline) =>
-      onUpdateVisibility(
-        (visibility, allTimelines) =>
-          showTimelines(visibility, [timeline.id], allTimelines),
-        "show",
-      ),
-    [onUpdateVisibility],
+    (timeline: Timeline) => handleShowTimelineEvents(timeline.events ?? []),
+    [handleShowTimelineEvents],
   );
 
   const handleHideTimeline = useCallback(
-    (timeline: Timeline) =>
-      onUpdateVisibility(
-        (visibility, allTimelines) =>
-          hideTimelines(visibility, [timeline.id], allTimelines),
-        "hide",
-      ),
-    [onUpdateVisibility],
+    (timeline: Timeline) => handleHideTimelineEvents(timeline.events ?? []),
+    [handleHideTimelineEvents],
   );
 
   const handleEventCreated = useCallback(
@@ -157,34 +152,40 @@ export const TimelineSidebar = ({
   return (
     <>
       <SidebarContent title={title} onClose={onClose}>
-        {isFocused && onShowAllEvents && (
-          <Box mx="xl" mb="sm">
-            <Button
-              p={0}
-              variant="subtle"
-              leftSection={<Icon name="chevronleft" />}
-              onClick={onShowAllEvents}
-              data-testid="timeline-sidebar-show-all"
-            >
-              {t`All events`}
-            </Button>
-          </Box>
+        {isLoading || error != null ? (
+          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        ) : (
+          <>
+            {isFocused && onShowAllEvents && (
+              <Box mx="xl" mb="sm">
+                <Button
+                  p={0}
+                  variant="subtle"
+                  leftSection={<Icon name="chevronleft" />}
+                  onClick={onShowAllEvents}
+                  data-testid="timeline-sidebar-show-all"
+                >
+                  {t`All events`}
+                </Button>
+              </Box>
+            )}
+            <TimelinePanel
+              timelines={displayedTimelines}
+              collectionId={collectionId}
+              visibleEventIds={visibleEventIds}
+              partiallyVisibleEventIds={partiallyVisibleEventIds}
+              selectedEventIds={selectedEventIds}
+              onNewEvent={handleNewEvent}
+              onEditEvent={handleEditEvent}
+              onMoveEvent={handleMoveEvent}
+              onShowTimelineEvents={handleShowTimelineEvents}
+              onHideTimelineEvents={handleHideTimelineEvents}
+              onShowTimeline={handleShowTimeline}
+              onHideTimeline={handleHideTimeline}
+              onToggleEventSelected={handleToggleEventSelected}
+            />
+          </>
         )}
-        <TimelinePanel
-          timelines={displayedTimelines}
-          collectionId={collectionId}
-          visibleEventIds={visibleEventIds}
-          partiallyVisibleEventIds={partiallyVisibleEventIds}
-          selectedEventIds={selectedEventIds}
-          onNewEvent={handleNewEvent}
-          onEditEvent={handleEditEvent}
-          onMoveEvent={handleMoveEvent}
-          onShowTimelineEvents={handleShowTimelineEvents}
-          onHideTimelineEvents={handleHideTimelineEvents}
-          onShowTimeline={handleShowTimeline}
-          onHideTimeline={handleHideTimeline}
-          onToggleEventSelected={handleToggleEventSelected}
-        />
       </SidebarContent>
       <TimelineEventModals
         modal={modal}

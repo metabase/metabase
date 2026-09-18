@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import { useListTimelinesQuery } from "metabase/api";
 import {
   deselectTimelineEvents,
   selectTimelineEvents,
@@ -24,7 +25,7 @@ export type EventsPanelProps = Pick<
   | "partiallyVisibleEventIds"
   | "selectedEventIds"
   | "focusedEventIds"
-  | "xAxis"
+  | "xAxes"
   | "onShowAllEvents"
 > & {
   /** the charts the toggles apply to */
@@ -41,11 +42,12 @@ export function EventsPanel({
   partiallyVisibleEventIds,
   selectedEventIds,
   focusedEventIds,
-  xAxis,
+  xAxes,
   onShowAllEvents,
 }: EventsPanelProps) {
   const dispatch = useDispatch();
   const { dashboard, closeSidebar } = useDashboardContext();
+  const { isLoading, error } = useListTimelinesQuery({ include: "events" });
 
   const handleUpdateVisibility = useCallback(
     (
@@ -83,7 +85,9 @@ export function EventsPanel({
       partiallyVisibleEventIds={partiallyVisibleEventIds}
       selectedEventIds={selectedEventIds}
       focusedEventIds={focusedEventIds}
-      xAxis={xAxis}
+      xAxes={xAxes}
+      isLoading={isLoading}
+      error={error}
       eventSource="dashboard"
       onUpdateVisibility={handleUpdateVisibility}
       onSelectEvents={handleSelectEvents}

@@ -74,6 +74,8 @@ export type TimelineEventsSelection = {
 
 export interface DashboardTimelineEventsState {
   overrides: Record<DashCardId, TimelineEventsVisibility>;
+  /** what each chart reports after size adjustments; absent until it is measured */
+  enabledByDashCard: Record<DashCardId, boolean>;
   selection: TimelineEventsSelection | null;
   hasTrackedEventsShown: boolean;
 }

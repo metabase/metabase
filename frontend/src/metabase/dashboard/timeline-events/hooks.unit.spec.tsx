@@ -13,7 +13,10 @@ import {
   createMockStoreDashboard,
   seedApiQueryCache,
 } from "__support__/state";
-import { getTimelineEventCheckbox } from "__support__/timelines";
+import {
+  getTimelineCheckbox,
+  getTimelineEventCheckbox,
+} from "__support__/timelines";
 import {
   act,
   getTestStoreAndWrapper,
@@ -26,9 +29,9 @@ import {
   openEventsSidebar,
   removeCardFromDashboard,
   selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
   setDashCardTimelineEventsVisibility,
 } from "metabase/dashboard/actions";
-import { DashCard } from "metabase/dashboard/components/DashCard/DashCard";
 import { DashboardEventsSidebar } from "metabase/dashboard/components/DashboardEventsSidebar/DashboardEventsSidebar";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -41,6 +44,7 @@ import type {
   DashboardCard,
   DashboardTabId,
   QuestionDashboardCard,
+  Timeline,
   TimelineEvent,
   TimelineEventsVisibility,
   VisualizationSettings,
@@ -73,7 +77,23 @@ const EVENT = createMockTimelineEvent({
   timeline_id: 10,
   timestamp: "2024-02-15T00:00:00Z",
 });
-const TIMELINE = createMockTimeline({ id: 10, events: [EVENT] });
+const TIMELINE = createMockTimeline({
+  id: 10,
+  name: "Releases",
+  events: [EVENT],
+});
+const SAME_RANGE_EVENT = createMockTimelineEvent({
+  ...EVENT,
+  id: 103,
+  name: "Earlier launch",
+  timestamp: "2024-01-20T00:00:00Z",
+});
+const OUT_OF_RANGE_EVENT = createMockTimelineEvent({
+  ...EVENT,
+  id: 104,
+  name: "Far future launch",
+  timestamp: "2030-01-01T00:00:00Z",
+});
 const EXCLUDED_EVENT = createMockTimelineEvent({
   ...EVENT,
   id: 101,
@@ -117,7 +137,7 @@ function setup({
   dashcardTabId = null,
   withSidebar = false,
   dashcards,
-  withCharts = false,
+  timelines = [TIMELINE],
   seedTimelines = true,
 }: {
   savedVisibility?: VisualizationSettings;
@@ -126,7 +146,7 @@ function setup({
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
   dashcards?: QuestionDashboardCard[];
-  withCharts?: boolean;
+  timelines?: Timeline[];
   seedTimelines?: boolean;
 } = {}) {
   setupCollectionByIdEndpoint({
@@ -151,31 +171,9 @@ function setup({
       dashboardId={DASHBOARD_ID}
       withTimelineEvents={withTimelineEvents}
     >
-      {withCharts ? (
-        allDashcards.map((dashcard) => (
-          <DashCard
-            key={dashcard.id}
-            dashcard={dashcard}
-            gridItemWidth={4}
-            totalNumGridCols={24}
-            isTrashedOnRemove={false}
-            autoScroll={false}
-            onRemove={jest.fn()}
-            onReplaceCard={jest.fn()}
-            markNewCardSeen={jest.fn()}
-            onReplaceAllDashCardVisualizationSettings={jest.fn()}
-            onUpdateVisualizationSettings={jest.fn()}
-            showClickBehaviorSidebar={jest.fn()}
-            onEditVisualization={jest.fn()}
-          />
-        ))
-      ) : (
-        <>
-          {/* two charts report, the dashboard is tracked once */}
-          <DashCardChart dashcard={dashcard} />
-          <DashCardChart dashcard={dashcard} />
-        </>
-      )}
+      {/* two charts report, the dashboard is tracked once */}
+      <DashCardChart dashcard={dashcard} />
+      <DashCardChart dashcard={dashcard} />
       {withSidebar && <DashboardEventsSidebar />}
     </MockDashboardContext>,
     {
@@ -207,7 +205,7 @@ function setup({
             {
               endpointName: "listTimelines",
               arg: { include: "events" },
-              value: [TIMELINE],
+              value: timelines,
             },
           ]),
         }),
@@ -310,7 +308,75 @@ describe("dashboard timeline events", () => {
     expect(screen.queryByText(EVENT.name)).not.toBeInTheDocument();
   });
 
-  it("loads the timelines once however many charts show the event", async () => {
+  it("does not list events that no chart on the dashboard can show", async () => {
+    setup({
+      savedVisibility: EVENTS_RECORDED,
+      timelines: [
+        createMockTimeline({ ...TIMELINE, events: [OUT_OF_RANGE_EVENT] }),
+      ],
+      withSidebar: true,
+    });
+
+    expect(
+      await screen.findByText("Add context to your time series charts"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(OUT_OF_RANGE_EVENT.name)).not.toBeInTheDocument();
+  });
+
+  it("keeps the events it does not list when a timeline is unchecked", async () => {
+    const { store } = setup({
+      savedVisibility: EVENTS_RECORDED,
+      timelines: [
+        createMockTimeline({ ...TIMELINE, events: [EVENT, SAME_RANGE_EVENT] }),
+      ],
+      withSidebar: true,
+    });
+    await act(async () => {
+      store.dispatch(
+        openEventsSidebar({
+          dashcardId: DASHCARD_ID,
+          focusedEventIds: [EVENT.id],
+        }),
+      );
+    });
+
+    expect(await screen.findByText(EVENT.name)).toBeInTheDocument();
+    expect(screen.queryByText(SAME_RANGE_EVENT.name)).not.toBeInTheDocument();
+
+    await userEvent.click(getTimelineCheckbox(TIMELINE.name));
+
+    expect(
+      getDashCardVisibleTimelineEventIds(store.getState(), DASHCARD_ID),
+    ).toEqual([SAME_RANGE_EVENT.id]);
+  });
+
+  it("ignores a chart that is too small to show events", async () => {
+    const question = createMockCard({
+      display: "line",
+      visualization_settings: EVENTS_RECORDED,
+    });
+    const dashcards = [
+      createMockDashboardCard({ id: 2, card: question }),
+      createMockDashboardCard({
+        id: 3,
+        card: createMockCard({ ...question, visualization_settings: {} }),
+      }),
+    ];
+    const { store } = setup({ dashcards, withSidebar: true });
+
+    await screen.findByText(EVENT.name);
+    expect(getTimelineEventCheckbox(EVENT.name)).toBePartiallyChecked();
+
+    await act(async () => {
+      store.dispatch(
+        setDashCardTimelineEventsEnabled({ dashcardId: 3, isEnabled: false }),
+      );
+    });
+
+    expect(getTimelineEventCheckbox(EVENT.name)).toBeChecked();
+  });
+
+  it("loads the timelines once however many charts the dashboard has", async () => {
     setupTimelinesEndpoints([TIMELINE]);
     const question = createMockCard({
       display: "line",
@@ -324,15 +390,9 @@ describe("dashboard timeline events", () => {
       }),
     );
 
-    setup({ dashcards, withCharts: true, seedTimelines: false });
+    setup({ dashcards, withSidebar: true, seedTimelines: false });
 
-    await waitFor(
-      () =>
-        expect(screen.getAllByTestId("timeline-events-band")).toHaveLength(
-          dashcards.length,
-        ),
-      { timeout: 10000 },
-    );
+    expect(await screen.findByText(EVENT.name)).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(1);
   });
 
@@ -556,6 +616,7 @@ function setupReadOnlyDashboard({
               "timeline.excluded_timeline_event_ids": [],
             },
           },
+          enabledByDashCard: {},
           selection: {
             dashcardId: DASHCARD_ID,
             eventIds: [UNRELATED_EVENT.id],
