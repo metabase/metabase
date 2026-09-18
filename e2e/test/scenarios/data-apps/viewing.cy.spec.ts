@@ -192,6 +192,36 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
   });
 
+  describe("outdated apps", () => {
+    it("tells a non-admin why an outdated app won't open", () => {
+      H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME });
+
+      // The metadata endpoint refuses an outdated app to non-admins with this
+      // exact shape (see `check-not-outdated` in data_apps/api.clj).
+      cy.intercept(
+        { method: "GET", pathname: `/api/apps/${APP_NAME}` },
+        {
+          statusCode: 409,
+          body: {
+            "error-code": "data-app-outdated",
+            message: "This app was built for version 1 of data apps.",
+          },
+        },
+      );
+
+      cy.signInAsNormalUser();
+      H.openDataApp(APP_NAME);
+
+      H.main().within(() => {
+        cy.findByText("This data app is outdated").should("be.visible");
+        cy.findByText("This app was built for version 1 of data apps.").should(
+          "be.visible",
+        );
+      });
+      cy.get("iframe").should("not.exist");
+    });
+  });
+
   describe("host error / not-ready screens", () => {
     it("shows a themed host error screen when the bundle throws while rendering", () => {
       H.mockDataApp(APP_NAME, {
