@@ -311,10 +311,12 @@
        (not= pre-task-branch (settings/remote-sync-branch))))
 
 (defn- materialize-data-apps!
-  "After a successful content import, materialize data apps from the same
-   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
-   paths), so they ride this import rather than having their own sync. Adapts the
-   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+  "Materialize data apps from the snapshot a content import is landing. Data apps live under `data_apps/` in
+   the repo (outside the serdes paths), so they ride this import rather than having their own sync. Runs inside
+   the import's commit transaction, before the version is written: a task's `version` is the sync base (see
+   [[remote-sync.db/last-synced-task]]) and gates every later pull, so a version that landed without its data
+   apps would never be re-materialized. Adapts the snapshot to plain reader fns;
+   `data-apps.sync/sync-from-snapshot!` never throws."
   [^SourceSnapshot snapshot]
   ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
   ;; bytes on its side, keeping all Java interop out of this namespace.
@@ -545,7 +547,7 @@
     - Marks remote changes synced
     - Local changes stay dirty
     - Sets version to remote tip"
-  [snapshot base-snapshot task-id report sync-timestamp]
+  [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary]} (source/compute-merge (spec/extract-entities-for-export) snapshot base-snapshot task-id)]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
@@ -556,12 +558,12 @@
          :message   "Import blocked: the same content was changed both locally and on the remote branch."})
       ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are disjoint
       ;; from the remote changes, so restoring them reproduces exactly the local diff vs remote. Restore +
-      ;; set-version run inside the load's transaction so a crash can't leave the dirty markers overwritten.
+      ;; finalize! run inside the load's transaction so a crash can't leave the dirty markers overwritten.
       (let [dirty-objects (capture-dirty-objects)]
         (load-snapshot! (source/specs->snapshot merged) report sync-timestamp
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
-                                     (remote-sync.task/set-version! task-id (source.p/version snapshot))))
+                                     (finalize!)))
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
@@ -597,7 +599,12 @@
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
-            finalize!             #(remote-sync.task/set-version! task-id snapshot-version)
+            da-result             (volatile! nil)
+            ;; Data apps before the version: the version write locks the task row until commit, which would
+            ;; block the heartbeat for the whole materialization.
+            finalize!             (fn []
+                                    (vreset! da-result (materialize-data-apps! snapshot))
+                                    (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
             path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
@@ -639,7 +646,7 @@
                    :outcome       {:kind "pull-skipped"}})
 
                 :else
-                (import-merged! snapshot base-snapshot task-id report sync-timestamp))
+                (import-merged! snapshot base-snapshot task-id report sync-timestamp finalize!))
 
               ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
               ;; force-deletion? is false) still block; otherwise a full reload. ---
@@ -701,17 +708,15 @@
                  :outcome {:kind "pulled"
                            :count (pulled-change-count imported-data)
                            :branch (settings/remote-sync-branch)}}))]
-        ;; Data apps ride the pull: re-materialize from the real source snapshot
-        ;; (the repo file tree under `data_apps/`), not the synthetic merged
-        ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
-        ;; how many they upserted or removed into the outcome — otherwise a
-        ;; data-app-only pull would report `pull-skipped` / `count 0`.
+        ;; Data apps rode the pull inside `finalize!`, materialized from the real source snapshot (the repo
+        ;; file tree under `data_apps/`), not the synthetic merged snapshot `load-snapshot!` sees. They're
+        ;; counted outside serdes, so fold how many they upserted or removed into the outcome — otherwise a
+        ;; data-app-only pull would report `pull-skipped` / `count 0`. Paths that skipped `finalize!` left
+        ;; no result: the version did not move, so neither did the apps.
         (if (= :success (:status result))
-          (let [da-result  (materialize-data-apps! snapshot)
-                ;; Removals count too: a pull whose only change is deleting an app
-                ;; directory upserts nothing (`:changed` 0) but still changed what
-                ;; this instance serves, so it must report as a pull, not skipped.
-                da-changed (+ (:changed da-result 0) (:removed da-result 0))]
+          ;; Removals count too: a pull whose only change is deleting an app directory upserts nothing
+          ;; (`:changed` 0) but still changed what this instance serves, so it must report as a pull, not skipped.
+          (let [da-changed (+ (:changed @da-result 0) (:removed @da-result 0))]
             (cond-> result
               (pos? da-changed) (update :outcome fold-data-app-changes da-changed)))
           result))
