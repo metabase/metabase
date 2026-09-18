@@ -30,7 +30,7 @@ You can also set the list with the [`MB_ALLOWED_IFRAME_HOSTS`](./environment-var
 
 _Admin > Settings > Domains_
 
-People can link to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md). If you don't want those images to load from just anywhere, you can restrict them to your Metabase instance plus domains you choose. You also need this on before you can turn on custom visualizations, which limits where a visualization's code can load assets from.
+People can link to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md). If you don't want those images to load from just anywhere, you can restrict them to your Metabase instance plus domains you choose. You also need image restriction on _before_ you can turn on custom visualizations, which limits where a visualization's code can load assets from.
 
 1. Turn on **Restrict image domains**.
 2. Under **Allowed domains for images**, add the domains images can load from (like `images.example.com`). Separate multiple domains with commas. Leave the list empty to only allow images hosted by your Metabase instance. See [How domain matching works](#how-domain-matching-works).
