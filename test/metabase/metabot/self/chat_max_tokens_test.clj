@@ -197,8 +197,8 @@
                        "kimi-k2.7-code"               32000}
    :mistral           {"mistral-medium-3-5"           32000
                        "mistral-medium-latest"        32000}
-   ;; served names are the operator's, so there is no table to consult: one fixed constant
-   :vllm              {"Qwen/Qwen3-32B"                4096}})
+   ;; no default cap (see vllm/vllm-request-body)
+   :vllm              {"Qwen/Qwen3-32B"              omitted}})
 
 (deftest ^:parallel chat-cap-matches-the-documented-table-test
   (testing "each surface sends the model's documented maximum, in that surface's own id spelling"
@@ -222,9 +222,9 @@
       :openrouter "z-ai/glm-5.3"             32000
       :zai        "glm-5.3"                  32000
       :moonshot   "kimi-k3"                  32000
-      :gemini     "google/gemini-3.7-flash"  32000
-      ;; 4096 is already above vLLM's floor too
-      :vllm       "Qwen/Qwen3-32B"            4096)))
+      :gemini     "google/gemini-3.7-flash"  32000))
+  (testing "vLLM still sends no cap: a floor raises a caller's cap, it never adds one"
+    (is (= omitted (cap-for :vllm "Qwen/Qwen3-32B" {:schema {:type "object"}})))))
 
 (defn- registry-models
   "The default and mini model the provider registry names for `type-name`, nils dropped: Azure has no default

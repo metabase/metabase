@@ -35,14 +35,14 @@
 ;;; vllm-request-body
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel request-body-applies-default-max-tokens-test
-  (testing "an explicit max_tokens is always sent — without one vLLM falls back to the whole remaining context window"
-    (is (= 4096
-           (:max_tokens (vllm/vllm-request-body {:model "vllm-test"
-                                                 :input [{:role :user :content "hi"}]}))))))
+(deftest ^:parallel request-body-sends-no-default-max-tokens-test
+  (testing "no max_tokens is sent without a caller cap — vLLM would subtract one from the admissible prompt"
+    (is (not (contains? (vllm/vllm-request-body {:model "vllm-test"
+                                                 :input [{:role :user :content "hi"}]})
+                        :max_tokens)))))
 
 (deftest ^:parallel request-body-caller-max-tokens-wins-test
-  (testing "a caller-supplied max-tokens is not overridden by the default"
+  (testing "a caller-supplied max-tokens is sent as-is"
     (is (= 128
            (:max_tokens (vllm/vllm-request-body {:model      "vllm-test"
                                                  :input      [{:role :user :content "hi"}]
@@ -62,7 +62,12 @@
                                                    :input       [{:role :user :content "hi"}]
                                                    :tools       [(metabot.tu/get-time-tool)]
                                                    :tool_choice "required"
-                                                   :max-tokens  128})))))))
+                                                   :max-tokens  128}))))))
+  (testing "a forced tool call with no caller cap still sends none — the floor raises a cap, it never adds one"
+    (is (not (contains? (vllm/vllm-request-body {:model  "vllm-test"
+                                                 :input  [{:role :user :content "hi"}]
+                                                 :schema {:type "object"}})
+                        :max_tokens)))))
 
 (deftest ^:parallel request-body-floor-never-lowers-a-ceiling-test
   (testing "a caller-supplied ceiling above the floor is left alone"
@@ -82,17 +87,23 @@
                                                  :max-tokens  128}))))))
 
 (deftest ^:parallel request-body-raises-max-tokens-for-a-reasoning-model-test
-  (testing "the agent path forces nothing and supplies no ceiling, so a reasoning model would otherwise get
-           the adapter's 4096 default for thinking, answer, and tool call combined"
+  (testing "a reasoning model's caller cap is raised, since thinking, answer, and tool call share one budget"
     (is (= 16384
            (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                  :input       [{:role :user :content "hi"}]
+                                                 :max-tokens  128
                                                  :credentials reasoning-credentials}))))
-    (testing "and a model the probe found does not reason keeps the default"
-      (is (= 4096
+    (testing "and a model the probe found does not reason keeps the caller's cap"
+      (is (= 128
              (:max_tokens (vllm/vllm-request-body {:model       "vllm-test"
                                                    :input       [{:role :user :content "hi"}]
-                                                   :credentials credentials})))))))
+                                                   :max-tokens  128
+                                                   :credentials credentials}))))))
+  (testing "the agent path supplies no cap, so a reasoning model is sent none either"
+    (is (not (contains? (vllm/vllm-request-body {:model       "vllm-test"
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :credentials reasoning-credentials})
+                        :max_tokens)))))
 
 (deftest ^:parallel request-body-reasoning-floor-outranks-the-forced-tool-call-floor-test
   (testing "a reasoning model has to clear its thinking before the forced call, so the higher floor wins"
