@@ -177,7 +177,7 @@ describe("scenarios > visualizations > boxplot", () => {
     });
 
     H.goalLine().should("exist");
-    H.goalLineMarker().should("exist");
+    H.goalLineMarker().should("be.visible");
   });
 
   it("should render in dashboard and support drill-through on boxes and outliers", () => {

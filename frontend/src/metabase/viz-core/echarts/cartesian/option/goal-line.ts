@@ -100,11 +100,20 @@ function buildGoalLineMarker({
   y: number;
   renderingContext: RenderingContext;
 }) {
-  const { outerRingRadius, innerRingRadius, ringWidth, hitAreaRadius } =
-    CHART_STYLE.goalLine.marker;
-  const stroke = renderingContext.getColor("text-primary");
+  const {
+    outerRingRadius,
+    innerRingRadius,
+    ringWidth,
+    backgroundRadius,
+    shadowSpread,
+    hitAreaRadius,
+  } = CHART_STYLE.goalLine.marker;
+  const iconColor = renderingContext.getColor("icon-primary");
 
-  const ring = (r: number) => ({
+  const circle = (
+    r: number,
+    style: { fill: string; stroke?: string; lineWidth?: number },
+  ) => ({
     type: "circle" as const,
     shape: { cx: xEnd, cy: y, r },
     silent: true,
@@ -113,27 +122,47 @@ function buildGoalLineMarker({
         opacity: 1,
       },
     },
-    style: {
-      fill: "none",
-      stroke,
-      lineWidth: ringWidth,
+    emphasis: {
+      style: { ...style },
     },
+    style,
   });
 
-  // Sits on top so hovering anywhere near the marker, not just on the thin
-  // rings, triggers the goal tooltip. A zero-opacity fill keeps it invisible
-  // while staying hit-testable; ECharts renders a "transparent" fill as
-  // fill="none", which receives no pointer events.
+  const shadow = circle(backgroundRadius + shadowSpread, {
+    fill: renderingContext.getColor("shadow-default"),
+  });
+  const background = circle(backgroundRadius, {
+    fill: renderingContext.getColor("background_surface-primary"),
+  });
+  const hoverBackground = {
+    ...circle(backgroundRadius, { fill: "none" }),
+    emphasis: {
+      style: {
+        fill: renderingContext.getColor("background_surface-primary-hover"),
+      },
+    },
+  };
+  const ringStyle = { fill: "none", stroke: iconColor, lineWidth: ringWidth };
+
+  // Invisible hover target. It needs a real fill at zero opacity because ECharts
+  // renders "transparent" as fill="none", which receives no pointer events.
   const hitArea = {
     type: "circle" as const,
     shape: { cx: xEnd, cy: y, r: hitAreaRadius },
     style: {
-      fill: stroke,
+      fill: iconColor,
       opacity: 0,
     },
   };
 
-  return [ring(outerRingRadius), ring(innerRingRadius), hitArea];
+  return [
+    shadow,
+    background,
+    hoverBackground,
+    circle(outerRingRadius, ringStyle),
+    circle(innerRingRadius, ringStyle),
+    hitArea,
+  ];
 }
 
 export function getGoalLineSeriesOption(
@@ -167,6 +196,7 @@ export function getGoalLineSeriesOption(
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
       const xEnd = coordSys.width + coordSys.x;
+      const lineColor = renderingContext.getColor("text-secondary");
 
       const line = {
         type: "line" as const,
@@ -183,10 +213,16 @@ export function getGoalLineSeriesOption(
             opacity: 1,
           },
         },
+        // Pinned so hovering the marker does not lighten the line.
+        emphasis: {
+          style: {
+            stroke: lineColor,
+          },
+        },
         style: {
           lineWidth: 1,
-          stroke: renderingContext.getColor("text-secondary"),
-          color: renderingContext.getColor("text-secondary"),
+          stroke: lineColor,
+          color: lineColor,
           lineDash: GOAL_LINE_DASH,
         },
       };

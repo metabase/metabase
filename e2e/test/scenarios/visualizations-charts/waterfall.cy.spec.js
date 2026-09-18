@@ -451,7 +451,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     H.goalLine().should("exist");
-    H.goalLineMarker().should("exist");
+    H.goalLineMarker().should("be.visible");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

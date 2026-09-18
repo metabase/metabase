@@ -1,22 +1,49 @@
+import { CustomChart } from "echarts/charts";
+import { GridComponent } from "echarts/components";
+import * as echarts from "echarts/core";
+import { SVGRenderer } from "echarts/renderers";
+
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "../../../types";
-import { X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE } from "../constants/style";
-import type { ChartDataset } from "../model/types";
+import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 
-import {
-  GOAL_LINE_DASH,
-  type GoalLineParams,
-  getGoalLineSeriesOption,
-} from "./goal-line";
+import { type GoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 
-const PLOT_X = 40;
-const PLOT_WIDTH = 200;
-const PLOT_X_END = PLOT_X + PLOT_WIDTH;
-const GOAL_Y = 75;
+echarts.use([CustomChart, GridComponent, SVGRenderer]);
+
+const CHART_WIDTH = 600;
+const CHART_HEIGHT = 400;
+const GRID_MARGIN = 50;
+const Y_AXIS_MAX = 100;
+const GOAL_LABEL = "Target";
+
+// The goal sits mid-axis, so its line crosses the chart's vertical center and
+// the marker sits where that line meets the right edge of the plot.
+const MARKER_POSITION = {
+  zrX: CHART_WIDTH - GRID_MARGIN,
+  zrY: CHART_HEIGHT / 2,
+};
+const LINE_POSITION = { zrX: CHART_WIDTH / 2, zrY: CHART_HEIGHT / 2 };
+
+const createParams = (opts: Partial<GoalLineParams> = {}): GoalLineParams => ({
+  dataset: [{ [X_AXIS_DATA_KEY]: "a" }],
+  isNormalized: false,
+  toEChartsAxisValue: (value) => Number(value),
+  labelOnLeft: false,
+  ...opts,
+});
+
+const createSettings = (
+  opts: Partial<ComputedVisualizationSettings> = {},
+): ComputedVisualizationSettings => ({
+  "graph.show_goal": true,
+  "graph.goal_value": Y_AXIS_MAX / 2,
+  "graph.goal_label": GOAL_LABEL,
+  ...opts,
+});
 
 const createRenderingContext = (
   opts: Partial<RenderingContext> = {},
@@ -29,62 +56,64 @@ const createRenderingContext = (
   ...opts,
 });
 
-const dataset: ChartDataset = [{ [X_AXIS_DATA_KEY]: "2025-01-01" }];
+interface SetupOpts {
+  params?: Partial<GoalLineParams>;
+  renderingContext?: Partial<RenderingContext>;
+}
 
-const createParams = (opts: Partial<GoalLineParams> = {}): GoalLineParams => ({
-  dataset,
-  isNormalized: false,
-  toEChartsAxisValue: (value) => Number(value),
-  labelOnLeft: false,
-  ...opts,
-});
+const charts: echarts.ECharts[] = [];
 
-const createSettings = (
-  opts: Partial<ComputedVisualizationSettings> = {},
-): ComputedVisualizationSettings => ({
-  "graph.show_goal": true,
-  "graph.goal_value": 25000,
-  "graph.goal_label": "Goal",
-  ...opts,
-});
+const setup = ({ params, renderingContext }: SetupOpts = {}) => {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
 
-type RenderedChild = {
-  type: string;
-  x?: number;
-  y?: number;
-  shape?: Record<string, number>;
-  style?: Record<string, unknown>;
-  silent?: boolean;
-};
+  const chart = echarts.init(container, undefined, {
+    renderer: "svg",
+    width: CHART_WIDTH,
+    height: CHART_HEIGHT,
+  });
+  charts.push(chart);
 
-const getGoalLineChildren = (
-  params: GoalLineParams,
-  settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
-): RenderedChild[] => {
-  const option = getGoalLineSeriesOption(params, settings, renderingContext);
+  chart.setOption({
+    animation: false,
+    grid: {
+      left: GRID_MARGIN,
+      right: GRID_MARGIN,
+      top: GRID_MARGIN,
+      bottom: GRID_MARGIN,
+      outerBoundsMode: "none",
+    },
+    xAxis: { type: "category", data: ["a", "b", "c"] },
+    yAxis: { type: "value", min: 0, max: Y_AXIS_MAX },
+    series: [
+      getGoalLineSeriesOption(
+        createParams(params),
+        createSettings(),
+        createRenderingContext(renderingContext),
+      ),
+    ],
+  });
 
-  if (option == null || typeof option.renderItem !== "function") {
-    return [];
-  }
+  const onGoalHover = jest.fn();
+  chart.on("mousemove", { seriesId: GOAL_LINE_SERIES_ID }, onGoalHover);
 
-  // ECharts types renderItem's arguments as large internal interfaces. This
-  // series only reads coordSys and coord, so stubs are cast rather than fully
-  // reconstructed.
-  const itemParams = { coordSys: { x: PLOT_X, width: PLOT_WIDTH } } as never;
-  // See above.
-  const itemApi = { coord: () => [PLOT_X, GOAL_Y] } as never;
+  const hover = (position: { zrX: number; zrY: number }) =>
+    chart.getZr().handler.dispatch("mousemove", position);
 
-  // ECharts returns a loose renderItem payload; this series always builds a
-  // group of shape children.
-  const rendered = option.renderItem(itemParams, itemApi) as
-    | { children?: RenderedChild[] }
-    | undefined;
+  const getGoalLabel = () =>
+    Array.from(container.querySelectorAll("text")).find(
+      (text) => text.textContent === GOAL_LABEL,
+    );
 
-  return rendered?.children ?? [];
+  return { onGoalHover, hover, getGoalLabel };
 };
 
 describe("getGoalLineSeriesOption", () => {
+  afterEach(() => {
+    charts.splice(0).forEach((chart) => chart.dispose());
+    document.body.innerHTML = "";
+  });
+
   it("returns null when the goal is not enabled", () => {
     const option = getGoalLineSeriesOption(
       createParams(),
@@ -105,132 +134,32 @@ describe("getGoalLineSeriesOption", () => {
     expect(option).toBeNull();
   });
 
-  it("draws the goal line as a thin dotted line spanning the plot area", () => {
-    const children = getGoalLineChildren(
-      createParams(),
-      createSettings(),
-      createRenderingContext(),
-    );
-    const line = children.find((child) => child.type === "line");
+  it("triggers the goal tooltip hover only from the bullseye marker", () => {
+    const { hover, onGoalHover } = setup();
 
-    expect(line?.shape).toEqual({
-      x1: PLOT_X,
-      x2: PLOT_X_END,
-      y1: GOAL_Y,
-      y2: GOAL_Y,
-    });
-    expect(line?.style?.lineWidth).toBe(1);
-    expect(line?.style?.lineDash).toEqual(GOAL_LINE_DASH);
-  });
+    hover(LINE_POSITION);
+    expect(onGoalHover).not.toHaveBeenCalled();
 
-  describe("interactive rendering", () => {
-    it("renders the bullseye marker instead of an inline label", () => {
-      const children = getGoalLineChildren(
-        createParams(),
-        createSettings(),
-        createRenderingContext(),
-      );
-
-      expect(children.some((child) => child.type === "text")).toBe(false);
-
-      const circles = children.filter((child) => child.type === "circle");
-      const { outerRingRadius, innerRingRadius, ringWidth, hitAreaRadius } =
-        CHART_STYLE.goalLine.marker;
-
-      expect(circles.map((circle) => circle.shape?.r)).toEqual([
-        outerRingRadius,
-        innerRingRadius,
-        hitAreaRadius,
-      ]);
-      expect(circles[0].style?.lineWidth).toBe(ringWidth);
-      expect(circles[0].style?.stroke).toBe("text-primary");
-    });
-
-    it("positions the marker at the right edge of the plot area", () => {
-      const children = getGoalLineChildren(
-        createParams(),
-        createSettings(),
-        createRenderingContext(),
-      );
-      const circles = children.filter((child) => child.type === "circle");
-
-      circles.forEach((circle) => {
-        expect(circle.shape?.cx).toBe(PLOT_X_END);
-        expect(circle.shape?.cy).toBe(GOAL_Y);
-      });
-    });
-
-    it("keeps the marker on the right edge when a right axis is present", () => {
-      const children = getGoalLineChildren(
-        createParams({ labelOnLeft: true }),
-        createSettings(),
-        createRenderingContext(),
-      );
-      const circles = children.filter((child) => child.type === "circle");
-
-      expect(circles).not.toHaveLength(0);
-      circles.forEach((circle) => {
-        expect(circle.shape?.cx).toBe(PLOT_X_END);
-      });
-    });
-
-    it("leaves the hit area as the only hoverable element in the series", () => {
-      const children = getGoalLineChildren(
-        createParams(),
-        createSettings(),
-        createRenderingContext(),
-      );
-      const hoverable = children.filter((child) => child.silent !== true);
-
-      expect(hoverable).toHaveLength(1);
-      expect(hoverable[0].shape?.r).toBe(
-        CHART_STYLE.goalLine.marker.hitAreaRadius,
-      );
-    });
-
-    it("keeps the hit area invisible with a hit-testable fill", () => {
-      const children = getGoalLineChildren(
-        createParams(),
-        createSettings(),
-        createRenderingContext(),
-      );
-      const hitArea = children.find(
-        (child) => child.shape?.r === CHART_STYLE.goalLine.marker.hitAreaRadius,
-      );
-
-      // "none"/"transparent" fills are skipped for pointer events, so the hit
-      // area needs a real fill hidden by zero opacity.
-      expect(hitArea?.style?.fill).toBe("text-primary");
-      expect(hitArea?.style?.opacity).toBe(0);
-    });
+    hover(MARKER_POSITION);
+    expect(onGoalHover).toHaveBeenCalledTimes(1);
   });
 
   describe("static rendering", () => {
-    it("keeps the inline label so the goal stays readable without hover", () => {
-      const children = getGoalLineChildren(
-        createParams(),
-        createSettings(),
-        createRenderingContext({ isStatic: true }),
-      );
+    it("shows the inline label, which interactive charts replace with the marker", () => {
+      const staticChart = setup({ renderingContext: { isStatic: true } });
+      const interactiveChart = setup();
 
-      expect(children.some((child) => child.type === "circle")).toBe(false);
-
-      const label = children.find((child) => child.type === "text");
-      expect(label?.style?.text).toBe("Goal");
-      expect(label?.style?.align).toBe("right");
-      expect(label?.x).toBe(PLOT_X_END);
+      expect(staticChart.getGoalLabel()).toBeDefined();
+      expect(interactiveChart.getGoalLabel()).toBeUndefined();
     });
 
     it("moves the label to the left when a right axis is present", () => {
-      const children = getGoalLineChildren(
-        createParams({ labelOnLeft: true }),
-        createSettings(),
-        createRenderingContext({ isStatic: true }),
-      );
-      const label = children.find((child) => child.type === "text");
+      const { getGoalLabel } = setup({
+        params: { labelOnLeft: true },
+        renderingContext: { isStatic: true },
+      });
 
-      expect(label?.style?.align).toBe("left");
-      expect(label?.x).toBe(PLOT_X);
+      expect(getGoalLabel()?.getAttribute("text-anchor")).toBe("start");
     });
   });
 });

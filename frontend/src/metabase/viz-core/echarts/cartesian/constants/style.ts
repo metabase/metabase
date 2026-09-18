@@ -66,11 +66,12 @@ export const CHART_STYLE = {
       size: 13,
       weight: 400,
     },
-    // Concentric bullseye rings, measured from the 16x16 design asset.
     marker: {
       outerRingRadius: 4.42,
       innerRingRadius: 1.42,
       ringWidth: 1.15,
+      backgroundRadius: 8,
+      shadowSpread: 1,
       hitAreaRadius: 8,
     },
   },

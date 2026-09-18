@@ -90,7 +90,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
       cy.log("Set the goal on timeseries question");
       H.visitQuestion(timeSeriesQuestionId);
-      H.goalLine().should("exist");
+      H.goalLineMarker().should("be.visible");
 
       cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
