@@ -1,5 +1,6 @@
 (ns metabase.server.routes.static-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.server.routes.static :as static]))
 
@@ -118,3 +119,68 @@
                     (request-with-encoding "gzip, br")
                     "static_test/app.js")]
       (is (= "Accept-Encoding" (get-in response [:headers "Vary"]))))))
+
+(def ^:private static-handler
+  (static/precompressed-resources "/" {:root "frontend_client"}))
+
+(defn- get-static
+  ([path] (get-static path nil))
+  ([path validators]
+   (static-handler {:request-method :get
+                    :uri            path
+                    :route-params   {:* (subs path 1)}
+                    :headers        (or validators {})})))
+
+(defn- etag-of [path]
+  (get-in (get-static path) [:headers "ETag"]))
+
+(deftest ^:parallel static-resource-reports-its-own-last-modified-test
+  (testing "a static resource carries the time it was modified, not the time it was served"
+    (let [response (get-static "/index_template.html")]
+      (is (= 200 (:status response)))
+      (is (some? (get-in response [:headers "Last-Modified"]))))))
+
+(deftest ^:parallel static-resource-carries-a-strong-content-etag-test
+  (testing "a static resource is validated by a strong hash of its bytes"
+    (is (re-matches #"\"[0-9a-f]{64}\"" (etag-of "/index_template.html")))))
+
+(deftest ^:parallel static-resource-answers-conditional-request-test
+  (testing "a client that already holds the resource is answered without the body"
+    (let [response (get-static "/index_template.html"
+                               {"if-none-match" (etag-of "/index_template.html")})]
+      (is (= 304 (:status response)))
+      (is (str/blank? (:body response)))))
+  (testing "a client holding different bytes is sent the resource"
+    (let [response (get-static "/index_template.html" {"if-none-match" "\"not-the-one\""})]
+      (is (= 200 (:status response)))
+      (is (some? (:body response))))))
+
+(deftest ^:parallel static-resource-never-validates-on-a-date-test
+  (testing "a date validator alone is never enough for a 304, whichever way it points"
+    (doseq [held ["Tue, 03 Jul 2001 06:00:00 GMT"
+                  "Fri, 01 Jan 2100 00:00:00 GMT"
+                  (get-in (get-static "/index_template.html") [:headers "Last-Modified"])]]
+      (testing (str "if-modified-since " held)
+        (let [response (get-static "/index_template.html" {"if-modified-since" held})]
+          (is (= 200 (:status response)))
+          (is (some? (:body response))))))))
+
+(deftest ^:parallel each-encoding-is-validated-separately-test
+  (testing "every encoding is its own representation, so each carries its own validator"
+    (let [gzipped (static/static-resource (request-with-encoding "gzip") "static_test/app.js")
+          plain   (static/static-resource {} "static_test/app.js")]
+      (is (= "gzip" (get-in gzipped [:headers "Content-Encoding"])))
+      (is (re-matches #"[0-9a-f]{64}" (::static/content-hash plain)))
+      (is (not= (::static/content-hash gzipped)
+                (::static/content-hash plain))))))
+
+(deftest ^:parallel not-modified-carries-only-cache-headers-test
+  (testing "a 304 echoes the headers that guide a cache and drops the metadata of a body it has no room for"
+    (let [served   (get-static "/index_template.html")
+          response (get-static "/index_template.html"
+                               {"if-none-match" (get-in served [:headers "ETag"])})]
+      (is (= 304 (:status response)))
+      (is (some? (get-in response [:headers "ETag"])))
+      (doseq [header ["Content-Type" "Content-Encoding" "Content-Length"]]
+        (testing header
+          (is (nil? (get-in response [:headers header]))))))))

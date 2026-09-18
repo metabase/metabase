@@ -66,3 +66,58 @@
     (testing "without the feature it still falls through, so the instance reveals nothing about data apps"
       (mt/with-premium-features #{}
         (is (nil? (serve-data-app {:uri "/embed/apps/sales"})))))))
+
+(def ^:private static-asset-path
+  "A checked-in asset under `/app` that carries no content hash, so it is served
+  `no-cache, must-revalidate` and has to be revalidated on every load."
+  "app/assets/img/browserconfig.xml")
+
+(defn- body-text
+  "The response body as text. A static resource is served as a `File` from a source
+  checkout and as an `InputStream` from a jar, and is absent altogether on a 304."
+  [body]
+  (cond
+    (nil? body)    ""
+    (string? body) body
+    :else          (slurp body)))
+
+(defn- get-static-asset
+  "Fetches a file under `/app` through the real server, so the security middleware,
+  gzip and the validator handling all take part."
+  ([] (get-static-asset 200 nil))
+  ([expected-status validators]
+   (binding [client/*url-prefix* ""]
+     (client/client-full-response
+      :get expected-status static-asset-path
+      {:request-options {:headers (or validators {})}}))))
+
+(deftest static-asset-revalidation-test
+  (testing "an unhashed static asset is revalidated rather than cached outright"
+    (let [response (get-static-asset)]
+      (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+             (get-in response [:headers "Cache-Control"])))
+      (testing "and is validated by a strong hash of its bytes"
+        (let [etag (get-in response [:headers "ETag"])]
+          (is (re-matches #"\"[0-9a-f]{64}\"" etag))
+          (testing "so a client that already holds it gets a body-less 304"
+            (let [not-modified (get-static-asset 304 {"if-none-match" etag})]
+              (is (= 304 (:status not-modified)))
+              (is (str/blank? (body-text (:body not-modified))))
+              (testing "carrying the validator and the directives a cache needs"
+                (is (= etag (get-in not-modified [:headers "ETag"])))
+                (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+                       (get-in not-modified [:headers "Cache-Control"]))))))
+          (testing "while a client holding different bytes is sent the file"
+            (let [stale (get-static-asset 200 {"if-none-match" "\"not-the-one\""})]
+              (is (= 200 (:status stale)))
+              (is (not (str/blank? (body-text (:body stale))))))))))))
+
+(deftest static-asset-is-never-validated-by-date-test
+  (testing "a date validator alone never produces a 304, so a downgrade replaces the client's copy"
+    (let [served (get-in (get-static-asset) [:headers "Last-Modified"])]
+      (is (some? served) "the header stays on the response")
+      (doseq [held [served "Fri, 01 Jan 2100 00:00:00 GMT"]]
+        (testing (str "if-modified-since " held)
+          (let [response (get-static-asset 200 {"if-modified-since" held})]
+            (is (= 200 (:status response)))
+            (is (not (str/blank? (body-text (:body response)))))))))))

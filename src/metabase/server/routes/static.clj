@@ -5,9 +5,13 @@
    instead of compressing on the fly. This avoids CPU overhead at request time
    and lets us use higher compression levels during the build."
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :as compojure]
+   [metabase.server.lib.etag-cache :as lib.etag-cache]
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
@@ -68,6 +72,19 @@
   [resource-path encoding]
   (str resource-path (encoding->extension encoding)))
 
+(defn- content-hash
+  "A hash of the bytes of one variant on the classpath.
+
+   Each encoding is a separate representation and so needs its own validator,
+   which hashing the bytes we actually send gives us for free."
+  [variant-path]
+  (with-open [stream (io/input-stream (io/resource variant-path))]
+    (codecs/bytes->hex (buddy-hash/sha256 stream))))
+
+(def ^:private variant-hash
+  "Static resources cannot change while the process runs, so each is hashed once."
+  (memoize content-hash))
+
 (defn- compressed-resource
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
    response map if a compressed variant exists and the client accepts it,
@@ -76,10 +93,14 @@
    If encoding is :identity, we don't compress at all and serve the raw resource."
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
-    (some-> (response/resource-response (compressed-path resource-path encoding))
-            (response/content-type (mime/ext-mime-type resource-path))
-            (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
-            (assoc-in [:headers "Vary"] "Accept-Encoding"))))
+    (let [variant-path (compressed-path resource-path encoding)]
+      ;; `resource-response` not returning nil is what proves the path resolves, so only
+      ;; a real file ever reaches `variant-hash` and grows its memo.
+      (some-> (response/resource-response variant-path)
+              (response/content-type (mime/ext-mime-type resource-path))
+              (assoc-in [:headers "Content-Encoding"] (encoding->header encoding))
+              (assoc-in [:headers "Vary"] "Accept-Encoding")
+              (assoc ::content-hash (variant-hash variant-path))))))
 
 (defn static-resource
   "Serve a static resource, preferring pre-compressed variants when available."
@@ -91,12 +112,38 @@
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
 
+(defn- wrap-etag-validation
+  "Answers a 304 for a client whose `If-None-Match` names the bytes we would send.
+
+   The validator is the content hash and is compared for equality, so the answer
+   holds however the versions move. `If-Modified-Since` is deliberately not
+   consulted: it is compared as an ordered date, which also answers 304 when the
+   client holds a copy newer than the file on disk, and a downgraded instance
+   serves exactly that. The `Last-Modified` header stays on the response because
+   dropping it makes the security middleware substitute the time of the response."
+  [handler]
+  (letfn [(answer [response request]
+            (if-let [etag (::content-hash response)]
+              (lib.etag-cache/with-etag response request {:etag etag})
+              response))]
+    (fn
+      ([request]
+       (answer (handler request) request))
+      ([request respond raise]
+       (handler request (fn [response] (respond (answer response request))) raise)))))
+
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
    pre-compressed (.br, .gz) variants when the client supports them.
-   Drop-in replacement for `compojure.route/resources`."
+   Drop-in replacement for `compojure.route/resources`.
+
+   A resource the client already holds is answered with a 304 rather than its
+   whole body. Everything under `/app` that carries no content hash is served
+   `no-cache, must-revalidate`, which obliges the client to ask every time;
+   without this it has to be sent the file every time as well."
   [path {root :root}]
-  (compojure/GET (add-wildcard path) request
-    (let [{{request-path :*} :route-params} request
-          resource-path (str root "/" request-path)]
-      (static-resource request resource-path))))
+  (wrap-etag-validation
+   (compojure/GET (add-wildcard path) request
+     (let [{{request-path :*} :route-params} request
+           resource-path (str root "/" request-path)]
+       (static-resource request resource-path)))))
