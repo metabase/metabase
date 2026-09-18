@@ -122,6 +122,7 @@ const init = async () => {
     await runCypress({
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       testingType: "component",
+      ...userOverrides,
     });
   }
 
