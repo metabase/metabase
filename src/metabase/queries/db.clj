@@ -10,6 +10,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
@@ -166,6 +167,12 @@
                         [:in :card_id card-ids]]
              :group-by [:card_id]}))
 
+(defn card-dashboards
+  "The Dashboards `card` appears in, hydrating `:in_dashboards` unless it is already present."
+  [card]
+  (or (:in_dashboards card)
+      (:in_dashboards (t2/hydrate card :in_dashboards))))
+
 (mu/defn dashboards-for-cards
   "Rows of `:card_id` plus Dashboard columns for every Dashboard each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -215,14 +222,14 @@
                          [:table.name :table-name]
                          [:table.db_id :field-db-id]]
              :from      [[:metabase_field :field]]
-             :left-join [[:metabase_table :table]
+             :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                          [:= :field.table_id :table.id]]
              :where     [:in :field.id field-ids]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
+  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."

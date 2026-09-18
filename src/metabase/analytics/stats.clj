@@ -18,7 +18,6 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.lib-be.core :as lib-be]
-   [metabase.models.humanization :as humanization]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.session.settings :as session.settings]
    [metabase.settings.core :as setting]
@@ -124,17 +123,20 @@
    :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
-   :friendly_names                       (= (humanization/humanization-strategy) "advanced")
+   :friendly_names                       (= (setting/get :humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (setting/get :slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (analytics.db/sample-database-exists?)
    :enable_embedding                     (setting/get :enable-embedding)
-   :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
-   :enable_embedding_simple              (setting/get :enable-embedding-simple)
+   ;; Modular embedding, the SDK and guest embeds are one setting since 0.65.0. The three field names are kept so
+   ;; existing reports keep resolving; they now all report that one flag.
+   :enable_embedding_sdk                 (setting/get :enable-embedding-modular)
+   :enable_embedding_simple              (setting/get :enable-embedding-modular)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
-   :enable_embedding_static              (setting/get :enable-embedding-static)
+   :enable_embedding_static              (setting/get :enable-embedding-modular)
+   :enable_embedding_modular             (setting/get :enable-embedding-modular)
    :embedding_app_origin_set             (boolean
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
@@ -711,7 +713,7 @@
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (setting/get :enable-embedding-static)
+                (setting/get :enable-embedding-modular)
                 (or
                  (analytics.db/embedded-dashboard-exists?)
                  (analytics.db/embedded-card-exists?)))}
@@ -791,7 +793,7 @@
     :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
-    :enabled   (setting/get :enable-embedding-sdk)}
+    :enabled   (setting/get :enable-embedding-modular)}
    {:name      :tenants
     :enabled   (setting/get :use-tenants)
     :available (premium-features/enable-tenants?)}

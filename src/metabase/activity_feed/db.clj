@@ -8,6 +8,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn recent-cards
@@ -40,7 +41,8 @@
               :display_name [:metabase_database.initial_sync_status :initial-sync-status]
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
-             {:where     [:in :metabase_table.id ids]
+             {:from [(warehouse-schema-overlay/table-query)]
+              :where     [:in :metabase_table.id ids]
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
 (mu/defn recent-dashboard-and-table-views
@@ -65,7 +67,7 @@
                           [:and
                            [:= :model "dashboard"]
                            [:= :d.id :model_id]]
-                          [:metabase_table :t]
+                          (warehouse-schema-overlay/table-query {:alias :t})
                           [:and
                            [:= :model "table"]
                            [:= :t.id :model_id]]]}))
@@ -97,7 +99,7 @@
 (mu/defn table-exists?
   "Whether a Table with `id` exists."
   [id :- ::lib.schema.id/table]
-  (t2/exists? :model/Table :id id))
+  (t2/exists? :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection-exists?
   "Whether a Collection with `id` exists."
@@ -117,7 +119,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id id))
+  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection
   "The Collection with `id`, or nil."
@@ -278,7 +280,7 @@
                        [:db.name :database-name]
                        [:db.id :db_id]
                        [:db.initial_sync_status :initial-sync-status]]
-              :from [[:metabase_table :t]]
+              :from [(warehouse-schema-overlay/table-query {:alias :t})]
               :where [:and
                       [:or
                        [:= :visibility_type nil]

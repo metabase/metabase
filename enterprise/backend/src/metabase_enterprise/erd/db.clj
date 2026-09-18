@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
@@ -22,7 +23,8 @@
    opts        :- [:maybe ActiveTablesOpts]]
   (let [{:keys [table-ids schema]} opts]
     (t2/select :model/Table
-               {:select columns
+               {:from [(warehouse-schema-overlay/table-query)]
+                :select columns
                 :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
                           (contains? opts :table-ids) (conj [:in :id table-ids])
                           (contains? opts :schema)     (conj (if (= schema "")
@@ -32,7 +34,8 @@
 (mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field {:where    [:and
+  (t2/select :model/Field {:from     [(warehouse-schema-overlay/field-query)]
+                           :where    [:and
                                       [:in :table_id table-ids]
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
@@ -40,6 +43,7 @@
 (mu/defn active-fields
   "The active Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
-  (t2/select :model/Field {:where [:and
+  (t2/select :model/Field {:from  [(warehouse-schema-overlay/field-query)]
+                           :where [:and
                                    [:in :id field-ids]
                                    [:= :active true]]}))

@@ -10,6 +10,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn active-field-counts-by-table
@@ -64,7 +65,7 @@
   [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
-             :db_id  [:not= audit-database-id]))
+             :db_id  [:not= audit-database-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."

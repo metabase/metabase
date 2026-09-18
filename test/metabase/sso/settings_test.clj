@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap-test-util :as ldap.test]
+   [metabase.sso.ldap.settings :as sso.ldap.settings]
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]))
 
@@ -13,12 +14,12 @@
         (mt/with-dynamic-fn-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Unable to connect to LDAP server"
-                                (sso.settings/ldap-enabled! true))))
+                                (sso.ldap.settings/ldap-enabled! true))))
         (mt/with-dynamic-fn-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
-          (sso.settings/ldap-enabled! true)
-          (is (sso.settings/ldap-enabled))
-          (sso.settings/ldap-enabled! false)
-          (is (not (sso.settings/ldap-enabled))))))))
+          (sso.ldap.settings/ldap-enabled! true)
+          (is (sso.ldap.settings/ldap-enabled))
+          (sso.ldap.settings/ldap-enabled! false)
+          (is (not (sso.ldap.settings/ldap-enabled))))))))
 
 (deftest ^:parallel send-new-sso-user-admin-email?-test
   (is ((some-fn nil? boolean?) (sso.settings/send-new-sso-user-admin-email?))

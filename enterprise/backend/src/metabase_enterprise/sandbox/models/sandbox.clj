@@ -20,6 +20,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -46,7 +47,7 @@
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
   (into {} (for [col (request/as-admin
-                       ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
+                       (qp.preprocess/query->expected-cols
                         {:database (database/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]

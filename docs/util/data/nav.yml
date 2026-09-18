@@ -177,6 +177,8 @@ categories:
 
   - name: "Data modeling"
     pages:
+      - name: "Overview"
+        url: "data-modeling/start"
       - name: "Data studio"
         url: "data-modeling/data-studio"
       - name: "Transforms"

@@ -119,15 +119,17 @@
 
 (mu/defn insert-session!
   "Insert a Session and return the inserted instance."
-  [session-id        :- :string
-   user-id           :- ::lib.schema.id/user
-   auth-identity-id  :- [:maybe ms/PositiveInt]
-   session-key       :- :string
-   expires-at        :- [:maybe ms/TemporalInstant]]
+  [session-id           :- :string
+   user-id              :- ::lib.schema.id/user
+   auth-identity-id     :- [:maybe ms/PositiveInt]
+   session-key          :- :string
+   expires-at           :- [:maybe ms/TemporalInstant]
+   mfa-auth-identity-id :- [:maybe ms/PositiveInt]]
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
                                  :user_id user-id
                                  :auth_identity_id auth-identity-id
                                  :session_key session-key
-                                 :expires_at expires-at))
+                                 :expires_at expires-at
+                                 :mfa_auth_identity_id mfa-auth-identity-id))

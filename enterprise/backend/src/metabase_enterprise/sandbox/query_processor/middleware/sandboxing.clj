@@ -24,8 +24,10 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -148,15 +150,14 @@
   (try
     (lib/without-cleaning
      (fn []
-       (let [preprocess (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-         (request/as-admin
-           ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
-           ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
-           ;; append an extra dummy stage before preprocessing and then toss it when we're done.
-           (-> query
-               lib/append-stage
-               preprocess
-               (update :stages pop))))))
+       (request/as-admin
+         ;; preprocessing normally loses metadata attached to the last stage, since legacy MBQL syntax does not
+         ;; support it and preprocessing roundtrips to legacy and back a few times... to make sure it's preserved,
+         ;; append an extra dummy stage before preprocessing and then toss it when we're done.
+         (-> query
+             lib/append-stage
+             qp.preprocess/preprocess
+             (update :stages pop)))))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing query when applying Sandbox: {0}" (ex-message e))
                       {:query query}
@@ -204,8 +205,7 @@
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
-            ((requiring-resolve 'metabase.query-processor/process-query)
-             query)))]
+            (qp/process-query query)))]
     (when-not (= (:status result) :completed)
       (throw (ex-info "Error running query to determine metadata"
                       {:query query, :result result})))

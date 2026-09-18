@@ -234,11 +234,14 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
@@ -246,6 +249,7 @@ function CartesianChartInner(props: VisualizationProps) {
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
+        chartHeight={chartSize.height || undefined}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

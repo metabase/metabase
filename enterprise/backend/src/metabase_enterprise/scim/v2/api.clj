@@ -144,14 +144,20 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- hidden-group-ids
+  "IDs of the groups SCIM never exposes or manages: the static Administrators and All Users groups, and the groups
+  data apps own (see [[perms/data-app-group-ids]])."
+  []
+  (into [(:id (perms/all-users-group)) (:id (perms/admin-group))]
+        (perms/data-app-group-ids)))
+
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
   "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (scim.db/user-group-memberships (map u/the-id users)
-                                                                                  [(:id (perms/all-users-group))
-                                                                                   (:id (perms/admin-group))]))
+                                                                                  (hidden-group-ids)))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -372,9 +378,9 @@
 
 (mu/defn ^:private get-group-by-entity-id
   "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static and cannot be managed via SCIM."
+  static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
   [entity-id]
-  (or (scim.db/scim-group-by-entity-id entity-id [(:id (perms/all-users-group)) (:id (perms/admin-group))])
+  (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -417,7 +423,7 @@
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
-          excluded-ids   [(:id perms/all-users-group) (:id perms/admin-group)]
+          excluded-ids   (hidden-group-ids)
           group-name     (when filter-param (group-filter-name filter-param))
           groups         (scim.db/scim-groups excluded-ids group-name limit offset)
           results-count  (count groups)

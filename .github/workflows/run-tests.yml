@@ -54,9 +54,13 @@ jobs:
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_infra: ${{ steps.changes.outputs.e2e_infra }}
       backend_all: ${{ steps.changes.outputs.backend_all }}
+      build_scripts: ${{ steps.changes.outputs.build_scripts }}
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
+      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -148,9 +152,29 @@ jobs:
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.outputs.no_source_code_changes != 'true')
     uses: ./.github/workflows/uberjar.yml
-    with:
-      containerize: ${{ (github.event_name == 'push' && github.ref_name == 'master') || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar') }}
     secrets: inherit
+
+  containerize:
+    needs: [uberjar]
+    if: >-
+      !cancelled() &&
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && github.ref_name == 'master') ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    name: containerize (${{ matrix.edition }})
+    strategy:
+      matrix:
+        edition: ['ee', 'oss']
+    uses: ./.github/workflows/containerize-jar.yml
+    secrets: inherit
+    with:
+      build-args: |
+        GIT_COMMIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      edition: ${{ matrix.edition }}
+      release: false
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
@@ -287,6 +311,20 @@ jobs:
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.custom_viz_all != 'true' }}
 
+  loki-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/loki.yml
+    with:
+      skip: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_ci != 'true' &&
+        needs.files-changed.outputs.frontend_sources != 'true' &&
+        needs.files-changed.outputs.frontend_loki_ci != 'true' }}
+
   e2e-tests:
     needs: [should-run, files-changed, uberjar]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
@@ -360,6 +398,22 @@ jobs:
         ${{ needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
+  build-scripts-tests:
+    needs: [should-run, files-changed]
+    if: |
+      !cancelled() &&
+      (needs.should-run.outputs.verdict == 'force-run' ||
+      needs.files-changed.result == 'success')
+    uses: ./.github/workflows/build-scripts.yml
+    secrets: inherit
+    with:
+      skip-build-scripts: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true' }}
+      skip-embedder-plugin: >-
+        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true' }}
+
   bundle-size:
     needs: [uberjar, files-changed]
     if: |
@@ -369,50 +423,3 @@ jobs:
       needs.files-changed.outputs.frontend_sources == 'true'
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
-
-  pr-env:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') &&
-      !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: false
-
-  pr-env-self-hosting:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: true
-      analytics_dev_mode: false
-
-  pr-env-analytics-dev:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: true
-
-  pr-env-stats-dump:
-    needs: [uberjar]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
-    with:
-      self_hosting: false
-      analytics_dev_mode: false
-      stats_dump: true

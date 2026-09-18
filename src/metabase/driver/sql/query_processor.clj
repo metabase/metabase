@@ -12,6 +12,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.driver.sql.query-processor.format :as sql.qp.format]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
@@ -26,12 +27,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? get-in mapv not-empty select-keys some]]
+   [potemkin :as p]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util UUID)))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [sql.qp.format
+  format-honeysql
+  quote-style])
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
@@ -527,22 +534,6 @@
                         (-> (h2x/+ (mod-fn shifted (inline-num 7)) (inline-num 1))
                             (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
                                                              "integer")))))))
-
-(defmulti quote-style
-  "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
-  valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
-  [[metabase.util.honey-sql-2]]; like `:ansi`, but uppercases the result). Check [[honey.sql/dialects]] for all
-  available dialects, or register a custom one with [[honey.sql/register-dialect!]].
-
-    (honey.sql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
-
-  (The name of this method reflects Honey SQL 1 terminology, where \"dialect\" was called \"quote style\". To avoid
-  needless churn, I haven't changed it yet. -- Cam)"
-  {:added "0.32.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod quote-style :sql [_] :ansi)
 
 (defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
@@ -2064,39 +2055,6 @@
   ;; then sort any unknown clauses by name.
   (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
            (keys inner-query)))
-
-(defn- format-honeysql-2 [driver dialect honeysql-form]
-  ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
-  (binding [driver/*driver* driver]
-    (sql/format honeysql-form {:dialect      dialect
-                               :quoted       true
-                               :quoted-snake false
-                               :inline       driver/*compile-with-inline-parameters*
-                               ;; Enable :nested when we want to compile just one particular snippet.
-                               :nested (not (map? honeysql-form))})))
-
-(defmulti format-honeysql
-  "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a
-  multimethod in 0.51.0 to support drivers that need to always
-  specify [[metabase.driver/*compile-with-inline-parameters*]]."
-  {:arglists '([driver honeysql-form]), :added "0.51.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod format-honeysql :sql
-  [driver honeysql-form]
-  (let [dialect (quote-style driver)]
-    (try
-      (format-honeysql-2 driver dialect honeysql-form)
-      (catch Throwable e
-        (try
-          (log/error (u/format-color :red "Invalid HoneySQL form: %s" (ex-message e)))
-          (finally
-            (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
-                            {:dialect dialect
-                             :form    honeysql-form
-                             :type    driver-api/qp.error-type.driver}
-                            e))))))))
 
 (defn- default-select [driver {[from] :from, :as _honeysql-form}]
   (let [table-identifier (if (sequential? from)

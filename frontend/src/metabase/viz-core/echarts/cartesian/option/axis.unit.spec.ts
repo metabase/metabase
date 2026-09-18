@@ -169,6 +169,7 @@ describe("responsive Y-axis ticks", () => {
               dataKey: "trend",
               name: "Trend",
               color: "brand",
+              style: "solid",
               visible: true,
               column: axisModel.column,
               columnIndex: 1,

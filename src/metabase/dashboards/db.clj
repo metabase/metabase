@@ -25,9 +25,14 @@
   (t2/insert-returning-instance! :model/Dashboard row))
 
 (mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
+  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated.
+
+  Takes the whole `::dashboard.update` — \"what an update (or insert) of a Dashboard accepts\" — the same
+  schema [[insert-dashboard!]] takes. It was narrowed to `[:parameters]` when the only caller wrote nothing
+  else; `metabase.dashboards.write/update-dashboard!` writes the full attribute set (`:name`, `:description`,
+  `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:parameters])]
+   changes      :- ::dashboards.schema/dashboard.update]
   (t2/update! :model/Dashboard dashboard-id changes))
 
 (mu/defn delete-dashboard-revisions!
@@ -132,6 +137,20 @@
   [row :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card row))
 
+(defn dashboard-question-exists?
+  "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
+  [dashboard-id]
+  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
+
+(defn card-internal-to-other-dashboard?
+  "Is any Card among `card-ids` saved inside a dashboard other than the one with `dashboard-id`?"
+  [dashboard-id card-ids]
+  (t2/exists? :model/Card
+              {:where [:and
+                       [:not= :dashboard_id dashboard-id]
+                       [:not= :dashboard_id nil]
+                       [:in :id card-ids]]}))
+
 (mu/defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
   `dashboard-id`."
@@ -214,6 +233,45 @@
   [rows :- [:sequential
             (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
   (t2/insert! :model/DashboardCardSeries rows))
+
+(defn parameter-card-card-ids
+  "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/ParameterCard
+                    :parameterized_object_type "dashboard"
+                    :parameterized_object_id   dashboard-id))
+
+(defn dashcard-card-ids
+  "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-series-card-ids
+  "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                    {:where [:in :dashboardcard_id
+                             ^:allow-subquery {:select [:id]
+                                               :from   [(t2/table-name :model/DashboardCard)]
+                                               :where  [:= :dashboard_id dashboard-id]}]}))
+
+(defn dashcard-action-ids
+  "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-parameter-mappings
+  "A map of DashboardCard id to parameter mappings for the DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id]
+  (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id))
+
+(defn dashcard-card-ids-by-dashcard-id
+  "A map of DashboardCard id to Card id for the DashboardCards with `dashcard-ids` on the Dashboard with
+  `dashboard-id`."
+  [dashboard-id dashcard-ids]
+  (t2/select-pk->fn :card_id :model/DashboardCard
+                    :dashboard_id dashboard-id
+                    :id           [:in dashcard-ids]))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

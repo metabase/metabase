@@ -23,8 +23,9 @@
    [toucan2.core :as t2]))
 
 (def ^:private type->model
-  {"document"    :model/Document
-   "exploration" :model/Exploration})
+  ;; While explorations are disabled, leaving the type out rejects exploration targets, since [[TargetType]] derives
+  ;; from these keys.
+  {"document" :model/Document})
 
 (def ^:private TargetType
   "Malli enum of valid comment target types, derived from [[type->model]]."

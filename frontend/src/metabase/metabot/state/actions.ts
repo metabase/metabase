@@ -16,7 +16,6 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -42,6 +41,7 @@ import {
   type MetabotProfileId,
   isHistoryEnabledProfile,
 } from "../constants";
+import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
 
 import { metabot } from "./reducer";
 import {
@@ -285,7 +285,7 @@ export const executeSlashCommand = createAsyncThunk<
         );
       })
       .otherwise(() => {
-        const handled = PLUGIN_AUDIT.handleMetabotSlashCommand({
+        const handled = PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand({
           command,
           conversationId,
           dispatch,

@@ -1,5 +1,6 @@
 import Color from "color";
 
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -34,6 +35,33 @@ import type {
 type TrendFn = (days: number) => number;
 
 const getTrendKeyForSeries = (dataKey: DataKey) => `${dataKey}_trend`;
+
+const getTrendLineColor = (
+  seriesModel: SeriesModel,
+  customColor: string | undefined,
+  renderingContext: RenderingContext,
+) => {
+  if (customColor != null) {
+    return renderingContext.getColor(customColor);
+  }
+
+  return deriveChartShadeColor(
+    Color(renderingContext.getColor(seriesModel.color)).hex(),
+  );
+};
+
+const getTrendLineCustomization = (
+  seriesModel: SeriesModel,
+  settings: ComputedVisualizationSettings,
+) => {
+  const seriesSettings = settings.series?.(
+    seriesModel.legacySeriesSettingsObjectKey,
+  );
+  return {
+    customColor: seriesSettings?.["trendline.color"],
+    style: seriesSettings?.["trendline.style"] ?? "solid",
+  };
+};
 
 const getSeriesModelsWithTrends = (
   rawSeries: RawSeries,
@@ -168,17 +196,23 @@ export const getTrendLines = (
   });
 
   const trendSeriesModels: TrendLineSeriesModel[] = seriesModelsWithTrends.map(
-    ([seriesModel]) => ({
-      dataKey: getTrendKeyForSeries(seriesModel.dataKey),
-      sourceDataKey: seriesModel.dataKey,
-      name: `${seriesModel.name}; trend line`, // not used in UI
-      color: Color(renderingContext.getColor(seriesModel.color))
-        .lighten(0.25)
-        .hex(),
-      visible: true,
-      column: seriesModel.column,
-      columnIndex: seriesModel.columnIndex,
-    }),
+    ([seriesModel]) => {
+      const { customColor, style } = getTrendLineCustomization(
+        seriesModel,
+        settings,
+      );
+
+      return {
+        dataKey: getTrendKeyForSeries(seriesModel.dataKey),
+        sourceDataKey: seriesModel.dataKey,
+        name: `${seriesModel.name}; trend line`, // not used in UI
+        color: getTrendLineColor(seriesModel, customColor, renderingContext),
+        style,
+        visible: true,
+        column: seriesModel.column,
+        columnIndex: seriesModel.columnIndex,
+      };
+    },
   );
   const dataKeys = trendSeriesModels.map((seriesModel) => seriesModel.dataKey);
 

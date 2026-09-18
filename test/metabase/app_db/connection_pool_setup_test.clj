@@ -179,6 +179,29 @@
       (is (= 99 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                      "unreturnedConnectionTimeout"))))))
 
+(defn- mock-data-source
+  "A `javax.sql.DataSource` whose `.getConnection` calls `f` and expects it to return a `java.sql.Connection`
+  (typically a no-op `reify` in these tests)."
+  ^javax.sql.DataSource [f]
+  (reify javax.sql.DataSource
+    (getConnection [_] (f))))
+
+(deftest prime-pool!-test
+  (testing "returns true when the data source hands out a connection within the timeout"
+    (let [ds (mock-data-source #(reify java.sql.Connection (close [_])))]
+      (is (true? (#'mdb.connection-pool-setup/prime-pool! ds 5000)))))
+  (testing "returns false when getConnection blocks past the timeout, and does not wait for it"
+    ;; Regression guard for #81440: without a wall-clock bound on the priming acquire, a wedged pool would hang
+    ;; startup for the full checkoutTimeout (30s by default).
+    (let [ds     (mock-data-source (fn []
+                                     (Thread/sleep 60000)
+                                     (throw (RuntimeException. "should have been interrupted"))))
+          timer  (u/start-timer)
+          result (#'mdb.connection-pool-setup/prime-pool! ds 100)]
+      (is (false? result))
+      (is (< (u/since-ms timer) 1000)
+          "prime-pool! must return within a small multiple of the timeout, not wait for getConnection"))))
+
 (deftest reset-read-only-test
   (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
     (when (= (app-db/db-type) :postgres)

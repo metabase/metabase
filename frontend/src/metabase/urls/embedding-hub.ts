@@ -1,0 +1,35 @@
+export const EMBEDDING_HUB_ROOT_PATH = "embedding";
+
+const ROOT_URL = `/${EMBEDDING_HUB_ROOT_PATH}`;
+
+export function embeddingHub() {
+  return ROOT_URL;
+}
+
+export function embeddingHubGetStarted() {
+  return `${ROOT_URL}/get-started`;
+}
+
+export function embeddingHubSecurity() {
+  return `${ROOT_URL}/security`;
+}
+
+export function embeddingHubAuthentication() {
+  return `${ROOT_URL}/authentication`;
+}
+
+export function embeddingHubPermissions() {
+  return `${ROOT_URL}/permissions`;
+}
+
+export function embeddingHubTenancy() {
+  return `${ROOT_URL}/tenancy`;
+}
+
+export function embeddingHubAppearance() {
+  return `${ROOT_URL}/appearance`;
+}
+
+export function embeddingHubLocalization() {
+  return `${ROOT_URL}/localization`;
+}

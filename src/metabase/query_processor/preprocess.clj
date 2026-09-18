@@ -30,7 +30,7 @@
    [metabase.query-processor.middleware.normalize-query :as normalize]
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.permissions.preprocess :as qp.perms.preprocess]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
    [metabase.query-processor.middleware.prefetch-metadata :as prefetch-metadata]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
@@ -60,8 +60,8 @@
   All of these middlewares assume MBQL 5."
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'normalize/normalize-preprocessing-middleware
-   #'qp.perms/remove-internal-keys
-   #'qp.perms/record-referenced-card-ids
+   #'qp.perms.preprocess/remove-internal-keys
+   #'qp.perms.preprocess/record-referenced-card-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'prefetch-metadata/prefetch-metadata

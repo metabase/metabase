@@ -8,8 +8,10 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -559,6 +561,80 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest adhoc-viewing-context-virtual-database-id-gates-real-database-test
+  (let [viewing (fn [card-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database -1337
+                                              :type     "query"
+                                              :query    {:source-table (str "card__" card-id)}}}]})]
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Card     {card-id :id} {:database_id   db-id
+                                                  :dataset_query {:database db-id
+                                                                  :type     :query
+                                                                  :query    {:source-table table-id}}}]
+      (testing "the -1337 virtual database id is gated on the source card's real database"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing card-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out (str "card__" card-id))))))))
+      (testing "and still renders for a user who can read that database"
+        (mt/with-test-user :crowberto
+          (let [out (user-context/format-viewing-context (viewing card-id))]
+            (is (str/includes? out "notebook editor"))
+            (is (re-find #"source-card|card__" out))))))))
+
+(deftest format-transform-source-denied-database-withholds-query-test
+  (testing "a transform source over a database the user cannot read renders no query body"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (let [source {:type  "query"
+                        :query {:database db-id
+                                :type     :native
+                                :native   {:query "SELECT secret FROM t"}}}
+                text   (user-context/format-transform-source
+                        (assoc source :transform-source-type :native))]
+            (is (not (str/includes? (str text) "SELECT secret")))))))))
+
+(defn- refusing-store
+  "A ContentStore that records `tag` and refuses, the way the real stores do for a row the
+  current user cannot read. Swapped in for both so a test can tell which one a caller picked."
+  [tag recorded]
+  (let [refuse (fn [] (swap! recorded conj tag) (throw (ex-info "Forbidden" {:status-code 403})))]
+    (reify resolve.mp/ContentStore
+      (card-by-entity-id    [_ _] (refuse))
+      (measure-by-entity-id [_ _] (refuse))
+      (segment-by-entity-id [_ _] (refuse))
+      (card-by-id           [_ _] (refuse))
+      (measure-by-id        [_ _] (refuse))
+      (segment-by-id        [_ _] (refuse)))))
+
+(deftest adhoc-viewing-context-exports-through-the-audited-store-test
+  (testing "a client-supplied query is exported through the audited store, and a refusal inside it withholds the query"
+    (let [mp         (mt/metadata-provider)
+          definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                      :definition definition}]
+        ;; The gate never looks at segments, so the query clears it and the segment ref is
+        ;; resolved by whichever store the caller handed the export - the choice under test.
+        ;; A source-card query would be refused by the gate first, whichever store was passed.
+        (let [used (atom [])]
+          (with-redefs [shared.content-store/audited-store (refusing-store :audited used)
+                        shared.content-store/default-store (refusing-store :default used)]
+            (mt/with-test-user :rasta
+              (let [out (user-context/format-viewing-context
+                         {:user_is_viewing [{:type  "adhoc"
+                                             :query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)
+                                                                :filter       [:segment segment-id]}}}]})]
+                (is (= [:audited] (distinct @used)))
+                (is (str/includes? out "notebook editor"))
+                (is (not (str/includes? out "Query")))))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

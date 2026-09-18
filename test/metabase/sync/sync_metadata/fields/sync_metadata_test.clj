@@ -6,6 +6,7 @@
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
@@ -300,28 +301,31 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (is (= [["FieldUserSettings"
-             1
-             {:effective_type      :type/Text
-              :coercion_strategy   nil
-              :semantic_type       nil}]
-            ["Field"
-             1
-             {:base_type           :type/Text
-              :effective_type      :type/Text
-              :coercion_strategy   nil
-              :fingerprint_version 0
-              :fingerprint         nil
-              :semantic_type       nil}]]
-           (updates-that-will-be-performed!
-            (merge default-metadata
-                   {:id             1
-                    :base-type      :type/Text
-                    :effective-type :type/Text})
-            (merge default-metadata
-                   {:id             1
-                    :base-type      :type/Integer
-                    :effective-type :type/Integer}))))
+    (mt/with-temp [:model/Field {field-id :id} {}]
+      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (is (= [["FieldUserSettings"
+               field-id
+               {:effective_type    nil
+                :coercion_strategy nil
+                :semantic_type     nil
+                :semantic_type_set false}]
+              ["Field"
+               field-id
+               {:base_type           :type/Text
+                :effective_type      :type/Text
+                :coercion_strategy   nil
+                :fingerprint_version 0
+                :fingerprint         nil
+                :semantic_type       nil}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:id             field-id
+                      :base-type      :type/Text
+                      :effective-type :type/Text})
+              (merge default-metadata
+                     {:id             field-id
+                      :base-type      :type/Integer
+                      :effective-type :type/Integer})))))
     (testing "and sync will re-fingerprint and analyze this field"
       (mt/with-temp-test-data [["table"
                                 [{:field-name "field"
@@ -443,16 +447,18 @@
            heal effective_type to match base_type. This catches drifted state from older
            Metabase versions that the customer's instance carries forward."
     (testing "broken row gets healed even when base_type does not change"
-      (is (= [["FieldUserSettings" 1 {:effective_type :type/Number}]
-              ["Field" 1 {:effective_type :type/Number}]]
-             (updates-that-will-be-performed!
-              (merge default-metadata
-                     {:base-type :type/Number})
-              (merge default-metadata
-                     {:id                1
-                      :base-type         :type/Number
-                      :effective-type    :type/Text
-                      :coercion-strategy nil})))))
+      (mt/with-temp [:model/Field {field-id :id} {}]
+        (field-user-settings/upsert-user-settings {:id field-id} {:effective_type :type/Text})
+        (is (= [["FieldUserSettings" field-id {:effective_type nil :coercion_strategy nil}]
+                ["Field" field-id {:effective_type :type/Number}]]
+               (updates-that-will-be-performed!
+                (merge default-metadata
+                       {:base-type :type/Number})
+                (merge default-metadata
+                       {:id                field-id
+                        :base-type         :type/Number
+                        :effective-type    :type/Text
+                        :coercion-strategy nil}))))))
     (testing "row with a real coercion_strategy is left alone — effective_type ≠ base_type is legitimate"
       (is (= []
              (updates-that-will-be-performed!
@@ -490,6 +496,7 @@
 (deftest base-type-change-leaves-data-sensitivity-test
   (testing "the override write on a base type change does not include data_sensitivity"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
+      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
       (let [updates (updates-that-will-be-performed!
                      (merge default-metadata
                             {:id             field-id
@@ -523,9 +530,9 @@
           (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
-                   :data_sensitivity :PII}
+                   :data_sensitivity nil}
                   (t2/select-one :model/Field :id field-id)))
-          (is (=? {:effective_type   :type/Integer
+          (is (=? {:effective_type   nil
                    :data_sensitivity :PII}
                   (t2/select-one :model/FieldUserSettings :field_id field-id))))
         (finally

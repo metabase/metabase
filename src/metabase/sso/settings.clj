@@ -128,22 +128,6 @@
                                    (ldap-user-base))))
   :doc        false)
 
-(defsetting ldap-enabled
-  (deferred-tru "Is LDAP currently enabled?")
-  :type       :boolean
-  :visibility :public
-  :setter     (fn [new-value]
-                (let [new-value (boolean new-value)]
-                  (when new-value
-                    ;; Test the LDAP settings before enabling
-                    (let [result ((requiring-resolve 'metabase.sso.ldap/test-current-ldap-details))]
-                      (when-not (= :SUCCESS (:status result))
-                        (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
-                                        ((requiring-resolve 'metabase.sso.ldap/humanize-error-messages) result))))))
-                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
-  :default    false
-  :audit      :getter)
-
 (defsetting ldap-timeout-seconds
   (deferred-tru "Maximum time, in seconds, to wait for LDAP server before falling back to local authentication")
   :type :double
@@ -296,7 +280,9 @@
   "Any SSO provider is configured and enabled"
   []
   (or (google-auth-enabled)
-      (ldap-enabled)
+      ;; read by keyword the way `ee-sso-configured?` above does: `ldap-enabled` is defined in
+      ;; [[metabase.sso.ldap.settings]], which this namespace cannot require
+      (setting/get :ldap-enabled)
       (ee-sso-configured?)))
 
 (defn sso-source-enabled?
@@ -307,7 +293,7 @@
   (boolean
    (case (keyword sso-source)
      :google (google-auth-enabled)
-     :ldap   (ldap-enabled)
+     :ldap   (setting/get :ldap-enabled)
      ;; Enterprise SSO providers: setting/get respects the :feature flag on each
      ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
      ;; after license downgrade), so users aren't locked out of password reset.

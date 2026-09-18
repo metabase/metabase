@@ -10,6 +10,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -44,8 +45,8 @@
   "Returns the name of trigger for DB.
   These are all the trigger names that a database SHOULD have."
   [db]
-  (set (map #(.getName ^TriggerKey (#'task.sync-databases/trigger-key (t2/instance :model/Database db) %))
-            @#'task.sync-databases/all-tasks)))
+  (set (map #(.getName ^TriggerKey (#'sync-databases-trigger/trigger-key (t2/instance :model/Database db) %))
+            @#'sync-databases-trigger/all-tasks)))
 
 (defn query-all-db-sync-triggers-name
   "Find the all triggers for DB \"db\".
@@ -53,10 +54,10 @@
   [db]
   (let [db (t2/instance :model/Database db)]
     (assert (some? (#'task/scheduler)) "makes sure the scheduler is initialized!")
-    (->> (for [task-info @#'task.sync-databases/all-tasks]
-           (keep #(when (= (.getName ^TriggerKey (#'task.sync-databases/trigger-key db task-info)) (:key %))
+    (->> (for [task-info @#'sync-databases-trigger/all-tasks]
+           (keep #(when (= (.getName ^TriggerKey (#'sync-databases-trigger/trigger-key db task-info)) (:key %))
                     (:key %))
-                 (:triggers (task/job-info (#'task.sync-databases/job-key task-info)))))
+                 (:triggers (task/job-info (#'sync-databases-trigger/job-key task-info)))))
          flatten
          set)))
 
@@ -221,14 +222,14 @@
     (mt/with-temp [:model/Database non-stub {:is_stub false}
                    :model/Database stub     {:is_stub true}]
       (let [calls (atom 0)]
-        (with-redefs [task.sync-databases/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
+        (with-redefs [sync-databases-trigger/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
           (testing "non-stub: triggers are considered for scheduling"
             (reset! calls 0)
-            (task.sync-databases/check-and-schedule-tasks-for-db! non-stub)
+            (sync-databases-trigger/check-and-schedule-tasks-for-db! non-stub)
             (is (pos? @calls)))
           (testing "stub: no scheduling calls are made"
             (reset! calls 0)
-            (task.sync-databases/check-and-schedule-tasks-for-db! stub)
+            (sync-databases-trigger/check-and-schedule-tasks-for-db! stub)
             (is (zero? @calls))))))))
 
 (deftest check-orphaned-jobs-removed-test

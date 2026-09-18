@@ -185,7 +185,8 @@
    :metabase.driver.sql.query-processor/wrap-in-case                        true
    :metabase.driver.sql.parameters.substitution/compiling-field-filter?     true
    :metabase.driver.sqlserver/optimized-bucketing?                          true
-   :metabase.driver.mongo.query-processor/join-local                        "Cat"})
+   :metabase.driver.mongo.query-processor/join-local                        "Cat"
+   :metabase.mcp.v2.query/keyset                                            true})
 
 (def ^:private stage-internal-keys
   "Every internal key middleware adds to a stage, other than the native-only `:query-permissions/referenced-card-ids`."

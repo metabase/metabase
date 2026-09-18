@@ -1,9 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Tree } from "metabase/common/components/tree";
-import { color } from "metabase/ui/utils/colors";
-
 export const FilterableTreeRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -26,20 +23,4 @@ export const ItemGroupsDivider = styled.hr`
 
 export const EmptyStateContainer = styled.div`
   margin-top: 6.25rem;
-`;
-
-export const AdminTreeNode = styled(Tree.Node)`
-  color: ${(props) =>
-    // TODO: We should really come up with a better solution for this, but since admin-navbar is currently not determined by
-    // user whitelabelling, this is somewhat safe (and consistent with what is in the admin header nav)
-    props.isSelected ? "var(--mantine-color-white)" : color("text-secondary")};
-  background-color: ${(props) =>
-    props.isSelected ? color("navbar-admin") : "unset"};
-
-  &:hover {
-    background-color: ${(props) =>
-      props.isSelected
-        ? color("navbar-admin")
-        : color("navbar-admin-secondary")};
-  }
 `;

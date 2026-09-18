@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
@@ -18,6 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -177,7 +178,7 @@
                            (some? fk) :type/FK
                            :else      semantic-type)]
     {:name              field-name
-     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :display_name      (warehouse-schema.humanization/name->human-readable-name :simple field-name)
      :database_type     database-type
      :base_type         actual-base-type
      :effective_type    (or effective-type actual-base-type)
@@ -199,7 +200,7 @@
         table-row      {:db_id               db-id
                         :name                sync-table-name
                         :schema              schema
-                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :display_name        (warehouse-schema.humanization/name->human-readable-name :simple table-name)
                         :description         table-comment
                         :active              true
                         :visibility_type     nil
@@ -281,7 +282,7 @@
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
+  (assert (= (warehouse-schema.settings/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms

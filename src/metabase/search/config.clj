@@ -50,6 +50,9 @@
   #{"dashboard-card"
     "dashboard-tab"
     "dimension"
+    ;; While explorations are disabled. Residue rows (from an instance that was upgraded, used explorations, then
+    ;; downgraded) are still ingested, so excluding the model here filters them out at query time.
+    "exploration"
     "permissions-group"
     "pulse"
     "pulse-card"
@@ -78,7 +81,8 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"
+   "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 

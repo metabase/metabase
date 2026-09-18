@@ -9,6 +9,7 @@ import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
 import { Button, Flex, Modal, Radio, Stack } from "metabase/ui";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 interface EditUserStrategyModalProps {
   onClose: () => void;
@@ -78,7 +79,7 @@ export const EditUserStrategyModal = ({
     dispatch(
       permissionApi.util.invalidateTags([
         "permissions-group",
-        "embedding-hub-checklist",
+        "setup-guide-checklist",
       ]),
     );
 
@@ -90,7 +91,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      navigate("/admin/people/tenants");
+      navigate(EnterpriseUrls.tenants());
     }
   };
 

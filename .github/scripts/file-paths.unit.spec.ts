@@ -29,7 +29,7 @@ describe("file-paths.yaml", () => {
   // dorny/paths-filter ORs the patterns in a filter, so a "!..." entry does not subtract from the
   // other entries - it matches every path they don't, turning the filter permanently on. Excluding
   // a path means writing the exclusion inside one pattern, the way backend_sources keeps
-  // ratchets.edn out with ".clj-kondo/{!(ratchets.edn),*/**}".
+  // ratchet files out with ".clj-kondo/**/!(ratchets.edn)".
   it("never excludes a path with a standalone negation", () => {
     const negated = Object.entries(filters).flatMap(([name, filter]) =>
       patterns(filter)
@@ -44,6 +44,9 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(
+        matches(name, ".clj-kondo/config/modules/ratchets.edn"),
+      ).toBe(false);
       expect(matches(name, ".clj-kondo/config.edn")).toBe(true);
       expect(matches(name, ".clj-kondo/config/modules/config.edn")).toBe(true);
     },
@@ -53,5 +56,11 @@ describe("file-paths.yaml", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
+    expect(
+      matches(
+        "project_ratchet_checks",
+        ".clj-kondo/config/modules/ratchets.edn",
+      ),
+    ).toBe(true);
   });
 });

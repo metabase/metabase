@@ -6,6 +6,7 @@ import type {
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
+  LineStyle,
   RowValue,
   VisualizationSettingKey,
 } from "metabase-types/api";
@@ -74,6 +75,7 @@ export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
 
 export type TrendLineSeriesModel = BaseSeriesModel & {
   sourceDataKey: DataKey;
+  style: LineStyle;
 };
 
 export type SeriesModel =
