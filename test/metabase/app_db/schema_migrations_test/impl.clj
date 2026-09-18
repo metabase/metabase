@@ -11,13 +11,13 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -103,10 +103,6 @@
               end-id (inclusive-exclusive inclusive-end?))
       (format "from %s (%s) until the end" start-id (inclusive-exclusive inclusive-start?)))))
 
-(defonce ^{:private true :doc "Monotonic counter for fabricating unique synthetic per-major deployment_ids in tests."}
-  test-deployment-counter
-  (atom 0))
-
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`.
@@ -114,11 +110,10 @@
   Range comparison uses the actual changelog order (index-based), so all ID formats — including hex-style IDs like
   `v60.f8c3be` — are handled correctly without numeric conversion.
 
-  After the update, the just-applied changesets that follow the legacy `vNN.` id scheme are split by Metabase major
-  version: each major's rows are reassigned a distinct synthetic `deployment_id` and given a `databasechangelog_version`
-  row (`x.<major>.0.0`). A single update run covers many majors but records only one `deployment_id`, so this mirrors
-  how separate production upgrades each record their own deployment + version -- which the deployment-based rollback
-  logic relies on -- letting `migrate! :down N` find a boundary at major `N`."
+  After the update, the legacy `vNN.` changesets are split by Metabase major into one synthetic deployment each, with
+  a `databasechangelog_version` row apiece (see [[mdb.test-util/split-legacy-majors-into-deployments!]]): a single
+  update run covers many majors but records only one deployment, and the deployment-based rollback needs a boundary
+  at every major for `migrate! :down N` to find."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
                                 [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?]
                                                          :or {inclusive-start? true
@@ -142,10 +137,6 @@
                              (and (some? idx)
                                   (if inclusive-start? (<= start-idx idx) (< start-idx idx))
                                   (if end-idx (if inclusive-end? (<= idx end-idx) (< idx end-idx)) true)))
-          major-of         (fn [id] (some-> (re-find #"^v(\d+)\." id) second parse-long))
-          in-range-ids     (->> changesets
-                                (map (fn [^ChangeSet cs] (.getId cs)))
-                                (filter #(in-range? (id->index %))))
           change-set-filters [(reify ChangeSetFilter
                                 (accepts [this change-set]
                                   (let [id      (.getId ^ChangeSet change-set)
@@ -156,24 +147,14 @@
                                                 accept?)
                                     (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
           change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
-      (liquibase/ensure-databasechangelog-versions-table! conn)
+      (versions/ensure-version-tracking! conn database)
       (liquibase/with-scope-locked liquibase
         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
         ;; and initializing checksums so that they match the ones generated in production.
         (.listUnrunChangeSets liquibase nil (LabelExpression.))
         (.generateDeploymentId change-log-service)
         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))
-      ;; give each legacy `vNN.` major its own synthetic deployment_id + recorded version, so the deployment-based
-      ;; rollback logic has a boundary at every major (version-less ids keep the real deployment_id and are skipped)
-      (doseq [[major block-ids] (->> in-range-ids (filter major-of) (group-by major-of))]
-        (let [dep-id (format "td%07d" (swap! test-deployment-counter inc))]
-          (jdbc/execute! {:connection conn}
-                         (into [(format "UPDATE %s SET deployment_id = ? WHERE id IN (%s)"
-                                        changelog-table
-                                        (str/join ", " (repeat (count block-ids) "?")))
-                                dep-id]
-                               block-ids))
-          (liquibase/record-deployment-version! conn dep-id (format "x.%d.0.0" major)))))))
+      (mdb.test-util/split-legacy-majors-into-deployments! conn changelog-table))))
 
 (defn test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))

@@ -2,11 +2,11 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.cmd.load-from-h2-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.cmd.load-from-h2-test]}}}}}}
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.cmd.copy :as copy]
@@ -102,37 +102,14 @@
   (delay (liquibase-latest-major-version)))
 
 (defn- fabricate-per-major-version-history!
-  "Split the fresh install's single Liquibase deployment into one synthetic deployment per legacy `vNN.` major and
-  record an `x.<major>.0.0` row for each in `databasechangelog_version` (mirrors
-  [[metabase.app-db.schema-migrations-test.impl/run-migrations-in-range!]]). A fresh install records only its own
-  version, and [[liquibase/rollback-major-version!]] only accepts majors recorded for a deployment -- fabricating the
-  per-major history makes this DB look like one that really was upgraded release by release, giving the rollback a
-  boundary at every major."
+  "A fresh install records only its own version, and [[rollback/rollback-major-version!]] only accepts majors recorded
+  for a deployment -- so split the install's single deployment into one per legacy `vNN.` major, as if this database
+  had really been upgraded release by release, giving the rollback a boundary at every major."
   []
   (t2.conn/with-connection [conn]
     (liquibase/with-liquibase [liquibase conn]
-      (liquibase/ensure-databasechangelog-versions-table! conn)
-      (let [changelog-table (liquibase/changelog-table-name liquibase)
-            ids             (map :id (jdbc/query {:connection conn}
-                                                 [(format "SELECT id FROM %s" changelog-table)]))
-            major-of        (fn [id] (some-> (re-find #"^v(\d+)\." id) second parse-long))]
-        ;; ascending major order: [[liquibase/recorded-deployments]] treats the newest *version row* as the current
-        ;; schema state, so the highest major must be recorded last
-        (doseq [[major block-ids] (sort-by key (group-by major-of (filter major-of ids)))]
-          (let [dep-id (format "mjr%03d" major)]
-            (jdbc/execute! {:connection conn}
-                           (into [(format "UPDATE %s SET deployment_id = ? WHERE id IN (%s)"
-                                          changelog-table
-                                          (str/join ", " (repeat (count block-ids) "?")))
-                                  dep-id]
-                                 block-ids))
-            (liquibase/record-deployment-version! conn dep-id (format "x.%d.0.0" major))))
-        ;; the reassignment vacated the install's own deployment: every changelog row moved to a per-major
-        ;; deployment, so drop its now-orphaned version row (the fresh install's dev version)
-        (jdbc/execute! {:connection conn}
-                       [(format "DELETE FROM %s WHERE deployment_id NOT IN (SELECT DISTINCT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
-                                liquibase/databasechangelog-versions-table
-                                changelog-table)])))))
+      (versions/ensure-version-tracking! conn (.getDatabase liquibase))
+      (mdb.test-util/split-legacy-majors-into-deployments! conn (liquibase/changelog-table-name liquibase)))))
 
 (defn- migrate-down-then-up-and-create-dump!
   [db-def h2-filename version]
@@ -156,7 +133,7 @@
                 ;; previous-major boundary); force widens it to the full recorded history. Every target is a recorded
                 ;; version courtesy of [[fabricate-per-major-version-history!]]. The default-window rule itself is
                 ;; covered in metabase.app-db.liquibase-test.
-                (liquibase/rollback-major-version! conn liquibase true version))))
+                (rollback/rollback-major-version! conn liquibase true version))))
           (log/info "creating dump" filename)
           ;; this migrates the DB back to the newest and creates a dump
           (dump-to-h2/dump-to-h2! filename)

@@ -117,8 +117,10 @@ clojure -M:dev:migrate rollback last-deployment  # undo the last migrate up run
 clojure -M:dev:migrate rollback deployment <id>  # undo everything after that deployment_id
 ```
 
-`deployment_id`s are in the `databasechangelog_version` table. `rollback count N` and `rollback id <id>` are raw
-Liquibase rollbacks that bypass the version bookkeeping; only use them for a deliberate partial rollback.
+`deployment_id`s are in the `databasechangelog_version` table (one row per deployment and Metabase version;
+`ran_migrations` tells the version that ran the deployment from versions that merely booted against it). `rollback
+count N` and `rollback id <id>` are raw Liquibase rollbacks that bypass the version bookkeeping; only use them for a
+deliberate partial rollback.
 
 The release command `migrate down` (`java -jar metabase.jar migrate down`, `mdb/migrate! :down`) rolls back to the
 previous recorded **major** Metabase version and refuses a database whose newest deployment was made by a development
@@ -128,5 +130,7 @@ development deployments back first, or rebuild the database.
 ## Related
 
 - `bin/lint-migrations-file/` — the lint and its tests (`cd bin/lint-migrations-file && clojure -M:test`).
-- `src/metabase/app_db/liquibase.clj` — how deployments, recorded versions and rollbacks work.
+- `src/metabase/app_db/liquibase/versions.clj` — how deployments and their Metabase versions are recorded
+  (`databasechangelog_version`, the `vNN.legacy-version-tracking` marker for older binaries).
+- `src/metabase/app_db/liquibase/rollback.clj` — how `migrate down` and the dev rollback pick and reverse deployments.
 - `dev/src/dev/migrate.clj` — the development tooling.

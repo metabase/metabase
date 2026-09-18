@@ -27,6 +27,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations-test :as custom-migrations-test]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -59,15 +60,15 @@
     (impl/with-temp-empty-app-db [conn :h2]
       ;; from the start through v46, so the range spans many majors (we assert on two adjacent ones)
       (impl/run-migrations-in-range! conn ["v00.00-000" "v46.00-000"])
-      (let [versions-table liquibase/databasechangelog-versions-table
+      (let [versions-table versions/databasechangelog-versions-table
             rows           (jdbc/query {:connection conn}
                                        [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])
-            major->deps    (-> (group-by #(liquibase/version->major (:metabase_version %)) rows)
+            major->deps    (-> (group-by #(versions/version->major (:metabase_version %)) rows)
                                (update-vals #(set (map :deployment_id %))))]
         (testing "both majors in the range are recorded"
-          (is (= #{"x.45.0.0"} (set (map :metabase_version (filter #(= 45 (liquibase/version->major (:metabase_version %))) rows))))
+          (is (= #{"x.45.0.0"} (set (map :metabase_version (filter #(= 45 (versions/version->major (:metabase_version %))) rows))))
               "major 45 recorded as x.45.0.0")
-          (is (= #{"x.46.0.0"} (set (map :metabase_version (filter #(= 46 (liquibase/version->major (:metabase_version %))) rows))))
+          (is (= #{"x.46.0.0"} (set (map :metabase_version (filter #(= 46 (versions/version->major (:metabase_version %))) rows))))
               "major 46 recorded as x.46.0.0"))
         (testing "each major gets its own distinct deployment_id"
           (is (= 1 (count (get major->deps 45))))

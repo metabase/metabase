@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -39,7 +41,7 @@
   and `:release-locks` -- what `java -jar metabase.jar migrate <direction>` does.
 
   There is deliberately no `:down` here: the release `migrate down` steps back one recorded Metabase *major*, which
-  means nothing for development deployments (they all record [[liquibase/dev-version]]). Roll back by deployment with
+  means nothing for development deployments (they all record [[versions/dev-version]]). Roll back by deployment with
   [[rollback!]] instead."
   ([]
    (migrate! :up))
@@ -105,7 +107,8 @@
       (.setAutoCommit conn false)
       (liquibase/with-liquibase [liquibase conn]
         (try
-          (liquibase/rollback-to-deployment! conn liquibase boundary-deployment-id)
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase))
+          (rollback/rollback-to-deployment! conn liquibase boundary-deployment-id)
           (.commit conn)
           (catch Throwable e
             (.rollback conn)
@@ -117,7 +120,7 @@
 
 (mu/defn rollback!
   "Rollback helper. Deployment-based rollbacks are the ones to reach for in development -- every `migrate!` run is
-  its own Liquibase `deployment_id`, whatever Metabase version (real or [[liquibase/dev-version]]) it recorded:
+  its own Liquibase `deployment_id`, whatever Metabase version (real or [[versions/dev-version]]) it recorded:
 
     ;; Roll back the last migration run (everything after the second-newest deployment):
     (rollback! :last-deployment)
@@ -136,7 +139,9 @@
    (rollback-to-deployment!
     (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
       (liquibase/with-liquibase [liquibase conn]
-        (liquibase/previous-deployment-id conn (.getDatabase liquibase))))))
+        (let [database (.getDatabase liquibase)]
+          (versions/ensure-version-tracking! conn database)
+          (versions/previous-deployment-id conn database))))))
 
   ([k      :- [:enum :id :count :deployment "id" "count" "deployment"]
     target :- [:or :int :string]]
@@ -161,13 +166,15 @@
   "Migrations helpers
 
   Usage:
-    clojure -M:migrate up                         ;; migrate up to the latest
-    clojure -M:migrate rollback count 2           ;; rollback 2 migrations
-    clojure -M:migrate rollback id \"v40.00.001\" ;; rollback to a specific migration with id
-    clojure -M:migrate rollback last-deployment   ;; rollback the last deployment (last migrate run)
-    clojure -M:migrate rollback deployment <id>   ;; rollback everything after that deployment_id
-    clojure -M:migrate status                     ;; print the latest migration id
-    clojure -M:migrate reset-checksums.           ;; sets the checksums to what they would be if migrated from the current changelog"
+    clojure -M:dev:migrate up                         ;; migrate up to the latest
+    clojure -M:dev:migrate rollback last-deployment   ;; rollback the last deployment (last migrate run)
+    clojure -M:dev:migrate rollback deployment <id>   ;; rollback everything after that deployment_id
+    clojure -M:dev:migrate rollback count 2           ;; raw Liquibase rollback of 2 changesets
+    clojure -M:dev:migrate rollback id \"v40.00.001\" ;; raw Liquibase rollback to a specific changeset id
+    clojure -M:dev:migrate status                     ;; print the latest migration id
+    clojure -M:dev:migrate reset-checksums            ;; sets the checksums to what they would be if migrated from the current changelog
+
+  (`:dev` is needed: `dev/src/user.clj` requires the dev classpath.)"
 
   [& args]
   (let [[cmd & migration-args] args]

@@ -302,11 +302,14 @@
     (and file (year-dir-migration-file? file))
     nil
 
-    (when file (re-find #"(\d{3})[/\\]" (str file)))
-    (Integer/parseInt (second (re-find #"(\d{3})[/\\]" (str file))))
-
     (string? id-str)
-    (some-> (re-find #"\d+" id-str) Integer/parseInt)))
+    (if-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
+      (Integer/parseInt file-version)
+      (some-> (re-find #"\d+" id-str) Integer/parseInt))
+
+    :else
+    (when-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
+      (Integer/parseInt file-version))))
 
 (def ^:private first-versionless-major
   "The first Metabase major whose changesets are version-less. From this major on every changeset lives in a year-based

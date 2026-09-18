@@ -5,6 +5,8 @@
    [dev.migrate :as dev.migrate]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.config.core :as config]
    [metabase.test :as mt]))
 
@@ -17,22 +19,21 @@
                                                           [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))
               versions (fn [] (mapv :metabase_version
                                     (jdbc/query {:datasource (mdb/data-source)}
-                                                [(format "SELECT metabase_version FROM %s ORDER BY id" liquibase/databasechangelog-versions-table)])))
+                                                [(format "SELECT metabase_version FROM %s ORDER BY id" versions/databasechangelog-versions-table)])))
               markers  (fn [] (mapv :id (jdbc/query {:datasource (mdb/data-source)}
                                                     [(format "SELECT id FROM %s WHERE id LIKE '%%legacy-version-tracking'" ct)])))]
           (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
             (dev.migrate/migrate!))
-          (jdbc/execute! {:datasource (mdb/data-source)}
-                         [(format "UPDATE %s SET dateexecuted = DATEADD('MINUTE', -5, dateexecuted)" ct)])
+          (mdb.test-util/age-changelog-rows! {:datasource (mdb/data-source)} ct 5)
           (with-redefs [liquibase/changelog-file "versionless-dev-run2.yaml"]
             (dev.migrate/migrate!)
             (is (true? (applied? "dev_run_b")))
-            (is (= [liquibase/dev-version liquibase/dev-version] (versions)) "two dev deployments")
+            (is (= [versions/dev-version versions/dev-version] (versions)) "two dev deployments")
             (is (= ["v9999.legacy-version-tracking"] (markers)))
             (dev.migrate/rollback! :last-deployment)
             (is (false? (applied? "dev_run_b")) "the newest deployment's changeset is reversed")
             (is (true? (applied? "dev_run_a")) "the earlier deployment survives")
-            (is (= [liquibase/dev-version] (versions)) "the rolled-back deployment's version row is gone too")
+            (is (= [versions/dev-version] (versions)) "the rolled-back deployment's version row is gone too")
             (is (= ["v9999.legacy-version-tracking"] (markers)) "the surviving deployment's marker is kept")
             (testing "migrate! has no :down -- rollbacks are rollback!'s job"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"rollback! :last-deployment"
