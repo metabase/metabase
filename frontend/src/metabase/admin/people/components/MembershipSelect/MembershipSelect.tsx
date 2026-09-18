@@ -2,14 +2,16 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
+  getAddMembersDisabledReason,
   getGroupNameLocalized,
   isAdminGroup,
   isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
+import { Box, Divider, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo, Member } from "metabase-types/api";
 
@@ -64,6 +66,7 @@ export const MembershipSelect = ({
 }: MembershipSelectProps) => {
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
   const selectedGroupIds = Array.from(memberships.keys());
   const { pinnedGroups, regularGroups } = useMemo(
     () => getGroupSections(groups),
@@ -86,11 +89,15 @@ export const MembershipSelect = ({
   };
 
   const renderGroup = (group: GroupInfo) => {
+    const isMember = memberships.has(group.id);
+    const addDisabledReason = isMember
+      ? null
+      : getAddMembersDisabledReason(group, hasAdvancedPermissions);
     const isDisabled =
       (isAdminGroup(group) && isCurrentUser) ||
       isDefaultGroup(group) ||
-      PLUGIN_TENANTS.isExternalUsersGroup(group);
-    const isMember = memberships.has(group.id);
+      PLUGIN_TENANTS.isExternalUsersGroup(group) ||
+      addDisabledReason != null;
     const canEditMembershipType =
       isMember &&
       !isUserAdmin &&
@@ -99,37 +106,43 @@ export const MembershipSelect = ({
       !isAdminGroup(group);
 
     return (
-      <li
-        className={S.membershipSelectItem}
+      <Tooltip
         key={group.id}
-        aria-label={group.name}
-        onClick={() =>
-          isDisabled ? undefined : handleToggleMembership(group.id)
-        }
-        style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
+        label={addDisabledReason}
+        disabled={addDisabledReason == null}
       >
-        <span>{getGroupNameLocalized(group)}</span>
-        <Flex pl="lg" align="center" justify="end">
-          {canEditMembershipType && (
-            <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-              tooltipPlacement="bottom"
-              isManager={memberships.get(group.id)?.is_group_manager}
-              onChange={(is_group_manager: boolean) =>
-                handleChangeMembership(group.id, {
-                  is_group_manager,
-                })
-              }
-            />
-          )}
-          <span
-            style={{
-              visibility: isMember ? "visible" : "hidden",
-            }}
-          >
-            <Icon name="check" />
-          </span>
-        </Flex>
-      </li>
+        <li
+          className={S.membershipSelectItem}
+          aria-label={group.name}
+          aria-disabled={addDisabledReason != null || undefined}
+          onClick={() =>
+            isDisabled ? undefined : handleToggleMembership(group.id)
+          }
+          style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
+        >
+          <span>{getGroupNameLocalized(group)}</span>
+          <Flex pl="lg" align="center" justify="end">
+            {canEditMembershipType && (
+              <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+                tooltipPlacement="bottom"
+                isManager={memberships.get(group.id)?.is_group_manager}
+                onChange={(is_group_manager: boolean) =>
+                  handleChangeMembership(group.id, {
+                    is_group_manager,
+                  })
+                }
+              />
+            )}
+            <span
+              style={{
+                visibility: isMember ? "visible" : "hidden",
+              }}
+            >
+              <Icon name="check" />
+            </span>
+          </Flex>
+        </li>
+      </Tooltip>
     );
   };
 
