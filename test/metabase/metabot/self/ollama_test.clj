@@ -471,6 +471,30 @@
          #"answered with text instead of calling a tool.*supports tool calling"
          (probe! [{:id "chatty-model"}] {:content "Sure! The table is orders."})))))
 
+(deftest preflight-rejects-a-model-that-calls-the-wrong-tool-test
+  (testing "the agent loop runs only registered tool names and drops the rest without a word, so a
+           model that invents one would leave Metabot doing nothing with nothing to show for it"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"called 'write_query' instead of the one tool it was offered"
+         (probe! [{:id "creative-model"}]
+                 {:content    ""
+                  :tool_calls [{:id       "call-1"
+                                :type     "function"
+                                :function {:name "write_query" :arguments "{\"table_name\": \"orders\"}"}}]})))))
+
+(deftest preflight-rejects-a-model-that-omits-a-required-argument-test
+  (testing "an empty argument map is well-formed JSON and useless: the agent loop validates each call
+           against its tool's schema, so the connection would fail later rather than here"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"without its required table_name argument"
+         (probe! [{:id "sloppy-model"}]
+                 {:content    ""
+                  :tool_calls [{:id       "call-1"
+                                :type     "function"
+                                :function {:name "record_table_name" :arguments "{}"}}]})))))
+
 (deftest preflight-rejects-a-model-that-leaks-its-thinking-into-chat-test
   (testing "reasoning that arrives as chat text would appear inside Metabot's answers"
     (is (thrown-with-msg?

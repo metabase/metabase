@@ -173,8 +173,8 @@
     (get-in res [:body :choices 0])))
 
 (defn- check-tool-calling!
-  "Check that the model can call tools; Ollama drives this from the model's own template, so the fix
-  is always a different model.
+  "Check that the model can call the tool it is offered, with the arguments that tool declares. Ollama
+  drives tool calling from the model's own template, so the fix is always a different model.
 
   Whether it thought along the way is not recorded — `/api/show` answers that per model, for every
   model rather than only the probed one. Thinking is still read here, to tell \"spent the budget
@@ -195,16 +195,29 @@
                    (str model))))
 
       (seq tool-calls)
-      (let [arguments (get-in (first tool-calls) [:function :arguments])]
-        (when-not (try
-                    (map? (json/decode+kw (str arguments)))
-                    (catch Exception _ false))
+      (let [{:keys [function]}                          (first tool-calls)
+            {offered :name {required :required} :parameters} (:function probe-tool)
+            parsed                                      (try (json/decode+kw (str (:arguments function)))
+                                                             (catch Exception _ nil))]
+        (cond
+          (not= offered (:name function))
+          (throw (preflight-ex
+                  (tru "{0} called ''{1}'' instead of the one tool it was offered. The agent loop runs only the tools it registers and drops anything else without a word, so a model that invents names cannot drive Metabot — pick a larger or more capable one."
+                       (str model) (str (:name function)))))
+
+          (not (map? parsed))
           (throw (preflight-ex
                   (if truncated?
                     (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                          (str model) (str probe-max-tokens))
                     (tru "{0} returned a tool call whose arguments are not valid JSON. Pull a larger or more capable model — Metabot needs reliable tool calling."
-                         (str model)))))))
+                         (str model)))))
+
+          :else
+          (when-let [missing (seq (remove #(u/trimmed-string (get parsed (keyword %))) required))]
+            (throw (preflight-ex
+                    (tru "{0} called the tool without its required {1} argument. Metabot validates every tool call against that tool''s schema — pick a larger or more capable model."
+                         (str model) (str/join ", " missing)))))))
 
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
