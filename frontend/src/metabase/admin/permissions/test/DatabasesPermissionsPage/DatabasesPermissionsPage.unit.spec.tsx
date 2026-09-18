@@ -7,6 +7,7 @@ import {
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -32,7 +33,11 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
-const setup = async () => {
+const setup = async ({
+  shouldWaitForLoader = true,
+  showUpdatedPermissionModal = false,
+  databaseMetadataDelay = 0,
+} = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -40,6 +45,7 @@ const setup = async () => {
   fetchMock.get(
     `path:/api/database/${TEST_DATABASE.id}/metadata`,
     TEST_DATABASE,
+    { delay: databaseMetadataDelay },
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
@@ -65,10 +71,17 @@ const setup = async () => {
     {
       withRouter: true,
       initialRoute: `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+      storeInitialState: {
+        settings: mockSettings({
+          "show-updated-permission-modal": showUpdatedPermissionModal,
+        }),
+      },
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  if (shouldWaitForLoader) {
+    await waitForLoaderToBeRemoved();
+  }
 
   return { mockEventListener };
 };
@@ -90,6 +103,35 @@ describe("DatabasesPermissionsPage", () => {
   });
 
   describe("rendering", () => {
+    it("should keep the permissions tabs visible while data is loading", async () => {
+      await setup({ shouldWaitForLoader: false });
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Data" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Collections" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should open the split permissions modal only after data has loaded", async () => {
+      await setup({
+        shouldWaitForLoader: false,
+        showUpdatedPermissionModal: true,
+        databaseMetadataDelay: 100,
+      });
+
+      await delay(0);
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      await waitForLoaderToBeRemoved();
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Your data permissions may look different, but the access hasn’t changed.",
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("should show 'Cancel' and 'Save Changes' when user makes changes to permissions", async () => {
       await setup();
 
