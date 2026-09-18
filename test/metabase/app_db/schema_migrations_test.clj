@@ -3445,6 +3445,8 @@
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       suffixes))
+        ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
         (migrate!)
         (is (= (repeat 4 "MARK_RAN")
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
