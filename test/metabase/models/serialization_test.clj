@@ -239,6 +239,17 @@
              (serdes/visualization-settings-deps true (update settings :timeline.excluded_timeline_event_ids
                                                               (partial remove pos-int?))))))))
 
+(deftest ^:parallel excluded-timeline-events-deps-without-selection-test
+  (testing "excluded events pull in their Timeline even when the card selects no timelines, so the Timeline loads
+            first and the exclusions survive the import instead of un-hiding the events"
+    (let [eid (fn [c] (apply str (repeat 21 c)))]
+      (is (= #{[{:model "Timeline" :id (eid \a)}]
+               [{:model "Timeline" :id (eid \c)}]}
+             (serdes/visualization-settings-deps
+              false
+              {:timeline.excluded_timeline_event_ids [[(eid \a) (eid \b)]
+                                                      [(eid \c) (eid \d)]]}))))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings
