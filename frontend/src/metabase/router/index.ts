@@ -21,6 +21,7 @@ export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
+export { type ChunkErrorFallback, isChunkLoadError } from "./lazy-route";
 export * from "./use-is-navigating";
 export * from "./use-maybe-location";
 export * from "./use-route-leave-blocker";
