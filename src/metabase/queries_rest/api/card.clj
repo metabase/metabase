@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -124,7 +125,11 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (queries-rest.db/public-cards))
+  (for [card (queries-rest.db/public-cards)]
+    (-> card
+        (assoc :contains_custom_viz
+               (boolean (some-> (:display card) u/qualified-name (str/starts-with? "custom:"))))
+        (dissoc :display))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

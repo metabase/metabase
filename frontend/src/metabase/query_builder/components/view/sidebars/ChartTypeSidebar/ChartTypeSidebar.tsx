@@ -110,6 +110,8 @@ export const ChartTypeSidebar = ({
     );
   };
 
+  const hasPublicLink = Boolean(question?.publicUUID?.());
+
   return (
     <SidebarContent
       className={cx(CS.fullHeight, CS.px1)}
@@ -122,6 +124,10 @@ export const ChartTypeSidebar = ({
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
         onOpenSettings={onOpenVizSettings}
+        isVisualizationDisabled={
+          hasPublicLink ? PLUGIN_CUSTOM_VIZ.isCustomVizDisplay : undefined
+        }
+        disabledReason={t`Not available while this question is shared publicly.`}
         gap={0}
         w="100%"
         p="xl"

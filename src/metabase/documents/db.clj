@@ -88,6 +88,22 @@
   []
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+(mu/defn document-ids-with-custom-viz
+  "The `:document_id` rows of the Documents among `document-ids` with an unarchived Card that renders a custom
+  visualization (display `custom:<id>`)."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/query {:select-distinct [:document_id]
+             :from            [:report_card]
+             :where           [:and
+                               [:in :document_id document-ids]
+                               [:= :archived false]
+                               [:like :display "custom:%"]]}))
+
+(mu/defn document-contains-custom-viz?
+  "Whether the Document with `id` has an unarchived Card that renders a custom visualization (display `custom:<id>`)."
+  [id :- ms/PositiveInt]
+  (t2/exists? :model/Card :document_id id, :archived false, :display [:like "custom:%"]))
+
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

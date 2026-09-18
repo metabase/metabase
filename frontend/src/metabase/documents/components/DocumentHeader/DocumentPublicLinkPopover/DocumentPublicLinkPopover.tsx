@@ -94,6 +94,11 @@ export const DocumentPublicLinkPopover = ({
             onRemoveLink={handleDeletePublicDocumentLink}
             onCopyLink={onCopyLink}
             onCopyEmbed={onCopyEmbed}
+            warningText={
+              document.contains_custom_viz
+                ? t`This document contains custom visualizations, which aren't supported in public links. They appear as tables instead.`
+                : undefined
+            }
           />
         </Box>
       </Popover.Dropdown>

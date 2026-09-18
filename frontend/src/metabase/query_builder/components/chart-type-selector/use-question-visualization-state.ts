@@ -23,6 +23,9 @@ export const useQuestionVisualizationState = ({
       if (!question || selectedVisualization === display) {
         return;
       }
+      if (isCustomVizDisplay(display) && question.publicUUID?.()) {
+        return;
+      }
       if (isCustomVizDisplay(display)) {
         trackCustomVizSelected();
       }

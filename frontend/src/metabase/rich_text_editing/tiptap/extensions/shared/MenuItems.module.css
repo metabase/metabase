@@ -17,6 +17,11 @@
   background-color: var(--mb-color-background_surface-hover);
 }
 
+.menuItem[data-disabled="true"] {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .menuItemStack {
   flex: 1;
 }

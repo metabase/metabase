@@ -46,6 +46,18 @@
   []
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+(mu/defn dashboard-ids-with-custom-viz
+  "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` with a DashboardCard whose unarchived primary Card
+  renders a custom visualization (display `custom:<id>`)."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/query {:select-distinct [:dc.dashboard_id]
+             :from            [[:report_dashboardcard :dc]]
+             :join            [[:report_card :c] [:= :c.id :dc.card_id]]
+             :where           [:and
+                               [:in :dc.dashboard_id dashboard-ids]
+                               [:= :c.archived false]
+                               [:like :c.display "custom:%"]]}))
+
 (mu/defn embeddable-dashboards
   "The name and id of the unarchived Dashboards with embedding enabled."
   []

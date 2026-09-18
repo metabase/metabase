@@ -26,7 +26,8 @@
     [:can_write           {:optional true} :boolean]
     [:can_delete          {:optional true} :boolean]
     [:can_restore         {:optional true} :boolean]
-    [:is_remote_synced    {:optional true} :boolean]]])
+    [:is_remote_synced    {:optional true} :boolean]
+    [:contains_custom_viz {:optional true} :boolean]]])
 
 (mr/def ::document.update
   "What an update (or insert) of a Document accepts: every column of `:document` except `id`, all optional."

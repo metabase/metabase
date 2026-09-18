@@ -12,13 +12,14 @@ registerVisualizations();
 
 const setup = ({
   selectedVisualization = "bar",
+  nonSensibleVisualizations = ["pie", "scatter"],
+  isVisualizationDisabled,
+  disabledReason,
 }: Partial<ChartTypeSettingsProps> = {}) => {
   const onSelectVisualization = jest.fn();
   const onOpenSettings = jest.fn();
   const sensibleVisualizations: ChartTypeSettingsProps["sensibleVisualizations"] =
     ["bar", "line"];
-  const nonSensibleVisualizations: ChartTypeSettingsProps["nonSensibleVisualizations"] =
-    ["pie", "scatter"];
 
   render(
     <ChartTypeSettings
@@ -27,6 +28,8 @@ const setup = ({
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}
       onOpenSettings={onOpenSettings}
+      isVisualizationDisabled={isVisualizationDisabled}
+      disabledReason={disabledReason}
     />,
   );
 
@@ -105,5 +108,16 @@ describe("ChartTypeSettings", () => {
     });
     await userEvent.click(getIcon("bubble"));
     expect(onSelectVisualization).toHaveBeenCalledWith("scatter");
+  });
+
+  it("disables options matched by isVisualizationDisabled", async () => {
+    const { onSelectVisualization } = setup({
+      selectedVisualization: "scatter",
+      nonSensibleVisualizations: ["scatter", "pie"],
+      isVisualizationDisabled: (display) => display === "pie",
+      disabledReason: "Not available while this question is shared publicly.",
+    });
+    await userEvent.click(screen.getByTestId("Pie-button"));
+    expect(onSelectVisualization).not.toHaveBeenCalled();
   });
 });

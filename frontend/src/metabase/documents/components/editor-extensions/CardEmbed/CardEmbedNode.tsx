@@ -63,6 +63,7 @@ import type {
   StoredResultSort,
   TimelineEvent,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
 
@@ -545,6 +546,14 @@ export const CardEmbedComponent = memo(
 
     const handleReplaceModalSelect = useCallback(
       (item: QuestionPickerValueItem) => {
+        if (
+          Boolean(document?.public_uuid) &&
+          "display" in item &&
+          isCustomVizDisplay(item.display)
+        ) {
+          setIsReplaceModalOpen(false);
+          return;
+        }
         updateAttributes({
           id: item.id,
           name: null,
@@ -902,6 +911,11 @@ export const CardEmbedComponent = memo(
             <QuestionPickerModal
               onChange={handleReplaceModalSelect}
               onClose={() => setIsReplaceModalOpen(false)}
+              isDisabledItem={(item) =>
+                Boolean(document?.public_uuid) &&
+                "display" in item &&
+                isCustomVizDisplay(item.display)
+              }
             />
           )}
         </NodeViewWrapper>

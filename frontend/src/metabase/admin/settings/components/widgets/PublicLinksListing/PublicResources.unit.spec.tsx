@@ -86,16 +86,19 @@ describe("PublicResources", () => {
           name: "Test Question 1",
           id: 1,
           public_uuid: "11bf0e18-34d2-4630-865a-c0bebb75c8b3",
+          contains_custom_viz: false,
         },
         {
           name: "Test Question 2",
           id: 2,
           public_uuid: "502876cd-da65-4e72-a60f-253584548940",
+          contains_custom_viz: false,
         },
         {
           name: "Test Question 3",
           id: 2,
           public_uuid: "5bec9624-3102-428a-8b9f-47c56bd96c6c",
+          contains_custom_viz: false,
         },
       ]);
 
@@ -131,16 +134,19 @@ describe("PublicResources", () => {
           name: "Test Dashboard 1",
           id: 1,
           public_uuid: "16a4568d-c328-4306-9c4b-ec8fbd6e4c8e",
+          contains_custom_viz: false,
         },
         {
           name: "Test Dashboard 2",
           id: 2,
           public_uuid: "9c92a915-1a78-4455-a99c-c973032960fb",
+          contains_custom_viz: false,
         },
         {
           name: "Test Dashboard 3",
           id: 2,
           public_uuid: "2b80845e-0ff4-4182-8a9a-083cc904f5dd",
+          contains_custom_viz: false,
         },
       ]);
 

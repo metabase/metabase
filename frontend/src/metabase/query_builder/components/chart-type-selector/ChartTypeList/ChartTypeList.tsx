@@ -6,6 +6,8 @@ import { ChartTypeOption, type ChartTypeOptionProps } from "../ChartTypeOption";
 export type ChartTypeListProps = {
   visualizationList: VisualizationDisplay[];
   "data-testid"?: string;
+  isVisualizationDisabled?: (display: VisualizationDisplay) => boolean;
+  disabledReason?: string;
 } & Pick<
   ChartTypeOptionProps,
   "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
@@ -16,6 +18,8 @@ export const ChartTypeList = ({
   onSelectVisualization,
   selectedVisualization,
   onOpenSettings,
+  isVisualizationDisabled,
+  disabledReason,
   "data-testid": dataTestId,
 }: ChartTypeListProps) => (
   <Grid
@@ -32,6 +36,8 @@ export const ChartTypeList = ({
           selectedVisualization={selectedVisualization}
           onSelectVisualization={onSelectVisualization}
           onOpenSettings={onOpenSettings}
+          isDisabled={isVisualizationDisabled?.(type)}
+          disabledReason={disabledReason}
         />
       </Grid.Col>
     ))}

@@ -30,6 +30,7 @@ export type Document = {
   view_count?: number;
   exploration_id?: number | null;
   is_placeholder?: boolean;
+  contains_custom_viz?: boolean;
 };
 
 export type GetDocumentRequest = { id: DocumentId };
@@ -52,4 +53,9 @@ export type CopyDocumentRequest = {
   collection_position?: number | null;
 };
 
-export type GetPublicDocument = Pick<Document, "id" | "name" | "public_uuid">;
+export type GetPublicDocument = Pick<
+  Document,
+  "id" | "name" | "public_uuid"
+> & {
+  contains_custom_viz: boolean;
+};

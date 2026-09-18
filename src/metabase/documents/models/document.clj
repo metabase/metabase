@@ -277,7 +277,9 @@
   publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
   both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+  (some-> (documents.db/document id)
+          (t2/hydrate :creator :can_write :can_delete :can_restore :is_remote_synced)
+          (assoc :contains_custom_viz (documents.db/document-contains-custom-viz? id))))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
