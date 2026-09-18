@@ -21,7 +21,7 @@
   ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
   ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
   (t2/select-one-fn :dataset_query
-                    [:model/Card :id :dataset_query :card_schema :type
+                    [:model/Card :id :dataset_query :card_schema :type :entity_id
                      :result_metadata :dimensions :dimension_mappings]
                     card-id))
 

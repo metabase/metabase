@@ -102,6 +102,18 @@
   [entity]
   (some? (lib-metric/get-persisted-dimensions entity)))
 
+(defn- dimension-owner-key
+  "The salt that scopes an entity's computed dimension ids to that entity; see
+   [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]].
+
+   Metrics are Cards and use their `:entity-id`, which survives an export/import round trip. Measures have no
+   `:entity-id` on their metadata (`:metabase.lib.schema.metadata/measure` is closed), so they fall back to their
+   local id — enough, since these ids are never required to agree across instances."
+  [entity]
+  (case (:lib/type entity)
+    :metadata/measure (str "measure/" (:id entity))
+    (:entity-id entity)))
+
 ;;; ------------------------------------------------- Hydration -------------------------------------------------
 
 (defn- save-dimensions-if-changed!
@@ -138,10 +150,13 @@
    shape (or `nil` when `query` is blank).
 
    Unlike the seeded default (own-table and explicitly-joined columns only), this includes every
-   FK-reachable column."
-  [query]
+   FK-reachable column.
+
+   `owner-key` seeds the computed dimension ids; pass the metric Card's `:entity_id`. See
+   [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]]."
+  [owner-key query]
   (when (seq query)
-    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) owner-key query)
           {:keys [dimensions dimension-mappings]}
           (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)
           dimensions (mapv table-prefixed-dimension dimensions)]
@@ -194,7 +209,7 @@
                             {:lib/type metadata-type :id #{id}}))]
     (when-let [query (lib-metric/dimensionable-query entity)]
       (let [mp                 (lib-metric/metadata-provider)
-            computed-pairs     (lib-metric/compute-dimension-pairs mp query)
+            computed-pairs     (lib-metric/compute-dimension-pairs mp (dimension-owner-key entity) query)
             persisted-dims     (lib-metric/get-persisted-dimensions entity)
             persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)
 
@@ -237,7 +252,7 @@
                             (lib-metric/metadata-provider)
                             {:lib/type metadata-type :id #{id}}))]
     (when-let [query (lib-metric/dimensionable-query entity)]
-      (let [computed-pairs     (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+      (let [computed-pairs     (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) (dimension-owner-key entity) query)
             persisted-dims     (lib-metric/get-persisted-dimensions entity)
             persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)]
         (case metadata-type
@@ -293,7 +308,7 @@
   "All computed dimension pairs (main + connection groups) for an entity's query, or `[]`."
   [entity]
   (if-let [query (lib-metric/dimensionable-query entity)]
-    (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) (dimension-owner-key entity) query)
     []))
 
 (defn- pair->field-id

@@ -245,5 +245,6 @@
 (mu/defn unarchived-metric-cards
   "The id, Database id, query, and schema of the unarchived metric Cards."
   []
-  (t2/select [:model/Card :id :database_id :dataset_query :card_schema :type :result_metadata :dimensions :dimension_mappings]
+  (t2/select [:model/Card :id :database_id :dataset_query :card_schema :type :entity_id :result_metadata :dimensions
+              :dimension_mappings]
              :type "metric" :archived false))
