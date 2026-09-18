@@ -556,6 +556,7 @@ describe(
         cy.wait("@updateAction");
         cy.findByTestId("action-creator").should("not.exist");
 
+        cy.intercept("POST", "/api/action/*/execute").as("executeQueryAction");
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
         H.modal().within(() => {
@@ -567,6 +568,9 @@ describe(
           cy.button(SAMPLE_QUERY_ACTION.name).click();
         });
 
+        cy.wait("@executeQueryAction")
+          .its("response.statusCode")
+          .should("eq", 200);
         verifyScoreValue(22, dialect);
       });
 
