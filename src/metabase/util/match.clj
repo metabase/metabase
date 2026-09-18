@@ -15,14 +15,19 @@
     {:type :symbol
      :symbol pattern}
 
+    ;; Var pattern (var fn-name) - the result of reader resolving #'fn-name
+    (and (seq? pattern) (= (first pattern) 'var) (= (count pattern) 2))
+    {:type :guard
+     :symbol '_
+     :predicate (nth pattern 1)}
+
     ;; Guard pattern
     (and (seq? pattern) (symbol? (first pattern)) (>= (count pattern) 3))
-    (let [preds (apply hash-map (rest pattern))]
-      (cond-> {:type :guard
-               :symbol (nth pattern 0)
-               :predicate (nth pattern 2)}
-        (:guard preds) (assoc :predicate (:guard preds))
-        (:len preds) (assoc :length (:len preds))))
+    (let [{:keys [guard len]} (apply hash-map (rest pattern))]
+      {:type :guard
+       :symbol (nth pattern 0)
+       :predicate guard
+       :length len})
 
     ;; (:or ...) pattern
     (and (seq? pattern) (= (first pattern) :or) (>= (count pattern) 2))
@@ -272,6 +277,7 @@
   - (sym :guard pred :len size) - bind with predicate check. The predicate should either be a symbol denoting a
                                   function, keyword, set, or an invocation snippet (but not a lambda). Can optionally
                                   check for collection length.
+  - #'pred - same as (_ :guard pred) - just a predicate check without binding to a symbol.
   - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
   - map - binds associative values inside a map against other patterns. Special symbols can be used as patterns:
           `&truthy` - matches if the map contains any truthy value for the key
