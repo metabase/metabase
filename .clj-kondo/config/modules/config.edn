@@ -1347,6 +1347,7 @@
            util
            util.config
            warehouse-schema-overlay
+           warehouses
            warehouses.schema}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1379,6 +1380,7 @@
            mcp
            models
            request
+           server
            settings
            system
            task
@@ -1595,10 +1597,7 @@
               system
               upload
               util}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
-                    :model/Database
-                    :model/MetabotMessage}}
+   :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
 
   metrics
   {:team "UX West"
@@ -3211,13 +3210,11 @@
            sync
            upload
            util
-           util.classloader
            util.config
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           warehouses.secrets
-           enterprise/permissions}
+           warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3260,11 +3257,8 @@
            settings
            sync.analyze
            util
-           util.classloader
-           util.config
            warehouse-schema-overlay
-           warehouses
-           enterprise/permissions}
+           warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings

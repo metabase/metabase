@@ -4,7 +4,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
@@ -12,6 +11,7 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";

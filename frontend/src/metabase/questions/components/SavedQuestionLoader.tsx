@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useQuestionFromCard } from "metabase/metadata-store";
@@ -38,7 +38,6 @@ export function SavedQuestionLoader({
   questionId,
   children,
 }: SavedQuestionLoaderProps) {
-  const buildQuestion = useQuestionFromCard();
   const dispatch = useDispatch();
 
   const {
@@ -55,12 +54,7 @@ export function SavedQuestionLoader({
     }
   }, [card, dispatch]);
 
-  const question = useMemo(() => {
-    if (!card || isFetching) {
-      return null;
-    }
-    return buildQuestion(card);
-  }, [card, isFetching, buildQuestion]);
+  const question = useQuestionFromCard(isFetching ? undefined : card) ?? null;
 
   const loading = isCardLoading || isFetching;
   const error = cardError;

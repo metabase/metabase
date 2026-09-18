@@ -174,6 +174,24 @@
     (into {} (map (juxt :tool-name identity)) tool-defs)))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Queries
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn unpermissionable-native-query
+  "Build a query on `database-id` with native SQL under a later stage, whose permissions can't be calculated.
+  Its snippet tag is missing `:snippet-name`, so the permission check can't normalize it."
+  [database-id]
+  {:lib/type :mbql/query
+   :database database-id
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        "SELECT * FROM {{snip}}"
+               :template-tags {"snip" {:type         :snippet
+                                       :name         "snip"
+                                       :display-name "snip"
+                                       :snippet-id   Integer/MAX_VALUE}}}
+              {:lib/type :mbql.stage/mbql}]})
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Profiles
 ;;; ──────────────────────────────────────────────────────────────────
 

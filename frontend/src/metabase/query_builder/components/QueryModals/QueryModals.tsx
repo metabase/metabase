@@ -18,7 +18,7 @@ import type { QueryBuilderMode } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
 import { type OnCreateOptions, setArchivedQuestion } from "../../actions";
@@ -161,7 +161,7 @@ export function QueryModals({
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
-      const newQuestion = new Question(newCard, question.metadata());
+      const newQuestion = question.setCard(newCard);
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
