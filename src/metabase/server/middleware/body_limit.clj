@@ -12,7 +12,6 @@
    [metabase.util.log :as log])
   (:import
    (java.io InputStream)
-   (org.apache.commons.io.function IOBiConsumer)
    (org.apache.commons.io.input BoundedInputStream)))
 
 (set! *warn-on-reflection* true)
@@ -28,14 +27,12 @@
   also the most this ever pulls out of `in` past the limit. Once the bound is hit every subsequent read throws,
   rather than reporting EOF and letting the caller treat a truncated body as the whole thing."
   ^InputStream [^InputStream in max-bytes]
-  (let [max-bytes (long max-bytes)
-        builder   (BoundedInputStream/builder)]
-    (.setInputStream builder in)
-    (.setMaxCount builder (inc max-bytes))
-    (.setOnMaxCount builder (reify IOBiConsumer
-                              (accept [_ _max-count _count]
-                                (throw (body-too-large-exception max-bytes)))))
-    (.get builder)))
+  (let [max-bytes (long max-bytes)]
+    (.get (doto (BoundedInputStream/builder)
+            (.setInputStream in)
+            (.setMaxCount (inc max-bytes))
+            (.setOnMaxCount (fn [_max-count _count]
+                              (throw (body-too-large-exception max-bytes))))))))
 
 (defn- limit-request-body
   "For an unauthenticated `request`, reject it outright when its declared `Content-Length` is over the limit;

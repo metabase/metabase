@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn counting-stream
   "Wrap `in` so every byte read from it is counted in the `counter` atom."
