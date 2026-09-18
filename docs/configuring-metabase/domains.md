@@ -22,7 +22,7 @@ If someone adds an [iframe card](../dashboards/introduction.md#iframe-cards) to 
 
 Only allow sites you trust. An iframe can show whatever the site serves, so anyone who can edit a dashboard can put that content in front of everyone who views it.
 
-Metabase ships with a starter list (YouTube, Loom, Vimeo, Google Docs, and a few others). You can add to that list or clear it entirely. Listing `example.com` also allows its subdomains, while listing `data.example.com` allows only that subdomain. See [How domain matching works](#how-domain-matching-works).
+Metabase ships with a starter list (YouTube, Loom, Vimeo, Google Docs, and a few others). You can add to that list or clear it entirely. See [How domain matching works](#how-domain-matching-works).
 
 You can also set the list with the [`MB_ALLOWED_IFRAME_HOSTS`](./environment-variables.md#mb_allowed_iframe_hosts) environment variable.
 
@@ -30,7 +30,7 @@ You can also set the list with the [`MB_ALLOWED_IFRAME_HOSTS`](./environment-var
 
 _Admin > Settings > Domains_
 
-People can link to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md). If you don't want those images to load from just anywhere, you can restrict them to your Metabase instance plus domains you choose. You'll also need to do this before you can turn on custom visualizations, since this restriction is required to limit where a visualization's code can send outbound asset requests.
+People can link to images in [dashboard text cards](../dashboards/dashboard-markdown.md#add-an-image), entity descriptions, and [custom visualizations](../questions/visualizations/custom.md). If you don't want those images to load from just anywhere, you can restrict them to your Metabase instance plus domains you choose. You also need this on before you can turn on custom visualizations, which limits where a visualization's code can load assets from.
 
 1. Turn on **Restrict image domains**.
 2. Under **Allowed domains for images**, add the domains images can load from (like `images.example.com`). Separate multiple domains with commas. Leave the list empty to only allow images hosted by your Metabase instance. See [How domain matching works](#how-domain-matching-works).

@@ -16,7 +16,7 @@ Site name, report timezone, and more settings.
 
 ## [Allow iframes and images from other domains](./domains.md)
 
-Allow iframes and images from other domains.
+Allowlist sites for iframe cards, and restrict which domains images can load from.
 
 ## [Email](./email.md)
 
