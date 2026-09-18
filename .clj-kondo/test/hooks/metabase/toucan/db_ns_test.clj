@@ -107,8 +107,7 @@
   (testing "call style is not linted: a query written as :column value pairs is left alone"
     ;; Extraction to a .sql file is semantic rather than a transcription of the HoneySQL shape, so a
     ;; query map is no closer to that target than kv-args are. Converting also skips Toucan's type
-    ;; transforms, which only run in kv-arg position -- that bug shipped twice. See
-    ;; docs/developers-guide/value-binding-rubric.md.
+    ;; transforms, which only run in kv-arg position -- that bug shipped twice.
     (are [form] (empty? (filter #(re-find #"Pass this query a map" (str (:message %)))
                                 (lint-query-call form 'metabase.foo.db)))
       '(t2/select :model/X :locale [:auto/param locale])
