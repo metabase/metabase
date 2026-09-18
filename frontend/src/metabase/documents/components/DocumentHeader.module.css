@@ -11,8 +11,9 @@
 }
 
 .titleInput {
-  background-color: transparent !important;
   border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
   padding: 0 !important;
   font-size: 2rem !important;
   font-weight: bold !important;

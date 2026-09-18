@@ -148,7 +148,7 @@ export const LoginAttributeMappingEditor = ({
                 autoFocus={index === autoFocusIndex}
               />
             </Flex>
-            <Flex gap="sm" w="50%">
+            <Flex gap="sm" w="50%" align="center">
               <ValueInput
                 canDelete={canDeleteThis}
                 canRevert={!!canRevert}
