@@ -1,1 +1,1 @@
-export { EmptyState } from "./EmptyState";
+export { EmptyState, type ImageSource } from "./EmptyState";
