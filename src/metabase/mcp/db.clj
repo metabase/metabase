@@ -7,6 +7,7 @@
   HoneySQL."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
@@ -135,6 +136,10 @@
              :archived (boolean archived?)
              {:order-by [[:%lower.name :asc]]}))
 
+;; MCP is a session provider like any other as far as `auth_identity` is concerned; declaring it here is what lets
+;; the AuthIdentity model's before-insert validation accept the rows [[mcp-auth-identity-id!]] creates.
+(auth-identity/derive! :provider/mcp :metabase.auth-identity.provider/provider)
+
 (mu/defn insert-feedback!
   "Insert the McpFeedback `row`, returning the number inserted."
   [row :- ::mcp.schema/mcp-feedback.update]
@@ -149,6 +154,18 @@
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
 
+;; An AuthIdentity row rather than a new `core_session` column: `auth_identity.provider` is already the provider of
+;; record for a session, and the `(user_id, provider)` unique constraint makes one row per user the natural key —
+;; `select-or-insert!` leans on that constraint to settle a race between two concurrent MCP handshakes.
+(mu/defn- mcp-auth-identity-id! :- ms/PositiveInt
+  "The id of `user-id`'s `mcp` AuthIdentity, creating it if there isn't one. There is at most one per user."
+  [user-id :- ::lib.schema.id/user]
+  (:id (app-db/select-or-insert!
+        :model/AuthIdentity
+        {:user_id  user-id
+         :provider session/mcp-provider}
+        (constantly {}))))
+
 (mu/defn get-or-create-core-session!
   "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
   exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
@@ -160,9 +177,12 @@
    {:key_hashed key-hashed
     :user_id    user-id}
    (fn []
-     {:id              (session/generate-session-id)
-      :anti_csrf_token nil
-      :created_at      :%now})))
+     {:id               (session/generate-session-id)
+      :anti_csrf_token  nil
+      ;; the `mcp` provider keeps these rows out of the `/api/sessions` list and revoke endpoints, and stops the
+      ;; key from authenticating a request through the session middleware
+      :auth_identity_id (mcp-auth-identity-id! user-id)
+      :created_at       :%now})))
 
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
