@@ -33,12 +33,12 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
 }
 
 const defaultLandingPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: "app/assets/img/bridge.svg",
   isDefault: true,
 };
 
 const defaultLoginPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: "app/assets/img/bridge.svg",
   isDefault: true,
 };
 

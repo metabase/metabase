@@ -55,7 +55,7 @@ export function getLoginPageIllustration(state: State): IllustrationValue {
   switch (illustrationOption) {
     case "default":
       return {
-        src: "app/img/bridge.svg",
+        src: "app/assets/img/bridge.svg",
         isDefault: true,
       };
 
@@ -81,7 +81,7 @@ export function getLandingPageIllustration(state: State): IllustrationValue {
   switch (illustrationOption) {
     case "default":
       return {
-        src: "app/img/bridge.svg",
+        src: "app/assets/img/bridge.svg",
         isDefault: true,
       };
 
