@@ -38,7 +38,7 @@
         embedding [0.1 0.2 0.3]]
     (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
 
-(deftest semantic-search-query-strategy-test
+(deftest ^:mb/pgvector-only semantic-search-query-strategy-test
   (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
     (let [sql (vector-search-sql :brute-force)]
       (is (str/includes? sql "AS MATERIALIZED"))
@@ -78,7 +78,7 @@
         {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
     (first (filter #(= :vector_candidates (first %)) ctes))))
 
-(deftest flatten-ctes-preserves-materialized-test
+(deftest ^:mb/pgvector-only flatten-ctes-preserves-materialized-test
   (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
     ;; A regression that dropped the opt would change only the query plan, not the results, so the
     ;; results-based end-to-end tests can't catch it -- assert on the hoisted binding directly.
@@ -115,7 +115,7 @@
             (semantic.settings/semantic-search-vector-strategy! :hnsw-iterative-relaxed)
             (is (= 2 @triggers) "transitioning :brute-force -> :hnsw-iterative-relaxed kicks off a build")))))))
 
-(deftest vector-session-settings-test
+(deftest ^:mb/pgvector-only vector-session-settings-test
   (testing ":hnsw and :brute-force need no session GUCs"
     (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :hnsw})))
     (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :brute-force}))))
@@ -135,7 +135,7 @@
            (map first (#'semantic.index/vector-session-settings
                        {:vector-search-strategy :hnsw :vector-search-force-index? true}))))))
 
-(deftest ^:synchronized semantic-search-instrumentation-test
+(deftest ^:synchronized ^:mb/pgvector-only semantic-search-instrumentation-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))
@@ -242,7 +242,7 @@
    (semantic.index/fts-native-index-name index)   #"CREATE INDEX .* USING gin \(text_search_with_native_query_vector\)"
    (#'semantic.index/content-index-name index)    #"CREATE INDEX .* USING btree \(content\)"})
 
-(deftest create-index-table!-test
+(deftest ^:mb/pgvector-only create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
       (let [index      @index-ref
@@ -270,7 +270,7 @@
           (is (zero? (semantic.tu/index-count index)))
           (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
 
-(deftest create-index-table!-extension-failure-test
+(deftest ^:mb/pgvector-only create-index-table!-extension-failure-test
   (testing "a failed CREATE EXTENSION surfaces the actionable pgvector guidance, not the generic wrapper"
     (mt/with-premium-features #{:semantic-search}
       (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
@@ -284,7 +284,7 @@
               (is (= ::semantic.index/extension-install-failed (:type (ex-data e))))
               (is (re-find #"pgvector extension" (ex-message e))))))))))
 
-(deftest create-hnsw-index-if-not-exists!-test
+(deftest ^:mb/pgvector-only create-hnsw-index-if-not-exists!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
       (testing "HNSW index is absent until built explicitly"
@@ -298,7 +298,7 @@
           (is (= before (semantic.tu/index-relfilenode (semantic.index/hnsw-index-name @index-ref)))
               "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
 
-(deftest query-index-hnsw-without-index-throws-test
+(deftest ^:mb/pgvector-only query-index-hnsw-without-index-throws-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
       (testing "a query under any HNSW-index-backed strategy fails fast when no usable HNSW index exists"
@@ -351,7 +351,7 @@
                (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (semantic.tu/check-index-has-mock-docs)))))
 
-(deftest upsert-index!-tsvectors-test
+(deftest ^:mb/pgvector-only upsert-index!-tsvectors-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/check-index-has-no-mock-docs)

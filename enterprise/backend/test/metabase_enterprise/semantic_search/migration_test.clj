@@ -59,7 +59,7 @@
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
 
-(deftest version-2-embedding-space-migration-preserves-index-test
+(deftest ^:mb/pgvector-only version-2-embedding-space-migration-preserves-index-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
       (let [pgvector  (semantic.env/get-pgvector-datasource!)
@@ -101,7 +101,7 @@
             (is (= {"embedding_space_id" "NO" "model_revision" "YES"} nullable-by-column))
             (is (not (contains? active-model :model-revision)))))))))
 
-(deftest schema-scoped-migration-drop-test
+(deftest ^:mb/pgvector-only schema-scoped-migration-drop-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
       (testing "app-db-mode migration reset only ever drops tables inside the module's schema"
@@ -130,7 +130,7 @@
             (is (= #{"migration" "index_metadata" "index_control" "index_gate"}
                    (schema-tables)))))))))
 
-(deftest dedicated-reset-stays-in-default-schema-test
+(deftest ^:mb/pgvector-only dedicated-reset-stays-in-default-schema-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
       (testing "the dedicated-mode reset drops only its own tables, by schema and by name"
@@ -252,7 +252,7 @@
         (map (fn [x] (keyword (name q) (name x))))
         xs))
 
-(deftest expected-db-schema-after-migration-test
+(deftest ^:mb/pgvector-only expected-db-schema-after-migration-test
   (try
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-test-db-defaults!
@@ -358,7 +358,7 @@
                                                   [:= :table_name [:inline table-name]]
                                                   [:= :column_name [:inline column-name]]]}))))
 
-(deftest current-schema-version-adds-health-metric-columns-test
+(deftest ^:mb/pgvector-only current-schema-version-adds-health-metric-columns-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
       (let [pgvector       (semantic.env/get-pgvector-datasource!)
@@ -373,7 +373,7 @@
         (is (has-column?! pgvector "index_metadata" "repair_orphan_count"))
         (is (has-column?! pgvector "index_metadata" "repair_snapshot_at"))))))
 
-(deftest dynamic-schema-migration-test
+(deftest ^:mb/pgvector-only dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-test-db-defaults!
       (semantic.core/init! (semantic.tu/mock-documents) nil)
@@ -440,7 +440,7 @@
                                                    row)]}
                              :quoted true)))
 
-(deftest migration-4-backfill-test
+(deftest ^:mb/pgvector-only migration-4-backfill-test
   (testing "migration 4 backfills root_collection_type from the gate doc, then via an appdb walk of the Library forest"
     (mt/with-premium-features #{:semantic-search}
       ;; :mock-initialized puts the 4-dim mock embedding model in scope so the placeholder

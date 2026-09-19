@@ -33,7 +33,7 @@
     (is (= :index_table_1.model
            (semantic.util/conflict-target-column "semantic_search.index_table_1" "model")))))
 
-(deftest index-state-test
+(deftest ^:mb/pgvector-only index-state-test
   (testing "classifies catalog and concurrent-build state"
     (doseq [[row expected] [[nil nil]
                             [{:is_ready true, :is_valid true, :is_building false} :ready]
@@ -50,7 +50,7 @@
         (is (= exists? (semantic.util/index-exists? ::pgvector "index_1")))
         (is (= needs-build? (semantic.util/index-needs-build? ::pgvector "index_1")))))))
 
-(deftest index-state-catalog-query-test
+(deftest ^:mb/pgvector-only index-state-catalog-query-test
   (let [queries (atom [])]
     (mt/with-dynamic-fn-redefs
       [jdbc/execute-one! (fn [_ query _]
@@ -69,7 +69,7 @@
       (is (re-find #"ORDER BY CASE" (first (second @queries)))
           "unqualified names choose the best state deterministically"))))
 
-(deftest catalog-lookups-schema-scoping-test
+(deftest ^:mb/pgvector-only catalog-lookups-schema-scoping-test
   (testing "qualified names scope table/index existence checks to their schema; a same-named object in
             another schema (e.g. the app db's public) must not satisfy them"
     (mt/with-premium-features #{:semantic-search}

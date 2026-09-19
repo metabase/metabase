@@ -366,7 +366,7 @@
 
 ;;;; layer 1: distance-level retrieval vs exact ground truth
 
-(deftest distance-recall-matrix-test
+(deftest ^:mb/pgvector-only distance-recall-matrix-test
   (do-with-matrix-fixture!
    (fn [ds]
      ;; isolate retrieval: weights reduce ranking to the distance rank, permission filtering is bypassed
@@ -412,7 +412,7 @@
 
 ;;;; layer 2: final top results vs an exhaustive run of the same scoring pipeline
 
-(deftest full-pipeline-recall-matrix-test
+(deftest ^:mb/pgvector-only full-pipeline-recall-matrix-test
   (do-with-matrix-fixture!
    (fn [ds]
      (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
@@ -445,7 +445,7 @@
 
 ;;;; layer 3: under-fetch from post-retrieval permission filtering
 
-(deftest permission-under-fetch-matrix-test
+(deftest ^:mb/pgvector-only permission-under-fetch-matrix-test
   (do-with-matrix-fixture!
    (fn [_ds]
      (semantic.tu/with-only-semantic-weights
@@ -516,7 +516,7 @@
      :embeddings (into {probe-text (into [1.0] (repeat 31 0.0))} (map (juxt :name :vector)) rows)
      :exact-ids  (mapv :id rows)}))
 
-(deftest graph-approximation-test
+(deftest ^:mb/pgvector-only graph-approximation-test
   (mt/with-premium-features #{:semantic-search}
     (mt/with-temporary-setting-values [semantic-search-results-limit results-limit]
       (let [ds (make-packed-dataset {:seed 42 :n 2000})]

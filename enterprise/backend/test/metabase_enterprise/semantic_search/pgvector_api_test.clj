@@ -87,7 +87,7 @@
           (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))))))
 
-(deftest ensure-active-hnsw-index!-test
+(deftest ^:mb/pgvector-only ensure-active-hnsw-index!-test
   (mt/with-premium-features #{:semantic-search}
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
@@ -128,7 +128,7 @@
           (#'semantic.pgvector-api/ensure-hnsw-index-under-lock! ::connection index))
         (is (= expected-operations (mapv first @calls)) (str state " maintenance operations"))))))
 
-(deftest with-hnsw-index-lock-serializes-callers-test
+(deftest ^:mb/pgvector-only with-hnsw-index-lock-serializes-callers-test
   (let [pgvector   (semantic.env/get-pgvector-datasource!)
         index-name (str "test-hnsw-lock-" (random-uuid))
         lock-name  (str "metabase-semantic-hnsw:" index-name)

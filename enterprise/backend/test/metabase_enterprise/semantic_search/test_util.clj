@@ -8,6 +8,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -30,18 +31,29 @@
   (:import
    (clojure.lang IDeref)
    (com.mchange.v2.c3p0 PooledDataSource)
-   (java.io Closeable)
+   (java.io Closeable File)
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)
    (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
+(defn sqlite-mode?
+  "Do these tests run against the SQLite store? Set MB_SEMANTIC_SEARCH_SQLITE_PATH and leave MB_PGVECTOR_DB_URL
+  unset to run them that way; each test database then lives in its own file under a temp directory, and the path's
+  value is otherwise ignored."
+  []
+  (and (str/blank? (:mb-pgvector-db-url env))
+       (not (str/blank? (:mb-semantic-search-sqlite-path env)))))
+
 ;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
 (defn once-fixture
-  "Shared `:once` fixture for semantic-search tests. Skips the namespace when no pgvector URL is configured, and
-  initializes the application DB so tests that read Metabase content (e.g. `collection`) while indexing are
-  self-sufficient rather than depending on a CI partition-mate to have set the app DB up."
+  "Shared `:once` fixture for semantic-search tests. Skips the namespace when no pgvector URL (or SQLite store, see
+  [[sqlite-mode?]]) is configured, and initializes the application DB so tests that read Metabase content (e.g.
+  `collection`) while indexing are self-sufficient rather than depending on a CI partition-mate to have set the app DB
+  up."
   [f]
-  (when semantic.db.datasource/db-url
+  (when (or semantic.db.datasource/db-url (sqlite-mode?))
     (initialize/initialize-if-needed! :db)
     (f)))
 
@@ -55,15 +67,31 @@
                                 (str "$1" alt-name "$3"))
       (when (nil? <>) (throw (Exception. "Empty pgvector url."))))))
 
+(def ^:private sqlite-test-dir
+  (delay (.toFile (Files/createTempDirectory "semantic-search-sqlite-test" (make-array FileAttribute 0)))))
+
+(defn- sqlite-test-path
+  "The SQLite file standing in for the pgvector test database `db-name`."
+  [db-name]
+  (.getAbsolutePath (File. ^File @sqlite-test-dir (str db-name ".db"))))
+
+(defn- delete-sqlite-test-db!
+  [db-name]
+  (doseq [suffix ["" "-wal" "-shm"]]
+    (.delete (File. (str (sqlite-test-path db-name) suffix)))))
+
 (defn do-with-temp-datasource!
   "Impl [[with-temp-datasource]]."
   [db-name thunk]
   ;; with no URL the redef'd nil db-url could resolve to :app-db mode and hand back the application
   ;; pool — the dedicated harness (which DROPs/CREATEs databases) must never point at the app db.
   ;; unconditional (not assert): this guards destructive setup, and asserts can be elided
-  (when (str/blank? (:mb-pgvector-db-url env))
+  (when-not (or (sqlite-mode?) (not (str/blank? (:mb-pgvector-db-url env))))
     (throw (ex-info "with-temp-datasource! requires the dedicated-harness MB_PGVECTOR_DB_URL" {})))
-  (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
+  (with-redefs [semantic.db.datasource/db-url      (when-not (sqlite-mode?)
+                                                     (alt-db-name-url (:mb-pgvector-db-url env) db-name))
+                semantic.db.sqlite/db-path         (when (sqlite-mode?)
+                                                     (sqlite-test-path db-name))
                 semantic.db.datasource/data-source (atom nil)]
     (try
       ;; ensure datasource was initialized so we can close it in finally.
@@ -131,6 +159,17 @@
      (index-all!)
      (thunk))))
 
+(defn- do-with-sqlite-test-db!
+  [{:keys [dbname mode cleanup]} thunk]
+  (when (#{:before :both} cleanup)
+    (delete-sqlite-test-db! dbname))
+  (with-temp-datasource! dbname
+    (do-with-setup-test-db! mode thunk))
+  (when (#{:after :both} cleanup)
+    (delete-sqlite-test-db! dbname)))
+
+(declare do-with-postgres-test-db!)
+
 ;; Reminder: this can be adjusted so (1) each database is unique and (2) redefs are thread local (latter is not simple
 ;; but possible I believe), so we can take advantage of parallel tests.
 (defn do-with-test-db!
@@ -141,6 +180,12 @@
          cleanup :before}
     :as _opts}
    thunk]
+  (if (sqlite-mode?)
+    (do-with-sqlite-test-db! {:dbname dbname :mode mode :cleanup cleanup} thunk)
+    (do-with-postgres-test-db! {:dbname dbname :mode mode :cleanup cleanup} thunk)))
+
+(defn- do-with-postgres-test-db!
+  [{:keys [dbname mode cleanup]} thunk]
   (with-temp-datasource! "postgres"
     (try
       (when (#{:before :both} cleanup)
@@ -532,10 +577,15 @@
   (when table-name
     (try
       (let [result (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                                  ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
-                                   (name table-name)
-                                   (name index-name)])]
-        (-> result first vals first))
+                                  (if (sqlite-mode?)
+                                    [(str "SELECT EXISTS (SELECT 1 FROM sqlite_master"
+                                          " WHERE type = 'index' AND tbl_name = ? AND name = ?)")
+                                     (name table-name)
+                                     (name index-name)]
+                                    ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
+                                     (name table-name)
+                                     (name index-name)]))]
+        (semantic.util/db-bool (-> result first vals first)))
       (catch Exception _ false))))
 
 ;; read-only pg_indexes lookup; the bang-named calls at most lazily initialize the shared pool
@@ -546,7 +596,11 @@
   (into {}
         (map (juxt :indexname :indexdef))
         (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                       ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)]
+                       (if (sqlite-mode?)
+                         [(str "SELECT name AS indexname, sql AS indexdef FROM sqlite_master"
+                               " WHERE type = 'index' AND tbl_name = ?")
+                          (name table-name)]
+                         ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)])
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 ;; read-only pg_class lookup; the bang-named calls at most lazily initialize the shared pool
@@ -587,9 +641,11 @@
   (semantic.db.migration/drop-migration-table! index-metadata pgvector))
 
 (defn get-table-names [pgvector]
-  (->> ["select table_name from information_schema.tables"]
+  (->> (if (sqlite-mode?)
+         ["select name as table_name from sqlite_master where type = 'table'"]
+         ["select table_name from information_schema.tables"])
        (jdbc/execute! pgvector)
-       (mapv :tables/table_name)))
+       (mapv (some-fn :tables/table_name :sqlite_master/table_name))))
 
 (defn open-metadata!
   "Create metadata tables and return a closeable that will clean them up when closed."
@@ -608,10 +664,6 @@
        index)
    (fn [_] (semantic.index/drop-index-table! pgvector index))))
 
-(defn- decode-column
-  [row column]
-  (update row column #'semantic.index/decode-pgobject))
-
 (defn- unwrap-column
   [row column]
   (update row column #'semantic.index/unwrap-pgobject))
@@ -619,7 +671,7 @@
 (defn- decode-embedding
   "Decode `row`'s `:embedding` column."
   [row]
-  (decode-column row :embedding))
+  (update row :embedding #'semantic.index/decode-embedding))
 
 (defn- unwrap-tsvectors
   "Decode `row`'s `:text_search_vector` and `:text_search_with_native_query_vector` columns."
@@ -700,9 +752,8 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn check-index-has-no-mock-docs []
   (let [{:keys [table-name]}     mock-index
-        table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
-        [{:keys [table_exists]}] (jdbc/execute! (semantic.env/get-pgvector-datasource!) [table-exists-sql table-name])]
-    (when table_exists
+        table-exists             (semantic.util/table-exists? (semantic.env/get-pgvector-datasource!) table-name)]
+    (when table-exists
       (check-index-has-no-mock-card)
       (check-index-has-no-mock-dashboard))))
 

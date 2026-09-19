@@ -30,7 +30,7 @@
 
 (defn- ts ^Timestamp [s] (Timestamp/from (Instant/parse s)))
 
-(deftest search-doc->gate-doc-test
+(deftest ^:mb/pgvector-only search-doc->gate-doc-test
   (testing "converts search document to gate document format"
     (let [t1         (ts "2025-01-01T12:00:00Z")
           t2         (ts "2025-01-02T12:00:00Z")

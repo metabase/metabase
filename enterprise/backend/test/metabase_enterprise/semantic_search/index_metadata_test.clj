@@ -262,4 +262,4 @@
                     :index_version     (:version index)}]
                   (semantic.tu/get-metadata-rows pgvector index-metadata)))))
       (testing "enforces unique table-name constraint"
-        (is (thrown-with-msg? Exception #"duplicate key" (sut pgvector index-metadata index)))))))
+        (is (thrown-with-msg? Exception #"duplicate key|UNIQUE constraint failed" (sut pgvector index-metadata index)))))))

@@ -137,7 +137,7 @@
               (cleanup-stale-indexes! pgvector index-metadata)
               (is (not (semantic.tu/table-exists-in-db? nonexistent-table))))))))))
 
-(deftest orphan-index-cleanup-test
+(deftest ^:mb/pgvector-only orphan-index-cleanup-test
   (mt/with-premium-features #{:semantic-search}
     (let [pgvector (semantic.env/get-pgvector-datasource!)
           ;; not unique-index-metadata: its nanoTime qualifier would push a qualified index_<40-hex>
@@ -208,7 +208,7 @@
             (doseq [table (concat orphan-tables survivors [blocked-orphan])]
               (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " table)]))))))))
 
-(deftest orphan-index-tables-schema-scoping-test
+(deftest ^:mb/pgvector-only orphan-index-tables-schema-scoping-test
   (mt/with-premium-features #{:semantic-search}
     (let [pgvector (semantic.env/get-pgvector-datasource!)
           uniq-id (mod (System/nanoTime) 1000000)

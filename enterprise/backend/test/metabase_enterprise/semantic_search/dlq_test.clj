@@ -128,7 +128,7 @@
             (is (= 2 (:retry_count (first results))))
             (is (= t2 (:error_gated_at (first results))))))))))
 
-(deftest dlq-entry-upsert-schema-qualified-test
+(deftest ^:mb/pgvector-only dlq-entry-upsert-schema-qualified-test
   (testing "the conflict predicate references the target by bare name when the DLQ table is schema-qualified
             (app-db mode); a qualified reference would not resolve inside ON CONFLICT DO UPDATE"
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
