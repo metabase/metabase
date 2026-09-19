@@ -1,0 +1,72 @@
+.button {
+  background: var(--mb-color-core-brand);
+  border-radius: 0.625rem;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  transition:
+    opacity 300ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+
+  &:hover:not(:disabled),
+  &:active:not(:disabled) {
+    opacity: 0.7;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.9);
+  }
+
+  &:disabled {
+    background: var(--mb-color-background_surface-disabled);
+    cursor: not-allowed;
+
+    .sendIcon {
+      color: var(--mb-color-icon-disabled);
+    }
+  }
+}
+
+.buttonHidden {
+  opacity: 0;
+  transition: opacity 0ms ease;
+  user-select: none;
+  cursor: default;
+
+  &:hover,
+  &:active {
+    opacity: 0;
+  }
+}
+
+.buttonResponding {
+  border: none;
+  background: var(--mb-color-background_surface-secondary);
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    border: 1px solid var(--mb-color-core-brand);
+
+    .stopIcon {
+      color: var(--mb-color-core-brand);
+    }
+  }
+}
+
+.sendIcon {
+  color: var(--mb-color-background_page-primary);
+  width: 0.8rem;
+  transition: color 150ms ease;
+}
+
+.stopIcon {
+  color: var(--mb-color-text-primary);
+  width: 0.7rem;
+  height: 0.7rem;
+  transition: color 75ms ease;
+}

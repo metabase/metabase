@@ -7,24 +7,21 @@ export function calculateFillerHeight(
   const scrollContent = Array.from(
     scrollContainerEl.children?.[0]?.children ?? [],
   );
-  const lastUserMessageIndex = scrollContent.findLastIndex(
+  const lastUserMessageEl = scrollContent.findLast(
     (el) => el.getAttribute("data-message-role") === "user",
   );
-  const currentPromptEls = scrollContent.slice(lastUserMessageIndex);
-  const validEls = currentPromptEls.filter((node) => node);
-  const nonFillerElsHeight = validEls.reduce((sum, node) => {
-    return node === fillerEl ? sum : sum + node.clientHeight;
-  }, 0);
+  const turnStartEl = lastUserMessageEl ?? fillerEl;
+  const turnHeight =
+    fillerEl.getBoundingClientRect().top -
+    turnStartEl.getBoundingClientRect().top;
 
-  // when the container is scrollable, we need to factor in the top padding as well
-  const containerHeight = scrollContainerEl.clientHeight;
   const style = getComputedStyle(scrollContainerEl);
   const paddingAdjustment =
     parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-  const contentHeight = containerHeight - paddingAdjustment;
+  const contentHeight =
+    scrollContainerEl.getBoundingClientRect().height - paddingAdjustment;
 
-  // subtract 1px to prevent a scrollbar appearing due to rounding issues
-  return Math.max(0, Math.floor(contentHeight - nonFillerElsHeight - 1));
+  return Math.max(0, Math.floor(contentHeight - turnHeight));
 }
 
 function resizeFillerArea(
