@@ -52,7 +52,7 @@
   [driver query]
   (try
     (let [sql (lib/raw-native-query query)
-          default-schema (sql.normalize/default-schema driver (lib.metadata/database query))
+          default-schema (:default-schema (lib.metadata/database query))
           query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
           specs (map (fn [[_catalog table-schema table]]
                        (sql-tools.common/normalize-table-spec

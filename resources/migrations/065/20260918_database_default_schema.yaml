@@ -1,0 +1,49 @@
+## Persists the schema used for unqualified table references so callers do not need to recalculate it.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-18T00:00:06
+      author: ranquild
+      comment: Add default_schema to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: default_schema
+                  type: varchar(254)
+                  remarks: Schema used to resolve unqualified table references; null for databases without schemas
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: default_schema
+
+  - changeSet:
+      id: v65.2026-09-18T00:00:07
+      author: ranquild
+      comment: Backfill metabase_database.default_schema with safe static defaults until the next metadata sync
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_database
+              SET default_schema = CASE
+                WHEN engine IN (
+                  'athena',
+                  'databricks',
+                  'druid-jdbc',
+                  'oracle',
+                  'postgres',
+                  'presto-jdbc',
+                  'redshift',
+                  'sparksql',
+                  'starburst',
+                  'vertica'
+                ) THEN 'public'
+                WHEN engine IN ('h2', 'snowflake') THEN 'PUBLIC'
+                WHEN engine = 'sqlserver' THEN 'dbo'
+                WHEN engine = 'clickhouse' THEN 'default'
+                ELSE NULL
+              END;
+      rollback: # nothing to do; rolling back the preceding changeset drops the column

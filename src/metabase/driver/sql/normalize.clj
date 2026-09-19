@@ -40,11 +40,10 @@
     error))
 
 (defmulti default-schema
-  "The schema an unqualified table reference resolves to in `database`, or nil when the driver has none.
+  "The schema an unqualified table reference resolves to for `database`, or nil when the driver has none.
 
-  `database` may be nil when the caller has none in hand, and a driver whose default schema is a property of the
-  connection rather than of the driver — ClickHouse opens a database where other engines have a default schema —
-  answers nil for it.
+  Implementations may connect to the database; callers should use the value persisted by metadata sync instead of
+  invoking this method directly.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
   {:added "0.57.0" :arglists '([driver database])}

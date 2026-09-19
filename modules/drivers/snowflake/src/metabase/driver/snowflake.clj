@@ -119,10 +119,6 @@
   [_]
   :sunday)
 
-(defmethod driver.sql/default-schema :snowflake
-  [_driver _database]
-  "PUBLIC")
-
 (defmethod driver/temp-table-name :snowflake
   [_driver]
   (str "MB_TEST_" (u/upper-case-en (str/replace (str (random-uuid)) "-" ""))))

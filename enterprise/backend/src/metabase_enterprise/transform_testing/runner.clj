@@ -32,7 +32,6 @@
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -206,7 +205,7 @@
         source         (parsed-source driver transform transform-id)
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)
-        default-schema (sql.normalize/default-schema driver database)
+        default-schema (:default_schema database)
         replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
         compiled       (transform-testing.compile/compile-transform driver source replacements)]
     (transform-testing.validator/validate
