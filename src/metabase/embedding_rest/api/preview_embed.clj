@@ -172,6 +172,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed.common/check-active-card card-id)
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
      :dashboard-id     dashboard-id
@@ -215,6 +216,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed.common/check-active-card card-id)
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
      :dashboard-id     dashboard-id
@@ -272,6 +274,7 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+    (api.embed.common/check-active-card card-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard
        dashboard-id dashcard-id card-id
