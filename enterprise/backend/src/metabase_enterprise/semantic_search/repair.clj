@@ -112,8 +112,11 @@
                                             [:!= :g.document_hash nil]
                                             [:> [:composite :g.gated_at :g.id]
                                              [:composite
-                                              [:coalesce [:lift indexer_last_seen]
-                                               [:raw "'-infinity'::timestamptz"]]
+                                              (if (semantic.util/sqlite?)
+                                                ;; timestamps are text there, and '' sorts before all of them
+                                                [:coalesce [:lift indexer_last_seen] ""]
+                                                [:coalesce [:lift indexer_last_seen]
+                                                 [:raw "'-infinity'::timestamptz"]])
                                               [:coalesce [:lift indexer_last_seen_id] ""]]]]]}]]
                                ;; A failed delete may sit behind the watermark: stalled-mode advances it after
                                ;; moving the failure to the DLQ. The current gate generation still owns that retry,
@@ -141,7 +144,9 @@
 (defn- create-repair-table!
   "Creates an empty temporary table for tracking documents during index repair."
   [pgvector repair-table-name]
-  (let [repair-table-ddl (-> (sql.helpers/create-table :unlogged (keyword repair-table-name) :if-not-exists)
+  (let [repair-table-ddl (-> (if (semantic.util/sqlite?)
+                               (sql.helpers/create-table (keyword repair-table-name) :if-not-exists)
+                               (sql.helpers/create-table :unlogged (keyword repair-table-name) :if-not-exists))
                              (sql.helpers/with-columns [[:model :text :not-null]
                                                         [:model_id :text :not-null]
                                                         [[:primary-key :model :model_id]]])

@@ -63,17 +63,25 @@
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
                               (sql/format
-                               {:select [:schemaname :tablename]
-                                :from   [:pg_tables]
-                                :where  (if schema
-                                          [:and
-                                           [:= :schemaname [:inline schema]]
-                                           [:<> :tablename ^:allow-raw-sql [:inline "migration"]]]
-                                          ;; dedicated mode only ever creates tables in the default
-                                          ;; schema, so the reset has no business outside it
-                                          [:and
-                                           [:= :schemaname ^:allow-raw-sql [:raw "current_schema()"]]
-                                           [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]])})
+                               (if (semantic.util/sqlite?)
+                                 ;; FTS5 shadow tables are listed too, but match no name shape we'd drop
+                                 {:select [[[:inline "main"] :schemaname] [:name :tablename]]
+                                  :from   [:sqlite_master]
+                                  :where  [:and
+                                           [:= :type [:inline "table"]]
+                                           [:<> :name ^:allow-raw-sql [:inline "migration"]]
+                                           [:not-like :name ^:allow-raw-sql [:inline "sqlite_%"]]]}
+                                 {:select [:schemaname :tablename]
+                                  :from   [:pg_tables]
+                                  :where  (if schema
+                                            [:and
+                                             [:= :schemaname [:inline schema]]
+                                             [:<> :tablename ^:allow-raw-sql [:inline "migration"]]]
+                                            ;; dedicated mode only ever creates tables in the default
+                                            ;; schema, so the reset has no business outside it
+                                            [:and
+                                             [:= :schemaname ^:allow-raw-sql [:raw "current_schema()"]]
+                                             [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]])}))
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     ;; the sentinel scan reads every table in scope, not just ours: an app db is recognized by tables we
     ;; would never drop
@@ -88,10 +96,13 @@
               ;; the module's own schema holds nothing else, so a reset there is free to clear leftovers
               ;; from older naming schemes. A dedicated store's default schema is shared.
               (nil? schema) (filter (partial semantic-search-table? index-metadata)))]
-      (jdbc/execute! tx
-                     (sql/format
-                      {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
-                                                (semantic.util/quote-ident tablename))]]]})))))
+      (if (and (semantic.util/sqlite?) (semantic.index/index-table-name? tablename))
+        ;; takes its FTS5 table along
+        (semantic.index/drop-index-table! tx {:table-name tablename})
+        (jdbc/execute! tx
+                       (sql/format
+                        {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
+                                                  (semantic.util/quote-ident tablename))]]]}))))))
 
 (defn- quoted-table-name
   [table-name]
@@ -168,11 +179,16 @@
                                         :where           [[:< :index_version target-version]]})
                              (mapcat vals))
         ;; stored table_name values are schema-qualified in app-db mode; pg_tables lists bare names
+        bare-names      (mapv semantic.util/table-name-part candidate-names)
         existing-bare   (when (seq candidate-names)
-                          (->> (execute! {:select [:tablename]
-                                          :from   [:pg_tables]
-                                          :where  (cond-> [:and [:in :tablename (mapv semantic.util/table-name-part candidate-names)]]
-                                                    schema (conj [:= :schemaname [:inline schema]]))})
+                          (->> (execute! (if (semantic.util/sqlite?)
+                                           {:select [:name]
+                                            :from   [:sqlite_master]
+                                            :where  [:and [:= :type [:inline "table"]] [:in :name bare-names]]}
+                                           {:select [:tablename]
+                                            :from   [:pg_tables]
+                                            :where  (cond-> [:and [:in :tablename bare-names]]
+                                                      schema (conj [:= :schemaname [:inline schema]]))}))
                                (mapcat vals)
                                set))
         table-names     (filter (comp existing-bare semantic.util/table-name-part) candidate-names)]

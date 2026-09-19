@@ -166,6 +166,19 @@
   "Cached [[active-index*]] so collectors and the repair reporter can share the lookup."
   (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
 
+(defn- seconds-between
+  "SQL for the seconds elapsed from timestamp expression `earlier` to `later`. SQLite has no interval type, so there
+  the stored timestamp text goes through `julianday` instead."
+  [later earlier]
+  (if (semantic.util/sqlite?)
+    (format "((julianday(%s) - julianday(%s)) * 86400.0)" later earlier)
+    (format "EXTRACT(EPOCH FROM (%s - %s))" later earlier)))
+
+(defn- timestamp-param
+  "SQL for a bound timestamp parameter."
+  []
+  (if (semantic.util/sqlite?) "?" "CAST(? AS timestamptz)"))
+
 (defn- scalar-row [pgvector sql]
   (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -179,7 +192,7 @@
   [pgvector snapshot-at]
   (:repair_age
    (scalar-row pgvector
-               ["SELECT EXTRACT(EPOCH FROM (clock_timestamp() - CAST(? AS timestamptz))) AS repair_age"
+               [(str "SELECT " (seconds-between "clock_timestamp()" (timestamp-param)) " AS repair_age")
                 snapshot-at])))
 
 (defn- semantic-coverage []
@@ -196,8 +209,8 @@
                                       "(SELECT 1 FROM %s i "
                                       "WHERE i.model = g.model AND i.model_id = g.model_id)) AS indexed, "
                                       "count(*) AS expected, "
-                                      "EXTRACT(EPOCH FROM ((SELECT at FROM observed) - "
-                                      "CAST(? AS timestamptz))) AS repair_age "
+                                      (seconds-between "(SELECT at FROM observed)" (timestamp-param))
+                                      " AS repair_age "
                                       "FROM %s g WHERE g.document_hash IS NOT NULL")
                                  table gate)
                          snapshot-at])]
@@ -219,21 +232,25 @@
           gate-row       (scalar-row pgvector
                                      [(format "WITH observed AS (SELECT clock_timestamp() AS at)
                                                SELECT count(*) AS pending,
-                                                      EXTRACT(EPOCH FROM ((SELECT at FROM observed) - min(gated_at))) AS age,
+                                                      %s AS age,
                                                       (SELECT at FROM observed) AS observed_at
                                                FROM %s
-                                               WHERE (gated_at, id) > (COALESCE(?, '-infinity'::timestamptz), COALESCE(?, ''))"
-                                              gate)
+                                               WHERE (gated_at, id) > (COALESCE(?, %s), COALESCE(?, ''))"
+                                              (seconds-between "(SELECT at FROM observed)" "min(gated_at)")
+                                              gate
+                                              ;; SQLite timestamps are text, and '' sorts before all of them
+                                              (if (semantic.util/sqlite?) "''" "'-infinity'::timestamptz"))
                                       indexer_last_seen indexer_last_seen_id])
           dlq-row        (if (semantic.dlq/dlq-table-exists? pgvector index-metadata id)
                            (let [table (semantic.util/quote-table
                                         (name (semantic.dlq/dlq-table-name-kw index-metadata id)))]
                              (scalar-row pgvector
                                          [(format "SELECT count(*) AS pending,
-                                                          EXTRACT(EPOCH FROM (CAST(? AS timestamptz) - min(d.error_gated_at))) AS age
+                                                          %s AS age
                                                    FROM %s d
                                                    JOIN %s g ON g.id = d.gate_id
                                                                 AND g.gated_at = d.error_gated_at"
+                                                  (seconds-between (timestamp-param) "min(d.error_gated_at)")
                                                   table gate)
                                           (:observed_at gate-row)]))
                            {:pending 0, :age nil})

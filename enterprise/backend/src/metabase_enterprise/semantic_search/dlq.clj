@@ -33,6 +33,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private sqlite-dlq-table-schema
+  "[[dlq-table-schema]] in the SQLite store's types (see [[metabase-enterprise.semantic-search.db.sqlite]])."
+  [[:gate_id :text [:primary-key] :not-null]
+   [:retry_count :integer :not-null]
+   [:attempt_at :timestamp :not-null]
+   [:last_attempted_at :timestamp :not-null]
+   [:error_gated_at :timestamp :not-null]])
+
 (def ^:private dlq-table-schema
   "The database schema definition for a DLQ table.
   The schema includes:
@@ -63,7 +71,7 @@
     (log/debugf "Creating DLQ table %s for index %s" dlq-table index-id)
     ;; create table
     (let [ddl {:create-table [dlq-table :if-not-exists]
-               :with-columns dlq-table-schema}
+               :with-columns (if (semantic.util/sqlite?) sqlite-dlq-table-schema dlq-table-schema)}
           sql (sql/format ddl :quoted true)]
       (jdbc/execute-one! pgvector sql))
     ;; create attempt_at index

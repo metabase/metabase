@@ -15,6 +15,11 @@
    [:migrated_at :timestamp [:default [:NOW]]]
    [:status [:varchar 32]]])
 
+(def ^:private sqlite-columns
+  [[:version :integer [:primary-key]]
+   [:migrated_at :timestamp [:default [:raw "(clock_timestamp())"]]]
+   [:status :text]])
+
 (defn- migration-table-kw
   "The migration bookkeeping table: inside the module's schema when index-metadata carries one (shared
   app-db mode), bare `migration` otherwise."
@@ -42,7 +47,7 @@
 (defn- migration-table-sql
   [index-metadata]
   (-> (sql.helpers/create-table (migration-table-kw index-metadata) :if-not-exists)
-      (sql.helpers/with-columns columns)
+      (sql.helpers/with-columns (if (semantic.util/sqlite?) sqlite-columns columns))
       (sql/format)))
 
 (defn- ensure-migration-table!

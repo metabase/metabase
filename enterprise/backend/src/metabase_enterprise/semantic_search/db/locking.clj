@@ -2,6 +2,7 @@
   (:require
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.util :as semantic.db.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
@@ -57,6 +58,9 @@
     (lock-or-throw! conn :pg_try_advisory_xact_lock_shared migration-lock))
 
 (defn acquire-migration-lock!
-  "Acquire migration advisory lock. Blocks until acquired or timeout (if conn lock_timeout is 0 then conn timeout)."
+  "Acquire migration advisory lock. Blocks until acquired or timeout (if conn lock_timeout is 0 then conn timeout).
+  A no-op for the SQLite store: its transactions already hold the database's single write lock from BEGIN."
   [conn]
-  (lock-or-throw! conn :pg_advisory_xact_lock migration-lock))
+  (if (semantic.db.datasource/sqlite?)
+    (semantic.db.util/tx-or-throw! conn)
+    (lock-or-throw! conn :pg_advisory_xact_lock migration-lock)))

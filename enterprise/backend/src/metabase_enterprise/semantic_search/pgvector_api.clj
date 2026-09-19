@@ -100,15 +100,17 @@
   "Ensure that the active index has a usable HNSW index.
 
   Called when an instance is (re)configured to the `:hnsw` vector-search strategy. No-ops when there is no
-  active index. Serializes maintenance across instances, leaves active concurrent builds alone, and replaces
-  abandoned invalid indexes. Builds with concurrent DDL because the table is typically populated."
+  active index, and in the SQLite store, which has no HNSW index and searches by exact scan. Serializes
+  maintenance across instances, leaves active concurrent builds alone, and replaces abandoned invalid indexes.
+  Builds with concurrent DDL because the table is typically populated."
   [pgvector index-metadata]
-  (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
-    (do
+  (if (semantic.util/sqlite?)
+    (log/debug "The SQLite store has no HNSW index; skipping the build")
+    (if-let [{:keys [index]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)]
       (let [index-name (semantic.index/schema-qualified-index-name index (semantic.index/hnsw-index-name index))]
-        (with-hnsw-index-lock pgvector index-name #(ensure-hnsw-index-under-lock! % index)))
-      nil)
-    (log/info "No active semantic search index; skipping HNSW index build")))
+        (with-hnsw-index-lock pgvector index-name #(ensure-hnsw-index-under-lock! % index))
+        nil)
+      (log/info "No active semantic search index; skipping HNSW index build"))))
 
 (defn init-semantic-search!
   "Initialises a pgvector database for semantic search if it does not exist and creates an index for the provided

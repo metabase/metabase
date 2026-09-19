@@ -37,6 +37,24 @@
   [schema table-names]
   (map #(cond->> % schema (str schema ".")) table-names))
 
+(defn- tables-query
+  "Honeysql selecting the base tables of the store as `:table_name`, alias `:t`, with extra WHERE `conditions`.
+  Postgres reads `information_schema.tables`; SQLite, which has none, `sqlite_master` (whose FTS5 shadow tables match
+  none of the name shapes the sweeps look for)."
+  [& conditions]
+  (if (semantic.u/sqlite?)
+    {:select [[:t.name :table_name]]
+     :from   [[:sqlite_master :t]]
+     :where  (into [:and [:= :t.type [:inline "table"]]] conditions)}
+    {:select [:t.table_name]
+     :from   [[:information_schema.tables :t]]
+     :where  (into [:and] conditions)}))
+
+(defn- table-name-col
+  "The table name column of [[tables-query]]."
+  []
+  (if (semantic.u/sqlite?) :t.name :t.table_name))
+
 (defn- like-escape
   "Escape LIKE wildcards so `s` only matches itself (Postgres's default escape character is backslash)."
   [s]
@@ -70,20 +88,21 @@
                                (subs table-name (count prefix) (- (count table-name) (count suffix)))))
         ;; information_schema reports bare names; stored metadata names are qualified when we have a schema
         stored-name (if schema
-                      [:|| [:inline (str schema ".")] :t.table_name]
-                      :t.table_name)
+                      [:|| [:inline (str schema ".")] (table-name-col)]
+                      (table-name-col))
         orphaned-tables-sql
-        (-> {:select [:t.table_name]
-             :from [[:information_schema.tables :t]]
-             :left-join [[(keyword metadata-table-name) :meta]
-                         [:= :meta.table_name stored-name]]
-             :where [:and
-                     [:like :t.table_name ^:allow-raw-sql [:inline like-pattern]]
-                     [:= :meta.table_name nil]
-                     [:= :t.table_type [:inline "BASE TABLE"]]
-                     [:= :t.table_schema (if schema
-                                           [:inline schema]
-                                           [:current_schema])]]}
+        (-> (if (semantic.u/sqlite?)
+              ;; SQLite's LIKE has no default escape character
+              (tables-query [:like :t.name [:escape ^:allow-raw-sql [:inline like-pattern] ^:allow-raw-sql [:inline "\\"]]]
+                            [:= :meta.table_name nil])
+              (tables-query [:like :t.table_name ^:allow-raw-sql [:inline like-pattern]]
+                            [:= :meta.table_name nil]
+                            [:= :t.table_type [:inline "BASE TABLE"]]
+                            [:= :t.table_schema (if schema
+                                                  [:inline schema]
+                                                  [:current_schema])]))
+            (assoc :left-join [[(keyword metadata-table-name) :meta]
+                               [:= :meta.table_name stored-name]])
             (sql/format :quoted true))]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name)
@@ -110,9 +129,11 @@
   pattern must never match application tables — and the returned names are schema-qualified."
   [pgvector {:keys [schema]}]
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
-        repair-tables-sql (-> {:select [:t.table_name]
-                               :from [[:information_schema.tables :t]]
-                               :where (scope-where-to-schema [:and [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]] schema)}
+        repair-tables-sql (-> (if (semantic.u/sqlite?)
+                                (tables-query [:like :t.name ^:allow-raw-sql [:inline "repair_%"]])
+                                {:select [:t.table_name]
+                                 :from [[:information_schema.tables :t]]
+                                 :where (scope-where-to-schema [:and [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]] schema)})
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
@@ -213,8 +234,16 @@
   [pgvector kind table-name]
   (try
     (log/infof "Dropping %s semantic search index: %s" kind table-name)
-    (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table (keyword table-name)) :quoted true))
-    :dropped
+    (if (semantic.u/sqlite?)
+      ;; SQLite reports a missing table with a generic error code, so check first; the index's own drop takes its
+      ;; FTS5 table along
+      (if (semantic.u/table-exists? pgvector table-name)
+        (do (semantic.index/drop-index-table! pgvector {:table-name table-name})
+            :dropped)
+        (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
+            :missing))
+      (do (jdbc/execute! pgvector (sql/format (sql.helpers/drop-table (keyword table-name)) :quoted true))
+          :dropped))
     ;; no IF EXISTS: a vacuous drop must not count as :dropped, so let 42P01 (undefined_table) tell us
     (catch java.sql.SQLException e
       (if (= "42P01" (.getSQLState e))

@@ -81,6 +81,15 @@
     inst
     (Timestamp/from (->instant inst))))
 
+(defn- ->jsonb
+  "A JSON document for the gate's `document` column: `jsonb` for Postgres, text for SQLite."
+  [json-str]
+  (if (semantic.util/sqlite?)
+    json-str
+    (doto (PGobject.)
+      (.setType "jsonb")
+      (.setValue json-str))))
+
 (defn search-doc->gate-doc
   "Converts a search document into a gate table record, requires the document can be encoded as json."
   [search-doc default-updated-at]
@@ -88,17 +97,15 @@
     {:id            (str model "_" id)
      :model         model
      :model_id      id
-     :document      (doto (PGobject.)
-                      (.setType "jsonb")
-                      (.setValue (json/encode search-doc)))
+     :document      (->jsonb (json/encode search-doc))
      :document_hash (document-hash search-doc)
      :updated_at    (->timestamp (or (:updated_at search-doc) default-updated-at))}))
 
 (defn gate-doc->search-doc
   "Converts a gate table record back to a search document."
   [gate-doc]
-  (let [{:keys [^PGobject document]} gate-doc]
-    (json/decode (.getValue document) keyword)))
+  (let [{:keys [document]} gate-doc]
+    (json/decode (if (string? document) document (.getValue ^PGobject document)) keyword)))
 
 (defn execute-upsert!
   "Wrap execute-one! so upsert execution can be redefined for testing purposes."
@@ -113,7 +120,9 @@
   ;; and to ensure the READ COMMITTED :isolation level is set.
   ;; NOTE: we depend on the UPDATE behaviour described here: https://www.postgresql.org/docs/current/transaction-iso.html#XACT-READ-COMMITTED
   ;; i.e (the WHERE must be re-evaluated against the UPDATED row if another transaction commits concurrently).
-  (jdbc/with-transaction [tx pgvector {:isolation :read-committed}]
+  ;; SQLite serializes writers outright (its IMMEDIATE transactions take the write lock at BEGIN), so there is no
+  ;; isolation level or statement timeout to set there.
+  (jdbc/with-transaction [tx pgvector (if (semantic.util/sqlite?) {} {:isolation :read-committed})]
     (when-some [gate-document-batch (->> gate-document-batch
                                          (sort-by :updated_at)
                                          (group-by :id)
@@ -149,7 +158,8 @@
                                                   :else
                                                   [:!= (gate-col "document_hash") :excluded.document_hash]]]}}
             upsert-sql (sql/format upsert-q :quoted true)]
-        (jdbc/execute! tx [(format "SET LOCAL statement_timeout = %d" (.toMillis gate-write-timeout))]) ; note pg cannot accept a parameter here
+        (when-not (semantic.util/sqlite?)
+          (jdbc/execute! tx [(format "SET LOCAL statement_timeout = %d" (.toMillis gate-write-timeout))])) ; note pg cannot accept a parameter here
         (let [stmt-start (u/start-timer)]
           (try
             (::jdbc/update-count (execute-upsert! tx upsert-sql))
