@@ -844,9 +844,12 @@
                           (or (not (some lib.schema.aggregation/window-aggregation-expression?
                                          (lib/aggregations query)))
                               (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
+    ;; `:native-pivot-query` conj'd first so it sits ahead of `:union-all` — the primary flow is the
+    ;; first non-`:multi-query` entry, and where both are available (SQL with `:native-pivot-tables`)
+    ;; the native shape is the one we want to run.
     (cond-> [:multi-query]
-      sql?         (conj :union-all)
-      native-safe? (conj :native-pivot-query))))
+      native-safe? (conj :native-pivot-query)
+      sql?         (conj :union-all))))
 
 (defn- run-pivot-flow
   "Run one pivot `flow` against `query`. `primary-flow` uses the caller's `rff` and lets
