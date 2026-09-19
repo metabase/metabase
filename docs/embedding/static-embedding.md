@@ -36,8 +36,8 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Turning on the embedding feature in Metabase
 
-1. Go to **Settings** > **Admin settings** > **Embedding > Static**.
-2. Toggle **Enable static embedding**.
+1. Go to **Embedding hub > Security**.
+2. Toggle on **Enable embedding** (called **Modular embedding and SDK for React** on Pro and Enterprise). One switch covers static and guest embeds, modular embedding, and the SDK.
 
 ## Making a question or dashboard embeddable
 
@@ -121,7 +121,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 
 ## Disabling embedding for a question or dashboard
 
-You can find a list of all static embeds of questions and dashboards from **Admin settings** > **Embedding** > **Static**.
+You can find a list of all static embeds of questions and dashboards in **Embedding hub > Security** under **Published guest embeds**.
 
 1. Visit the embeddable question or dashboard.
 2. Click the **Share** icon (square with an arrow pointing to the top right).
@@ -156,10 +156,10 @@ The banner appears on static embeds created with Metabase's open-source version.
 
 ## Regenerating the static embedding secret key
 
-Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website).
+Your embedding secret key is used to sign JWTs for all of your [embedding URLs](#adding-the-embedding-url-to-your-website). Metabase generates a key for you when you turn on embedding.
 
-1. Go to **Admin** > **Embedding** > **Static embedding**.
-2. Under **Regenerate secret key**, click **Regenerate key**.
+1. Go to **Embedding hub > Security**.
+2. Under **Secret key for guest embeds**, click **Regenerate key**.
 
 This key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 
