@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.snowflake :as driver.snowflake]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -62,6 +63,17 @@
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :snowflake
+    (testing "default"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :snowflake (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [details (assoc (:details (mt/db)) :additional-options "schema=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :snowflake database))))))))
 
 (deftest ^:parallel connection-hosts-test
   (are [details expected] (= expected (driver/connection-hosts :snowflake details))

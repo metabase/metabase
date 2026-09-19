@@ -9,6 +9,7 @@
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -32,6 +33,18 @@
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :clickhouse
+    (testing "default"
+      (is (= "default"
+             (driver.sql/default-schema :clickhouse (mt/db)))))
+    (testing "database configured in the connection details"
+      (let [base-details (:details (mt/db))
+            details      (assoc base-details :dbname (or (:dbname base-details) (:db base-details)))]
+        (mt/with-temp [:model/Database database {:engine :clickhouse, :details details}]
+          (is (= (:dbname details)
+                 (driver.sql/default-schema :clickhouse database))))))))
 
 ;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
 ;; as 0.52 is still tested by CI we will check which macro is defined and use that

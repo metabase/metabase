@@ -73,6 +73,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest default-schema-test
+  (mt/test-driver :postgres
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :postgres (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [details (assoc (:details (mt/db)) :additional-options "currentSchema=information_schema")]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (is (= "information_schema"
+                 (driver.sql/default-schema :postgres database))))))))
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.

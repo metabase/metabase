@@ -54,6 +54,10 @@
   [_driver _database]
   "public")
 
+(defmethod default-schema :default
+  [_driver _database]
+  nil)
+
 (defmulti reserved-literal
   "Checks whether a particular name is actually a literal value in a given sql dialect.
 
