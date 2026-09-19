@@ -134,13 +134,24 @@
       (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
         (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
+(defn- run-values-query
+  "Run a value-source `query` through the QP. Permission errors raised by the QP (e.g. the user cannot read a Card the
+  value-source Card's query nests) carry no HTTP status, so surface them as a 403 rather than a 500."
+  [query]
+  (try
+    (qp/process-query query)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:permissions-error? (ex-data e))
+        (throw (ex-info (ex-message e) {:status-code 403} e))
+        (throw e)))))
+
 (mu/defn- values-from-card* :- ms/FieldValuesResult
   "Core of [[values-from-card]], working off a prebuilt value-source `query`."
   [query     :- [:maybe ::lib.schema/query]
    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
    opts      :- [:maybe ::values-from-card-query.options]]
   (let [mbql-query (values-from-card-query query field-ref opts)
-        result     (some-> mbql-query qp/process-query)
+        result     (some-> mbql-query run-values-query)
         values     (some-> result result->rows)]
     {:values          (or values [])
      ;; If the row_count returned = the limit we specified, then it's probably has more than that.

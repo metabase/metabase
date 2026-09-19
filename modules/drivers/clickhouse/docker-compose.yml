@@ -9,8 +9,8 @@ services:
     container_name: 'mb-clickhouse-latest'
     hostname: clickhouse
     ports:
-      - '8123:8123'
-      - '9000:9000'
+      - '127.0.0.1:8123:8123'
+      - '127.0.0.1:9000:9000'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -32,8 +32,8 @@ services:
       dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
     container_name: 'metabase-driver-clickhouse-server-tls'
     ports:
-      - '8443:8443'
-      - '9440:9440'
+      - '127.0.0.1:8443:8443'
+      - '127.0.0.1:9440:9440'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -56,8 +56,8 @@ services:
     container_name: 'mb-clickhouse-oldest'
     hostname: clickhouse.older
     ports:
-      - '8124:8123'
-      - '9001:9000'
+      - '127.0.0.1:8124:8123'
+      - '127.0.0.1:9001:9000'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -82,9 +82,9 @@ services:
     hostname: clickhouse1
     container_name: metabase-driver-clickhouse-cluster-node-1
     ports:
-      - '8125:8123'
-      - '9002:9000'
-      - '9181:9181'
+      - '127.0.0.1:8125:8123'
+      - '127.0.0.1:9002:9000'
+      - '127.0.0.1:9181:9181'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
@@ -101,9 +101,9 @@ services:
     hostname: clickhouse2
     container_name: metabase-driver-clickhouse-cluster-node-2
     ports:
-      - '8126:8123'
-      - '9003:9000'
-      - '9182:9181'
+      - '127.0.0.1:8126:8123'
+      - '127.0.0.1:9003:9000'
+      - '127.0.0.1:9182:9181'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
@@ -117,7 +117,7 @@ services:
     image: 'nginx:1.23.1-alpine'
     hostname: nginx
     ports:
-      - '8127:8123'
+      - '127.0.0.1:8127:8123'
     volumes:
       - './.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
     container_name: metabase-nginx

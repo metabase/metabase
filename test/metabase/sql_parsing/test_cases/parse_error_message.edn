@@ -1,0 +1,24 @@
+{:cases
+ [{:name       "a keyword the parser was still waiting for"
+   :dialect    "postgres"
+   :sql        "SELECT !!!"
+   :internals  "<class 'sqlglot.expressions.Not'>"
+   :diagnostic "ParseError: Required keyword: 'this' missing. Line 1, Col: 10.\n  SELECT !!!\n           ^"}
+
+  {:name       "a token where a table name belonged"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM WHERE ("
+   :internals  "<Token token_type: TokenType.WHERE, text: WHERE,"
+   :diagnostic "ParseError: Expected table name but got 'WHERE'. Line 1, Col: 19.\n  SELECT * FROM WHERE (\n                ^^^^^"}
+
+  {:name       "the end of the query where a table name belonged"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM a JOIN"
+   :internals  "but got None"
+   :diagnostic "ParseError: Expected table name but got the end of the query. Line 1, Col: 20.\n  SELECT * FROM a JOIN\n                  ^^^^"}
+
+  {:name       "a query that is not SQL at all"
+   :dialect    "postgres"
+   :sql        "complete nonsense query"
+   :internals  "["
+   :diagnostic "ParseError: Invalid expression / Unexpected token. Line 1, Col: 23.\n  complete nonsense query\n                    ^^^^^"}]}
