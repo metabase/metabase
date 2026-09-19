@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv select-keys])
+  (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -22,7 +22,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys]]
    [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
