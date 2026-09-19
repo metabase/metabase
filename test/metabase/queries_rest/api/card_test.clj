@@ -36,6 +36,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.revisions.models.revision :as revision]
