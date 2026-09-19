@@ -1,9 +1,1 @@
-<svg width="40" height="32" viewBox="0 0 40 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1.25" y="1.25" width="37.5" height="29.5" rx="2.75" stroke="#EDF2F5" stroke-width="2.5"/>
-    <path class="inner-box" d="M14 12C14 10.8954 14.8954 10 16 10H33C34.1046 10 35 10.8954 35 12V17H14V12Z" fill="#93A1AB"
-          fill-opacity="0.5"/>
-    <path class="inner-box" d="M14 19H23V28H16C14.8954 28 14 27.1046 14 26V19Z" fill="#93A1AB" fill-opacity="0.5"/>
-    <path class="inner-box" d="M25 19H35V26C35 27.1046 34.1046 28 33 28H25V19Z" fill="#93A1AB" fill-opacity="0.5"/>
-    <path d="M5 10H11V28H7C5.89543 28 5 27.1046 5 26V10Z" fill="#EDF2F5"/>
-    <path d="M5 6C5 4.89543 5.89543 4 7 4H33C34.1046 4 35 4.89543 35 6V8H5V6Z" fill="#EDF2F5"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="32" fill="none"><rect width="37.5" height="29.5" x="1.25" y="1.25" stroke="#EDF2F5" stroke-width="2.5" rx="2.75"/><path fill="#93A1AB" fill-opacity=".5" d="M14 12a2 2 0 0 1 2-2h17a2 2 0 0 1 2 2v5H14zM14 19h9v9h-7a2 2 0 0 1-2-2zM25 19h10v7a2 2 0 0 1-2 2h-8z" class="inner-box"/><path fill="#EDF2F5" d="M5 10h6v18H7a2 2 0 0 1-2-2zM5 6a2 2 0 0 1 2-2h26a2 2 0 0 1 2 2v2H5z"/></svg>
