@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -15,6 +16,8 @@
    [metabase.util :as u]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
+
+(set! *warn-on-reflection* true)
 
 ;;
 ;; index-based scorers: these scorers only rely on columns in the search index in the pgvector db
@@ -28,7 +31,7 @@
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
-(defn- view-count-percentiles*
+(defn- postgres-view-count-percentiles
   [index-table p-value]
   (into {} (for [{:keys [model vcp]}
                  ;; Get the db data-source directly rather than passing it in as an argument to this function to
@@ -41,6 +44,36 @@
                                     (sql/format {:quoted true}))
                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
              [(keyword model) vcp])))
+
+(defn- percentile-cont
+  "`percentile_cont(p)` over the sorted, non-empty vector `xs`: linear interpolation between the closest ranks."
+  [xs p]
+  (let [pos  (* (double p) (dec (count xs)))
+        lo   (long (Math/floor pos))
+        hi   (long (Math/ceil pos))
+        frac (- pos lo)]
+    (+ (double (xs lo)) (* frac (- (double (xs hi)) (double (xs lo)))))))
+
+(defn- sqlite-view-count-percentiles
+  "[[view-count-percentiles*]] for the SQLite store, which lacks `percentile_cont`: the view counts are read (one
+  small integer per indexed document) and the percentile computed here."
+  [index-table p-value]
+  (->> (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                      (sql/format {:select   [:model :view_count]
+                                   :from     [(keyword index-table)]
+                                   :where    [:!= :view_count nil]
+                                   :order-by [:model :view_count]}
+                                  {:quoted true})
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (group-by :model)
+       (into {} (map (fn [[model rows]]
+                       [(keyword model) (percentile-cont (mapv :view_count rows) p-value)])))))
+
+(defn- view-count-percentiles*
+  [index-table p-value]
+  (if (semantic.util/sqlite?)
+    (sqlite-view-count-percentiles index-table p-value)
+    (postgres-view-count-percentiles index-table p-value)))
 
 (def ^{:private true
        :arglists '([index-table p-value])}
@@ -80,6 +113,16 @@
   ;; linear for now so the score stays as transparent as possible.
   [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])
 
+(defn- recency-expr
+  "Score by how recently an item was viewed or updated, decaying linearly to 0 over [[search.config/stale-time-in-days]].
+  SQLite has no `EXTRACT(epoch ...)`, so its elapsed days come from `julianday` over the stored timestamp text."
+  []
+  (let [from [:coalesce :last_viewed_at :model_updated_at]]
+    (if (semantic.util/sqlite?)
+      (let [ceiling [:inline search.config/stale-time-in-days]]
+        [:/ [:greatest [:- ceiling [:- [:julianday [:now]] [:julianday from]]] [:inline 0]] ceiling])
+      (search.scoring/inverse-duration :postgres from [:now] search.config/stale-time-in-days))))
+
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [index-table {:keys [search-string] :as search-ctx}]
@@ -93,11 +136,7 @@
      :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) [:inline 0]]
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
-     :recency    (search.scoring/inverse-duration
-                  :postgres
-                  [:coalesce :last_viewed_at :model_updated_at]
-                  [:now]
-                  search.config/stale-time-in-days)
+     :recency    (recency-expr)
      :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
      :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))

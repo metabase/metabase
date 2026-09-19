@@ -64,6 +64,46 @@
     ;; even if they do not, as a redundancy filtering optimisation - nothing too bad happens.
     [:document_hash :text :null]]})
 
+(def ^:private sqlite-schema-0
+  "[[schema-0]] in the SQLite store's types (see [[metabase-enterprise.semantic-search.db.sqlite]])."
+  {:metadata
+   [[:id :integer [:primary-key] :autoincrement]
+    [:provider :text :not-null]
+    [:model_name :text :not-null]
+    [:model_revision :text :null]
+    [:vector_dimensions :integer :not-null]
+    [:embedding_space_id :text :not-null]
+    [:table_name :text :not-null :unique]
+    [:index_version :integer :not-null]
+    [:index_created_at :timestamp :not-null]
+    [:indexer_last_poll :timestamp :null]
+    [:indexer_last_seen :timestamp :null]
+    [:indexer_last_seen_id :text :null]
+    [:indexer_last_seen_hash :text :null]
+    [:indexer_stalled_at :timestamp :null]
+    [:repair_orphan_count :integer :null]
+    [:repair_snapshot_at :timestamp :null]]
+
+   :control
+   [[:id :integer [:primary-key]]
+    [:version :text :not-null]
+    [:active_id :integer :null]
+    [:active_updated_at :timestamp :null]]
+
+   :gate
+   [[:id :text :not-null :primary-key]
+    [:model :text :not-null]
+    [:model_id :text :not-null]
+    [:updated_at :timestamp :not-null]
+    [:gated_at :timestamp :not-null [:default [:raw "(clock_timestamp())"]]]
+    [:document :text :null]
+    [:document_hash :text :null]]})
+
+(defn- table-schema
+  "The column definitions of control-plane table `k` for this instance's store."
+  [k]
+  (k (if (semantic.util/sqlite?) sqlite-schema-0 schema-0)))
+
 (defn qualify-index
   "Qualifies an index-map, returning a new index-map that might have additional disambiguating prefixes
    applied to table names.
@@ -111,21 +151,21 @@
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
-        schema (:metadata schema-0)]
+        schema (table-schema :metadata)]
     (-> (sql.helpers/create-table (keyword metadata-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
 (defn- create-control-table-if-not-exists-sql [index-metadata]
   (let [{:keys [control-table-name]} index-metadata
-        schema (:control schema-0)]
+        schema (table-schema :control)]
     (-> (sql.helpers/create-table (keyword control-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
 
 (defn- create-gate-table-if-not-exists-sql [index-metadata]
   (let [{:keys [gate-table-name]} index-metadata
-        schema (:gate schema-0)]
+        schema (table-schema :gate)]
     (-> (sql.helpers/create-table (keyword gate-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
         (sql/format :quoted true))))
@@ -133,7 +173,9 @@
 (defn ensure-health-metric-columns!
   "Add the non-destructive health-metric columns to an existing metadata table."
   [pgvector {:keys [metadata-table-name]}]
-  (when (semantic.util/table-exists? pgvector metadata-table-name)
+  ;; SQLite stores are created with these columns, and have no ADD COLUMN IF NOT EXISTS
+  (when (and (not (semantic.util/sqlite?))
+             (semantic.util/table-exists? pgvector metadata-table-name))
     (jdbc/execute!
      pgvector
      [(format (str "ALTER TABLE %s "
@@ -330,7 +372,7 @@
 
         {[active] true
          inactive false}
-        (u/group-by :is_active #(dissoc % :is_active) model-rows)]
+        (u/group-by (comp semantic.util/db-bool :is_active) #(dissoc % :is_active) model-rows)]
     ;; Priority order: active matching index > inactive matching index > new
     ;; This preserves existing data when possible and avoids unnecessary index creation.
     (cond

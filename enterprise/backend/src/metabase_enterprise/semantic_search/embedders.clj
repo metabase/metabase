@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase.metabot.core :as metabot]
@@ -57,11 +58,12 @@
     (neg? cmp)))
 
 (defn- parse-pgvector
-  "Parse a pgvector string (\"[0.1, 0.2, ...]\") or similar into a float-array."
+  "Parse a pgvector string (\"[0.1, 0.2, ...]\") or similar, or a SQLite store's float32 BLOB, into a float-array."
   [v]
   (cond
     (nil? v) nil
     (instance? float-array-class v) v
+    (bytes? v) (semantic.db.sqlite/blob->float-array v)
     :else
     (let [s    (if (string? v) v (str v))
           nums (->> (-> s

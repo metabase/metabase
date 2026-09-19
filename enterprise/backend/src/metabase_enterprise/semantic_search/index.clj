@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.db :as semantic-search.db]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
@@ -92,6 +93,68 @@
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
 
+(defn fts-table-name
+  "The FTS5 table holding the keyword-search text of a SQLite index table (the Postgres store keeps tsvector columns on
+  the index table itself instead)."
+  [table-name]
+  (str table-name "_fts"))
+
+(defn- sqlite-index-table-ddl
+  "DDL statements creating a SQLite index table and its keyword search.
+  Mirrors [[index-table-schema]], with the store's type mapping (booleans as 0/1, timestamps and JSON as text,
+  embeddings as float32 BLOBs; see [[semantic.db.sqlite]]). The tsvector columns become the raw text they were
+  computed from (`searchable_text`/`native_query`), indexed by an external-content FTS5 table that triggers keep in
+  step with every insert, upsert and delete."
+  [table-name]
+  (let [t   (semantic.util/quote-table table-name)
+        fts (semantic.util/quote-table (fts-table-name table-name))
+        trg #(semantic.util/quote-ident (str (fts-table-name table-name) "_" %))
+        cols "name, searchable_text, native_query"
+        new  "new.name, new.searchable_text, new.native_query"
+        old  "old.name, old.searchable_text, old.native_query"]
+    [(str "CREATE TABLE IF NOT EXISTS " t " ("
+          "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+          "model TEXT NOT NULL, "
+          "model_id TEXT NOT NULL, "
+          "collection_id INTEGER, "
+          "personal_owner_id INTEGER, "
+          "creator_id INTEGER, "
+          "database_id INTEGER, "
+          "last_editor_id INTEGER, "
+          "name TEXT NOT NULL, "
+          "content TEXT NOT NULL, "
+          "display_type TEXT, "
+          "archived BOOLEAN DEFAULT 0, "
+          "official_collection BOOLEAN, "
+          "pinned BOOLEAN, "
+          "verified BOOLEAN, "
+          "collection_type TEXT, "
+          "root_collection_type TEXT, "
+          "data_layer TEXT, "
+          "data_authority TEXT, "
+          "curated BOOLEAN, "
+          "dashboardcard_count INTEGER, "
+          "view_count INTEGER, "
+          "created_at TIMESTAMP NOT NULL DEFAULT (clock_timestamp()), "
+          "model_created_at TIMESTAMP, "
+          "model_updated_at TIMESTAMP, "
+          "last_viewed_at TIMESTAMP, "
+          "legacy_input TEXT, "
+          "metadata TEXT, "
+          "searchable_text TEXT NOT NULL DEFAULT '', "
+          "native_query TEXT NOT NULL DEFAULT '', "
+          "embedding BLOB NOT NULL, "
+          "UNIQUE (model, model_id))")
+     (str "CREATE VIRTUAL TABLE IF NOT EXISTS " fts " USING fts5(" cols ", content=" (semantic.util/quote-ident table-name)
+          ", content_rowid=id, tokenize='porter unicode61 remove_diacritics 2')")
+     (str "CREATE TRIGGER IF NOT EXISTS " (trg "ai") " AFTER INSERT ON " t " BEGIN "
+          "INSERT INTO " fts " (rowid, " cols ") VALUES (new.id, " new "); END")
+     (str "CREATE TRIGGER IF NOT EXISTS " (trg "ad") " AFTER DELETE ON " t " BEGIN "
+          "INSERT INTO " fts " (" fts ", rowid, " cols ") VALUES ('delete', old.id, " old "); END")
+     (str "CREATE TRIGGER IF NOT EXISTS " (trg "au") " AFTER UPDATE ON " t " BEGIN "
+          "INSERT INTO " fts " (" fts ", rowid, " cols ") VALUES ('delete', old.id, " old "); "
+          "INSERT INTO " fts " (rowid, " cols ") VALUES (new.id, " new "); END")]))
+
 (defn- format-embedding
   "Formats and validates the embedding vector for SQL insertion."
   [embedding]
@@ -102,6 +165,21 @@
                       {:invalid-value value
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
+
+(defn- embedding-param
+  "The embedding as a statement value: a pgvector literal, or a float32 BLOB parameter for SQLite."
+  [embedding]
+  (if (semantic.util/sqlite?)
+    [:lift (semantic.db.sqlite/vector->blob embedding)]
+    [:raw (format-embedding embedding)]))
+
+(defn- distance-expr
+  "Cosine distance between the `embedding` column and `embedding` (a vector of numbers): pgvector's `<=>`, or the
+  SQLite store's `vec_distance_cosine`."
+  [embedding]
+  (if (semantic.util/sqlite?)
+    [:vec_distance_cosine :embedding (embedding-param embedding)]
+    [:raw (str "embedding <=> " (format-embedding embedding))]))
 
 (defn- to-instant
   [document-timestamp]
@@ -155,55 +233,72 @@
                       [coll-id owner])))
             roots))))
 
+(defn- text-search-columns
+  "The keyword-search columns of an index record: tsvectors for Postgres, the raw text behind them for SQLite (whose
+  FTS5 table indexes it, see [[sqlite-index-table-ddl]])."
+  [{:keys [searchable_text native_query] :as doc}]
+  (if (semantic.util/sqlite?)
+    {:searchable_text (or searchable_text "")
+     :native_query    (or native_query "")}
+    {:text_search_vector  (if (:name doc)
+                            [:||
+                             (search/weighted-tsvector "A" (:name doc))
+                             (search/weighted-tsvector "B" (or searchable_text ""))]
+                            (search/weighted-tsvector "A" (or searchable_text "")))
+     :text_search_with_native_query_vector
+     (if (:name doc)
+       [:||
+        (search/weighted-tsvector "A" (:name doc))
+        (search/weighted-tsvector "B"
+                                  (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                    (or native_query "")])))]
+       (search/weighted-tsvector "A"
+                                 (str/join " " (remove str/blank? [(or searchable_text "")
+                                                                   (or native_query "")]))))}))
+
+(defn- json-param
+  "A JSON document as a statement value: `jsonb` for Postgres, text for SQLite."
+  [json-str]
+  (if (semantic.util/sqlite?)
+    json-str
+    [:cast json-str :jsonb]))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
-  [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
+  [owner-ids {:keys [model id embedding embeddable_text created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
                      data_layer data_authority curated] :as doc}]
-  {:model               model
-   :model_id            id
-   :collection_id       collection_id
-   :personal_owner_id   (get owner-ids collection_id)
-   :creator_id          creator_id
-   :database_id         database_id
-   :last_editor_id      last_editor_id
-   :name                (or (:name doc) "")
-   :content             embeddable_text
-   :display_type        display_type
-   :archived            (some-> archived to-boolean)
-   :official_collection (some-> official_collection to-boolean)
-   :pinned              (some-> pinned to-boolean)
-   :verified            (some-> verified to-boolean)
-   :collection_type     collection_type
-   :root_collection_type root_collection_type
-   :data_layer          data_layer
-   :data_authority      data_authority
-   :curated             (some-> curated to-boolean)
-   :dashboardcard_count dashboardcard_count
-   :view_count          view_count
-   :model_created_at    (some-> created_at to-instant)
-   :model_updated_at    (some-> updated_at to-instant)
-   :last_viewed_at      (some-> last_viewed_at to-instant)
-   ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
-   :legacy_input        [:cast (if (string? legacy_input) legacy_input (json/encode legacy_input)) :jsonb]
-   :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
-   :embedding           [:raw (format-embedding embedding)]
-   :text_search_vector  (if (:name doc)
-                          [:||
-                           (search/weighted-tsvector "A" (:name doc))
-                           (search/weighted-tsvector "B" (or searchable_text ""))]
-                          (search/weighted-tsvector "A" (or searchable_text "")))
-   :text_search_with_native_query_vector
-   (if (:name doc)
-     [:||
-      (search/weighted-tsvector "A" (:name doc))
-      (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(or searchable_text "")
-                                                                  (or native_query "")])))]
-     (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(or searchable_text "")
-                                                                 (or native_query "")]))))})
+  (merge
+   {:model               model
+    :model_id            id
+    :collection_id       collection_id
+    :personal_owner_id   (get owner-ids collection_id)
+    :creator_id          creator_id
+    :database_id         database_id
+    :last_editor_id      last_editor_id
+    :name                (or (:name doc) "")
+    :content             embeddable_text
+    :display_type        display_type
+    :archived            (some-> archived to-boolean)
+    :official_collection (some-> official_collection to-boolean)
+    :pinned              (some-> pinned to-boolean)
+    :verified            (some-> verified to-boolean)
+    :collection_type     collection_type
+    :root_collection_type root_collection_type
+    :data_layer          data_layer
+    :data_authority      data_authority
+    :curated             (some-> curated to-boolean)
+    :dashboardcard_count dashboardcard_count
+    :view_count          view_count
+    :model_created_at    (some-> created_at to-instant)
+    :model_updated_at    (some-> updated_at to-instant)
+    :last_viewed_at      (some-> last_viewed_at to-instant)
+    ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+    :legacy_input        (json-param (if (string? legacy_input) legacy_input (json/encode legacy_input)))
+    :metadata            (json-param (json/encode (dissoc doc :embedding)))
+    :embedding           (embedding-param embedding)}
+   (text-search-columns doc)))
 
 (defn index-size
   "Fetches the number of documents in the index table."
@@ -355,14 +450,28 @@
   (.getValue ^PGobject obj))
 
 (defn- decode-pgobject
-  "Decode a PGObject (returned from a jsonb field) into a Clojure map."
-  [^PGobject obj]
-  (json/decode (unwrap-pgobject obj) true))
+  "Decode a PGObject (returned from a jsonb or vector field) into a Clojure value. The SQLite store returns JSON
+  as plain text, which decodes the same way."
+  [obj]
+  (json/decode (if (string? obj) obj (unwrap-pgobject obj)) true))
+
+(defn- decode-embedding
+  "Decode a stored embedding (a pgvector PGobject or a SQLite float32 BLOB) into a vector of numbers."
+  [embedding]
+  (if (bytes? embedding)
+    (semantic.db.sqlite/blob->vector embedding)
+    (decode-pgobject embedding)))
 
 (defn- existing-embedding-query [index texts]
-  (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
-      (sql.helpers/from (keyword (:table-name index)))
-      (sql.helpers/where [:in :content texts])))
+  (if (semantic.util/sqlite?)
+    ;; no DISTINCT ON in SQLite; a bare column in an aggregate query takes its value from an arbitrary row of the group
+    {:select   [:content :embedding]
+     :from     [(keyword (:table-name index))]
+     :where    [:in :content texts]
+     :group-by [:content]}
+    (-> (sql.helpers/select-distinct-on [:content] :content :embedding)
+        (sql.helpers/from (keyword (:table-name index)))
+        (sql.helpers/where [:in :content texts]))))
 
 (defn- partition-existing-embeddings [connectable index texts]
   (let [found-embeddings
@@ -370,7 +479,7 @@
                             (sql-format-quoted (existing-embedding-query index texts))
                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})
              (into {} (map (fn [{:keys [content embedding]}]
-                             [content (decode-pgobject embedding)]))))]
+                             [content (decode-embedding embedding)]))))]
     [(remove found-embeddings texts) found-embeddings]))
 
 (defn- upsert-index-batch!
@@ -459,9 +568,11 @@
       sql-format-quoted))
 
 (defn drop-index-table!
-  "Drops the index table for the given embedding model if it exists."
+  "Drops the index table for the given embedding model if it exists (with its FTS5 table, in the SQLite store)."
   [connectable index]
-  (jdbc/execute! connectable (drop-index-table-sql index)))
+  (u/prog1 (jdbc/execute! connectable (drop-index-table-sql index))
+    (when (semantic.util/sqlite?)
+      (jdbc/execute! connectable (drop-index-table-sql (update index :table-name fts-table-name))))))
 
 ;; We can't use full column names in the various index names, because otherwise we overflow postgres' max name length.
 ;; NOTE If you add a new index, add it to index-embedding-name-length-test as well
@@ -512,24 +623,41 @@
   async build triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
 
   Pass `concurrently? true` to build with `CREATE INDEX CONCURRENTLY` (for a populated table whose writes
-  shouldn't be locked out); it must run outside a transaction."
+  shouldn't be locked out); it must run outside a transaction.
+
+  A no-op in the SQLite store, where every search is an exact scan."
   [connectable index & {:keys [concurrently?] :or {concurrently? false}}]
-  (let [{:keys [table-name]} index
-        ;; HoneySQL emits CONCURRENTLY in the wrong position (before INDEX), so splice it into the
-        ;; formatted statement instead: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...` is valid Postgres.
-        [sql & params] (sql-format-quoted
-                        (sql.helpers/create-index
-                         [(keyword (hnsw-index-name index)) :if-not-exists]
-                         [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]]))
-        sql            (cond-> sql
-                         concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
-    (jdbc/execute! connectable (into [sql] params))))
+  (when-not (semantic.util/sqlite?)
+    (let [{:keys [table-name]} index
+          ;; HoneySQL emits CONCURRENTLY in the wrong position (before INDEX), so splice it into the
+          ;; formatted statement instead: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...` is valid Postgres.
+          [sql & params] (sql-format-quoted
+                          (sql.helpers/create-index
+                           [(keyword (hnsw-index-name index)) :if-not-exists]
+                           [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]]))
+          sql            (cond-> sql
+                           concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
+      (jdbc/execute! connectable (into [sql] params)))))
 
 (defn drop-index-concurrently-if-exists!
   "Drop `index-name` without blocking writes. Must run outside a transaction."
   [connectable index-name]
   (jdbc/execute! connectable
                  [(str "DROP INDEX CONCURRENTLY IF EXISTS " (semantic.util/quote-table index-name))]))
+
+(defn- create-sqlite-index-table-if-not-exists!
+  "The SQLite store's [[create-index-table-if-not-exists!]]: the table, its FTS5 keyword index (see
+  [[sqlite-index-table-ddl]]) and the `content` index. There is no HNSW index: SQLite searches are exact scans."
+  [connectable {:keys [table-name] :as index} force-reset?]
+  (when force-reset? (drop-index-table! connectable index))
+  (doseq [ddl (sqlite-index-table-ddl table-name)]
+    (jdbc/execute! connectable [ddl]))
+  (jdbc/execute!
+   connectable
+   (-> (sql.helpers/create-index
+        [(keyword (content-index-name index)) :if-not-exists]
+        [(keyword table-name) :content])
+       sql-format-quoted)))
 
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
@@ -545,42 +673,45 @@
                     (format "whitespace in the table name (%s) is not currently supported" table-name))
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
-      (try
-        (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
-        (catch Exception e
-          ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
-          (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
-                               " CREATE EXTENSION vector; on this database, or set MB_PGVECTOR_DB_URL to a"
-                               " database where it is installed.")
-                          {:type ::extension-install-failed}
-                          e))))
-      (when force-reset? (drop-index-table! connectable index))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
-           (sql.helpers/with-columns (index-table-schema vector-dimensions))
-           sql-format-quoted))
-      (when (contains? search.config/hnsw-index-backed-strategies
-                       (semantic-settings/semantic-search-vector-strategy))
-        (create-hnsw-index-if-not-exists! connectable index))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-index
-            [(keyword (fts-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin :text_search_vector])
-           sql-format-quoted))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-index
-            [(keyword (fts-native-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin :text_search_with_native_query_vector])
-           sql-format-quoted))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-index
-            [(keyword (content-index-name index)) :if-not-exists]
-            [(keyword table-name) :content])
-           sql-format-quoted)))
+      (if (semantic.util/sqlite?)
+        (create-sqlite-index-table-if-not-exists! connectable index force-reset?)
+        (do
+          (try
+            (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+            (catch Exception e
+              ;; Extension install commonly fails on privileges (may need superuser); give the operator the way out.
+              (throw (ex-info (str "Failed to install the pgvector extension. Have a privileged user run"
+                                   " CREATE EXTENSION vector; on this database, or set MB_PGVECTOR_DB_URL to a"
+                                   " database where it is installed.")
+                              {:type ::extension-install-failed}
+                              e))))
+          (when force-reset? (drop-index-table! connectable index))
+          (jdbc/execute!
+           connectable
+           (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
+               (sql.helpers/with-columns (index-table-schema vector-dimensions))
+               sql-format-quoted))
+          (when (contains? search.config/hnsw-index-backed-strategies
+                           (semantic-settings/semantic-search-vector-strategy))
+            (create-hnsw-index-if-not-exists! connectable index))
+          (jdbc/execute!
+           connectable
+           (-> (sql.helpers/create-index
+                [(keyword (fts-index-name index)) :if-not-exists]
+                [(keyword table-name) :using-gin :text_search_vector])
+               sql-format-quoted))
+          (jdbc/execute!
+           connectable
+           (-> (sql.helpers/create-index
+                [(keyword (fts-native-index-name index)) :if-not-exists]
+                [(keyword table-name) :using-gin :text_search_with_native_query_vector])
+               sql-format-quoted))
+          (jdbc/execute!
+           connectable
+           (-> (sql.helpers/create-index
+                [(keyword (content-index-name index)) :if-not-exists]
+                [(keyword table-name) :content])
+               sql-format-quoted)))))
     (catch Exception e
       ;; let an already-actionable error (e.g. the pgvector-extension guidance) surface unwrapped
       (if (= ::extension-install-failed (:type (ex-data e)))
@@ -692,7 +823,7 @@
    [:last_viewed_at :last_viewed_at]
    [:legacy_input :legacy_input]])
 
-(defn- keyword-search-query [index search-context]
+(defn- postgres-keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
         ts-search-expr (search/to-tsquery-expr (:search-string search-context))
         tsv-lang (search/tsv-language)
@@ -713,11 +844,44 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
+(def ^:private sqlite-keyword-weights
+  "bm25 column weights for the FTS5 columns (name, searchable_text, native_query), matching the Postgres ranking:
+  the name is weight A (1.0 in ts_rank_cd) and the rest weight B (0.4)."
+  [1.0 0.4 0.4])
+
+(defn- sqlite-keyword-search-query
+  "The SQLite store's [[keyword-search-query]]: FTS5 over the index table's external-content FTS table, ranked by
+  bm25 (smaller is better)."
+  [index search-context]
+  (let [filters    (search-filters search-context)
+        table-name (:table-name index)
+        fts        (keyword (fts-table-name table-name))
+        fts-query  (some->> (semantic.db.sqlite/search-string->fts5-query (:search-string search-context))
+                            ;; like the Postgres text_search_vector, which leaves the native query out
+                            (str (when-not (:search-native-query search-context) "{name searchable_text} : ")))
+        matches    {:select [[:rowid :fts_rowid]
+                             [(into [:bm25 fts] (map #(vector :inline %)) sqlite-keyword-weights) :fts_rank]]
+                    :from   [fts]
+                    ;; FTS5 reads `table = query` as a MATCH
+                    :where  (if fts-query [:= fts fts-query] [:= [:inline 1] [:inline 0]])}]
+    {:select   (into common-search-columns
+                     [[[:raw "row_number() OVER (ORDER BY kw.fts_rank ASC)"] :keyword_rank]])
+     :from     [(keyword table-name)]
+     :join     [[matches :kw] [:= :kw.fts_rowid :id]]
+     :where    (or filters [:= [:inline 1] [:inline 1]])
+     :order-by [[:keyword_rank :asc]]
+     :limit    (semantic-settings/semantic-search-results-limit)}))
+
+(defn- keyword-search-query [index search-context]
+  (if (semantic.util/sqlite?)
+    (sqlite-keyword-search-query index search-context)
+    (postgres-keyword-search-query index search-context)))
+
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
 (defn- hnsw-search-query
   "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
-  [index embedding-literal filters]
+  [index distance filters]
   ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner uses
   ;; the HNSW index. HNSW is an approximate-nearest-neighbour index, so its results are approximate regardless
   ;; of filtering -- that's the trade-off we accept for its speed. Running the filters only in the outer query
@@ -727,9 +891,9 @@
   ;; every filtered row.
   ;; TODO: only pull in necessary extra columns from configured filters
   (let [hnsw-query {:select (into common-search-columns
-                                  [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                                  [[distance :distance]])
                     :from   [(keyword (:table-name index))]
-                    :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
+                    :order-by [[distance :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
         ;; `semantic_rank` feeds the RRF scorer; `semantic_distance` feeds the semantic-distance scorer.
         base-query {:with [[:vector_candidates hnsw-query]]
@@ -745,7 +909,7 @@
 
 (defn- brute-force-search-query
   "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
-  [index embedding-literal filters]
+  [index distance filters]
   ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
   ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
   ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
@@ -754,7 +918,7 @@
   ;; plain subquery back up and re-inlines the expression) -- not worth it for an exact scan that already
   ;; touches every filtered row.
   (let [filtered-query (cond-> {:select (into common-search-columns
-                                              [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                                              [[distance :distance]])
                                 :from   [(keyword (:table-name index))]}
                          filters (assoc :where filters))]
     {:with     [[:vector_candidates filtered-query :materialized]]
@@ -768,7 +932,7 @@
 
 (defn- hnsw-iterative-search-query
   "Build the semantic vector subquery as an index-backed iterative scan with `filters` applied inline."
-  [index embedding-literal filters]
+  [index distance filters]
   ;; The filters live inside the ordered/limited candidate scan (unlike `hnsw-search-query`, which
   ;; post-filters), so the planner can pick the HNSW index and pgvector's iterative scan keeps pulling
   ;; neighbours until the limit is met or `hnsw.max_scan_tuples` is hit.
@@ -777,9 +941,9 @@
   ;; The cutoff stays in the outer query (like `hnsw-search-query`) so the inner scan fills up to the limit
   ;; before trimming.
   (let [inner (cond-> {:select   (into common-search-columns
-                                       [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                                       [[distance :distance]])
                        :from     [(keyword (:table-name index))]
-                       :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
+                       :order-by [[distance :asc]]
                        :limit    (semantic-settings/semantic-search-results-limit)}
                 filters (assoc :where filters))]
     {:with     [[:vector_candidates inner]]
@@ -791,10 +955,13 @@
      :order-by [[:semantic_rank :asc]]}))
 
 (defn- vector-search-strategy
-  "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
+  "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting.
+  Always `:brute-force` (an exact scan) in the SQLite store, which has no HNSW index."
   [search-context]
-  (or (:vector-search-strategy search-context)
-      (semantic-settings/semantic-search-vector-strategy)))
+  (if (semantic.util/sqlite?)
+    :brute-force
+    (or (:vector-search-strategy search-context)
+        (semantic-settings/semantic-search-vector-strategy))))
 
 (def ^:private iterative-strategy->guc
   "Iterative vector-search strategies mapped to pgvector's `hnsw.iterative_scan` GUC value.
@@ -807,23 +974,25 @@
   `:brute-force` is exact and filter-first; the `:hnsw-iterative-*` strategies are index-backed with inline
   filters and an iterative scan; `:hnsw` (the default) is approximate, index-backed and post-filters."
   [index embedding search-context]
-  (let [filters           (search-filters search-context)
-        embedding-literal (format-embedding embedding)
-        strategy          (vector-search-strategy search-context)]
+  (let [filters  (search-filters search-context)
+        distance (distance-expr embedding)
+        strategy (vector-search-strategy search-context)]
     (cond
-      (= :brute-force strategy)          (brute-force-search-query index embedding-literal filters)
-      (iterative-strategy->guc strategy) (hnsw-iterative-search-query index embedding-literal filters)
-      (= :hnsw strategy)                 (hnsw-search-query index embedding-literal filters)
+      (= :brute-force strategy)          (brute-force-search-query index distance filters)
+      (iterative-strategy->guc strategy) (hnsw-iterative-search-query index distance filters)
+      (= :hnsw strategy)                 (hnsw-search-query index distance filters)
       :else (do (log/warnf "Unknown vector-search strategy %s; falling back to :brute-force" (pr-str strategy))
-                (brute-force-search-query index embedding-literal filters)))))
+                (brute-force-search-query index distance filters)))))
 
 (defn- explain?
   "Whether to run the gated EXPLAIN (ANALYZE) instrumentation for `search-context`, falling back to the
   configured default setting."
   [search-context]
-  (if (contains? search-context :vector-search-explain?)
-    (boolean (:vector-search-explain? search-context))
-    (semantic-settings/semantic-search-explain)))
+  (cond
+    ;; the instrumentation reads Postgres EXPLAIN plans
+    (semantic.util/sqlite?)                        false
+    (contains? search-context :vector-search-explain?) (boolean (:vector-search-explain? search-context))
+    :else                                          (semantic-settings/semantic-search-explain)))
 
 (defn- vector-session-settings
   "`SET LOCAL` statements for the pgvector session GUCs implied by `search-context`, as a (possibly empty)
@@ -851,7 +1020,8 @@
                                 (semantic-settings/semantic-search-max-scan-tuples))
                             1 Integer/MAX_VALUE))])
 
-      (:vector-search-force-index? search-context)
+      (and (:vector-search-force-index? search-context)
+           (not (semantic.util/sqlite?)))
       (conj ["SET LOCAL enable_seqscan = off"]))))
 
 (defn- run-in-vector-session!
@@ -1345,7 +1515,7 @@
               (let [embedding (embedding/get-embedding (:embedding-model index) search-string
                                                        {:type :query :record-tokens? true})
                     distance  (-> (jdbc/execute-one! db (sql-format-quoted
-                                                         {:select [[[:raw (str "embedding <=> " (format-embedding embedding))] :distance]]
+                                                         {:select [[(distance-expr embedding) :distance]]
                                                           :from   [table]
                                                           :where  [:and [:= :model model] [:= :model_id (str id)]]})
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
