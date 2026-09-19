@@ -246,7 +246,7 @@
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {})))
+    (throw (ex-info "Semantic layer already exists" {})))
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"

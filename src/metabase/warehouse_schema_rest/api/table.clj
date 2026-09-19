@@ -261,7 +261,7 @@
   (api/check-data-analyst)
   (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
-                   (tru "Tables can only be published to Library/Data collections."))
+                   (tru "Tables can only be published to Semantic layer/Data collections."))
     (api/check-403 (every? mi/can-query? tables))))
 
 (defn- update-tables!

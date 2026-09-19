@@ -23,7 +23,7 @@
    _query
    _body]
   (api/check-data-analyst)
-  (api/check-400 (not (collections/library-collection)) "Library already exists")
+  (api/check-400 (not (collections/library-collection)) "Semantic layer already exists")
   (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]

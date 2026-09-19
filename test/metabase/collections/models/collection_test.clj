@@ -3279,7 +3279,7 @@
               (is (true? (mi/can-read? sub)))
               (is (false? (mi/can-write? sub))))))))
     (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
                                               collection/library-data-collection-type
