@@ -135,9 +135,6 @@ function GoogleSheetsConnectModal({
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
       <SegmentedControl<UploadType>
         fullWidth
-        autoContrast
-        color="core-brand"
-        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
