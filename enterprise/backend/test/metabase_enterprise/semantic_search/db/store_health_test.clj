@@ -1,16 +1,23 @@
 (ns metabase-enterprise.semantic-search.db.store-health-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [iapetos.export :as export]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    [metabase-enterprise.semantic-search.db.store-health :as semantic.store-health]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]))
+
+;; The pgvector stores are tested with no SQLite store configured, whatever the test run itself uses. The SQLite store's
+;; probe is tested in metabase-enterprise.semantic-search.db.sqlite-test.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [semantic.db.sqlite/configured? (constantly false)]
+                        (thunk))))
 
 (defn- readiness-gauges
   "Every readiness gauge for both storage labels, as `{storage {:available _ :connected _ :last-success _}}`."
@@ -207,7 +214,7 @@
 
 (deftest initial-values-test
   (testing "both storage series are seeded at startup, and the timestamp deliberately is not"
-    (is (= [{:storage "dedicated"} {:storage "appdb"}]
+    (is (= [{:storage "dedicated"} {:storage "sqlite"} {:storage "appdb"}]
            (analytics.core/known-labels :metabase-pgvector/store-available)
            (analytics.core/known-labels :metabase-pgvector/store-connected)))
     (is (not (contains? (methods analytics.core/known-labels)

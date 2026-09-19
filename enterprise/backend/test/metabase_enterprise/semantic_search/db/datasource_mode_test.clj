@@ -3,8 +3,9 @@
   unavailable. The end-to-end app-db mode round-trip lives in
   metabase-enterprise.semantic-search.appdb-pgvector-mode-test."
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
@@ -14,6 +15,12 @@
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+;; The pgvector modes are tested with no SQLite store configured, whatever the test run itself uses. SQLite mode
+;; selection is tested in metabase-enterprise.semantic-search.db.sqlite-test.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [semantic.db.sqlite/configured? (constantly false)]
+                        (thunk))))
 
 (defn- stub-connection
   "The support check borrows a connection to bound it at the socket level; these tests stub every statement
