@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 
+import favicon32Image from "assets/img/favicon-32x32.png";
+
 const hasNotificationAPI = "Notification" in window;
 
 export function useWebNotification() {
@@ -18,7 +20,7 @@ export function useWebNotification() {
 
     const notification = new Notification(title, {
       body,
-      icon: "app/assets/img/favicon-32x32.png",
+      icon: favicon32Image,
     });
 
     const closeNotification = (e: Event) => {

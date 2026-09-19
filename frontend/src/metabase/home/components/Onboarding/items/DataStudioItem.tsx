@@ -1,5 +1,7 @@
 import { jt, t } from "ttag";
 
+import onboardingDataStudioImage from "assets/img/onboarding_data_studio.png";
+import onboardingDataStudioImage2x from "assets/img/onboarding_data_studio@2x.png";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Text } from "metabase/ui";
@@ -42,8 +44,8 @@ export const DataStudioItem = ({ value, itemRef }: OnboardingItemProps) => {
     >
       <ChecklistImage
         alt={t`A table in the Data Studio library`}
-        src="app/assets/img/onboarding_data_studio.png"
-        srcSet="app/assets/img/onboarding_data_studio@2x.png 2x"
+        src={onboardingDataStudioImage}
+        srcSet={`${onboardingDataStudioImage2x} 2x`}
         style={ILLUSTRATION_STYLE}
       />
       <Text>

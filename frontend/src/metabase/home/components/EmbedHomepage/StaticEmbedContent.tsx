@@ -2,6 +2,7 @@
 import styled from "@emotion/styled";
 import { t } from "ttag";
 
+import staticEmbeddingExampleImage from "assets/img/static-embedding-example.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
@@ -33,7 +34,7 @@ export const StaticEmbedContent = ({
     </Text>
     {showImage && (
       <StaticEmbedImage
-        src="/app/assets/img/static-embedding-example.png"
+        src={staticEmbeddingExampleImage}
         alt="Static embedding example"
       />
     )}

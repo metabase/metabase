@@ -1,6 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import notebookModeIllustration from "img/notebook_mode_illustration.png";
+import notebookModeIllustration2x from "img/notebook_mode_illustration@2x.png";
+import sqlIllustration from "img/sql_illustration.png";
+import sqlIllustration2x from "img/sql_illustration@2x.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
@@ -60,7 +64,10 @@ const NewModelOptions = () => {
         {hasDataAccess && (
           <div>
             <NewModelOption
-              image="app/img/notebook_mode_illustration"
+              image={{
+                src: notebookModeIllustration,
+                srcSet: `${notebookModeIllustration2x} 2x`,
+              }}
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
               width={180}
@@ -76,7 +83,10 @@ const NewModelOptions = () => {
         {hasNativeWrite && (
           <div>
             <NewModelOption
-              image="app/img/sql_illustration"
+              image={{
+                src: sqlIllustration,
+                srcSet: `${sqlIllustration2x} 2x`,
+              }}
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({

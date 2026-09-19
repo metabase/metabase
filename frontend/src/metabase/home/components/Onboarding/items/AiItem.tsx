@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import onboardingAiImage from "assets/img/onboarding_ai.png";
+import onboardingAiImage2x from "assets/img/onboarding_ai@2x.png";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
@@ -36,8 +38,8 @@ export const AiItem = ({ value, itemRef }: OnboardingItemProps) => {
     >
       <ChecklistImage
         alt={t`Connecting an AI provider in the admin settings`}
-        src="app/assets/img/onboarding_ai.png"
-        srcSet="app/assets/img/onboarding_ai@2x.png 2x"
+        src={onboardingAiImage}
+        srcSet={`${onboardingAiImage2x} 2x`}
         style={ILLUSTRATION_STYLE}
       />
       <Text>
