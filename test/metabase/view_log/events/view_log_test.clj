@@ -230,6 +230,31 @@
           (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
               "view_count should be incremented"))))))
 
+(deftest oversized-row-does-not-destroy-batch-test
+  (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
+    ;; no `with-temp`: its rollback-only transaction would be aborted by the rejected statement on Postgres, and
+    ;; `model_id` is not a foreign key, so a Card is not needed
+    (mt/with-model-cleanup [:model/ViewLog]
+      (let [model-id (+ 1000000 (rand-int 1000000))
+            view     (fn [client]
+                       {:model            "card"
+                        :model_id         model-id
+                        :user_id          (mt/user->id :rasta)
+                        :has_access       true
+                        :timestamp        (t/offset-date-time)
+                        :embedding_client client})]
+        (#'events.view-log/record-views!* [(view "embedding-sdk-react")
+                                           (view (apply str (repeat 255 "c")))
+                                           (view "embedding-sdk-react")])
+        (is (= 2 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+        (testing "inside a caller's transaction (the synchronous path of grouper/submit!) the good rows are still saved,
+                  and the rejected statement does not abort that transaction"
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (#'events.view-log/record-views!* [(view (apply str (repeat 255 "c")))
+                                               (view "embedding-sdk-react")])
+            (is (= 3 (t2/count :model/ViewLog :model "card" :model_id model-id)))
+            (is (pos? (t2/count :model/User)))))))))
+
 (deftest increment-view-counts!*-test
   (mt/with-temp [:model/Card  {card-1-id :id} {}
                  :model/Card  {card-2-id :id} {:view_count 2}

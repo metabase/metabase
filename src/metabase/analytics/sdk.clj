@@ -222,21 +222,24 @@
                  (when (str/starts-with? (or uri "") prefix) surface))
                embedding-route-mapping)))
 
+(defn- truncate-header
+  "The embedding columns are varchar(254); truncate rather than fail the row insert on an oversized header."
+  [s]
+  (some-> s (subs 0 (min (count s) 254))))
+
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])
-          ;; column is varchar(254); truncate rather than fail the row insert on an oversized header
-          identifier (some-> (get-in request [:headers "x-metabase-client-identifier"])
-                             (as-> s (subs s 0 (min (count s) 254))))
+          version (truncate-header (get-in request [:headers "x-metabase-client-version"]))
+          identifier (truncate-header (get-in request [:headers "x-metabase-client-identifier"]))
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
-          client (cond-> metabase-client-header
-                   preview? (some-> (str "-preview")))]
+          client (truncate-header (cond-> metabase-client-header
+                                    preview? (some-> (str "-preview"))))]
       (binding [*client*            client
                 *client-identifier* identifier
                 *route*             route
