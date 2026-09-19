@@ -142,6 +142,7 @@ e2e_infra: &e2e_infra
 backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"
+  - ".github/workflows/app-db.yml"
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
 
@@ -237,6 +238,10 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
+embedding_documentation: &embedding_documentation
+  - ".typedoc/**"
+  - "docs/embedding/**"
+
 embedding_sdk_ci: &embedding_sdk_ci
   - *shared_ci
   - ".github/workflows/uberjar.yml"
@@ -260,6 +265,19 @@ embedding_sdk_host_sample_apps:
   - "e2e/embedding-sdk-host-apps/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
+# The SDK package artifact every SDK job downloads: the union of what those jobs
+# follow, so run-tests.yml gates the build on one filter instead of restating each
+# consumer's triggers.
+build_embedding_sdk_package:
+  - *default
+  - *embedding_sdk_ci
+  - *sources
+  - *shared_e2e
+  - *embedding_documentation
+  - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
+  - "e2e/embedding-sdk-host-apps/**"
+  - "e2e/test-host-app/**/*.cy.*.{js,ts}"
+
 snowplow: &snowplow
   - ".github/workflows/lint.yml"
   - "snowplow/**"
@@ -280,10 +298,6 @@ documentation:
 
 docs:
   - "docs/**"
-
-embedding_documentation:
-  - ".typedoc/**"
-  - "docs/embedding/**"
 
 yaml:
   - "**/*.yml"

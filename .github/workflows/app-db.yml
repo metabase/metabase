@@ -3,11 +3,14 @@ name: App DB Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
+      changes:
+        description: >-
+          The caller's files-changed verdict, as JSON. Empty means no verdict was
+          computed, and every gate here falls open.
+        type: string
+        default: ""
       force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
+        description: Test every app-DB version rather than only the latest of each.
         type: boolean
         default: false
 
@@ -55,8 +58,12 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # Tier 1: whether the diff touches anything this suite tests. Tier 0 (the global
+  # force-run / force-skip overrides) stays in run-tests.yml -- a force-skip never
+  # calls this workflow at all. The gate reads "run unless the filter said no", so an
+  # absent verdict, an unknown filter or a malformed one all fail open.
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    if: ${{ fromJSON(inputs.changes || '{}').backend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -162,7 +169,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mariadb' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -223,7 +230,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mysql' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -282,7 +289,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'postgres' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -331,7 +338,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9
