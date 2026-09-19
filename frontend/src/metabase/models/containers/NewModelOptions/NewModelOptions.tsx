@@ -60,7 +60,7 @@ const NewModelOptions = () => {
         {hasDataAccess && (
           <div>
             <NewModelOption
-              image="app/img/notebook_mode_illustration"
+              image="app/assets/img/notebook_mode_illustration"
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
               width={180}
@@ -76,7 +76,7 @@ const NewModelOptions = () => {
         {hasNativeWrite && (
           <div>
             <NewModelOption
-              image="app/img/sql_illustration"
+              image="app/assets/img/sql_illustration"
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({
