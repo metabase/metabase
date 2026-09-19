@@ -58,6 +58,7 @@ metabot-nlq-system-prompt: null
 metabot-quota-reached-message: null
 metabot-show-illustrations: null
 metabot-sql-system-prompt: null
+mcp-advanced-permissions: null
 mcp-enabled?: null
 mcp-execute-sql-enabled: null
 native-query-autocomplete-match-style: null

@@ -1,0 +1,75 @@
+.scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.table {
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+}
+
+.cell {
+  height: 2.5rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+  border-right: 1px solid var(--mb-color-border-neutral-subtle);
+}
+
+.spacerCell {
+  padding: 0;
+  border: none;
+}
+
+.headerCell {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--mb-color-background_page-primary);
+  font-weight: bold;
+  text-align: center;
+}
+
+.cornerCell {
+  left: 0;
+  z-index: 3;
+  color: var(--mb-color-text-secondary);
+  text-align: left;
+}
+
+.fillerHeaderCell {
+  padding-left: 1rem;
+  text-align: left;
+}
+
+.pinnedCell {
+  position: sticky;
+  font-weight: normal;
+  left: 0;
+  z-index: 1;
+  background: var(--mb-color-background_page-primary);
+  text-align: left;
+}
+
+.bucketRow th,
+.bucketRow td {
+  background: var(--mb-color-background_page-secondary);
+}
+
+.fillerCell {
+  border-right: none;
+}
+
+.headerButton {
+  display: inline-block;
+  max-width: 100%;
+  font-weight: bold;
+  color: inherit;
+  cursor: pointer;
+}
+
+.headerButton:hover {
+  color: var(--mb-color-brand);
+}

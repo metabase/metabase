@@ -288,10 +288,11 @@
   "The default way to answer a question from data: validate and execute a structured (MBQL) query, returning rows plus a query_handle. Use it first for any count, sum, group-by, filter, sort, or join, even \"how many X\"; execute_sql is only for window functions, CTEs, set operations, engine-specific functions, an explicit request for SQL, or a rejection you cannot fix. Only this route validates ids, pages with a cursor, and mints handles that save as cards taking dashboard filters as-is. Native SQL is rejected at any depth. Pass exactly one of: query (a fresh query, dialect below), query_handle (re-run a stored query), or cursor (next page). The query_handle holds the whole query, not the page, so save or visualize from any page. On next_cursor, call again with cursor until truncated is false. row_limit is only the page size: the first N rows is a stage limit: N with an order-by, never pages counted by hand.
 
 Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_tables / get_fields or search) — never guessed, base64, or schema-qualified. Only the FIRST stage has source-table or source-card (an id); later stages read the previous stage's output. Every clause is [\"op\", {}, ...args], options map mandatory at position 1. Field refs: [\"field\", {}, <field id>], or [\"field\", {}, \"<column name>\"] against a previous stage. Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Example, row count by month (placeholder ids; drop breakout for a plain count): {\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", \"source-table\": <TABLE_ID>, \"aggregation\": [[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, <FIELD_ID>]]}]}. get_content's definition include returns this same shape. Call learn(\"query-dialect\") before joins, expressions, multi-stage queries, or limits; learn(\"query-dialect\", \"operators\") lists every operator."
-  {:name        "execute_query"
-   :scope       metabot.scope/agent-query-run
-   :annotations {:readOnlyHint true}
-   :args        execute-query-args-schema}
+  {:name           "execute_query"
+   :default-access :allowed
+   :scope          metabot.scope/agent-query-run
+   :annotations    {:readOnlyHint true}
+   :args           execute-query-args-schema}
   [{:keys [validate_only row_limit] :as args} {:keys [session-id]}]
   (let [input (query-input args)
         {resolved :query prompt :prompt} (resolve-input input args session-id)
@@ -488,13 +489,14 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
 
 (registry/deftool execute-sql
   "Escape hatch for execute_query, the default for every question MBQL can express (see its description): execute a raw SQL string against a database, returning rows plus a query_handle. Use only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Raw SQL is checked only by the warehouse (no metadata validation, no teaching errors naming what is wrong), and a card saved from it cannot be filtered on a dashboard until rewritten with template tags. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
-  {:name        "execute_sql"
-   :scope       metabot.scope/agent-sql-run
+  {:name           "execute_sql"
+   :default-access :allowed
+   :scope          metabot.scope/agent-sql-run
    ;; Unlike execute_query, arbitrary SQL can write. These match MCP's defaults for an unannotated
    ;; tool, stated explicitly so the tool is covered by the mutating-tool invariants in
    ;; `metabase.mcp.v2.registry-test`, which enumerate on `:readOnlyHint`.
-   :annotations {:readOnlyHint false :destructiveHint true}
-   :args        execute-sql-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           execute-sql-args-schema}
   [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
@@ -647,10 +649,11 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
 
 (registry/deftool run-saved-question
   "Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({{variable}} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000)."
-  {:name        "run_saved_question"
-   :scope       metabot.scope/agent-query-run
-   :annotations {:readOnlyHint true}
-   :args        run-saved-question-args-schema}
+  {:name           "run_saved_question"
+   :default-access :allowed
+   :scope          metabot.scope/agent-query-run
+   :annotations    {:readOnlyHint true}
+   :args           run-saved-question-args-schema}
   [{:keys [id parameters row_limit]} _context]
   (let [row-limit   (or row_limit default-row-limit)
         card        (v2.resolve/resolve-and-read :model/Card id)
