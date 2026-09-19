@@ -2562,6 +2562,7 @@
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"
+                                         :default_schema "public"
                                          :initial_sync_status "complete"}
                      :model/Table t {:name "final"
                                      :schema "public"
