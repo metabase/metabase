@@ -1,6 +1,10 @@
 (ns metabase.query-processor.pivot.common
   (:require
    [clojure.math :as math]
+   [metabase.lib.options :as lib.options]
+   ;; :as-alias only, for ::add-remaps keywords; no runtime dependency on middleware internals
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -33,3 +37,50 @@
    (completing bit-xor)
    (long (dec (math/pow 2 num-breakouts)))
    indexes))
+
+;;; The following helpers deal with `add-remaps` middleware artifacts on `:breakout` clauses: each remapped breakout
+;;; splits into a pair (original + new-field) that share a dimension id. Pivot compilers keep grouping-set arithmetic
+;;; on the non-remap positions and drag the remap partner along at emit time.
+
+(defn remap-original->new-field-positions
+  "Map `original-position` → `new-field-position` for each remap pair in `breakouts` (as produced by the
+  `add-remaps` middleware). Returns `{}` when the query has no remapped breakouts."
+  [breakouts]
+  (let [new-field-by-dim-id (into {}
+                                  (keep-indexed
+                                   (fn [i b]
+                                     (when-let [dim-id (-> b lib.options/options
+                                                           (get ::add-remaps/new-field-dimension-id))]
+                                       [dim-id i])))
+                                  breakouts)]
+    (into {}
+          (keep-indexed
+           (fn [orig-pos b]
+             (when-let [dim-id (-> b lib.options/options
+                                   (get ::add-remaps/original-field-dimension-id))]
+               (when-let [new-pos (get new-field-by-dim-id dim-id)]
+                 [orig-pos new-pos]))))
+          breakouts)))
+
+(defn non-remap-positions
+  "Indices in `breakouts` of the breakouts that are NOT remap new-field breakouts, in original order."
+  [breakouts]
+  (into []
+        (keep-indexed
+         (fn [i b]
+           (when-not (-> b lib.options/options (get ::add-remaps/new-field-dimension-id))
+             i)))
+        breakouts))
+
+(defn expand-grouping-combo
+  "Map a `combo` of indices into the non-remap-breakouts vector to the corresponding sorted indices into the full
+  `breakouts` vector, dragging each remap new-field along with its original via `original->new-field`."
+  [combo non-remap-positions original->new-field]
+  (sort
+   (into #{}
+         (mapcat (fn [non-remap-combo-idx]
+                   (let [orig-pos (nth non-remap-positions non-remap-combo-idx)]
+                     (if-let [new-pos (get original->new-field orig-pos)]
+                       [orig-pos new-pos]
+                       [orig-pos]))))
+         combo)))
