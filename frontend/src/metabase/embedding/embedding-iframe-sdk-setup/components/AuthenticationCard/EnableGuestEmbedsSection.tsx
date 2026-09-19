@@ -81,7 +81,7 @@ export const EnableGuestEmbedsSection = ({
   return (
     <Stack
       gap={0}
-      pl="xxl"
+      ps="xxl"
       data-testid="enable-embedding-card"
       mt="xxs"
       mb="sm"

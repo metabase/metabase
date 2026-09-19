@@ -49,7 +49,7 @@ export const PaginationControls = ({
       role="navigation"
       {...props}
     >
-      <Text component="span" mr="sm">
+      <Text component="span" me="sm">
         {rangeStart} - {rangeEnd}
         {showTotal && (
           <>

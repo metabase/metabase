@@ -106,4 +106,43 @@ describe("getChartLayout", () => {
         CHART_STYLE.padding.x,
     );
   });
+
+  describe("rtl", () => {
+    const layoutFor = (direction: "ltr" | "rtl") =>
+      getChartLayout(input, currencySettings, false, 480, 274, {
+        ...getChartContext(),
+        direction,
+      });
+
+    it("reserves the y-axis gutter on the side the axis is drawn", () => {
+      const ltr = layoutFor("ltr");
+      const rtl = layoutFor("rtl");
+
+      // The left axis model renders on the right under rtl, so its gutter has to
+      // move with it — otherwise the tick labels are painted outside the chart.
+      expect(rtl.padding.right).toBe(ltr.padding.left);
+      expect(rtl.padding.left).toBe(ltr.padding.right);
+    });
+
+    it("keeps the plot area the same size", () => {
+      const ltr = layoutFor("ltr");
+      const rtl = layoutFor("rtl");
+
+      expect(rtl.bounds.right - rtl.bounds.left).toBe(
+        ltr.bounds.right - ltr.bounds.left,
+      );
+      expect(rtl.bounds.bottom - rtl.bounds.top).toBe(
+        ltr.bounds.bottom - ltr.bounds.top,
+      );
+    });
+
+    it("mirrors the plot area within the chart", () => {
+      const width = 480;
+      const ltr = layoutFor("ltr");
+      const rtl = layoutFor("rtl");
+
+      expect(rtl.bounds.left).toBe(width - ltr.bounds.right);
+      expect(rtl.bounds.right).toBe(width - ltr.bounds.left);
+    });
+  });
 });

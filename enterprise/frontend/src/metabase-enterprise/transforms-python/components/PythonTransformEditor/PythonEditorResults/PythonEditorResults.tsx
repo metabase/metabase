@@ -165,7 +165,7 @@ function ResultsFooter({
         />
         <Text
           c="text-primary"
-          ml="xxs"
+          ms="xxs"
         >{t`An error occurred while executing your Python script.`}</Text>
         <DismissButton onDismiss={onDismiss} />
       </Flex>
@@ -187,7 +187,7 @@ function ResultsFooter({
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text
         c="text-disabled"
-        ml="xxs"
+        ms="xxs"
         lh="xs"
       >{t`Preview based on the first 100 rows from each table.`}</Text>
       <DismissButton onDismiss={onDismiss} />
@@ -198,7 +198,7 @@ function ResultsFooter({
 function DismissButton({ onDismiss }: { onDismiss: () => void }) {
   return (
     <ActionIcon
-      ml="auto"
+      ms="auto"
       size="1.5rem"
       radius="xl"
       variant="subtle"

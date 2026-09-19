@@ -30,7 +30,7 @@ export const WidgetStatus = ({
       align="center"
       className={className}
       h={0} // trick to prevent this element from affecting parent's height
-      ml="auto"
+      ms="auto"
     >
       {status === "clear" && (
         <Tooltip label={t`Clear`}>

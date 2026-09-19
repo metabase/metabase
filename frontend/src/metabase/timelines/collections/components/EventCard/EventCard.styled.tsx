@@ -37,7 +37,7 @@ export const CardThreadIconContainer = styled.div`
 
 export const CardThreadStroke = styled.div`
   flex: 1 1 auto;
-  border-left: 1px solid var(--mb-color-border-neutral);
+  border-inline-start: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const CardBody = styled.div`

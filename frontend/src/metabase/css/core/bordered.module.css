@@ -39,12 +39,12 @@
 }
 
 .borderRight {
-  border-right: var(--border-size) var(--border-style)
+  border-inline-end: var(--border-size) var(--border-style)
     var(--mb-color-border-neutral);
 }
 
 .borderLeft {
-  border-left: var(--border-size) var(--border-style)
+  border-inline-start: var(--border-size) var(--border-style)
     var(--mb-color-border-neutral);
 }
 

@@ -18,7 +18,7 @@
 .border[data-position="bottom"] {
   height: 1px;
   width: calc(100% + 500px);
-  left: -250px;
+  inset-inline-start: -250px;
   background-image: linear-gradient(
     to right,
     transparent,
@@ -53,9 +53,9 @@
 }
 
 .border[data-position="right"] {
-  right: -1px;
+  inset-inline-end: -1px;
 }
 
 .border[data-position="left"] {
-  left: -1px;
+  inset-inline-start: -1px;
 }

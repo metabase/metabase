@@ -76,7 +76,7 @@ const BillingGoToStore = () => {
       <ButtonLink href={url}>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
         {t`Go to the Metabase Store`}
-        <Icon name="external" opacity={0.6} ml="sm" />
+        <Icon name="external" opacity={0.6} ms="sm" />
       </ButtonLink>
     </>
   );

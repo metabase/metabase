@@ -318,7 +318,7 @@ function ItemLabel({ item, isActive }: { item: FlatItem; isActive: boolean }) {
         className={S.label}
         c="text-disabled"
         data-testid="empty-placeholder"
-        pl="1.25rem"
+        ps="1.25rem"
       >
         {t`Empty`}
       </Box>
@@ -336,7 +336,7 @@ function ItemLabel({ item, isActive }: { item: FlatItem; isActive: boolean }) {
       className={S.label}
       c={isMutedTable ? "text-secondary" : undefined}
       data-testid="tree-item-label"
-      pl="sm"
+      ps="sm"
     >
       {item.label}
     </Box>

@@ -37,7 +37,7 @@ const LearnAboutDataLink = () => (
     <Link to="reference" onClick={trackDataReferenceClicked}>
       <Flex className={HeaderS.browseHeaderIconContainer} align="center">
         <Icon className={S.learnAboutDataIcon} size={14} name="reference" />
-        <Text size="md" lh="1" fw="bold" ml="sm" c="inherit">
+        <Text size="md" lh="1" fw="bold" ms="sm" c="inherit">
           {t`Learn about our data`}
         </Text>
       </Flex>

@@ -14,7 +14,10 @@
 }
 
 .button {
-  margin: 0 -0.25rem calc(0.5rem - 1px) 2px;
+  margin-top: 0;
+  margin-inline-end: -0.25rem;
+  margin-bottom: calc(0.5rem - 1px);
+  margin-inline-start: 2px;
   background: var(--mb-color-core-brand);
   border-radius: 6px;
   width: 2rem;

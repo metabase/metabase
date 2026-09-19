@@ -6,7 +6,7 @@ import { color } from "metabase/ui/utils/colors";
 import { DraggableSidebarLink } from "../../SidebarItems";
 
 export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
-  padding-left: 0.75rem;
+  padding-inline-start: 0.75rem;
 
   &:hover,
   &:focus,

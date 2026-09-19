@@ -197,7 +197,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               <DateTime value={table.updated_at} />
             </Text>
           </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+          <Text size="sm" c="text-secondary" lh="1rem" ms="1.5rem">
             {t`Last edited at`}
           </Text>
         </Card.Section>
@@ -216,7 +216,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               </Text>
             )}
           </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+          <Text size="sm" c="text-secondary" lh="1rem" ms="1.5rem">
             {t`Database`}
           </Text>
         </Card.Section>
@@ -243,7 +243,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               onChange={handleDataSourceChange}
             />
           </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+          <Text size="sm" c="text-secondary" lh="1rem" ms="1.5rem">
             {t`Source`}
           </Text>
         </Card.Section>
@@ -270,7 +270,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               }}
             />
           </Group>
-          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
+          <Text size="sm" c="text-secondary" lh="1rem" ms="1.5rem">
             {t`Owner`}
           </Text>
         </Card.Section>

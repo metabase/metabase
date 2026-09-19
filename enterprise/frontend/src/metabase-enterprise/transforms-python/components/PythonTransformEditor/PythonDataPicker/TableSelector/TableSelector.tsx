@@ -82,10 +82,10 @@ export function TableSelector({
           <Stack gap="xxs">
             {table ? (
               <>
-                <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="left">
+                <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="start">
                   {`${table?.db?.name} / ${table?.schema}`}
                 </Ellipsified>
-                <Ellipsified c="text-primary" ta="left">
+                <Ellipsified c="text-primary" ta="start">
                   {table?.display_name}
                 </Ellipsified>
               </>
@@ -99,7 +99,7 @@ export function TableSelector({
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
               onClick={onRemove}
-              mr="sm"
+              me="sm"
               aria-label={t`Remove this table`}
             >
               <Icon name="close" c="text-primary" />

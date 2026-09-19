@@ -15,8 +15,8 @@
     max-width: 100%;
 
     &:not(:last-child) {
-      padding-left: 0.5rem;
-      padding-right: 1.5rem;
+      padding-inline-start: 0.5rem;
+      padding-inline-end: 1.5rem;
     }
   }
 }

@@ -25,9 +25,9 @@ export function BreakoutLegend() {
       className={S.root}
       w="16rem"
       pt="lg"
-      pr="xl"
+      pe="xl"
       pb="lg"
-      pl="sm"
+      ps="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
       <Paper withBorder radius="sm" p="xl">

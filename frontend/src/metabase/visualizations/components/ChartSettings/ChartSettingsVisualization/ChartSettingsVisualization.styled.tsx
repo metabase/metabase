@@ -8,7 +8,7 @@ export const SectionWarnings = styled(Warnings)`
   color: ${() => color("accent4")};
   position: absolute;
   top: 2rem;
-  right: 2rem;
+  inset-inline-end: 2rem;
   z-index: 2;
 `;
 

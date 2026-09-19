@@ -21,7 +21,7 @@ export const Content = styled.div<{ isClickable: boolean }>`
 `;
 
 export const IconWrapper = styled.span`
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 0.875rem;
 `;
 

@@ -32,7 +32,7 @@ export const HomeGreeting = (): JSX.Element | null => {
         fw={700}
         lh="1.5rem"
         fz={{ base: "1.125rem", xl: "1.25rem" }}
-        ml="0.5rem"
+        ms="0.5rem"
       >
         {message}
       </Text>

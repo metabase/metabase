@@ -7,8 +7,8 @@ export const SkeletonImage = styled.svg`
   ${animationStyles};
   flex: 1 1 0;
   margin-top: 1rem;
-  padding-left: 0.5rem;
+  padding-inline-start: 0.5rem;
   padding-bottom: 0.5rem;
-  border-left: 1px solid currentColor;
+  border-inline-start: 1px solid currentColor;
   border-bottom: 1px solid currentColor;
 `;

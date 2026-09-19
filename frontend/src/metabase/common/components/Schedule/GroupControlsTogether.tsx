@@ -64,7 +64,7 @@ export const GroupControlsTogether = ({
         if (nextIndex === compactChildren.length - 1) {
           if (typeof nextChild === "string" && !!nextChild.trim()) {
             currentGroup.push(
-              <Text key={`node-${nextIndex}`} ml="0.5rem">
+              <Text key={`node-${nextIndex}`} ms="0.5rem">
                 {nextChild}
               </Text>,
             );

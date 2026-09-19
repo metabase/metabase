@@ -50,14 +50,14 @@ export function ClickBehaviorSidebarOverlay({
         onClick={onClick}
       >
         <Icon
-          mr="sm"
+          me="sm"
           name="click"
           className={cx(S.ClickIcon, {
             [S.isActive]: isShowingThisClickBehaviorSidebar,
           })}
         />
         {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <Box component="span" display="block" mr="lg">{t`On click`}</Box>
+          <Box component="span" display="block" me="lg">{t`On click`}</Box>
         )}
         <Box
           component="span"

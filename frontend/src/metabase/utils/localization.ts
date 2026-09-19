@@ -1,5 +1,7 @@
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   type LocaleDataWithLanguage,
+  applyLocaleDirection,
   setLocalization,
 } from "metabase/utils/i18n";
 
@@ -38,6 +40,12 @@ export async function loadLocalization(
           },
         };
   setLocalization(translationsObject);
+
+  // Reflect the writing direction on <html> for the main app only. In embedding-SDK
+  // mode the host page must not be mutated (SDK content is scoped by its own wrapper).
+  if (!isEmbeddingSdk()) {
+    applyLocaleDirection(translationsObject.headers.language);
+  }
 
   return translationsObject;
 }

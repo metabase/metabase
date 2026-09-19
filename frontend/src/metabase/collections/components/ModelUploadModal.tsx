@@ -113,7 +113,7 @@ export function ModelUploadModal({
           value={uploadMode}
           // Unjustified type cast. FIXME
           onChange={(val) => setUploadMode(val as UploadMode)}
-          pl="1px"
+          ps="1px"
         >
           <Radio label={t`Create a new model`} value={UploadMode.create} />
           <Radio

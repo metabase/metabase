@@ -261,7 +261,7 @@ function renderMenuOption({
 
   return (
     <MenuItemStyled key={type} aria-selected={isSelected} onClick={handleClick}>
-      <Text fw="bold" ml="0.5rem">
+      <Text fw="bold" ms="0.5rem">
         {name}
       </Text>
     </MenuItemStyled>
