@@ -183,19 +183,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
           >
             Size of this layer
           </div>
-          <div>
-            <div
-              color="text-primary"
-              data-size="md"
-            >
-              Complexity score
-            </div>
-            <div
-              color="text-primary"
-              data-size="md"
-            >
-              18
-            </div>
+          <div
+            data-size="sm"
+            data-variant="filled"
+          >
+            <span>
+              Complexity score 18
+            </span>
           </div>
         </div>
         <div
@@ -234,13 +228,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     role="img"
                     width="14"
                   />
-                  <div>
-                    <div
-                      color="text-primary"
-                      data-size="md"
-                    >
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
                       10
-                    </div>
+                    </span>
                   </div>
                 </div>
               </span>
@@ -298,13 +292,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     role="img"
                     width="14"
                   />
-                  <div>
-                    <div
-                      color="text-primary"
-                      data-size="md"
-                    >
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
                       8
-                    </div>
+                    </span>
                   </div>
                 </div>
               </span>
@@ -340,19 +334,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
           >
             Areas of ambiguity
           </div>
-          <div>
-            <div
-              color="text-primary"
-              data-size="md"
-            >
-              Complexity score
-            </div>
-            <div
-              color="text-primary"
-              data-size="md"
-            >
-              0
-            </div>
+          <div
+            data-size="sm"
+            data-variant="filled"
+          >
+            <span>
+              Complexity score 0
+            </span>
           </div>
         </div>
         <div
@@ -391,13 +379,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     role="img"
                     width="14"
                   />
-                  <div>
-                    <div
-                      color="text-primary"
-                      data-size="md"
-                    >
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
                       0
-                    </div>
+                    </span>
                   </div>
                 </div>
               </span>
@@ -455,13 +443,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     role="img"
                     width="14"
                   />
-                  <div>
-                    <div
-                      color="text-primary"
-                      data-size="md"
-                    >
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
                       0
-                    </div>
+                    </span>
                   </div>
                 </div>
               </span>
@@ -519,13 +507,13 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     role="img"
                     width="14"
                   />
-                  <div>
-                    <div
-                      color="text-primary"
-                      data-size="md"
-                    >
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
                       0
-                    </div>
+                    </span>
                   </div>
                 </div>
               </span>

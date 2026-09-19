@@ -13,6 +13,13 @@ export interface DataApp {
   display_name: string;
   /** Optional one-line summary of what the app does. */
   description: string | null;
+  /** Data app contract version the app was built for; 1 when the manifest declares none. */
+  version: number;
+  /**
+   * Whether `version` is older than the one this Metabase serves. Admin-only:
+   * regular users never receive an outdated app.
+   */
+  outdated: boolean;
   /** Path within the repo to the built bundle. */
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */

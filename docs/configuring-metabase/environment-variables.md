@@ -731,17 +731,7 @@ Allow admins to securely embed questions and dashboards within other application
 
 Allow admins to embed Metabase via interactive embedding?
 
-### `MB_ENABLE_EMBEDDING_MODULAR`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `enable-embedding-modular`
-
-Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?
-
-### `MB_ENABLE_EMBEDDING_SDK [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_SDK`
 
 - Type: boolean
 - Default: `false`
@@ -749,9 +739,7 @@ Allow admins to embed Metabase via modular embedding, the SDK for React, and gue
 
 Allow admins to embed Metabase via the SDK?
 
-### `MB_ENABLE_EMBEDDING_SIMPLE [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_SIMPLE`
 
 - Type: boolean
 - Default: `false`
@@ -759,9 +747,7 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via modular embedding?
 
-### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_STATIC`
 
 - Type: boolean
 - Default: `false`

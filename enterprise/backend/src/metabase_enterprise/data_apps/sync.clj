@@ -82,7 +82,7 @@
    returns file text or nil), iterate the folders under `data_apps/` and return one
    entry per folder that is an app — it holds a `data_app.yaml`; a folder without
    one is skipped. Each entry is a parsed app `{:slug :display_name :description
-   :bundle :allowed_hosts}` (with `:bundle` the repo-root relative bundle path) or
+   :version :bundle :allowed_hosts}` (with `:bundle` the repo-root relative bundle path) or
    `{:config-error <message>}`. Parse/read failures are isolated per app so one bad
    config can't abort the sync.
 
@@ -99,11 +99,12 @@
         :when (some #{config-path} (list-dir dir))]
     (try
       (if-let [content (read-file config-path)]
-        (let [{:keys [slug display_name description path allowed_hosts]}
+        (let [{:keys [slug display_name description version path allowed_hosts]}
               (data-app.config/parse-app-config (->bytes content) dir)]
           {:slug          slug
            :display_name  display_name
            :description   description
+           :version       version
            :bundle        (str dir "/" path)
            :allowed_hosts allowed_hosts})
         {:slug (data-app.config/dir-slug dir), :config-error (tru "Could not read {0}." config-path)})
@@ -120,16 +121,19 @@
     (data-apps.db/update-data-app-by-slug! slug row)
     (data-apps.db/insert-data-app! (assoc row :name slug))))
 
+(def ^:private synced-metadata-keys
+  "The manifest-derived columns a sync stores whether or not the bundle loaded."
+  [:display_name :description :version :allowed_hosts :bundle_path])
+
 (defn- app-metadata-changed?
   "Whether the metadata a sync stores whether or not the bundle loaded differs from
    the `existing` row. The failure path stores exactly these, so it asks this
    directly; the success path adds the bundle to the question."
-  [existing {:keys [display_name description bundle_path allowed_hosts]}]
-  (or (not= (:display_name existing) display_name)
-      (not= (:description existing) description)
-      (not= (:bundle_path existing) bundle_path)
-      (not= (vec (or (:allowed_hosts existing) []))
-            (vec (or allowed_hosts [])))))
+  [existing fields]
+  (let [normalize (fn [row]
+                    (-> (select-keys row synced-metadata-keys)
+                        (update :allowed_hosts #(vec (or % [])))))]
+    (not= (normalize existing) (normalize fields))))
 
 (defn- app-content-changed?
   "Whether the just-synced content differs from the `existing` row (nil = a new
@@ -156,9 +160,10 @@
 (defn- prepare-app
   "Read one app's bundle before taking the permissions lock.
    A bundle failure preserves the cached bundle and prepares metadata with `sync_error` instead."
-  [existing {:keys [slug display_name description bundle sha read-file allowed_hosts]}]
+  [existing {:keys [slug display_name description version bundle sha read-file allowed_hosts]}]
   (let [metadata {:display_name display_name
                   :description description
+                  :version version
                   :allowed_hosts allowed_hosts
                   :bundle_path bundle}]
     (try
@@ -190,7 +195,7 @@
       (if existing
         (mark-config-error! existing slug message)
         (when fields
-          (upsert-by-name! slug (assoc (select-keys fields [:display_name :description :allowed_hosts :bundle_path])
+          (upsert-by-name! slug (assoc (select-keys fields synced-metadata-keys)
                                        :sync_error message))
           true)))
     (catch Throwable e
