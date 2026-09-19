@@ -958,6 +958,8 @@
 
   ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
   ;; `metabase.app-db.value-guard`.
+  metabase.collections.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
   metabase.content-translation.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
