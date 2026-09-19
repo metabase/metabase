@@ -36,14 +36,20 @@
 
 (deftest default-schema-test
   (mt/test-driver :clickhouse
-    (testing "default"
-      (is (= "default"
-             (driver.sql/default-schema :clickhouse (mt/db)))))
-    (testing "database configured in the connection details"
-      (let [base-details (:details (mt/db))
-            details      (assoc base-details :dbname (or (:dbname base-details) (:db base-details)))]
-        (mt/with-temp [:model/Database database {:engine :clickhouse, :details details}]
-          (is (= (:dbname details)
+    (let [base-details (:details (mt/db))
+          db-name      (or (:dbname base-details) (:db base-details))]
+      (testing "database named by the older `db` spelling, which never reaches the JDBC URL"
+        (is (= db-name
+               (driver.sql/default-schema :clickhouse (mt/db)))))
+      (testing "database configured in the connection details"
+        (let [details (assoc base-details :dbname db-name)]
+          (mt/with-temp [:model/Database database {:engine :clickhouse, :details details}]
+            (is (= db-name
+                   (driver.sql/default-schema :clickhouse database))))))
+      (testing "details naming no database: the server reports the one the connection opened"
+        (mt/with-temp [:model/Database database {:engine  :clickhouse
+                                                 :details (dissoc base-details :db :dbname)}]
+          (is (= "default"
                  (driver.sql/default-schema :clickhouse database))))))))
 
 ;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
