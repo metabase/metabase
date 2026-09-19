@@ -70,6 +70,7 @@ export type IconName =
   | "connections"
   | "contract"
   | "copy"
+  | "corner_down_right"
   | "corner_up_right"
   | "curved"
   | "database"
