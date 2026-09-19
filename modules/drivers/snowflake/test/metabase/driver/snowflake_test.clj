@@ -66,8 +66,9 @@
 
 (deftest default-schema-test
   (mt/test-driver :snowflake
-    (testing "details naming no schema leave the session without one, and Snowflake rejects unqualified references"
-      (is (nil? (driver.sql/default-schema :snowflake (mt/db)))))
+    (testing "details naming no schema fall back to PUBLIC, which is how Metabase has always read them"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :snowflake (mt/db)))))
     (testing "schema configured in the JDBC additional options"
       (let [details (assoc (:details (mt/db)) :additional-options "schema=INFORMATION_SCHEMA")]
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
