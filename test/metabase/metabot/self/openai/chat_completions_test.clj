@@ -394,6 +394,33 @@
              {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}
              {:choices [] :usage {:prompt_tokens 127 :completion_tokens 288}}])))))
 
+(deftest ^:parallel chunks-xf-streamed-error-becomes-an-error-chunk-test
+  (testing "an error sent partway through a stream closes the open text block and becomes an error chunk"
+    (doseq [[shape error-chunk message]
+            [["vLLM's error envelope"
+              {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
+              "Internal server error"]
+             ["OpenRouter's error on a chunk that finishes the choice"
+              {:id       "cmpl-abc123"
+               :object   "chat.completion.chunk"
+               :created  1234567890
+               :model    "openai/gpt-4o"
+               :provider "openai"
+               :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
+               :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "Provider disconnected unexpectedly"]]]
+      (testing shape
+        (is (=? [{:type :start :messageId "chatcmpl-5"}
+                 {:type :text-start}
+                 {:type :text-delta :delta "Hel"}
+                 {:type :text-end}
+                 {:type :error :errorText message}]
+                (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                      [{:id      "chatcmpl-5"
+                        :model   "kimi-k2.6"
+                        :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                       error-chunk])))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; models-catalog tests
 ;;; ──────────────────────────────────────────────────────────────────

@@ -169,7 +169,8 @@
    [:project-id          {:optional true} [:maybe :string]]
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
-   [:base-url            {:optional true} [:maybe :string]]])
+   [:base-url            {:optional true} [:maybe :string]]
+   [:probed-model        {:optional true} [:maybe :string]]])
 
 (def ^:private LLMCredentials
   [:or ApiKeyCredentials AzureCredentials BedrockCredentials GoogleCredentials])
