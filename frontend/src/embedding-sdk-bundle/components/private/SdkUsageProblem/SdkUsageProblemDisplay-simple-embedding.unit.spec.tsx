@@ -29,7 +29,11 @@ jest.mock("metabase/visualizations/register", () => ({
 
 // Jest runs React 18 on localhost, which shows the React 18 warning banner.
 // Each test sets the host React major version instead.
+// Without the real module behind it, isHostReactVersionSupported is undefined
+// here, and anything that loads the SDK bundle throws while building its
+// exports: the bundle calls that check to pick which entries it publishes.
 jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
+  ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
   getHostReactMajorVersion: jest.fn(),
 }));
 

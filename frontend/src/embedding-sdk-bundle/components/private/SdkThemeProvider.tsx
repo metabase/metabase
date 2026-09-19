@@ -2,8 +2,10 @@
 import { Global } from "@emotion/react";
 import { useContext, useId, useMemo } from "react";
 
+import { UnsupportedReactVersionError } from "embedding-sdk-bundle/components/private/UnsupportedReactVersionError/UnsupportedReactVersionError";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
+import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import {
@@ -82,11 +84,19 @@ export const SdkThemeProviderWithStore = ({
   store,
   theme,
   children,
-}: Props & { store: SdkStore }) => (
-  <MetabaseReduxProvider store={store}>
-    <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
-  </MetabaseReduxProvider>
-);
+}: Props & { store: SdkStore }) => {
+  // The data-app dev preview is the whole page, so the error replaces it
+  // rather than rendering the app without its providers.
+  if (!isHostReactVersionSupported()) {
+    return <UnsupportedReactVersionError />;
+  }
+
+  return (
+    <MetabaseReduxProvider store={store}>
+      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+    </MetabaseReduxProvider>
+  );
+};
 
 function GlobalSdkCssVariables() {
   const theme = useMantineTheme();

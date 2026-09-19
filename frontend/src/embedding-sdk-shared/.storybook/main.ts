@@ -5,6 +5,7 @@ import type { StorybookConfig } from "@storybook/react-webpack5";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import webpack, { type Configuration } from "webpack";
 
+import { EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION } from "build-configs/embedding-sdk/constants/react-version";
 import { getBuildInfoValues } from "build-configs/embedding-sdk/rspack/get-build-info-values";
 
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPackageVersion } =
@@ -121,6 +122,7 @@ const config: StorybookConfig = {
       }),
       new webpack.EnvironmentPlugin({
         IS_EMBEDDING_SDK: "true",
+        EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
         ...getBuildInfoValues({ version: embeddingSdkPackageVersion }),
       }),
     ],
