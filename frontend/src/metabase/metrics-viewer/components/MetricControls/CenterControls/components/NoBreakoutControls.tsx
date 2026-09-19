@@ -15,10 +15,9 @@ export function NoBreakoutControls() {
         <Box className={S.controlSection}>
           <Button
             className={S.controlButton}
-            fw="bold"
             aria-label={t`No breakout`}
             variant="subtle"
-            color="text-primary"
+            color="neutral"
             leftSection={<Icon c="core-brand" name="unreferenced" size={16} />}
             onClick={openSidebar}
           >

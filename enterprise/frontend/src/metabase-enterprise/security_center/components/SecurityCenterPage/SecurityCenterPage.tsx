@@ -166,15 +166,11 @@ export function SecurityCenterPage() {
               </Button>
               <Button
                 variant="subtle"
-                leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
+                leftSection={<Icon name="gear" />}
                 onClick={() => setSettingsOpen(true)}
                 data-testid="notification-config-toggle"
               >
-                {isSmallScreen ? (
-                  <Icon name="gear" />
-                ) : (
-                  t`Notification settings`
-                )}
+                {isSmallScreen ? null : t`Notification settings`}
               </Button>
             </Group>
             <Text c="text-secondary" data-testid="current-version">
