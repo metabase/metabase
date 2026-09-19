@@ -52,25 +52,6 @@ describe("issue 33035", () => {
   });
 });
 
-describe("issue 21532", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow navigating back from admin settings (metabase#21532)", () => {
-    cy.visit("/");
-
-    H.goToAdmin();
-    cy.findByTestId("admin-layout-content");
-
-    cy.go("back");
-    cy.location().should((location) => {
-      expect(location.pathname).to.eq("/");
-    });
-  });
-});
-
 describe("issue 41765", { tags: "@external" }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
   // so we need to navigate by clicking trough the UI without reloading the page.

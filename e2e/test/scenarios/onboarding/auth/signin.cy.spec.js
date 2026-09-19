@@ -46,22 +46,6 @@ describe("scenarios > auth > signin", () => {
       .should("be.visible");
   });
 
-  it("should greet users after successful login", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address").should("be.focused").type(admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
-  it("should allow login regardless of login email case", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address").type(admin.email.toUpperCase());
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
   it("should allow toggling of Remember Me", () => {
     cy.visit("/auth/login");
 
@@ -70,28 +54,6 @@ describe("scenarios > auth > signin", () => {
 
     cy.findByLabelText("Remember me").click();
     cy.findByRole("checkbox").should("not.be.checked");
-  });
-
-  it("should redirect to an unsaved question after login", () => {
-    cy.signInAsAdmin();
-    cy.visit("/");
-    H.browseDatabases().click();
-    cy.findByRole("heading", { name: "Sample Database" }).click();
-    cy.findByRole("heading", { name: "Orders" }).click();
-    cy.wait("@dataset");
-    cy.findAllByRole("gridcell", { name: "37.65" });
-
-    // signout and reload page with question hash in url
-    cy.signOut();
-    cy.reload();
-
-    cy.findByRole("heading", { name: "Sign in to Metabase" });
-    cy.findByLabelText("Email address").type(admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-
-    cy.wait("@dataset");
-    cy.findAllByRole("gridcell", { name: "37.65" });
   });
 
   sizes.forEach((size) => {

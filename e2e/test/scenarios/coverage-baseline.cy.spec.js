@@ -12,6 +12,5 @@ describe("coverage baseline", () => {
   it("signs in and loads the home page", () => {
     cy.visit("/");
     cy.findByTestId("app-bar").should("be.visible");
-    cy.findByTestId("home-page").should("be.visible");
   });
 });

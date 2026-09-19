@@ -30,36 +30,6 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("home page navigation", () => {
-    it("should show the top and side nav by default", () => {
-      H.visitFullAppEmbeddingUrl({ url: "/" });
-      cy.wait("@getXrayDashboard");
-
-      H.appBar()
-        .should("be.visible")
-        .within(() => {
-          cy.findByTestId("main-logo").should("be.visible");
-          cy.button(/New/).should("not.exist");
-          cy.findByPlaceholderText("Search").should("not.exist");
-        });
-
-      sideNav().should("be.visible");
-    });
-
-    it("should hide the top nav when nothing is shown", () => {
-      H.visitFullAppEmbeddingUrl({
-        url: "/",
-        qs: { side_nav: false, logo: false },
-      });
-      cy.wait("@getXrayDashboard");
-      H.appBar().should("not.exist");
-    });
-
-    it("should hide the top nav by an explicit param", () => {
-      H.visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: false } });
-      cy.wait("@getXrayDashboard");
-      H.appBar().should("not.exist");
-    });
-
     it("should not hide the top nav when the logo is still visible", () => {
       H.visitFullAppEmbeddingUrl({
         url: "/question/" + ORDERS_QUESTION_ID,
@@ -73,27 +43,6 @@ describe("scenarios > embedding > full app", () => {
           "not.exist",
         );
       });
-    });
-
-    it("should keep showing sidebar toggle button when logo, breadcrumbs, the new button, and search are hidden", () => {
-      H.visitFullAppEmbeddingUrl({
-        url: "/",
-        qs: {
-          logo: false,
-          breadcrumbs: false,
-          search: false,
-          new_button: false,
-        },
-      });
-      cy.wait("@getXrayDashboard");
-
-      sideNav().should("be.visible");
-      H.appBar()
-        .should("be.visible")
-        .within(() => {
-          cy.button("Toggle sidebar").should("be.visible").click();
-        });
-      sideNav().should("not.be.visible");
     });
 
     it("should hide the side nav by a param", () => {

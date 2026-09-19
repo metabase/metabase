@@ -141,16 +141,6 @@ const setupPage = () =>
     /* webpackChunkName: "setup" */ "metabase/setup/components/Setup"
   ).then(({ Setup }) => ({ Component: Setup }));
 
-/**
- * The home page, in its own chunk. The route also covers the redirect to a
- * configured landing page, so an instance that sets one fetches this chunk once
- * before it leaves "/".
- */
-const landingPage = () =>
-  import(
-    /* webpackChunkName: "home" */ "metabase/home/components/LandingPageRedirect"
-  ).then(({ LandingPageRedirect }) => ({ Component: LandingPageRedirect }));
-
 const onboardingPage = () =>
   import(
     /* webpackChunkName: "onboarding" */ "metabase/home/components/Onboarding"
@@ -228,7 +218,7 @@ registerPagePrefetch("/explore", metricsViewerPage);
 // The login page asks for this one by hand, so a user who signs in has the home
 // page in hand by the time they land on it. Exact, because every path starts
 // with "/".
-registerPagePrefetch("/", landingPage, { exact: true });
+registerPagePrefetch("/", metabotQueryBuilder, { exact: true });
 registerPagePrefetch("/collection/", collectionLanding);
 registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
@@ -283,7 +273,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 : []),
 
               // The global all hands routes, things in here are for all the folks
-              { path: "/", lazy: landingPage },
+              { path: "/", element: redirect("/question/ask") },
 
               {
                 path: "getting-started",

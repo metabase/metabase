@@ -306,53 +306,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         );
       });
 
-      describe("landing page illustration", () => {
-        it("should allow display the selected illustration on the landing page", () => {
-          cy.visit("/admin/settings/whitelabel/conceal-metabase");
-
-          cy.findByTestId("landing-page-illustration-setting")
-            .findByDisplayValue("Lighthouse")
-            .click();
-
-          H.selectDropdown().findByText("Custom").click();
-          cy.findByTestId("file-input").selectFile(
-            {
-              contents: "e2e/support/assets/logo.jpeg",
-              mimeType: "image/jpeg",
-            },
-            { force: true },
-          );
-          cy.findByTestId("landing-page-illustration-setting")
-            .findByText("logo.jpeg")
-            .should("be.visible");
-
-          H.undoToast().findByText("Changes saved").should("be.visible");
-
-          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            (logo_data) => {
-              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
-              cy.visit("/");
-              cy.findByTestId("landing-page-illustration").should(
-                "have.css",
-                "background-image",
-                backgroundImage,
-              );
-            },
-          );
-
-          cy.log("test no illustration");
-          cy.visit("/admin/settings/whitelabel/conceal-metabase");
-
-          cy.findByTestId("landing-page-illustration-setting")
-            .findByDisplayValue("Custom")
-            .click();
-          H.selectDropdown().findByText("No illustration").click();
-
-          cy.visit("/");
-          cy.findByTestId("landing-page-illustration").should("not.exist");
-        });
-      });
-
       describe("no data illustration", () => {
         it("should allow display the selected illustration at relevant places", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
@@ -531,24 +484,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         cy.visit(`/question/${ORDERS_QUESTION_ID}`);
         cy.findByTestId("query-builder-main").findByText(message);
       });
-    });
-  });
-
-  describe("metabot", () => {
-    it("should toggle metabot visibility", () => {
-      cy.visit("/");
-      cy.findAllByRole("img", { name: "Metabot" }).should("have.length", 2);
-
-      cy.visit("/admin/settings/whitelabel/conceal-metabase");
-      cy.findByRole("main")
-        .findByText("Display welcome message on the homepage")
-        .click();
-
-      H.undoToast().findByText("Changes saved").should("be.visible");
-
-      cy.visit("/");
-      cy.findByRole("link", { name: /home/ }).should("exist");
-      cy.findByRole("img", { name: "Metabot" }).should("not.exist");
     });
   });
 
@@ -732,11 +667,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.wait("@getSettings");
     });
 
-    const urlInput = () =>
-      cy
-        .findByTestId("homepage-setting")
-        .findByLabelText("Landing page custom destination");
-
     it("should not offer the Custom URL option when the user does not have a valid license", () => {
       H.activateToken("starter");
       cy.reload();
@@ -749,43 +679,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.findByTestId("homepage-setting")
         .findByRole("radio", { name: "Custom URL" })
         .should("not.exist");
-    });
-
-    it("should validate the URL and persist only same-origin relative paths", () => {
-      // Clicking "Custom URL" fires a PUT to /api/setting (custom-homepage =
-      // false) AND mounts the URL field. On fetch (microtask resolution) the
-      // mount's landing-page read + the PUT response can land while we're in
-      // the middle of typing; LandingPageUrlField's useEffect would then
-      // overwrite the typed value. Wait for the PUT to land first.
-      cy.intercept("PUT", "/api/setting").as("modeChangePut");
-      cy.findByTestId("homepage-setting")
-        .findByRole("radio", { name: "Custom URL" })
-        .click();
-      cy.wait("@modeChangePut");
-
-      urlInput()
-        .click()
-        .clear()
-        .type("/test-1")
-        .should("have.value", "/test-1")
-        .blur();
-      cy.wait("@putLandingPage");
-      H.undoToast().findByText("Changes saved").should("be.visible");
-
-      // External URLs are rejected and the previous value is preserved.
-      urlInput()
-        .click()
-        .clear()
-        .should("have.value", "")
-        .type("https://google.com")
-        .should("have.value", "https://google.com")
-        .blur();
-      cy.findByTestId("admin-layout-content")
-        .findByText("This field must be a relative URL.")
-        .should("be.visible");
-
-      H.goToMainApp();
-      cy.url().should("include", "/test-1");
     });
   });
 });

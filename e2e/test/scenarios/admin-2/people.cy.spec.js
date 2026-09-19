@@ -838,59 +838,6 @@ describe("scenarios > admin > people > group managers", () => {
       // Redirected to the home page
       cy.url().should("match", /\/$/);
     });
-
-    it("can manage members from the people page", () => {
-      // Open membership select for a user
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(noCollectionUserName)
-        .closest("tr")
-        .as("userRow")
-        .within(() => {
-          cy.findByText("data").click();
-        });
-
-      // Add the user to a group
-      H.popover().within(() => {
-        cy.findByText("collection").click();
-      });
-      cy.get("@userRow").within(() => {
-        cy.findByText("2 other groups");
-      });
-
-      // Remove the user from the group
-      H.popover().within(() => {
-        cy.findByText("collection").click();
-      });
-      cy.get("@userRow").within(() => {
-        cy.findByText("data");
-      });
-
-      // Promote and then demote the user
-      H.popover().within(() => {
-        cy.icon("arrow_up").click();
-        cy.icon("arrow_down").click();
-      });
-
-      // Find own row
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(normalUserName)
-        .closest("tr")
-        .within(() => {
-          cy.findByText("2 other groups").click();
-        });
-
-      // Demote myself from being manager
-      H.popover().findByLabelText("collection").click();
-      confirmLosingAbilityToManageGroup();
-      H.popover().findByLabelText("collection").should("not.exist");
-
-      // Remove myself from another group
-      H.popover().findByLabelText("data").click();
-      confirmLosingAbilityToManageGroup();
-
-      // Redirected to the home page
-      cy.location("pathname").should("eq", "/");
-    });
   });
 
   it("after removing the last group redirects to the home page", () => {

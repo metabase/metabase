@@ -28,52 +28,6 @@ describe("Onboarding checklist page", () => {
   });
 });
 
-describe("Inaccessible Onboarding checklist", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("should not render when embedded in an iframe", () => {
-    H.visitFullAppEmbeddingUrl({ url: "/", qs: {} });
-    cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
-      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
-        "not.exist",
-      );
-    });
-
-    cy.log("Redirects to the home page");
-    H.visitFullAppEmbeddingUrl({ url: "/getting-started", qs: {} });
-    cy.location("pathname").should("eq", "/");
-  });
-
-  it("should not render when the instance is whitelabelled", () => {
-    H.updateSetting("application-name", "Acme, corp.");
-
-    cy.visit("/");
-    cy.findByTestId("main-navbar-root").within(() => {
-      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
-      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
-        "not.exist",
-      );
-    });
-
-    cy.log("Redirects to the home page");
-    cy.visit("/getting-started");
-    cy.location("pathname").should("eq", "/");
-
-    cy.log("The link should not exist in the main settings menu either");
-    cy.findByLabelText("Settings menu").click();
-    H.popover().findByText("Help").click();
-
-    cy.findByTestId("help-submenu")
-      .should("contain", "About Acme, corp.")
-      .and("not.contain", "How to use Metabase");
-  });
-});
-
 describe("Onboarding checklist events", () => {
   beforeEach(() => {
     H.restore();

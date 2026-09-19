@@ -1185,39 +1185,6 @@ describe("scenarios > dashboard", () => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
 
-    it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
-      cy.visit("/");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findByTestId("home-page").should(
-        "contain",
-        "Try out these sample x-rays to see what Metabase can do.",
-      );
-
-      // add
-      createNewDashboard();
-      cy.findByTestId("dashboard-header").icon("add").click();
-      cy.findByTestId("add-card-sidebar").findByText("Orders").click();
-      cy.wait("@queryMetadata");
-      assertPreventLeave({ openSidebar: false });
-      H.saveDashboard();
-
-      // edit
-      H.editDashboard();
-      const card = () =>
-        cy
-          .findAllByTestId("dashcard-container", { scrollBehavior: false })
-          .eq(0);
-      dragOnXAxis(card(), 100);
-      assertPreventLeave();
-      H.saveDashboard();
-
-      // remove
-      H.editDashboard();
-      H.removeDashboardCard();
-      assertPreventLeave();
-    });
-
     it("should warn a user before leaving after adding, removing, moving, or duplicating a tab", () => {
       cy.visit("/");
       cy.findByTestId("loading-indicator").should("not.exist");

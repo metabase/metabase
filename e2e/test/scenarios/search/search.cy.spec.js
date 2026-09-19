@@ -186,51 +186,9 @@ describe("scenarios > search", () => {
         .should("not.exist");
       cy.findByTestId("search-results-floating-container").should("exist");
     });
-
-    it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
-      H.updateSetting("custom-homepage", true);
-      H.updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
-      cy.intercept(
-        {
-          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
-          method: "GET",
-          middleware: true,
-        },
-        (req) => {
-          req.continue((res) => {
-            res.delay = 1000;
-            res.send();
-          });
-        },
-      );
-      visitEmbeddingWithSearch("/");
-
-      // Type as soon as possible, before the dashboard has finished loading
-      H.getSearchBar().type("ord");
-
-      // Once the dashboard is visible, the search results should not be dismissed
-      cy.findByTestId("dashboard-parameters-and-cards").should("exist");
-
-      cy.findByTestId("search-results-floating-container").should("exist");
-    });
   });
 
   describe("accessing full page search with `Enter`", () => {
-    it("should not render full page search if user has not entered a text query", () => {
-      cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
-
-      visitEmbeddingWithSearch("/");
-
-      H.getSearchBar().click().type("{enter}");
-
-      cy.wait("@getRecentViews");
-
-      cy.findByTestId("search-results-floating-container").within(() => {
-        cy.findByText("Recently viewed").should("exist");
-      });
-      cy.location("pathname").should("eq", "/");
-    });
-
     it("should render full page search when search text is present and user clicks 'Enter'", () => {
       visitEmbeddingWithSearch("/");
 

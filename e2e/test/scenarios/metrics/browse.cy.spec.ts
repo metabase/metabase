@@ -94,11 +94,6 @@ describe("scenarios > browse > metrics", () => {
   });
 
   describe("no metrics", () => {
-    it("should not hide the browse metrics link in the sidebar", () => {
-      cy.visit("/");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
-    });
-
     it("should show the empty metrics page", () => {
       cy.visit("/browse/metrics");
       H.main().within(() => {

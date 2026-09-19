@@ -329,55 +329,6 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.getDashboardCard(1).findByText(textContent).should("be.visible");
   });
 
-  it("should translate parameter values into the instance language", () => {
-    // Set user locale to English explicitly so that we can change the site locale separately, without the user
-    // locale following it (by default, user locale matches site locale)
-    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
-      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
-    });
-    H.updateSetting("site-locale", "en-ZZ");
-    cy.reload();
-
-    H.editDashboard();
-
-    H.addTextBoxWhileEditing("Variable: {{foo}}", {
-      parseSpecialCharSequences: false,
-    });
-    H.addHeadingWhileEditing("Variable: {{foo}}", {
-      parseSpecialCharSequences: false,
-    });
-    H.setFilter("Date picker", "Relative Date");
-
-    H.getDashboardCard(0).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.getDashboardCard(1).findByText("Select…").click();
-    H.popover().findByText("foo").click();
-
-    H.saveDashboard();
-
-    H.filterWidget().click();
-    H.popover().within(() => {
-      cy.findByText("Today").click();
-    });
-
-    H.getDashboardCard(0)
-      .findByText("Variable: [zz] Today")
-      .should("be.visible");
-    H.getDashboardCard(1)
-      .findByText("Variable: [zz] Today")
-      .should("be.visible");
-
-    // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
-    // English on the homepage.
-    cy.visit("/");
-
-    cy.findByTestId("home-page").within(() => {
-      cy.findByText("Pick up where you left off").should("be.visible");
-      cy.findByText("[zz] Pick up where you left off").should("not.exist");
-    });
-  });
-
   it("should localize date parameters in the instance locale", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });

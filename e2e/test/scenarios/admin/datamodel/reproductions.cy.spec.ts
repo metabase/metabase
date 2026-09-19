@@ -79,38 +79,6 @@ describe("issue 18384", () => {
   });
 });
 
-describe("issue 21984", () => {
-  beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: REVIEWS_ID,
-    });
-    cy.wait("@tableMetadata");
-
-    cy.findByDisplayValue("ID");
-  });
-
-  it('should not show data model visited tables in search or in "Pick up where you left off" items on homepage (metabase#21984)', () => {
-    cy.visit("/");
-
-    cy.findByTestId("home-page").within(() => {
-      // the table should not be in the recents results
-      cy.findByText("Reviews").should("not.exist");
-    });
-
-    H.commandPaletteButton().click();
-    H.commandPalette().within(() => {
-      cy.findByText("Recents").should("not.exist");
-    });
-  });
-});
-
 describe("issue 15542", () => {
   beforeEach(() => {
     H.restore();

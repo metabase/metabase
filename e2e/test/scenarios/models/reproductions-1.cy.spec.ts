@@ -652,26 +652,6 @@ describe("issue 45924", () => {
   });
 });
 
-describe("issue 43088", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
-    cy.visit("/");
-    H.navigationSidebar().findByText("Usage analytics").click();
-    H.getPinnedSection().findByText("People").scrollIntoView().click();
-    cy.wait("@dataset");
-    H.summarize();
-    H.rightSidebar().button("Done").click();
-    cy.wait("@dataset");
-    H.assertQueryBuilderRowCount(1);
-  });
-});
-
 describe("issue 34574", () => {
   beforeEach(() => {
     H.restore();
