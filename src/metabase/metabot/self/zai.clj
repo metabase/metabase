@@ -126,9 +126,10 @@
   adding Z.AI's `thinking` directive: enabled only where a whitelisted model's reasoning renders, disabled
   otherwise. A [[thinking-only-model?]] rejects the directive and gets `reasoning_effort` instead — \"max\"
   where reasoning renders, \"low\" otherwise — plus a `max_tokens` floor on forced tool calls (see
-  [[forced-tool-call-token-floor]]). Z.AI documents only `tool_choice \"auto\"`, but `\"required\"` — which the
-  structured-output path relies on — is accepted and honored in practice, with thinking on."
-  [{:keys [model reasoning? schema tool_choice] :as opts
+  [[forced-tool-call-token-floor]]). A caller that passes no cap of its own gets [[core/chat-max-output-tokens]]. Z.AI
+  documents only `tool_choice \"auto\"`, but `\"required\"` — which the structured-output path relies on — is
+  accepted and honored in practice, with thinking on."
+  [{:keys [model reasoning? schema tool_choice max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; Thinking is on by default server-side, at reasoning_effort "max"
   ;; (https://docs.z.ai/api-reference/llm/chat-completion), so "enabled" only makes the default
@@ -144,7 +145,8 @@
   (let [thinking-only? (thinking-only-model? model)
         forced?        (or (some? schema) (= "required" (some-> tool_choice name)))
         thinking?      (and (reasoning-model? model) reasoning? (not schema))
-        body           (chat-completions/request-body (assoc opts :model model))]
+        max-tokens     (or max-tokens core/chat-max-output-tokens)
+        body           (chat-completions/request-body (assoc opts :model model :max-tokens max-tokens))]
     (cond-> body
       thinking-only?
       (assoc :reasoning_effort (if thinking? "max" "low"))

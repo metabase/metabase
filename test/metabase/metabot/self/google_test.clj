@@ -159,7 +159,8 @@
                    :headers {"Content-Type" "application/json"}}
                   req))
           (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
-                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
+                  :generationConfig {:maxOutputTokens 32000
+                                     :thinkingConfig  {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -399,8 +400,7 @@
               "the URL names the model; a model in the body is rejected by the platform"))))))
 
 (deftest google-raw-anthropic-max-tokens-test
-  (testing "the Anthropic model whitelist supplies max_tokens for a bare current-generation ID, and the @-versioned
-           spelling of a dated ID resolves to the same entry the direct Anthropic adapter uses"
+  (testing "an Anthropic model gets the default max_tokens, whether its ID is bare or @-versioned"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
@@ -409,11 +409,11 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
-        (doseq [[model max-tokens] {"anthropic/claude-sonnet-4-6"          128000
-                                    "anthropic/claude-fable-5"             128000
-                                    "anthropic/claude-haiku-4-5@20251001"   64000}]
+        (doseq [model ["anthropic/claude-sonnet-4-6"
+                       "anthropic/claude-fable-5"
+                       "anthropic/claude-haiku-4-5@20251001"]]
           (testing model
-            (is (= max-tokens
+            (is (= 32000
                    (:max_tokens (json/decode+kw (:body (google-raw {:model model
                                                                     :input [{:role :user :content "hi"}]}))))))))))))
 

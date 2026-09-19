@@ -124,8 +124,10 @@
   - Prompt caching is opt-in per request via `prompt_cache_key` (cache reads bill at 10% of the input price), so a
     `:prompt-cache-key` — the conversation id — is forwarded when present.
   - Whitelisted models get a `reasoning_effort` directive and replay their in-turn reasoning as think chunks
-    (see [[think-message]])."
-  [{:keys [model prompt-cache-key reasoning? schema] :as opts
+    (see [[think-message]]).
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]]."
+  [{:keys [model prompt-cache-key reasoning? schema max-tokens] :as opts
     :or   {model default-model reasoning? true}} :- core/LLMRequestOpts]
   ;; mistral-medium-3-5 accepts exactly "high" and "none" — the server 400s the other four
   ;; enum values, enumerating these two (probed 2026-09-01) — and its server default sends NO
@@ -140,7 +142,7 @@
         ;; from the replayed input, honoring the LLMRequestOpts contract.
         thinking?    (and whitelisted? reasoning? (not schema))]
     (-> (chat-completions/request-body
-         (assoc opts :model model)
+         (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens))
          (when thinking? {:reasoning-part->message think-message}))
         (dissoc :stream_options)
         (cond-> prompt-cache-key (assoc :prompt_cache_key prompt-cache-key)

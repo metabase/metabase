@@ -182,15 +182,14 @@
   2048)
 
 (def ^:private forced-tool-call-token-floor
-  "Smallest `max_tokens` a forced tool call is given, regardless of what the caller asked for — below
-  it a reasoning model spends the budget thinking and emits no tool call. Equal to
-  [[probe-max-tokens]], which [[preflight!]] already proves the served model can clear."
+  "Smallest `max_tokens` a caller's cap on a forced tool call is raised to — below it a reasoning
+  model spends the budget thinking and emits no tool call. Equal to [[probe-max-tokens]], which
+  [[preflight!]] already proves the served model can clear."
   probe-max-tokens)
 
 (def ^:private reasoning-model-token-floor
-  "Smallest `max_tokens` any request gets once [[preflight!]] has observed the served model reasoning.
-  Chat Completions bills thinking, answer, and tool call against one budget. Mirrors
-  `claude-request-body`."
+  "Smallest `max_tokens` a caller's cap is raised to once [[preflight!]] has observed the served model
+  reasoning. Chat Completions bills thinking, answer, and tool call against one budget."
   16384)
 
 (def ^:private default-temperature
@@ -404,19 +403,24 @@
 (mu/defn vllm-request-body
   "Build the Chat Completions request body for an LLM request.
 
-  Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent —
-  without a ceiling vLLM falls back to the remaining context window, so one looping small model
-  consumes the whole budget in a single call — and is raised to
-  [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
-  `temperature` falls back to [[default-temperature]]. All three stay adapter-local rather than
-  moving into the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
+  Matches what [[chat-completions/request-body]] emits, except that a caller's `:max-tokens` is raised
+  to [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
+  `temperature` falls back to [[default-temperature]]. Both stay adapter-local rather than moving into
+  the shared builder, which would also change Z.AI, Mistral, and OpenRouter.
+
+  With no `:max-tokens`, no `max_tokens` is sent and the floors add none: vLLM subtracts a sent cap
+  from the admissible prompt before tokenizing and returns a 400 when the prompt no longer fits
+  (https://github.com/vllm-project/vllm/blob/main/vllm/renderers/params.py), whereas uncapped it
+  generates up to the remaining context window."
   [{:keys [max-tokens temperature schema tool_choice credentials] :as opts} :- core/LLMRequestOpts]
-  (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
-    (assoc (chat-completions/request-body (cond-> opts
-                                            (nil? temperature) (assoc :temperature default-temperature)))
-           :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
-                         forced?                             (max forced-tool-call-token-floor)
-                         (reasoning-connection? credentials) (max reasoning-model-token-floor)))))
+  (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))
+        capped  (when max-tokens
+                  (cond-> max-tokens
+                    forced?                             (max forced-tool-call-token-floor)
+                    (reasoning-connection? credentials) (max reasoning-model-token-floor)))]
+    (cond-> (chat-completions/request-body (cond-> opts
+                                             (nil? temperature) (assoc :temperature default-temperature)))
+      capped (assoc :max_tokens capped))))
 
 (defn- stream-io-ex
   "The vLLM error for a transport failure while *consuming* a response stream. Tagged

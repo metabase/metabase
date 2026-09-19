@@ -302,12 +302,12 @@
   (json/decode+kw (:body (captured-raw-request! (merge {:input [{:role :user :content "hi"}]} opts)))))
 
 (deftest anthropic-model-max-tokens-test
-  (testing "the `anthropic.` prefix is stripped so the model's own ceiling resolves"
+  (testing "anthropic.* models get the default cap, and the caller's own cap wins"
     (are [opts tokens] (= tokens (:max_tokens (captured-body! opts)))
-      {:model "anthropic.claude-opus-4-8"}                  128000
+      {:model "anthropic.claude-opus-4-8"}                   32000
       {:model "anthropic.claude-opus-4-8" :max-tokens 128}     128))
-  (testing "openai.* models omit the field entirely"
-    (is (not (contains? (captured-body! {:model "openai.gpt-5.5"}) :max_output_tokens)))))
+  (testing "openai.* models get the default cap too, unlike on OpenAI direct"
+    (is (= 32000 (:max_output_tokens (captured-body! {:model "openai.gpt-5.5"}))))))
 
 (deftest reasoning-request-config-test
   (testing "anthropic models request adaptive summarized thinking, and only that"
@@ -402,6 +402,14 @@
             {:model         "anthropic.claude-haiku-4-5"
              :cache_control {:type "ephemeral"}
              :system        [{:type "text" :text "s" :cache_control {:type "ephemeral"}}]})))))
+
+(deftest ^:parallel mantle-openai-body-test
+  (testing "adds the default max_output_tokens where the body has none"
+    (is (= {:model "openai.gpt-5.5" :max_output_tokens 32000}
+           (bedrock/->mantle-openai-body {:model "openai.gpt-5.5"}))))
+  (testing "keeps a caller's own cap"
+    (is (= {:model "openai.gpt-5.5" :max_output_tokens 512}
+           (bedrock/->mantle-openai-body {:model "openai.gpt-5.5" :max_output_tokens 512})))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Stream translation (xf selection by model family)

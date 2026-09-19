@@ -251,3 +251,24 @@
                                "result"       "failure"
                                "event_detail" "postgres"}}]
                       simple-events)))))))))
+
+;;; ------------------------------------------- Output token cap Tests -------------------------------------------
+
+(deftest generate-sql-sends-its-task-cap-test
+  (testing "/generate-sql passes its own output-token cap to the Anthropic client"
+    (mt/with-temp [:model/Database db    {:engine :postgres}
+                   :model/Table    table {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field    _     {:table_id (:id table) :name "id" :base_type :type/Integer}]
+      (let [captured-opts      (atom nil)
+            mock-chat-response {:result      {:sql "SELECT * FROM users"}
+                                :usage       {:model "claude-sonnet-4-5-20250929" :prompt 1000 :completion 200}
+                                :duration-ms 500}]
+        (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
+                                    llm.anthropic/chat-completion       (fn [opts]
+                                                                          (reset! captured-opts opts)
+                                                                          mock-chat-response)]
+          (mt/user-http-request :rasta :post 200 "llm/generate-sql"
+                                {:prompt              "get all users"
+                                 :database_id         (:id db)
+                                 :referenced_entities [{:model "table" :id (:id table)}]})
+          (is (= 4096 (:max-tokens @captured-opts))))))))
