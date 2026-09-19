@@ -29,7 +29,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id (long database-id)))
 
 (mu/defn attached-dwh-database
   "The attached data warehouse Database, or nil."
@@ -39,12 +39,12 @@
 (mu/defn database-stub?
   "Whether the Database with `database-id` is a stub."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_stub :model/Database :id database-id))
+  (t2/select-one-fn :is_stub :model/Database :id (long database-id)))
 
 (mu/defn database-on-demand-flags
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :is_on_demand :model/Database :id [:in database-ids]))
+  (t2/select-pk->fn :is_on_demand :model/Database :id [:in (mapv long database-ids)]))
 
 (mu/defn synced-user-database-exists?
   "Whether any non-sample, non-audit Database has completed its initial sync."
@@ -61,7 +61,10 @@
                        :where  [:or
                                 [:and
                                  [:= :is_sample true]
-                                 [:= :metadata_sync_schedule old-sample-metadata-cron]]
+                                 [:= :metadata_sync_schedule [:auto/param old-sample-metadata-cron]]]
+                                ;; Both cron sets are left unmarked: `[:set :string]` admits the
+                                ;; empty set, and marking an empty collection is refused (rubric
+                                ;; rule 5).
                                 [:in :metadata_sync_schedule metadata-crons]
                                 [:in :cache_field_values_schedule cache-field-values-crons]]}))
 
@@ -69,46 +72,47 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Database (long database-id) changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :id (some-> table-id long) {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-in-database
   "The Table with `table-id` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :db_id database-id :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id (long database-id) :id (long table-id) {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-by-name
   "The Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id (long database-id) :name [:auto/param table-name] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-by-schema-and-name
   "The Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :name table-name :schema schema {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id (long database-id) :name [:auto/param table-name] :schema [:auto/param schema] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn inactive-table-by-schema-and-name
   "The inactive Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    table-name  :- :string]
-  (t2/select-one :model/Table :db_id database-id :schema schema :name table-name :active false {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one :model/Table :db_id (long database-id) :schema [:auto/param schema] :name [:auto/param table-name] :active false {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-table-id-by-name
   "The ID of the active Table named `table-name` in the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database
    table-name  :- :string]
-  (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-pk :model/Table :db_id (long database-id) :name [:auto/param table-name] :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn sync-tables-by-lower-name-and-schema
   "The synced Tables of the Database with `database-id` whose lower-cased name and schema match."
@@ -116,9 +120,9 @@
    lower-name   :- :string
    lower-schema :- [:maybe :string]]
   (t2/select :model/Table
-             :db_id database-id
-             :%lower.name lower-name
-             :%lower.schema lower-schema
+             :db_id (long database-id)
+             :%lower.name [:auto/param lower-name]
+             :%lower.schema [:auto/param lower-schema]
              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
               :where sync-tables-clause}))
 
@@ -127,7 +131,7 @@
   [columns      :- [:sequential :keyword]
    database-id  :- ::lib.schema.id/database
    table-names  :- [:sequential :string]]
-  (t2/select columns :db_id database-id :name [:in table-names]))
+  (t2/select columns :db_id (long database-id) :name [:in table-names]))
 
 (mu/defn tables-to-archive
   "The inactive, unarchived, non-transform-target Tables of the Database with `database-id` deactivated more than
@@ -136,7 +140,7 @@
    amount      :- :int
    unit        :- :keyword]
   (t2/select :model/Table
-             :db_id database-id
+             :db_id (long database-id)
              :active false
              :archived_at nil
              :transform_target false
@@ -145,41 +149,41 @@
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pk->fn :db_id :model/Table :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :schema] :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/reducible-select [:model/Table :schema] :db_id (long database-id) {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-table-ids-reducible
   "Reducible `:id` rows of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [:model/Table :id] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/reducible-select [:model/Table :id] :db_id (long database-id) :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-table-count
   "The number of active Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/count :model/Table :db_id (long database-id) :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn sync-table-ids
   "The IDs of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-vec :id :model/Table :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                         :where sync-tables-clause}))
+  (t2/select-fn-vec :id :model/Table :db_id (long database-id) {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                                                :where sync-tables-clause}))
 
 (mu/defn sync-table-schemas
   "The distinct `:schema` rows of the synced Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
              :from            [:metabase_table]
-             :where           [:and sync-tables-clause [:= :db_id database-id]]}))
+             :where           [:and sync-tables-clause [:= :db_id (long database-id)]]}))
 
 (mu/defn sync-tables-count
   "The number of synced Tables in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/count :model/Table :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                             :where sync-tables-clause}))
+  (t2/count :model/Table :db_id (long database-id) {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                                    :where sync-tables-clause}))
 
 (mu/defn sync-tables-reducible
   "Reducible synced Tables of the Database with `database-id` ordered by schema and name, optionally narrowed to
@@ -188,11 +192,13 @@
    schema-names :- [:maybe [:or [:set [:maybe :string]] [:sequential [:maybe :string]]]]
    table-names  :- [:maybe [:or [:set :string] [:sequential :string]]]]
   (t2/reducible-select :model/Table
-                       :db_id database-id
+                       :db_id (long database-id)
                        {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
                         :where    [:and sync-tables-clause
-                                   (when (seq schema-names) [:in :schema schema-names])
-                                   (when (seq table-names) [:in :name table-names])]
+                                   ;; Both are guarded by `seq`, so marking them cannot hit the
+                                   ;; empty-collection refusal (rubric rule 5).
+                                   (when (seq schema-names) [:in :schema [:auto/param schema-names]])
+                                   (when (seq table-names) [:in :name [:auto/param table-names]])]
                         :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn sync-tables-by-earliest-analyzed-reducible
@@ -206,7 +212,7 @@
                                                        :from     [(warehouse-schema-overlay/field-query)]
                                                        :group-by [:table_id]} :sub]
                                     [:= :t.id :sub.table_id]]
-                        :where     [:and sync-tables-clause [:= :t.db_id database-id]]
+                        :where     [:and sync-tables-clause [:= :t.db_id (long database-id)]]
                         :order-by  [[:sub.earliest_last_analyzed :asc]]}))
 
 (mu/defn insert-table!
@@ -218,38 +224,39 @@
   "Apply `changes` to the Table with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table table-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Table (long table-id) changes))
 
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:sequential ::lib.schema.id/table]
    changes   :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id [:in table-ids] changes))
+  (t2/update! :model/Table :id [:in (mapv long table-ids)] changes))
 
 (mu/defn deactivate-tables!
   "Mark the active Tables among `table-ids` inactive, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false}))
+  (t2/update! :model/Table {:id [:in (mapv long table-ids)] :active true} {:active false}))
 
 (mu/defn rename-table-schema!
   "Move the Tables of the Database with `database-id` from `schema` to `new-schema`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]
    new-schema  :- [:maybe :string]]
-  (t2/update! :model/Table :db_id database-id :schema schema {:schema new-schema}))
+  (t2/update! :model/Table :db_id (long database-id) :schema [:auto/param schema] {:schema new-schema}))
 
 (mu/defn archive-inactive-table!
   "Archive the inactive Table with `table-id` now under `new-name`, returning the number of rows updated."
   [table-id :- ::lib.schema.id/table
    new-name :- :string]
-  (t2/update! :model/Table {:id table-id :active false} {:archived_at :%now :name new-name}))
+  (t2/update! :model/Table {:id (long table-id) :active false} {:archived_at :%now :name new-name}))
 
 ;;; ------------------------------------------------- Field -------------------------------------------------
 
 (mu/defn fields
   "The Fields with `field-ids` as sync wrote them. Feeds `our-metadata`, which is diffed against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]
+  (t2/select :model/Field :id [:in (mapv long field-ids)]
              {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn fields-for-field-values
@@ -258,7 +265,7 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
               :table_id :has_field_values]
-             :id [:in field-ids]
+             :id [:in (mapv long field-ids)]
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn- base-types->descendants
@@ -316,7 +323,7 @@
   (t2/select :model/Field
              {:from [(warehouse-schema-overlay/field-query)]
               :where    [:and
-                         [:= :table_id table-id]
+                         [:= :table_id (long table-id)]
                          (needs-fingerprint-update-clause refingerprint? version->base-types)]
               :order-by [[:id :asc]]
               :limit    limit}))
@@ -324,7 +331,7 @@
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :fingerprint :model/Field :id (long field-id) {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-metadata-for-table
   "The sync metadata columns of the active Fields of the Table with `table-id`, as sync wrote them, in field order."
@@ -334,7 +341,7 @@
               :database_is_auto_increment :database_required
               :database_default :database_is_generated :database_is_nullable :database_is_pk
               :database_partitioned :json_unfolding :position :preview_display]
-             :table_id table-id
+             :table_id (long table-id)
              :active true
              {:from     [(warehouse-schema-overlay/field-query {:user-settings? false})]
               :order-by table/field-order-rule}))
@@ -344,7 +351,7 @@
   [table-id :- ::lib.schema.id/table
    limit    :- ms/PositiveInt]
   (t2/select :model/Field
-             :table_id table-id
+             :table_id (long table-id)
              :active true
              :visibility_type "normal"
              {:from [(warehouse-schema-overlay/field-query)]
@@ -356,9 +363,10 @@
    parent-id   :- [:maybe ms/PositiveInt]
    lower-names :- [:sequential :string]]
   (t2/select :model/Field
-             :table_id table-id
+             :table_id (long table-id)
+             ;; `[:sequential :string]` admits the empty seq, so leave it unmarked (rubric rule 5).
              :%lower.name [:in lower-names]
-             :parent_id parent-id
+             :parent_id (some-> parent-id long)
              :active false {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn incomplete-analysis-fields-for-table
@@ -366,10 +374,10 @@
   [table-id            :- ::lib.schema.id/table
    fingerprint-version :- :int]
   (t2/select :model/Field
-             :table_id table-id
+             :table_id (long table-id)
              :active true
              :visibility_type [:not-in ["sensitive" "retired"]]
-             :fingerprint_version fingerprint-version
+             :fingerprint_version (long fingerprint-version)
              :last_analyzed nil
              {:from [(warehouse-schema-overlay/field-query)]}))
 
@@ -377,7 +385,7 @@
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
   [table-id :- ::lib.schema.id/table]
   (t2/count :model/Field
-            :table_id table-id
+            :table_id (long table-id)
             :active true
             :visibility_type [:not-in ["sensitive" "retired"]]
             :semantic_type :type/Name
@@ -394,13 +402,14 @@
                                 [:not-in :visibility_type ["sensitive" "retired"]]
                                 [:in :table_id ^:allow-subquery {:select [:id]
                                                                  :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                                 :where  [:= :db_id database-id]}]]}))
+                                                                 :where  [:= :db_id (long database-id)]}]]}))
 
 (mu/defn top-level-field-ids-by-name
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select-pks-vec :model/Field :name [:in field-names] :table_id table-id :parent_id nil {:from [(warehouse-schema-overlay/field-query)]}))
+  ;; `field-names` is left unmarked: `[:sequential :string]` admits the empty seq (rubric rule 5).
+  (t2/select-pks-vec :model/Field :name [:in field-names] :table_id (long table-id) :parent_id nil {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
@@ -411,14 +420,16 @@
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
                        :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
                        :where      [:and
+                                    ;; `[:composite ...]` is a known limit of the lint, and HoneySQL
+                                    ;; already binds each element of the triples as a parameter.
                                     [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
-                                    [:= :t.db_id database-id]
+                                    [:= :t.db_id (long database-id)]
                                     [:= :parent_id nil]]}))
 
 (mu/defn indexed-field-ids-for-table
   "The IDs of the Fields of the Table with `table-id` marked as indexed."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :database_indexed true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id (long table-id) :database_indexed true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn indexed-top-level-field-ids-for-database
   "The IDs of the top-level Fields of the Database with `database-id` marked as indexed."
@@ -427,7 +438,7 @@
                      {:from [(warehouse-schema-overlay/field-query)]}
                      :table_id [:in ^:allow-subquery {:select [[:t.id]]
                                                       :from   [(warehouse-schema-overlay/table-query {:alias :t})]
-                                                      :where  [:= :t.db_id database-id]}]
+                                                      :where  [:= :t.db_id (long database-id)]}]
                      :parent_id nil
                      :database_indexed true))
 
@@ -440,41 +451,46 @@
   "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Field (long field-id) changes))
 
 (mu/defn update-field-by-name!
   "Apply `changes` to the Field named `field-name` of the Table with `table-id`, returning the number updated."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string
    changes    :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field {:name field-name, :table_id table-id} changes))
+  (t2/update! :model/Field {:name [:auto/param field-name], :table_id (long table-id)} changes))
 
 (mu/defn reactivate-fields!
   "Mark the Fields with `field-ids` active, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field {:id [:in field-ids]} {:active true}))
+  (t2/update! :model/Field {:id [:in (mapv long field-ids)]} {:active true}))
 
 (mu/defn set-fields-fingerprint-version!
   "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`, returning the number updated."
   [field-ids           :- [:sequential ::lib.schema.id/field]
    fingerprint-version :- :int]
-  (t2/update! :model/Field :id [:in field-ids] {:fingerprint_version fingerprint-version}))
+  (t2/update! :model/Field :id [:in (mapv long field-ids)] {:fingerprint_version fingerprint-version}))
 
 (mu/defn set-table-fields-indexed!
   "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
   Fields as not indexed, returning the number updated."
   [table-id          :- ::lib.schema.id/table
    indexed-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
-  (t2/update! :model/Field {:table_id table-id}
+  (t2/update! :model/Field {:table_id (long table-id)}
+              ;; `indexed-field-ids` is a collection of ids, so rule 4 wins over rule 5: coerce
+              ;; rather than mark. The local `(seq ...)` guard means the `:in` never sees an empty
+              ;; collection. No marker: this sits inside an `update!` changes map (rule 1), and
+              ;; `[:case ...]` is an operator form the lint does not classify.
               {:database_indexed (if (seq indexed-field-ids)
-                                   [:case [:in :id indexed-field-ids] true :else false]
+                                   [:case [:in :id (mapv long indexed-field-ids)] true :else false]
                                    false)}))
 
 (mu/defn set-top-level-fields-indexed!
   "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
    indexed?  :- :boolean]
-  (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed indexed?}))
+  (t2/update! :model/Field :parent_id nil :id [:in (mapv long field-ids)] {:database_indexed indexed?}))
 
 (mu/defn mark-incomplete-fields-analyzed-for-table!
   "Stamp `last_analyzed` on the Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not
@@ -482,7 +498,7 @@
   [table-id            :- ::lib.schema.id/table
    fingerprint-version :- :int]
   (t2/update! :model/Field
-              {:table_id table-id, :fingerprint_version fingerprint-version, :last_analyzed nil}
+              {:table_id (long table-id), :fingerprint_version (long fingerprint-version), :last_analyzed nil}
               {:last_analyzed :%now}))
 
 (mu/defn mark-incomplete-fields-analyzed-for-database!
@@ -491,12 +507,12 @@
   [database-id         :- ::lib.schema.id/database
    fingerprint-version :- :int]
   (t2/update! :model/Field
-              {:fingerprint_version fingerprint-version
+              {:fingerprint_version (long fingerprint-version)
                :last_analyzed       nil
                :table_id            [:in ^:allow-subquery
                                      {:select [:id]
                                       :from   [(t2/table-name :model/Table)]
-                                      :where  [:and sync-tables-clause [:= :db_id database-id]]}]}
+                                      :where  [:and sync-tables-clause [:= :db_id (long database-id)]]}]}
               {:last_analyzed :%now}))
 
 (defn- fk-field-id-subquery
@@ -513,7 +529,11 @@
    :where     [:and
                [:= :u.fk_target_field_id nil]
                [:= :u.semantic_type nil]
-               [:= :t.db_id db-id]
+               [:= :t.db_id (long db-id)]
+               ;; No markers here. This map is handed to `sql/format` by [[mark-fk-statement]], not
+               ;; run through the Toucan pipeline, so the marker is never lifted -- it compiles to
+               ;; the nonexistent function call `PARAM(?)`. HoneySQL binds these plain strings on
+               ;; its own (`LOWER(name) = ?`), so the values are already parameters.
                [:= [:lower :f.name] (u/lower-case-en column-name)]
                [:= [:lower :t.name] (u/lower-case-en table-name)]
                [:= [:lower :t.schema] (some-> table-schema u/lower-case-en)]
@@ -601,7 +621,7 @@
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query {:user-settings? false})]
               :where    [:and
-                         [:= :table_id table-id]
+                         [:= :table_id (long table-id)]
                          [:= :active true]
                          [:not= :visibility_type "retired"]
                          (data-sensitivity-to-scan-clause rescan-public?)]
@@ -617,7 +637,7 @@
                      :from     [(warehouse-schema-overlay/field-query {:user-settings? false})]
                      :join     [(warehouse-schema-overlay/table-query {:user-settings? false}) [:= :metabase_field.table_id :metabase_table.id]]
                      :where    [:and
-                                [:= :metabase_table.db_id database-id]
+                                [:= :metabase_table.db_id (long database-id)]
                                 [:= :metabase_table.active true]
                                 [:= :metabase_field.active true]
                                 [:not= :metabase_field.visibility_type "retired"]
@@ -627,14 +647,15 @@
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/reducible-select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                         :order-by [[:schema :asc] [:name :asc]]}))
+  (t2/reducible-select :model/Table :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                                                     :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn update-field-data-sensitivity!
   "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
   [field-id         :- ::lib.schema.id/field
    data-sensitivity :- [:or :keyword :string]]
-  (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
+  ;; Positional primary key: the lint cannot see it, so rule 4 is applied by hand.
+  (t2/update! :model/Field (long field-id) {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
   "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,
@@ -653,7 +674,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/query-one {:update :metabase_field
                  :set    {:data_sensitivity nil}
-                 :where  [:and [:= :table_id table-id] classifier-data-sensitivity-clause]}))
+                 :where  [:and [:= :table_id (long table-id)] classifier-data-sensitivity-clause]}))
 
 (mu/defn reset-classifier-data-sensitivity-for-database!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
@@ -664,7 +685,7 @@
                  :where  [:and
                           [:in :table_id ^:allow-subquery {:select [:id]
                                                            :from   [:metabase_table]
-                                                           :where  [:= :db_id database-id]}]
+                                                           :where  [:= :db_id (long database-id)]}]
                           classifier-data-sensitivity-clause]}))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
@@ -672,7 +693,7 @@
 (mu/defn field-values-exist?
   "Whether the Field with `field-id` has FieldValues."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldValues :field_id field-id))
+  (t2/exists? :model/FieldValues :field_id (long field-id)))
 
 (defn- before-max-age-value
   "Honey SQL `[:< …]` value expression matching a timestamp more than `max-age-days` days before now."
@@ -684,7 +705,10 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (t2/count :model/FieldValues :field_id field-id :type [:in types]
+  ;; `types` stays unmarked: `:type` carries `mi/transform-keyword`, which maps over the vector in
+  ;; the value slot, so `[:in [:auto/param types]]` compiles to `IN (?, (?, ?))` with the marker
+  ;; keyword bound as the string "auto/param". The transform already binds each element.
+  (t2/count :model/FieldValues :field_id (long field-id) :type [:in types]
             :created_at (before-max-age-value max-age-days)))
 
 (mu/defn delete-advanced-field-values-before!
@@ -692,5 +716,6 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
+  ;; Unmarked for the same reason as the count above: the `:type` transform would eat the marker.
+  (t2/delete! :model/FieldValues :field_id (long field-id) :type [:in types]
               :created_at (before-max-age-value max-age-days)))
