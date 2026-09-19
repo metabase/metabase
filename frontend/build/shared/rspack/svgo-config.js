@@ -19,4 +19,24 @@ const SVGO_CONFIG = {
   ],
 };
 
-module.exports = { SVGO_CONFIG };
+/**
+ * SVGO configuration for SVGs that the build emits as their own file.
+ *
+ * Each one renders as a standalone document, so the full preset is safe: nothing
+ * else shares its id namespace. SVGs inlined into the DOM through @svgr use
+ * SVGO_CONFIG instead, because shortened ids can collide between components.
+ */
+const SVGO_ASSET_CONFIG = {
+  plugins: [
+    {
+      name: "preset-default",
+      params: {
+        overrides: {
+          removeUnknownsAndDefaults: { defaultMarkupDeclarations: false },
+        },
+      },
+    },
+  ],
+};
+
+module.exports = { SVGO_CONFIG, SVGO_ASSET_CONFIG };
