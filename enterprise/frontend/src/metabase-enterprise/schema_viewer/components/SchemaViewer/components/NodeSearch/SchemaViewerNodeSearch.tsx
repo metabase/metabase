@@ -104,6 +104,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
       <Combobox.Target>
         <TextInput
           ref={inputRef}
+          classNames={{ input: S.input }}
           leftSection={<FixedSizeIcon name="search" />}
           placeholder={t`Jump to table`}
           value={query}

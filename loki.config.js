@@ -31,6 +31,7 @@ module.exports = {
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^Components/Inputs/PasswordInput Overview",
+    "^Components/Inputs/TextInput Overview",
     "^App/Palette",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
