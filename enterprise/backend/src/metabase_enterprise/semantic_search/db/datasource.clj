@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase-enterprise.semantic-search.db.sqlite :as semantic.db.sqlite]
    [metabase.app-db.core :as mdb]
    [metabase.connection-pool :as connection-pool]
    [metabase.util :as u]
@@ -21,9 +22,9 @@
 
 (def data-source
   "Atom to hold the pooled JDBC data source for the semantic search database.
-  Only ever holds a dedicated (MB_PGVECTOR_DB_URL) pool; in app-db mode the shared application pool is
-  returned by [[ensure-initialized-data-source!]] without being stored here, so [[shutdown-db!]] can never
-  close it."
+  Only ever holds a pool this module owns (dedicated MB_PGVECTOR_DB_URL, or the SQLite store); in app-db mode the
+  shared application pool is returned by [[ensure-initialized-data-source!]] without being stored here, so
+  [[shutdown-db!]] can never close it."
   (atom nil))
 
 (def db-url
@@ -36,6 +37,13 @@
   whitespace-only URL from reading as configured in one subsystem and unset in another."
   []
   (not (str/blank? db-url)))
+
+(defn sqlite?
+  "True when this instance keeps its semantic search store in SQLite: MB_SEMANTIC_SEARCH_SQLITE_PATH is set and no
+  dedicated MB_PGVECTOR_DB_URL overrides it. Env-only, so it's cheap enough for every query builder to ask."
+  []
+  (and (not (dedicated-url-configured?))
+       (semantic.db.sqlite/configured?)))
 
 (def app-db-schema
   "The Postgres schema holding all semantic-search tables when sharing the application database.
@@ -180,6 +188,15 @@
           (force shutdown-hook)
           (reset! data-source pooled-ds)))))
 
+(defn init-sqlite-db!
+  "Initialize the connection pool over the SQLite store at MB_SEMANTIC_SEARCH_SQLITE_PATH."
+  []
+  (locking data-source
+    (or @data-source
+        (let [pooled-ds (semantic.db.sqlite/pooled-data-source semantic.db.sqlite/db-path)]
+          (force shutdown-hook)
+          (reset! data-source pooled-ds)))))
+
 (defn test-connection!
   "Test database connectivity"
   []
@@ -216,6 +233,12 @@
                                (str k "=" v)))]
     (cond-> base
       (seq query) (str "?" (str/join "&" query)))))
+
+(defn probe-sqlite-connection!
+  "Test the SQLite store through its pool, initializing the pool if needed. Opening a local file can't hang the way
+  a network connection can, so the pool is safe to borrow from here."
+  []
+  (jdbc/execute-one! (init-sqlite-db!) ["SELECT 1 AS test"]))
 
 (defn probe-dedicated-connection!
   "Test the dedicated pgvector database, without initializing or borrowing its connection pool.
@@ -461,21 +484,30 @@
                false))))))))
 
 (defn pgvector-mode
-  "How this instance reaches its pgvector database:
+  "How this instance reaches its semantic search store:
     :dedicated   MB_PGVECTOR_DB_URL is set (always wins)
-    :app-db      no URL, but the Postgres application database supports the vector extension
-    :unavailable no pgvector anywhere — semantic search cannot run."
+    :sqlite      no URL, but MB_SEMANTIC_SEARCH_SQLITE_PATH is set (see [[semantic.db.sqlite]])
+    :app-db      neither, but the Postgres application database supports the vector extension
+    :unavailable no store anywhere — semantic search cannot run."
   []
   (cond
     (dedicated-url-configured?)          :dedicated
+    (sqlite?)                            :sqlite
     (and (= :postgres (mdb/db-type))
          (app-db-pgvector-supported?))   :app-db
     :else                                :unavailable))
 
 (defn pgvector-configured?
-  "Canonical availability predicate: does this instance have a pgvector database to work with?"
+  "Canonical availability predicate: does this instance have a semantic search store (pgvector or SQLite) to work
+  with?"
   []
   (not= :unavailable (pgvector-mode)))
+
+(defn postgres-store?
+  "Is the store a pgvector database, dedicated or the app db? Features built only for Postgres (e.g. library entity
+  retrieval) gate on this rather than [[pgvector-configured?]]."
+  []
+  (contains? #{:dedicated :app-db} (pgvector-mode)))
 
 (defn ensure-initialized-data-source!
   "Return datasource. Initialize if necessary.
@@ -484,8 +516,9 @@
   (or @data-source
       (case (pgvector-mode)
         :dedicated   (init-db!)
+        :sqlite      (init-sqlite-db!)
         :app-db      (mdb/data-source)
-        :unavailable (throw (ex-info (str "Semantic search requires a pgvector database: set MB_PGVECTOR_DB_URL,"
-                                          " or use a Postgres application database with the pgvector extension"
-                                          " available.")
+        :unavailable (throw (ex-info (str "Semantic search requires a pgvector database or a SQLite store: set"
+                                          " MB_PGVECTOR_DB_URL or MB_SEMANTIC_SEARCH_SQLITE_PATH, or use a Postgres"
+                                          " application database with the pgvector extension available.")
                                      {:mode :unavailable})))))

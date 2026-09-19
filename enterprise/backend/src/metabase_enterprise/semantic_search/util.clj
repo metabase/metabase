@@ -9,6 +9,18 @@
    [next.jdbc.quoted :as quoted]
    [next.jdbc.result-set :as jdbc.rs]))
 
+(defn sqlite?
+  "Does this instance keep its semantic search store in SQLite? See [[semantic.db.sqlite]]."
+  []
+  (semantic.db.datasource/sqlite?))
+
+(defn db-bool
+  "A boolean read from either store: SQLite has no boolean type and answers 0/1."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    (boolean v)))
+
 (def quote-ident
   "Quote a Postgres identifier for interpolation into raw SQL, doubling any embedded double quote."
   quoted/postgres)
@@ -55,18 +67,23 @@
   [pgvector table-name]
   (let [[schema table] (qualified-table-parts table-name)]
     (-> (jdbc/execute-one! pgvector
-                           (if schema
+                           (cond
+                             (sqlite?)
+                             ["SELECT exists (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?) table_exists"
+                              table]
+
+                             schema
                              [(str "SELECT exists (select 1 FROM information_schema.tables"
                                    " WHERE table_schema = ? AND table_name = ?) table_exists")
                               schema table]
+                             :else
                              ["SELECT exists (select 1 FROM information_schema.tables WHERE table_name = ?) table_exists"
                               table])
                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-        (:table_exists false))))
+        :table_exists
+        db-bool)))
 
-(defn index-state
-  "Return the catalog state of `index-name`: `:ready`, `:building`, `:invalid`, or `nil` when absent.
-  A schema-qualified name matches only within its schema; an unqualified name matches any schema."
+(defn- index-state-postgres
   [pgvector index-name]
   (let [[schema index] (qualified-table-parts index-name)
         columns      (str "x.indisready AS is_ready, x.indisvalid AS is_valid, "
@@ -99,6 +116,14 @@
         is_building             :building
         :else                   :invalid))))
 
+(defn index-state
+  "Return the catalog state of `index-name`: `:ready`, `:building`, `:invalid`, or `nil` when absent.
+  A schema-qualified name matches only within its schema; an unqualified name matches any schema."
+  [pgvector index-name]
+  ;; the SQLite store has no HNSW index; every search there is an exact scan
+  (when-not (sqlite?)
+    (index-state-postgres pgvector index-name)))
+
 (defn index-exists?
   "Whether `index-name` is ready and valid. See [[index-state]]."
   [pgvector index-name]
@@ -111,8 +136,9 @@
 
 (defn semantic-search-configured?
   "Whether to schedule the semantic-search Quartz jobs at startup.
-  True when the `:semantic-search` feature is present and a pgvector store might exist: a dedicated
-  MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-available?]] can probe to answer for sure.
+  True when the `:semantic-search` feature is present and a store might exist: a dedicated MB_PGVECTOR_DB_URL, a
+  SQLite store (MB_SEMANTIC_SEARCH_SQLITE_PATH), or a Postgres app DB that [[semantic-search-available?]] can probe
+  to answer for sure.
   Cheap and infallible by contract -- it runs at boot and never queries the DB."
   []
   ;; The license is in this boot gate, not only the per-execution gates, so an unlicensed instance's
@@ -121,6 +147,7 @@
   ;; schedule. Engine activity stays per-execution so it never needs one.
   (and (premium-features/has-feature? :semantic-search)
        (or (semantic.db.datasource/dedicated-url-configured?)
+           (semantic.db.datasource/sqlite?)
            (= :postgres (mdb/db-type)))))
 
 (defn semantic-search-available?

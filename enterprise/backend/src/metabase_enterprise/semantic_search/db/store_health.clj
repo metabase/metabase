@@ -18,9 +18,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private storage-labels
-  "The mutually exclusive pgvector backings, as `:storage` label values.
-  A dedicated URL always wins over the app-db fallback, so at most one can be available at a time."
-  ["dedicated" "appdb"])
+  "The mutually exclusive store backings, as `:storage` label values.
+  A dedicated URL always wins over a SQLite store, which wins over the app-db fallback, so at most one can be
+  available at a time."
+  ["dedicated" "sqlite" "appdb"])
 
 (defonce ^:private ^{:doc "The last readiness probe, `{:storage :connected? :at}`, nil before the first.
   Shared with [[pgvector-store-health-check]] so it doesn't probe again."}
@@ -54,6 +55,7 @@
   (try
     (case mode
       :dedicated   (do (semantic.datasource/probe-dedicated-connection!) true)
+      :sqlite      (do (semantic.datasource/probe-sqlite-connection!) true)
       :app-db      (semantic.datasource/probe-app-db-store!)
       :unavailable false)
     (catch Exception e
@@ -83,6 +85,10 @@
     ;; A dedicated URL always wins, and reading it asks the app db nothing.
     (semantic.datasource/dedicated-url-configured?)
     {:mode :dedicated, :connected? (store-connected? :dedicated), :resolved? true}
+
+    ;; Likewise a SQLite path, which is only a file.
+    (semantic.datasource/sqlite?)
+    {:mode :sqlite, :connected? (store-connected? :sqlite), :resolved? true}
 
     ;; Everything below reads the license or probes the app db, and neither can answer until migrations
     ;; finish. Say so rather than guess, or the guess is what the gauges show for the next hour.
@@ -131,7 +137,7 @@
   []
   (let [previous-storage (:storage @last-readiness-probe)
         {:keys [mode connected? resolved?]} (probe-store)
-        storage          (case mode :dedicated "dedicated" :app-db "appdb" nil)
+        storage          (case mode :dedicated "dedicated" :sqlite "sqlite" :app-db "appdb" nil)
         at               (.getEpochSecond (Instant/now))]
     ;; Publish both stable series on every instance; both are zero when no store is usable.
     (doseq [candidate storage-labels]

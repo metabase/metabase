@@ -103,9 +103,10 @@
   The app-db arm checks this feature's own schema: semantic search's predicate answers for
   `semantic_search`, so a role that can use that one but not create ours would read as ready and then fail
   every reconcile.
-  Probes the app db, so check the license first (see [[available?]])."
+  Probes the app db, so check the license first (see [[available?]]).
+  Postgres only: the index is not ported to the SQLite semantic search store."
   []
-  (and (semantic.db.datasource/pgvector-configured?)
+  (and (semantic.db.datasource/postgres-store?)
        (or (semantic.db.datasource/dedicated-url-configured?)
            (app-db-schema-usable?))))
 
