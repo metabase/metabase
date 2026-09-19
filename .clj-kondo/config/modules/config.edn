@@ -1056,6 +1056,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -2766,6 +2767,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            legacy-mbql
            lib
            lib-be
@@ -2785,7 +2787,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment
