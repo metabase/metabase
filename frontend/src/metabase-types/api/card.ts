@@ -309,6 +309,9 @@ export type ColumnSettings = TimeOnlyOptions & {
  * result column names.
  */
 export type VisualizationSettings = {
+  /** Fit pivot dashboard cards to their visible rows in view mode. */
+  "pivot.auto_height"?: boolean;
+
   /** Show value labels directly on supported chart marks. */
   "graph.show_values"?: boolean;
 
