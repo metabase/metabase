@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.indexes.schema :as indexes.schema]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouses.schema]))
@@ -136,15 +135,22 @@
                               (request-fields row)))]
     (into (vec present) absent)))
 
-(mu/defn fetch-warehouse-indexes :- [:maybe [:sequential :map]]
-  "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
-  Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
-  fetch failure from a successful empty index list."
+(mu/defn fetch-warehouse-indexes :- [:sequential :map]
+  "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`. Throws when the
+  warehouse can't be read, so an empty result always means no indexes."
   [database   :- :metabase.warehouses.schema/database
    schema     :- [:maybe :string]
    table-name :- :string]
-  (try
-    (vec (driver/fetch-table-indexes (:engine database) database schema table-name))
-    (catch Throwable t
-      (log/warnf "fetch-table-indexes failed for %s.%s: %s" schema table-name (ex-message t))
-      nil)))
+  (vec (driver/fetch-table-indexes (:engine database) database schema table-name)))
+
+(def ^:private max-error-message-length
+  "Display cap for a driver's error message; the column itself is unbounded."
+  500)
+
+(defn driver-error-message
+  "The driver's error message for display: cut at the first `(ACCESS_DENIED)`-style code, which drops the
+  `(version ...) (queryId=...)` tail ClickHouse appends, then length-capped."
+  [^Throwable t]
+  (let [message (or (ex-message t) (str t))]
+    (u/truncate (or (second (re-find #"^(.*?\([A-Z][A-Z0-9_]+\))" message)) message)
+                max-error-message-length)))

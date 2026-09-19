@@ -366,48 +366,77 @@
                (driver.common/split-top-level-commas (strip-wrapping-parens s)))
     []))
 
-;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
-;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
+(def ^:private skip-index-line-regex
+  "One data-skipping `INDEX` line of a `SHOW CREATE TABLE` statement. Column definitions are always back-quoted, so a
+  line that starts with the bare `INDEX` keyword is never one."
+  #"^\s*INDEX\s+(`[^`]*`|\S+)\s+(.+?)\s+TYPE\s+(\w+(?:\([^)]*\))?)\s+GRANULARITY\s+(\d+),?\s*$")
+
+(def ^:private order-by-line-regex
+  "The MergeTree sorting key line. `PRIMARY KEY`, `PARTITION BY` and `TTL` print as lines of their own."
+  #"^ORDER BY (.+)$")
+
+(defn- line->definition
+  "A statement line as a standalone clause: indentation and the list separator dropped."
+  [line]
+  (str/replace (str/trim line) #",$" ""))
+
+(def ^:private index-defaults
+  "The `::driver/table-index` fields a MergeTree index never varies: not unique, not primary, no covering columns, no
+  partial predicate."
+  {:is-unique false :is-primary false :is-valid true :include-columns [] :partial-predicate nil})
+
+(defn- skip-index-line->index
+  "The `::driver/table-index` for a data-skipping `INDEX` line, else nil."
+  [line]
+  (when-let [[_ index-name expr index-type] (re-matches skip-index-line-regex line)]
+    (assoc index-defaults
+           :name          (driver.common/unquote-ident index-name \`)
+           :kind          :skip-index
+           :access-method (first (str/split index-type #"\("))
+           :key-columns   (expr->columns expr)
+           :definition    (line->definition line))))
+
+(defn- order-by-line->index
+  "The `::driver/table-index` for the `ORDER BY` line, else nil. `tuple()` is an unsorted table, so it yields nil too."
+  [line]
+  (when-let [[_ expr] (re-matches order-by-line-regex line)]
+    (when (not= "tuple()" (str/trim expr))
+      (assoc index-defaults
+             :name          nil
+             :kind          :order-by
+             :access-method nil
+             :key-columns   (expr->columns expr)
+             :definition    (line->definition line)))))
+
+(defn- create-table-statement->indexes
+  "Parse a `SHOW CREATE TABLE` statement into `::driver/table-index` maps: the data-skipping indexes, then the sorting
+  key."
+  [statement]
+  (let [lines (str/split-lines (or statement ""))]
+    (into (vec (keep skip-index-line->index lines)) (keep order-by-line->index lines))))
+
+(defn- table-missing-exception?
+  "[[sql-jdbc/impl-table-known-to-not-exist?]] plus `CANNOT_GET_CREATE_TABLE_QUERY` (390), which only
+  `SHOW CREATE TABLE` raises."
+  [^SQLException e]
+  (or (sql-jdbc/impl-table-known-to-not-exist? :clickhouse e)
+      (str/starts-with? (or (ex-message e) "") "Code: 390.")))
+
+;; One `SHOW CREATE TABLE` read, parsed by [[create-table-statement->indexes]]. It needs only `SHOW COLUMNS`, where
+;; `system.data_skipping_indices` needs a grant Cloud Storage's shared ClickHouse doesn't give tenants.
 (defmethod driver/fetch-table-indexes :clickhouse
   [_driver database schema table]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-        db        (perf/not-empty schema)
-        skip-idxs (->> (jdbc/query
-                        conn-spec
-                        [(str "SELECT name, type, type_full, expr, granularity "
-                              "FROM system.data_skipping_indices "
-                              "WHERE database = coalesce(?, currentDatabase()) AND table = ? "
-                              "ORDER BY name")
-                         db table])
-                       (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
-                                    {:name              name
-                                     :kind              :skip-index
-                                     :access-method     type
-                                     :is-unique         false
-                                     :is-primary        false
-                                     :is-valid          true
-                                     :key-columns       (expr->columns expr)
-                                     :include-columns   []
-                                     :partial-predicate nil
-                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
-                                                                name expr type_full granularity)})))
-        sorting   (-> (jdbc/query
-                       conn-spec
-                       [(str "SELECT sorting_key FROM system.tables "
-                             "WHERE database = coalesce(?, currentDatabase()) AND name = ?")
-                        db table])
-                      first :sorting_key)]
-    (cond-> skip-idxs
-      (perf/not-empty sorting) (conj {:name              nil
-                                      :kind              :order-by
-                                      :access-method     nil
-                                      :is-unique         false
-                                      :is-primary        false
-                                      :is-valid          true
-                                      :key-columns       (expr->columns sorting)
-                                      :include-columns   []
-                                      :partial-predicate nil
-                                      :definition        (format "ORDER BY (%s)" sorting)}))))
+        target    (quote-name (if (seq schema) (keyword schema table) (keyword table)))]
+    (try
+      (-> (jdbc/query conn-spec [(str "SHOW CREATE TABLE " target)])
+          first
+          :statement
+          create-table-statement->indexes)
+      (catch SQLException e
+        (if (table-missing-exception? e)
+          []
+          (throw e))))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
