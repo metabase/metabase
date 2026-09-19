@@ -3,6 +3,10 @@
 # extension available, semantic search automatically runs against the app db — its tables live in a
 # dedicated `semantic_search` schema and share the app-db connection pool (so heavy reindexing competes
 # with regular app-db traffic; use a dedicated database when that matters).
+#
+# Neither is required either: set MB_SEMANTIC_SEARCH_SQLITE_PATH to keep the index in a local SQLite file
+# (see metabase-enterprise.semantic-search.db.sqlite) and no Postgres is involved at all. Only the ollama
+# service below is then worth running, for embeddings.
 version: '3.8'
 
 services:

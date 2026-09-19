@@ -22,6 +22,7 @@ on:
         required: true
         options:
           - h2
+          - sqlite
           - mariadb
           - mysql
           - postgres
@@ -100,6 +101,42 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+
+  # The SQLite store (MB_SEMANTIC_SEARCH_SQLITE_PATH) keeps its index in a file on the runner, so this leg
+  # needs no pgvector service at all. The tests Postgres alone can answer -- catalog lookups, HNSW, the
+  # pre-SQLite migration history -- carry :mb/pgvector-only and are excluded here.
+  semantic-search-tests-sqlite:
+    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'sqlite') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: H2 with the SQLite store
+            junit-name: semantic-search-tests-sqlite
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search"]'
+            exclude-tags: ':mb/driver-tests :mb/pgvector-only'
+    env:
+      MB_SEMANTIC_SEARCH_SQLITE_PATH: '/tmp/semantic-search/index.db'
+      CI: 'true'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test ${{ matrix.version.name }}
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          artifact-suffix: ${{ matrix.job.name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tags }}]'
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'mariadb') }}
@@ -363,6 +400,7 @@ jobs:
   semantic-search-tests-result:
     needs:
       - semantic-search-tests-h2
+      - semantic-search-tests-sqlite
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
       - semantic-search-tests-postgres

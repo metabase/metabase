@@ -61,6 +61,16 @@ jobs:
       run: >-
         ./bin/test-agent --drivers=postgres :only
         '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
+    # The fully local combination: H2 application database, the index in a SQLite file, and embeddings from the
+    # bundled model in this JVM. No service container at all -- deliberately no MB_DB_* here, so the app db is H2.
+    - name: Run in-process semantic-search round trip on the SQLite store
+      env:
+        MB_SEMANTIC_SEARCH_SQLITE_PATH: /tmp/semantic-search/in-process.db
+        MB_IN_PROCESS_EMBEDDER_SEMANTIC_SEARCH_TEST: "true"
+        MB_PLUGINS_DIR: modules/embedder/target
+      run: >-
+        ./bin/test-agent :only
+        '[metabase-enterprise.semantic-search.sqlite-in-process-embedder-test]'
 
   test-build-scripts:
     if: ${{ !inputs.skip-build-scripts }}
