@@ -137,15 +137,21 @@
        first))
 
 (defmethod driver.sql/default-schema :clickhouse
-  [_driver database]
+  [driver database]
   ;; ClickHouse opens a database where other engines have a default schema, so an unqualified reference resolves to
   ;; the one this connection opened rather than to anything the driver could name on its own. `:db` is the older
-  ;; spelling of `:dbname`, and both are still in the wild.
+  ;; spelling of `:dbname`, and only `:dbname` reaches the JDBC URL, so details naming a database answer for
+  ;; themselves; details naming none connect anyway, and the server reports where they landed.
   (let [details (:details database)]
     (or (first-db-name (:dbname details))
         (first-db-name (:db details))
-        ;; Details carrying neither still connect, to the database `default-connection-details` names.
-        (first-db-name (:dbname default-connection-details)))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver database nil
+         (fn [^java.sql.Connection conn]
+           (with-open [stmt (.createStatement conn)
+                       rset (.executeQuery stmt "SELECT currentDatabase()")]
+             (when (.next rset)
+               (.getString rset 1))))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]

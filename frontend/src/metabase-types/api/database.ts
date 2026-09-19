@@ -65,6 +65,7 @@ export interface Database extends DatabaseData {
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
+  default_schema?: string | null;
   native_permissions: "write" | "none";
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;

@@ -4,10 +4,12 @@
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
    [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
    [metabase-enterprise.transform-testing.test-util :as transform-testing.test-util]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -84,27 +86,72 @@
     [{:name "id" :cast_type int-type}
      {:name "name" :cast_type text-type}]))
 
+(defn- check-empty-expectation!
+  [schema table transform-id description where expected]
+  (let [result (run-test! schema table transform-id one-row
+                          [{:type :empty
+                            :name description
+                            :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])]
+    (is (= expected (:status result)))
+    (is (= [{:name description :type :empty :status expected}]
+           (mapv #(select-keys % [:name :type :status]) (:expectations result))))))
+
 (deftest run-transform-test-empty-expectation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
     (with-people-transform
       (fn [schema table transform-id]
-        (doseq [[desc where expected] [["passes when the query returns no rows"
-                                        "name IS NULL"
-                                        :passed]
-                                       ["reads the input test data instead of the input table"
-                                        "id <> 1"
-                                        :passed]
-                                       ["fails when the query returns rows"
-                                        "name = 'abc'"
-                                        :failed]]]
-          (testing desc
-            (let [result (run-test! schema table transform-id one-row
-                                    [{:type :empty
-                                      :name desc
-                                      :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])]
-              (is (= expected (:status result)))
-              (is (= [{:name desc :type :empty :status expected}]
-                     (mapv #(select-keys % [:name :type :status]) (:expectations result)))))))))))
+        (testing "passes when the query returns no rows"
+          (check-empty-expectation! schema table transform-id "no rows" "name IS NULL" :passed))
+        (testing "reads the input test data instead of the input table"
+          (check-empty-expectation! schema table transform-id "input test data" "id <> 1" :passed))
+        (testing "fails when the query returns rows"
+          (check-empty-expectation! schema table transform-id "rows returned" "name = 'abc'" :failed))))))
+
+(defn- check-persisted-run!
+  [schema table transform-id where expected]
+  (mt/with-temp [:model/TransformTest {transform-test-id :id :as transform-test}
+                 {:transform_id transform-id
+                  :inputs       [{:table  {:schema schema :name table}
+                                  :format :sql
+                                  :sql    one-row}]
+                  :expectations [{:type :empty
+                                  :name "check"
+                                  :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (is (= expected (:status (transform-testing.runner/run-transform-test! transform-test)))))
+    (let [run (t2/select-one :model/TransformTestRun :transform_test_id transform-test-id)]
+      (is (= expected (:status run)))
+      (is (= (mt/user->id :crowberto) (:initiated_by run)))
+      (is (some? (:start_time run)))
+      (is (some? (:end_time run))))))
+
+(deftest run-transform-test-persists-passed-run-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (check-persisted-run! schema table transform-id "name IS NULL" :passed)))))
+
+(deftest run-transform-test-persists-failed-run-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (check-persisted-run! schema table transform-id "id = 1" :failed)))))
+
+(deftest run-transform-test-persists-post-validation-error-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (with-people-transform
+      (fn [schema table transform-id]
+        (mt/with-temp [:model/TransformTest {transform-test-id :id :as transform-test}
+                       {:transform_id transform-id
+                        :inputs       [{:table  {:schema schema :name table}
+                                        :format :sql
+                                        :sql    "SELECT * FROM transform_test_input_that_does_not_exist"}]
+                        :expectations []}]
+          (is (thrown? ExceptionInfo
+                       (transform-testing.runner/run-transform-test! transform-test)))
+          (let [run (t2/select-one :model/TransformTestRun :transform_test_id transform-test-id)]
+            (is (= :error (:status run)))
+            (is (some? (:end_time run)))))))))
 
 (deftest run-transform-test-equals-passes-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -198,7 +245,10 @@
               (is (some? ex)))
             (testing "with a typed refusal that names the undeclared table"
               (is (= ::transform-testing.errors/missing-inputs (:error-type (ex-data ex))))
-              (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))))))))
+              (is (re-find (re-pattern (str "(?i)" table)) (ex-message ex))))
+            (testing "without creating a run"
+              (is (false? (t2/exists? :model/TransformTestRun
+                                      :transform_test_id (:id transform-test)))))))))))
 
 (deftest run-transform-test-rejects-partially-declared-inputs-test
   (testing "Guard A: a join declaring only some of its input tables is rejected, naming the gap,"
