@@ -31,6 +31,15 @@
   :export?    false
   :audit      :never)
 
+(defsetting oauth-server-rotate-refresh-tokens
+  (deferred-tru "Whether each OAuth refresh replaces and revokes the refresh token. Disabling rotation allows reuse until expiry or revocation.")
+  :type       :boolean
+  :visibility :internal
+  :default    true
+  :doc        false
+  :export?    false
+  :audit      :getter)
+
 ;; Gated on mcp-enabled? so registration is off whenever MCP is; stored override can still force false.
 (defsetting oauth-server-dynamic-registration-enabled
   (deferred-tru "Whether dynamic client registration (RFC 7591) is enabled for the embedded OAuth server.")

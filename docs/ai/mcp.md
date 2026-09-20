@@ -145,6 +145,25 @@ A first-time connection will go something like this:
 
 Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [AI privacy](./privacy.md).
 
+### Repeated authorization after reconnecting
+
+Metabase replaces the refresh token on each refresh. Clients must save the replacement before using refresh tokens again. A client that keeps an older token can lose its connection and ask you to authorize again.
+
+For clients affected by this problem, an administrator can disable rotation with the `oauth-server-rotate-refresh-tokens` setting. Using an authenticated administrator API session, send:
+
+```http
+PUT /api/setting/oauth-server-rotate-refresh-tokens
+Content-Type: application/json
+
+{"value": false}
+```
+
+For self-hosted deployments, you can also set `MB_OAUTH_SERVER_ROTATE_REFRESH_TOKENS=false`. The setting defaults to `true`. Changes through the API take effect without restarting Metabase, once each server observes the updated setting. If your client already has a revoked token, authorize it once more after changing the setting; previously revoked tokens stay revoked.
+
+Disabling rotation applies to all clients of the embedded OAuth server. Refresh tokens remain usable until their original expiry or explicit revocation; refresh requests don't extend that expiry. Access tokens still expire normally, and client, scope, and resource restrictions still apply.
+
+This compatibility option reduces protection against stolen refresh tokens: someone holding a token can reuse it until it expires or is revoked. It does not provide the rotation or sender binding required by [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Keep rotation enabled when your clients support it, and restore `{"value": true}` once the affected clients reliably save replacement tokens.
+
 ## Authorization logs
 
 To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.

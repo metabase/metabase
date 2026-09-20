@@ -151,17 +151,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     )
                 state["generation"] += 1
                 generation = state["generation"]
-                self.response(
-                    200,
-                    {
-                        "access_token": "fixture-access-" + str(generation),
-                        "refresh_token": "fixture-refresh-"
-                        + str(0 if args.reuse_refresh_token else generation),
-                        "token_type": "Bearer",
-                        "expires_in": 3600,
-                        "scope": "read",
-                    },
-                )
+                response = {
+                    "access_token": "fixture-access-" + str(generation),
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                    "scope": "read",
+                }
+                if not args.reuse_refresh_token:
+                    response["refresh_token"] = "fixture-refresh-" + str(generation)
+                self.response(200, response)
                 rotated.set()
                 return
         if self.path != "/mcp":

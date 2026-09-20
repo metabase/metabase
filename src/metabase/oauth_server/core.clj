@@ -211,7 +211,7 @@
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
-  []
+  [rotate-refresh-tokens?]
   (let [base-url (system/site-url)]
     {:issuer                         base-url
      :authorization-endpoint         (str base-url "/oauth/authorize")
@@ -226,23 +226,28 @@
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.
      :scopes-supported               (supported-scopes)
-     :rotate-refresh-tokens          true}))
+     :rotate-refresh-tokens          rotate-refresh-tokens?}))
 
 (defn- create-provider
   "Create a new OAuth provider instance."
-  []
-  (oidc/create-provider (build-provider-config)))
+  [rotate-refresh-tokens?]
+  (oidc/create-provider (build-provider-config rotate-refresh-tokens?)))
 
 (defn get-provider
-  "Returns the current provider instance, (re)creating it when absent or when the Site URL has changed."
+  "Return the provider, recreating it when the Site URL or refresh-token rotation setting changes."
   []
-  (let [site-url (system/site-url)]
+  (let [site-url               (system/site-url)
+        rotate-refresh-tokens? (oauth-settings/oauth-server-rotate-refresh-tokens)]
     (:provider
      (swap! provider
             (fn [cached]
-              (if (and cached (= (:site-url cached) site-url))
+              (if (and cached
+                       (= (:site-url cached) site-url)
+                       (= (:rotate-refresh-tokens? cached) rotate-refresh-tokens?))
                 cached
-                {:site-url site-url, :provider (create-provider)}))))))
+                {:site-url               site-url
+                 :rotate-refresh-tokens? rotate-refresh-tokens?
+                 :provider               (create-provider rotate-refresh-tokens?)}))))))
 
 (defn reset-provider!
   "Reset the provider cache to nil. Useful for testing."

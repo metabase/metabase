@@ -1,6 +1,6 @@
 # Reproduce MCP background refresh token loss
 
-This fixture reproduces a Codex OAuth credential-persistence failure with a local MCP server that rotates refresh tokens and closes its background event stream. It also tests a client-side workaround and two server-behavior controls. This branch contains diagnostic code and a Metabase rotation test; it does not change Metabase's production behavior.
+This fixture reproduces a Codex OAuth credential-persistence failure with a local MCP server that rotates refresh tokens and closes its background event stream. Metabase's `oauth-server-rotate-refresh-tokens` setting now allows administrators to disable rotation for affected clients. See [configuration and security tradeoffs](../../docs/ai/mcp.md#repeated-authorization-after-reconnecting).
 
 ## Run the reproduction
 
@@ -65,13 +65,15 @@ The OAuth library first added rotation on **March 13, 2026, at 14:38 UTC**, in [
 
 The initial MCP commit already used `oidc-provider 0.6.2`. That library [defaults rotation to `true` when the setting is omitted](https://github.com/edpaget/oidc-provider/blob/v0.6.2/src/oidc_provider/core.clj#L93). Consequently, PR #71406 made the configuration explicit; it did not switch rotation on for the first time. Its commit message describes the intent as limiting reuse of a stolen refresh token during its 30-day lifetime. Removing only that explicit configuration line would leave rotation enabled.
 
-## Evaluate server-side compatibility changes
+## Configure server-side compatibility
 
-A client defect does not rule out a Metabase compatibility improvement. Both server-behavior controls avoid this specific failure without the experimental client feature, but neither is implemented as a Metabase change in this branch.
+Set `oauth-server-rotate-refresh-tokens` to `false` to keep refresh tokens reusable. Rotation remains enabled by default. The provider cache observes changes to this setting, so an API update does not require a restart. Previously revoked tokens remain revoked; an already affected client needs one fresh authorization.
 
 The no-background-stream control retains token rotation and returns HTTP 405 for MCP GET requests. The [MCP transport specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server) permits this, but clients lose unsolicited notifications such as tool-list changes. A production option would need to account for that behavior and be tested with the real Metabase endpoints.
 
-Reusable refresh tokens demonstrate the compatibility effect of a different token policy. They are a diagnostic control, not a recommendation to disable rotation globally: [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2) requires rotation or a mechanism that cryptographically binds the token to the client. A bounded reuse grace period is another candidate, but this harness does not implement or validate one; delayed requests may arrive after that period ends.
+The `--reuse-refresh-token` fixture omits `refresh_token` from refresh responses, matching the OAuth provider's response when rotation is disabled. It tests the installed Codex backend against this response shape. It is a synthetic server, not a full Metabase instance. The Metabase API tests separately exercise the production provider and database stores with a public PKCE client, checking repeated reuse, fixed expiry, revocation, client binding, and scope restrictions.
+
+Reusable tokens remove rotation's protection against token theft. This instance-wide compatibility option is an explicit departure from [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2), which requires rotation or sender binding. Keep it disabled only while required for client compatibility.
 
 ## Retain the useful Metabase regression coverage
 

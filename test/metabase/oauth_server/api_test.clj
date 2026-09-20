@@ -7,6 +7,7 @@
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
@@ -14,6 +15,8 @@
    (java.net URLEncoder)
    (java.security MessageDigest)
    (java.util Base64)))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
 (use-fixtures :each (fn [thunk]
@@ -1246,6 +1249,60 @@
                           :expected-status 400
                           :authorization (basic-auth-header client-id client-secret))]
             (is (=? {:error string?} response))))))))
+
+(deftest refresh-rotation-setting-api-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                     oauth-server-rotate-refresh-tokens true]
+    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
+    (mt/user-http-request :rasta :put 403 "api/setting/oauth-server-rotate-refresh-tokens" {:value false})
+    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
+    (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-rotate-refresh-tokens" {:value false})
+    (is (false? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
+    (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-rotate-refresh-tokens" {:value true})
+    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))))
+
+(deftest reusable-refresh-token-test
+  (testing "A public client can reuse its saved refresh token when rotation is disabled"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-rotate-refresh-tokens false]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client! {:client_type        "public"
+                                                          :client_secret_hash nil}))
+              verifier  "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+              code      (authorize-and-get-code-with-params!
+                         client-id {:code_challenge        (pkce-s256-challenge verifier)
+                                    :code_challenge_method "S256"})
+              tokens    (token-request! {:grant_type    "authorization_code"
+                                         :client_id     client-id
+                                         :code          code
+                                         :code_verifier verifier
+                                         :redirect_uri  "https://example.com/callback"})
+              params    {:grant_type    "refresh_token"
+                         :client_id     client-id
+                         :refresh_token (:refresh_token tokens)}
+              expiry    (t2/select-one-fn :expiry :model/OAuthRefreshToken :client_id client-id)]
+          (doseq [_ (range 3)]
+            (let [refreshed (token-request! params)]
+              (is (=? {:access_token string? :token_type "Bearer" :expires_in pos-int?} refreshed))
+              (is (not= (:access_token tokens) (:access_token refreshed)))
+              (is (nil? (:refresh_token refreshed)))
+              (is (some? (oauth-server/resolve-access-token (:access_token refreshed))))))
+          (is (= 1 (t2/count :model/OAuthRefreshToken :client_id client-id :revoked_at nil)))
+          (is (= expiry (t2/select-one-fn :expiry :model/OAuthRefreshToken :client_id client-id)))
+          (testing "Another client cannot use the reusable token"
+            (let [other-id (:client_id (create-test-client! {:client_type "public" :client_secret_hash nil}))]
+              (is (=? {:error string?}
+                      (token-request! (assoc params :client_id other-id) :expected-status 400)))))
+          (testing "Reusing the token cannot widen its scope"
+            (is (=? {:error string?}
+                    (token-request! (assoc params :scope "agent:content:write") :expected-status 400))))
+          (testing "The original expiration still applies"
+            (t2/update! :model/OAuthRefreshToken :client_id client-id {:expiry 1})
+            (is (=? {:error "invalid_grant"} (token-request! params :expected-status 400)))
+            (t2/update! :model/OAuthRefreshToken :client_id client-id {:expiry expiry}))
+          (testing "Explicit revocation still prevents reuse"
+            (revoke-request! {:token (:refresh_token tokens) :client_id client-id})
+            (is (=? {:error string?} (token-request! params :expected-status 400)))))))))
 
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"

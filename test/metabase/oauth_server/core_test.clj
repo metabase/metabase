@@ -158,6 +158,19 @@
         (is (= "http://localhost:3000/oauth/authorize" (:authorization-endpoint config)))
         (is (= "http://localhost:3000/oauth/token" (:token-endpoint config)))))))
 
+(deftest provider-refresh-rotation-setting-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                     oauth-server-rotate-refresh-tokens nil]
+    (let [original (oauth-server/get-provider)]
+      (is (true? (get-in original [:config :rotate-refresh-tokens])))
+      (is (identical? original (oauth-server/get-provider)))
+      (mt/with-temporary-setting-values [oauth-server-rotate-refresh-tokens false]
+        (let [reusable (oauth-server/get-provider)]
+          (is (false? (get-in reusable [:config :rotate-refresh-tokens])))
+          (is (not (identical? original reusable)))
+          (is (identical? reusable (oauth-server/get-provider)))))
+      (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens]))))))
+
 (deftest resolve-access-token-requires-existing-client-test
   (testing "an access token stops authenticating once its oauth_client row is deleted (SEC-863)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
