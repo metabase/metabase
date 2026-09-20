@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.mcp.core :as mcp]
    [metabase.server.core :as server]
-   [metabase.test.server.handler :as test.server.handler]))
+   [metabase.test.server.handler]))
 
 (deftest make-test-handler-configures-mcp-cors-test
   (let [handler         (fn [_request _respond _raise])
@@ -12,5 +12,5 @@
                   server/make-handler (fn [server-routes options]
                                         (reset! handler-options options)
                                         server-routes)]
-      (test.server.handler/make-test-handler handler))
+      (#'metabase.test.server.handler/make-test-handler))
     (is (= {:cors mcp/cors} @handler-options))))
