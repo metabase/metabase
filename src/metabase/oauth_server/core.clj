@@ -211,7 +211,7 @@
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
-  [rotate-refresh-tokens?]
+  []
   (let [base-url (system/site-url)]
     {:issuer                         base-url
      :authorization-endpoint         (str base-url "/oauth/authorize")
@@ -226,28 +226,23 @@
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.
      :scopes-supported               (supported-scopes)
-     :rotate-refresh-tokens          rotate-refresh-tokens?}))
+     :rotate-refresh-tokens          true}))
 
 (defn- create-provider
   "Create a new OAuth provider instance."
-  [rotate-refresh-tokens?]
-  (oidc/create-provider (build-provider-config rotate-refresh-tokens?)))
+  []
+  (oidc/create-provider (build-provider-config)))
 
 (defn get-provider
-  "Return the provider, recreating it when the Site URL or refresh-token rotation setting changes."
+  "Returns the current provider instance, (re)creating it when absent or when the Site URL has changed."
   []
-  (let [site-url               (system/site-url)
-        rotate-refresh-tokens? (oauth-settings/oauth-server-rotate-refresh-tokens)]
+  (let [site-url (system/site-url)]
     (:provider
      (swap! provider
             (fn [cached]
-              (if (and cached
-                       (= (:site-url cached) site-url)
-                       (= (:rotate-refresh-tokens? cached) rotate-refresh-tokens?))
+              (if (and cached (= (:site-url cached) site-url))
                 cached
-                {:site-url               site-url
-                 :rotate-refresh-tokens? rotate-refresh-tokens?
-                 :provider               (create-provider rotate-refresh-tokens?)}))))))
+                {:site-url site-url, :provider (create-provider)}))))))
 
 (defn reset-provider!
   "Reset the provider cache to nil. Useful for testing."
@@ -255,14 +250,15 @@
   (reset! provider nil))
 
 (defn provider-for-token-request
-  "Return the provider with the refresh policy for the client that owns the submitted refresh token."
+  "Return the provider with the refresh policy for the token's registered client."
   [{:keys [grant_type refresh_token]}]
-  (let [provider   (get-provider)
-        client-ids (set (oauth-settings/oauth-server-refresh-token-reuse-client-ids))]
-    (if (and (= grant_type "refresh_token")
-             (seq refresh_token)
-             (seq client-ids)
-             (contains? client-ids (:client-id (oidc.store/get-refresh-token (:token-store provider) refresh_token))))
+  (let [provider (get-provider)
+        client   (when (and (= grant_type "refresh_token")
+                            (seq refresh_token)
+                            (oauth-settings/oauth-server-codex-refresh-token-reuse-enabled))
+                   (when-let [token (oidc.store/get-refresh-token (:token-store provider) refresh_token)]
+                     (oidc.proto/get-client (:client-store provider) (:client-id token))))]
+    (if (= "Codex" (:client-name client))
       (oidc/create-provider (assoc (:config provider) :rotate-refresh-tokens false))
       provider)))
 

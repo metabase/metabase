@@ -6,7 +6,6 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { setupOAuthClientsEndpoint } from "__support__/server-mocks/oauth";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -21,13 +20,16 @@ const setup = async ({
   commonOrigins = [],
   customOrigins = "",
   enabled = true,
+  codexTokenReuse = false,
 }: {
   commonOrigins?: string[];
   customOrigins?: string;
   enabled?: boolean;
+  codexTokenReuse?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "mcp-enabled?": enabled,
+    "oauth-server-codex-refresh-token-reuse-enabled": codexTokenReuse,
     "mcp-apps-cors-enabled-clients": commonOrigins,
     "mcp-apps-cors-custom-origins": customOrigins,
     "site-url": SITE_URL,
@@ -36,7 +38,6 @@ const setup = async ({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
-  setupOAuthClientsEndpoint();
 
   renderWithProviders(<McpAppsSettings />, {
     storeInitialState: createMockState({
@@ -69,6 +70,25 @@ describe("McpAppsSettings", () => {
     expect(puts[0].url).toContain("/setting/mcp-enabled%3F");
     expect(puts[0].body).toEqual({ value: false });
   });
+
+  it.each([false, true])(
+    "can toggle Codex token reuse from %s",
+    async (enabled) => {
+      await setup({ codexTokenReuse: enabled });
+
+      const toggle = await screen.findByRole("switch", {
+        name: /Allow Codex refresh-token reuse/,
+      });
+      await userEvent.click(toggle);
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].url).toContain(
+        "/setting/oauth-server-codex-refresh-token-reuse-enabled",
+      );
+      expect(puts[0].body).toEqual({ value: !enabled });
+    },
+  );
 
   it("should show all MCP client toggles", async () => {
     await setup();

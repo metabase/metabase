@@ -2,11 +2,6 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 
 export type OAuthClientEventType = "registered" | "approved" | "denied";
 
-export interface OAuthClientSummary {
-  client_id: string;
-  client_name: string | null;
-}
-
 /** One row of the OAuth client audit log. Client columns are `null` once the client is deleted. */
 export interface OAuthAuthorization {
   id: number;

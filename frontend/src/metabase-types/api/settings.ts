@@ -637,8 +637,7 @@ interface PublicSettings {
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "mcp-enabled?": boolean;
-  "oauth-server-rotate-refresh-tokens": boolean;
-  "oauth-server-refresh-token-reuse-client-ids": string[];
+  "oauth-server-codex-refresh-token-reuse-enabled": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!

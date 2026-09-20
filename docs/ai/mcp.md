@@ -147,32 +147,15 @@ Results returned by the MCP server are sent to your MCP client, which may forwar
 
 ### Repeated authorization after reconnecting
 
-Metabase replaces the refresh token on each refresh. Clients must save the replacement before using refresh tokens again. A client that keeps an older token can lose its connection and ask you to authorize again.
+Metabase replaces the refresh token on each refresh. Codex versions that fail to save the replacement can lose their connection and ask you to authorize again.
 
-For clients affected by this problem, an administrator can allow refresh-token reuse for specific registrations:
+To allow Codex to keep using its saved token, go to **Admin > AI > MCP > Settings** and enable **Allow Codex refresh-token reuse**. This applies automatically to existing and future clients registered with the exact name `Codex`. Other client names keep rotating tokens. The setting is off by default.
 
-1. Go to **Admin > AI > MCP > Settings**.
-2. Leave **Refresh token rotation** enabled.
-3. Under **Clients allowed to reuse refresh tokens**, select the affected OpenAI or Codex connection. Each entry shows its registered name and client ID. Connect the client to Metabase first if it isn't listed.
+Changes take effect without restarting Metabase. If your connection already has a revoked token, authorize it once more after enabling the setting. Disabling the setting resumes rotation on the next refresh.
 
-The exception applies to that exact registration, including all users who authorized it. Other registrations keep rotating tokens, even if they have the same name. Removing an exception resumes rotation on the client's next refresh. A newly registered client has a different ID and needs its own exception.
+Refresh tokens remain usable until their original expiry or explicit revocation; refresh requests don't extend that expiry. Access tokens still expire normally, and client, scope, and resource restrictions still apply.
 
-You can also update the `oauth-server-refresh-token-reuse-client-ids` setting through the administrator API with `{"value": ["registered-client-id"]}`, or set `MB_OAUTH_SERVER_REFRESH_TOKEN_REUSE_CLIENT_IDS` to a comma-separated list of client IDs.
-
-The **Refresh token rotation** switch controls the default policy for all OAuth clients. Turning it off disables rotation globally, regardless of the exception list. Using an authenticated administrator API session, the equivalent request is:
-
-```http
-PUT /api/setting/oauth-server-rotate-refresh-tokens
-Content-Type: application/json
-
-{"value": false}
-```
-
-For self-hosted deployments, you can also set `MB_OAUTH_SERVER_ROTATE_REFRESH_TOKENS=false`. The setting defaults to `true`. Changes through the API take effect without restarting Metabase, once each server observes the updated setting. If your client already has a revoked token, authorize it once more after changing the setting; previously revoked tokens stay revoked.
-
-For clients whose rotation is disabled, refresh tokens remain usable until their original expiry or explicit revocation; refresh requests don't extend that expiry. Access tokens still expire normally, and client, scope, and resource restrictions still apply.
-
-These compatibility options reduce protection against stolen refresh tokens: someone holding a token can reuse it until it expires or is revoked. They do not provide the rotation or sender binding required by [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Keep rotation enabled when your clients support it, and remove exceptions once the affected clients reliably save replacement tokens.
+Client names are self-reported, so this setting does not verify OpenAI identity. Reusable refresh tokens have weaker protection against theft and do not provide the rotation or sender binding required by [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Disable the setting once your Codex version reliably saves replacement tokens.
 
 ## Authorization logs
 

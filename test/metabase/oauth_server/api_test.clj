@@ -1250,23 +1250,13 @@
                           :authorization (basic-auth-header client-id client-secret))]
             (is (=? {:error string?} response))))))))
 
-(deftest refresh-rotation-setting-api-test
-  (mt/with-temporary-setting-values [site-url "http://localhost:3000"
-                                     oauth-server-rotate-refresh-tokens true]
-    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
-    (mt/user-http-request :rasta :put 403 "api/setting/oauth-server-rotate-refresh-tokens" {:value false})
-    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
-    (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-rotate-refresh-tokens" {:value false})
-    (is (false? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))
-    (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-rotate-refresh-tokens" {:value true})
-    (is (true? (get-in (oauth-server/get-provider) [:config :rotate-refresh-tokens])))))
-
 (deftest reusable-refresh-token-test
-  (testing "A public client can reuse its saved refresh token when rotation is disabled"
+  (testing "A public client can reuse its saved refresh token when Codex compatibility is enabled"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
-                                       oauth-server-rotate-refresh-tokens false]
+                                       oauth-server-codex-refresh-token-reuse-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (let [client-id (:client_id (create-test-client! {:client_type        "public"
+        (let [client-id (:client_id (create-test-client! {:client_name        "Codex"
+                                                          :client_type        "public"
                                                           :client_secret_hash nil}))
               verifier  "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
               code      (authorize-and-get-code-with-params!
@@ -1304,44 +1294,55 @@
             (revoke-request! {:token (:refresh_token tokens) :client_id client-id})
             (is (=? {:error string?} (token-request! params :expected-status 400)))))))))
 
-(deftest refresh-token-reuse-client-exceptions-test
+(deftest codex-refresh-token-reuse-setting-test
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"
-                                     oauth-server-rotate-refresh-tokens true
-                                     oauth-server-refresh-token-reuse-client-ids []]
+                                     oauth-server-codex-refresh-token-reuse-enabled false]
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [selected    (create-test-client! {:client_name "Codex"})
-            other       (create-test-client! {:client_name "Codex"})
-            selected-id (:client_id selected)
+      (let [codex       (create-test-client! {:client_name "Codex"})
+            other       (create-test-client! {:client_name "Claude"})
             issue       (fn [{:keys [client_id client_secret]}]
                           (token-request! {:grant_type "authorization_code"
                                            :code (authorize-and-get-code! client_id)
                                            :redirect_uri "https://example.com/callback"}
                                           :authorization (basic-auth-header client_id client_secret)))
-            selected-token (:refresh_token (issue selected))
-            other-token    (:refresh_token (issue other))
-            refresh        (fn [client token expected-status]
-                             (token-request! {:grant_type "refresh_token"
-                                              :client_id selected-id
-                                              :refresh_token token}
-                                             :expected-status expected-status
-                                             :authorization (basic-auth-header (:client_id client) (:client_secret client))))]
-        (mt/user-http-request :rasta :put 403 "api/setting/oauth-server-refresh-token-reuse-client-ids"
-                              {:value [selected-id]})
-        (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-refresh-token-reuse-client-ids"
-                              {:value [selected-id]})
-        (testing "Only the selected registration reuses its token"
-          (dotimes [_ 2]
-            (let [response (refresh selected selected-token 200)]
-              (is (string? (:access_token response)))
-              (is (nil? (:refresh_token response)))))
-          (is (=? {:error string?} (refresh other selected-token 400)))
-          (is (string? (:refresh_token (refresh other other-token 200))))
-          (is (=? {:error string?} (refresh other other-token 400))))
-        (testing "Removing the exception resumes rotation without restarting"
-          (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-refresh-token-reuse-client-ids"
-                                {:value []})
-          (is (string? (:refresh_token (refresh selected selected-token 200))))
-          (is (=? {:error string?} (refresh selected selected-token 400))))))))
+            codex-token (:refresh_token (issue codex))
+            other-token (:refresh_token (issue other))
+            refresh     (fn [client token expected-status]
+                          (token-request! {:grant_type "refresh_token"
+                                           :client_id (:client_id codex)
+                                           :refresh_token token}
+                                          :expected-status expected-status
+                                          :authorization (basic-auth-header (:client_id client) (:client_secret client))))]
+        (testing "Codex rotates tokens by default"
+          (let [response (refresh codex codex-token 200)]
+            (is (string? (:refresh_token response)))
+            (is (not= codex-token (:refresh_token response)))
+            (is (=? {:error string?} (refresh codex codex-token 400)))))
+        (mt/user-http-request :rasta :put 403 "api/setting/oauth-server-codex-refresh-token-reuse-enabled"
+                              {:value true})
+        (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-codex-refresh-token-reuse-enabled"
+                              {:value true})
+        (let [codex-token (:refresh_token (issue codex))]
+          (testing "Codex reuses tokens while other clients still rotate"
+            (dotimes [_ 2]
+              (let [response (refresh codex codex-token 200)]
+                (is (string? (:access_token response)))
+                (is (nil? (:refresh_token response)))))
+            (is (=? {:error string?} (refresh other codex-token 400)))
+            (is (string? (:refresh_token (refresh other other-token 200))))
+            (is (=? {:error string?} (refresh other other-token 400))))
+          (testing "A new Codex registration needs no separate configuration"
+            (let [new-codex (create-test-client! {:client_name "Codex"})
+                  token     (:refresh_token (issue new-codex))]
+              (dotimes [_ 2]
+                (let [response (refresh new-codex token 200)]
+                  (is (string? (:access_token response)))
+                  (is (nil? (:refresh_token response)))))))
+          (testing "Disabling compatibility resumes rotation without restarting"
+            (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-codex-refresh-token-reuse-enabled"
+                                  {:value false})
+            (is (string? (:refresh_token (refresh codex codex-token 200))))
+            (is (=? {:error string?} (refresh codex codex-token 400)))))))))
 
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"

@@ -18,7 +18,6 @@ import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
-import { setupOAuthClientsEndpoint } from "__support__/server-mocks/oauth";
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -107,7 +106,6 @@ const setup = async ({
     }),
   ]);
   setupUpdateSettingEndpoint();
-  setupOAuthClientsEndpoint();
   setupLlmProviderTypesEndpoint();
   setupLlmProvidersEndpoint();
   setupLlmModelsEndpoint();

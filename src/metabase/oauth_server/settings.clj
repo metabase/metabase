@@ -31,23 +31,13 @@
   :export?    false
   :audit      :never)
 
-(defsetting oauth-server-rotate-refresh-tokens
-  (deferred-tru "Whether each OAuth refresh replaces and revokes the refresh token. Disabling rotation allows reuse until expiry or revocation.")
+(defsetting oauth-server-codex-refresh-token-reuse-enabled
+  (deferred-tru "Allow clients registered as Codex to reuse refresh tokens until expiry or revocation.")
   :type       :boolean
   :visibility :admin
-  :default    true
+  :default    false
   :doc        false
   :export?    false
-  :audit      :getter)
-
-(defsetting oauth-server-refresh-token-reuse-client-ids
-  (deferred-tru "Registered OAuth clients allowed to reuse refresh tokens until expiry or revocation.")
-  :type       :csv
-  :visibility :admin
-  :default    []
-  :doc        false
-  :export?    false
-  :encryption :when-encryption-key-set
   :audit      :getter)
 
 ;; Gated on mcp-enabled? so registration is off whenever MCP is; stored override can still force false.

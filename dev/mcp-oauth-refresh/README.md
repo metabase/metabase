@@ -1,6 +1,6 @@
 # Reproduce MCP background refresh token loss
 
-This fixture reproduces a Codex OAuth credential-persistence failure with a local MCP server that rotates refresh tokens and closes its background event stream. Metabase's `oauth-server-rotate-refresh-tokens` setting now allows administrators to disable rotation for affected clients. See [configuration and security tradeoffs](../../docs/ai/mcp.md#repeated-authorization-after-reconnecting).
+This fixture reproduces a Codex OAuth credential-persistence failure with a local MCP server that rotates refresh tokens and closes its background event stream. Metabase's MCP admin settings now include **Allow Codex refresh-token reuse**. See [configuration and security tradeoffs](../../docs/ai/mcp.md#repeated-authorization-after-reconnecting).
 
 ## Run the reproduction
 
@@ -67,15 +67,15 @@ The initial MCP commit already used `oidc-provider 0.6.2`. That library [default
 
 ## Configure server-side compatibility
 
-In **Admin > AI > MCP > Settings**, keep **Refresh token rotation** enabled and select affected registrations under **Clients allowed to reuse refresh tokens**. These exceptions are stored in `oauth-server-refresh-token-reuse-client-ids`. The token's stored client ID determines the exception; a matching client name or a different ID claimed in the request cannot select a weaker policy for another registration.
+In **Admin > AI > MCP > Settings**, enable **Allow Codex refresh-token reuse** (`oauth-server-codex-refresh-token-reuse-enabled`). This applies to existing and future registrations named exactly `Codex`, the name used by [the tested Codex release](https://github.com/openai/codex/blob/rust-v0.155.0-alpha.9.2/codex-rs/rmcp-client/src/oauth_client_registration.rs#L114). The token's stored client determines the policy. Client names are self-reported; this is a compatibility setting, not verification of OpenAI identity.
 
-Setting `oauth-server-rotate-refresh-tokens` to `false` remains available as an instance-wide fallback. Changes to either setting do not require a restart. Previously revoked tokens remain revoked; an already affected client needs one fresh authorization.
+Changes do not require a restart. Previously revoked tokens remain revoked; an already affected client needs one fresh authorization. Other client names continue rotating tokens.
 
-The no-background-stream control retains token rotation and returns HTTP 405 for MCP GET requests. The [MCP transport specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server) permits this, but clients lose unsolicited notifications such as tool-list changes. A production option would need to account for that behavior and be tested with the real Metabase endpoints.
+The no-background-stream control retains token rotation and returns HTTP 405 for MCP GET requests. The [MCP transport specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server) permits this, but clients lose unsolicited notifications such as tool-list changes.
 
 The `--reuse-refresh-token` fixture omits `refresh_token` from refresh responses, matching the OAuth provider's response when rotation is disabled. It tests the installed Codex backend against this response shape. It is a synthetic server, not a full Metabase instance. The Metabase API tests separately exercise the production provider and database stores with a public PKCE client, checking repeated reuse, fixed expiry, revocation, client binding, and scope restrictions.
 
-Reusable tokens remove rotation's protection against token theft. Both compatibility options depart from [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2), which requires rotation or sender binding. Prefer individual exceptions and remove them when no longer required.
+Reusable tokens remove rotation's protection against token theft. The Codex compatibility setting departs from [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2), which requires rotation or sender binding. Disable the setting when no longer required.
 
 ## Retain the useful Metabase regression coverage
 

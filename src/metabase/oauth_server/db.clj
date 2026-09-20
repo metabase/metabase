@@ -99,11 +99,6 @@
   [client-id :- :string]
   (t2/select-one :model/OAuthClient :client_id client-id))
 
-(mu/defn oauth-client-summaries
-  "Return registered client IDs and names, without credentials."
-  []
-  (t2/select [:model/OAuthClient :client_id :client_name] {:order-by [[:client_name :asc] [:client_id :asc]]}))
-
 (mu/defn insert-oauth-client!
   "Insert the OAuthClient `row`, returning the number inserted."
   [row :- ::oauth-server.schema/oauth-client.update]
