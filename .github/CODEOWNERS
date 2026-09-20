@@ -56,6 +56,10 @@ src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
 
+# @metabase/metabot-backend
+src/metabase/search @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/search @metabase/metabot-backend
+
 # @metabase/core-frontend-gadget
 bin/custom-viz @metabase/core-frontend-gadget
 docs/developers-guide/custom-visualizations.md @metabase/core-frontend-gadget
