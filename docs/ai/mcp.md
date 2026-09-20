@@ -147,15 +147,11 @@ Results returned by the MCP server are sent to your MCP client, which may forwar
 
 ### Repeated authorization after reconnecting
 
-Metabase replaces the refresh token on each refresh. Codex versions that fail to save the replacement can lose their connection and ask you to authorize again.
+If Codex repeatedly asks you to authorize because it fails to save replacement refresh tokens, enable **Allow Codex refresh-token reuse** in **Admin > AI > MCP > Settings**. The setting is off by default and applies to existing and future registrations named exactly `Codex`. Other client names continue rotating tokens.
 
-To allow Codex to keep using its saved token, go to **Admin > AI > MCP > Settings** and enable **Allow Codex refresh-token reuse**. This applies automatically to existing and future clients registered with the exact name `Codex`. Other client names keep rotating tokens. The setting is off by default.
+Changes take effect without restarting Metabase. Authorize once more if your saved token is already revoked. Refresh tokens retain their original expiry and can still be revoked; access-token expiry and permission checks still apply. Disabling the setting resumes rotation on the next refresh.
 
-Changes take effect without restarting Metabase. If your connection already has a revoked token, authorize it once more after enabling the setting. Disabling the setting resumes rotation on the next refresh.
-
-Refresh tokens remain usable until their original expiry or explicit revocation; refresh requests don't extend that expiry. Access tokens still expire normally, and client, scope, and resource restrictions still apply.
-
-Client names are self-reported, so this setting does not verify OpenAI identity. Reusable refresh tokens have weaker protection against theft and do not provide the rotation or sender binding required by [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Disable the setting once your Codex version reliably saves replacement tokens.
+Client names are self-reported, so this does not verify OpenAI identity. Reusable tokens have weaker protection against theft and do not meet the rotation or sender-binding requirement in [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Disable the setting once your Codex version reliably saves replacement tokens.
 
 ## Authorization logs
 
