@@ -641,6 +641,27 @@
           (t2/delete! :model/SearchIndexMetadata :version "orphan-cleanup-test")
           (search.index/delete-obsolete-tables!))))))
 
+(deftest sweep-leaves-an-enclosing-transaction-intact-test
+  (when (search/supports-index?)
+    (binding [search.spec/*testing-only-index-version-hash* "sweep-in-transaction-test"]
+      (try
+        (reset! @#'search.index/next-sync-at nil)
+        (search.index/reset-index!)
+        (let [orphan (search.index/gen-table-name)
+              before (t2/count :model/Collection)]
+          (search.index/create-table! orphan)
+          (testing "a rollback-only transaction survives a sweep inside it"
+            (mt/with-temp [:model/Collection _ {}]
+              (mt/with-temp [:model/Collection _ {}]
+                (search.index/delete-obsolete-tables!)))
+            (is (= before (t2/count :model/Collection))))
+          (when (= :h2 (mdb/db-type))
+            (testing "and on h2, where the drop cannot join that transaction, the orphan is gone"
+              (is (not (search.index/exists? orphan))))))
+        (finally
+          (t2/delete! :model/SearchIndexMetadata :version "sweep-in-transaction-test")
+          (search.index/delete-obsolete-tables!))))))
+
 (deftest strip-junk-chars-test
   (let [strip @#'search.index/strip-junk-chars]
     (testing "non-string values pass through unchanged"
