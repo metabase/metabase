@@ -950,7 +950,7 @@
           (is (=? {:error string?} response)))))))
 
 (deftest token-refresh-grant-test
-  (testing "Refresh token grant -- returns new access token"
+  (testing "Refresh rotates credentials, rejects reuse, and keeps the replacement usable"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client    (create-test-client!)
@@ -966,10 +966,21 @@
                                 {:grant_type    "refresh_token"
                                  :refresh_token (:refresh_token token-response)}
                                 :authorization (basic-auth-header client-id client-secret))]
-          (is (=? {:access_token string?
-                   :token_type   "Bearer"
-                   :expires_in   pos-int?}
-                  refresh-response)))))))
+          (is (=? {:access_token  string?
+                   :refresh_token string?
+                   :token_type    "Bearer"
+                   :expires_in    pos-int?}
+                  refresh-response))
+          (is (not= (:refresh_token token-response) (:refresh_token refresh-response)))
+          (is (=? {:error string?}
+                  (token-request! {:grant_type    "refresh_token"
+                                   :refresh_token (:refresh_token token-response)}
+                                  :expected-status 400
+                                  :authorization (basic-auth-header client-id client-secret))))
+          (is (=? {:access_token string? :refresh_token string?}
+                  (token-request! {:grant_type    "refresh_token"
+                                   :refresh_token (:refresh_token refresh-response)}
+                                  :authorization (basic-auth-header client-id client-secret)))))))))
 
 (deftest refresh-token-has-expiry-test
   (testing "Refresh tokens are stored with an expiry derived from oauth-server-refresh-token-ttl"
