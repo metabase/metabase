@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.server.middleware.body-limit :as mw.body-limit]
-   [metabase.test.server.handler :as test.server.handler]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
-   [metabase.test.fixtures :as fixtures])
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.server.handler :as test.server.handler])
   (:import
    (java.io ByteArrayInputStream InputStream)))
 
