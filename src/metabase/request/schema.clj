@@ -25,17 +25,6 @@
    [:data-app-scoped?     {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]])
 
-(mr/def ::json-value
-  "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
-  [:or
-   :string
-   :keyword
-   number?
-   :boolean
-   :nil
-   [:sequential [:ref ::json-value]]
-   [:map-of :string [:ref ::json-value]]])
-
 (mr/def ::multipart-file
   "One `:multipart-params` entry for an uploaded file, as `ring.middleware.multipart-params` builds it."
   [:map {:closed true}

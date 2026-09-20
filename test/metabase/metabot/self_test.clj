@@ -478,6 +478,36 @@
                   {:type :reasoning-delta :id "r1" :delta "c"}
                   {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
+(deftest ^:parallel aisdk-xf-nested-object-arguments-validate-test
+  (testing "a tool call with object-valued arguments replays as valid LLMRequestOpts input"
+    ;; `parse-tool-arguments` keywordizes nested objects too; the agent loop replays the part on its next iteration,
+    ;; where every adapter validates it against `LLMRequestOpts` (BOT-2190).
+    (let [chunks [{:type :tool-input-start :toolCallId "call-1" :toolName "construct_notebook_query"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "{\"query\":{\"lib/type\":\"mbql/query\","}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"stages\":[{\"source-table\":[\"db\",\"public\",\"orders\"]}]},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"visualization\":{\"chart_type\":\"line\"},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"title\":\"Orders per month\",\"description\":\"Monthly orders in 2025\"}"}
+                  {:type :tool-input-available :toolCallId "call-1" :toolName "construct_notebook_query"}]
+          parts  (into [] (self.core/aisdk-xf) chunks)]
+      (is (= [{:type      :tool-input
+               :id        "call-1"
+               :function  "construct_notebook_query"
+               :arguments {:query         {:lib/type "mbql/query"
+                                           :stages   [{:source-table ["db" "public" "orders"]}]}
+                           :visualization {:chart_type "line"}
+                           :title         "Orders per month"
+                           :description   "Monthly orders in 2025"}}]
+             parts))
+      (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
