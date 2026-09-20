@@ -14,6 +14,7 @@ export * from "./comment";
 export * from "./constants";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
+export * from "./data-sensitivity";
 export * from "./data-studio";
 export * from "./database";
 export * from "./dependencies";

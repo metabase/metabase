@@ -1,0 +1,73 @@
+## Reinstall v_ai_usage_log (v6) and v_metabot_conversations (v8) with a CASE branch for the
+## `data_sensitivity_classification` usage source, which the LLM data-sensitivity classifier writes to
+## ai_usage_log. v6 = v5 plus that branch; v8 = v7 plus that branch. Previous versions are never edited
+## in place: the v5 / v7 installers are runOnChange, so editing their files would re-run them.
+##
+## runOnChange so editing the v6 / v8 SQL re-runs these on upgrade.
+##
+## Keep the CASE branches in sync with the known-sources / known-profile-ids allow-lists in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-04T00:00:00
+      author: tplude
+      runOnChange: true
+      comment: Reinstall v_ai_usage_log (v6) with the data_sensitivity_classification source in source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v6/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v6/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v6/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v5/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v5/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v5/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.2026-09-04T00:00:01
+      author: tplude
+      runOnChange: true
+      comment: Reinstall v_metabot_conversations (v8) with the data_sensitivity_classification source CASE branch
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v8/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v8/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v8/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v7/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v7/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v7/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

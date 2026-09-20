@@ -16,14 +16,15 @@
 (set! *warn-on-reflection* true)
 
 ;; Keep these in sync with the CASE branches in the LATEST version of:
-;;   resources/migrations/instance_analytics_views/ai_usage_log/v4/{h2,mysql,postgres}-ai_usage_log.sql
-;;   resources/migrations/instance_analytics_views/metabot_conversations/v6/{h2,mysql,postgres}-metabot_conversations.sql
+;;   resources/migrations/instance_analytics_views/ai_usage_log/v6/{h2,mysql,postgres}-ai_usage_log.sql
+;;   resources/migrations/instance_analytics_views/metabot_conversations/v8/{h2,mysql,postgres}-metabot_conversations.sql
 ;; When adding a value here, create a new view version (vN+1) with the extra CASE branches plus a migration
 ;; that reinstalls the views, so users see a nicer name in ai analytics. Parity is enforced by
 ;; `metabase-enterprise.metabot.usage-test/known-sources-and-profiles-have-view-case-branches-test`.
 (def ^:private known-sources
   #{"metabot_agent"
     "contextual_interestingness"
+    "data_sensitivity_classification"
     "document_generate_content"
     "example_question_generation_batch"
     "exploration"
