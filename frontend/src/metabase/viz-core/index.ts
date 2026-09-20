@@ -185,7 +185,6 @@ export {
   ECHARTS_TOOLTIP_CONTAINER_CLASS,
   getMarkerColorClass,
   getTooltipBaseOption,
-  setTooltipRootProvider,
   useCartesianChartSeriesColorsClasses,
   useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
@@ -303,7 +302,6 @@ export {
 export {
   getClickBehaviorSettings,
   getComputedSettings,
-  setComputedSettingsTransform,
   updateSettings,
 } from "./lib/settings";
 export {
@@ -510,3 +508,5 @@ export type {
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
 } from "./types/widget-props";
+
+export { PLUGIN_VISUALIZATION_BEHAVIOR } from "./plugins";

@@ -6,6 +6,7 @@ import {
   ensureMetabaseProviderPropsStore,
   useMetabaseProviderPropsStore,
 } from "embedding-sdk-bundle/lib/provider-props-store";
+import { registerSdkVisualizationBehaviors } from "embedding-sdk-bundle/lib/register-sdk-visualization-behaviors";
 import { initAuth } from "embedding-sdk-bundle/store/auth";
 import { initGuestEmbed } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -51,16 +52,12 @@ const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
 );
 
-// Install the SDK's request-client header strategy once; re-renders keep the
-// first-set client (matching the previous set-once-if-unset behaviour).
-const setSdkRequestClientHeadersOnce = _.once(
-  (requestClient: RequestClientInfo) => {
-    PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
-      setRequestClientHeaders(requestClient);
-    PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
-      setEmbedPreviewHeader;
-  },
-);
+function setSdkRequestClientHeaders(requestClient: RequestClientInfo) {
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders(requestClient);
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
+}
 
 interface InitDataLoaderParameters {
   reduxStore: SdkStore;
@@ -122,7 +119,7 @@ export const useInitDataInternal = ({
   // We have to initialize the API fields before other possible API calls
   setBasename(authConfig.metabaseInstanceUrl);
 
-  setSdkRequestClientHeadersOnce({
+  setSdkRequestClientHeaders({
     name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
     identifier: EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier,
     // Note: this is *package* version, it's undefined in EAJS
@@ -168,5 +165,6 @@ export const useInitDataInternal = ({
   useMount(function registerVisualizations() {
     registerVisualizationsOnce();
     registerDashboardVisualizationsOnce();
+    registerSdkVisualizationBehaviors();
   });
 };

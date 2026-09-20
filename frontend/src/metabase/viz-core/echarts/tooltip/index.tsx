@@ -8,6 +8,7 @@ import { isNotNull } from "metabase/utils/types";
 import type { ClickObject } from "metabase-lib";
 
 import TooltipStyles from "../../components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+import { PLUGIN_VISUALIZATION_BEHAVIOR } from "../../plugins";
 import type { ComputedVisualizationSettings } from "../../types";
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { SankeyChartModel } from "../graph/sankey/model/types";
@@ -16,13 +17,6 @@ import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
 export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
-
-// The embedding SDK sets this to its portal root, so tooltips render inside the embed instead of on document.body.
-let tooltipRootProvider: () => HTMLElement | null = () => document.body;
-
-export function setTooltipRootProvider(provider: () => HTMLElement | null) {
-  tooltipRootProvider = provider;
-}
 
 export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
@@ -76,7 +70,7 @@ export const getTooltipBaseOption = (
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
-      const root = tooltipRootProvider();
+      const root = PLUGIN_VISUALIZATION_BEHAVIOR.getTooltipRoot();
 
       let container =
         root?.querySelector<HTMLDivElement>(

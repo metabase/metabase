@@ -8,26 +8,13 @@ import type {
 } from "metabase-types/api";
 import { isObjectWithRaw } from "metabase-types/guards";
 
+import { PLUGIN_VISUALIZATION_BEHAVIOR } from "../plugins";
 import type {
   ComputedVisualizationSettings,
   SettingsExtra,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "../types";
-
-type ComputedSettingsTransform = (
-  computedSettings: ComputedVisualizationSettings,
-  extra: SettingsExtra,
-) => ComputedVisualizationSettings;
-
-// The embedding SDK sets this to rewrite click behaviours in the computed settings.
-let computedSettingsTransform: ComputedSettingsTransform | null = null;
-
-export function setComputedSettingsTransform(
-  transform: ComputedSettingsTransform | null,
-) {
-  computedSettingsTransform = transform;
-}
 
 export function getComputedSettings<T>(
   settingsDefs: VisualizationSettingsDefinitions,
@@ -48,11 +35,10 @@ export function getComputedSettings<T>(
     );
   }
 
-  if (computedSettingsTransform) {
-    return computedSettingsTransform(computedSettings, extra);
-  }
-
-  return computedSettings;
+  return PLUGIN_VISUALIZATION_BEHAVIOR.transformComputedSettings(
+    computedSettings,
+    extra,
+  );
 }
 
 function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
