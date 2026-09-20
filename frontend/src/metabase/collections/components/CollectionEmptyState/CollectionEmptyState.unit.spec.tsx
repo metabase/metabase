@@ -79,7 +79,7 @@ describe("empty collection", () => {
 });
 
 describe("library sub-collection empty state", () => {
-  const PUBLISH_CTA = "Publish tables in the Library to see them here.";
+  const PUBLISH_CTA = "Publish tables in the semantic layer to see them here.";
   const LIBRARY_DATA_COLLECTION = { type: "library-data" as const };
 
   it("shows the publish CTA to admins", async () => {
@@ -120,7 +120,7 @@ describe("library sub-collection empty state", () => {
     });
 
     expect(
-      screen.getByText("Put metrics in the Library to see them here."),
+      screen.getByText("Put metrics in the semantic layer to see them here."),
     ).toBeInTheDocument();
   });
 });

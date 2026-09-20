@@ -172,8 +172,8 @@ function getInfoMessage(
   publishedRemappedTables: BulkTableInfo[],
 ) {
   return selectedTable != null && publishedRemappedTables.length === 0
-    ? t`This will remove this table from the Library.`
-    : t`This will remove these tables from the Library.`;
+    ? t`This will remove this table from the semantic layer.`
+    : t`This will remove these tables from the semantic layer.`;
 }
 
 function getForeignKeyMessage(selectedTable: BulkTableInfo | null) {

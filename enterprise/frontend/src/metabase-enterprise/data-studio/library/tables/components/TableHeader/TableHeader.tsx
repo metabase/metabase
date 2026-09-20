@@ -5,6 +5,7 @@ import {
   type PaneHeaderProps,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -37,7 +38,7 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
                 expandedIds: path.slice(1, i + 1).map((c) => c.id),
               })}
             >
-              {collection.name}
+              {getLibraryCollectionDisplayName(collection)}
             </Link>
           ))}
           <span>{table.display_name}</span>
