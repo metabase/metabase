@@ -291,6 +291,7 @@ export function initializePlugin() {
       if (currentUser?.tenant_collection_id) {
         const sharedTenantCollectionTree = buildCollectionTree(
           sharedTenantCollections,
+          { isTenantUser: true },
         );
         const userTenantCollectionId = currentUser?.tenant_collection_id;
 
