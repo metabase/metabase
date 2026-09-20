@@ -8,31 +8,21 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(defn app-api-routes
-  "The application's own API route tree, the handler mounted under `/api`."
+(mu/defn- make-test-handler :- ::api.macros/handler
   []
-  #'api-routes/routes)
-
-(mu/defn make-test-handler :- ::api.macros/handler
-  "Build the full Ring handler (server routes plus middleware) that serves `api-routes` under `/api`. Defaults to
-  [[app-api-routes]]."
-  ([]
-   (make-test-handler (app-api-routes)))
-
-  ([api-routes :- ::api.macros/handler]
-   (let [server-routes (server/make-routes auth-wrapper/routes api-routes)
-         handler       (server/make-handler server-routes {:cors mcp/cors})]
-     (fn [request respond raise]
-       (letfn [(raise' [e]
-                 (log/errorf "ERROR HANDLING REQUEST! <async raise> %s" request)
-                 (log/error e)
-                 (raise e))]
-         (try
-           (handler request respond raise')
-           (catch Throwable e
-             (log/errorf "ERROR HANDLING REQUEST! <async thrown> %s" request)
-             (log/error e)
-             (throw e))))))))
+  (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
+        handler       (server/make-handler server-routes {:cors mcp/cors})]
+    (fn [request respond raise]
+      (letfn [(raise' [e]
+                (log/errorf "ERROR HANDLING REQUEST! <async raise> %s" request)
+                (log/error e)
+                (raise e))]
+        (try
+          (handler request respond raise')
+          (catch Throwable e
+            (log/errorf "ERROR HANDLING REQUEST! <async thrown> %s" request)
+            (log/error e)
+            (throw e)))))))
 
 (def ^:private -test-handler
   (delay (make-test-handler)))
