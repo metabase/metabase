@@ -4,7 +4,6 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
-  buildCollectionTree,
   getCollectionIcon,
   isLibraryCollection,
 } from "metabase/common/collections/utils";
@@ -19,25 +18,21 @@ import { buildOfficialNavTree } from "metabase/nav/containers/MainNavbar/Officia
 import type { OfficialNavItem } from "metabase/nav/containers/MainNavbar/OfficialNav/use-official-nav-items";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
-import type {
-  Collection,
-  CollectionId,
-  CollectionType,
-} from "metabase-types/api";
+import type { CollectionId, CollectionType } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
-  collections: Collection[];
+  collections: CollectionTreeItem[];
   itemsByCollectionId: Map<CollectionId, OfficialNavItem[]>;
   selectedId?: string | number;
   onItemSelect: () => void;
 };
 
-/** Build the tree for a single library section (Data or Metrics).
- *  If the user has access to the root collection, use it directly.
+/** Build the node for a seeded library section (Data or Metrics).
+ *  If the user has access to the root collection, its subtree is already built — use it directly.
  *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
-  libraryCollection: Collection,
-  allCollections: Collection[],
+  libraryCollection: CollectionTreeItem,
+  allCollections: CollectionTreeItem[],
   sectionType: CollectionType,
   sectionName: string,
 ): CollectionTreeItem | null {
@@ -47,9 +42,7 @@ function buildSectionTree(
   );
 
   if (rootCollection) {
-    // User has access to the root — build its subtree normally
-    const [tree] = buildCollectionTree([rootCollection]);
-    return tree ?? null;
+    return rootCollection;
   }
 
   // User doesn't have access to the root collection. Find any promoted
@@ -68,10 +61,7 @@ function buildSectionTree(
     return null;
   }
 
-  // Build subtrees for the orphaned children
-  const children = buildCollectionTree(allOrphans);
-
-  // Create a synthetic container node
+  // Create a synthetic container node; the orphans are already built subtrees.
   return {
     id: `synthetic-${sectionType}`,
     name: sectionName,
@@ -80,7 +70,7 @@ function buildSectionTree(
       type: sectionType,
       is_library_root: true,
     }),
-    children,
+    children: allOrphans,
     nonNavigable: true,
     type: sectionType,
     is_library_root: true,
@@ -125,9 +115,15 @@ export function NavbarLibrarySection({
       t`Metrics`,
     );
 
-    const sections = [dataTree, metricsTree].filter(
-      (node): node is CollectionTreeItem => node != null,
+    // Folders the user created at the top level of the Library are plain `library` collections
+    // sitting beside the two seeded sections.
+    const userFolders = (libraryCollection.children ?? []).filter(
+      (child) => child.type === "library" && !child.is_library_root,
     );
+
+    const sections = [dataTree, metricsTree]
+      .filter((node): node is CollectionTreeItem => node != null)
+      .concat(userFolders);
 
     return buildOfficialNavTree(sections, itemsByCollectionId);
   }, [collections, itemsByCollectionId]);

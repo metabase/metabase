@@ -8,6 +8,7 @@ const libraryParentItem: OmniPickerItem = {
   name: "Library",
   model: "collection",
   type: "library",
+  is_library_root: true,
 };
 
 describe("getCollectionPickerItems", () => {
@@ -74,6 +75,52 @@ describe("getCollectionPickerItems", () => {
         childTypeFilter: "library-metrics",
       }),
     ]);
+  });
+
+  it("should pass through folders the user created at the top level", () => {
+    const dataRoot = createMockCollectionItem({
+      id: 2,
+      name: "Data",
+      model: "collection",
+      type: "library-data",
+      is_library_root: true,
+    });
+    const userFolder = createMockCollectionItem({
+      id: 8,
+      name: "Finance",
+      model: "collection",
+      type: "library",
+    });
+
+    expect(
+      getCollectionPickerItems({
+        parentItem: libraryParentItem,
+        items: [dataRoot, userFolder],
+      }),
+    ).toEqual([dataRoot, userFolder]);
+  });
+
+  it("should return undefined for a user-created Library folder, so its children are listed as-is", () => {
+    const userFolderParent: OmniPickerItem = {
+      id: 8,
+      name: "Finance",
+      model: "collection",
+      type: "library",
+    };
+
+    expect(
+      getCollectionPickerItems({
+        parentItem: userFolderParent,
+        items: [
+          createMockCollectionItem({
+            id: 9,
+            name: "Nested",
+            model: "collection",
+            type: "library",
+          }),
+        ],
+      }),
+    ).toBeUndefined();
   });
 
   it("should return undefined for non-Library parent items", () => {

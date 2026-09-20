@@ -6,20 +6,31 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
 
-(def ^:private library-collection-content-specs
-  "A map from the `:type` of the parent collection to a spec for what contents it permits."
-  {collection/library-collection-type
-   {:allowed-content-types #{collection/library-data-collection-type
-                             collection/library-metrics-collection-type}
-    :error-message         "Cannot add anything to the Library collection"}
+(defn- library-content-spec
+  "A spec for what contents `parent` permits, or `nil` if `parent` is not a library collection at all.
 
-   collection/library-data-collection-type
-   {:allowed-content-types #{:table collection/library-data-collection-type}
-    :error-message         "Can only add tables to the 'Data' collection"}
+  The Library root only holds folders; a generic (user-created) library folder holds published tables, metrics, and
+  more folders; the seeded 'Data' and 'Metrics' trees stay single-purpose."
+  [{parent-type :type :as parent}]
+  (condp = parent-type
+    collection/library-collection-type
+    (if (collection/library-root-collection? parent)
+      {:allowed-content-types #{collection/library-collection-type
+                                collection/library-data-collection-type
+                                collection/library-metrics-collection-type}
+       :error-message         "Only folders can be added to the Library"}
+      {:allowed-content-types #{:table :metric collection/library-collection-type}
+       :error-message         "Can only add tables, metrics, and folders to a Library folder"})
 
-   collection/library-metrics-collection-type
-   {:allowed-content-types #{:metric collection/library-metrics-collection-type}
-    :error-message         "Can only add metrics to the 'Metrics' collection"}})
+    collection/library-data-collection-type
+    {:allowed-content-types #{:table collection/library-data-collection-type}
+     :error-message         "Can only add tables to the 'Data' collection"}
+
+    collection/library-metrics-collection-type
+    {:allowed-content-types #{:metric collection/library-metrics-collection-type}
+     :error-message         "Can only add metrics to the 'Metrics' collection"}
+
+    nil))
 
 (defenterprise check-allowed-content
   "Check if the collection's content matches the allowed content.
@@ -27,13 +38,13 @@
   :feature :library
   [content-type collection-id]
   (when collection-id
-    (let [collection-type (library.db/collection-type collection-id)]
-      (when-let [{:keys [allowed-content-types error-message]} (some-> collection-type
-                                                                       library-collection-content-specs)]
+    (let [parent (library.db/collection-type-and-entity-id collection-id)]
+      (when-let [{:keys [allowed-content-types error-message]} (library-content-spec parent)]
         (when-not (allowed-content-types content-type)
           (throw (ex-info error-message {:status-code 400}))))
-      (when (and (= content-type :table) (not= collection-type collection/library-data-collection-type))
-        (throw (ex-info "Tables can only be added to 'Data' collections" {:status-code 400})))))
+      (when (and (= content-type :table)
+                 (not (collection/can-contain-published-tables? parent)))
+        (throw (ex-info "Tables can only be added to Library folders" {:status-code 400})))))
   true)
 
 (defenterprise check-library-update
@@ -49,6 +60,6 @@
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)
                (when-let [parent-id (collection/location-path->parent-id (:location collection))]
-                 (not= (:type collection) (library.db/collection-type parent-id))))
+                 (not= (:type collection) (:type (library.db/collection-type-and-entity-id parent-id)))))
       (throw (ex-info "Cannot move a Library collection outside the Library" {}))))
   true)

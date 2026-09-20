@@ -36,6 +36,7 @@ export type ObjectWithModel = {
   is_personal?: boolean;
   is_remote_synced?: boolean;
   is_library_root?: boolean;
+  icon?: IconName | null;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {

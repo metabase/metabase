@@ -17,7 +17,7 @@ import { Button, Flex, Modal } from "metabase/ui";
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem } from "../../types";
 import {
-  getCollectionType,
+  getCollectionPlacementTarget,
   isCollection,
   isInRecentsOrSearch,
 } from "../../utils";
@@ -58,7 +58,10 @@ export const NewDashboardDialog = () => {
       entityType: "dashboard",
       collection: lastCollection,
     }) &&
-    canPlaceEntityInCollection("dashboard", getCollectionType(lastCollection));
+    canPlaceEntityInCollection(
+      "dashboard",
+      getCollectionPlacementTarget(lastCollection),
+    );
 
   const onCreateNewDashboard = async ({ name }: { name: string }) => {
     if (!canCreateHere) {

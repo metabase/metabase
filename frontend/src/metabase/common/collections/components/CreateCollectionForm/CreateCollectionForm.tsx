@@ -14,6 +14,7 @@ import type {
 import {
   Form,
   FormErrorMessage,
+  FormIconPicker,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
@@ -21,9 +22,13 @@ import {
 } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useLocation, useParams } from "metabase/router";
-import { Button, Flex } from "metabase/ui";
+import { Box, Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { Collection, CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionNamespace,
+  IconName,
+} from "metabase-types/api";
 
 import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
@@ -33,6 +38,7 @@ const COLLECTION_SCHEMA = Yup.object({
     .max(100, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  icon: Yup.mixed<IconName>().nullable().default(null),
 
   authority_level: Yup.mixed().oneOf(["official", null]).default(null),
   parent_id: Yup.number().nullable(),
@@ -41,6 +47,7 @@ const COLLECTION_SCHEMA = Yup.object({
 export interface CreateCollectionProperties {
   name: string;
   description: string | null;
+  icon: IconName | null;
   parent_id: Collection["id"] | null;
   namespace?: CollectionNamespace;
 }
@@ -55,6 +62,7 @@ export interface CreateCollectionFormOwnProps {
   pickerOptions?: EntityPickerOptions;
   namespaces?: CollectionNamespace[];
   showAuthorityLevelPicker?: boolean;
+  showIconPicker?: boolean;
 }
 
 type Props = CreateCollectionFormOwnProps;
@@ -69,6 +77,7 @@ function CreateCollectionForm({
   pickerOptions,
   namespaces,
   showAuthorityLevelPicker = true,
+  showIconPicker = false,
 }: Props) {
   const location = useLocation();
   const params = useParams();
@@ -135,6 +144,11 @@ function CreateCollectionForm({
               data-autofocus
               mb="lg"
             />
+            {showIconPicker && (
+              <Box mb="lg">
+                <FormIconPicker name="icon" label={t`Icon`} />
+              </Box>
+            )}
             <FormTextarea
               name="description"
               label={t`Description`}

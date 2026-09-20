@@ -16,11 +16,13 @@ import { isItemInCollectionOrItsDescendants } from "metabase/common/components/P
 import {
   Form,
   FormErrorMessage,
+  FormIconPicker,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { Button, Group, Modal, Stack } from "metabase/ui";
 import type {
   Collection,
@@ -53,6 +55,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
     return {
       name: collection.name ?? "",
       description: collection.description ?? null,
+      icon: collection.icon ?? null,
       parent_id: typeof parentId === "number" ? parentId : null,
     };
   }, [collection]);
@@ -63,6 +66,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
         id: collection.id,
         name: values.name,
         description: values.description ?? undefined,
+        icon: values.icon,
         parent_id: values.parent_id,
       }).unwrap();
       onSave?.({
@@ -83,6 +87,9 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
   const stopPropagation = useCallback(
     (e: KeyboardEvent) => e.stopPropagation(),
     [],
+  );
+  const isLibraryCollection = PLUGIN_LIBRARY.isLibraryCollectionType(
+    collection.type,
   );
 
   return (
@@ -108,6 +115,9 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
                 placeholder={t`My collection`}
                 data-autofocus
               />
+              {isLibraryCollection && (
+                <FormIconPicker name="icon" label={t`Icon`} />
+              )}
               <FormTextarea
                 name="description"
                 label={t`Description`}

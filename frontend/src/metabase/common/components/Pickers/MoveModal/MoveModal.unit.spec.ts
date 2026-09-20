@@ -122,13 +122,36 @@ describe("canMoveCollectionToLibraryDestination", () => {
         movingItem,
         makeItem({ model: "collection", type: "library" }),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       canMoveCollectionToLibraryDestination(
         movingItem,
         makeItem({ model: "collection", type: "library-data" }),
       ),
     ).toBe(true);
+    expect(
+      canMoveCollectionToLibraryDestination(
+        movingItem,
+        makeItem({ model: "collection", type: "library-metrics" }),
+      ),
+    ).toBe(false);
+  });
+
+  it("should allow moving a user-created Library folder into the Library or another folder", () => {
+    const movingItem = makeItem({ model: "collection", type: "library" });
+
+    expect(
+      canMoveCollectionToLibraryDestination(
+        movingItem,
+        makeItem({ model: "collection", type: "library" }),
+      ),
+    ).toBe(true);
+    expect(
+      canMoveCollectionToLibraryDestination(
+        movingItem,
+        makeItem({ model: "collection", type: "library-data" }),
+      ),
+    ).toBe(false);
     expect(
       canMoveCollectionToLibraryDestination(
         movingItem,
@@ -148,7 +171,7 @@ describe("canMoveCollectionToLibraryDestination", () => {
         movingItem,
         makeItem({ model: "collection", type: "library" }),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       canMoveCollectionToLibraryDestination(
         movingItem,

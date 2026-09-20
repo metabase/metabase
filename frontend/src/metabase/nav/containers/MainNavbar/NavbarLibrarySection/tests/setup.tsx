@@ -7,6 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import { buildCollectionTree } from "metabase/common/collections/utils";
 import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import type { Collection } from "metabase-types/api";
@@ -91,7 +92,7 @@ export const setup = ({
       path="/"
       element={
         <NavbarLibrarySection
-          collections={collections}
+          collections={buildCollectionTree(collections)}
           itemsByCollectionId={new Map()}
           selectedId={undefined}
           onItemSelect={jest.fn()}
