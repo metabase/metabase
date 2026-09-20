@@ -10,6 +10,15 @@
 
 (set! *warn-on-reflection* true)
 
+(api.macros/defendpoint :get "/clients"
+  :- [:sequential [:map {:closed true}
+                   [:client_id ms/NonBlankString]
+                   [:client_name [:maybe :string]]]]
+  "List registered OAuth client IDs and names. Superuser only."
+  []
+  (api/check-superuser)
+  (oauth-server.db/oauth-client-summaries))
+
 (defn- present-event
   [row]
   ;; `redirect_uris` is stored as a JSON array but selected via raw SQL here, so the model's

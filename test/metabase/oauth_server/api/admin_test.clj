@@ -27,6 +27,13 @@
             :event_type      event-type}
      user-id (assoc :user_id user-id))))
 
+(deftest clients-list-test
+  (mt/with-temp [:model/OAuthClient client (client-defaults)]
+    (mt/user-http-request :rasta :get 403 "oauth/clients")
+    (let [clients (mt/user-http-request :crowberto :get 200 "oauth/clients")]
+      (is (some #(= {:client_id (:client_id client) :client_name (:client_name client)} %) clients))
+      (is (every? #(= #{:client_id :client_name} (set (keys %))) clients)))))
+
 ;;; ----------------------------------------- GET /api/oauth/authorizations ----------------------------------------
 
 (deftest authorizations-requires-superuser-test

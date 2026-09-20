@@ -1304,6 +1304,45 @@
             (revoke-request! {:token (:refresh_token tokens) :client_id client-id})
             (is (=? {:error string?} (token-request! params :expected-status 400)))))))))
 
+(deftest refresh-token-reuse-client-exceptions-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                     oauth-server-rotate-refresh-tokens true
+                                     oauth-server-refresh-token-reuse-client-ids []]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [selected    (create-test-client! {:client_name "Codex"})
+            other       (create-test-client! {:client_name "Codex"})
+            selected-id (:client_id selected)
+            issue       (fn [{:keys [client_id client_secret]}]
+                          (token-request! {:grant_type "authorization_code"
+                                           :code (authorize-and-get-code! client_id)
+                                           :redirect_uri "https://example.com/callback"}
+                                          :authorization (basic-auth-header client_id client_secret)))
+            selected-token (:refresh_token (issue selected))
+            other-token    (:refresh_token (issue other))
+            refresh        (fn [client token expected-status]
+                             (token-request! {:grant_type "refresh_token"
+                                              :client_id selected-id
+                                              :refresh_token token}
+                                             :expected-status expected-status
+                                             :authorization (basic-auth-header (:client_id client) (:client_secret client))))]
+        (mt/user-http-request :rasta :put 403 "api/setting/oauth-server-refresh-token-reuse-client-ids"
+                              {:value [selected-id]})
+        (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-refresh-token-reuse-client-ids"
+                              {:value [selected-id]})
+        (testing "Only the selected registration reuses its token"
+          (dotimes [_ 2]
+            (let [response (refresh selected selected-token 200)]
+              (is (string? (:access_token response)))
+              (is (nil? (:refresh_token response)))))
+          (is (=? {:error string?} (refresh other selected-token 400)))
+          (is (string? (:refresh_token (refresh other other-token 200))))
+          (is (=? {:error string?} (refresh other other-token 400))))
+        (testing "Removing the exception resumes rotation without restarting"
+          (mt/user-http-request :crowberto :put 204 "api/setting/oauth-server-refresh-token-reuse-client-ids"
+                                {:value []})
+          (is (string? (:refresh_token (refresh selected selected-token 200))))
+          (is (=? {:error string?} (refresh selected selected-token 400))))))))
+
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]

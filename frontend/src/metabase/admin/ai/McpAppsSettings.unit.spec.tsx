@@ -6,6 +6,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { setupOAuthClientsEndpoint } from "__support__/server-mocks/oauth";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -35,6 +36,7 @@ const setup = async ({
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
+  setupOAuthClientsEndpoint();
 
   renderWithProviders(<McpAppsSettings />, {
     storeInitialState: createMockState({

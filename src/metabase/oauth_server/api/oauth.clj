@@ -637,7 +637,7 @@
         client-id  (or (:client_id body) ip-address)]
     (with-throttling-429 [token-client-throttler client-id
                           token-ip-throttler     ip-address]
-      (or (when-let [provider (oauth-server/get-provider)]
+      (or (when-let [provider (oauth-server/provider-for-token-request body)]
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))

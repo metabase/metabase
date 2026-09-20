@@ -3,10 +3,14 @@ import { provideOAuthAuthorizationListTags } from "metabase/api/tags";
 import type {
   ListOAuthAuthorizationsRequest,
   ListOAuthAuthorizationsResponse,
+  OAuthClientSummary,
 } from "metabase-types/api";
 
 export const oauthApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listOAuthClients: builder.query<OAuthClientSummary[], void>({
+      query: () => ({ method: "GET", url: "/api/oauth/clients" }),
+    }),
     listOAuthAuthorizations: builder.query<
       ListOAuthAuthorizationsResponse,
       ListOAuthAuthorizationsRequest | void
@@ -22,4 +26,5 @@ export const oauthApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListOAuthAuthorizationsQuery } = oauthApi;
+export const { useListOAuthAuthorizationsQuery, useListOAuthClientsQuery } =
+  oauthApi;

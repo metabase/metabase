@@ -328,6 +328,8 @@ export const createMockSettings = (
   "loading-message": "doing-science",
   "llm-anthropic-api-key-configured?": false,
   "mcp-enabled?": true,
+  "oauth-server-rotate-refresh-tokens": true,
+  "oauth-server-refresh-token-reuse-client-ids": [],
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,

@@ -67,13 +67,15 @@ The initial MCP commit already used `oidc-provider 0.6.2`. That library [default
 
 ## Configure server-side compatibility
 
-Set `oauth-server-rotate-refresh-tokens` to `false` to keep refresh tokens reusable. Rotation remains enabled by default. The provider cache observes changes to this setting, so an API update does not require a restart. Previously revoked tokens remain revoked; an already affected client needs one fresh authorization.
+In **Admin > AI > MCP > Settings**, keep **Refresh token rotation** enabled and select affected registrations under **Clients allowed to reuse refresh tokens**. These exceptions are stored in `oauth-server-refresh-token-reuse-client-ids`. The token's stored client ID determines the exception; a matching client name or a different ID claimed in the request cannot select a weaker policy for another registration.
+
+Setting `oauth-server-rotate-refresh-tokens` to `false` remains available as an instance-wide fallback. Changes to either setting do not require a restart. Previously revoked tokens remain revoked; an already affected client needs one fresh authorization.
 
 The no-background-stream control retains token rotation and returns HTTP 405 for MCP GET requests. The [MCP transport specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server) permits this, but clients lose unsolicited notifications such as tool-list changes. A production option would need to account for that behavior and be tested with the real Metabase endpoints.
 
 The `--reuse-refresh-token` fixture omits `refresh_token` from refresh responses, matching the OAuth provider's response when rotation is disabled. It tests the installed Codex backend against this response shape. It is a synthetic server, not a full Metabase instance. The Metabase API tests separately exercise the production provider and database stores with a public PKCE client, checking repeated reuse, fixed expiry, revocation, client binding, and scope restrictions.
 
-Reusable tokens remove rotation's protection against token theft. This instance-wide compatibility option is an explicit departure from [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2), which requires rotation or sender binding. Keep it disabled only while required for client compatibility.
+Reusable tokens remove rotation's protection against token theft. Both compatibility options depart from [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2), which requires rotation or sender binding. Prefer individual exceptions and remove them when no longer required.
 
 ## Retain the useful Metabase regression coverage
 
