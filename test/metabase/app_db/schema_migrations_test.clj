@@ -3458,6 +3458,7 @@
                                         :mysql    " AND table_schema = database()"
                                         :postgres " AND table_schema = current_schema()"
                                         :h2       ""))]))))))))
+
 (deftest data-app-group-assignments-migration-test
   (impl/test-migrations ["v64.2026-09-16T00:00:00" "v64.2026-09-16T00:00:04"] [migrate!]
     (let [legacy-group (t2/insert-returning-pk! :permissions_group {:name "Data App: birds" :is_data_app_group true :entity_id "legacy-app-group"})
