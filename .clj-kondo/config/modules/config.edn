@@ -551,6 +551,7 @@
            query-processor.pivot
            request
            settings
+           startup
            system
            task
            tiles
@@ -934,6 +935,7 @@
            query-processor.driver-api
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -1568,6 +1570,7 @@
            settings
            setup
            sql-tools
+           startup
            sync
            util
            util.config
@@ -2637,6 +2640,7 @@
               server
               settings
               sso.auth-identity
+              startup
               system
               util
               util.config}
@@ -2812,6 +2816,7 @@
            premium-features
            query-processor
            settings
+           startup
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
