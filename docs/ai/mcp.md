@@ -145,13 +145,9 @@ A first-time connection will go something like this:
 
 Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [AI privacy](./privacy.md).
 
-### Repeated authorization after reconnecting
+### Trouble connecting with Codex
 
-If Codex repeatedly asks you to authorize because it fails to save replacement refresh tokens, enable **Allow Codex refresh-token reuse** in **Admin > AI > MCP > Settings**. The setting is off by default and applies to existing and future registrations named exactly `Codex`. Other client names continue rotating tokens.
-
-Changes take effect without restarting Metabase. Authorize once more if your saved token is already revoked. Refresh tokens retain their original expiry and can still be revoked; access-token expiry and permission checks still apply. Disabling the setting resumes rotation on the next refresh.
-
-Client names are self-reported, so this does not verify OpenAI identity. Reusable tokens have weaker protection against theft and do not meet the rotation or sender-binding requirement in [OAuth security guidance for public clients](https://www.rfc-editor.org/rfc/rfc9700#section-2.2.2). Disable the setting once your Codex version reliably saves replacement tokens.
+If Codex has trouble authenticating with Metabase or repeatedly asks you to sign in, try enabling **Allow Codex refresh-token reuse** in **Admin > AI > MCP > Settings**. Then reconnect Codex.
 
 ## Authorization logs
 
