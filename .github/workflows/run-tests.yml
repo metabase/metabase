@@ -39,7 +39,6 @@ jobs:
     env:
       PLAN: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
     outputs:
-      stats: ${{ steps.compute.outputs.stats }}
       artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
@@ -56,29 +55,8 @@ jobs:
           loki-infra-touched: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_loki_infra') }}
           e2e-infra-touched: ${{ contains(fromJSON(needs.gate.outputs.matched), 'e2e_infra') }}
           shared-sources-touched: ${{ contains(fromJSON(needs.gate.outputs.matched), 'shared_sources') }}
-
-  upload-affected-tests-stats:
-    needs: create-test-plan
-    # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: >-
-      ${{ needs.create-test-plan.outputs.stats != ''
-      && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
-    # Stats upload is best-effort — a failure here shouldn't fail the PR run.
-    continue-on-error: true
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/prepare-node-bun
-      - name: Upload affected tests stats
-        env:
-          STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
-          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
-        run: bun .github/scripts/upload-affected-tests-stats.ts
+          stats-url: ${{ secrets.ENG_STATS_URL }}
+          stats-api-key: ${{ secrets.ENG_STATS_API_KEY }}
 
   uberjar:
     needs: gate

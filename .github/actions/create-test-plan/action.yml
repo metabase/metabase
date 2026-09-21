@@ -23,11 +23,18 @@ inputs:
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
+  # A composite action has no `secrets` context, so the eng-stats credentials come in as inputs.
+  # Without them the plan is still computed and the stats row is simply not landed.
+  stats-url:
+    description: Endpoint that stores the affected-tests stats row.
+    required: false
+    default: ''
+  stats-api-key:
+    description: API key for stats-url.
+    required: false
+    default: ''
 
 outputs:
-  stats:
-    description: FE Affected Tests stats row (JSON).
-    value: ${{ steps.compute.outputs.stats }}
   artifact-id:
     description: Artifact containing test-plan.json for this run.
     value: ${{ steps.upload.outputs.artifact-id }}
@@ -122,3 +129,20 @@ runs:
           echo '```'
           echo "</details>"
         } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+    # Only land rows for PRs from the upstream repo so forks don't pollute the table. Best-effort:
+    # a failed upload must not cost us the plan.
+    - name: Upload affected tests stats
+      if: >-
+        ${{ inputs.stats-url != ''
+        && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+      continue-on-error: true
+      shell: bash
+      env:
+        STATS_JSON: ${{ steps.compute.outputs.stats }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        ENG_STATS_URL: ${{ inputs.stats-url }}
+        API_KEY: ${{ inputs.stats-api-key }}
+      run: bun .github/scripts/upload-affected-tests-stats.ts
