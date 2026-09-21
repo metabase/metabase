@@ -1,8 +1,9 @@
 import { modelIconMap } from "metabase/common/utils/icon";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, Collection } from "metabase-types/api";
 
 import { isMetricPath, isModelPath, isQuestionPath } from "./getSelectedItems";
 import type { OpenNavItem } from "./types";
@@ -17,13 +18,21 @@ type Opts = {
  * The thing the current route has open, as a rail row. Collections are deliberately excluded:
  * browsing a collection is not opening a piece of work, and the collections drawer already covers
  * getting to them.
+ *
+ * Library content is excluded too. The Library is a curated reference you navigate to and read,
+ * not something you open and work on, and it already has its own place in the Official rail.
  */
 export function getOpenNavItem({
   pathname,
   card,
   dashboard,
 }: Opts): OpenNavItem | null {
-  if (card && !card.archived && isCardPath(pathname)) {
+  if (
+    card &&
+    !card.archived &&
+    isCardPath(pathname) &&
+    !isInLibrary(card.collection)
+  ) {
     return {
       key: `card-${card.id}`,
       name: card.name,
@@ -32,7 +41,12 @@ export function getOpenNavItem({
     };
   }
 
-  if (dashboard && !dashboard.archived && isDashboardPath(pathname)) {
+  if (
+    dashboard &&
+    !dashboard.archived &&
+    isDashboardPath(pathname) &&
+    !isInLibrary(dashboard.collection)
+  ) {
     return {
       key: `dashboard-${dashboard.id}`,
       name: dashboard.name,
@@ -42,6 +56,10 @@ export function getOpenNavItem({
   }
 
   return null;
+}
+
+function isInLibrary(collection: Collection | null | undefined) {
+  return PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type);
 }
 
 function isCardPath(pathname: string) {
