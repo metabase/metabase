@@ -32,6 +32,7 @@ module.exports = {
     "^Components/Table",
     "^Components/Inputs/PasswordInput Overview",
     "^Components/Inputs/TextInput Overview",
+    "^Components/Inputs/NumberInput Overview",
     "^App/Palette",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
