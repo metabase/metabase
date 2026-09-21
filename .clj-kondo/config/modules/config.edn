@@ -512,6 +512,7 @@
            request
            settings
            slackbot
+           startup
            system
            task
            tiles
@@ -870,6 +871,7 @@
            query-processor
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -2212,6 +2214,7 @@
               request
               server
               settings
+              startup
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
