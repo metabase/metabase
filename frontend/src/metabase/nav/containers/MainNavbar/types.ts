@@ -6,6 +6,8 @@ export interface MainNavbarOwnProps {
   location: Location;
   params: {
     slug?: string;
+    /** The metric routes name their card param `cardId` rather than `slug`. */
+    cardId?: string;
     pageId?: string;
   };
   dashboard?: StoreDashboard;

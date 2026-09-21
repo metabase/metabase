@@ -154,9 +154,15 @@ function maybeGetQuestionId(
   { location, params }: MainNavbarOwnProps,
 ) {
   const { pathname } = location;
-  const canFetchQuestion =
-    isQuestionPath(pathname) || isModelPath(pathname) || isMetricPath(pathname);
-  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+
+  // The metric routes name their param `cardId`; question and model routes use a `slug`.
+  if (isMetricPath(pathname)) {
+    return Urls.extractEntityId(params.cardId);
+  }
+
+  return isQuestionPath(pathname) || isModelPath(pathname)
+    ? Urls.extractEntityId(params.slug)
+    : null;
 }
 
 function maybeGetCollectionId(
