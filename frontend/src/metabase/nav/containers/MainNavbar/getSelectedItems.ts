@@ -2,7 +2,7 @@ import { coerceCollectionId } from "metabase/common/collections/utils";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
-import type { Collection } from "metabase-types/api";
+import type { Collection, SearchModel } from "metabase-types/api";
 
 import type { SelectedItem } from "./types";
 
@@ -111,11 +111,17 @@ export function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
+  if (
+    (isQuestionPath(pathname) ||
+      isModelPath(pathname) ||
+      isMetricPath(pathname)) &&
+    question
+  ) {
     return [
       {
         id: question.id(),
         type: "card",
+        model: getSearchModel(question),
       },
       {
         id: coerceCollectionId(question.collectionId()),
@@ -124,4 +130,16 @@ export function getSelectedItems({
     ];
   }
   return [{ url: pathname, type: "non-entity" }];
+}
+
+/** The search model a card is indexed under, which is how the Official rail keys its rows. */
+function getSearchModel(question: Question): SearchModel {
+  switch (question.type()) {
+    case "model":
+      return "dataset";
+    case "metric":
+      return "metric";
+    default:
+      return "card";
+  }
 }

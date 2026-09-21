@@ -63,6 +63,8 @@ export interface AppState {
   pageBackground: PageBackground;
   errorPage: AppErrorDescriptor | null;
   navSection: NavSection | null;
+  /** The section of whatever is currently open, used when the user has not chosen one. */
+  navSectionSeed: NavSection | null;
   openNavItems: OpenNavItem[];
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;

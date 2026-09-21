@@ -103,13 +103,32 @@ const pageBackground = handleActions<PageBackground>(
 );
 
 export const SET_NAV_SECTION = "metabase/app/SET_NAV_SECTION";
+export const SET_NAV_SECTION_SEED = "metabase/app/SET_NAV_SECTION_SEED";
 
 export const setNavSection = createAction<NavSection>(SET_NAV_SECTION);
+
+/**
+ * The section the thing currently on screen belongs to, so reloading an official metric comes back
+ * on the Official rail instead of falling to the default. `null` when nothing with a section of its
+ * own is open.
+ */
+export const setNavSectionSeed = createAction<NavSection | null>(
+  SET_NAV_SECTION_SEED,
+);
 
 // `null` means "not chosen yet", so a deep link gets to decide its own section.
 const navSection = handleActions<NavSection | null>(
   {
     [SET_NAV_SECTION]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  null,
+);
+
+const navSectionSeed = handleActions<NavSection | null>(
+  {
+    [SET_NAV_SECTION_SEED]: {
       next: (_state, { payload }) => payload,
     },
   },
@@ -170,6 +189,7 @@ export default combineReducers({
   pageBackground,
   errorPage,
   navSection,
+  navSectionSeed,
   openNavItems,
   isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {

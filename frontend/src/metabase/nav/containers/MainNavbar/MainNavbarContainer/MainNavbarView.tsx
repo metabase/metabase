@@ -137,6 +137,15 @@ export function MainNavbarView({
       ? `dashboard-${dashboardItem.id}`
       : undefined;
 
+  // The Official rail renders items alongside collections, keyed by search model, so the open
+  // entity outranks its containing collection for highlighting.
+  const officialSelectedId =
+    cardItem?.model && cardItem.id != null
+      ? `${cardItem.model}-${cardItem.id}`
+      : dashboardItem?.id != null
+        ? `dashboard-${dashboardItem.id}`
+        : collectionItem?.id;
+
   // Kept as a no-op hook point: the rail no longer closes on selection.
   const onItemSelect = useCallback(() => {}, []);
 
@@ -215,7 +224,7 @@ export function MainNavbarView({
           {section === "official" && (
             <OfficialNav
               collections={collections}
-              selectedId={collectionItem?.id}
+              selectedId={officialSelectedId}
               onItemSelect={onItemSelect}
             />
           )}

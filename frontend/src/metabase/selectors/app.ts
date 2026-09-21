@@ -24,6 +24,10 @@ export const getNavSectionOverride = (state: State) => {
   return state.app.navSection;
 };
 
+export const getNavSectionSeed = (state: State) => {
+  return state.app.navSectionSeed;
+};
+
 export const getOpenNavItems = (state: State) => {
   return state.app.openNavItems;
 };

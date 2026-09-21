@@ -1,6 +1,6 @@
 import type { StoreDashboard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import type { IconName } from "metabase-types/api";
+import type { IconName, SearchModel } from "metabase-types/api";
 
 export interface MainNavbarOwnProps {
   location: Location;
@@ -23,6 +23,8 @@ export interface SelectedItem {
   type: "card" | "collection" | "dashboard" | "non-entity";
   id?: number | string;
   url?: string;
+  /** For `card`, the search model it is indexed under: `card`, `dataset` or `metric`. */
+  model?: SearchModel;
 }
 
 /**

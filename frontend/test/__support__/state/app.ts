@@ -4,6 +4,7 @@ export const createMockAppState = (opts?: Partial<AppState>): AppState => ({
   pageCollection: null,
   pageBackground: "primary",
   navSection: null,
+  navSectionSeed: null,
   openNavItems: [],
   errorPage: null,
   isDndAvailable: false,
