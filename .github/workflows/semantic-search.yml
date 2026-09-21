@@ -2,14 +2,6 @@ name: Semantic Search Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      smoke-only:
-        type: boolean
-        default: false
-        description: Only run Postgres Latest to do a quick resource-efficient sanity check, intended to be set for PRs.
 
   # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
@@ -57,8 +49,24 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # A direct dispatch names a suite and always runs; only CI runs are gated.
+  #
+  # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
+  # forced to run or the PR carries `ci:run-semantic-search-tests`. Each job repeats that rule
+  # because a job `if` cannot read a shared value.
+  gate:
+    if: ${{ inputs.suite == '' }}
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: backend_all
+
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'h2') }}
+    needs: gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      && (inputs.suite == 'h2'
+      || (inputs.suite == '' && (needs.gate.outputs.force-run == 'true'
+      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -102,7 +110,12 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'mariadb') }}
+    needs: gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      && (inputs.suite == 'mariadb'
+      || (inputs.suite == '' && (needs.gate.outputs.force-run == 'true'
+      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -167,7 +180,12 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'mysql') }}
+    needs: gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      && (inputs.suite == 'mysql'
+      || (inputs.suite == '' && (needs.gate.outputs.force-run == 'true'
+      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -239,7 +257,10 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
+    needs: gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      && (inputs.suite == '' || inputs.suite == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -255,7 +276,8 @@ jobs:
             postgres-image: postgres:latest
             pgvector-image: pgvector/pgvector:pg17
         exclude: >-
-          ${{ inputs.smoke-only
+          ${{ (inputs.suite == '' && needs.gate.outputs.force-run != 'true'
+          && !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests'))
           && fromJSON('[{"version":{"name":"Postgres 14.x with pgvector pg17"}}]')
           || fromJSON('[]') }}
         job:
@@ -310,7 +332,12 @@ jobs:
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
+    needs: gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      && (inputs.suite == 'appdb-mode'
+      || (inputs.suite == '' && (needs.gate.outputs.force-run == 'true'
+      || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')))) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -362,6 +389,7 @@ jobs:
 
   semantic-search-tests-result:
     needs:
+      - gate
       - semantic-search-tests-h2
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql

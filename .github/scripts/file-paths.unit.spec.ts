@@ -90,6 +90,43 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", path)).toBe(true);
   });
 
+  // The build filters replace what used to be an inline condition in run-tests.yml, so what they
+  // leave out is the whole point: a diff that changes nothing an artifact ships gets no build.
+  it.each([
+    "src/metabase/core.clj",
+    "frontend/src/metabase/App.tsx",
+    "e2e/test/scenarios/question/foo.cy.spec.js",
+    // The SDK component and host-app suites boot a Metabase instance, so their CI entry points
+    // have to build one.
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(true);
+  });
+
+  it.each([
+    ".clj-kondo/ratchets.edn",
+    "README.md",
+    "docs/questions/introduction.md",
+    // The SDK type checks read the package artifact, not a running instance.
+    "docs/embedding/sdk/introduction.md",
+  ])("skips the uberjar for %s", (path) => {
+    expect(matches("build_uberjar", path)).toBe(false);
+  });
+
+  it.each([
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
+    "docs/embedding/sdk/introduction.md",
+    ".github/workflows/embedding-sdk.yml",
+  ])("builds the SDK package for %s", (path) => {
+    expect(matches("build_embedding_sdk_package", path)).toBe(true);
+  });
+
+  it("does not build the SDK package for unrelated documentation", () => {
+    expect(
+      matches("build_embedding_sdk_package", "docs/questions/introduction.md"),
+    ).toBe(false);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
