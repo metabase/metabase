@@ -39,7 +39,9 @@ jobs:
     env:
       PLAN: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
     outputs:
-      artifact-id: ${{ steps.compute.outputs.artifact-id }}
+      # The artifact is uploaded before the planner's last steps, so a later failure would otherwise
+      # hand the suites a plan from a run that errored. Anything short of a clean run means no plan.
+      artifact-id: ${{ steps.compute.outcome == 'success' && steps.compute.outputs.artifact-id || '' }}
     steps:
       - uses: actions/checkout@v6
         if: ${{ env.PLAN == 'true' }}
