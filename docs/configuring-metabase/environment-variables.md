@@ -731,17 +731,7 @@ Allow admins to securely embed questions and dashboards within other application
 
 Allow admins to embed Metabase via interactive embedding?
 
-### `MB_ENABLE_EMBEDDING_MODULAR`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `enable-embedding-modular`
-
-Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?
-
-### `MB_ENABLE_EMBEDDING_SDK [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_SDK`
 
 - Type: boolean
 - Default: `false`
@@ -749,9 +739,7 @@ Allow admins to embed Metabase via modular embedding, the SDK for React, and gue
 
 Allow admins to embed Metabase via the SDK?
 
-### `MB_ENABLE_EMBEDDING_SIMPLE [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_SIMPLE`
 
 - Type: boolean
 - Default: `false`
@@ -759,9 +747,7 @@ Allow admins to embed Metabase via the SDK?
 
 Allow admins to embed Metabase via modular embedding?
 
-### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_STATIC`
 
 - Type: boolean
 - Default: `false`
@@ -1165,7 +1151,7 @@ Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipa
 ### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
 
 - Type: string
-- Default: `givenName`
+- Default: `givenname`
 - [Configuration file name](./config-file.md): `ldap-attribute-firstname`
 
 Attribute to use for the user's first name. (usually 'givenName').
@@ -1433,7 +1419,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured. [The Bedrock models you can pick depend on the region](../ai/providers.md#the-bedrock-models-you-can-pick-depend-on-the-region).
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 

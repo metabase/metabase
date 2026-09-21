@@ -1,4 +1,4 @@
-import { type ReactElement, useMemo } from "react";
+import type { ReactElement } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { useQuestionFromCard } from "metabase/metadata-store";
@@ -26,10 +26,7 @@ export function SourceQuestionBreadcrumbs({
   const { data: sourceCard } = useGetCardQuery(
     sourceQuestionId != null ? { id: sourceQuestionId } : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
-  const sourceQuestion = useMemo(() => {
-    return sourceCard ? buildQuestion(sourceCard) : undefined;
-  }, [sourceCard, buildQuestion]);
+  const sourceQuestion = useQuestionFromCard(sourceCard);
 
   if (!sourceQuestion) {
     return null;

@@ -2,6 +2,7 @@
   "Tools for reading transform definitions."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -57,7 +58,8 @@
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
   (try
-    (add-output {:structured_output (transforms/get-transform transform_id)}
+    (add-output {:structured_output (query-export/transform-with-exportable-source
+                                     (transforms/get-transform transform_id))}
                 format-transform-details-output)
     (catch Exception e
       (if (= 403 (:status-code (ex-data e)))

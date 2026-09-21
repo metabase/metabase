@@ -147,7 +147,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
-    enable-embedding-modular: false
+    enable-embedding-sdk: false
+    enable-embedding-simple: false
+    enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -186,7 +188,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false

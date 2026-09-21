@@ -59,6 +59,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn entity-id-where :- [:maybe :string]
+  "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
+  [model-key :- :keyword
+   column    :- [:enum :name :term]
+   value     :- :string]
+  (t2/select-one-fn :entity_id model-key column value))
+
 (mu/defn count-where
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
@@ -125,13 +132,14 @@
   (t2/count model-key {:where (unsynced-instance-expr model-key model-type removal-opts)}))
 
 (mu/defn unsynced-instance-names
-  "Up to `limit` names of the rows [[unsynced-instance-count]] counts."
+  "Up to `limit` values of `name-col` from the rows [[unsynced-instance-count]] counts."
   [model-key    :- :keyword
    model-type   :- :string
+   name-col     :- [:enum :name :term]
    removal-opts :- RemovalOpts
    limit        :- ms/PositiveInt]
-  (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
-                                     :limit limit}))
+  (t2/select-fn-vec name-col model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
+                                        :limit limit}))
 
 (mu/defn instance
   "The instance of `model` with `id`, or nil."
@@ -293,6 +301,21 @@
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+
+(mu/defn glossary-entries
+  "The `:id` and `:term` of every Glossary entry."
+  []
+  (t2/select [:model/Glossary :id :term]))
+
+(mu/defn untracked-glossary-entries
+  "The `:id` and `:term` of every Glossary entry with no RemoteSyncObject."
+  []
+  (t2/select [:model/Glossary :id :term]
+             {:where [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [:remote_sync_object]
+                                                      :where  [:and
+                                                               [:= :remote_sync_object.model_type "Glossary"]
+                                                               [:= :remote_sync_object.model_id :glossary.id]]}]]}))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."
@@ -626,14 +649,19 @@
   [task-id :- ms/PositiveInt]
   (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
 
+(def ^:private last-alive-at
+  "The time the task's owning thread last proved it was alive: its heartbeat, or its last progress write for
+  rows that predate the heartbeat column or whose worker died before its first beat."
+  [:coalesce :last_heartbeat_at :last_progress_report_at])
+
 (mu/defn current-task
-  "The newest started, unfinished RemoteSyncTask that reported progress after `progress-cutoff`, or nil."
-  [progress-cutoff :- ms/TemporalInstant]
+  "The newest started, unfinished RemoteSyncTask whose owner was alive after `liveness-cutoff`, or nil."
+  [liveness-cutoff :- ms/TemporalInstant]
   (t2/select-one :model/RemoteSyncTask
                  {:where    [:and
                              [:<> :started_at nil]
                              [:= :ended_at nil]
-                             [:< progress-cutoff :last_progress_report_at]]
+                             [:< liveness-cutoff last-alive-at]]
                   :limit    1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
@@ -648,15 +676,16 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(mu/defn last-successful-task
-  "The newest finished RemoteSyncTask that was neither cancelled nor failed and recorded a version, or nil."
+(mu/defn last-synced-task
+  "The newest RemoteSyncTask whose commit the local content matches, or nil. `version` is written inside the
+  transaction that commits an import or a push, and by the conflict path (which also writes `conflicts`), so
+  `version` set with `conflicts` null identifies a landed commit whatever `ended_at`, `cancelled`, or
+  `error_message` say: a task cancelled or superseded after its transaction committed is still the sync base."
   []
   (t2/select-one :model/RemoteSyncTask
                  {:where    [:and
-                             [:<> nil :ended_at]
-                             [:= false :cancelled]
-                             [:= nil :error_message]
-                             [:<> nil :version]]
+                             [:<> nil :version]
+                             [:= nil :conflicts]]
                   :limit    1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
@@ -684,17 +713,29 @@
    progress :- number?]
   (t2/update! :model/RemoteSyncTask task-id {:progress progress, :last_progress_report_at :%now}))
 
-(mu/defn supersede-stale-tasks!
-  "Cancel and end now the started, unfinished RemoteSyncTasks that last reported progress before `cutoff`."
-  [cutoff :- ms/TemporalInstant]
-  (t2/query {:update (t2/table-name :model/RemoteSyncTask)
-             :set    {:cancelled     true
-                      :ended_at      :%now
-                      :error_message "Superseded after staleness timeout"}
-             :where  [:and
-                      [:<> :started_at nil]
-                      [:= :ended_at nil]
-                      [:< :last_progress_report_at cutoff]]}))
+(mu/defn touch-task!
+  "Stamp the heartbeat time of the RemoteSyncTask with `task-id` if it has not ended, returning the number of rows
+  updated. Never touches an ended row, so a cancel or supersede is not undone by a late beat."
+  [task-id :- ms/PositiveInt]
+  (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at :%now}))
+
+(mu/defn supersede-stale-tasks! :- [:sequential ms/PositiveInt]
+  "Cancel and end now, with `message` as the error message, the started, unfinished RemoteSyncTasks whose owner
+  was last alive before `cutoff`. Returns the ids of the rows ended, empty when none were stale."
+  [cutoff  :- ms/TemporalInstant
+   message :- :string]
+  (let [stale [:and
+               [:<> :started_at nil]
+               [:= :ended_at nil]
+               [:< last-alive-at cutoff]]
+        ids   (vec (t2/select-pks-vec :model/RemoteSyncTask {:where stale}))]
+    (when (seq ids)
+      (t2/query {:update (t2/table-name :model/RemoteSyncTask)
+                 :set    {:cancelled     true
+                          :ended_at      :%now
+                          :error_message message}
+                 :where  [:and stale [:in :id ids]]}))
+    ids))
 
 (mu/defn delete-tasks-started-before!
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
