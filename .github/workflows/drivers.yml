@@ -62,18 +62,18 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
-  # A direct dispatch names a driver and always runs; only CI runs are gated.
   gate:
-    if: ${{ inputs.driver == '' }}
     uses: ./.github/workflows/test-gate.yml
     with:
-      filters: backend_all
+      # A direct dispatch names a driver and always runs, so it asks for no filters: the gate then
+      # only checks for a force-cancel.
+      filters: ${{ inputs.driver == '' && 'backend_all' || '' }}
 
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
     needs: gate
-    if: ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false' }}
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:

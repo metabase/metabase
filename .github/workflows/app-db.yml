@@ -47,16 +47,16 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
-  # A direct dispatch names an app DB and always runs; only CI runs are gated.
   gate:
-    if: ${{ inputs.app-db == '' }}
     uses: ./.github/workflows/test-gate.yml
     with:
-      filters: backend_all
+      # A direct dispatch names an app DB and always runs, so it asks for no filters: the gate then
+      # only checks for a force-cancel.
+      filters: ${{ inputs.app-db == '' && 'backend_all' || '' }}
 
   app-db-matrix:
     needs: gate
-    if: ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false' }}
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions

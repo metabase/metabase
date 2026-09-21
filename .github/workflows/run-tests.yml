@@ -27,19 +27,26 @@ jobs:
         all_changed backend_sources build_embedding_sdk_package build_uberjar e2e_all
         e2e_infra frontend_loki_infra frontend_sources frontend_unit_infra shared_sources
 
+  # Always runs, so the suites that consume the plan are never skipped by a skipped dependency. The
+  # plan only ever narrows a PR's suites; every other run leaves the outputs empty and they run in
+  # full. A planner failure does the same, so it must not fail the run either.
   create-test-plan:
     needs: gate
     name: Create test plan
-    if: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
+    continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
+    env:
+      PLAN: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
     outputs:
       stats: ${{ steps.compute.outputs.stats }}
       artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
+        if: ${{ env.PLAN == 'true' }}
       - name: Create test plan
         id: compute
+        if: ${{ env.PLAN == 'true' }}
         uses: ./.github/actions/create-test-plan
         with:
           changed-files: ${{ join(fromJSON(needs.gate.outputs.files).all_changed, ',') }}
@@ -53,7 +60,9 @@ jobs:
   upload-affected-tests-stats:
     needs: create-test-plan
     # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: ${{ github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    if: >-
+      ${{ needs.create-test-plan.outputs.stats != ''
+      && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -151,24 +160,20 @@ jobs:
 
   frontend-tests:
     needs: [gate, create-test-plan]
-    if: >-
-      ${{ !cancelled() && needs.gate.result == 'success'
-      && needs.gate.outputs.verdict != 'force-skip' }}
+    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
     with:
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
+      # No artifact means the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.outputs.artifact-id }}
 
   loki-tests:
     needs: [gate, create-test-plan]
-    if: >-
-      ${{ !cancelled() && needs.gate.result == 'success'
-      && needs.gate.outputs.verdict != 'force-skip' }}
+    if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/loki.yml
     with:
-      # A skipped/failed planner supplies no artifact, so the suite runs in full.
-      test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
+      # No artifact means the suite runs in full.
+      test-plan-artifact-id: ${{ needs.create-test-plan.outputs.artifact-id }}
 
   e2e-tests:
     needs: [gate, uberjar]
