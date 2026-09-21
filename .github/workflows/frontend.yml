@@ -3,22 +3,16 @@ name: Frontend
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      skip-lint:
-        type: boolean
-        default: false
-      skip-custom-viz:
-        type: boolean
-        default: false
+      changes:
+        description: >-
+          The caller's files-changed verdict, as JSON. Empty means no verdict was
+          computed, and every gate here falls open.
+        type: string
+        default: ""
       # ID of this run's test-plan.json artifact, or '' to run the full suite.
       test-plan-artifact-id:
         type: string
         default: ""
-      skip-ci-scripts:
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -46,8 +40,15 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
+  # Tier 1: which suites the diff can affect. Tier 0 (the global force-run /
+  # force-skip overrides) stays in run-tests.yml -- a force-skip never calls this
+  # workflow at all. Every gate reads "run unless the filter said no", so an absent
+  # verdict, an unknown filter or a malformed one all fail open.
   fe-lint:
-    if: ${{ !inputs.skip-lint }}
+    if: >-
+      ${{ !inputs.skip-lint &&
+      (fromJSON(inputs.changes || '{}').frontend_all != 'false' ||
+      fromJSON(inputs.changes || '{}').e2e_all != 'false') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -81,7 +82,7 @@ jobs:
         run: bun run lint-css
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && fromJSON(inputs.changes || '{}').frontend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -96,7 +97,7 @@ jobs:
         name: Check types
 
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && fromJSON(inputs.changes || '{}').frontend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -160,7 +161,7 @@ jobs:
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && fromJSON(inputs.changes || '{}').frontend_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -172,7 +173,7 @@ jobs:
 
   # No CLJS compile: the CI-script specs don't import app code.
   fe-tests-ci-scripts:
-    if: ${{ !inputs.skip-ci-scripts }}
+    if: ${{ fromJSON(inputs.changes || '{}').ci_scripts != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -185,7 +186,7 @@ jobs:
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
-    if: ${{ !inputs.skip-custom-viz }}
+    if: ${{ !inputs.skip-custom-viz && fromJSON(inputs.changes || '{}').custom_viz_all != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:
@@ -214,7 +215,7 @@ jobs:
       - fe-tests-timezones
       - fe-tests-ci-scripts
       - fe-custom-viz
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
