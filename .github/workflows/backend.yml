@@ -517,6 +517,7 @@ jobs:
   be-tests-result:
     needs:
       - gate
+      - static-viz-files-changed
       - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
