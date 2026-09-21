@@ -406,6 +406,7 @@
   (testing "a non-numeric value is never colored"
     (are [value] (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] value)) segment-color))
       "foo"
+      "42%"
       ""
       nil))
   (testing "a bound that can't resolve fails the render"

@@ -31,7 +31,14 @@ describe("scalar utils", () => {
 
     it("uses the default color for a non-numeric value", () => {
       expect(getColor("abc", SEGMENTS)).toBe(color("text-primary"));
+      expect(getColor("", SEGMENTS)).toBe(color("text-primary"));
       expect(getColor(null, SEGMENTS)).toBe(color("text-primary"));
+      expect(getColor(true, SEGMENTS)).toBe(color("text-primary"));
+    });
+
+    it("uses the default color for a string with a numeric prefix, like the email renderer", () => {
+      expect(getColor("42%", SEGMENTS)).toBe(color("text-primary"));
+      expect(getColor("42 units", SEGMENTS)).toBe(color("text-primary"));
     });
 
     it("colors a value by the resolved segment containing it", () => {

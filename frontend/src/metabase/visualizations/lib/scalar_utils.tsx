@@ -91,11 +91,23 @@ const formatSegmentRange = ({ min, max }: ResolvedOpenEndedGoalSegment) => {
   return "";
 };
 
+function toNumber(value: RowValue): number {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    return Number(value);
+  }
+
+  return NaN;
+}
+
 export function getColor(
   _value: RowValue,
   segments?: ResolvedOpenEndedGoalSegment[],
 ) {
-  const value = parseFloat(String(_value));
+  const value = toNumber(_value);
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
     return DEFAULT_COLOR;
