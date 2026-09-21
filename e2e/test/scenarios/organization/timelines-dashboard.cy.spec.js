@@ -455,6 +455,51 @@ describe("scenarios > organization > timelines > dashboard", () => {
     H.getDashboardCard().findByText("Created At: Month").should("be.visible");
   });
 
+  it("should show an event only the card's series reaches", () => {
+    visitDashboardWithSeriesReachingTheEvent();
+
+    H.getDashboardCard().findByText("Orders by month").should("be.visible");
+    eventChip(0, "RC1").should("be.visible").click();
+    eventsSidebar().findByText("RC1").should("be.visible");
+  });
+
+  it("should show the replacing question's events after replacing a card", () => {
+    createTimelineQuestion({
+      timeline: { name: "Launches" },
+      events: [{ name: "GA", timestamp: "2027-11-20T00:00:00Z" }],
+      name: "Orders by month, launches",
+    });
+    visitDashboardWithReleaseEvents();
+
+    eventChip(0, "RC1").should("be.visible").click();
+    eventsSidebar().should("be.visible");
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "replacedCardQuery",
+    );
+    H.editDashboard();
+    H.getDashboardCard().realHover().findByLabelText("Replace").click();
+    H.entityPickerModal().findByText("Orders by month, launches").click();
+    cy.wait("@replacedCardQuery");
+    H.saveDashboard();
+
+    eventChip(0, "GA").should("be.visible");
+    eventChip(0, "RC1").should("not.exist");
+    eventChip(0, "GA").click();
+    eventsSidebar()
+      .should("contain", "Launches")
+      .and("not.contain", "Releases");
+  });
+
+  it("should show the events of a metric and of a model", () => {
+    visitDashboardWithMetricAndModel();
+    H.waitForDashcardsToLoad({ count: 2 });
+
+    eventChip(0, "RC1").should("be.visible");
+    eventChip(1, "RC1").should("be.visible").click();
+    eventsSidebar().findByText("RC1").should("be.visible");
+  });
+
   it("should deep duplicate a dashboard whose question selects an inaccessible timeline", () => {
     H.createCollection({ name: "Events" }).then(({ body: { id } }) => {
       H.createTimelineWithEvents({
@@ -634,6 +679,82 @@ function visitDashboardWithTimeSeries(visualizationSettings = {}) {
     H.visitDashboard(dashboard_id);
   });
   H.getDashboardCard().findByText("Created At: Month").should("be.visible");
+}
+
+function visitDashboardWithMetricAndModel() {
+  return createReleaseTimeline().then(({ timeline }) => {
+    const details = {
+      ...questionDetails,
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [timeline.id],
+      },
+    };
+    return H.createQuestion({
+      ...details,
+      name: "Orders metric",
+      type: "metric",
+    }).then(({ body: metric }) =>
+      H.createQuestion({
+        ...details,
+        name: "Orders model",
+        type: "model",
+      }).then(({ body: model }) =>
+        H.createDashboardWithTabs({
+          dashcards: [metric, model].map((card, index) =>
+            createMockDashboardCard({
+              id: -(index + 1),
+              card_id: card.id,
+              row: index * 6,
+              size_x: 12,
+              size_y: 6,
+            }),
+          ),
+        }).then((dashboard) => H.visitDashboard(dashboard.id)),
+      ),
+    );
+  });
+}
+
+function createTimelineQuestion({ timeline, events, ...questionOverrides }) {
+  return H.createTimelineWithEvents({ timeline, events }).then(({ timeline }) =>
+    H.createQuestion({
+      ...questionDetails,
+      ...questionOverrides,
+      visualization_settings: {
+        "timeline.selected_timeline_ids": [timeline.id],
+      },
+    }),
+  );
+}
+
+function visitDashboardWithReleaseEvents() {
+  return createReleaseTimeline().then(({ timeline }) =>
+    visitDashboardWithTimeSeries({
+      "timeline.selected_timeline_ids": [timeline.id],
+    }),
+  );
+}
+
+// the question's own range stops before the event; only its series reaches it
+function visitDashboardWithSeriesReachingTheEvent() {
+  return createReleaseTimeline().then(({ timeline }) =>
+    H.createQuestion(questionDetails).then(({ body: series }) =>
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          ...questionDetails,
+          name: "Orders before the release",
+          query: {
+            ...questionDetails.query,
+            filter: ["<", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
+          },
+          visualization_settings: {
+            "timeline.selected_timeline_ids": [timeline.id],
+          },
+        },
+        cardDetails: { series: [series] },
+      }).then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id)),
+    ),
+  );
 }
 
 function createReleaseTimeline() {
