@@ -637,7 +637,7 @@
           (let [{:keys [type config]} (llm.provider/connection conn-key)]
             (when (= "openai" type)
               (llm.provider/with-field-defaults type config))))
-        [(named-connection-key) "openai"]))
+        (remove nil? [(named-connection-key) "openai"])))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
@@ -736,9 +736,8 @@
   A registered embedder's name always means that embedder. Any other value that names an AI provider connection
   embeds through it, and the connection's type is the provider."
   []
-  {:provider (let [provider (semantic-settings/ee-embedding-provider)]
-               (or (:type (llm.provider/connection (named-connection-key)))
-                   provider))
+  {:provider (or (some-> (named-connection-key) llm.provider/connection :type)
+                 (semantic-settings/ee-embedding-provider))
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
