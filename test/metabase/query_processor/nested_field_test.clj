@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.nested-field-test
   "Tests for nested field access."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.nested-field-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.test :as qp]
@@ -78,7 +80,6 @@
                  (mt/first-row
                   (mt/run-mbql-query tips
                     {:aggregation [[:distinct $tips.venue.name]]})))))
-
         (testing ":count aggregation"
           ;; Now let's just get the regular count
           (is (= [500]

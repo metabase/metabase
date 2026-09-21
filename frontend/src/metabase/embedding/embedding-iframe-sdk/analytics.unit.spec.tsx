@@ -6,6 +6,7 @@ import { createEmbeddedAnalyticsJsUsage } from "./analytics";
 import type { SdkIframeEmbedBaseSettings } from "./types/embed";
 
 const defineMetabaseConfig = (config: SdkIframeEmbedBaseSettings) => {
+  // Unjustified type cast. FIXME
   (window as any).metabaseConfig = config;
 };
 
@@ -1121,6 +1122,7 @@ function createEmbeddedAnalyticsJsElement(
   componentName: Component,
   properties: Record<string, any> = {},
 ): MetabaseEmbedElement {
+  // Unjustified type cast. FIXME
   const component = document.createElement(
     componentName,
   ) as MetabaseEmbedElement;

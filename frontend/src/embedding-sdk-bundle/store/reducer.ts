@@ -9,9 +9,11 @@ import type {
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
+import type { DashboardTabId } from "metabase-types/api";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import {
+  clearGuestToken,
   initGuestEmbed,
   refreshGuestSession,
   setGuestTokenFetchError,
@@ -56,13 +58,21 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
 export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
 
+const SET_SDK_TRACKER_READY = "sdk/SET_SDK_TRACKER_READY";
+export const setSdkTrackerReady = createAction<boolean>(SET_SDK_TRACKER_READY);
+
+const SET_INITIAL_DASHBOARD_TAB_ID = "sdk/SET_INITIAL_DASHBOARD_TAB_ID";
+export const setInitialDashboardTabId = createAction<DashboardTabId | null>(
+  SET_INITIAL_DASHBOARD_TAB_ID,
+);
+
 const initialState: SdkState = {
   isGuestEmbed: null,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
   token: {
     token: null,
-    rawToken: null,
+    guestTokensByMount: {},
     loading: false,
     error: null,
   },
@@ -74,6 +84,8 @@ const initialState: SdkState = {
   errorComponent: null,
   fetchRefreshTokenFn: null,
   pluginsReady: false,
+  initialDashboardTabId: null,
+  sdkTrackerReady: false,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -84,13 +96,14 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
-      rawToken: null,
+      guestTokensByMount: {},
       loading: false,
       error: null,
     };
   });
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {
+    // Unjustified type cast. FIXME
     const error = action.error as Error;
     state.initStatus = { status: "error", error };
   });
@@ -104,6 +117,7 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(initAuth.rejected, (state, action) => {
+    // Unjustified type cast. FIXME
     const error = action.error as Error;
     state.initStatus = { status: "error", error };
   });
@@ -117,6 +131,7 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(initGuestEmbed.rejected, (state, action) => {
+    // Unjustified type cast. FIXME
     const error = action.error as Error;
     state.initStatus = { status: "error", error };
   });
@@ -166,12 +181,14 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setInitialGuestToken, (state, action) => {
-    state.token = {
-      ...state.token,
-      rawToken: action.payload,
-      loading: false,
-      error: null,
-    };
+    const { mountId, token } = action.payload;
+    state.token.guestTokensByMount[mountId] = token;
+    state.token.loading = false;
+    state.token.error = null;
+  });
+
+  builder.addCase(clearGuestToken, (state, action) => {
+    delete state.token.guestTokensByMount[action.payload];
   });
 
   builder.addCase(refreshGuestSession.pending, (state) => {
@@ -182,12 +199,10 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
-    state.token = {
-      ...state.token,
-      rawToken: action.payload,
-      loading: false,
-      error: null,
-    };
+    const { mountId } = action.meta.arg;
+    state.token.guestTokensByMount[mountId] = action.payload;
+    state.token.loading = false;
+    state.token.error = null;
   });
 
   builder.addCase(refreshGuestSession.rejected, (state, action) => {
@@ -201,5 +216,13 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setPluginsReady, (state, action) => {
     state.pluginsReady = action.payload;
+  });
+
+  builder.addCase(setInitialDashboardTabId, (state, action) => {
+    state.initialDashboardTabId = action.payload;
+  });
+
+  builder.addCase(setSdkTrackerReady, (state, action) => {
+    state.sdkTrackerReady = action.payload;
   });
 });

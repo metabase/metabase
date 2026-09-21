@@ -72,20 +72,15 @@
           examples [{:text "ABC-123" :delimiter "-" :position 1 :expected "ABC" :msg "Easy case."}
                     {:text "ABC-123" :delimiter "-" :position 2 :expected "123" :msg "Easy case."}
                     {:text "ABC-123" :delimiter "-" :position 3 :expected ""    :msg "Position too high."}
-
                     {:text "John Doe" :delimiter " " :position 1 :expected "John" :msg "Single space delimiter."}
-
                     {:text "/ABC/123/" :delimiter "/" :position 1 :expected ""    :msg "Empty part when delimiter is first char."}
                     {:text "/ABC/123/" :delimiter "/" :position 2 :expected "ABC" :msg "First part of path."}
                     {:text "/ABC/123/" :delimiter "/" :position 3 :expected "123" :msg "Second part of path."}
                     {:text "/ABC/123/" :delimiter "/" :position 4 :expected ""    :msg "Empty part when delimiter is last char."}
                     {:text "/ABC/123/" :delimiter "/" :position 9 :expected ""    :msg "Empty part when position out of bounds."}
-
                     {:text "ABC-123" :delimiter "," :position 1 :expected "ABC-123"    :msg "Delimiter doesn't exist."}
-
                     {:text "ABC-123" :delimiter "ABC-123" :position 1 :expected ""    :msg "Delimiter matches whole string."}
                     {:text "ABC-123" :delimiter "ABC-123" :position 2 :expected ""    :msg "Delimiter matches whole string."}
-
                     {:text "ABC-123" :delimiter "ABC-1235" :position 1 :expected "ABC-123"    :msg "Delimiter longer than whole string."}]]
       (doseq [{:keys [text delimiter position expected msg]} examples]
         (testing (str "split part: " msg)
@@ -127,7 +122,6 @@
           examples [{:text "" :delimiter "" :position 1 :msg "Empty delimiter"}
                     {:text "" :delimiter (lib/concat "" "j") :position 1 :msg "expression delimiter"}
                     {:text "" :delimiter (lib.metadata/field mp (mt/id :people :id)) :position 1 :msg "field delimiter"}
-
                     {:text "John Doe" :delimiter " " :position 0 :msg "Zero position."}
                     {:text "John Doe" :delimiter " " :position -1 :msg "Negative position."}]]
       (doseq [{:keys [text delimiter position msg]} examples]

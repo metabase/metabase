@@ -18,7 +18,15 @@
                 :name        "Test Metric"
                 :aggregation {:node/type :aggregation/count}
                 :base-table  {:node/type :ast/table :id 100}
-                :metadata    {:dataset-query {:database 1}}}
+                :metadata    {:lib/type      :metadata/metric
+                              :id            42
+                              :name          "Test Metric"
+                              :type          :metric
+                              :database-id   1
+                              :dataset-query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages   [{:lib/type     :mbql.stage/mbql
+                                                          :source-table 100}]}}}
    :dimensions [{:node/type    :ast/dimension
                  :id           uuid-1
                  :name         "category"
@@ -42,33 +50,32 @@
 
 (deftest ^:parallel compile-to-mbql-basic-test
   (let [result (ast.compile/compile-to-mbql sample-ast)]
-
     (testing "produces valid MBQL structure"
       (is (= :mbql/query (:lib/type result)))
       (is (= 1 (:database result)))
       (is (= 1 (count (:stages result)))))
-
     (testing "has correct stage structure"
       (let [stage (first (:stages result))]
         (is (= :mbql.stage/mbql (:lib/type stage)))
         (is (= 100 (:source-table stage)))
         (is (= 1 (count (:aggregation stage))))))
-
     (testing "compiles count aggregation"
       (let [agg (first (get-in result [:stages 0 :aggregation]))]
         (is (= :count (first agg)))
         (is (string? (get-in agg [1 :lib/uuid])))))
-
     (testing "has no filters when AST has none"
       (is (nil? (get-in result [:stages 0 :filters]))))
-
     (testing "has no breakout when AST has none"
       (is (nil? (get-in result [:stages 0 :breakout]))))))
 
 ;;; -------------------------------------------------- Database ID Resolution --------------------------------------------------
 
 (deftest ^:parallel compile-missing-database-id-throws-test
-  (let [ast-no-db (assoc-in sample-ast [:source :metadata] {:dataset-query {}})]
+  (let [ast-no-db (assoc-in sample-ast [:source :metadata] {:lib/type   :metadata/measure
+                                                            :id         1
+                                                            :name       "Measure without a definition"
+                                                            :table-id   100
+                                                            :definition nil})]
     (testing "throws when metadata has no database ID"
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                             #"Cannot determine database ID"
@@ -125,7 +132,8 @@
     (is (= 10 (nth (nth agg 2) 2)))))
 
 (deftest ^:parallel compile-mbql-aggregation-test
-  (let [raw-clause  [:custom-agg {} [:field {} 10]]
+  (let [raw-clause  [:sum {:lib/uuid "550e8400-e29b-41d4-a716-446655440003"}
+                     [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440004"} 10]]
         ast-with-mbql (assoc-in sample-ast [:source :aggregation]
                                 {:node/type :aggregation/mbql
                                  :clause    raw-clause})
@@ -327,7 +335,6 @@
       ;; Values
       (is (= 1 (nth filter-clause 3)))
       (is (= 7 (nth filter-clause 4)))))
-
   (testing "compiles filter with dimension-expression node without extra args"
     (let [dim-expr {:node/type     :ast/dimension-expression
                     :expression-op :get-month
@@ -385,7 +392,6 @@
           field-ref            (first breakout)]
       (is (= :field (first field-ref)))
       (is (= {:strategy :default} (get-in field-ref [1 :binning])))))
-
   (testing "compiles group-by with binning strategy :num-bins"
     (let [dim-ref-with-binning {:node/type    :ast/dimension-ref
                                 :dimension-id uuid-1
@@ -396,7 +402,6 @@
           field-ref            (first breakout)]
       (is (= :field (first field-ref)))
       (is (= {:strategy :num-bins :num-bins 10} (get-in field-ref [1 :binning])))))
-
   (testing "compiles group-by with binning strategy :bin-width"
     (let [dim-ref-with-binning {:node/type    :ast/dimension-ref
                                 :dimension-id uuid-1
@@ -475,19 +480,15 @@
                      (assoc :group-by [dim-ref-1 dim-ref-2]))
         result   (ast.compile/compile-to-mbql full-ast :limit 1000)
         stage    (first (:stages result))]
-
     (testing "has filters"
       (is (seq (:filters stage)))
       ;; Should be wrapped in :and since we have compound filter
       (let [filter (first (:filters stage))]
         (is (= :and (first filter)))))
-
     (testing "has breakouts"
       (is (= 2 (count (:breakout stage)))))
-
     (testing "has limit"
       (is (= 1000 (:limit stage))))
-
     (testing "has aggregation"
       (is (= 1 (count (:aggregation stage)))))))
 
@@ -517,7 +518,6 @@
         ast-with-source-filter (assoc-in sample-ast [:source :filters] source-filter)
         result                 (ast.compile/compile-to-mbql ast-with-source-filter)
         filters                (get-in result [:stages 0 :filters])]
-
     (testing "includes source filters in output"
       (is (= 1 (count filters)))
       (is (= := (first (first filters)))))))
@@ -537,7 +537,6 @@
         result        (ast.compile/compile-to-mbql ast)
         filters       (get-in result [:stages 0 :filters])
         filter        (first filters)]
-
     (testing "combines source and user filters with :and"
       (is (= 1 (count filters)))
       (is (= :and (first filter)))
@@ -549,8 +548,11 @@
 (def ^:private sample-join
   {:lib/type    :mbql/join
    :alias       "Products"
-   :conditions  [[:= {} [:field {} 10] [:field {:join-alias "Products"} 20]]]
-   :source-table 200
+   :conditions  [[:=
+                  {:lib/uuid "550e8400-e29b-41d4-a716-446655440005"}
+                  [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440006"} 10]
+                  [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440007", :join-alias "Products"} 20]]]
+   :stages      [{:lib/type :mbql.stage/mbql, :source-table 200}]
    :fields      :all})
 
 (def ^:private ast-with-joins
@@ -561,18 +563,15 @@
 
 (deftest ^:parallel compile-two-stage-query-test
   (let [result (ast.compile/compile-to-mbql ast-with-joins)]
-
     (testing "produces two stages when joins present"
       (is (= :mbql/query (:lib/type result)))
       (is (= 2 (count (:stages result)))))
-
     (testing "stage 0 has source-table and joins"
       (let [stage-0 (first (:stages result))]
         (is (= :mbql.stage/mbql (:lib/type stage-0)))
         (is (= 100 (:source-table stage-0)))
         (is (= 1 (count (:joins stage-0))))
         (is (= sample-join (first (:joins stage-0))))))
-
     (testing "stage 1 has aggregation"
       (let [stage-1 (second (:stages result))]
         (is (= :mbql.stage/mbql (:lib/type stage-1)))
@@ -597,9 +596,8 @@
           result         (ast.compile/compile-to-mbql ast)
           stage-0-join   (first (:joins (first (:stages result))))]
       (is (= :all (:fields stage-0-join)))))
-
   (testing "join with explicit :fields is overridden to :all (dimension system advertises all joined columns)"
-    (let [join-with-fields (assoc sample-join :fields [[:field {:join-alias "Products"} 20]])
+    (let [join-with-fields (assoc sample-join :fields [[:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440008", :join-alias "Products"} 20]])
           ast              (assoc-in sample-ast [:source :joins]
                                      [{:node/type :ast/join
                                        :mbql-join join-with-fields}])
@@ -609,7 +607,10 @@
 
 (deftest ^:parallel compile-two-stage-filter-separation-test
   (let [source-filter {:node/type :filter/mbql
-                       :clause    [:= {} [:field {} 30] "active"]}
+                       :clause    [:=
+                                   {:lib/uuid "550e8400-e29b-41d4-a716-446655440009"}
+                                   [:field {:lib/uuid "550e8400-e29b-41d4-a716-44665544000a"} 30]
+                                   "active"]}
         user-filter   {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1
@@ -620,12 +621,10 @@
         result        (ast.compile/compile-to-mbql ast)
         stage-0       (first (:stages result))
         stage-1       (second (:stages result))]
-
     (testing "source filters go in stage 0"
       (is (= 1 (count (:filters stage-0))))
       (let [filter (first (:filters stage-0))]
         (is (= := (first filter)))))
-
     (testing "user filters go in stage 1"
       (is (= 1 (count (:filters stage-1))))
       (let [filter (first (:filters stage-1))]
@@ -644,7 +643,6 @@
         result           (ast.compile/compile-to-mbql ast-with-groupby)
         stage-0          (first (:stages result))
         stage-1          (second (:stages result))]
-
     (testing "breakouts appear only in stage 1"
       (is (nil? (:breakout stage-0)))
       (is (= 2 (count (:breakout stage-1)))))))
@@ -653,7 +651,6 @@
   (let [result  (ast.compile/compile-to-mbql ast-with-joins :limit 100)
         stage-0 (first (:stages result))
         stage-1 (second (:stages result))]
-
     (testing "limit appears only in stage 1"
       (is (nil? (:limit stage-0)))
       (is (= 100 (:limit stage-1))))))
@@ -672,7 +669,6 @@
       (is (= :mbql/query (:lib/type result)))
       (is (= 1 (:database result)))
       (is (= 1 (count (:stages result)))))
-
     (testing "stage has no :aggregation key"
       (let [stage (first (:stages result))]
         (is (= :mbql.stage/mbql (:lib/type stage)))

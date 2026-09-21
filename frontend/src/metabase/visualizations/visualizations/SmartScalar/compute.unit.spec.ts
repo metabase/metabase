@@ -1,13 +1,13 @@
 import { color, colors } from "metabase/ui/colors";
-import { formatValue } from "metabase/utils/formatting/value";
 import { isNumber } from "metabase/utils/types";
-import { computeChange } from "metabase/visualizations/lib/numeric";
+import { formatValue } from "metabase/value-formatting";
 import {
   CHANGE_ARROW_ICONS,
   CHANGE_TYPE_OPTIONS,
   type Trend,
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { computeChange } from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,
@@ -72,7 +72,15 @@ describe("SmartScalar > compute", () => {
         return [
           createMockSingleSeries(
             { dataset_query: createMockNativeDatasetQuery() },
-            { data: { rows, cols } },
+            {
+              data: {
+                rows,
+                cols: cols.map((col) => ({
+                  ...col,
+                  source: "native" as const,
+                })),
+              },
+            },
           ),
         ];
       }
@@ -231,6 +239,91 @@ describe("SmartScalar > compute", () => {
           settings,
         );
         expect(getTrend(trend)).toEqual(expected);
+      });
+    });
+
+    describe("scalar.show_comparison_value", () => {
+      const cols = [
+        createMockColumn({
+          name: "Month",
+          base_type: "type/DateTime",
+          effective_type: "type/DateTime",
+        }),
+        createMockColumn({
+          name: "Count",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+        }),
+      ];
+      const insights = createMockInsights({ col: "Count", unit: "month" });
+      const comparisons = [{ id: "1", type: COMPARISON_TYPES.PREVIOUS_PERIOD }];
+      const hideComparisonValue = createMockVisualizationSettings({
+        "scalar.field": "Count",
+        "scalar.comparisons": comparisons,
+        "scalar.show_comparison_value": false,
+      });
+      const getComparison = (
+        rows: RowValue[][],
+        settings = hideComparisonValue,
+      ) =>
+        computeTrend(series({ rows, cols }), insights, settings).trend
+          ?.comparisons[0];
+
+      it("should keep the comparison value by default", () => {
+        const comparison = getComparison(
+          [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ],
+          createMockVisualizationSettings({
+            "scalar.field": "Count",
+            "scalar.comparisons": comparisons,
+          }),
+        );
+
+        expect(comparison?.comparisonValue).toBe(100);
+        expect(comparison?.display.comparisonValue).toBe("100");
+      });
+
+      it("should drop the value of a changed comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
+        );
+        expect(comparison?.percentChange).toBe(2);
+        expect(comparison?.comparisonValue).toBeUndefined();
+        expect(comparison?.display.comparisonValue).toBe("");
+      });
+
+      it("should drop the value of an unchanged comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", 100],
+          ["2019-11-01", 100],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE,
+        );
+        expect(comparison?.comparisonValue).toBeUndefined();
+        expect(comparison?.display.comparisonValue).toBe("");
+      });
+
+      it("should keep the (No data) status of a missing comparison when hidden", () => {
+        const comparison = getComparison([
+          ["2019-10-01", null],
+          ["2019-11-01", 100],
+        ]);
+
+        expect(comparison?.changeType).toBe(
+          CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE,
+        );
+        expect(comparison?.display.comparisonValue).toBe(
+          CHANGE_TYPE_OPTIONS.MISSING.COMPARISON_VALUE_STR,
+        );
       });
     });
 
@@ -1220,6 +1313,7 @@ describe("SmartScalar > compute", () => {
               // type casting is required for invalid values testing
               {
                 id: "1",
+                // Unjustified type cast. FIXME
                 type: type as SmartScalarComparisonType,
               } as SmartScalarComparison,
             ],
@@ -2243,6 +2337,96 @@ describe("SmartScalar > compute", () => {
 
       expect(getTrend(trend)).toEqual(expected);
     });
+
+    it("should keep full date granularity for native queries when the inferred unit is coarse (issue #69525)", () => {
+      const QUERY_TYPE = "native";
+      const COMPARISON_TYPE = COMPARISON_TYPES.PREVIOUS_VALUE;
+      const getComparisonProperties =
+        createGetComparisonProperties(COMPARISON_TYPE);
+
+      const COUNT_FIELD = "amount";
+      const settings = createMockVisualizationSettings({
+        "scalar.field": COUNT_FIELD,
+        "scalar.comparisons": [{ id: "1", type: COMPARISON_TYPE }],
+      });
+
+      const cols = [
+        createMockDateTimeColumn({ name: "parsed_date" }),
+        createMockNumberColumn({ name: COUNT_FIELD }),
+      ];
+
+      // Rows are exactly one year apart, so the backend infers a "year" unit.
+      // The trend must still show the full date instead of collapsing to "2024",
+      // which would hide which part of the year the comparison covers.
+      const rows = [
+        ["2023-06-30T12:00:00", 733.93],
+        ["2024-06-30T12:00:00", 794.29],
+      ];
+
+      const expected = {
+        ...getMetricProperties({
+          dateStr: "June 30, 2024, 12:00 PM",
+          metricValue: 794.29,
+        }),
+        comparison: {
+          ...getComparisonProperties({
+            changeType: "increase",
+            comparisonValue: 733.93,
+            dateStr: "June 30, 2023, 12:00 PM",
+            metricValue: 794.29,
+          }),
+        },
+      };
+
+      const insights = createMockInsights({ unit: "year", col: COUNT_FIELD });
+      const { trend } = computeTrend(
+        series({ rows, cols, queryType: QUERY_TYPE }),
+        insights,
+        settings,
+      );
+
+      expect(getTrend(trend)).toEqual(expected);
+    });
+
+    it("should collapse the displayed date to the chosen date_granularity (issue #69525)", () => {
+      const COUNT_FIELD = "amount";
+      const cols = [
+        createMockDateTimeColumn({ name: "parsed_date" }),
+        createMockNumberColumn({ name: COUNT_FIELD }),
+      ];
+      const rows = [
+        ["2023-06-30T12:00:00", 733.93],
+        ["2024-06-30T12:00:00", 794.29],
+      ];
+
+      const dateStrForGranularity = (granularity: string) => {
+        const settings = createMockVisualizationSettings({
+          "scalar.field": COUNT_FIELD,
+          "scalar.comparisons": [
+            { id: "1", type: COMPARISON_TYPES.PREVIOUS_VALUE },
+          ],
+        });
+        // native datetime columns default to showing the time; a coarse
+        // granularity must still drop it
+        settings.column = () => ({
+          date_granularity: granularity,
+          time_enabled: "minutes",
+        });
+
+        const { trend } = computeTrend(
+          series({ rows, cols, queryType: "native" }),
+          createMockInsights({ unit: "year", col: COUNT_FIELD }),
+          settings,
+        );
+        return getTrend(trend)?.display.date;
+      };
+
+      // "default" leaves the full date intact
+      expect(dateStrForGranularity("default")).toBe("June 30, 2024, 12:00 PM");
+      expect(dateStrForGranularity("year")).toBe("2024");
+      expect(dateStrForGranularity("quarter")).toBe("Q2 2024");
+      expect(dateStrForGranularity("month")).toBe("June 2024");
+    });
   });
 });
 
@@ -2332,7 +2516,9 @@ function getComparisonChangeProperties({
   if (changeType === "decrease") {
     return {
       changeArrowIconName: CHANGE_ARROW_ICONS.ARROW_DOWN,
-      changeColor: flipColor ? colors.success : colors.error,
+      changeColor: flipColor
+        ? colors["feedback-positive"]
+        : colors["feedback-negative"],
       changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     };
   }
@@ -2340,7 +2526,9 @@ function getComparisonChangeProperties({
   if (changeType === "increase") {
     return {
       changeArrowIconName: CHANGE_ARROW_ICONS.ARROW_UP,
-      changeColor: flipColor ? colors.error : colors.success,
+      changeColor: flipColor
+        ? colors["feedback-negative"]
+        : colors["feedback-positive"],
       changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     };
   }
@@ -2486,6 +2674,7 @@ function createMockDateTimeColumn(opts: Partial<DatasetColumn>) {
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: null,
+    source: "breakout",
     ...opts,
   });
 }
@@ -2495,6 +2684,7 @@ function createMockNumberColumn(opts: Partial<DatasetColumn>) {
     base_type: "type/Integer",
     effective_type: "type/Integer",
     semantic_type: "type/Number",
+    source: "aggregation",
     ...opts,
   });
 }

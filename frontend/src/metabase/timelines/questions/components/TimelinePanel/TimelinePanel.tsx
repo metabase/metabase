@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { Box } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import TimelineEmptyState from "../TimelineEmptyState";
@@ -36,11 +35,12 @@ const TimelinePanel = ({
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
   const canWrite = collection.can_write;
+  const canCreateEvent = canWrite && onNewEvent != null;
 
   return (
-    <Box mx="lg">
-      {!isEmpty && canWrite && (
-        <Box mb="md">
+    <Box mx="xl">
+      {!isEmpty && canCreateEvent && (
+        <Box mb="lg">
           <Button onClick={onNewEvent}>{t`Create event`}</Button>
         </Box>
       )}

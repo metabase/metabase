@@ -1,0 +1,1 @@
+export { DeleteObjectModal } from "./DeleteObjectModal";

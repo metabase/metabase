@@ -4,12 +4,12 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
 import { cardIsEquivalent } from "metabase/common/utils/card";
-import { loadCard } from "metabase/query_builder/actions/core/card";
+import { selectQuestionFromCard } from "metabase/metadata-store";
+import { loadCard } from "metabase/query_builder";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-import Question from "metabase-lib/v1/Question";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -35,7 +35,7 @@ export const runQuestionOnNavigateSdk =
       previousCard,
       originalQuestion,
       parameterValues,
-      cancelDeferred,
+      signal,
       onQuestionChange,
       onClearQueryResults,
     } = params;
@@ -47,28 +47,34 @@ export const runQuestionOnNavigateSdk =
 
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
-      nextCard = await loadCard(
-        { cardId: nextCard.id },
-        { dispatch, getState },
-      );
+      // Reload the canonical card only for saved questions. Ad-hoc questions
+      // have no id, so keep the card as-is rather than firing
+      // `GET /api/card/undefined`.
+      if (nextCard.id !== null && nextCard.id !== undefined) {
+        nextCard = await loadCard(
+          { cardId: nextCard.id },
+          { dispatch, getState },
+        );
+      }
     } else {
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
       onClearQueryResults();
     }
 
     // Optimistic update the UI before we re-fetch the query metadata.
-    onQuestionChange(new Question(nextCard, getMetadata(getState())));
+    onQuestionChange(selectQuestionFromCard(getState(), nextCard));
 
     await dispatch(loadMetadataForCard(nextCard, { token }));
 
     const state = await runQuestionQuerySdk({
-      question: new Question(nextCard, getMetadata(getState())),
+      question: selectQuestionFromCard(getState(), nextCard),
       originalQuestion,
       parameterValues,
-      cancelDeferred,
+      signal,
       isGuestEmbed,
       token,
+      dispatch,
     });
 
-    return state as SdkQuestionState;
+    return state;
   };

@@ -449,7 +449,6 @@
 
                                 year-matches?
                                 ["MMM d, h:mm a " " MMM d, yyyy, h:mm a"])]
-
         (if lhs-fmt
           (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
           (default-format)))

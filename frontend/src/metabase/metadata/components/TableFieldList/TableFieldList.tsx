@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { FieldList } from "metabase/metadata/components/FieldList";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
@@ -27,52 +27,62 @@ export const TableFieldList = ({
     return _.sortBy(table.fields ?? [], (item) => item.position);
   }, [table.fields]);
 
-  const handleNameChange = async (field: Field, name: string) => {
-    const id = getRawTableFieldId(field);
-    const { error } = await updateField({ id, display_name: name });
+  const handleGetFieldHref = useCallback(
+    (field: Field) => getFieldHref(getRawTableFieldId(field)),
+    [getFieldHref],
+  );
 
-    if (error) {
-      sendErrorToast(t`Failed to update name of ${field.display_name}`);
-    } else {
-      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
-        const { error } = await updateField({
-          id,
-          display_name: field.display_name,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
+  const handleNameChange = useCallback(
+    async (field: Field, name: string) => {
+      const id = getRawTableFieldId(field);
+      const { error } = await updateField({ id, display_name: name });
 
-  const handleDescriptionChange = async (
-    field: Field,
-    description: string | null,
-  ) => {
-    const id = getRawTableFieldId(field);
-    const { error } = await updateField({ id, description });
-
-    if (error) {
-      sendErrorToast(t`Failed to update description of ${field.display_name}`);
-    } else {
-      sendSuccessToast(
-        t`Description of ${field.display_name} updated`,
-        async () => {
+      if (error) {
+        sendErrorToast(t`Failed to update name of ${field.display_name}`);
+      } else {
+        sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
           const { error } = await updateField({
             id,
-            description: field.description ?? "",
+            display_name: field.display_name,
           });
           sendUndoToast(error);
-        },
-      );
-    }
-  };
+        });
+      }
+    },
+    [sendErrorToast, sendSuccessToast, sendUndoToast, updateField],
+  );
+
+  const handleDescriptionChange = useCallback(
+    async (field: Field, description: string | null) => {
+      const id = getRawTableFieldId(field);
+      const { error } = await updateField({ id, description });
+
+      if (error) {
+        sendErrorToast(
+          t`Failed to update description of ${field.display_name}`,
+        );
+      } else {
+        sendSuccessToast(
+          t`Description of ${field.display_name} updated`,
+          async () => {
+            const { error } = await updateField({
+              id,
+              description: field.description ?? "",
+            });
+            sendUndoToast(error);
+          },
+        );
+      }
+    },
+    [sendErrorToast, sendSuccessToast, sendUndoToast, updateField],
+  );
 
   return (
     <FieldList
       fields={fields}
       activeFieldKey={activeFieldId}
       getFieldKey={getRawTableFieldId}
-      getFieldHref={(field) => getFieldHref(getRawTableFieldId(field))}
+      getFieldHref={handleGetFieldHref}
       onNameChange={handleNameChange}
       onDescriptionChange={handleDescriptionChange}
     />

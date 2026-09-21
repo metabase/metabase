@@ -4,14 +4,14 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: 24px;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 
   [data-mantine-color-scheme] &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-weekend] {
@@ -19,35 +19,35 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-brand);
     border-radius: 0;
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
   &[data-first-in-range] {
-    border-start-start-radius: var(--mantine-radius-xs);
-    border-end-start-radius: var(--mantine-radius-xs);
+    border-start-start-radius: var(--mantine-radius-xxs);
+    border-end-start-radius: var(--mantine-radius-xxs);
   }
 
   &[data-last-in-range] {
-    border-start-end-radius: var(--mantine-radius-xs);
-    border-end-end-radius: var(--mantine-radius-xs);
+    border-start-end-radius: var(--mantine-radius-xxs);
+    border-end-end-radius: var(--mantine-radius-xxs);
   }
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
 
     &:hover {
-      background-color: var(--mb-color-brand);
+      background-color: var(--mb-color-core-brand);
     }
   }
 }
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -69,15 +69,15 @@
   line-height: var(--mantine-line-height-lg);
   width: 5rem;
   height: 2rem;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 
   &:hover {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &:where([data-weekend]) {
@@ -85,22 +85,22 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-background-tertiary-inverse);
+    color: var(--mb-color-background_page-tertiary-inverse);
   }
 
   &[data-in-range] {
     color: var(--mb-color-text-selected);
     border-radius: 0;
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
 
     &:hover {
-      background-color: var(--mb-color-background-hover);
+      background-color: var(--mb-color-background_surface-hover);
     }
   }
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 }
 
@@ -136,7 +136,7 @@
 .monthsList,
 .yearsList {
   --horizontal-padding: var(--mantine-spacing-sm);
-  --vertical-padding: var(--mantine-spacing-xs);
+  --vertical-padding: var(--mantine-spacing-xxs);
 
   .cell {
     &:where([data-with-spacing]) {
@@ -176,41 +176,41 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
 .calendarHeaderControl {
   width: 2rem;
   height: 2rem;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-text-primary);
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-selected]:hover,
   &:hover:not(:disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
 .popoverWrapper {
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
 }
 
 .input {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .error {
@@ -226,11 +226,11 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:hover:not([data-selected], :disabled) {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }

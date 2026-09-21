@@ -6,12 +6,17 @@ import { createMockSegment } from "metabase-types/api/mocks";
 
 import { TEST_SEGMENT, setup } from "./setup";
 
+async function getDescriptionInput() {
+  await userEvent.click(screen.getByLabelText("Give it a description"));
+  return screen.getByPlaceholderText("Only if it really needs it");
+}
+
 describe("SegmentDetailPage", () => {
   it("renders page with segment data, tabs, and actions menu", async () => {
-    setup();
+    await setup();
 
     expect(screen.getByDisplayValue("High Value Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("Give it a description")).toHaveValue(
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
       "Orders with total > 100",
     );
     expect(screen.getByText("Definition")).toBeInTheDocument();
@@ -20,7 +25,7 @@ describe("SegmentDetailPage", () => {
   });
 
   it("does not show Save/Cancel buttons when form is pristine", async () => {
-    setup();
+    await setup();
 
     expect(
       screen.queryByRole("button", { name: "Save" }),
@@ -31,9 +36,9 @@ describe("SegmentDetailPage", () => {
   });
 
   it("shows Save/Cancel buttons when description is modified", async () => {
-    setup();
+    await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "New description");
 
@@ -42,16 +47,18 @@ describe("SegmentDetailPage", () => {
   });
 
   it("resets form when Cancel is clicked after modifying description", async () => {
-    setup();
+    await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Modified description");
     expect(descriptionInput).toHaveValue("Modified description");
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(descriptionInput).toHaveValue("Orders with total > 100");
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
+      "Orders with total > 100",
+    );
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
@@ -65,9 +72,9 @@ describe("SegmentDetailPage", () => {
 
     fetchMock.put(`path:/api/segment/${TEST_SEGMENT.id}`, updatedSegment);
 
-    setup();
+    await setup();
 
-    const descriptionInput = screen.getByLabelText("Give it a description");
+    const descriptionInput = await getDescriptionInput();
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Updated description");
 
@@ -83,14 +90,16 @@ describe("SegmentDetailPage", () => {
       expect(calls.length).toBeGreaterThan(0);
     });
 
-    expect(descriptionInput).toHaveValue("Updated description");
+    expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
+      "Updated description",
+    );
     await waitFor(() => {
       expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
     });
   });
 
   it("displays existing filter from segment definition", async () => {
-    setup();
+    await setup();
 
     await waitFor(() => {
       expect(screen.getByText(/Total is greater than/)).toBeInTheDocument();
@@ -98,7 +107,7 @@ describe("SegmentDetailPage", () => {
   });
 
   it("opens actions menu with Preview and Remove options when clicking menu button", async () => {
-    setup();
+    await setup();
 
     await userEvent.click(screen.getByLabelText("Segment actions"));
 
@@ -107,7 +116,7 @@ describe("SegmentDetailPage", () => {
   });
 
   it("shows confirmation modal when Remove segment is clicked", async () => {
-    setup();
+    await setup();
 
     await userEvent.click(screen.getByLabelText("Segment actions"));
     await userEvent.click(screen.getByText("Remove segment"));
@@ -121,14 +130,14 @@ describe("SegmentDetailPage", () => {
 
   describe("readonly state for non-admin users", () => {
     it("has readonly segment name input", async () => {
-      setup({ isAdmin: false });
+      await setup({ isAdmin: false });
 
       const nameInput = screen.getByDisplayValue("High Value Orders");
       expect(nameInput).toBeDisabled();
     });
 
     it("shows description as plain text", async () => {
-      setup({ isAdmin: false });
+      await setup({ isAdmin: false });
 
       expect(screen.getByText("Description")).toBeInTheDocument();
       expect(screen.getByText("Orders with total > 100")).toBeInTheDocument();
@@ -138,7 +147,7 @@ describe("SegmentDetailPage", () => {
     });
 
     it("hides description section when there is no description", async () => {
-      setup({
+      await setup({
         isAdmin: false,
         segment: createMockSegment({ ...TEST_SEGMENT, description: "" }),
       });
@@ -147,7 +156,7 @@ describe("SegmentDetailPage", () => {
     });
 
     it("does not show Remove segment option in actions menu", async () => {
-      setup({ isAdmin: false });
+      await setup({ isAdmin: false });
 
       await userEvent.click(screen.getByLabelText("Segment actions"));
 
@@ -156,7 +165,7 @@ describe("SegmentDetailPage", () => {
     });
 
     it("does not show Save/Cancel buttons", async () => {
-      setup({ isAdmin: false });
+      await setup({ isAdmin: false });
 
       expect(
         screen.queryByRole("button", { name: "Save" }),

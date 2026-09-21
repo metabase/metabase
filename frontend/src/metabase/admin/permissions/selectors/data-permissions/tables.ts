@@ -10,17 +10,18 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  Group,
+  GroupsPermissions,
+  PermissionsDatabase,
+  SchemaEntityId,
+  SpecialGroupType,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
-import type {
-  PermissionSectionConfig,
-  SchemaEntityId,
-  SpecialGroupType,
-} from "../../types";
+import type { PermissionSectionConfig } from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -133,7 +134,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
-  database: Database,
+  database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const dbValue = getSchemasPermission(
     permissions,
@@ -200,7 +201,7 @@ export const buildTablesPermissions = ({
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
   defaultGroup: Group;
-  database: Database;
+  database: PermissionsDatabase;
   showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";

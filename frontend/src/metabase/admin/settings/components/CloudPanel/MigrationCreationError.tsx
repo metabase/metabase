@@ -15,8 +15,8 @@ export const MigrationCreationError = ({
 }: MigrationCreationErrorProps) => {
   return (
     <MigrationCard>
-      <Flex gap="md">
-        <LargeIconContainer color={color("error")}>
+      <Flex gap="lg">
+        <LargeIconContainer color={color("feedback-negative")}>
           <Icon size="1.5rem" name="warning" />
         </LargeIconContainer>
         <Box>

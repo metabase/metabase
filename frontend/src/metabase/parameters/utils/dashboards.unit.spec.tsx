@@ -13,7 +13,7 @@ import Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -29,6 +29,8 @@ import {
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
+
+const buildQuestion = (card: UnsavedCard) => new Question(card, metadata);
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -90,6 +92,37 @@ describe("metabase/parameters/utils/dashboards", () => {
         sectionId: "abc",
         slug: "foo_bar_2",
         type: "category",
+      });
+    });
+
+    it("should preserve parameter settings when duplicating", () => {
+      expect(
+        createParameter(
+          {
+            name: "Category",
+            type: "string/=",
+            sectionId: "string",
+            default: ["Gadget"],
+            required: true,
+            isMultiSelect: false,
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: { values: ["Gadget", "Widget"] },
+          },
+          [],
+        ),
+      ).toEqual({
+        id: expect.any(String),
+        name: "Category",
+        slug: "category",
+        type: "string/=",
+        sectionId: "string",
+        default: ["Gadget"],
+        required: true,
+        isMultiSelect: false,
+        values_query_type: "list",
+        values_source_type: "static-list",
+        values_source_config: { values: ["Gadget", "Widget"] },
       });
     });
   });
@@ -325,6 +358,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   });
 
   describe("getFilteringParameterValuesMap", () => {
+    // Unjustified type cast. FIXME
     const undefinedFilteringParameters = {} as UiParameter;
     const emptyFilteringParameters = createMockUiParameter({
       filteringParameters: [],
@@ -551,7 +585,7 @@ describe("metabase/parameters/utils/dashboards", () => {
         getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         ),
       ).toEqual([

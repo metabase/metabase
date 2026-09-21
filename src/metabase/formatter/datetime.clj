@@ -235,8 +235,7 @@
       (try
         (reformat-temporal-str timezone-id temporal-str date-format)
         (catch Exception _
-          (log/warnf "Could not format temporal string %s in time zone %s with format %s."
-                     temporal-str
+          (log/warnf "Could not format temporal string in time zone %s with format %s."
                      timezone-id
                      date-format)
           temporal-str)))))

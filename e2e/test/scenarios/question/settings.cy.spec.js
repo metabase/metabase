@@ -174,6 +174,12 @@ describe("scenarios > question > settings", () => {
 
       findColumnAtIndex("Products → Category", 5);
 
+      // Let the refreshed results finish rendering (Total visible) before hiding,
+      // so the hide toggle doesn't race the in-flight results render.
+      cy.findByTestId("query-builder-main")
+        .findByText("117.03")
+        .should("exist");
+
       // Remove "Total"
       hideColumn("Total");
 
@@ -358,7 +364,6 @@ describe("scenarios > question > settings", () => {
         .findByRole("listitem")
         .within(() => {
           cy.findByLabelText("ellipsis icon").should("be.visible");
-          cy.findByLabelText("grabber icon").should("be.visible");
           cy.findByLabelText("eye_outline icon").should("be.visible");
           cy.findByText(longName).should("be.visible");
         });
@@ -424,128 +429,6 @@ describe("scenarios > question > settings", () => {
           cy.findByLabelText("close icon").should("not.exist");
         });
     });
-
-    it(
-      "should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)",
-      { tags: "@skip" },
-      () => {
-        // products joined to orders with breakouts on 3 product columns followed by a custom column
-        H.createQuestion(
-          {
-            name: "repro 22563",
-            query: {
-              "source-query": {
-                "source-table": ORDERS_ID,
-                joins: [
-                  {
-                    alias: "Products",
-                    condition: [
-                      "=",
-                      ["field", ORDERS.PRODUCT_ID, null],
-                      [
-                        "field",
-                        PRODUCTS.ID,
-                        {
-                          "join-alias": "Products",
-                        },
-                      ],
-                    ],
-                    "source-table": PRODUCTS_ID,
-                  },
-                ],
-                aggregation: [["count"]],
-                breakout: [
-                  [
-                    "field",
-                    PRODUCTS.CATEGORY,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.TITLE,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                  [
-                    "field",
-                    PRODUCTS.VENDOR,
-                    {
-                      "base-type": "type/Text",
-                      "join-alias": "Products",
-                    },
-                  ],
-                ],
-              },
-              expressions: {
-                two: ["+", 1, 1],
-              },
-            },
-          },
-          { visitQuestion: true },
-        );
-
-        const columnNames = [
-          "Products → Category",
-          "Products → Title",
-          "Products → Vendor",
-          "Count",
-          "two",
-        ];
-
-        H.tableInteractive().within(() => {
-          columnNames.forEach((text) =>
-            cy.findByText(text).should("be.visible"),
-          );
-        });
-
-        H.openVizSettingsSidebar();
-
-        cy.findByTestId("chartsettings-sidebar").within(() => {
-          columnNames.forEach((text) =>
-            cy.findByText(text).should("be.visible"),
-          );
-          cy.findByText("More Columns").should("not.exist");
-
-          cy.icon("eye_outline").first().click();
-
-          cy.findByText("More columns").should("be.visible");
-
-          // disable the first column
-          cy.findByTestId("disabled-columns")
-            .findByText("Products → Category")
-            .should("be.visible");
-          cy.findByTestId("visible-columns")
-            .findByText("Products → Category")
-            .should("not.exist");
-        });
-
-        H.tableInteractive().within(() => {
-          // the query should not have changed
-          cy.icon("play").should("not.exist");
-          cy.findByText("Products → Category").should("not.exist");
-        });
-
-        cy.findByTestId("chartsettings-sidebar").within(() => {
-          cy.icon("add").click();
-          // re-enable the first column
-          cy.findByText("More columns").should("not.exist");
-          cy.findByTestId("visible-columns")
-            .findByText("Products → Category")
-            .should("be.visible");
-        });
-
-        H.tableInteractive().within(() => {
-          // the query should not have changed
-          cy.icon("play").should("not.exist");
-          cy.findByText("Products → Category").should("be.visible");
-        });
-      },
-    );
   });
 
   describe("resetting state", () => {
@@ -603,8 +486,10 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
+  // Click the hide button without force so Cypress waits for actionability and
+  // re-queries on re-render — a force click can land on a stale node and be lost.
   H.sidebar()
     .findByTestId(`draggable-item-${name}`)
-    .icon("eye_outline")
-    .click({ force: true });
+    .findByTestId(`${name}-hide-button`)
+    .click();
 }

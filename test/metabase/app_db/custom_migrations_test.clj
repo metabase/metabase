@@ -1,4 +1,4 @@
-(ns metabase.app-db.custom-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.custom-migrations-test
   "Tests to make sure the custom migrations work as expected.
 
   As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
@@ -25,13 +25,15 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.settings.models.setting]
+   [metabase.settings.models.setting :as setting]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -443,14 +445,12 @@
                  :row 0}
                 {:id  tab1-card2-id
                  :row 2}
-
-               ;; tab 2
+                ;; tab 2
                 {:id  tab2-card1-id
                  :row 8}
                 {:id  tab2-card2-id
                  :row 12}
-
-               ;; tab 3
+                ;; tab 3
                 {:id  tab4-card1-id
                  :row 14}
                 {:id  tab4-card2-id
@@ -487,7 +487,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
@@ -530,7 +529,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -595,10 +593,10 @@
                                 acc-row []]
                            (let [size-x  (inc (math/round (* 9 (math/random))))
                                  new-col (+ col size-x)]
-                              ;; we want to ensure we have a card at the end of the row
+                             ;; we want to ensure we have a card at the end of the row
                              (if (>= new-col 18)
                                (cons [col row (- 18 col) size-y] acc-row)
-                                ;; probability of skipping is 5%
+                               ;; probability of skipping is 5%
                                (if (> (math/random) 0.95)
                                  (recur (+ col size-x) acc-row)
                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
@@ -610,17 +608,14 @@
 (deftest ^:mb/old-migrations-test migrated-grid-18-to-24-stretch-test
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
         rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
-
     (testing "make sure the initial arry is good to start with"
       (is (true? (no-cards-are-out-of-grid-and-has-size-0? big-random-dashboard-cards 18)))
       (is (true? (no-cards-are-overlap? big-random-dashboard-cards))))
-
     (testing "migrates to 24"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? migrated-to-18 24))))
       (testing "shouldn't have overlapping cards"
         (is (true? (no-cards-are-overlap? migrated-to-18)))))
-
     (testing "rollbacked to 18"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
@@ -1071,7 +1066,7 @@
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-          (with-redefs [database/set-new-database-permissions! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [database/set-new-database-permissions! (constantly nil)]
             (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
               (let [default-db                {:name       "DB"
                                                :engine     "postgres"
@@ -1116,7 +1111,6 @@
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
-
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
@@ -1127,24 +1121,21 @@
                     (testing "even when settings is empty"
                       (is (= {:persist-models-enabled true}
                              (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
-
                   (testing "nil or empty options doesn't break migration"
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database nil-options-id)))
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database empty-options-id)))))
-
                 (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id)))
+                           (t2/select-one [:model/Database :settings :options] success-id))))
+                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
-
-                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1536,7 +1527,7 @@
 (defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
-  (binding [metabase.settings.models.setting/*allow-retired-setting-names* true]
+  (binding [setting/*allow-retired-setting-names* true]
     `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
@@ -1553,14 +1544,12 @@
         sso-expected-mapping  {"group-mapping-a" [(inc admin-group-id)]
                                "group-mapping-b" [(inc admin-group-id) (+ 2 admin-group-id)]}
         ldap-expected-mapping {"dc=metabase,dc=com" [(inc admin-group-id)]}]
-
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
         (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
-
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1571,7 +1560,6 @@
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
-
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1587,11 +1575,9 @@
       ;; 0 because we removed them and fresh db won't trigger any
       (is (= 0 (t2/count :data_migrations)))
       (migrate!))
-
     (testing "no data_migrations table after v.48.00-024"
       (is (thrown? ExceptionInfo
                    (t2/count :data_migrations))))
-
     (testing "rollback causes all known data_migrations to reappear"
       (migrate! :down 47)
       ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
@@ -1629,19 +1615,16 @@
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
       (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
         (migrate!)
         (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
                (set (table-and-column-of-type datetime-type)))))
-
       (testing "downgrade should revert all converted columns to its original type"
         (migrate! :down 48)
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
-        ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
+      ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
       (testing "not nullable timestamp column should not have extra on update"
         (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                            :last_name   "Hughes"
@@ -1692,14 +1675,12 @@
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
             (is (contains? card-revision-object "dataset")))))
-
       (testing "after migration card revisions should have type"
         (migrate!)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
               model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
-
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
@@ -1710,30 +1691,30 @@
           (is (not (contains? model-revision-object "type"))))))))
 
 (deftest ^:mb/old-migrations-test card-revision-add-type-null-character-test
-  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
-  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
-    (let [user-id          (:id (new-instance-with-default :core_user))
-          db-id            (:id (new-instance-with-default :metabase_database))
-          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
-          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
-          card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/encode
-                                                                        (assoc (dissoc card :type)
-                                                                               :visualization_settings viz-settings))
-                                                            :model     "Card"
-                                                            :model_id  (:id card)
-                                                            :user_id   user-id}))]
-      (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (testing "doesn't have type"
-            (is (not (contains? card-revision-object "type"))))))
-      (testing "after migration card revisions should have type"
-        (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (is (= "question" (get card-revision-object "type")))
-          (testing "original visualization_settings should be preserved"
-            (is (= viz-settings
-                   (get card-revision-object "visualization_settings")))))))))
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)"
+    (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+      (let [user-id          (:id (new-instance-with-default :core_user))
+            db-id            (:id (new-instance-with-default :metabase_database))
+            card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+            viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+            card-revision-id (:id (new-instance-with-default :revision
+                                                             {:object   (json/encode
+                                                                         (assoc (dissoc card :type)
+                                                                                :visualization_settings viz-settings))
+                                                              :model    "Card"
+                                                              :model_id (:id card)
+                                                              :user_id  user-id}))]
+        (testing "sanity check revision object"
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (testing "doesn't have type"
+              (is (not (contains? card-revision-object "type"))))))
+        (testing "after migration card revisions should have type"
+          (migrate!)
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (is (= "question" (get card-revision-object "type")))
+            (testing "original visualization_settings should be preserved"
+              (is (= viz-settings
+                     (get card-revision-object "visualization_settings"))))))))))
 
 (deftest ^:mb/old-migrations-test delete-scan-field-values-trigger-test
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
@@ -1770,13 +1751,11 @@
                       (testing "sanity check that the schedule exists"
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (migrate!)
                     (testing "default options and scan with manual schedules should have scan field values"
                       (doseq [db db-with-scan-fv]
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (testing "never scan and on demand should not have scan field values"
                       (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
                         (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
@@ -1801,7 +1780,6 @@
                                                  :where  [:= :id db-id]})))]
         (testing "sanity check that db details is encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
-
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
@@ -1832,7 +1810,7 @@
               pulse-id (:id (new-instance-with-default :pulse {:creator_id user-id}))
               pc       (new-instance-with-default :pulse_channel {:pulse_id pulse-id})]
           ;; trigger this so we schedule a trigger for send-pulse
-          (task.send-pulses/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
+          (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pc :add-pc-ids #{(:id pc)})
           (testing "sanity check that we have a send pulse trigger and 2 jobs"
             (is (= 1 (count (pulse-channel-test/send-pulse-triggers pulse-id))))
             (is (= #{"metabase.task.send-pulses.send-pulse.job"
@@ -1841,7 +1819,6 @@
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
             (migrate! :down 49)
             (is (= #{} (scheduler-job-keys))))
-
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
             ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
@@ -2002,8 +1979,8 @@
                 (is (not-empty settings-after))
                 (is (every? encryption/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+                (is (= (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-before))
+                       (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-after))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -2049,13 +2026,10 @@
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
-
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
-
     (encryption-test/with-secret-key "whateverwhatever"
       (migrate!))
-
     (testing "But not anymore"
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
@@ -2213,7 +2187,6 @@
             (is (false? (sample-content-created?)))
             (migrate!)
             (is (= create? (sample-content-created?))))
-
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
               (let [id (t2/select-one-pk :model/Collection :is_sample true)]
@@ -2596,7 +2569,6 @@
                                                                  :channel_type "email"
                                                                  :details      (json/encode {:emails ["test@test.com"]})
                                                                  :enabled      true})))]
-
           (testing "after migration"
             (migrate!)
             (testing "pulse is migrated to notification"
@@ -2609,16 +2581,13 @@
                         :active       true
                         :creator_id   user-id}
                        (select-keys notification [:payload_type :active :creator_id])))
-
                 (is (= {:card_id        card-id
                         :send_once      false
                         :send_condition "has_result"}
                        (select-keys notification-card [:card_id :send_once :send_condition])))
-
                 (is (= {:type          "notification-subscription/cron"
                         :cron_schedule "0 0 18 * * ? *"}
                        (select-keys subscription [:type :cron_schedule])))
-
                 (is (= {:channel_type "channel/email"}
                        (select-keys handler [:channel_type])))
                 (is (= {:type    "notification-recipient/raw-value"
@@ -2627,7 +2596,6 @@
                 (is (= {:type    "notification-recipient/raw-value"
                         :details "{\"value\":\"test@test.com\"}"}
                        (select-keys recipient [:type :details]))))))
-
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
@@ -2710,6 +2678,23 @@
           (testing "everything back to normal after downgrade"
             (assert-pre-conditions)))))))
 
+(deftest migrate-clickhouse-details-keeps-encryption-state-test
+  (testing "v57.2025-08-23T16:00:00 : rewriting details keeps each row as plaintext or ciphertext, whichever it was"
+    (encryption-test/with-secret-key "clickhouse-details-state-key-1234"
+      (impl/test-migrations "v57.2025-08-23T16:00:00" [migrate!]
+        (let [plain-id (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (json/encode {:dbname "plain_db"})}))
+              enc-id   (:id (new-instance-with-default :metabase_database {:engine  "clickhouse"
+                                                                           :details (encryption/encrypt (json/encode {:dbname "enc_db"}))}))
+              raw      (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
+          (migrate!)
+          (testing "a plaintext row stays plaintext"
+            (is (not (encryption/decryptable-string? (raw plain-id))))
+            (is (= "plain_db" (:db-filters-patterns (json/decode+kw (raw plain-id))))))
+          (testing "an encrypted row stays encrypted"
+            (is (encryption/decryptable-string? (raw enc-id)))
+            (is (= "enc_db" (:db-filters-patterns (json/decode+kw (encryption/maybe-decrypt (raw enc-id))))))))))))
+
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
     (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
@@ -2734,6 +2719,35 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-example-dashboard-id-value-with-aad-test
+  (testing "v58.2026-09-03T00:00:04 : the example-dashboard-id row gets its value_with_aad from its encrypted value"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value (encryption/encrypt "7")}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" (encryption/maybe-decrypt value)))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "a plaintext numeric value written by a version predating encryption of this setting is taken as-is"
+    (encryption-test/with-secret-key "example-dashboard-id-key-1234"
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (let [{:keys [value value_with_aad]} (t2/select-one :setting :key "example-dashboard-id")]
+          (is (= "7" value))
+          (is (encryption/decryptable-string? value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")}))
+          (is (= "7" (encryption/maybe-decrypt value_with_aad {:aad (mdb.setting/setting-aad "example-dashboard-id")})))))))
+  (testing "without a key both columns stay plaintext"
+    (encryption-test/with-secret-key nil
+      (impl/test-migrations "v58.2026-09-03T00:00:04" [migrate!]
+        (t2/query {:delete-from :setting :where [:= :key "example-dashboard-id"]})
+        (t2/query {:insert-into :setting :values [{:key "example-dashboard-id" :value "7"}]})
+        (migrate!)
+        (is (= {:value "7", :value_with_aad "7"}
+               (select-keys (t2/select-one :setting :key "example-dashboard-id") [:value :value_with_aad])))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
@@ -2943,6 +2957,34 @@
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
 
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
+
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
@@ -2972,3 +3014,76 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest retire-mcp-v1-oauth-scopes-test
+  (testing (str "v64.2026-09-09T12:00:00/01: a client connected to a shipped v0.60–v0.63 release holds a 17-scope "
+                "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
+                "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
+                "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
+                "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
+                "re-authenticates instead of refreshing.")
+    (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
+      (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
+            legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
+                             "agent:notebook:create" "agent:query:construct" "agent:query:execute"
+                             "agent:question:create" "agent:question:update" "agent:question:execute"
+                             "agent:metric:create" "agent:metric:update"
+                             "agent:dashboard:create" "agent:dashboard:update" "agent:collection:create"
+                             "agent:viz:mcp-ui:query" "agent:viz:mcp-ui:drill-through"]
+            v2-scopes       ["agent:content:read" "agent:content:write" "agent:query:run"
+                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+            ;; `oauth_access_token.user_id` is a real FK, so the row must exist. Inserted directly rather
+            ;; than via `new-instance-with-default` because this release makes `entity_id` NOT NULL.
+            user-id         (t2/insert-returning-pk!
+                             :core_user {:first_name  "MCP"
+                                         :last_name   "Migration"
+                                         :email       (str (random-uuid) "@metabase.com")
+                                         :password    "irrelevant"
+                                         :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
+                                         :date_joined :%now})
+            insert-client!  (fn [client-id registration-type scopes]
+                              (t2/insert-returning-pk!
+                               :oauth_client {:client_id         client-id
+                                              :client_name       "Legacy MCP Client"
+                                              :redirect_uris     (json/encode ["http://localhost/callback"])
+                                              :grant_types       (json/encode ["authorization_code"])
+                                              :response_types    (json/encode ["code"])
+                                              :scopes            (json/encode scopes)
+                                              :registration_type registration-type
+                                              :client_type       "public"
+                                              :created_at        :%now
+                                              :updated_at        :%now}))
+            insert-token!   (fn [table client-id scopes]
+                              (t2/insert-returning-pk!
+                               table {:token      (str (random-uuid))
+                                      :user_id    user-id
+                                      :client_id  client-id
+                                      :scope      (json/encode scopes)
+                                      :expiry     (+ (System/currentTimeMillis) 3600000)
+                                      :created_at :%now}))
+            dynamic-id      (insert-client! "dynamic-legacy" "dynamic" legacy-scopes)
+            static-id       (insert-client! "static-legacy" "static" legacy-scopes)
+            legacy-access   (insert-token! :oauth_access_token "dynamic-legacy" legacy-scopes)
+            legacy-refresh  (insert-token! :oauth_refresh_token "dynamic-legacy" legacy-scopes)
+            ;; A token already minted against the v2 surface — the migration must leave it alone, or upgrading
+            ;; would log out clients that were working.
+            v2-access       (insert-token! :oauth_access_token "dynamic-legacy" ["agent:content:read"])
+            v2-refresh      (insert-token! :oauth_refresh_token "dynamic-legacy" v2-scopes)
+            scopes-of       (fn [table id col]
+                              (set (json/decode (get (t2/query-one {:select [col] :from [table] :where [:= :id id]}) col))))
+            revoked?        (fn [table id]
+                              (some? (:revoked_at (t2/query-one {:select [:revoked_at] :from [table] :where [:= :id id]}))))]
+        (migrate!)
+        (testing "the dynamic client's snapshot gains the six v2 scopes, so a re-authorization validates"
+          (let [scopes (scopes-of :oauth_client dynamic-id :scopes)]
+            (is (every? scopes v2-scopes))
+            (testing "and keeps its legacy scopes — issued tokens carry literal strings, so none may be dropped"
+              (is (every? scopes legacy-scopes)))))
+        (testing "a statically registered client is left alone — it did not snapshot via DCR"
+          (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
+        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
+          (is (revoked? :oauth_access_token legacy-access))
+          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "tokens already carrying a v2 tool scope keep working"
+          (is (not (revoked? :oauth_access_token v2-access)))
+          (is (not (revoked? :oauth_refresh_token v2-refresh))))))))

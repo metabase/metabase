@@ -18,7 +18,7 @@ import {
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -33,10 +33,7 @@ import {
 } from "metabase/utils/dashboard_grid";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import {
-  isVisualizerDashboardCard,
-  isVisualizerSupportedVisualization,
-} from "metabase/visualizer/utils";
+import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
 import type {
   BaseDashboardCard,
   Card,
@@ -46,6 +43,7 @@ import type {
   DashboardTabId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -145,7 +143,7 @@ type DashboardGridContext = {
   | "isEditingParameter"
   | "isFullscreen"
   | "clickBehaviorSidebarDashcard"
-  | "getClickActionMode"
+  | "clickActionMode"
   | "navigateToNewCardFromDashboard"
   | "downloadsEnabled"
   | "autoScrollToDashcardId"
@@ -342,6 +340,7 @@ class DashboardGridInner extends Component<
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
+    // Unjustified type cast. FIXME
     return getVisibleCards(
       cards,
       visibleCardIds,
@@ -364,6 +363,7 @@ class DashboardGridInner extends Component<
   getRowHeight() {
     const { width } = this.props;
 
+    // Unjustified type cast. FIXME
     const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
@@ -398,7 +398,6 @@ class DashboardGridInner extends Component<
 
       addUndo({
         message: getUndoReplaceCardMessage(replaceCardModalDashCard.card),
-        undo: true,
         action: () =>
           setDashCardAttributes({
             id: replaceCardModalDashCard.id,
@@ -522,14 +521,18 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
+  onVisualizerModalSave = async (visualization: VisualizerVizDefinition) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {
       return;
     }
 
-    this.props.replaceCardWithVisualization({
+    // Await the replacement before closing the modal: it commits the new
+    // card series to the dashcard only after fetching the referenced cards.
+    // Closing early lets a subsequent dashboard save run against the
+    // not-yet-updated dashcard, which would drop the new series.
+    await this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,
     });
@@ -564,6 +567,7 @@ class DashboardGridInner extends Component<
         initialState={{ state: visualizerModalStatus.state }}
         saveLabel={t`Save`}
         allowSaveWhenPristine={allowSaveWhenPristine}
+        dashboardId={this.props.dashboard.id}
       />
     );
   }
@@ -720,7 +724,7 @@ const DashboardGrid = forwardRef<
     isEditingParameter = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
-    getClickActionMode,
+    clickActionMode,
     navigateToNewCardFromDashboard,
     downloadsEnabled,
     autoScrollToDashcardId,
@@ -744,7 +748,7 @@ const DashboardGrid = forwardRef<
       isEditingParameter={isEditingParameter}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={clickActionMode}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       downloadsEnabled={downloadsEnabled}
       autoScrollToDashcardId={autoScrollToDashcardId}
@@ -762,6 +766,7 @@ const DashboardGrid = forwardRef<
   );
 });
 
+// Unjustified type cast. FIXME
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,

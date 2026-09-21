@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "__support__/ui";
-import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
+import type { DashboardSubscriptionListItem } from "metabase/notifications/types";
 import type { Channel } from "metabase-types/api";
 import {
   createMockChannel,

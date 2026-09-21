@@ -1,11 +1,14 @@
 (ns ^:mb/driver-tests metabase.actions.models-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.models-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -119,6 +122,25 @@
                        (->> (action/select-action :id action-id)
                             :parameters (map :id) set)))))))))))
 
+(deftest hydrate-implicit-action-test-3
+  (testing "Implicit actions do not map parameters to binary fields, the same way JSON fields are excluded"
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition
+                   "binary-field-dataset"
+                   [["binary_table"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [["Row One" (byte-array [0 1])]
+                      ["Row Two" (byte-array [2 3])]]]])
+        (mt/with-actions-enabled
+          (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query binary_table)}
+                            {action-id :action-id} {:type :implicit}]
+            (let [parameter-ids (->> (action/select-action :id action-id) :parameters (map :id) set)]
+              (testing "the non-binary column is still a valid parameter"
+                (is (contains? parameter-ids "name")))
+              (testing "the binary column is excluded"
+                (is (not (contains? parameter-ids "bytea_col")))))))))))
+
 (deftest hydrate-creator-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
@@ -176,10 +198,32 @@
         (testing "Update action"
           (let [action (action/select-action :id action-id)]
             ;; Update columns on both the action and the subtype table
-            (action/update! (assoc action :name "New name" :kind "row/update") action)
+            (action/update! (assoc action :name "New name" :kind :row/update) action)
             (let [new-action (action/select-action :id action-id)]
               (is (partial= {:name "New name"
                              :kind :row/update} new-action)))))))))
+
+(deftest query-action-database-id-derived-from-query-test
+  (mt/with-actions-enabled
+    (mt/with-actions [{model-id :id, model-db-id :database_id} {:type :model, :dataset_query (mt/mbql-query categories)}]
+      (testing "insert! derives :database_id from the query's database"
+        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                       {:type          :query
+                                                        :name          "derive db insert"
+                                                        :model_id      model-id
+                                                        :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
+                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+          (is (= model-db-id (:database_id (action/select-action :id action-id))))))
+      (testing "update! re-derives :database_id from the query"
+        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                       {:type          :query
+                                                        :name          "derive db update"
+                                                        :model_id      model-id
+                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
+              existing  (action/select-action :id action-id)]
+          ;; a :database_id-only update can't repoint the action away from the query's database
+          (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)
+          (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -299,7 +343,7 @@
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data         {:type     :implicit
-                                   :kind     "row/create"
+                                   :kind     :row/create
                                    :name     "create foo"
                                    :model_id model-id}
               action-id           (action/insert! action-data)
@@ -320,7 +364,7 @@
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data {:type     :implicit
-                           :kind     "row/create"
+                           :kind     :row/create
                            :name     "create foo"
                            :model_id model-id}
               action-id   (action/insert! action-data)

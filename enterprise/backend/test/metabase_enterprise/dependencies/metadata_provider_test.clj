@@ -114,7 +114,6 @@
       ;; OverrideMetadataProvider.
       (deps.mp/add-override mp :card 2 nil)
       (deps.mp/add-override mp :transform 123 transform)
-
       (testing "upstream card's columns are correct"
         (is (=? [{:name "CREATED_AT"}
                  {:name "count"}]

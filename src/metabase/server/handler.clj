@@ -1,11 +1,14 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
+   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.middleware.body-limit :as mw.body-limit]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
+   [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
@@ -69,7 +72,7 @@
     (when (and config/dev-available? (not *compile-files*))
       (requiring-resolve 'dev.server.middleware.proxy/wrap-remote-api-proxy))
     (catch Exception e
-      (log/warn e "Failed to load dev remote API proxy middleware")
+      (log/warnf "Failed to load dev remote API proxy middleware: %s" (ex-message e))
       nil)))
 
 (def ^:private middleware
@@ -83,6 +86,7 @@
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
+        #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
         #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
@@ -92,9 +96,11 @@
         #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
         #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
         #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
+        #'mw.body-limit/wrap-limit-request-body      ; bounds unauthenticated request body sizes; must be inside wrap-current-user-info and outside everything that reads the body
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+        #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
         #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
         #'mw.pf-cache/wrap-premium-features-cache-check ; check cookie to refresh premium features cache if needed
         #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed

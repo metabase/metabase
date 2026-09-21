@@ -2,7 +2,7 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { useAdminSetting } from "metabase/settings";
 import { Stack, Text, TextInput } from "metabase/ui";
 import type { FontFile } from "metabase-types/api";
 
@@ -51,7 +51,7 @@ export const FontFilesWidget = () => {
   );
 
   return (
-    <Stack mt="md" gap="sm">
+    <Stack mt="lg" gap="sm">
       <Text c="text-secondary">{fontFilesDescription}</Text>
       <FontFilesTable urls={urls} onChange={handleChange} />
     </Stack>

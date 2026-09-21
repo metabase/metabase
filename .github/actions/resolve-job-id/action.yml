@@ -1,0 +1,66 @@
+name: Resolve current job id
+description: >
+  Resolve this job's GitHub workflow_jobs.id via the Actions API and export it
+  as JOB_ID (and JOB_HTML_URL) to $GITHUB_ENV, so any later step can read the
+  numeric job id without making its own API call. Best-effort: warns and
+  proceeds on failure so it can never break the run.
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve JOB_ID
+      shell: bash
+      env:
+        # Use the built-in per-job token, not a PAT: this lookup is best-effort
+        # (a miss just leaves JOB_ID unset, never breaks the run) and other jobs
+        # depend on the automation PAT's rate-limit budget — we don't want ~70
+        # e2e shards drawing it down. Worst case under heavy CI load is the
+        # occasional unresolved job_id, which is acceptable. DEV-2117.
+        GH_TOKEN: ${{ github.token }}
+        RUNNER_NAME: ${{ runner.name }}
+      run: |
+        # GitHub doesn't expose the current job's numeric id, so we look it up
+        # from the Actions API. A runner runs exactly one job at a time, so the
+        # in-progress job with this runner_name within (run_id, run_attempt) is
+        # unique. We require status == in_progress and no completed_at so a
+        # reused runner can't match a job it already finished this attempt, with
+        # max_by(.started_at) as a final tiebreaker.
+        #
+        # $GITHUB_RUN_ID is the whole CI run, whose total job count exceeds the
+        # 100-per-page cap (~185 jobs), so this shard's job is frequently NOT on
+        # the first page. --paginate --slurp pulls every page and slurps them
+        # into one array so the filter sees all jobs, not just the first 100 —
+        # without it the lookup returned null whenever this job sorted past
+        # position 100 (DEV-2117).
+        #
+        # gh rejects `--slurp` together with `--jq` ("the --slurp option is not
+        # supported with --jq"), so we slurp with gh and run the filter through a
+        # standalone `jq`. The earlier `--slurp --jq` form errored on every
+        # attempt — swallowed by 2>/dev/null — leaving JOB_ID permanently unset.
+        set +e
+        api_url="/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100"
+        jq_filter="[.[].jobs[] | select(.runner_name == \"$RUNNER_NAME\" and .status == \"in_progress\" and .completed_at == null)] | max_by(.started_at) | \"\(.id) \(.html_url)\""
+
+        # The Actions jobs API is eventually consistent: after a runner picks
+        # up a job, it can take a few seconds for runner_name to appear in the
+        # response. Retry briefly to absorb that.
+        out=""
+        for attempt in 1 2 3 4 5; do
+          out=$(gh api --paginate --slurp "$api_url" 2>/dev/null | jq -r "$jq_filter" 2>/dev/null)
+          if [ -n "$out" ] && [ "$out" != "null null" ]; then
+            break
+          fi
+          out=""
+          echo "Attempt $attempt: job not yet visible in Actions API; retrying..."
+          sleep 3
+        done
+
+        if [ -n "$out" ]; then
+          read -r job_id job_url <<<"$out"
+          echo "JOB_ID=$job_id" >> "$GITHUB_ENV"
+          echo "JOB_HTML_URL=$job_url" >> "$GITHUB_ENV"
+          echo "Resolved JOB_ID=$job_id (runner=$RUNNER_NAME)"
+        else
+          echo "::warning::Could not resolve current job id after 5 attempts (runner=$RUNNER_NAME)"
+        fi
+        exit 0

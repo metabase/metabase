@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   AggregationPicker,
   type AggregationPickerProps,
-} from "metabase/common/components/AggregationPicker";
+} from "metabase/querying/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";

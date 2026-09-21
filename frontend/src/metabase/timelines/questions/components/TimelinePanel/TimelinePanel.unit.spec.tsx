@@ -48,6 +48,18 @@ describe("TimelinePanel", () => {
 
     expect(screen.queryByText("Create event")).not.toBeInTheDocument();
   });
+
+  it("should not allow creating events when onNewEvent is omitted", () => {
+    const props = getProps({
+      timelines: [createMockTimeline()],
+      collection: createMockCollection({ can_write: true }),
+      onNewEvent: undefined,
+    });
+
+    setup(props);
+
+    expect(screen.queryByText("Create event")).not.toBeInTheDocument();
+  });
 });
 
 const getProps = (opts?: Partial<TimelinePanelProps>): TimelinePanelProps => ({

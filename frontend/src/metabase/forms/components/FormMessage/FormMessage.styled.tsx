@@ -11,11 +11,13 @@ export const FormMessageStyled = styled.span<{
   noPadding?: boolean;
 }>`
   color: ${({ hasSucceeded }) =>
-    hasSucceeded ? "var(--mb-color-success)" : color("error")};
+    hasSucceeded
+      ? "var(--mb-color-feedback-positive)"
+      : color("feedback-negative")};
   float: left;
   opacity: 0;
   padding-bottom: ${({ noPadding }) =>
-    noPadding ? "" : "var(--mantine-spacing-md)"};
+    noPadding ? "" : "var(--mantine-spacing-lg)"};
   transition: none;
   width: 100%;
 

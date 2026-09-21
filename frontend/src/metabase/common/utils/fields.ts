@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import type { Field } from "metabase-types/api";
+import type { Field, IconName } from "metabase-types/api";
 
 interface FieldSemanticType {
   id: NonNullable<Field["semantic_type"]>;
@@ -574,6 +573,7 @@ export const FIELD_SEMANTIC_TYPES: FieldSemanticType[] = [
 
 export const FIELD_SEMANTIC_TYPES_MAP = FIELD_SEMANTIC_TYPES.reduce(
   (map, type) => Object.assign({}, map, { [type.id]: type }),
+  // Unjustified type cast. FIXME
   {} as Record<FieldSemanticType["id"], FieldSemanticType>,
 );
 

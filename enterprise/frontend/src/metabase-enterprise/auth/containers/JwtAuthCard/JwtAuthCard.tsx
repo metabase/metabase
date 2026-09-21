@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import type { EnterpriseSettings } from "metabase-types/api";
+import { useAdminSetting } from "metabase/settings";
 
 import { JWT_SCHEMA } from "../../constants";
 
@@ -22,9 +21,7 @@ export function JwtAuthCard() {
   const isEnabledViaEnv = !!jwtEnabledDetails?.is_env_setting;
 
   const handleDeactivate = () => {
-    return updateSettings(
-      JWT_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
-    );
+    return updateSettings(JWT_SCHEMA.getDefault());
   };
 
   const hasFeature = useHasTokenFeature("sso_jwt");

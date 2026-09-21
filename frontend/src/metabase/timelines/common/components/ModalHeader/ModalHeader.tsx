@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import { c } from "ttag";
 
-import { Box, Flex, Group, Icon } from "metabase/ui";
+import { Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
 
 import {
   HeaderBackIcon,
   HeaderCloseButton,
   HeaderLink,
   HeaderMenu,
-  HeaderTitle,
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {
@@ -30,11 +29,18 @@ const ModalHeader = ({
   pathOptions,
 }: ModalHeaderProps): JSX.Element => {
   return (
-    <Box p="xl" pb={0}>
+    <Box p="xxl" pb={0}>
       <Flex align="center">
         <HeaderLink onClick={onGoBack}>
           {onGoBack && <HeaderBackIcon name="chevronleft" />}
-          <HeaderTitle tooltipProps={{ w: "auto" }}>{title}</HeaderTitle>
+          <Ellipsified
+            tooltipProps={{ w: "auto" }}
+            fz="1.25rem"
+            lh="1.5rem"
+            fw="bold"
+          >
+            {title}
+          </Ellipsified>
         </HeaderLink>
         {children && <HeaderMenu>{children}</HeaderMenu>}
         {onClose && (
@@ -44,9 +50,9 @@ const ModalHeader = ({
         )}
       </Flex>
       {pathOptions?.showPath && (
-        <Group gap="xs" align="center">
+        <Group gap="xxs" align="center">
           {c("Refers to: 'Events' in a collection").t`in`}
-          <Icon name="folder" c="text-tertiary" />
+          <Icon name="folder" c="text-disabled" />
           {pathOptions.collectionName}
         </Group>
       )}

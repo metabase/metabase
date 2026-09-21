@@ -19,15 +19,15 @@ export const UserListElement = ({
     onClick={() => onClick(value)}
     data-is-selected={isSelected}
     px="sm"
-    py="xs"
+    py="xxs"
     variant="subtle"
-    bg={isSelected ? "brand" : undefined}
+    bg={isSelected ? "core-brand" : undefined}
     justify="start"
     classNames={{
       root: Styles.Root,
     }}
   >
-    <Text fw={700} color={isSelected ? "brand" : undefined} truncate>
+    <Text fw={700} color={isSelected ? "core-brand" : undefined} truncate>
       {value.common_name}
     </Text>
   </Button>

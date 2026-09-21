@@ -1,0 +1,61 @@
+name: Collect profile
+description: >-
+  Attach a flamegraph and per-test wall times to a job whose tests ran under clj-async-profiler.
+  Does nothing when the run was not profiled.
+
+inputs:
+  profiled:
+    required: true
+    description: >-
+      "true" when the test step ran under the profiler. Passed in rather than read from the
+      environment so the decision stays recorded by the step that made it.
+  artifact-name:
+    required: true
+    description: Name for the uploaded artifact. Must be unique across the jobs of one run.
+
+runs:
+  using: "composite"
+  steps:
+    # Unlike a JUnit failure report, these run on a green build too — a suite that passes slowly is
+    # exactly what profiling is for.
+    #
+    # `awk 'NR<=25'` rather than `head -25`: the runner ignores SIGPIPE, so `head` exiting early
+    # leaves `sort` with an EPIPE write error and `pipefail` fails the step. `|| true` covers `grep`
+    # finding no junit files.
+    - name: Summarize test wall times
+      if: ${{ inputs.profiled == 'true' }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        {
+          echo "### Slowest test namespaces (seconds)"
+          echo '```'
+          grep -h '<testsuite' target/junit/*.xml 2>/dev/null \
+            | sed -E 's|.*<testsuite name="([^"]*)" time="([^"]*)".*|\2 \1|' \
+            | sort -rn | awk 'NR<=25' || true
+          echo '```'
+          echo "### Slowest tests (seconds)"
+          echo '```'
+          grep -h '<testcase' target/junit/*.xml 2>/dev/null \
+            | sed -E 's|.*classname="([^"]*)" name="([^"]*)" time="([^"]*)".*|\3 \1/\2|' \
+            | sort -rn | awk 'NR<=25' || true
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    # Only the rendered flamegraph is kept: the raw collapsed stacks it was built from run to
+    # hundreds of MB on a long suite, and are reproducible locally from the same test selection.
+    #
+    # The info-level test log rides along on a green profiled run too. The failure-only log artifact
+    # the test jobs upload is not written when nothing failed, which is exactly the run being profiled.
+    - name: Upload profile
+      if: ${{ inputs.profiled == 'true' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          target/clj-async-profiler/results/*flamegraph.html
+          target/junit/*.xml
+          logs/test-log.json
+        retention-days: 14
+        if-no-files-found: warn

@@ -3,7 +3,20 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn personal-collection
+  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
+  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
+  that failure poisons the surrounding transaction."
+  [user-or-id]
+  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+
+(defn personal-collection-id
+  "The ID of a User's Personal Collection. See [[personal-collection]]."
+  [user-or-id]
+  (u/the-id (personal-collection user-or-id)))
 
 (defmacro without-library
   "Macro that clears existing library collections, executes body, then cleans up any created library collections.
@@ -19,6 +32,7 @@
    ```"
   [& body]
   `(do
+     (mt/initialize-if-needed! :db)
      ;; Clear existing library collections
      (t2/update! (t2/table-name :model/Collection)
                  :type collection/library-collection-type
@@ -29,7 +43,6 @@
      (t2/update! (t2/table-name :model/Collection)
                  :type collection/library-metrics-collection-type
                  {:type nil})
-
      (try
        ~@body
        (finally
@@ -77,3 +90,36 @@
   "Ensures Library collection is not remote-synced for the duration of body."
   [& body]
   `(do-with-library-not-synced (fn [] ~@body)))
+
+(defn do-with-library
+  "Implementation for [[with-library]]."
+  [f]
+  (if-let [library (collection/library-collection)]
+    ;; A library already exists — reuse it and its sub-collections, scoped to its location so a same-typed
+    ;; collection elsewhere can't be picked up (the library sub-collection types aren't unique).
+    (let [loc (str "/" (:id library) "/")]
+      (f {:library library
+          :data    (t2/select-one :model/Collection
+                                  :type collection/library-data-collection-type :location loc)
+          :metrics (t2/select-one :model/Collection
+                                  :type collection/library-metrics-collection-type :location loc)}))
+    ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
+    (mt/with-temp [:model/Collection library {:name     "Library"
+                                              :type     collection/library-collection-type
+                                              :location "/"}
+                   :model/Collection data    {:name     "Data"
+                                              :type     collection/library-data-collection-type
+                                              :location (str "/" (:id library) "/")}
+                   :model/Collection metrics {:name     "Metrics"
+                                              :type     collection/library-metrics-collection-type
+                                              :location (str "/" (:id library) "/")}]
+      (f {:library library :data data :metrics metrics}))))
+
+(defmacro with-library
+  "Ensure the singleton Library collection and its Data/Metrics sub-collections exist for the duration of
+  `body`, binding `binding` to a `{:library _ :data _ :metrics _}` map of those collections.
+  Reuses an existing library if one is present; otherwise creates a temporary tree that's cleaned up
+  afterward."
+  {:style/indent 1}
+  [[binding] & body]
+  `(do-with-library (fn [~binding] ~@body)))

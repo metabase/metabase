@@ -28,7 +28,7 @@ Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/ch
 
 Once installed, set up your Metabase and connect to your data.
 
-### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started/index)
+### [Getting started](https://www.metabase.com/learn/metabase-basics/getting-started)
 
 With your data connected, get started asking questions, creating dashboards, and sharing your work.
 
@@ -48,11 +48,11 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Remote sync](./installation-and-operation/remote-sync.md)
-- [Commands](./installation-and-operation/commands.md)
+- [Metabase CLI](./installation-and-operation/metabase-cli.md)
+- [Metabase JAR commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 - [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
@@ -96,7 +96,8 @@ Metabase's reference documentation.
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
-- [Combo charts](./questions/visualizations/combo-chart.md)
+- [Combo charts](./questions/visualizations/line-bar-and-area-charts.md#combo-charts)
+- [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
@@ -130,29 +131,36 @@ Metabase's reference documentation.
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
-- [Models](./data-modeling/models.md)
-- [Model persistence](./data-modeling/model-persistence.md)
-- [Metrics](./data-modeling/metrics.md)
-- [Table metadata admin settings](./data-modeling/metadata-editing.md)
-- [Field types](./data-modeling/semantic-types.md)
-- [Formatting defaults](./data-modeling/formatting.md)
-- [Working with JSON](./data-modeling/json-unfolding.md)
-- [Segments](./data-modeling/segments.md)
+- [Models](./data-modeling/models/models.md)
+- [Model persistence](./data-modeling/models/model-persistence.md)
+- [Metrics](./data-modeling/semantic-layer/metrics.md)
+- [Table metadata admin settings](./data-modeling/metadata/metadata-editing.md)
+- [Field types](./data-modeling/metadata/semantic-types.md)
+- [Formatting defaults](./data-modeling/metadata/formatting.md)
+- [Working with JSON](./data-modeling/metadata/json-unfolding.md)
+- [Segments](./data-modeling/semantic-layer/segments.md)
 
 ### Actions
 
-- [Actions overview](./actions/start.md)
-- [Introduction to actions](./actions/introduction.md)
-- [Basic actions](./actions/basic.md)
-- [Custom actions](./actions/custom.md)
+- [Actions overview](./data-modeling/models/actions/start.md)
+- [Introduction to actions](./data-modeling/models/actions/introduction.md)
+- [Basic actions](./data-modeling/models/actions/basic.md)
+- [Custom actions](./data-modeling/models/actions/custom.md)
 
 ### AI
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [AI settings](./ai/settings.md)
+- [Supported AI providers](./ai/providers.md)
+- [AI usage controls](./ai/usage-controls.md)
+- [AI usage auditing](./ai/usage-auditing.md)
+- [AI customization](./ai/customization.md)
+- [AI system prompts](./ai/system-prompts.md)
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
+- [Metabot in Slack](./ai/metabot-slack.md)
+- [AI privacy](./ai/privacy.md)
 
 ### Exploration and organization
 
@@ -174,6 +182,7 @@ Metabase's reference documentation.
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
+- [Two-factor authentication](./people-and-groups/two-factor-authentication.md)
 - [Google Sign-In](./people-and-groups/google-sign-in.md)
 - [LDAP](./people-and-groups/ldap.md)
 - [API keys](./people-and-groups/api-keys.md)
@@ -214,6 +223,7 @@ Metabase's reference documentation.
   - [SSO](./embedding/modular-embedding.md)
   - [Guest](./embedding/guest-embedding.md)
   - [SDK](./embedding/sdk/introduction.md)
+  - [Custom visualizations](./embedding/custom-visualizations.md)
 - [Full app embedding](./embedding/full-app-embedding.md)
 - [Securing embeds](./embedding/securing-embeds.md)
 - [AI agent resources](./embedding/ai-agent-resources.md)
@@ -228,7 +238,6 @@ Metabase's reference documentation.
 - [Webhooks](./configuring-metabase/webhooks.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
 - [Configuration file](./configuring-metabase/config-file.md)
-- [Metabase log configuration](./configuring-metabase/log-configuration.md)
 - [Timezones](./configuring-metabase/timezones.md)
 - [Languages and localization](./configuring-metabase/localization.md)
 - [Appearance](./configuring-metabase/appearance.md)
@@ -236,11 +245,22 @@ Metabase's reference documentation.
 - [Custom maps](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
+### Monitor
+
+- [Monitor overview](./monitor/start.md)
+- [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Erroring questions](./monitor/erroring-questions.md)
+- [Alerts management](./monitor/alerts-management.md)
+- [Background tasks](./monitor/background-tasks.md)
+- [Scheduled jobs](./monitor/scheduled-jobs.md)
+- [Application logs](./monitor/application-logs.md)
+- [Model persistence log](./monitor/model-persistence-log.md)
+- [CLI analytics](./monitor/cli-analytics.md)
+
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
 - [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
-- [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Metabase Cloud
 
@@ -265,7 +285,7 @@ Metabase's reference documentation.
 
 - [Troubleshooting guides](troubleshooting-guide/index.md)
 - [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./configuring-metabase/log-configuration.md)
+- [Application logs](./monitor/application-logs.md)
 
 ### Tutorials and guides
 
@@ -309,8 +329,8 @@ Contribute to the Metabase open source project!
 
 Data jargon explained.
 
-### [Metabase Experts](https://www.metabase.com/partners/)
+### [Metabase Experts](https://www.metabase.com/partners)
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).
 
 <!-- bump 2 -->

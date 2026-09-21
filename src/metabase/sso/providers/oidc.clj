@@ -15,8 +15,8 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register the OIDC provider in the hierarchy
-(derive :provider/oidc :metabase.auth-identity.provider/provider)
-(derive :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
 
 ;;; -------------------------------------------------- Configuration Handling --------------------------------------------------
 
@@ -60,13 +60,20 @@
         (if (= 200 (:status response))
           (oidc.common/parse-token-response (:body response))
           (do
-            (log/errorf "Token exchange failed: %s" (:body response))
+            (log/errorf "Token exchange failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/error e "Token exchange failed")
+        (log/errorf "Token exchange failed: %s" (ex-message e))
         nil))))
 
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------
+
+(defn- verified-email-claim?
+  "Check the id-token `email_verified` claim (OIDC Core §5.1). A token that explicitly marks the email as
+   unverified is rejected; a missing claim is accepted since the claim is optional."
+  [claims]
+  (let [verified (:email_verified claims)]
+    (or (nil? verified) (true? verified) (= verified "true"))))
 
 (defn- extract-user-data
   "Extract user data from ID token claims.
@@ -87,7 +94,6 @@
         first-name (get claims (keyword firstname-attr))
         last-name (get claims (keyword lastname-attr))
         provider-id (:sub claims)]
-
     (when email
       {:email email
        :first_name first-name
@@ -115,7 +121,6 @@
           {:success? false
            :error :invalid-callback
            :message (get-in validation [:error :description] "Invalid callback parameters")}
-
           ;; Enrich config with discovery once for the entire callback flow
           (let [enriched-config (enrich-config-with-discovery config)
                 code (:code validation)
@@ -124,7 +129,6 @@
               {:success? false
                :error :token-exchange-failed
                :message "Failed to exchange authorization code for tokens"}
-
               ;; Validate ID token
               (let [jwks-uri (oidc.discovery/get-jwks-uri enriched-config)
                     validation-config {:jwks-uri jwks-uri
@@ -139,18 +143,21 @@
                   {:success? false
                    :error :invalid-token
                    :message (:error validation-result)}
-
                   ;; Extract user data from claims
-                  (let [claims (:claims validation-result)
-                        user-data (extract-user-data claims config)]
-                    (if-not user-data
+                  (let [claims (:claims validation-result)]
+                    (if-not (verified-email-claim? claims)
                       {:success? false
-                       :error :user-data-extraction-failed
-                       :message "Failed to extract user email from token"}
-                      {:success? true
-                       :claims claims
-                       :user-data user-data
-                       :provider-id (:provider-id user-data)}))))))))
+                       :error :email-not-verified
+                       :message "Email address is not verified by the identity provider"}
+                      (let [user-data (extract-user-data claims config)]
+                        (if-not user-data
+                          {:success? false
+                           :error :user-data-extraction-failed
+                           :message "Failed to extract user email from token"}
+                          {:success? true
+                           :claims claims
+                           :user-data user-data
+                           :provider-id (:provider-id user-data)}))))))))))
 
       ;; Initiate authorization flow
       :else
@@ -160,7 +167,6 @@
           {:success? false
            :error :configuration-error
            :message "Authorization endpoint not found. Check OIDC configuration or discovery."}
-
           ;; Generate authorization URL
           (let [state (oidc.common/generate-state)
                 nonce (oidc.common/generate-nonce)

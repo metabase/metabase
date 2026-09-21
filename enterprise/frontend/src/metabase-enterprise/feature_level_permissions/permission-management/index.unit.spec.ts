@@ -1,6 +1,9 @@
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import { getFeatureLevelDataPermissions } from "./index";
 
@@ -10,6 +13,7 @@ const groupType = null;
 const databaseId = 1;
 
 const getPermissionGraph = (): GroupsPermissions =>
+  // Unjustified type cast. FIXME
   ({
     [defaultGroupId]: {
       [databaseId]: {
@@ -33,6 +37,7 @@ const getPermissionGraph = (): GroupsPermissions =>
     },
   }) as any;
 
+// Unjustified type cast. FIXME
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",

@@ -1,8 +1,10 @@
 import {
+  type CSSProperties,
   type ComponentProps,
   type JSX,
   type JSXElementConstructor,
   type PropsWithChildren,
+  type ReactNode,
   useEffect,
   useId,
   useMemo,
@@ -21,11 +23,13 @@ import {
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk-package/constants/error-messages";
+import {
+  ensureMetabaseProviderPropsStore,
+  useMetabaseProviderPropsStore,
+} from "embedding-sdk-package/lib/provider-props-store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import {
   SdkLoadingError,
@@ -42,6 +46,31 @@ type Props<TComponentProps> = {
 };
 
 const NOT_STARTED_LOADING_WAIT_TIMEOUT = 1000;
+
+// EMB-875: defaults match FlexibleSizeComponent on the bundle side, so the
+// package-side loader/error box matches the post-init box and prevents a
+// position shift when the SDK bundle finishes loading.
+const DEFAULT_BOUNDED_HEIGHT = "600px";
+const DEFAULT_BOUNDED_WIDTH = "100%";
+
+const Box = ({
+  height,
+  width,
+  children,
+}: {
+  height?: CSSProperties["height"];
+  width?: CSSProperties["width"];
+  children: ReactNode;
+}) => (
+  <div
+    style={{
+      height: height ?? DEFAULT_BOUNDED_HEIGHT,
+      width: width ?? DEFAULT_BOUNDED_WIDTH,
+    }}
+  >
+    {children}
+  </div>
+);
 
 // When the ComponentWrapper is rendered without being wrapped within the MetabaseProvider,
 // the SDK bundle loading is not triggered.
@@ -155,18 +184,38 @@ const ComponentWrapperInner = <TComponentProps,>({
   const { theme } = metabaseProviderProps ?? {};
   const adjustedTheme = useMemo(() => applyThemePreset(theme), [theme]);
 
+  const { height, width } =
+    // Unjustified type cast. FIXME
+    (componentProps as {
+      height?: CSSProperties["height"];
+      width?: CSSProperties["width"];
+    }) ?? {};
+
   if (isError) {
-    return <Error theme={adjustedTheme} message={SDK_LOADING_ERROR_MESSAGE} />;
+    return (
+      <Box height={height} width={width}>
+        <Error theme={adjustedTheme} message={SDK_LOADING_ERROR_MESSAGE} />
+      </Box>
+    );
   }
 
   if (isNotStartedLoading) {
     return (
-      <Error theme={adjustedTheme} message={SDK_NOT_STARTED_LOADING_MESSAGE} />
+      <Box height={height} width={width}>
+        <Error
+          theme={adjustedTheme}
+          message={SDK_NOT_STARTED_LOADING_MESSAGE}
+        />
+      </Box>
     );
   }
 
   if (isLoading || !metabaseProviderInternalProps.loadingState) {
-    return <Loader theme={adjustedTheme} />;
+    return (
+      <Box height={height} width={width}>
+        <Loader theme={adjustedTheme} />
+      </Box>
+    );
   }
 
   const ComponentProvider = isLoading
@@ -199,6 +248,7 @@ const ComponentWrapperInner = <TComponentProps,>({
       reduxStore={metabaseProviderInternalProps.reduxStore}
     >
       <RenderComponentWithValidation
+        // Unjustified type cast. FIXME
         $component={Component as InternalComponent<JSXElementConstructor<any>>}
         {...componentProps}
       />
@@ -220,6 +270,7 @@ export const createComponent = <
     | null
     | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
+  // Unjustified type cast. FIXME
   return function ComponentWrapper(props: TComponentProps) {
     const ensureSingleInstanceId = useId();
 

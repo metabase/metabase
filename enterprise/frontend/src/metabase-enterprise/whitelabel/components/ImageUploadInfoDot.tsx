@@ -13,30 +13,26 @@ const DESCRIPTIONS_WIDTHS: Record<IllustrationType, number> = {
   icon: 250,
 };
 
-const DESCRIPTIONS: Record<IllustrationType, string[]> = {
+const getDescriptions = (): Record<IllustrationType, string[]> => ({
   background: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`For best results, choose an image that is horizontally oriented and upload it as an SVG file. Other accepted formats are JPG and PNG.`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`Your file should not be larger than 2MB.`,
   ],
   icon: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`For best results, upload an SVG file. Other accepted formats are JPG and PNG.`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     t`Your file should not be larger than 2MB.`,
   ],
-};
+});
 
 export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
   return (
     <HoverCard position="top-start">
       <HoverCard.Target>
-        <Icon name="info" c="text-tertiary" />
+        <Icon name="info" c="text-disabled" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Stack p="md" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
-          {DESCRIPTIONS[type].map((message, index) => (
+        <Stack p="lg" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
+          {getDescriptions()[type].map((message, index) => (
             <Text key={index} size="sm">
               {message}
             </Text>

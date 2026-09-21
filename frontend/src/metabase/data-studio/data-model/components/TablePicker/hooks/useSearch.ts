@@ -17,6 +17,7 @@ export function useSearch(query: string) {
       : {
           q: query,
           models: ["table"],
+          context: "data-picker",
         },
   );
 

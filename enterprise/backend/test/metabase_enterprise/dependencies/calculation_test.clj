@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -65,6 +66,27 @@
               :segment #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/calculate-deps :card card))))))
+
+(deftest ^:parallel upstream-deps-metric-dimension-mappings-test
+  (testing "a metric v2's dimension mappings contribute their columns' tables as dependencies, even
+            when the base query doesn't reference them"
+    (let [mp            (mt/metadata-provider)
+          venues-id     (mt/id :venues)
+          categories-id (mt/id :categories)
+          base-query    (-> (lib/query mp (lib.metadata/table mp venues-id))
+                            (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :dataset_query      base-query
+                                         :dimension_mappings [{:type         :table
+                                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                               :table-id     categories-id
+                                                               :target       [:field {} (mt/id :categories :name)]}]}]
+        (is (= {:card    #{}
+                :measure #{}
+                :segment #{}
+                :table   #{venues-id categories-id}}
+               (calculation/calculate-deps :card metric))
+            "the mapped column's table (categories) is a dependency alongside the query's own table (venues)")))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-filter-test
   (let [mp (mt/metadata-provider)
@@ -141,8 +163,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -164,8 +187,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -186,8 +210,9 @@
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :query
                                                           :query query}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:card #{}
                 :measure #{}
                 :segment #{}
@@ -204,8 +229,9 @@
                                                                           (transforms.tu/source-table-entry "ORDERS" orders-id)]
                                                           :source-database (mt/id)
                                                           :body "..."}
-                                                 :target {:schema "PUBLIC"
-                                                          :name "test_output"}}]
+                                                 :target {:type   "table"
+                                                          :schema "PUBLIC"
+                                                          :name   "test_output"}}]
         (is (= {:table #{products-id orders-id}}
                (calculation/calculate-deps :transform transform)))))))
 
@@ -222,7 +248,8 @@
         (mt/with-temp [:model/Transform transform {:name   "Table Tag Transform"
                                                    :source {:type  :query
                                                             :query query}
-                                                   :target {:schema "PUBLIC"
+                                                   :target {:type   "table"
+                                                            :schema "PUBLIC"
                                                             :name   "test_output"}}]
           (is (=? {:table #(contains? % products-id)} (calculation/calculate-deps :transform transform))))))))
 
@@ -414,19 +441,36 @@
                                              :document {:type "doc"
                                                         :content [{:type "paragraph"
                                                                    :content [{:type "smartLink"
-                                                                              :attrs {:entityId card-id
-                                                                                      :model "card"}}
+                                                                              :attrs {"entityId" card-id
+                                                                                      "model" "card"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
+                                                                              :attrs {"entityId" dashboard-id
+                                                                                      "model" "dashboard"}}
                                                                              {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}
+                                                                              :attrs {"entityId" products-id
+                                                                                      "model" "table"}}]}
                                                                   {:type "cardEmbed"
-                                                                   :attrs {:id embedded-card-id}}]}}]
+                                                                   :attrs {"id" embedded-card-id}}]}}]
       (is (= {:card #{card-id embedded-card-id}
               :dashboard #{dashboard-id}
               :table #{products-id}}
+             (calculation/calculate-deps :document document))))))
+
+(deftest ^:parallel upstream-deps-document-placeholder-ids-test
+  (testing "nil/zero placeholder ids in smartLink and cardEmbed nodes are not collected as deps"
+    (mt/with-temp [:model/Document document {:content_type "application/json+vnd.prose-mirror"
+                                             :document {:type "doc"
+                                                        :content [{:type "paragraph"
+                                                                   :content [{:type "smartLink"
+                                                                              :attrs {"entityId" nil "model" "card"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {"entityId" 0 "model" "dashboard"}}
+                                                                             {:type "smartLink"
+                                                                              :attrs {"entityId" 17 "model" "card"}}]}
+                                                                  {:type "cardEmbed" :attrs {"id" nil}}
+                                                                  {:type "cardEmbed" :attrs {"id" 0}}
+                                                                  {:type "cardEmbed" :attrs {"id" 23}}]}}]
+      (is (= {:card #{17 23}}
              (calculation/calculate-deps :document document))))))
 
 (deftest upstream-deps-sandbox-test
@@ -448,7 +492,6 @@
                                              :definition {:filter [:> [:field price-field-id nil] 50]}}]
         (is (= {:segment #{} :table #{products-id}}
                (calculation/calculate-deps :segment segment)))))
-
     (testing "segment depending on another segment"
       (mt/with-temp [:model/Segment {segment-a-id :id :as segment-a} {:table_id products-id
                                                                       :definition {:filter [:> [:field price-field-id nil] 50]}}
@@ -528,7 +571,6 @@
                                                              (lib/aggregate (lib/sum quantity)))}]
         (is (= {:measure #{} :segment #{} :table #{orders-id}}
                (calculation/calculate-deps :measure measure)))))
-
     (testing "measure depending on another measure"
       (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
                                                                       :table_id orders-id
@@ -618,3 +660,25 @@
                                                                  (lib/aggregate (lib/sum-where quantity (lib/ref segment-meta))))}]
             (is (= {:measure #{} :segment #{segment-id} :table #{orders-id}}
                    (calculation/calculate-deps :measure measure)))))))))
+
+(deftest ^:parallel non-integer-ids-are-discarded-during-extraction-test
+  (testing "a document smartLink whose entityId is a map is dropped rather than forwarded"
+    (is (empty? (#'calculation/document-deps
+                 {:content_type prose-mirror/prose-mirror-content-type
+                  :document {:type "doc"
+                             :content [{:type "smartLink"
+                                        :attrs {"model" "card" "entityId" {:raw "x"}}}]}}))))
+  (testing "a dashcard click_behavior whose targetId is a map is dropped"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:click_behavior {:linkType "question"
+                                                :targetId {:raw "x"}}}}]})]
+      (is (empty? (:card deps)))
+      (is (empty? (:dashboard deps)))))
+  (testing "a legitimate integer targetId is still collected"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:click_behavior {:linkType "question" :targetId 7777}}}]})]
+      (is (= #{7777} (:card deps))))))

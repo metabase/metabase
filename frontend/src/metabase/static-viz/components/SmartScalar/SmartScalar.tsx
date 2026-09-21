@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 
-import type { RenderingContext } from "metabase/visualizations/types";
+import { isEmpty } from "metabase/utils/validate";
 import {
   CHANGE_TYPE_OPTIONS,
   computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { RenderingContext } from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 
@@ -25,6 +26,7 @@ export function SmartScalar({
   if (error || !trend) {
     throw new Error(
       `Failed to compute trend data for ${card.name}\: ${
+        // Unjustified type cast. FIXME
         (error as { message: string }).message
       }`,
     );
@@ -106,7 +108,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       marginRight: "6px",
     },
     percentChange: {
-      color: comparison.changeColor || getColor("text-tertiary"),
+      color: comparison.changeColor || getColor("text-disabled"),
       fontWeight: 900,
       marginRight: 4,
     },
@@ -115,22 +117,28 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       fontWeight: 700,
     },
     comparisonValue: {
-      color: getColor("text-tertiary"),
+      color: getColor("text-disabled"),
       fontWeight: 700,
     },
   };
+
+  const comparisonValue = comparison.display.comparisonValue;
+  const hasComparisonValue = !isEmpty(comparisonValue);
+  const description = hasComparisonValue
+    ? `${comparison.comparisonDescStr}: `
+    : comparison.comparisonDescStr;
 
   return (
     <span style={styles.root}>
       {!!icon && <span style={styles.icon}>{icon}</span>}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
-        <span style={styles.comparisonDescription}>
-          {`${comparison.comparisonDescStr}: `}
-        </span>
-        <span style={styles.comparisonValue}>
-          {comparison.display.comparisonValue}
-        </span>
+        {!isEmpty(comparison.comparisonDescStr) && (
+          <span style={styles.comparisonDescription}>{description}</span>
+        )}
+        {hasComparisonValue && (
+          <span style={styles.comparisonValue}>{comparisonValue}</span>
+        )}
       </span>
     </span>
   );

@@ -1,24 +1,24 @@
 /* istanbul ignore file */
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState, createMockState } from "__support__/state";
 import type { Screen } from "__support__/ui";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import type { SelectedTabId } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   DashboardCard,
   DashboardSubscription,
+  DashboardTab,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -62,14 +62,17 @@ const defaultParameters = [
 function createDashboardState(
   dashboard: Dashboard,
   dashcards: DashboardCard[],
+  selectedTabId: SelectedTabId = null,
 ) {
   return createMockDashboardState({
     dashboardId: dashboard.id,
+    selectedTabId,
     dashcards: dashcards.reduce(
       (acc, card) => {
         acc[card.id] = card;
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<number, DashboardCard>,
     ),
     dashboards: {
@@ -89,6 +92,8 @@ type SetupOpts = {
   isAdmin?: boolean;
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
+  tabs?: DashboardTab[];
+  selectedTabId?: SelectedTabId;
   isEmbeddingSdk?: boolean;
   setSharing?: (sharing: boolean) => void;
   pulses?: (Partial<DashboardSubscription> & { id: number })[];
@@ -107,6 +112,8 @@ export function setup({
   isAdmin = false,
   dashcards = defaultDashcards,
   parameters = defaultParameters,
+  tabs,
+  selectedTabId = null,
   isEmbeddingSdk = false,
   setSharing,
   pulses = [],
@@ -116,6 +123,7 @@ export function setup({
   const dashboard = createMockDashboard({
     dashcards,
     parameters,
+    tabs,
   });
 
   const channelData: {
@@ -131,7 +139,7 @@ export function setup({
       name: "Email",
       allows_recipients: true,
       recipients: ["user", "email"],
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
     };
   }
@@ -141,7 +149,7 @@ export function setup({
       type: "slack",
       name: "Slack",
       allows_recipients: false,
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
       fields: [
         {
@@ -159,6 +167,7 @@ export function setup({
     };
   }
 
+  // Unjustified type cast. FIXME
   (mockIsEmbeddingSdk as jest.Mock).mockReturnValue(isEmbeddingSdk);
 
   setupNotificationChannelsEndpoints(channelData.channels);
@@ -177,7 +186,9 @@ export function setup({
 
   // Mock POST that updates the GET response
   fetchMock.post("path:/api/pulse", ({ options }) => {
+    // Unjustified type cast. FIXME
     const body = JSON.parse(options.body as string);
+    // Unjustified type cast. FIXME
     const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
     pulses.push(newPulse);
     return newPulse;
@@ -206,7 +217,7 @@ export function setup({
           last_name: currentUser?.lastName,
           is_superuser: isAdmin,
         }),
-        dashboard: createDashboardState(dashboard, dashcards),
+        dashboard: createDashboardState(dashboard, dashcards, selectedTabId),
       }),
     },
   );
@@ -228,6 +239,11 @@ export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
   ).not.toBeInTheDocument();
 
   return true;
+};
+
+export const selectScheduleTime = async (time = "8:00") => {
+  await userEvent.click(screen.getByTestId("select-time"));
+  await userEvent.click(screen.getByRole("option", { name: time }));
 };
 
 export const hasBasicFilterOptions = (screen: Screen) => {

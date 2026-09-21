@@ -14,6 +14,7 @@ const setup = ({ databases, schemas }: SetupOpts) => {
   const metadata = createMockMetadata({ databases, schemas });
 
   return {
+    // Unjustified type cast. FIXME
     databases: databases.map(({ id }) =>
       checkNotNull(metadata.database(id)),
     ) as Database[],

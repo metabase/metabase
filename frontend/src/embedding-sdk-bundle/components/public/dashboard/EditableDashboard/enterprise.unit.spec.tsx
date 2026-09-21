@@ -7,7 +7,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { addEnterpriseAutoRefreshTests } from "../shared-tests/auto-refresh.spec";
@@ -129,6 +129,28 @@ describe("EditableDashboard", () => {
     expect(screen.getByText("Test dashboard")).toBeInTheDocument();
   });
 
+  it("should allow to go back to the dashboard after editing a question from the dashcard menu (EMB-2012)", async () => {
+    await setupEnterprise({ dashboardName: "Test dashboard" });
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const menu = await screen.findByRole("menu");
+    await userEvent.click(within(menu).getByText("Edit question"));
+
+    // We should be in the question view
+    expect(
+      await screen.findByTestId("query-visualization-root"),
+    ).toBeInTheDocument();
+
+    // The back button should be there, just like when drilling into a question
+    const backButton = await screen.findByLabelText("Back to Test dashboard");
+    await userEvent.click(backButton);
+
+    // We should be back on the dashboard
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  });
+
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
     await setupEnterprise({
       dataPickerProps: {
@@ -163,6 +185,36 @@ describe("EditableDashboard", () => {
     const dataPickerDataCallUrl = dataPickerDataCalls[1].url;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).not.toContain("models=table");
+  });
+
+  it("should allow to pass `dataPickerProps.dataPicker` to the query builder", async () => {
+    await setupEnterprise({
+      dataPickerProps: {
+        dataPicker: "staged",
+      },
+    });
+    setupSimpleDataPickerEndpoints();
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // The instance is below the 100-source threshold, so only `dataPicker`
+    // can be keeping the simple picker away.
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("embedding-simple-data-picker-trigger"),
+    ).not.toBeInTheDocument();
   });
 
   it("should show 'Add a chart' button on empty dashboards", async () => {

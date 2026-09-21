@@ -1,4 +1,4 @@
-(ns metabase.app-db.force-migration-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.force-migration-test
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
@@ -47,13 +47,10 @@
           (when (= driver/*driver* :h2)
             (.acquireLock lock-service))
           (db.setup/migrate! data-source :force)
-
           (testing "Make sure the migrations that intended to succeed are succeed"
             (is (= ["1" "2" "5"]
                    (t2/select-pks-vec (@#'liquibase/changelog-table-name conn) {:order-by [:dateexecuted :id]}))))
-
           (testing "the custom migration that fails doesn't commit its operation"
             (is (nil? (t2/select-one :ancient_civilization :name "Greek"))))
-
           (testing "the custom migration that success will persists it result successfully"
             (is (some? (t2/select-one :ancient_civilization :name "Egypt")))))))))

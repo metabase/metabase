@@ -22,7 +22,7 @@ export const defaultAuditInfo: AuditInfo = {
 export const setupAuditInfoEndpoint = ({
   auditInfo = defaultAuditInfo,
 }: {
-  auditInfo?: AuditInfo;
+  auditInfo?: Partial<AuditInfo>;
 } = {}) => {
   fetchMock.get("path:/api/ee/audit-app/user/audit-info", auditInfo);
 };

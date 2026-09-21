@@ -38,11 +38,11 @@ export const PublicLinksListing = <
   if (data.length === 0) {
     return (
       <Box
-        bg="background-secondary"
-        bd="1px solid var(--mb-color-border)"
-        bdrs="xs"
-        px="md"
-        py="md"
+        bg="background_page-secondary"
+        bd="1px solid var(--mb-color-border-neutral)"
+        bdrs="xxs"
+        px="lg"
+        py="lg"
       >
         <Text c="text-secondary">{noLinksMessage}</Text>
       </Box>

@@ -11,6 +11,7 @@ export type TransformJobInfo = {
   description: string | null;
   schedule: string;
   ui_display_type: ScheduleDisplayType;
+  active?: boolean;
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
 };

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -9,18 +8,16 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -169,8 +166,8 @@ async function setup({
   );
   setupCollectionsEndpoints({ collections });
 
-  const { history } = renderWithProviders(
-    <Route path="*" component={() => <ModelUsageDetails model={model} />} />,
+  const { router } = renderWithProviders(
+    <Route path="*" element={<ModelUsageDetails model={model} />} />,
     {
       withRouter: true,
       storeInitialState,
@@ -178,7 +175,7 @@ async function setup({
   );
   await waitForLoaderToBeRemoved();
 
-  return { model, history, metadata, usedByQuestions };
+  return { model, router, metadata, usedByQuestions };
 }
 
 describe("ModelUsageDetails", () => {
@@ -209,7 +206,7 @@ describe("ModelUsageDetails", () => {
         for (const q of usedByQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         expect(
@@ -235,7 +232,7 @@ describe("ModelUsageDetails", () => {
         for (const q of slicedQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         // Expect sixth card to be hidden

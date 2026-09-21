@@ -58,18 +58,18 @@ export function Sidesheet({
       )}
       <Modal.Content
         transitionProps={{ duration: 0 }}
-        px="none"
+        px={0}
         w={sizes[size]}
-        bg="background-secondary"
+        bg="background_page-secondary"
         data-testid="sidesheet"
         classNames={{
           content: cx(Styles.SidesheetContent, Animation.slideLeft),
         }}
         aria-labelledby={titleId}
       >
-        <Modal.Header bg="background-secondary" px="xl">
+        <Modal.Header bg="background_page-secondary" px="xxl">
           {title && (
-            <Modal.Title py="md" pr="sm" id={titleId}>
+            <Modal.Title py="lg" pr="sm" id={titleId}>
               {title}
             </Modal.Title>
           )}
@@ -85,10 +85,10 @@ export function Sidesheet({
           }}
         >
           <Stack
-            gap="lg"
-            px={removeBodyPadding ? 0 : "xl"}
-            pb={removeBodyPadding ? 0 : "xl"}
-            mt={title ? "none" : "md"}
+            gap="xl"
+            px={removeBodyPadding ? 0 : "xxl"}
+            pb={removeBodyPadding ? 0 : "xxl"}
+            mt={title ? 0 : "lg"}
             h="100%"
             className={Styles.OverflowAuto}
           >

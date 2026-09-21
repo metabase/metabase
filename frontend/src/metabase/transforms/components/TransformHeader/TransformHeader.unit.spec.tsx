@@ -1,12 +1,8 @@
-import { Route } from "react-router";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import {
-  setupCollectionByIdEndpoint,
-  setupUserMetabotPermissionsEndpoint,
-} from "__support__/server-mocks";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockTransform,
@@ -22,20 +18,19 @@ type SetupOpts = {
 function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
 
-  setupUserMetabotPermissionsEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });
 
   renderWithProviders(
     <Route
-      component={() => (
+      element={
         <TransformHeader
           transform={transform}
           hasMenu={hasMenu}
           isEditMode={isEditMode}
         />
-      )}
+      }
       path="/"
     />,
     {
@@ -79,19 +74,20 @@ describe("TransformHeader", () => {
         screen.queryByRole("link", { name: "Run" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("link", { name: "Target" }),
+        screen.queryByRole("link", { name: "Settings" }),
       ).not.toBeInTheDocument();
     });
   });
 
   describe("inspect tab upsell", () => {
-    it("should always render the Inspect tab", () => {
+    it("should not render the Inspect tab for oss", () => {
       setup();
 
-      expect(screen.getByText("Inspect")).toBeInTheDocument();
+      expect(screen.queryByText("Inspect")).not.toBeInTheDocument();
     });
 
     it("should show upsell gem when transforms-python is not enabled", () => {
+      setupEnterprisePlugins();
       setup();
 
       const inspectLink = screen.getByRole("link", { name: /Inspect/ });

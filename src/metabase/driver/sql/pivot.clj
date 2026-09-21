@@ -1,0 +1,170 @@
+(ns metabase.driver.sql.pivot
+  "HoneySQL formatters and SQL compilation hooks for the MBQL 5 native pivot path. Used by any driver that derives from
+  `:sql` and opts into `:native-pivot-tables`."
+  (:refer-clojure :exclude [mapv])
+  (:require
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
+   ;; :as-alias only, for ::add-remaps keywords; no runtime dependency on QP internals
+   ^{:clj-kondo/ignore [:metabase/modules]}
+   [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.util.performance :refer [mapv]]))
+
+(defn- format-exprs
+  "Format each expression in `exprs` via [[honey.sql/format-expr]] and return `[[sql-strings] [args]]`."
+  [exprs]
+  (let [formatted (mapv #(sql/format-expr % {:nested true}) exprs)]
+    [(mapv first formatted)
+     (mapcat rest formatted)]))
+
+(defn- format-grouping-fn
+  "Render `GROUPING(expr1, expr2, ...)` from a HoneySQL form `[::grouping-fn expr1 expr2 ...]`."
+  [_fn exprs]
+  (let [[sql-parts args] (format-exprs exprs)]
+    (into [(str "GROUPING(" (str/join ", " sql-parts) ")")] args)))
+
+(sql/register-fn! ::grouping-fn #'format-grouping-fn)
+
+(defn- format-grouping-id-fn
+  "Render `GROUPING_ID(expr1, expr2, ...)` from a HoneySQL form `[::grouping-id-fn expr1 expr2 ...]`."
+  [_fn exprs]
+  (let [[sql-parts args] (format-exprs exprs)]
+    (into [(str "GROUPING_ID(" (str/join ", " sql-parts) ")")] args)))
+
+(sql/register-fn! ::grouping-id-fn #'format-grouping-id-fn)
+
+(defmulti pivot-grouping-hsql
+  "Return a HoneySQL form producing the pivot-grouping bitmask, one bit per expression in `exprs`. The default emits
+  `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake multi-arg extension). Drivers whose SQL dialect wants a
+  different function or shape override this method."
+  {:added "0.64.0", :arglists '([driver exprs])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod pivot-grouping-hsql :sql
+  [_driver exprs]
+  (into [::grouping-fn] exprs))
+
+(defn synthesise-grouping-bitmask
+  "HoneySQL form that computes the pivot-grouping bitmask as a sum of single-arg
+  `GROUPING(expr) * 2^n` terms — for dialects whose `GROUPING()` accepts only one argument and
+  that have no `GROUPING_ID()` equivalent. `exprs` follow the same left=highest-bit convention as
+  `GROUPING(a, b, ...)` / `GROUPING_ID(a, b, ...)`.
+
+  For `exprs = [a b c]`, produces the HoneySQL equivalent of
+  `GROUPING(a) * 4 + GROUPING(b) * 2 + GROUPING(c)`. When only one expression is supplied the
+  result is a bare `GROUPING(a)`."
+  [exprs]
+  (let [n     (count exprs)
+        ;; The least-significant term (shift = 0) omits the `* 1`; this also unwraps the whole
+        ;; sum to a bare `GROUPING(expr)` in the single-expression case.
+        terms (map-indexed
+               (fn [i expr]
+                 (let [g     [::grouping-fn expr]
+                       shift (- n i 1)]
+                   (if (zero? shift)
+                     g
+                     [:* g [:inline (bit-shift-left 1 shift)]])))
+               exprs)]
+    (if (next terms)
+      (into [:+] terms)
+      (first terms))))
+
+(defn- format-grouping-sets
+  "Render `GROUPING SETS ((expr1, expr2), (expr1), ())` from a HoneySQL form
+  `[::grouping-sets [expr1 expr2] [expr1] []]`. Each argument is one grouping set (a sequence of expressions)."
+  [_fn sets]
+  (let [rendered (mapv format-exprs sets)
+        set-sql  (mapv (fn [[sql-parts _]] (str "(" (str/join ", " sql-parts) ")")) rendered)
+        all-args (mapcat second rendered)]
+    (into [(str "GROUPING SETS (" (str/join ", " set-sql) ")")] all-args)))
+
+(sql/register-fn! ::grouping-sets #'format-grouping-sets)
+
+(defn- remap-original->new-field-positions
+  "Map `original-position` → `new-field-position` for each remap pair in `breakouts`. Returns `{}` when the query
+  has no remapped breakouts."
+  [breakouts]
+  (let [new-field-by-dim-id (into {}
+                                  (keep-indexed
+                                   (fn [i b]
+                                     (when-let [dim-id (-> b lib.options/options
+                                                           (get ::add-remaps/new-field-dimension-id))]
+                                       [dim-id i])))
+                                  breakouts)]
+    (into {}
+          (keep-indexed
+           (fn [orig-pos b]
+             (when-let [dim-id (-> b lib.options/options
+                                   (get ::add-remaps/original-field-dimension-id))]
+               (when-let [new-pos (get new-field-by-dim-id dim-id)]
+                 [orig-pos new-pos]))))
+          breakouts)))
+
+(defn- non-remap-positions
+  "Indices in `breakouts` of the breakouts that are NOT remap new-field breakouts, in original order."
+  [breakouts]
+  (into []
+        (keep-indexed
+         (fn [i b]
+           (when-not (-> b lib.options/options (get ::add-remaps/new-field-dimension-id))
+             i)))
+        breakouts))
+
+(defn- expand-grouping-combo
+  "Map a `combo` of indices into the non-remap-breakouts vector to the corresponding sorted indices into the full
+  `breakouts` vector, dragging each remap new-field along with its original via `original->new-field`."
+  [combo non-remap-positions original->new-field]
+  (sort
+   (into #{}
+         (mapcat (fn [non-remap-combo-idx]
+                   (let [orig-pos (nth non-remap-positions non-remap-combo-idx)]
+                     (if-let [new-pos (get original->new-field orig-pos)]
+                       [orig-pos new-pos]
+                       [orig-pos]))))
+         combo)))
+
+(defn- splice-pivot-grouping-select
+  "Insert `pivot-grouping-select` into `select` immediately after the leading `n-breakouts` columns, mirroring
+  [[lib.pivot/splice-pivot-grouping]]'s placement in `returned-columns` so the SQL row layout matches the result
+  metadata."
+  [select n-breakouts pivot-grouping-select]
+  (let [[breakouts rest-cols] (split-at n-breakouts select)]
+    (-> (vec breakouts)
+        (conj pivot-grouping-select)
+        (into rest-cols))))
+
+(defmethod sql.qp/apply-top-level-clause [:sql :pivot]
+  [driver _ honeysql-form {:keys [breakout pivot]}]
+  (let [breakout-hsql     (mapv #(sql.qp/->honeysql driver %) breakout)
+        non-remap-poss    (non-remap-positions breakout)
+        non-remap-bos     (mapv breakout non-remap-poss)
+        orig->new         (remap-original->new-field-positions breakout)
+        nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
+        rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
+        cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
+        combos            (qp.pivot/breakout-combinations (count non-remap-bos)
+                                                          rows-idx
+                                                          cols-idx
+                                                          (get pivot :show-row-totals    true)
+                                                          (get pivot :show-column-totals true))
+        sets-hsql         (mapv (fn [combo]
+                                  (mapv #(nth breakout-hsql %)
+                                        (expand-grouping-combo combo non-remap-poss orig->new)))
+                                combos)
+        non-remap-hsql    (mapv breakout-hsql non-remap-poss)
+        ;; Args reversed so the bitmask convention matches `pivot.common/group-bitmask`: bit 0 = first non-remap breakout.
+        grouping-fn       (pivot-grouping-hsql driver (rseq non-remap-hsql))
+        grouping-sets     (into [::grouping-sets] sets-hsql)
+        ;; With only one grouping set the grouping bitmask is constant; skip the ORDER BY prefix so dialects that
+        ;; reject constants in ORDER BY (e.g. SQL Server) don't fail, and to avoid the redundant sort.
+        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :asc]])]
+    (-> honeysql-form
+        (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
+        (assoc :group-by [grouping-sets]
+               :order-by (into prefix-order-by (:order-by honeysql-form))))))

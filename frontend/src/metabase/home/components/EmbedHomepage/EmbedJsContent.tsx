@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type EmbedJsContentProps = {
@@ -46,7 +46,7 @@ export const EmbedJsContent = ({
         color="text-secondary"
         id="embed-js-title"
       >{t`Modular embedding`}</Text>
-      <Text mb="md">
+      <Text mb="lg">
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
         {t`A JavaScript library built on top of Metabase’s modular embedding SDK that lets you embed individual components (charts, dashboards, query builder) using plain JS — no React setup required. You get per-component controls like drill-through, parameters, downloads, theming.`}
       </Text>
@@ -56,7 +56,7 @@ export const EmbedJsContent = ({
           alt="Modular embedding example"
         />
       )}
-      <Group gap="md">
+      <Group gap="lg">
         {cta}
 
         <ExternalLink href={embedJsDocsUrl}>
@@ -73,5 +73,5 @@ const EmbedJsImage = styled.img`
   width: 100%;
   margin-bottom: 1rem;
   border-radius: 8px;
-  border: 1px solid ${({ theme }) => theme.colors.border};
+  border: 1px solid ${({ theme }) => theme.colors["border-neutral"]};
 `;

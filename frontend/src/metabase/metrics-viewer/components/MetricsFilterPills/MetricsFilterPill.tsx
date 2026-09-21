@@ -1,10 +1,11 @@
-import type { HTMLAttributes, MouseEvent, Ref } from "react";
+import cx from "classnames";
+import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type { IconName } from "metabase/ui";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Pill, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./MetricsFilterPill.module.css";
 
@@ -19,45 +20,41 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
     children,
     colors,
     fallbackIcon,
+    onClick,
     onRemoveClick,
     ...props
   }: MetricsFilterPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const handleRemoveClick = (event: MouseEvent) => {
-    event.stopPropagation();
-    onRemoveClick?.();
-  };
-
   return (
-    <Flex
+    <Pill
       {...props}
       ref={ref}
-      className={S.root}
-      align="center"
-      gap="xs"
+      className={cx(S.root, !!onClick && S.clickable)}
+      h="xl"
       px="sm"
-      h="lg"
+      fw="normal"
       data-testid="metrics-viewer-filter-pill"
+      withRemoveButton={!!onRemoveClick}
+      onRemove={onRemoveClick}
+      onClick={onClick}
+      removeButtonProps={{
+        mr: 0,
+        "aria-label": t`Remove`,
+        "aria-hidden": false,
+        c: "text-filter",
+      }}
     >
-      <SourceColorIndicator
-        colors={colors}
-        fallbackIcon={fallbackIcon}
-        size={12}
-      />
-      <Text c="text-filter" fz="sm">
-        {children}
-      </Text>
-      {onRemoveClick && (
-        <Icon
-          c="text-filter"
-          name="close"
+      <Flex align="center" gap="xxs">
+        <SourceColorIndicator
+          colors={colors}
+          fallbackIcon={fallbackIcon}
           size={12}
-          role="button"
-          aria-label={t`Remove`}
-          onClick={handleRemoveClick}
         />
-      )}
-    </Flex>
+        <Text c="text-filter" fz="sm" lh="1">
+          {children}
+        </Text>
+      </Flex>
+    </Pill>
   );
 });

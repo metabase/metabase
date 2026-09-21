@@ -1,17 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
+import {
+  AdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
 
 export function LocalizationSettingsPage() {
@@ -25,12 +25,13 @@ export function LocalizationSettingsPage() {
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
+          searchable
           options={_.sortBy(availableLocales || [], ([, label]) => label).map(
             ([code, label]) => ({ label, value: code }),
           )}
           inputType="select"
           description={
-            <Stack gap="md">
+            <Stack gap="lg">
               {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
               <CommunityLocalizationNotice isAdminView />
             </Stack>

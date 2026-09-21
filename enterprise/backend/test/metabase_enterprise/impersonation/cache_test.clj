@@ -1,4 +1,5 @@
 (ns metabase-enterprise.impersonation.cache-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.impersonation.cache-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer [deftest testing is]]
@@ -13,7 +14,7 @@
                      {:type :ttl
                       :multiplier 60
                       :avg-execution-ms 1000
-                      :min-duration-ms 1})]
+                      :min_duration_ms 1})]
     (mt/with-premium-features #{:advanced-permissions}
       (cache-test/with-mock-cache! [save-chan purge-chan]
         (while (a/poll! save-chan))

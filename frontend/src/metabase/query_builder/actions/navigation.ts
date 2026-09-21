@@ -1,17 +1,16 @@
-import type { Location } from "history";
 import _ from "underscore";
 
 import { createThunkAction } from "metabase/redux";
-import { resetUIControls } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
+import type { Action, Location } from "metabase/router";
 
+import { resetUIControls } from "../store/actions";
 import {
   getCard,
   getDatasetEditorTab,
   getQueryBuilderMode,
   getZoomedObjectId,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 
 import { setCardAndRun } from "./core/core";
@@ -25,13 +24,16 @@ import { zoomInRow } from "./zoom";
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
-  (location) => async (dispatch, getState) => {
+  (location: Location) => async (dispatch, getState) => {
     dispatch(cancelQuery());
 
     const zoomedObjectId = getZoomedObjectId(getState());
     if (zoomedObjectId) {
-      const { state, query } = getLocation(getState());
-      const previouslyZoomedObjectId = state?.objectId || query?.objectId;
+      // The POP has already committed, so `location` is the entry we navigated
+      // to; its state/search hold the object we were previously zoomed into.
+      const previouslyZoomedObjectId =
+        location.state?.objectId ||
+        new URLSearchParams(location.search).get("objectId");
 
       if (
         previouslyZoomedObjectId &&
@@ -83,7 +85,7 @@ export const popState = createThunkAction(
       );
     }
 
-    if (location.state.objectId) {
+    if (location.state?.objectId) {
       await dispatch(zoomInRow({ objectId: location.state.objectId }));
     }
   },
@@ -99,22 +101,38 @@ const getURL = (location: Location, { includeMode = false } = {}) =>
 
 // Logic for handling location changes, dispatched by top-level QueryBuilder component
 export const locationChanged =
-  (location: Location, nextLocation: Location, nextParams: QueryParams) =>
+  (
+    location: Location,
+    nextLocation: Location,
+    nextParams: QueryParams,
+    navigationType: Action,
+  ) =>
   (dispatch: Dispatch) => {
     if (location !== nextLocation) {
-      if (nextLocation.action === "POP") {
-        if (
-          getURL(nextLocation, { includeMode: true }) !==
-          getURL(location, { includeMode: true })
-        ) {
+      // Treat both undefined and null as "no state" — the browser leaves
+      // `history.state` as null for navigations the app didn't initiate (typed
+      // URLs, browser hash changes, cy.visit), while `updateUrl` always sets a
+      // `state.card` object.
+      const isExternalUrlChange = nextLocation.state == null;
+      const urlChanged =
+        getURL(nextLocation, { includeMode: true }) !==
+        getURL(location, { includeMode: true });
+      if (navigationType === "POP") {
+        if (urlChanged) {
           // the browser forward/back button was pressed
-
           dispatch(popState(nextLocation));
+          // POP without state means navigation to an externally-set URL (eg.
+          // typing into the address bar, or a hash-only navigation that the
+          // browser handled without a full page reload). Re-run init so the
+          // QB picks up the new query.
+          if (isExternalUrlChange) {
+            dispatch(initializeQB(nextLocation, nextParams));
+          }
         }
       } else if (
-        (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
+        (navigationType === "PUSH" || navigationType === "REPLACE") &&
         // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
-        nextLocation.state === undefined
+        isExternalUrlChange
       ) {
         // a link to a different qb url was clicked
         dispatch(initializeQB(nextLocation, nextParams));

@@ -6,9 +6,9 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.classloader.core :as classloader]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
@@ -16,23 +16,28 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{:model/Channel
+    ;; CustomVizPlugins have unique identifiers.
+    :model/CustomVizPlugin
     ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
+    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
+    ;; serdes path nests under that entity, so it has no generated entity_id.
+    :model/OsiAiContext
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AiUsageLog
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
@@ -49,20 +54,39 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
+    :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/Exploration
+    :model/ExplorationBookmark
+    :model/ExplorationQuery
+    :model/ExplorationQueryResult
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/StoredResult
+    :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpFeedback
+    :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotFeedback
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
+    :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -74,6 +98,7 @@
     :model/OAuthAccessToken
     :model/OAuthAuthorizationCode
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions
@@ -100,7 +125,14 @@
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
+    :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant
@@ -108,6 +140,7 @@
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
@@ -124,13 +157,13 @@
     :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (let [entity-id-models (->> (v2.entity-ids/toucan-models)
+  (let [entity-id-models (->> (keys models.resolution/model->namespace)
                               (remove entities-not-exported)
                               (remove entities-external-name))]
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "FieldUserSettings"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))
@@ -138,13 +171,6 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
-        (is (serdes.backfill/has-entity-id? model))))))
-
-(deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (v2.entity-ids/toucan-models)
-                     (remove entities-not-exported))]
-    (testing (format "Model %s should implement identity-hash-fields" model)
-      (is (some? (try
-                   (serdes/hash-fields model)
-                   (catch java.lang.IllegalArgumentException _
-                     nil)))))))
+        ;; the property is registered by the model's own namespace, which nothing else here loads
+        (classloader/require (models.resolution/model->namespace model))
+        (is (serdes/has-entity-id? model))))))

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
-import { Center, Icon, SegmentedControl } from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { Center, SegmentedControl } from "metabase/ui";
+import { visualizations } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import { trackVisualizerDataChanged } from "../analytics";
@@ -24,6 +25,7 @@ export function VisualizationPicker({
           label: viz.getUiName(),
           value: vizType,
           icon: viz.iconName,
+          iconUrl: viz.iconUrl,
         };
       });
   }, []);
@@ -52,7 +54,11 @@ export function VisualizationPicker({
               }}
               p="sm"
             >
-              <Icon data-testid={o.value} name={o.icon} />
+              <EntityIcon
+                data-testid={o.value}
+                name={o.icon}
+                iconUrl={o.iconUrl}
+              />
             </Center>
           ),
         }))}

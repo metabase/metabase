@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
@@ -14,6 +15,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.encryption-test :as encryption-test]
@@ -21,6 +23,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting dump-to-h2-test-setting
+  "Test setting -- a setting row to check is dumped decrypted or encrypted as asked."
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (deftest dump-deletes-target-db-files-tests
   ;; test fails when the application db is anything but H2 presently
@@ -36,14 +43,13 @@
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
-
         (doseq [filename (keys file-contents)]
           (testing (str filename " was deleted")
             (is (false? (.exists (io/file filename))))))))))
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
-  (with-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
-                cmd/system-exit! identity]
+  (mt/with-dynamic-fn-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
+                              cmd/system-exit!       identity]
     (is (= 1 (cmd/dump-to-h2 "file1")))))
 
 (defn persistent-data-source
@@ -65,7 +71,7 @@
                           h2-file-enc         (format "out-%s.db" (mt/random-name))
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*
@@ -75,34 +81,35 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                  (t2/insert! :model/Setting {:key "my-site-admin", :value "baz"})
+                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                  ;; does) so no encrypted column is left plaintext for the strict model reads
+                  ;; the update and dump below trigger
+                  (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
+                  (t2/insert! :model/Setting {:key "dump-to-h2-test-setting", :value "baz"})
                   (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                   (dump-to-h2/dump-to-h2! h2-file-default-enc)))
-
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                          "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
+                                                          "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
                                                       "select details from metabase_database where id=1;")))))))
-
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;"))))))))
-
               (testing "defaults to not decrypting"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;")))))))))))))))
@@ -113,7 +120,7 @@
           db-name            (str "test_" (mt/random-name))]
       (mt/with-temp-file [h2-file (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*
@@ -123,6 +130,9 @@
               (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                  ;; the fixture was loaded unencrypted; encrypt it under the key first (as `enable-encryption`
+                  ;; does), otherwise the dump would hold data under an absent sentinel and its setup would refuse
+                  (mdb.encryption/encrypt-db driver/*driver* (:data-source mdb.connection/*application-db*) nil)
                   (t2/insert! :model/Database {:engine          "h2"
                                                :name            "normal-db"
                                                :details         {:db "/tmp/test.db"}

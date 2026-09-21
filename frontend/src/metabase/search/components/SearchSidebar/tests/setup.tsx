@@ -1,10 +1,10 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
-import type { URLSearchFilterQueryParams } from "metabase/search/types";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,

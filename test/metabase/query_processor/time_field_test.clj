@@ -1,9 +1,12 @@
 (ns ^:mb/driver-tests metabase.query-processor.time-field-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.time-field-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.time-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -189,3 +192,39 @@
          (is (=? [[1 #"07:23:00Z?"]
                   [2 #"07:14:00Z?"]]
                  results)))))))
+
+(deftest hour-bucketing-time-field-in-source-query-test
+  (testing "Hour group-by on a time field from a source query should work (#75193, #68065)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
+      (mt/dataset time-test-data
+        (let [mp         (mt/metadata-provider)
+              users      (lib.metadata/table mp (mt/id :users))
+              time-field (lib.metadata/field mp (mt/id :users :last_login_time))
+              ;; Two-stage query: stage 1 selects the time field; stage 2 groups it by :hour
+              ;; with a count. In stage 2 the field is referenced by name (string), not by
+              ;; integer ID — `field-metadata` is nil and `database-type` is lost. Drivers
+              ;; that dispatch their `:hour` bucketing on `(h2x/database-type expr)` fall
+              ;; through to a timestamp/datetime cast, which errors (Postgres, SQL Server)
+              ;; or silently misgroups (MySQL, SQLite).
+              query      (-> (lib/query mp users)
+                             (lib/with-fields [time-field])
+                             lib/append-stage
+                             (notebook-helpers/add-breakout
+                              "Summaries" "Last Login Time"
+                              {:col-fn #(lib/with-temporal-bucket % :hour)})
+                             (as-> q (lib/aggregate q (lib/count))))]
+          (mt/with-native-query-testing-context query
+            (is (=? [[#"01:00:00Z?" 1]
+                     [#"07:00:00Z?" 1]
+                     [#"08:00:00Z?" 2]
+                     [#"09:00:00Z?" 2]
+                     [#"10:00:00Z?" 2]
+                     [#"12:00:00Z?" 2]
+                     [#"13:00:00Z?" 1]
+                     [#"15:00:00Z?" 1]
+                     [#"16:00:00Z?" 1]
+                     [#"17:00:00Z?" 1]
+                     [#"19:00:00Z?" 1]]
+                    (mt/formatted-rows
+                     [str int]
+                     (qp/process-query query))))))))))

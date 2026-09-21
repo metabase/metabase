@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useListSecurityAdvisoriesQuery } from "metabase/api";
 import {
   AdminNavLink,
   AdminNavListItem,
-} from "metabase/nav/components/AdminNavbar/AdminNavItem.styled";
+} from "metabase/nav/components/AdminNavbar/AdminNavLink";
 import { Box, Flex } from "metabase/ui";
 
+import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
 
 const PATH = "/admin/security-center";
@@ -32,7 +32,7 @@ export function SecurityCenterNavItem({
               w={8}
               h={8}
               miw={8}
-              bg="error"
+              bg="feedback-negative"
               style={{ borderRadius: "50%", flexShrink: 0 }}
               data-testid="security-center-badge"
             />

@@ -18,7 +18,9 @@ export const EmbedPreviewLoadingOverlay = ({
   return (
     <Box
       pos="absolute"
-      style={{ backgroundColor: bg ?? "var(--mb-color-background-primary)" }}
+      style={{
+        backgroundColor: bg ?? "var(--mb-color-background_page-primary)",
+      }}
       inset={0}
     >
       <Center h="100%" w="100%" mx="auto">

@@ -7,10 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
+import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { TYPE_ICONS } from "../constants";
 import type { FlatItem, TreePath } from "../types";
@@ -97,22 +98,22 @@ export function Results({
   }, [selectedIndex]);
 
   return (
-    <Box ref={ref} px="xl" pb="lg" className={S.results}>
+    <Box ref={ref} px="xxl" pb="xl" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>
         {virtualItems.map(({ start, index }) => {
           const item = items[index];
           const {
             value,
-            label,
             type,
             isExpanded,
-            isLoading,
+            isEmpty,
             key,
             level,
             parent,
             disabled,
           } = item;
           const isActive = type === "table" && value?.tableId === activeTableId;
+          const interactive = !disabled && !isEmpty;
           const parentIndex = items.findIndex((item) => item.key === parent);
           const children = items.filter((item) => item.parent === key);
           const hasTableChildren = children.some(
@@ -120,7 +121,7 @@ export function Results({
           );
 
           const handleItemSelect = (open?: boolean) => {
-            if (disabled) {
+            if (!interactive) {
               return;
             }
 
@@ -183,7 +184,7 @@ export function Results({
             }
 
             if (
-              !disabled &&
+              interactive &&
               (event.code === "Space" || event.code === "Enter")
             ) {
               // toggle the current item
@@ -206,11 +207,11 @@ export function Results({
               })}
               data-index={index}
               data-open={isExpanded}
-              tabIndex={disabled ? -1 : 0}
+              tabIndex={interactive ? 0 : -1}
               style={{
                 top: start,
                 marginLeft: level * INDENT_OFFSET,
-                pointerEvents: disabled ? "none" : undefined,
+                pointerEvents: interactive ? undefined : "none",
               }}
               to={Urls.dataModel({
                 databaseId: value?.databaseId,
@@ -231,42 +232,26 @@ export function Results({
               onFocus={() => onSelectedIndexChange?.(index)}
               ref={virtual.measureElement}
             >
-              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
-                <Flex align="flex-start" gap="xs" w="100%">
-                  <Flex align="center" gap="xs">
-                    {hasChildren(type) && (
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xxs" w="100%">
+                <Flex align="flex-start" gap="xxs" w="100%">
+                  <Flex align="center" gap="xxs">
+                    {hasChildren(type) && !isEmpty && (
                       <Icon
                         name="chevronright"
                         size={10}
-                        c="text-tertiary"
+                        c="text-disabled"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
                         })}
                       />
                     )}
 
-                    <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                    {!isEmpty && (
+                      <Icon name={TYPE_ICONS[type]} className={S.icon} />
+                    )}
                   </Flex>
 
-                  {isLoading ? (
-                    <Loading />
-                  ) : (
-                    <Box
-                      className={S.label}
-                      c={
-                        type === "table" &&
-                        item.table &&
-                        item.table.visibility_type != null &&
-                        !isActive
-                          ? "text-secondary"
-                          : undefined
-                      }
-                      data-testid="tree-item-label"
-                      pl="sm"
-                    >
-                      {label}
-                    </Box>
-                  )}
+                  <ItemLabel item={item} isActive={isActive} />
                 </Flex>
               </Flex>
 
@@ -322,6 +307,42 @@ export function Results({
   );
 }
 
+function ItemLabel({ item, isActive }: { item: FlatItem; isActive: boolean }) {
+  if (item.isLoading) {
+    return <Loading />;
+  }
+
+  if (item.isEmpty) {
+    return (
+      <Box
+        className={S.label}
+        c="text-disabled"
+        data-testid="empty-placeholder"
+        pl="1.25rem"
+      >
+        {t`Empty`}
+      </Box>
+    );
+  }
+
+  const isMutedTable =
+    item.type === "table" &&
+    item.table != null &&
+    item.table.visibility_type != null &&
+    !isActive;
+
+  return (
+    <Box
+      className={S.label}
+      c={isMutedTable ? "text-secondary" : undefined}
+      data-testid="tree-item-label"
+      pl="sm"
+    >
+      {item.label}
+    </Box>
+  );
+}
+
 function Loading() {
   const width = useMemo(() => 20 + Math.random() * 80, []);
 
@@ -330,7 +351,7 @@ function Loading() {
       data-testid="loading-placeholder"
       height={rem(16)}
       width={`${width}%`}
-      radius="sm"
+      radius="xs"
     />
   );
 }

@@ -34,7 +34,6 @@
                (#'gsettings/migrate-gsheet-value
                 {:status "not-connected"})))
         (is (= {} @value-updated)))
-
       (testing "old loading values are migrated to current-format"
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890
@@ -50,7 +49,6 @@
                    :created-by-id      1
                    :db-id              1})))
           (is (= expected-value @value-updated))))
-
       (testing "old complete values are migrated to current-format"
         (let [expected-value {:url            "https://example.com"
                               :created-at     1234567890

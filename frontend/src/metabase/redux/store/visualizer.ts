@@ -32,8 +32,8 @@ export interface VisualizerVizDefinitionWithColumns extends VisualizerVizDefinit
   columns: DatasetColumn[];
 }
 
-export interface VisualizerVizDefinitionWithColumnsAndFallbacks extends VisualizerVizDefinitionWithColumns {
-  datasetFallbacks?: Record<number, Dataset | null | undefined>;
+export interface VisualizerVizDefinitionWithColumnsAndPreloadedDatasets extends VisualizerVizDefinitionWithColumns {
+  preloadedDatasets?: Record<number, Dataset | null | undefined>;
 }
 
 export interface VisualizerState extends VisualizerVizDefinitionWithColumns {

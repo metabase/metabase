@@ -40,13 +40,11 @@
     (let [listener (sut/create-listener)
           noop-job (#'sut/->NoOpJob) ; Access private record constructor
           other-job (reify Job (execute [_ _]))]
-
       (testing "should return true (veto) for NoOpJob"
         (let [context (reify JobExecutionContext
                         (getJobInstance [_] noop-job))]
           (is (true? (.vetoJobExecution listener nil context))
               "Listener should veto NoOpJob")))
-
       (testing "should return false (don't veto) for other Job types"
         (let [context (reify JobExecutionContext
                         (getJobInstance [_] other-job))]

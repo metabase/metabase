@@ -182,3 +182,17 @@
 
 (defmethod sql.tx/generated-column-sql :starburst [_ _] nil)
 (defmethod sql.tx/default-column-sql :starburst [_ _] nil)
+
+(defmethod sql.tx/standalone-column-comment-sql :starburst
+  [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
+  (when (seq field-comment)
+    (format "COMMENT ON COLUMN %s IS '%s'"
+            (sql.tx/qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
+
+(defmethod sql.tx/standalone-table-comment-sql :starburst
+  [driver {:keys [database-name]} {:keys [table-name table-comment]}]
+  (when (seq table-comment)
+    (format "COMMENT ON TABLE %s IS '%s'"
+            (sql.tx/qualify-and-quote driver database-name table-name)
+            table-comment)))

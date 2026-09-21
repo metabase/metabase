@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
 import { useDiscardTablesFieldValuesMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { trackDataStudioTableFieldValuesDiscardStarted } from "metabase/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackDataStudioTableFieldValuesDiscardStarted } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 
@@ -39,7 +38,7 @@ export const DiscardTableFieldValuesButton = ({
   };
 
   return (
-    <Button c="error" variant="subtle" onClick={handleClick}>
+    <Button c="feedback-negative" variant="subtle" onClick={handleClick}>
       {started ? t`Discard triggered!` : t`Discard cached field values`}
     </Button>
   );

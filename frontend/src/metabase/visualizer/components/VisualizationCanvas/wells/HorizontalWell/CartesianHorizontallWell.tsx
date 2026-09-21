@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import { getDefaultDimensionFilter } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
@@ -16,7 +15,8 @@ import {
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { isDate, isString } from "metabase-lib/v1/types/utils/isa";
+import { getDefaultDimensionFilter } from "metabase/viz-core";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
@@ -49,15 +49,15 @@ export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
 
     const dimensions: DatasetColumn[] = [];
     const timeDimensions = allDimensions.filter(isDate);
-    const categoryDimensions = allDimensions.filter(isString);
+    // Non-temporal = category-like (string, integer-Category, binned numeric, etc.).
+    const categoryDimensions = allDimensions.filter((col) => !isDate(col));
 
-    // Show only one dimension for multiseries charts,
-    // as they have to be added/removed together, not individually
+    // Only one temporal x-axis is allowed; category dims can span multiple per-series slots.
     if (timeDimensions.length > 0) {
       dimensions.push(timeDimensions[0]);
     }
     if (categoryDimensions.length > 0) {
-      dimensions.push(...categoryDimensions); //.push(categoryDimensions[0]);
+      dimensions.push(...categoryDimensions);
     }
 
     return dimensions;

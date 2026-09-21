@@ -20,8 +20,9 @@ export const getEmbedSidebar = () =>
     .first()
     .within(() => cy.findByRole("complementary"));
 
-export const getRecentItemCards = () =>
-  cy.findAllByTestId("embed-recent-item-card");
+export const getResourceSelectorButton = (
+  options?: Partial<Cypress.Timeoutable>,
+) => cy.findByTestId("embed-browse-entity-button", options);
 
 export const visitNewEmbedPage = (
   { waitForResource } = { waitForResource: true },
@@ -38,11 +39,16 @@ export const visitNewEmbedPage = (
 
   cy.get("body").then(() => {
     if (waitForResource) {
+      // Accept the terms only once the sidebar has settled: a click landing
+      // mid-re-render is dropped silently and blocks the wizard (EMB-2307).
+      // The default dashboard is only chosen once recents and search settle,
+      // so under load the request needs the same 40s margin (EMB-2319).
+      cy.wait("@dashboard", { timeout: 40_000 });
+
       embedModalEnableEmbedding();
 
-      cy.wait("@dashboard");
-
-      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+      // Same 40s margin as waitForSimpleEmbedIframesToLoad (metabase#66954).
+      cy.get("[data-iframe-loaded]", { timeout: 40_000 }).should(
         "have.length",
         1,
       );
@@ -75,17 +81,19 @@ type NavigateToStepOptions =
       experience: "exploration" | "metabot";
       resourceName?: never;
       preselectSso?: boolean;
+      preselectGuest?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
       preselectSso?: boolean;
+      preselectGuest?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience, preselectSso } = options;
+  const { experience, preselectSso, preselectGuest } = options;
 
   visitNewEmbedPage();
 
@@ -96,9 +104,25 @@ export const navigateToEntitySelectionStep = (
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
 
+  // Switch to the requested auth mode if we're not already on it. When we
+  // ARE already on it (e.g. SSO is the default and `preselectSso` is set),
+  // the radio click is a no-op AND the section's terms were already accepted
+  // by visitNewEmbedPage()'s embedModalEnableEmbedding() — so calling the
+  // helper again would race the now-frozen disabled "Enabled" button.
+  const ensureAuthMode = (label: string) => {
+    cy.findByLabelText(label).then(($radio) => {
+      if ($radio.is(":checked")) {
+        return;
+      }
+      cy.wrap($radio).click();
+      embedModalEnableEmbedding();
+    });
+  };
+
   if (preselectSso || !isQuestionOrDashboardExperience) {
-    cy.findByLabelText("Metabase account (SSO)").click();
-    embedModalEnableEmbedding();
+    ensureAuthMode("Metabase account (SSO)");
+  } else if (preselectGuest) {
+    ensureAuthMode("Guest");
   }
 
   const labelByExperience = match(experience)
@@ -112,14 +136,9 @@ export const navigateToEntitySelectionStep = (
     cy.findByText(labelByExperience).click();
   }
 
-  // exploration and metabot experience does not have the entity selection step
+  // Experience selection and resource picker are part of the same step.
+  // exploration and metabot do not show a resource picker.
   if (hasEntitySelection && options.resourceName) {
-    cy.log("navigate to the entity selection step");
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Entity selection step
-    });
-
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
@@ -132,8 +151,16 @@ export const navigateToEntitySelectionStep = (
     });
 
     entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findAllByText(options.resourceName).first().click();
+      // The picker opens on the "Recent items" tab by default. Scope each
+      // navigation step to its column to disambiguate when the target also
+      // appears in the recents list.
+      cy.findByTestId("item-picker-level-0")
+        .findByText("Our analytics")
+        .click();
+      cy.findByTestId("item-picker-level-1")
+        .findAllByText(options.resourceName)
+        .first()
+        .click();
 
       // Collection picker requires an explicit confirmation.
       if (experience === "browser") {

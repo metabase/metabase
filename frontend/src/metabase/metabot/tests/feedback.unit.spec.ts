@@ -6,6 +6,7 @@ import {
   enterChatMessage,
   feedbackModal,
   lastChatMessage,
+  lastReqBody,
   mockAgentEndpoint,
   mockFeedbackEndpoint,
   setup,
@@ -15,9 +16,9 @@ import {
 } from "./utils";
 
 const setupWithNegativeFeedback = async () => {
-  setup({ isHosted: true });
+  setup();
   const feedbackEndpoint = mockFeedbackEndpoint();
-  mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+  mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
   await enterChatMessage("Who is your favorite?");
   const lastMessage = (await lastChatMessage())!;
@@ -51,27 +52,15 @@ const submitFeedback = async (modal: HTMLElement) => {
 };
 
 describe("metabot > feedback", () => {
-  it("should not show feedback buttons for non-hosted instances", async () => {
-    setup({ isHosted: false });
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = (await lastChatMessage())!;
-
-    expect(
-      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-up"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-down"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should present the user an option to provide feedback for hosted instances", async () => {
-    setup({ isHosted: true });
+  it("should present the user an option to provide feedback", async () => {
+    setup();
     const feedbackEndpoint = mockFeedbackEndpoint();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    const agentEndpoint = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
 
     await enterChatMessage("Who is your favorite?");
+    const agentRequestBody = await lastReqBody(agentEndpoint);
     const lastMessage = (await lastChatMessage())!;
     expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
 
@@ -84,6 +73,13 @@ describe("metabot > feedback", () => {
     await submitFeedback(modal);
 
     expect(feedbackEndpoint.calls()).toHaveLength(1);
+    const body = await feedbackEndpoint.calls()[0].request?.json();
+    expect(body).toEqual({
+      metabot_id: expect.any(Number),
+      message_id: agentRequestBody.assistant_message_id,
+      positive: false,
+      freeform_feedback: "",
+    });
 
     expect(await thumbsUp(lastMessage)).toBeDisabled();
     expect(await thumbsDown(lastMessage)).toBeDisabled();
@@ -126,5 +122,31 @@ describe("metabot > feedback", () => {
     await submitFeedback(modal);
 
     expect(feedbackEndpoint.calls()).toHaveLength(1);
+  });
+
+  it("should submit positive feedback", async () => {
+    setup();
+    const feedbackEndpoint = mockFeedbackEndpoint();
+    const agentEndpoint = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+    });
+
+    await enterChatMessage("Who is your favorite?");
+    const agentRequestBody = await lastReqBody(agentEndpoint);
+    const lastMessage = (await lastChatMessage())!;
+
+    await userEvent.click(await thumbsUp(lastMessage));
+    const modal = await feedbackModal();
+    await submitFeedback(modal);
+
+    expect(feedbackEndpoint.calls()).toHaveLength(1);
+    const body = await feedbackEndpoint.calls()[0].request?.json();
+    expect(body).toEqual({
+      metabot_id: expect.any(Number),
+      message_id: agentRequestBody.assistant_message_id,
+      positive: true,
+      freeform_feedback: "",
+    });
+    expect(body).not.toHaveProperty("issue_type");
   });
 });

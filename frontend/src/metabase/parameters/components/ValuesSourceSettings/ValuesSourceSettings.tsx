@@ -39,10 +39,11 @@ export function ValuesSourceSettings({
       <Radio.Group
         value={queryType}
         onChange={(newValue: string) =>
+          // Unjustified type cast. FIXME
           onChangeQueryType(newValue as ValuesQueryType)
         }
       >
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}

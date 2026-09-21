@@ -17,32 +17,66 @@
 
 (defn- ->deps-edn-alias [db version] (c/green ":db/" (name db) "-" (name version)))
 
-(defn- fetch-supported-versions [db-info database]
-  (let [now (java.time.LocalDate/now)
-        all-versions (-> (http/get (get-in db-info [database :eol-url])) :body (json/parse-string true))
-        _ (u/debug "all-versions: \n" (with-out-str (t/table all-versions)))
-        supported (->> all-versions
-                       (mapv (fn [m]
-                               (-> m
-                                   (update :releaseDate #(and % (-> % java.time.LocalDate/parse)))
-                                   (update :eol #(and % (-> % java.time.LocalDate/parse))))))
-                       (filter (fn [{:keys [^java.time.LocalDate eol]}]
-                                 (and eol (.isAfter eol now))))
-                       (sort-by :releaseDate)
-                       vec)]
-    (u/debug "supported: \n" (with-out-str (t/table supported)))
-    supported))
+(defn all-versions [db-info] (-> db-info :eol-url http/get :body (json/parse-string true)))
 
-(defn- fetch-oldest-supported-version [db-info database]
-  (let [versions (fetch-supported-versions db-info database)
-        oldest-version (-> versions first :cycle)]
-    (u/debug "OLDEST VERSION:" oldest-version)
-    oldest-version))
+(defmulti ^:private fetch-oldest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
+
+(defn- fetch-oldest-supported-version* [db-info filter-fn sort-fn version-key]
+  (->> (all-versions db-info)
+       (map (fn [version] (update version :eol #(java.time.LocalDate/parse %))))
+       (filter (fn [{:keys [^java.time.LocalDate eol]}] (.isAfter eol (java.time.LocalDate/now))))
+       (filter filter-fn)
+       (sort-by sort-fn)
+       first
+       version-key))
+
+(defmethod fetch-oldest-supported-version :default
+  [_database db-info]
+  (fetch-oldest-supported-version*
+   db-info
+   (constantly true)
+   (fn [{:keys [releaseDate]}] (java.time.LocalDate/parse releaseDate))
+   :cycle))
+
+(defmethod fetch-oldest-supported-version :oracle
+  [_database db-info]
+  (fetch-oldest-supported-version*
+   db-info
+   (fn [{:keys [cycle]}] (and cycle (> (Integer/parseInt cycle) 19)))
+   (fn [{:keys [releaseDate]}] (java.time.LocalDate/parse releaseDate))
+   :cycle))
+
+(defmethod fetch-oldest-supported-version :sqlserver
+  [_database db-info]
+  (let [eol-version (fetch-oldest-supported-version*
+                     db-info
+                     (fn [{:keys [releaseLabel]}] (and releaseLabel (re-matches #"^\d{4} '__CODENAME__'$" releaseLabel)))
+                     :releaseLabel
+                     :releaseLabel)]
+    (str/replace eol-version #" '__CODENAME__'" "-latest")))
+
+(defmethod fetch-oldest-supported-version :clickhouse
+  [_database _db-info]
+  "23.3")
+
+(defmulti ^:private fetch-latest-supported-version
+  {:arglists '([database db-info])}
+  (fn [database db-info] database))
+
+(defmethod fetch-latest-supported-version :default
+  [_database _db-info]
+  "latest")
+
+(defmethod fetch-latest-supported-version :sqlserver
+  [_database _db-info]
+  "2025-latest")
 
 (defn- resolve-version [db-info database version]
   (if (= version :oldest)
-    (fetch-oldest-supported-version db-info database)
-    (cond-> version (keyword? version) name)))
+    (fetch-oldest-supported-version database db-info)
+    (fetch-latest-supported-version database db-info)))
 
 ;; Docker stuff:
 
@@ -57,9 +91,8 @@
 
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
-   "-p" (str port ":5432")
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
    "-e" "POSTGRES_DB=metabase"
@@ -71,9 +104,8 @@
 
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
-   "-p" (str port ":3306")
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -81,9 +113,8 @@
 
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
-   "-p" (str port ":3306")
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -91,11 +122,58 @@
 
 (defmethod docker-cmd :mongo
   [_db container-name resolved-version port]
-  ["docker" "run"
-   "-d"
-   "-p" (str port ":27017")
+  ["docker" "run" "-d"
+   "-e" "MONGO_INITDB_ROOT_USERNAME=metabase"
+   "-e" "MONGO_INITDB_ROOT_PASSWORD=metasample123"
+   "-p" (str "127.0.0.1:" port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
+
+(defmethod docker-cmd :clickhouse
+  [_db container-name resolved-version port]
+  ["docker" "compose"
+   "-f" "modules/drivers/clickhouse/docker-compose.yml"
+   "up" "-d"
+   (if (= resolved-version "latest")
+     "clickhouse"
+     "clickhouse_older_version")]) ;; these are defined in modules/drivers/clickhouse/docker-compose.yml
+
+(defmethod docker-cmd :sqlserver
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":1433")
+   "-e" "ACCEPT_EULA=Y"
+   "-e" "SA_PASSWORD=P@ssw0rd"
+   "--name" container-name
+   (str "mcr.microsoft.com/mssql/server:" resolved-version)])
+
+(defmethod docker-cmd :oracle
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":1521")
+   "-e" "ORACLE_PASSWORD=password"
+   "--name" container-name
+   (if (= resolved-version "latest")
+     "gvenzl/oracle-free:latest"
+     (str "gvenzl/oracle-xe:" resolved-version))])
+
+;; Client command stuff:
+
+(defmulti ^:private client-cmd
+  {:arglists '([db port])}
+  (fn [db _port] db))
+
+;; TODO: add other databases' commands here
+(defmethod client-cmd :default [_ _] nil)
+
+(defmethod client-cmd :mysql [_ port]
+  (format "mysql --host localhost --port %s --user root --password=\"\" metabase_test" port))
+
+(defmethod client-cmd :mariadb [_ port]
+  (client-cmd :mysql port))
+
+(defmethod client-cmd :postgres [_ port]
+  (format "PGPASSWORD=password psql --user metabase --host localhost --port %s -d metabase" port))
 
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
@@ -114,7 +192,10 @@
       (let [deps-edn-alias (->deps-edn-alias database version)]
         (printf "Use the %s alias in deps.edn to use this DB:\n" deps-edn-alias)
         (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
-        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))))
+        (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))
+    (when-let [client-command (client-cmd database port)]
+      (println "\nUse this command to connect:")
+      (println client-command))))
 
 (defn- usage
   [{:keys [db-info]}]
@@ -133,21 +214,12 @@
 
 (defn start-db
   "Starts a db type + version in docker."
-  [db-info db version]
-  (let [port             (get-in db-info [db :ports version])
-        db               (keyword db)
-        version          (cond-> version (string? version) keyword)
-        resolved-version (resolve-version db-info db version)]
-    (u/debug "PORT:" port)
-    (cond (not (contains? db-info db))
-          (do
-            (println (c/red "Invalid DB: " (name db)))
-            (println (usage {:db-info db-info})))
-
-          (not (integer? port))
-          (do
-            (println (c/red "No port found for DB: " (name db)  ", version: " (name version) ". See :db-info in bb.edn"))
-            (println (usage {:db-info db-info})))
-
-          :else
-          (start-db! db version resolved-version port))))
+  ([db-info db version]
+   (start-db db-info db version nil))
+  ([db-info db version opts]
+   (when (and (= db :clickhouse) (:port opts))
+     (throw (ex-info (c/red "--port is not supported for clickhouse. Ports are configured in modules/drivers/clickhouse/docker-compose.yml") {:babashka/exit 1})))
+   (let [default-port     (get-in db-info [:ports version])
+         port             (or (:port opts) default-port)
+         resolved-version (resolve-version db-info db version)]
+     (start-db! db version resolved-version port))))

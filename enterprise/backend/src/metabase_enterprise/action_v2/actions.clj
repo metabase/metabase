@@ -8,15 +8,14 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
 
-(derive :data-grid.row/create :data-grid.row/common)
-(derive :data-grid.row/update :data-grid.row/common)
-(derive :data-grid.row/delete :data-grid.row/common)
+(actions/derive! :data-grid.row/create :data-grid.row/common)
+(actions/derive! :data-grid.row/update :data-grid.row/common)
+(actions/derive! :data-grid.row/delete :data-grid.row/common)
 
 (defn- unsupported-dbs-msg [target-dbs unsupported-dbs]
   (cond
@@ -90,8 +89,7 @@
                                      input+row (map vector inputs coerced)]
                            input+row)]
     (for [input inputs]
-      (u/prog1 (assoc input :row (input->coerced input))
-        (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
+      (assoc input :row (input->coerced input)))))
 
 (defn- perform-data-grid-action! [action-kw context inputs]
   (let [next-inputs (coerce-inputs inputs)]

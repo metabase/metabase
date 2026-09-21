@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -13,8 +13,6 @@ import {
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
-
-const DISMISSED_KEY = "security-center-banner-dismissed";
 
 interface SetupOpts {
   isProSelfHosted?: boolean;
@@ -36,8 +34,8 @@ function setup({
   );
 
   setupNotificationChannelsEndpoints({
-    email: { configured: emailConfigured } as any,
-    slack: { configured: slackConfigured } as any,
+    email: { configured: emailConfigured },
+    slack: { configured: slackConfigured },
   });
 
   fetchMock.get("path:/api/ee/security-center", {
@@ -52,7 +50,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterBanner} />, {
+  renderWithProviders(<Route path="*" element={<SecurityCenterBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,
@@ -60,22 +58,16 @@ function setup({
 }
 
 describe("SecurityCenterBanner", () => {
-  afterEach(() => {
-    localStorage.removeItem(DISMISSED_KEY);
-  });
-
-  it("renders warning banner when no channels are configured", async () => {
+  it("does not render when there is no active advisory", async () => {
     setup();
 
-    expect(
-      await screen.findByText(/Please configure notification channels/),
-    ).toBeInTheDocument();
+    await screen.findByText(() => false).catch(() => {});
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
-    // Wait for API responses to settle, then assert no banner
     await screen.findByText(() => false).catch(() => {});
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
@@ -104,46 +96,19 @@ describe("SecurityCenterBanner", () => {
     ).toBeInTheDocument();
   });
 
-  it("is dismissible when there are no active advisories", async () => {
-    setup();
-
-    await screen.findByTestId("app-banner");
-    expect(screen.getByLabelText("close icon")).toBeInTheDocument();
-  });
-
-  it("is not dismissible when there are active advisories", async () => {
+  it("is not dismissible", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    // Wait for the error banner text to confirm advisory data has loaded
     await screen.findByText(/Please configure notification channels/);
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
-  it("stays hidden after dismissal when there are no active advisories", async () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-
-    setup();
-
-    await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("shows banner despite dismissal when there are active advisories", async () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-
+  it("includes a link to security center notification settings", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
-
-    expect(
-      await screen.findByText(/Please configure notification channels/),
-    ).toBeInTheDocument();
-  });
-
-  it("includes a link to security center notification settings", async () => {
-    setup();
 
     const link = await screen.findByText("Security center");
     expect(link).toHaveAttribute(

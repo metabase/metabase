@@ -1,22 +1,25 @@
 export const getObjectEntries = <K extends string, V>(
   obj: Record<K, V>,
 ): [K, V][] => {
+  // Unjustified type cast. FIXME
   return Object.entries(obj) as [K, V][];
 };
 
 export const getObjectKeys = <K extends string>(
-  obj: Record<K, unknown>,
+  obj: Partial<Record<K, unknown>>,
 ): K[] => {
+  // Unjustified type cast. FIXME
   return Object.keys(obj) as K[];
 };
 
 export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
-  return Object.values(obj) as V[];
+  return Object.values(obj);
 };
 
 export const objectFromEntries = <K extends string, V>(
   entries: readonly (readonly [K, V])[],
 ): Record<K, V> => {
+  // Unjustified type cast. FIXME
   return Object.fromEntries(entries) as Record<K, V>;
 };
 
@@ -86,6 +89,7 @@ export function isSerializable(value: unknown): boolean {
         return value.every(isSerializable);
       }
 
+      // Unjustified type cast. FIXME
       return Object.values(value as Record<string, unknown>).every(
         isSerializable,
       );

@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
+   [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -39,6 +40,35 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
 
+(def data-app-url-segment
+  "URL path segment identifying data-app routes. Single source of truth on the
+   BE: the `/apps` page route, the `/embed/apps` iframe prefix, and the
+   `/api/apps` API mount all derive from it (mirrors the FE
+   `DATA_APP_URL_SEGMENT`)."
+  "apps")
+
+(def data-app-embed-prefix
+  "URL prefix the BE serves the internal data-app iframe entrypoint at."
+  (str "/embed/" data-app-url-segment))
+
+(def ^:private data-app-uri-regex
+  (re-pattern (str "^" data-app-embed-prefix "/.*$")))
+
+(defn data-app?
+  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
+   It is only ever framed by the same-origin Metabase app, so it gets
+   `frame-ancestors 'self'` rather than the open embedding `*`."
+  [{:keys [uri]}]
+  (re-matches data-app-uri-regex uri))
+
+(defn embed-sdk-eajs-entrypoint?
+  "Is this ring request the modular embedding (EAJS) entrypoint page, served by `index/embed-sdk`?
+  Matches exactly `/embed/sdk/v1` and, on purpose, any future `/embed/sdk/vN` version. Any other
+  `/embed/sdk/*` URI falls through to the static embed page and does not match. The react embedding
+  SDK renders on the host page and never requests this route."
+  [{:keys [uri]}]
+  (re-matches #"^/embed/sdk/v\d+$" uri))
+
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
@@ -51,19 +81,23 @@
         ;; font files are static and should be cached
         (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
 
-(def https?
-  "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
+(def https-state
+  "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
+  protection; treat `:unknown` as HTTPS to add one.
 
-  In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
-  request handled by Jetty will be over HTTP.
-
-  Note: Implementation is in [[metabase.util/https?]]."
-  u/https?)
+  Note: Implementation is in [[metabase.util/https-state]]."
+  u/https-state)
 
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
   [request]
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
+
+(defn referer
+  "The `Referer` header from a Ring `request`, or nil. Best-effort — browsers may strip it under
+  `Referrer-Policy: no-referrer` or cross-origin restrictions."
+  [request]
+  (get-in request [:headers "referer"]))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
@@ -76,7 +110,7 @@
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
+  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request} :- ::request.schema/request]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
@@ -132,5 +166,5 @@
             result)
           (catch Throwable e
             (analytics/inc! :metabase-geocoding/errors)
-            (log/error e "Error geocoding IP addresses" {:url url})
+            (log/errorf "Error geocoding IP addresses: %s" (ex-message e))
             nil))))))

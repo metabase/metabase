@@ -15,16 +15,16 @@ To set up Metabot, see [Metabot settings](./settings.md).
 
 ## What Metabot can do
 
-Metabot can help you to:
+Here's a non-exhaustive list of things Metabot can help with:
 
-- [AI exploration](#ai-exploration).
+- [Answer data questions asked with natural language](#ai-exploration).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- Answer questions from our documentation (as in, the literature you're reading right now).
-- [Chat with Metabot in Slack](./metabot-slack.md).
+- [Generate charts in documents](../documents/introduction.md)
+- [Answer questions from Slack](./metabot-slack.md).
 
 Like with all generative AI, you'll always need to double-check results.
 
@@ -35,7 +35,7 @@ Like with all generative AI, you'll always need to double-check results.
 There are multiple ways to start a chat with Metabot:
 
 - Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in top right.
+- Click the Metabot icon in the top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 
@@ -61,9 +61,9 @@ Hover over Metabot's response to:
 
 ![Metabot analyzes a chart](./images/metabot-response.png)
 
-When viewing a question, you can click the Metabot icon in the upper right to analyze a visualization. You can also open the command palette to tell Metabot to analyze the chart.
+When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart.
 
-When viewing a table of results, Metabase won't display the Metabot button, but you can open the chat to ask Metabot to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
+When viewing a table of results, ask Metabot in the chat to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
 You can also ask Metabot to tell you about specific tables in your database.
 
@@ -129,8 +129,6 @@ When answering questions in AI exploration, Metabot searches a limited set of co
 
 Metabot is getting smarter all the time, but there are some things it can't do yet:
 
-- **Custom expressions.** Metabot can't use [custom expressions](../questions/query-builder/expressions-list.md) in query builder questions.
-- **Multi-level aggregation.** Metabot is limited to a single level of aggregation and grouping.
 - **SQL variables.** Metabot can't generate SQL queries that include [SQL parameters](../questions/native-editor/sql-parameters.md) (like filters or field filters).
 - **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
 - **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.

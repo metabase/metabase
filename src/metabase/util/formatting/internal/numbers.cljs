@@ -59,7 +59,7 @@
                             "scientific")
                 :currency (:currency options)
                 :currencyDisplay (:currency-style options)
-                  ;; Always use grouping separators, but we may remove them per number_separators.
+                ;; Always use grouping separators, but we may remove them per number_separators.
                 :useGrouping              true
                 :minimumIntegerDigits     (:minimum-integer-digits     options)
                 :minimumFractionDigits    (:minimum-fraction-digits    options default-fraction-digits)

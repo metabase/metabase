@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -146,28 +147,33 @@
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
         ;; Replace all existing entries
-        (t2/delete! :model/ContentTranslation)
+        (content-translation.db/delete-all-translations!)
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
-          (t2/insert! :model/ContentTranslation usable-rows))))))
+          (content-translation.db/insert-translations! usable-rows))))))
 
 (defn- maybe-read
   [reader]
-  (let [lines (line-seq reader)]
-    (import-translations!
-     (for [[i line] (map-indexed vector lines)]
-       (try
-         (first (csv/read-csv (java.io.StringReader. line)))
-         (catch Exception e
-           (let [error-message (.getMessage ^Exception e)
-                 ;; report line number 1 indexed
-                 line-no (inc i)
-                 error-message (tru "Error Parsing CSV at Row {0}: {1}" line-no error-message)]
-             (throw (ex-info error-message
-                             {:status-code http-status-unprocessable
-                              :errors [error-message]
-                              :line line-no}
-                             e)))))))))
+  ;; Consume the lazy seq one row at a time and count successfully-parsed rows
+  ;; so a parse error can name the failing row. Reading via `csv/read-csv`
+  ;; (rather than line-by-line) lets quoted fields span multiple physical
+  ;; lines per RFC 4180; the reported row number is the logical row, which is
+  ;; what the user authored.
+  (let [rows (volatile! [])]
+    (try
+      (doseq [row (csv/read-csv reader)]
+        (vswap! rows conj row))
+      (catch Exception e
+        (let [row-no (inc (count @rows))
+              error-message (tru "Error parsing CSV at row {0}: {1}"
+                                 row-no
+                                 (.getMessage ^Exception e))]
+          (throw (ex-info error-message
+                          {:status-code http-status-unprocessable
+                           :errors [error-message]
+                           :row row-no}
+                          e)))))
+    (import-translations! @rows)))
 
 (defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."

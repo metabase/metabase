@@ -42,20 +42,23 @@
 
 (driver/register! :databricks, :parent :hive-like)
 
+(defmethod driver/host-carrying-parameters :databricks
+  [_driver]
+  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
+                              :database-routing                true
                               :describe-fields                 true
-                              :describe-fks                    true
                               :expression-aggregations         true
                               :expression-literals             true
                               :expressions                     true
+                              :multi-level-schema              true
                               :native-parameters               true
                               :nested-queries                  true
-                              :multi-level-schema              true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false
-                              :database-routing                true}]
+                              :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -66,6 +69,12 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
+(defmethod driver/validate-db-details! :databricks
+  [_driver details]
+  (when-let [opts (not-empty (:additional-options details))]
+    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
+      (throw (Exception. "Potentially dangerous keys in connection details")))))
+
 (defn- catalog-present?
   [jdbc-spec catalog]
   (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
@@ -73,6 +82,7 @@
 
 (defmethod driver/can-connect? :databricks
   [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (and (catalog-present? jdbc-spec (:catalog details))
          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
@@ -127,29 +137,32 @@
 
 (defmethod driver/describe-database* :databricks
   [driver database]
-  (try
-    {:tables
-     (let [[inclusion-patterns
-            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-           included? (fn [schema]
-                       (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
-       (into
-        #{}
-        (filter (comp included? :schema))
-        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database)))))}
-    (catch Throwable e
-      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
-                      {}
-                      e)))))
+  {:tables
+   (reify clojure.lang.IReduceInit
+     (reduce [_this rf init]
+       (try
+         (let [[inclusion-patterns
+                exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+               included? (fn [schema]
+                           (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
+           (reduce rf init
+                   (eduction
+                    (filter (comp included? :schema))
+                    (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database))))))
+         (catch Throwable e
+           (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                           {}
+                           e))))))})
 
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      ;; Use OR / AND because they are faster than IN for tuples on Databricks
+      (into [:or]
+            (map (fn [schema-name]
+                   (let [[catalog schema] (split-catalog+schema schema-name)]
+                     [:and [:= catalog-column catalog] [:= schema-column schema]])))
+            schema-names)
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
@@ -261,17 +274,15 @@
   (let [base-spec
         {:classname      "com.databricks.client.jdbc.Driver"
          :subprotocol    "databricks"
-         ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-         ;; during first `can-connect?` call. Ref:
-         ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-         :subname        (str "//" host ":443/;EnableArrow=0"
+         :subname        (str "//" host ":443/"
                               ";ConnCatalog=" (codec/url-encode catalog)
                               (preprocess-additional-options additional-options))
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
-         :UseNativeQuery 1}]
+         :UseNativeQuery 1
+         :UseThriftClient 0}]
     (merge base-spec
            (when log-level
              {:LogLevel log-level})
@@ -494,8 +505,8 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

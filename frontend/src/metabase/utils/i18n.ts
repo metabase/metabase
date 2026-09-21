@@ -1,8 +1,7 @@
-import dayjs from "dayjs";
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
-import api from "metabase/utils/api";
+import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DayOfWeekId } from "metabase-types/api";
@@ -10,38 +9,6 @@ import type { DayOfWeekId } from "metabase-types/api";
 export type LocaleDataWithLanguage = LocaleData & {
   headers: { language: string };
 };
-
-// note this won't refresh strings that are evaluated at load time
-export async function loadLocalization(
-  locale: string,
-): Promise<LocaleDataWithLanguage> {
-  // we need to be sure to set the initial localization before loading any files
-  // so load metabase/services only when we need it
-  // load and parse the locale
-  const translationsObject: LocaleDataWithLanguage =
-    locale !== "en"
-      ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
-        // which will make the browser do the pre-flight request on the SDK.
-        // The backend doesn't seem to support pre-flight request on the static assets, but even
-        // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
-          (response) => response.json(),
-        )
-      : // We don't serve en.json. Instead, use this object to fall back to the literals.
-        {
-          headers: {
-            language: "en",
-            "plural-forms": "nplurals=2; plural=(n != 1);",
-          },
-          translations: {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
-            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
-          },
-        };
-  setLocalization(translationsObject);
-
-  return translationsObject;
-}
 
 // Tell dayjs to use the value of the start-of-week Setting for its current locale
 // range Sunday (0) - Saturday (6)
@@ -75,7 +42,7 @@ export function setLocalization(
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateDayjsLocale(language);
-  updateStartOfWeek(MetabaseSettings.get("start-of-week") as DayOfWeekId);
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);
@@ -105,8 +72,7 @@ function updateDayjsLocale(language: string): void {
 
   try {
     if (locale !== "en") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic locale loading
-      require(`dayjs/locale/${locale}.js`);
+      loadDayjsLocale(locale);
     }
     dayjs.locale(locale);
   } catch (e) {
@@ -142,16 +108,21 @@ function getStartOfWeekDay(
   return startOfWeekDayNumber;
 }
 
-// we delete msgid property since it's redundant, but have to add it back in to
-// make ttag happy
+// The artifact drops each entry's `msgid` field as redundant (it's already the key), but ttag
+// wants it back. Every context has to be walked, not just the default one: a string extracted
+// with a `msgctxt` (`c("…").t`) lives under that context, and leaving it without a `msgid` breaks
+// the locale for every string, not just that one.
+type TtagMessage = { msgid?: string };
+
+const isTtagMessage = (value: unknown): value is TtagMessage =>
+  typeof value === "object" && value !== null;
+
 function addMsgIds(translationsObject: LocaleDataWithLanguage): void {
-  const msgs = translationsObject.translations[""] as Record<
-    string,
-    { msgid?: string; msgstr: string[] }
-  >;
-  for (const msgid in msgs) {
-    if (msgs[msgid].msgid === undefined) {
-      msgs[msgid].msgid = msgid;
+  for (const context of Object.values(translationsObject.translations)) {
+    for (const [msgid, message] of Object.entries(context)) {
+      if (isTtagMessage(message) && message.msgid === undefined) {
+        message.msgid = msgid;
+      }
     }
   }
 }

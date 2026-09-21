@@ -9,7 +9,7 @@
   (deferred-tru "List of email recipients for Security Center notifications.")
   :type       :json
   :default    nil
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature    :admin-security-center
   :visibility :admin
   :export?    false
@@ -32,7 +32,7 @@
   (deferred-tru "Slack channel for Security Center notifications. Null means Slack notifications are disabled.")
   :type       :string
   :default    nil
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature    :admin-security-center
   :visibility :admin
   :export?    false

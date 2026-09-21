@@ -1,4 +1,4 @@
-(ns ^:mb/old-migrations-test metabase.app-db.custom-migrations.metrics-v2-test
+(ns ^:mb/old-migrations-test ^:mb/app-db-migrations-test metabase.app-db.custom-migrations.metrics-v2-test
   "These are 'old' tests now since this migration happened in 51."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
@@ -148,10 +148,10 @@
                json/decode+kw)))))
 
 (def query-validator
-  (mr/validator ::mbql.s/MBQLQuery))
+  (mr/validator ::mbql.s/MBQLInnerQuery))
 
 (def query-explainer
-  (mr/explainer ::mbql.s/MBQLQuery))
+  (mr/explainer ::mbql.s/MBQLInnerQuery))
 
 (deftest migrate-metrics-to-v2-test
   (impl/test-migrations ["v51.2024-05-13T15:30:57" "v51.2024-05-13T16:00:00"] [migrate!]
@@ -224,7 +224,6 @@
         (let [query (normalized-query original-query)]
           (is (query-validator query)
               (me/humanize (query-explainer query)))))
-
       (testing "forward migration"
         (migrate!)
         (let [migration-coll (t2/select-one :collection :name "Migrated Metrics v1")
@@ -243,7 +242,6 @@
           (is (= original-query (:dataset_query_metrics_v2_migration_backup rewritten-card)))
           (is (query-validator rewritten-query))
           (is (= (-> metric-cards first :id) (get-in rewritten-query [:aggregation 1 1])))))
-
       (testing "rollback"
         (migrate! :down 50)
         (let [migtation-coll (t2/select-one :collection :name "Migrated Metrics v1")

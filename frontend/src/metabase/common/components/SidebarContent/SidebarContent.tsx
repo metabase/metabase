@@ -3,13 +3,8 @@ import type { ReactNode } from "react";
 import type React from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  type BoxProps,
-  Flex,
-  type FlexProps,
-  type IconName,
-} from "metabase/ui";
+import { Box, type BoxProps, Flex, type FlexProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { SidebarHeader } from "../SidebarHeader";
 import { ViewButton } from "../ViewButton";
@@ -99,7 +94,7 @@ function SidebarContentInner({
 }
 
 const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
-  return <Box px="lg" {...props} />;
+  return <Box px="xl" {...props} />;
 };
 
 export const SidebarContent = Object.assign(SidebarContentInner, {

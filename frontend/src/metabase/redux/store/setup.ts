@@ -1,5 +1,15 @@
-import type { SetupStep } from "metabase/setup/types";
 import type { DatabaseData, UsageReason } from "metabase-types/api";
+
+export type SetupStep =
+  | "welcome"
+  | "language"
+  | "user_info"
+  | "usage_question"
+  | "db_connection"
+  | "ai_config"
+  | "license_token"
+  | "data_usage"
+  | "completed";
 
 export interface Locale {
   name: string;
@@ -36,5 +46,6 @@ export interface SetupState {
   isEmbeddingUseCase: boolean;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
+  isAiConfigRequested: boolean;
   licenseToken?: string | null;
 }

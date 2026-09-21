@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
 
@@ -29,6 +33,8 @@ function setup({
     return recentQuery;
   }
 
+  setupDatabaseEndpoints(createSampleDatabase());
+
   renderWithProviders(
     <ExpressionStep
       step={step}
@@ -51,9 +57,11 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    const input = screen.getByTestId("custom-expression-query-editor");
+    const input = await screen.findByTestId("custom-expression-query-editor");
     await userEvent.type(input, "1 + 1");
-    input.blur();
+    await act(async () => {
+      input.blur();
+    });
 
     await userEvent.type(
       screen.getByTestId("expression-name"),
@@ -149,9 +157,11 @@ describe("Notebook Editor > Expression Step", () => {
 
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    const input = screen.getByTestId("custom-expression-query-editor");
+    const input = await screen.findByTestId("custom-expression-query-editor");
     await userEvent.type(input, "1 + 1");
-    input.blur();
+    await act(async () => {
+      input.blur();
+    });
     await userEvent.type(screen.getByTestId("expression-name"), "Total{enter}");
 
     const recentQuery = getRecentQuery();

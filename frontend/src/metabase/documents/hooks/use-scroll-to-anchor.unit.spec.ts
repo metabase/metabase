@@ -22,6 +22,7 @@ describe("useScrollToAnchor", () => {
     document.body.appendChild(container);
 
     editorContainerRef = createRef<HTMLDivElement>();
+    // Unjustified type cast. FIXME
     (editorContainerRef as { current: HTMLDivElement }).current = container;
   });
 

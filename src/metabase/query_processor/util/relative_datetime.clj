@@ -40,8 +40,8 @@
       :or {base-type     :type/DateTimeWithTZ
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
-    (h2x/cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
+    (h2x/maybe-cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
     ((-> 'metabase.driver.sql.query-processor/->honeysql
          requiring-resolve
          var-get
-         (get-method [:sql :relative-datetime])) driver [:relative-datetime amount unit])))
+         (get-method [:sql :relative-datetime])) driver [:relative-datetime {} amount unit])))

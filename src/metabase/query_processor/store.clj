@@ -46,6 +46,14 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
+(mr/def ::miscellaneous-value
+  "Any value cached for the duration of a QP run via [[store-miscellaneous-value!]] or [[cached]]."
+  [:schema {::mr/deliberately-open true, :description "a per-query-execution cached value of any kind"} :any])
+
+(mr/def ::miscellaneous-value.ks
+  "Key sequence for a value in the store's miscellaneous cache; [[cached]] prefixes it with a unique symbol."
+  [:sequential [:or :keyword :symbol :int :string]])
+
 (def ^:dynamic *DANGER-allow-replacing-metadata-provider*
   "This is (almost) only for tests! When enabled, [[with-metadata-provider]] can completely replace the current metadata
   provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.
@@ -69,8 +77,8 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  [ks :- [:sequential :any]
-   v]
+  [ks :- ::miscellaneous-value.ks
+   v  :- ::miscellaneous-value]
   (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
@@ -78,11 +86,11 @@
 
   DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
   {:deprecated "0.57.0"}
-  ([ks]
+  ([ks :- ::miscellaneous-value.ks]
    (miscellaneous-value ks nil))
 
-  ([ks :- [:sequential :any]
-    not-found]
+  ([ks        :- ::miscellaneous-value.ks
+    not-found :- [:maybe [:= ::not-found]]]
    (get-in @*store* ks not-found)))
 
 (defn cached-fn
@@ -121,8 +129,9 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
+;; TODO (Cam 2026-07-17) Deprecate this in 64
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
-  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP. "
+  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP."
   []
   (or (miscellaneous-value [::metadata-provider])
       (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
@@ -161,7 +170,6 @@
                           {:existing-id existing-database-id
                            :new-id      new-database-id
                            :type        qp.error-type/invalid-query}))))
-
       ;; Metadata Providerable
       (let [new-provider (-> database-id-or-metadata-providerable
                              lib.metadata/->metadata-provider
@@ -186,7 +194,7 @@
 (mu/defn do-with-metadata-provider
   "Implementation for [[with-metadata-provider]]."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable
-   thunk                                :- [:=> [:cat] :any]]
+   thunk                                :- fn?]
   (cond
     (not (initialized?))
     (binding [*store* (atom {})]
@@ -229,8 +237,7 @@
   (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
   function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [lib-metadata-col :- [:map
-                        [:lib/type [:= :metadata/column]]]]
+  [lib-metadata-col :- :metabase.lib.schema.metadata/column]
   (-> lib-metadata-col
       lib/lib-metadata-column->legacy-metadata-column
       (vary-meta assoc :type :metadata/column)))

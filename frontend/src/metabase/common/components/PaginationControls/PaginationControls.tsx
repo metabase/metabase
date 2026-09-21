@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { Group, Text } from "metabase/ui";
+import { ActionIcon, Group, Icon, Text } from "metabase/ui";
 
 const isLastPage = (pageIndex: number, pageSize: number, total: number) =>
   pageIndex === Math.ceil(total / pageSize) - 1;
@@ -36,6 +35,12 @@ export const PaginationControls = ({
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
+  const rangeStart = page * pageSize + 1;
+  const rangeEnd =
+    total != null
+      ? Math.min(page * pageSize + itemsLength, total)
+      : page * pageSize + itemsLength;
+
   return (
     <Group
       align="center"
@@ -45,10 +50,10 @@ export const PaginationControls = ({
       {...props}
     >
       <Text component="span" mr="sm">
-        {page * pageSize + 1} - {page * pageSize + itemsLength}
+        {rangeStart} - {rangeEnd}
         {showTotal && (
           <>
-            <Text component="span" c="text-tertiary">
+            <Text component="span" c="text-disabled">
               &nbsp;
               {c(
                 "Appears in phrases like '1-10 of 100', referring to a page of results",
@@ -61,23 +66,25 @@ export const PaginationControls = ({
           </>
         )}
       </Text>
-      <Button
-        onlyIcon
-        icon="chevronleft"
+      <ActionIcon
+        variant="viewHeader"
         onClick={onPreviousPage ?? undefined}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
         aria-label={t`Previous page`}
-      />
+      >
+        <Icon name="chevronleft" />
+      </ActionIcon>
 
-      <Button
-        onlyIcon
-        icon="chevronright"
+      <ActionIcon
+        variant="viewHeader"
         onClick={onNextPage ?? undefined}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
         aria-label={t`Next page`}
-      />
+      >
+        <Icon name="chevronright" />
+      </ActionIcon>
     </Group>
   );
 };

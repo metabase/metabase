@@ -1,0 +1,22 @@
+.policyCardButton:active {
+  transform: none;
+}
+
+.policyCardButtonInner {
+  justify-content: space-between;
+}
+
+.policyCardLabel {
+  padding-right: 2rem;
+}
+
+.optionsButton {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.optionsButton:active {
+  transform: translateY(-50%);
+}

@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box, type BoxProps, Icon, Space, Title, Tooltip } from "metabase/ui";
 
 const TitleAndDescriptionInner = ({
@@ -21,7 +21,7 @@ const TitleAndDescriptionInner = ({
       >
         {tc(title)}
       </Title>
-      <Space component="span" mx="xs" />
+      <Space component="span" mx="xxs" />
       {description && (
         <Tooltip label={tc(description)} maw="22em">
           <Icon name="info" />

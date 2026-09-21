@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Get PR data
         id: pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
@@ -53,7 +53,7 @@ jobs:
             core.setOutput('base_ref', pr.base.ref);
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.pr.outputs.head_ref }}
           fetch-depth: 0
@@ -63,9 +63,9 @@ jobs:
         id: pkg
         run: |
           if [ -f "bun.lock" ] || [ -f "bun.lockb" ]; then
-            echo "mgr=bun" >> $GITHUB_OUTPUT
+            echo "mgr=bun" >> "$GITHUB_OUTPUT"
           else
-            echo "mgr=yarn" >> $GITHUB_OUTPUT
+            echo "mgr=yarn" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Validate backport PR
@@ -92,13 +92,15 @@ jobs:
           # Check if we're in a cherry-pick state with conflicts
           CONFLICTED=$(git diff --name-only --diff-filter=U || true)
           if [ -n "$CONFLICTED" ]; then
-            echo "has_conflicts=true" >> $GITHUB_OUTPUT
-            echo "conflicted_files<<EOF" >> $GITHUB_OUTPUT
-            echo "$CONFLICTED" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            {
+              echo "has_conflicts=true"
+              echo "conflicted_files<<EOF"
+              echo "$CONFLICTED"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "::notice::Found conflicts in: $CONFLICTED"
           else
-            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Cherry-pick applied cleanly, no conflicts to resolve"
           fi
 
@@ -129,7 +131,7 @@ jobs:
       - name: Resolve conflicts with Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         id: claude
-        uses: anthropics/claude-code-base-action@beta
+        uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 # v0.0.63
         env:
           NODE_VERSION: "22"
         with:
@@ -208,27 +210,29 @@ jobs:
           if [ -f "${{ steps.claude.outputs.execution_file }}" ]; then
             SUBTYPE=$(jq -r '.[] | select(.type == "result") | .subtype' "${{ steps.claude.outputs.execution_file }}" | tail -1)
             if [ "$SUBTYPE" = "error_max_turns" ]; then
-              echo "max_turns_exceeded=true" >> $GITHUB_OUTPUT
+              echo "max_turns_exceeded=true" >> "$GITHUB_OUTPUT"
             else
-              echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+              echo "max_turns_exceeded=false" >> "$GITHUB_OUTPUT"
             fi
           else
-            echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+            echo "max_turns_exceeded=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Get commit details
         if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
         id: commit-info
         run: |
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           FILES=$(git diff --name-only HEAD~1)
-          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          echo "$FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "changed_files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR (success)
         if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
@@ -256,7 +260,7 @@ jobs:
 
       - name: Comment on PR (max turns exceeded)
         if: always() && steps.check-failure.outputs.max_turns_exceeded == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
@@ -275,7 +279,7 @@ jobs:
 
       - name: Comment on PR (failure)
         if: always() && steps.claude.outcome == 'failure' && steps.check-failure.outputs.max_turns_exceeded != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
@@ -292,7 +296,7 @@ jobs:
 
       - name: Comment on PR (clean cherry-pick)
         if: always() && steps.backport.outputs.has_conflicts == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
@@ -305,7 +309,7 @@ jobs:
 
       - name: Remove label
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |

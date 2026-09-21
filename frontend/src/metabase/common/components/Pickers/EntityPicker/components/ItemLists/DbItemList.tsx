@@ -15,6 +15,7 @@ import {
   type OmniPickerSchemaItem,
   type OmniPickerTableItem,
 } from "../..";
+import { useOmniPickerContext } from "../../context";
 
 const createSchemaItem = (
   dbId: number,
@@ -38,7 +39,10 @@ const createTableItem = (table: Table): OmniPickerTableItem => ({
   model: "table",
 });
 
-const useGetDbItemListData = (parentItem: OmniPickerItem) => {
+const useGetDbItemListData = (
+  parentItem: OmniPickerItem,
+  models: OmniPickerItem["model"][],
+) => {
   const {
     data: databases,
     isLoading: isLoadingDatabases,
@@ -51,6 +55,7 @@ const useGetDbItemListData = (parentItem: OmniPickerItem) => {
     .with({ model: "database" }, () => Number(parentItem.id))
     .with(
       { model: "schema" },
+      // Unjustified type cast. FIXME
       () => (parentItem as OmniPickerSchemaItem).database_id,
     )
     .otherwise(() => undefined);
@@ -79,6 +84,7 @@ const useGetDbItemListData = (parentItem: OmniPickerItem) => {
       ? {
           id: dbId,
           schema: schemaName,
+          include_measures: models.includes("measure"),
         }
       : skipToken,
   );
@@ -102,7 +108,8 @@ export const DbItemList = ({
   parentItem: OmniPickerItem;
   pathIndex: number;
 }) => {
-  const { data, error, isLoading } = useGetDbItemListData(parentItem);
+  const { models } = useOmniPickerContext();
+  const { data, error, isLoading } = useGetDbItemListData(parentItem, models);
 
   return (
     <ItemList

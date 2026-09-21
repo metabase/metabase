@@ -17,7 +17,7 @@ You can set up SSO with JWT or SAML.
 
 ## Setting up JWT SSO
 
-To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/).
+To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing).
 
 Here's a high-level overview:
 
@@ -281,6 +281,8 @@ app.get("/sso/metabase", async (req, res) => {
 });
 ```
 
+For modular embedding, Metabase exchanges the JWT via `POST /auth/sso` with a JSON body (not a `GET` redirect). Full app embedding typically uses the `GET` redirect shown above. See [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md).
+
 ## Embedding Metabase in a different domain
 
 {% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embedding=true is_plural=true %}
@@ -309,4 +311,4 @@ You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../conf
 
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
 
-Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).

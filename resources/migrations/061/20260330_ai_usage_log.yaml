@@ -167,6 +167,7 @@ databaseChangeLog:
                   remarks: 'UUID for correlating with Snowplow events'
       rollback: ""
 
+
   - changeSet:
       id: v61.8g8esw
       author: nvoxland

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
-import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
   Button,
@@ -15,6 +14,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -68,10 +68,10 @@ export function EditorPanel({
       direction="column"
       w="100%"
       maw={480}
-      style={{ borderRight: "1px solid var(--mb-color-border)" }}
+      style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
-      <Box flex={1} style={{ overflow: "auto" }} p="xl">
-        <Flex align="center" justify="space-between" mb="xl">
+      <Box flex={1} style={{ overflow: "auto" }} p="xxl">
+        <Flex align="center" justify="space-between" mb="xxl">
           <Text fw={700} fz="xl">{t`Edit theme`}</Text>
           <CopyButton value={themeCodeSnippet}>
             {({ copied, copy }) => (
@@ -87,9 +87,9 @@ export function EditorPanel({
           </CopyButton>
         </Flex>
 
-        <Stack gap="lg">
+        <Stack gap="xl">
           {/* Theme name */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <TextInput
               label={t`Theme name`}
               value={currentTheme.name}
@@ -100,19 +100,21 @@ export function EditorPanel({
           </Card>
 
           {/* Main colors */}
-          <Card withBorder p="lg">
+          <Card withBorder p="xl">
             <Flex mb="sm" h="26" align="center" justify="space-between">
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
-                <Button
-                  variant="subtle"
-                  pt="5"
-                  size="compact-sm"
-                  aria-label={t`Revert to default main colors`}
-                  onClick={editor.resetMainColors}
-                >
-                  <Icon name="revert" size={16} />
-                </Button>
+                <Tooltip label={t`Reset main colors to defaults`}>
+                  <Button
+                    variant="subtle"
+                    pt="5"
+                    size="compact-sm"
+                    aria-label={t`Reset main colors to defaults`}
+                    onClick={editor.resetMainColors}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
             <Flex gap="sm">
@@ -120,6 +122,7 @@ export function EditorPanel({
                 <ColorSwatchCard
                   key={key}
                   label={label()}
+                  // Unjustified type cast. FIXME
                   value={(colors[key] as string) ?? ""}
                   showAlpha
                   onChange={(color) => editor.setColor(key, color ?? "")}
@@ -127,10 +130,10 @@ export function EditorPanel({
               ))}
             </Flex>
 
-            <Flex mt="md" h="26" align="center" justify="space-between">
+            <Flex mt="lg" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
-                <Flex align="center" gap="xs">
-                  <Text c="brand" fz="sm" fw={600}>
+                <Flex align="center" gap="xxs">
+                  <Text c="core-brand" fz="sm" fw={600}>
                     {moreColorsOpen
                       ? t`Show fewer colors`
                       : t`Show more colors`}
@@ -138,20 +141,24 @@ export function EditorPanel({
                   <Icon
                     name={moreColorsOpen ? "chevronup" : "chevronright"}
                     size={12}
-                    c="brand"
+                    c="core-brand"
                   />
                 </Flex>
               </UnstyledButton>
 
-              {editor.hasAdditionalColorChanges && (
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  aria-label={t`Revert to default additional colors`}
-                  onClick={editor.resetAdditionalColors}
+              {editor.hasOutOfSyncAdditionalColors && (
+                <Tooltip
+                  label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
-                  <Icon name="revert" size={16} />
-                </Button>
+                  <Button
+                    variant="subtle"
+                    size="compact-sm"
+                    aria-label={t`Regenerate from brand color`}
+                    onClick={editor.regenerateAdditionalColorsFromBrand}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
 
@@ -168,6 +175,7 @@ export function EditorPanel({
                   <ColorSwatchCard
                     key={key}
                     label={label()}
+                    // Unjustified type cast. FIXME
                     value={(colors[key] as string) ?? ""}
                     showAlpha
                     onChange={(color) => editor.setColor(key, color ?? "")}
@@ -207,15 +215,13 @@ export function EditorPanel({
           </Card>
 
           {/* Font */}
-          <Card withBorder p="lg">
-            <Stack gap="md">
+          <Card withBorder p="xl">
+            <Stack gap="lg">
               <Select
                 label={t`Font`}
                 data={FONT_FAMILY_OPTIONS}
                 value={currentTheme.settings.fontFamily ?? ""}
-                onChange={(value) =>
-                  editor.setFontFamily((value ?? "") as MetabaseFontFamily)
-                }
+                onChange={(value) => editor.setFontFamily(value ?? "")}
                 placeholder={t`Default`}
                 clearable
                 searchable
@@ -232,7 +238,7 @@ export function EditorPanel({
                 }}
                 placeholder={t`Default`}
                 rightSection={
-                  <Text c="text-tertiary" fz="sm">
+                  <Text c="text-disabled" fz="sm">
                     {"px"}
                   </Text>
                 }
@@ -243,9 +249,9 @@ export function EditorPanel({
 
         {onDelete && (
           <Button
-            mt="lg"
+            mt="xl"
             variant="subtle"
-            color="error"
+            color="feedback-negative"
             px={0}
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}
@@ -257,10 +263,10 @@ export function EditorPanel({
 
       {/* Bottom action bar */}
       <Flex
-        p="lg"
-        gap="md"
+        p="xl"
+        gap="lg"
         justify="space-between"
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}

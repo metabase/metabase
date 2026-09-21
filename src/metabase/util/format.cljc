@@ -61,6 +61,7 @@
        false
        (config/config-bool :mb-colorize-logs))))
 
+;; picks the implementation fn once at load from config; defn would re-check colorize? on every call
 #_{:clj-kondo/ignore [:def-fn]}
 (def ^{:arglists '(^String [color-symb x])} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
@@ -102,6 +103,11 @@
      (if plural
        plural
        (str singular \s)))))
+
+(defn qualified-key
+  "(u/qualified-key :t :id) -> :t.id"
+  [a b]
+  (keyword (str (name a) "." (name b))))
 
 (defn qualified-name
   "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well

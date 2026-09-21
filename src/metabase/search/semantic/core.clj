@@ -51,14 +51,24 @@
   [_searchable-documents]
   (oss-semantic-search-error))
 
+(defenterprise diagnose
+  "Engine-owned diagnostic stages (`missing-from-index` / `filtered` / `not-matching` / `candidate`) for the
+  semantic search index. See [[metabase.search.debug/diagnose]]."
+  metabase-enterprise.semantic-search.core
+  [_search-ctx _expected-model _expected-id]
+  (oss-semantic-search-error))
+
 ;; Search engine method implementations
 
 (defmethod search.engine/supported-engine? :search.engine/semantic [_]
   (try
     (supported?)
     (catch Exception e
-      (log/warn e "Semantic search engine not supported")
+      (log/warnf "Semantic search engine not supported: %s" (ex-message e))
       false)))
+
+(defmethod search.engine/dependencies :search.engine/semantic [_]
+  [:search.engine/appdb])
 
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
@@ -68,12 +78,16 @@
   [_search-ctx]
   search.config/all-models)
 
+(defmethod search.engine/diagnose :search.engine/semantic
+  [search-ctx expected-model expected-id]
+  (diagnose search-ctx expected-model expected-id))
+
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
     (update-index! document-reducible)
     (catch Exception e
-      (log/error e "Error updating semantic search engine")
+      (log/errorf "Error updating semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/delete! :search.engine/semantic
@@ -81,7 +95,7 @@
   (try
     (delete-from-index! model ids)
     (catch Exception e
-      (log/error e "Error deleting from semantic search engine")
+      (log/errorf "Error deleting from semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/init! :search.engine/semantic
@@ -90,7 +104,7 @@
     (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
-      (log/error e "Error initializing semantic search engine")
+      (log/errorf "Error initializing semantic search engine: %s" (ex-message e))
       (throw e))))
 
 (defmethod search.engine/reindex! :search.engine/semantic

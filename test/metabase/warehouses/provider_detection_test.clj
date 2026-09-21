@@ -22,7 +22,6 @@ providers:
   (testing "database with unsupported engine returns nil"
     (let [database {:details {:host "czrs8kj4isg7.us-east-1.rds.amazonaws.com"} :engine :mysql}]
       (is (nil? (provider-detection/detect-provider-from-database database)))))
-
   (testing "database without host returns nil"
     (let [database {:details {} :engine :postgres}]
       (is (nil? (provider-detection/detect-provider-from-database database))))))

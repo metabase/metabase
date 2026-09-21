@@ -118,20 +118,20 @@ export const BranchDropdown = ({
 
       <ScrollArea.Autosize mah={320} type="hover">
         {branchesLoading || isCreating ? (
-          <Flex justify="center" align="center" p="xl">
+          <Flex justify="center" align="center" p="xxl">
             <Loader size="sm" />
           </Flex>
         ) : branchesError ? (
-          <Box p="md">
-            <Text size="sm" c="error" ta="center">
+          <Box p="lg">
+            <Text size="sm" c="feedback-negative" ta="center">
               {t`Failed to load branches — check your authentication token`}
             </Text>
           </Box>
         ) : (
           <>
             {filteredBranches.length === 0 && !showCreateOption ? (
-              <Box p="md">
-                <Text size="sm" c="text-tertiary" ta="center">
+              <Box p="lg">
+                <Text size="sm" c="text-disabled" ta="center">
                   {searchValue
                     ? t`No branches found`
                     : t`No branches available`}
@@ -145,7 +145,7 @@ export const BranchDropdown = ({
                       <Box px="sm" py="sm">
                         <Text
                           size="xs"
-                          c="text-tertiary"
+                          c="text-disabled"
                           tt="uppercase"
                           fw="bold"
                         >
@@ -160,7 +160,7 @@ export const BranchDropdown = ({
                           data-testid={`branch-item-${branch}`}
                           py="sm"
                         >
-                          <Group gap="xs" wrap="nowrap">
+                          <Group gap="xxs" wrap="nowrap">
                             <Text>{branch}</Text>
                           </Group>
                         </Combobox.Option>
@@ -178,11 +178,11 @@ export const BranchDropdown = ({
                       onClick={handleCreateBranch}
                       data-testid="create-branch-button"
                     >
-                      <Group gap="xs" wrap="nowrap">
+                      <Group gap="xxs" wrap="nowrap">
                         <Icon name="add" size={16} />
                         <Box>
                           <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                          <Text size="xs" c="text-tertiary">
+                          <Text size="xs" c="text-disabled">
                             {t`from ${baseBranch || value}`}
                           </Text>
                         </Box>

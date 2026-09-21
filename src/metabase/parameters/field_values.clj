@@ -2,9 +2,9 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.classloader.core :as classloader]
    [metabase.models.interface :as mi]
+   [metabase.parameters.db :as parameters.db]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -40,7 +40,7 @@
   "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
   [field-ids]
   (when (seq field-ids)
-    (let [field-ids (->> (t2/select :model/Field :id [:in (set field-ids)])
+    (let [field-ids (->> (parameters.db/fields (set field-ids))
                          field/readable-fields-only
                          (map :id))]
       (when (seq field-ids)
@@ -82,7 +82,7 @@
   Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
   [field-ids]
   (let [fields                 (when (seq field-ids)
-                                 (t2/hydrate (t2/select :model/Field :id [:in (set field-ids)]) :table))
+                                 (t2/hydrate (parameters.db/fields (set field-ids)) :table))
         {normal-fields   false
          advanced-fields true} (group-by requires-advanced-field-value? fields)]
     (merge
@@ -101,39 +101,41 @@
 
 (defn- fetch-advanced-field-values
   [field constraints]
-  (if (seq constraints)
-    (do
-      (classloader/require 'metabase.parameters.chain-filter)
-      (let [{:keys [values has_more_values]} ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
-                                              (:id field) constraints {})
-            ;; we have a hard limit for how many values we want to store in FieldValues,
-            ;; let's make sure we respect that limit here.
-            ;; For a more detailed docs on this limit check out [[field-values/distinct-values]]
-            limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-        {:values          limited-values
-         :has_more_values (or (> (count values)
-                                 (count limited-values))
-                              has_more_values)}))
-    (field-values/distinct-values field)))
+  (let [{:keys [values has_more_values]}
+        (if (seq constraints)
+          (do
+            (classloader/require 'metabase.parameters.chain-filter)
+            ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
+             (:id field) constraints {}))
+          ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
+          ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
+          (let [rows (-> (field-values/distinct-values field) :values)]
+            {:values          rows
+             :has_more_values (= (count rows) field-values/*distinct-limit*)}))
+        ;; Apply the char-length cap and update `has_more_values` if it fires.
+        limited-values (field-values/take-by-length field-values/*total-max-length* values)]
+    {:values          limited-values
+     :has_more_values (or (> (count values) (count limited-values))
+                          has_more_values)}))
 
 (defn prepare-advanced-field-values
   "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.
    The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
    list of values and human_readable_values of the full FieldValues of the same field."
   [field hash-key constraints]
-  (when-let [{wrapped-values :values :keys [has_more_values]}
-             (fetch-advanced-field-values field constraints)]
-    (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
-          values                (map first wrapped-values)
-          ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
-          full-field-values     (field-values/get-latest-full-field-values (:id field))
-          human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
-      {:field_id              (:id field)
-       :type                  :advanced
-       :hash_key              hash-key
-       :has_more_values       has_more_values
-       :human_readable_values human-readable-values
-       :values                values})))
+  (let [{wrapped-values :values :keys [has_more_values]}
+        (fetch-advanced-field-values field constraints)
+        ;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
+        values                (map first wrapped-values)
+        ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
+        full-field-values     (field-values/get-latest-full-field-values (:id field))
+        human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
+    {:field_id              (:id field)
+     :type                  :advanced
+     :hash_key              hash-key
+     :has_more_values       has_more_values
+     :human_readable_values human-readable-values
+     :values                values}))
 
 (defn get-or-create-field-values!
   "Gets or creates field values."
@@ -143,14 +145,20 @@
          advanced-field-value? (not= hash-input {:field-id (u/the-id field)})]
      (if advanced-field-value?
        (let [hash-key (str (hash hash-input))
-             select-kvs {:field_id (:id field) :type :advanced :hash_key hash-key}
-             fv (app-db/select-or-insert! :model/FieldValues select-kvs
-                                          #(prepare-advanced-field-values field hash-key constraints))]
+             ;; look first on this thread: a hit is one SELECT, and handing that to a background
+             ;; thread costs more than it saves. Only a miss is worth detaching, because only a
+             ;; miss scans the warehouse.
+             fv (or (parameters.db/advanced-field-values (:id field) hash-key)
+                    (field-values/detached-fetch!
+                     [:advanced (:id field) hash-key]
+                     (fn []
+                       (parameters.db/find-or-insert-advanced-field-values!
+                        (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints)))))]
          ;; If it's expired, delete then try to re-create it
          (if (some-> fv field-values/advanced-field-values-expired?)
            (do
              ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
-             (t2/delete! :model/FieldValues :id (:id fv))
+             (parameters.db/delete-field-values! (:id fv))
              (recur field constraints))
            fv))
        (field-values/get-or-create-full-field-values! field)))))

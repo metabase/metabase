@@ -10,10 +10,22 @@
              sql/*options* (assoc @#'sql/*options* :quoted true)]
      ~@body))
 
+(defn dot-qualified
+  "Rewrite a schema-qualified keyword so the whole dotted path lives in its name: `:schema/tbl` -> `:schema.tbl`.
+  Takes a keyword or a dot-qualified string; returns a keyword."
+  [table-name]
+  ;; not (keyword table-name) straight through: HoneySQL munges dashes to underscores in a
+  ;; keyword's namespace but not in its name, so a catalog named `test-data` would reach the
+  ;; database as `test_data`.
+  (let [kw (keyword table-name)]
+    (keyword (if-let [schema (namespace kw)]
+               (str schema "." (name kw))
+               (name kw)))))
+
 (defn quote-table
   "Protect against a table being interpreted as a function call."
   [table-name]
-  (keyword (str "'" (sql/format-entity (keyword table-name)))))
+  (keyword (str "'" (sql/format-entity (dot-qualified table-name)))))
 
 (defn quote-identifier
   "Quote an identifier, in case it looks like a function call."

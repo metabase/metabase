@@ -7,6 +7,13 @@
 }
 
 .DashCardActionsPanelContainer {
+  position: absolute;
+  top: 0;
+  /**
+   * Defined here in CSS rather than via style props, so that the onLeftEdge
+   * container query below can have higher specificity
+   */
+  right: 20px;
   min-width: fit-content;
   padding: 0.125em 0.25em;
   background: var(--mb-color-bg-dashboard-card);

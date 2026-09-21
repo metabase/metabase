@@ -17,6 +17,7 @@ import { PageHeader } from "./PageHeader";
 export function MigrateModelsPage() {
   const { data, isLoading, error } = useSearchQuery({
     models: ["dataset"],
+    context: "model-migration",
   });
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
@@ -40,7 +41,7 @@ export function MigrateModelsPage() {
       h="100%"
       wrap="nowrap"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap="lg">
         <PageHeader />
         <Card flex="0 1 auto" mih={0} p={0} withBorder>
           {!isLoading && error != null ? (

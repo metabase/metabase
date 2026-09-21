@@ -3,7 +3,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -80,7 +80,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader data-testid="loading-indicator" size="xs" />
+        <Loader size="xs" />
       </ActionIcon>
     );
   }

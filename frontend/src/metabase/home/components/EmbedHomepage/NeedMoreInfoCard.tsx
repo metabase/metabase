@@ -12,9 +12,9 @@ export const NeedMoreInfoCard = ({
   embeddingDocsUrl,
   analyticsDocsUrl,
 }: NeedMoreInfoCardProps) => (
-  <Card px="xl">
+  <Card px="xxl">
     <Text c="text-primary" fw="bold">{t`Need more information?`}</Text>
-    <Text c="text-tertiary" size="sm">
+    <Text c="text-disabled" size="sm">
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins */}
       {jt`Explore the ${(
         <ExternalLink key="embedding-docs" href={embeddingDocsUrl}>

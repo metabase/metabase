@@ -231,14 +231,11 @@ const EntityRow = memo(function EntityRow({
     <PermissionsTableRow aria-label={`${entity.name} permissions`}>
       <PermissionsTableCell>
         {entity.canSelect ? (
-          // @ts-expect-error - Link expects a `to` prop, but we don't have one. maybe this should be a button?
-          <EntityNameLink //force line break so we can type check next line
-            onClick={() => onSelect?.(entity)}
-          >
+          <EntityNameLink onClick={() => onSelect?.(entity)}>
             {entityName}
           </EntityNameLink>
         ) : (
-          <Flex gap="xs" fw="bold">
+          <Flex gap="xxs" fw="bold">
             {entityName}
             {entity.icon}
           </Flex>

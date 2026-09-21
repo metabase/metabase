@@ -36,7 +36,7 @@ export const TransformOwnerAvatar = ({
 
   return (
     <Flex align="center" gap="sm">
-      <Avatar size="sm" color="background-secondary" name="unknown">
+      <Avatar size="sm" color="background_page-secondary" name="unknown">
         <Icon name="person" c="text-secondary" />
       </Avatar>
       <Ellipsified c="text-secondary">{t`No owner`}</Ellipsified>

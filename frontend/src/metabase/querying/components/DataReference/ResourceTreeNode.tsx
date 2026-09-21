@@ -1,5 +1,5 @@
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   NodeListItemIcon,
@@ -31,6 +31,7 @@ export const ResourceTreeNode = <TData = unknown>({
       data-is-expanded={isExpanded}
     >
       {isRoot && <NodeListItemIcon name="chevronright" data-role="chevron" />}
+      {/* Unjustified type cast. FIXME */}
       <NodeListItemIcon name={item.icon as IconName} />
       <NodeListItemName>{item.name}</NodeListItemName>
       {!isRoot && displayId && <NodeListItemId>{`#${item.id}`}</NodeListItemId>}

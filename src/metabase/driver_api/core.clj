@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
@@ -28,7 +29,6 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -48,6 +48,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.add-alias-info.helpers]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -56,9 +57,11 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.db :as upload.db]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
+;; driver-api facade must keep re-exporting deprecated vars until all drivers migrate off them
 #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
  actions/cached-database
@@ -73,6 +76,7 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ metabase.query-processor.util.add-alias-info.helpers/mbql-5-aggregation-name
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
@@ -101,13 +105,11 @@
  lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
+ lib.schema.temporal-bucketing/datetime-interval-units
  lib.types.isa/temporal?
- lib.util.match/match
- lib.util.match/match-one
- lib.util.match/match-lite
- lib.util.match/match-many
- lib.util.match/replace
- lib.util.match/replace-lite
+ match/match-one
+ match/match-many
+ match/replace
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
@@ -128,14 +130,11 @@
  logger/level-enabled?
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
- mbql.u/desugar-filter-clause
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
- mbql.u/simplify-compound-filter
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
@@ -170,14 +169,14 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/unwrap-value-literal
- qp.wrap-value-literals/wrap-value-literals-in-mbql
+ qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
  sync-util/name-for-logging
+ sync-util/reducible-sync-tables
  system/site-uuid
  upload.db/current-database)
 
@@ -199,12 +198,15 @@
 
 (p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
+(p/import-def qp.error-type/connection-pool-checkout-queue-full qp.error-type.connection-pool-checkout-queue-full)
+(p/import-def qp.error-type/connection-pool-checkout-timeout qp.error-type.connection-pool-checkout-timeout)
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)
 (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
 (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
 (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
 (p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unable-to-acquire-connection qp.error-type.unable-to-acquire-connection)
 (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
 (def schema.common.non-blank-string
@@ -238,6 +240,10 @@
 (def schema.actions.args.row
   ":metabase.actions.args/row"
   :metabase.actions.args/row)
+
+(def schema.actions.execution-context
+  "::metabase.actions.schema/execution-context"
+  ::actions.schema/execution-context)
 
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"
@@ -279,31 +285,31 @@
   "::lib.schema.validate/error"
   ::lib.schema.validate/error)
 
-(def mbql.schema.DateTimeValue
+(def ^{:deprecated "0.63.0"} mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
   ::mbql.s/DateTimeValue)
 
-(def mbql.schema.Aggregation
+(def ^{:deprecated "0.63.0"} mbql.schema.Aggregation
   "::mbql.s/Aggregation"
   ::mbql.s/Aggregation)
 
-(def mbql.schema.OrderBy
+(def ^{:deprecated "0.63.0"} mbql.schema.OrderBy
   "::mbql.s/OrderBy"
   ::mbql.s/OrderBy)
 
-(def mbql.schema.Query
+(def ^{:deprecated "0.63.0"} mbql.schema.Query
   "::mbql.s/Query"
   ::mbql.s/Query)
 
-(def mbql.schema.value
+(def ^{:deprecated "0.63.0"} mbql.schema.value
   "mbql.s/value"
   ::mbql.s/value)
 
-(def mbql.schema.field
+(def ^{:deprecated "0.63.0"} mbql.schema.field
   "mbql.s/field"
   ::mbql.s/field)
 
-(def mbql.schema.FieldOrExpressionDef
+(def ^{:deprecated "0.63.0"} mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
   ::mbql.s/FieldOrExpressionDef)
 
@@ -343,10 +349,10 @@
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
 
-(def MBQLQuery
+(def ^{:deprecated "0.63.0"} MBQLQuery
   "Schema for a legacy MBQL inner query."
-  ::mbql.s/MBQLQuery)
+  ::mbql.s/MBQLInnerQuery)
 
-(def Join
+(def ^{:deprecated "0.63.0"} Join
   "Schema for a legacy MBQL join."
   ::mbql.s/Join)

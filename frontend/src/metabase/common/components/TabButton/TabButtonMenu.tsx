@@ -1,4 +1,5 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { MouseEvent } from "react";
 import { useContext } from "react";
 
 import { TabContext } from "../Tab/TabContext";
@@ -20,7 +21,8 @@ export function TabButtonMenu({
 }: TabButtonMenuProps) {
   const context = useContext(TabContext);
 
-  const clickHandler = (action: TabButtonMenuAction) => () => {
+  const clickHandler = (action: TabButtonMenuAction) => (event: MouseEvent) => {
+    event.stopPropagation();
     action(context, value);
     closePopover();
   };

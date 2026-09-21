@@ -1,9 +1,11 @@
+import { useState } from "react";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import type { ScheduleType, TokenFeatures } from "metabase-types/api";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -11,12 +13,25 @@ import {
 
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
+import type {
+  GetScheduleDefaults,
+  ScheduleValue,
+  ScheduleValueType,
+} from "./domain";
+import { getScheduleDefaults } from "./domain";
+import type { ScheduleChangeEvent } from "./types";
+
+export const getDefaultsWithoutHour: GetScheduleDefaults = (scheduleType) => ({
+  ...getScheduleDefaults(scheduleType),
+  schedule_hour: null,
+});
+
 export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-const mockScheduleOptions: ScheduleType[] = [
+const mockScheduleOptions: ScheduleValueType[] = [
   "every_n_minutes",
   "hourly",
   "daily",
@@ -26,14 +41,11 @@ const mockScheduleOptions: ScheduleType[] = [
 ];
 const mockVerb = "Send";
 const mockTimezone = "America/New_York";
-const mockOnScheduleChange = jest.fn();
 
-export const setup = ({
-  enterprisePlugins,
+const buildStoreState = ({
   tokenFeatures = {},
-  ...props
-}: SetupOpts & Partial<ScheduleProps> = {}) => {
-  const storeInitialState = createMockState({
+}: Pick<SetupOpts, "tokenFeatures">) =>
+  createMockState({
     entities: createMockEntitiesState({}),
     settings: mockSettings(
       createMockSettings({
@@ -42,20 +54,40 @@ export const setup = ({
     ),
   });
 
+export const setup = ({
+  enterprisePlugins,
+  tokenFeatures = {},
+  value: initialValue,
+  ...props
+}: SetupOpts &
+  Omit<Partial<ScheduleProps>, "onScheduleChange"> &
+  Pick<ScheduleProps, "value">) => {
+  const onScheduleChange = jest.fn<void, [ScheduleChangeEvent]>();
+
   if (enterprisePlugins) {
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  const propsWithDefaults = {
-    cronString: props.cronString ?? "0 0 8 * * ? *",
-    scheduleOptions: mockScheduleOptions,
-    onScheduleChange: mockOnScheduleChange,
-    timezone: mockTimezone,
-    verb: mockVerb,
-    ...props,
+  const Harness = () => {
+    const [value, setValue] = useState<ScheduleValue>(initialValue);
+    return (
+      <Schedule
+        scheduleOptions={mockScheduleOptions}
+        timezone={mockTimezone}
+        verb={mockVerb}
+        {...props}
+        value={value}
+        onScheduleChange={(event) => {
+          onScheduleChange(event);
+          setValue(event.value);
+        }}
+      />
+    );
   };
 
-  return renderWithProviders(<Schedule {...propsWithDefaults} />, {
-    storeInitialState,
+  const renderResult = renderWithProviders(<Harness />, {
+    storeInitialState: buildStoreState({ tokenFeatures }),
   });
+
+  return { ...renderResult, onScheduleChange };
 };

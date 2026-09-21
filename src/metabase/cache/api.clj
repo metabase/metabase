@@ -2,13 +2,16 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.i18n :refer [deferred-tru tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -18,57 +21,67 @@
 
 ;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
 
-(mr/def ::cache-strategy.base.oss
-  [:map
-   [:type [:enum :nocache :ttl]]])
+(defn- cache-strategy-dispatch
+  "`:multi` dispatch for a cache strategy.
 
-(mr/def ::cache-strategy.base.ee
-  [:map
-   [:type [:enum :nocache :ttl :duration :schedule]]])
+  `:type` arrives from JSON as a string, and `:multi` dispatches before the branch that would coerce it to a keyword
+  runs, so the dispatch has to do the coercion itself. A sibling `[:map [:type [:enum ...]]]` guard can't do it for
+  us: request decoding would then strip every key the guard doesn't name, emptying out the strategy."
+  [strategy]
+  (let [strategy-type (:type strategy)]
+    (when (or (keyword? strategy-type) (string? strategy-type))
+      (keyword strategy-type))))
 
 (mr/def ::cache-strategy.nocache
-  [:map ; not closed due to a way it's used in tests for clarity
-   [:type [:= :nocache]]])
+  ::lib.schema/cache-strategy.nocache)
 
 (mr/def ::cache-strategy.ttl
-  [:map {:closed true}
-   [:type            [:= :ttl]]
-   [:multiplier      ms/PositiveInt]
-   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
+  "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers."
+  [:merge
+   ::lib.schema/cache-strategy.ttl
+   [:map {:closed true}
+    [:multiplier      ms/PositiveInt]
+    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
-  [:and
-   ::cache-strategy.base.oss
-   [:multi {:dispatch :type}
-    [:nocache ::cache-strategy.nocache]
-    [:ttl     ::cache-strategy.ttl]]])
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl"
+                               (pr-str (:type value))))}
+   [:nocache ::cache-strategy.nocache]
+   [:ttl     ::cache-strategy.ttl]])
 
 (mr/def ::cache-strategy.ee.duration
-  [:map {:closed true}
-   [:type                  [:= :duration]]
-   [:duration              ms/PositiveInt]
-   ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically.
-   [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+  "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units."
+  [:merge
+   ::lib.schema/cache-strategy.duration
+   [:map {:closed true}
+    [:duration ms/PositiveInt]]])
 
 (mr/def ::cache-strategy.ee.schedule
-  [:map {:closed true}
-   [:type                  [:= :schedule]]
-   [:schedule              u.cron/CronScheduleString]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+  "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule."
+  [:merge
+   ::lib.schema/cache-strategy.schedule
+   [:map {:closed true}
+    [:schedule u.cron/CronScheduleString]]])
 
 ;;; This is basically the same schema as `:metabase-enterprise.cache.strategies/cache-strategy` except it doesn't have
 ;;; the optional `:invalidated-at` keys
 (mr/def ::cache-strategy.ee
   "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
-  [:and
-   ::cache-strategy.base.ee
-   [:multi {:dispatch :type}
-    [:nocache     ::cache-strategy.nocache]
-    [:ttl         ::cache-strategy.ttl]
-    [:duration    ::cache-strategy.ee.duration]
-    [:schedule    ::cache-strategy.ee.schedule]]])
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl, :duration, :schedule"
+                               (pr-str (:type value))))}
+   [:nocache     ::cache-strategy.nocache]
+   [:ttl         ::cache-strategy.ttl]
+   [:duration    ::cache-strategy.ee.duration]
+   [:schedule    ::cache-strategy.ee.schedule]])
 
 (mr/def ::cache-strategy
   (if config/ee-available?
@@ -92,11 +105,10 @@
     (throw (premium-features/ee-feature-error (tru "Granular Caching")))
 
     :else
-    (api/check-404 (t2/select-one (case model
-                                    "database"  :model/Database
-                                    "dashboard" :model/Dashboard
-                                    "question"  :model/Card)
-                                  :id [:in ids]))))
+    (api/check-404 (case model
+                     "database"  (cache.db/database-with-ids ids)
+                     "dashboard" (cache.db/dashboard-with-ids ids)
+                     "question"  (cache.db/card-with-ids ids)))))
 
 (mr/def ::cache-config-item
   [:map
@@ -122,7 +134,7 @@
 
 (mr/def ::cache-invalidate-response
   [:map
-   [:status [:enum 200 404]]
+   [:status [:= 200]]
    [:body   [:map
              [:count   :int]
              [:message :string]]]])
@@ -144,7 +156,7 @@
   [_route-params
    {:keys [model collection id] :as params}
    :- [:merge
-       [:map
+       [:map {:closed true}
         [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
                                                   {:description "Type of model"})]
         [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
@@ -171,7 +183,7 @@
   "Store cache configuration."
   [_route-params
    _query-params
-   {:keys [model model_id] :as config} :- [:map
+   {:keys [model model_id] :as config} :- [:map {:closed true}
                                            [:model    cache-config/CachingModel]
                                            [:model_id ms/IntGreaterThanOrEqualToZero]
                                            [:strategy ::cache-strategy]]]
@@ -183,7 +195,7 @@
   "Delete cache configurations."
   [_route-params
    _query-params
-   {:keys [model model_id]} :- [:map
+   {:keys [model model_id]} :- [:map {:closed true}
                                 [:model    cache-config/CachingModel]
                                 [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
@@ -201,7 +213,7 @@
   touching all nested configurations, or you want your invalidation to trickle down to every card."
   [_route-params
    {:keys [include database dashboard question]}
-   :- [:map
+   :- [:map {:closed true}
        [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
                                      [:= :overrides]]]
        [:database  {:optional true} [:maybe {:description "A list of database ids"}
@@ -212,6 +224,12 @@
                                      (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  ;; Require at least one target. Without a filter there is nothing to invalidate, so the request is
+  ;; malformed rather than not-found: returning 404 here misled callers into thinking the endpoint
+  ;; itself did not exist (see #66499), and a 200 would falsely imply something was invalidated.
+  (when (every? empty? [database dashboard question])
+    (throw (ex-info (tru "At least one of `database`, `dashboard`, or `question` is required.")
+                    {:status-code 400})))
   (doseq [db-id database] (api/write-check :model/Database db-id))
   (doseq [dashboard-id dashboard] (api/write-check :model/Dashboard dashboard-id))
   (doseq [question-id question] (api/write-check :model/Card question-id))
@@ -219,9 +237,12 @@
                                        :dashboards      dashboard
                                        :questions       question
                                        :with-overrides? (= include :overrides)})]
-    {:status (if (= cnt -1) 404 200)
+    ;; A well-formed filter that simply matched no cached results is a successful no-op (200); the
+    ;; `:message` below explains what happened.
+    {:status 200
      :body   {:count   cnt
-              :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
+              ;; Use condp instead of case to avoid Clojure compiler warnings.
+              :message (condp = [(= include :overrides) (if (pos? cnt) 1 cnt)]
                          [true -1]  (tru "Could not find any questions for the criteria you specified.")
                          [true 0]   (tru "No cached results to clear.")
                          [true 1]   (trun "Cleared a cached result." "Cleared {0} cached results." cnt)

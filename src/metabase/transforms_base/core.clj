@@ -18,7 +18,7 @@
   "Execute transform and return result map without writing transform_run rows.
 
    This is the main entry point for base transform execution. Use this when you
-   want to run a transform without database tracking (e.g., from workspaces).
+   want to run a transform without database tracking.
 
    Performs the core execution via `execute-base!`, then runs post-processing
    (sync, events, secondary indexes) via `complete-execution!`.

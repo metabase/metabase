@@ -3,10 +3,14 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.schedule :as transforms.schedule]
+   [metabase.transforms.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
@@ -39,7 +43,7 @@
                 (every? mi/can-write? transforms)
                 true)))))
   ([_model pk]
-   (when-let [job (t2/select-one :model/TransformJob :id pk)]
+   (when-let [job (transforms.db/job pk)]
      (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
@@ -62,9 +66,7 @@
   (when (seq jobs)
     (let [job-ids         (map :id jobs)
           tag-mappings    (group-by :job_id
-                                    (t2/select [:model/TransformJobTransformTag :job_id :tag_id :position]
-                                               :job_id [:in job-ids]
-                                               {:order-by [[:position :asc]]}))
+                                    (transforms.db/job-tag-links job-ids))
           ;; Sort each job's tags by position
           sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
       (for [job jobs]
@@ -79,6 +81,37 @@
       (for [job jobs]
         (assoc job :last_run (get last-executions (:id job)))))))
 
+(defn- active-flip-lock-name
+  "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
+  cluster. Concurrent flips of *different* jobs run in parallel."
+  [job-id]
+  (keyword "metabase.transforms.transform-job-active" (str job-id)))
+
+(defn activate-job!
+  "Activate a transform job: set `:active` to true and (re)create its Quartz trigger from the
+  job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
+  job is a no-op.
+
+  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock so
+  the app-DB row and the Quartz trigger cannot diverge. The lock is held across the trigger
+  write."
+  [job-id]
+  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
+    (when (pos? (transforms.db/activate-job! job-id))
+      (transforms.schedule/initialize-job! (transforms.db/job job-id)))))
+
+(defn deactivate-job!
+  "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
+  firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
+  job is a no-op.
+
+  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock — see
+  [[activate-job!]]."
+  [job-id]
+  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
+    (when (pos? (transforms.db/deactivate-job! job-id))
+      (transforms.schedule/delete-trigger! job-id))))
+
 (defn update-job-tags!
   "Update the tags associated with a job using smart diff logic.
    Only modifies what has changed: deletes removed tags, updates positions for moved tags,
@@ -89,14 +122,11 @@
       (let [;; Deduplicate, just in case
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (t2/select [:model/TransformJobTransformTag :tag_id :position]
-                                            :job_id job-id
-                                            {:order-by [[:position :asc]]})
+            current-associations (transforms.db/job-tag-links [job-id])
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                               :id [:in deduped-tag-ids])))
+                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -108,27 +138,19 @@
             to-insert            (set/difference new-set current-set)
             ;; Build position map for new ordering
             new-positions        (zipmap new-tag-ids (range))]
-
         ;; Delete removed associations
         (when (seq to-delete)
-          (t2/delete! :model/TransformJobTransformTag
-                      :job_id job-id
-                      :tag_id [:in to-delete]))
-
+          (transforms.db/delete-job-tag-links! job-id to-delete))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (t2/update! :model/TransformJobTransformTag
-                        {:job_id job-id :tag_id tag-id}
-                        {:position new-pos})))
-
+            (transforms.db/set-job-tag-position! job-id tag-id new-pos)))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (t2/insert! :model/TransformJobTransformTag
-                      (for [tag-id to-insert]
-                        {:job_id   job-id
-                         :tag_id   tag-id
-                         :position (get new-positions tag-id)})))))))
+          (transforms.db/insert-job-tag-links! (for [tag-id to-insert]
+                                                 {:job_id   job-id
+                                                  :tag_id   tag-id
+                                                  :position (get new-positions tag-id)})))))))
 
 (defn- translated-name-and-description [job]
   (let [values {"hourly"
@@ -172,26 +194,21 @@
   (when (seq jobs)
     (let [job-ids      (into #{} (map u/the-id) jobs)
           tag-mappings (group-by :job_id
-                                 (t2/select :model/TransformJobTransformTag
-                                            :job_id [:in job-ids]
-                                            {:order-by [[:position :asc]]}))]
+                                 (transforms.db/job-tag-links job-ids))]
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-(defmethod serdes/hash-fields :model/TransformJob
-  [_job]
-  [:name :built_in_type])
-
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+  {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
    :skip []
+   :defaults {:active true}
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
                :created_at (serdes/date)
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
-(defmethod serdes/dependencies "TransformJob"
+(defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]
   (set
    (for [{tag-id :tag_id} job_tags]

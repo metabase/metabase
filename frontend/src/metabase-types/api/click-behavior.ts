@@ -79,6 +79,7 @@ export interface DashboardCustomDestinationClickBehavior {
    */
   tabId?: DashboardTabId;
   parameterMapping?: ClickBehaviorParameterMapping;
+  linkTextTemplate?: string;
 }
 
 export interface QuestionCustomDestinationClickBehavior {
@@ -86,6 +87,7 @@ export interface QuestionCustomDestinationClickBehavior {
   linkType: "question";
   targetId?: CardId;
   parameterMapping?: ClickBehaviorParameterMapping;
+  linkTextTemplate?: string;
 }
 
 export interface ArbitraryCustomDestinationClickBehavior {

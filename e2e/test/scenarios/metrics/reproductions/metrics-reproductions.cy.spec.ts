@@ -201,49 +201,50 @@ describe("issue 32037", () => {
   });
 });
 
-describe("issue 30574", () => {
+describe("issue 79571", () => {
+  const METRIC_NAME = "Metric 79571";
+
+  const ORDERS_COUNT_METRIC: StructuredQuestionDetails = {
+    name: METRIC_NAME,
+    type: "metric",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
-    cy.visit("/browse/metrics");
+  it("logs choosing a metric as a recent selection and lists it under Recent items (metabase#79571)", () => {
+    H.createQuestion(ORDERS_COUNT_METRIC).then(({ body: { id: metricId } }) => {
+      cy.intercept("POST", "/api/activity/recents").as("logRecent");
 
-    cy.log("create the first metric");
-    H.main().findByText("Create metric").click();
-    H.MetricPage.queryEditor().should("be.visible");
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-    H.MetricPage.saveButton().click();
-    H.modal().within(() => {
-      cy.findByLabelText("Name").clear().type("M1");
-      cy.button("Save").click();
-    });
-    H.MetricPage.aboutPage().should("be.visible");
+      H.startNewQuestion();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText(METRIC_NAME).click();
+      });
 
-    cy.log("create the second metric");
-    H.navigationSidebar().findByText("Metrics").click();
-    H.main().findByLabelText("Create a new metric").click();
-    H.MetricPage.queryEditor().should("be.visible");
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
+      cy.wait("@logRecent").then(({ request, response }) => {
+        expect(request.body).to.deep.equal({
+          model: "metric",
+          model_id: metricId,
+          context: "selection",
+        });
+        expect(response?.statusCode).to.eq(204);
+      });
+
+      // Reopening the picker now surfaces the metric under Recent items
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalItem(0, "Recent items").click();
+      cy.findByRole("dialog", { name: "Pick your starting data" })
+        .findByText(METRIC_NAME)
+        .should("exist");
     });
-    H.getNotebookStep("summarize").findByText("Count").click();
-    H.popover().findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({
-      name: "X",
-      formula: "[M1]/[M1]",
-    });
-    H.popover().button("Update").click();
-    H.MetricPage.saveButton().click();
-    H.modal().within(() => {
-      cy.findByLabelText("Name").clear().type("M2");
-      cy.button("Save").click();
-    });
-    H.MetricPage.aboutPage().should("be.visible");
   });
 });

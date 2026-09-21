@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 
 import { deriveSdkThemeSettings } from "../utils/derive-sdk-theme-settings";
 

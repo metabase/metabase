@@ -1,16 +1,17 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Modal } from "metabase/common/components/Modal";
 import {
   ModalContent,
   ModalContentActionIcon,
 } from "metabase/common/components/ModalContent";
+import { Modal } from "metabase/ui";
 
 import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
 import ActionParametersInputForm from "./ActionParametersInputForm";
 
 interface ModalProps {
+  opened: boolean;
   title: string;
   showConfirmMessage?: boolean;
   showEmptyState: boolean;
@@ -23,6 +24,7 @@ export type ActionParametersInputModalProps = ModalProps &
   ActionParametersInputFormProps;
 
 function ActionParametersInputModal({
+  opened,
   showConfirmMessage,
   showEmptyState,
   title,
@@ -32,7 +34,14 @@ function ActionParametersInputModal({
   ...formProps
 }: ActionParametersInputModalProps) {
   return (
-    <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
+    <Modal
+      data-testid="action-parameters-input-modal"
+      opened={opened}
+      onClose={onClose}
+      size="lg"
+      withCloseButton={false}
+      padding={0}
+    >
       <ModalContent
         title={title}
         headerActions={

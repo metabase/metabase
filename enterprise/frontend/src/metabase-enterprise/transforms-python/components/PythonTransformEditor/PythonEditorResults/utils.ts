@@ -21,6 +21,7 @@ export function parseOutput(output: string): {
 
   for (const line of lines) {
     try {
+      // Unjustified type cast. FIXME
       const data = JSON.parse(line) as Row;
       for (const key in data) {
         headers.add(key);

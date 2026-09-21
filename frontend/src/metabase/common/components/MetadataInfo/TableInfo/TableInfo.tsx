@@ -1,59 +1,93 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import { Tables } from "metabase/entities/tables";
+import {
+  getShallowTableFieldIds,
+  getShallowTableForeignKeys,
+  getShallowTables,
+} from "metabase/metadata-store";
 import { connect } from "metabase/redux";
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { Dispatch, State } from "metabase/redux/store";
+import {
+  fetchTableForeignKeys,
+  fetchTableMetadata,
+} from "metabase/redux/tables";
+import { Loader } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
+import type { NormalizedTable, TableId } from "metabase-types/api";
 
 import { Description, EmptyDescription } from "../MetadataInfo";
-import {
-  AbsoluteContainer,
-  Fade,
-  LoadingSpinner,
-} from "../MetadataInfo.styled";
+import { AbsoluteContainer, Fade } from "../MetadataInfo.styled";
 
 import { ColumnCount } from "./ColumnCount";
-import { ConnectedTables } from "./ConnectedTables";
+import { type ConnectedTable, ConnectedTables } from "./ConnectedTables";
 import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
 export type TableInfoProps = {
   className?: string;
-  tableId: Table["id"];
-  onConnectedTableClick?: (table: Table) => void;
+  tableId: TableId;
+  onConnectedTableClick?: (table: ConnectedTable) => void;
 };
 
+/**
+ * The tables whose foreign keys point at this one. `undefined` until the
+ * table's foreign keys are loaded.
+ */
+const getConnectedTables = createSelector(
+  [
+    (state: State, tableId: TableId) =>
+      getShallowTableForeignKeys(state, tableId),
+    (state: State) => getShallowTables(state),
+  ],
+  (foreignKeys, tables) =>
+    foreignKeys
+      ?.map((foreignKey) => tables[foreignKey.origin.table_id])
+      .filter(isNotNull),
+);
+
 const mapStateToProps = (
-  state: any,
+  state: State,
   props: TableInfoProps,
-): { table?: Table } => {
+): {
+  table?: NormalizedTable;
+  fieldCount: number;
+  connectedTables?: NormalizedTable[];
+} => {
   return {
-    table: Tables.selectors.getObject(state, {
-      entityId: props.tableId,
-    }) as Table,
+    table: getShallowTables(state)[props.tableId],
+    fieldCount: getShallowTableFieldIds(state, props.tableId).length,
+    connectedTables: getConnectedTables(state, props.tableId),
   };
 };
 
-const mapDispatchToProps: {
-  fetchForeignKeys: (args: { id: Table["id"] }) => Promise<any>;
-  fetchMetadata: (args: { id: Table["id"] }) => Promise<any>;
-} = {
-  fetchForeignKeys: Tables.actions.fetchForeignKeys,
-  fetchMetadata: Tables.actions.fetchMetadata,
-};
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  fetchForeignKeys: (args: { id: TableId }) =>
+    dispatch(fetchTableForeignKeys(args)),
+  fetchMetadata: (args: { id: TableId }) => dispatch(fetchTableMetadata(args)),
+});
 
 type AllProps = TableInfoProps &
   ReturnType<typeof mapStateToProps> &
-  typeof mapDispatchToProps;
+  ReturnType<typeof mapDispatchToProps>;
 
 function useDependentTableMetadata({
   tableId,
-  table,
+  fieldCount,
+  connectedTables,
   fetchForeignKeys,
   fetchMetadata,
-}: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
-  const isMissingFields = !table?.numFields();
-  const isMissingFks = table?.fks === undefined;
+}: Pick<
+  AllProps,
+  | "tableId"
+  | "fieldCount"
+  | "connectedTables"
+  | "fetchForeignKeys"
+  | "fetchMetadata"
+>) {
+  const isMissingFields = fieldCount === 0;
+  const isMissingFks = connectedTables === undefined;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] =
     useState(!shouldFetchMetadata);
@@ -79,6 +113,8 @@ export function TableInfoInner({
   className,
   tableId,
   table,
+  fieldCount,
+  connectedTables,
   fetchForeignKeys,
   fetchMetadata,
   onConnectedTableClick,
@@ -86,7 +122,8 @@ export function TableInfoInner({
   const description = table?.description;
   const hasFetchedMetadata = useDependentTableMetadata({
     tableId,
-    table,
+    fieldCount,
+    connectedTables,
     fetchForeignKeys,
     fetchMetadata,
   });
@@ -101,16 +138,16 @@ export function TableInfoInner({
       <MetadataContainer>
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
-            <LoadingSpinner size={24} />
+            <Loader size="md" color="core-brand" />
           </AbsoluteContainer>
         </Fade>
         <Fade visible={hasFetchedMetadata}>
-          {table && <ColumnCount table={table} />}
+          {table && <ColumnCount fieldCount={fieldCount} />}
         </Fade>
         <Fade visible={hasFetchedMetadata}>
           {table && (
             <ConnectedTables
-              table={table}
+              tables={connectedTables ?? []}
               onConnectedTableClick={onConnectedTableClick}
             />
           )}

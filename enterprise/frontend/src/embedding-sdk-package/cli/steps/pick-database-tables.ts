@@ -127,6 +127,7 @@ export const pickDatabaseTables: CliStepMethod = async (state) => {
 
           await propagateErrorResponse(res);
 
+          // Unjustified type cast. FIXME
           const metadataResult = (await res.json()) as { tables: Table[] };
           const table = metadataResult.tables.find((t) => t.id === tableId);
 

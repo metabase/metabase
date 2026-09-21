@@ -1,8 +1,10 @@
 (ns metabase.query-processor.util.nest-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.util.nest-query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -11,7 +13,10 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.nest-query :as nest-query]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- nest-expressions-mbql5 [query]
   (driver/with-driver (or driver/*driver* :h2)
@@ -46,6 +51,17 @@
                   :aggregation [[:count]]}))
               qp.preprocess/preprocess
               nest-expressions))))
+
+(deftest ^:parallel nest-expressions-preserves-breakout-uuids-test
+  (let [q           (as-> (lib/query meta/metadata-provider (meta/table-metadata :venues)) q
+                      (lib/expression q "double_price" (lib/* (meta/field-metadata :venues :price) 2))
+                      (lib/breakout   q (meta/field-metadata :venues :category-id))
+                      (lib/breakout   q (lib/expression-ref q "double_price"))
+                      (lib/aggregate  q (lib/count)))
+        orig-uuids  (mapv lib.options/uuid (lib/breakouts q))
+        nested      (nest-expressions-mbql5 q)
+        outer-uuids (mapv lib.options/uuid (lib/breakouts nested))]
+    (is (= orig-uuids outer-uuids))))
 
 (deftest ^:parallel nest-order-by-expressions-test
   (testing "Expressions in an order-by clause result in nesting"

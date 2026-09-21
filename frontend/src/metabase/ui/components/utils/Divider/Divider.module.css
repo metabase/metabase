@@ -1,7 +1,15 @@
 .root {
-  --divider-color: var(--mb-color-border);
+  --divider-color: var(--mb-color-border-neutral);
 }
 
 .label {
   color: var(--mb-color-text-primary);
+
+  &::before {
+    margin-inline-end: var(--mantine-spacing-xxs);
+  }
+
+  &::after {
+    margin-inline-start: var(--mantine-spacing-xxs);
+  }
 }

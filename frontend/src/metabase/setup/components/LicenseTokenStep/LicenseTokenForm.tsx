@@ -1,12 +1,12 @@
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
+  FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
 import {
@@ -21,7 +21,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { LICENSE_TOKEN_SCHEMA } from "./constants";
+import { getLicenseTokenSchema } from "./constants";
 
 type LicenseTokenFormProps = {
   onSubmit: (token: string) => Promise<void>;
@@ -47,12 +47,12 @@ export const LicenseTokenForm = ({
   return (
     <FormProvider
       initialValues={{ license_token: initialValue }}
-      validationSchema={LICENSE_TOKEN_SCHEMA}
+      validationSchema={getLicenseTokenSchema()}
       onSubmit={(values) => onSubmit(values.license_token)}
     >
       {({ errors, setValues }) => (
         <Form>
-          <Box mb="md">
+          <Box mb="lg">
             <FormTextInput
               aria-label={t`Token`}
               placeholder={t`Paste your token here`}
@@ -73,11 +73,11 @@ export const LicenseTokenForm = ({
                         size="1rem"
                         name="info"
                         aria-label={t`Token details information`}
-                        c="brand"
+                        c="core-brand"
                       />
                     </HoverCard.Target>
                     <HoverCard.Dropdown>
-                      <Stack gap="md" p="md" w={CARD_WIDTH}>
+                      <Stack gap="lg" p="lg" w={CARD_WIDTH}>
                         <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
                         <Text lh="lg">{c(
                           "When users have no token, they can visit the link ${0} pointing to the store, where they can purchase a license for Metabase.",
@@ -94,13 +94,13 @@ export const LicenseTokenForm = ({
           </Box>
           <Flex gap="sm">
             <FormSubmitButton
-              title={t`Activate`}
-              activeTitle={t`Activating`}
+              label={t`Activate`}
+              activeLabel={t`Activating`}
               disabled={!!errors.license_token}
-              primary
+              variant="filled"
             />
           </Flex>
-          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xxl" mb="lg" />
           <Box>
             <Button
               onClick={onSkip}
@@ -108,7 +108,7 @@ export const LicenseTokenForm = ({
               px={0}
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-tertiary" size="sm">
+            <Text c="text-disabled" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>

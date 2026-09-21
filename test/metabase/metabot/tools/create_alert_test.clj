@@ -22,8 +22,8 @@
       (let [invoke-tool #(mt/with-current-user (mt/user->id :rasta)
                            (metabot.tools.create-alert/create-alert %))
             base-data   (alert-data card-id)]
-        (with-redefs [channel.settings/slack-configured? (constantly true)
-                      channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+        (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                    channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
           (testing "Slack alert can be created"
             (is (= {:output "success"}
                    (invoke-tool base-data))))
@@ -42,8 +42,8 @@
     (let [invoke-tool #(mt/with-current-user (mt/user->id :rasta)
                          (metabot.tools.create-alert/create-alert %))
           base-data   (alert-data card-id)]
-      (with-redefs [channel.settings/slack-configured? (constantly true)
-                    channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                  channel.settings/slack-cached-channels-and-usernames (constantly fake-channels)]
         (testing "Return an error message if the card-id is invalid"
           (is (= {:error "invalid card_id"}
                  (invoke-tool (update base-data :card-id str)))))
@@ -66,11 +66,11 @@
                          (metabot.tools.create-alert/create-alert %))
           base-data   (alert-data card-id)]
       (testing "Slack alert fails when Slack is not configured"
-        (with-redefs [channel.settings/slack-configured? (constantly false)]
+        (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
           (is (= {:error "slack is not configured. Ask an admin to set up slack notifications in Metabase settings."}
                  (invoke-tool base-data)))))
       (testing "Slack alert fails when channel does not exist"
-        (with-redefs [channel.settings/slack-configured? (constantly true)
-                      channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
+        (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)
+                                    channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
           (is (= {:error "no slack channel found with this name"}
                  (invoke-tool (assoc base-data :slack-channel "no-such-channel")))))))))

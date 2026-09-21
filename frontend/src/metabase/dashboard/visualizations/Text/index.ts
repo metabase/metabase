@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 import { Text } from "./Text";
 
@@ -35,14 +35,13 @@ const TextViz: VisualizationDefinition = {
       dashboard: false,
     },
     text: {
-      value: "",
       getDefault: () => "",
     },
     "text.align_vertical": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Vertical Alignment`,
+      getSection: () => t`Display`,
+      get title() {
+        return t`Vertical Alignment`;
+      },
       widget: "select",
       getProps: () => ({
         options: [
@@ -54,10 +53,10 @@ const TextViz: VisualizationDefinition = {
       getDefault: () => "top",
     },
     "text.align_horizontal": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Horizontal Alignment`,
+      getSection: () => t`Display`,
+      get title() {
+        return t`Horizontal Alignment`;
+      },
       widget: "select",
       getProps: () => ({
         options: [
@@ -69,10 +68,10 @@ const TextViz: VisualizationDefinition = {
       getDefault: () => "left",
     },
     "dashcard.background": {
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      section: t`Display`,
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      title: t`Show background`,
+      getSection: () => t`Display`,
+      get title() {
+        return t`Show background`;
+      },
       dashboard: true,
       inline: true,
       widget: "toggle",

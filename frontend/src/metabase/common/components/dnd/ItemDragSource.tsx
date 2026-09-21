@@ -9,11 +9,19 @@ import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { isRootTrashCollection } from "metabase/collections/utils";
-import { useToast } from "metabase/common/hooks";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
+import {
+  type MovableItem,
+  type PinnableItem,
+  useSetCollection,
+  useSetPinned,
+  useToast,
+} from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
-import { dragTypeForItem } from ".";
+import { type ItemDropResult, handleItemDrop } from "./handle-item-drop";
+
+import { type ItemDragPayload, dragTypeForItem, isItemDragPayload } from ".";
 
 interface ItemDragSourceInnerProps {
   connectDragSource: ConnectDragSource;
@@ -53,13 +61,25 @@ interface DragSourceOwnProps {
   collection?: Collection;
   onDrop?: () => void;
   onMoveError?: (error: unknown) => void;
+  setPinned: (
+    item: PinnableItem,
+    pinned: boolean | number,
+  ) => PromiseLike<unknown>;
+  setCollection: (
+    item: MovableItem,
+    destination: { id: Collection["id"] },
+  ) => Promise<unknown>;
   children?: ReactNode | ((props: Record<string, unknown>) => ReactNode);
 }
 
 const DragSourceComponent = DragSource(
   (props: DragSourceOwnProps) => dragTypeForItem(props.item),
   {
-    canDrag({ isSelected, selected, collection }: DragSourceOwnProps) {
+    canDrag({ item, isSelected, selected, collection }: DragSourceOwnProps) {
+      if (item.model === "collection") {
+        return false;
+      }
+
       // can't drag if can't write the parent collection
       if (
         collection &&
@@ -74,34 +94,38 @@ const DragSourceComponent = DragSource(
       return isSelected || numSelected === 0;
     },
     beginDrag(props: DragSourceOwnProps) {
-      return { item: props.item };
+      const items =
+        props.isSelected && props.selected?.length
+          ? [...props.selected]
+          : [props.item];
+
+      return { items } satisfies ItemDragPayload;
     },
     async endDrag(
-      { selected, onDrop, onMoveError }: DragSourceOwnProps,
+      { onDrop, onMoveError, setPinned, setCollection }: DragSourceOwnProps,
       monitor: DragSourceMonitor,
     ) {
       if (!monitor.didDrop()) {
         return;
       }
-      const { item } = monitor.getItem() as { item: CollectionItem };
-      const { collection, pinIndex } = monitor.getDropResult() as {
-        collection?: Collection;
-        pinIndex?: number;
-      };
-      if (item) {
-        const items = selected && selected.length > 0 ? selected : [item];
+      const payload = monitor.getItem();
+      if (!isItemDragPayload(payload)) {
+        return;
+      }
+      const { items } = payload;
+      // React DnD v4 does not expose a type for target-specific drop results.
+      const dropResult = monitor.getDropResult() as ItemDropResult;
+      if (items.length > 0) {
         try {
-          if (collection !== undefined) {
-            await Promise.all(
-              items.map((i) => i.setCollection && i.setCollection(collection)),
-            );
-          } else if (pinIndex !== undefined) {
-            await Promise.all(
-              items.map((i) => i.setPinned && i.setPinned(pinIndex)),
-            );
+          const handled = await handleItemDrop({
+            items,
+            dropResult,
+            setPinned,
+            setCollection,
+          });
+          if (handled) {
+            onDrop?.();
           }
-
-          onDrop?.();
         } catch (e) {
           onMoveError?.(e);
         }
@@ -113,7 +137,7 @@ const DragSourceComponent = DragSource(
     connectDragPreview: connect.dragPreview(),
     isDragging: monitor.isDragging(),
   }),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 )(ItemDragSourceInner as any);
 
 interface ItemDragSourceProps {
@@ -127,11 +151,20 @@ interface ItemDragSourceProps {
 
 export function ItemDragSource(props: ItemDragSourceProps) {
   const [sendToast] = useToast();
+  const setPinned = useSetPinned();
+  const setCollection = useSetCollection();
   const onMoveError = (error: unknown) =>
     sendToast({
       message: getErrorMessage(error),
       icon: "warning_triangle_filled",
-      iconColor: "warning",
+      iconColor: "feedback-warning",
     });
-  return <DragSourceComponent {...props} onMoveError={onMoveError} />;
+  return (
+    <DragSourceComponent
+      {...props}
+      onMoveError={onMoveError}
+      setPinned={setPinned}
+      setCollection={setCollection}
+    />
+  );
 }

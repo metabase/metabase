@@ -50,18 +50,20 @@
     (mt/with-temporary-setting-values [premium-embedding-token nil
                                        analytics-uuid           "uuid-for-test"]
       (snowplow-test/with-fake-snowplow-collector
-        (llm-token-usage/track-snowplow! {:request-id          "deadbeef00"
-                                          :model-id            "openai/gpt-4"
-                                          :total-tokens        300
-                                          :prompt-tokens       200
-                                          :completion-tokens   100
-                                          :estimated-costs-usd 0.0
-                                          :user-id             42
-                                          :duration-ms         1234
-                                          :source              "oss_metabot"
-                                          :tag                 "oss-sqlgen"
-                                          :session-id          "session-abc"
-                                          :profile             "internal"})
+        (llm-token-usage/track-snowplow! {:request-id            "deadbeef00"
+                                          :model-id              "openai/gpt-4"
+                                          :total-tokens          300
+                                          :prompt-tokens         200
+                                          :completion-tokens     100
+                                          :cache-creation-tokens 250
+                                          :cache-read-tokens     900
+                                          :estimated-costs-usd   0.0
+                                          :user-id               42
+                                          :duration-ms           1234
+                                          :source                "oss_metabot"
+                                          :tag                   "oss-sqlgen"
+                                          :session-id            "session-abc"
+                                          :profile               "internal"})
         (is (=? [{:user-id "42"
                   :data    {"hashed_metabase_license_token" "oss__uuid-for-test"
                             "request_id"                   "deadbeef00"
@@ -69,6 +71,8 @@
                             "total_tokens"                 300
                             "prompt_tokens"                200
                             "completion_tokens"            100
+                            "cache_creation_tokens"        250
+                            "cache_read_tokens"            900
                             "estimated_costs_usd"          0.0
                             "duration_ms"                  1234
                             "source"                       "oss_metabot"
@@ -83,19 +87,65 @@
   ;; mt/with-prometheus-system! is slow, so prefer to clear metrics between test cases
   (analytics/clear! :metabase-metabot/llm-input-tokens)
   (analytics/clear! :metabase-metabot/llm-output-tokens)
+  (analytics/clear! :metabase-metabot/llm-cache-creation-tokens)
+  (analytics/clear! :metabase-metabot/llm-cache-read-tokens)
   (analytics/clear! :metabase-metabot/llm-tokens-per-call))
 
 (deftest track-prometheus!-test
   (mt/with-prometheus-system! [_ system]
-    (testing "increments prometheus metrics with correct labels and values"
-      (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
-                                          :tag               "test-tag"
-                                          :prompt-tokens     100
-                                          :completion-tokens 50})
-      (let [labels {:model "anthropic/claude-haiku-4-5" :source "test-tag"}]
+    (let [labels {:model "anthropic/claude-haiku-4-5" :source "test-tag" :provider "anthropic"}]
+      (testing "increments prometheus metrics with correct labels and values"
+        (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
+                                            :provider          "anthropic"
+                                            :tag               "test-tag"
+                                            :prompt-tokens     100
+                                            :completion-tokens 50})
         (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
         (is (= 50.0  (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
-        (is (= 150.0 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels))))))))
+        (is (= 150.0 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels))))
+        (testing "cache counters are untouched when cache fields are omitted"
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+          (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels)))))
+      (clear-llm-metrics!)
+      (testing "positive cache token fields increment their counters"
+        (llm-token-usage/track-prometheus! {:model-id              "anthropic/claude-haiku-4-5"
+                                            :provider              "anthropic"
+                                            :tag                   "test-tag"
+                                            :prompt-tokens         100
+                                            :completion-tokens     50
+                                            :cache-creation-tokens 400
+                                            :cache-read-tokens     1600})
+        (is (= 400.0  (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+        (is (= 1600.0 (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+      (clear-llm-metrics!)
+      (testing "a call with no provider is counted under the unknown provider"
+        (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
+                                            :tag               "test-tag"
+                                            :prompt-tokens     100
+                                            :completion-tokens 50})
+        (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
+                                      (assoc labels :provider "unknown")))))
+      (clear-llm-metrics!)
+      (testing "the provider label separates series that would otherwise share a model and source"
+        (llm-token-usage/track-prometheus! {:model-id          "anthropic/claude-haiku-4-5"
+                                            :provider          "openrouter"
+                                            :tag               "test-tag"
+                                            :prompt-tokens     100
+                                            :completion-tokens 50})
+        (is (zero? (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
+        (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
+                                      (assoc labels :provider "openrouter")))))
+      (clear-llm-metrics!)
+      (testing "zero / nil cache token fields do not increment their counters"
+        (llm-token-usage/track-prometheus! {:model-id              "anthropic/claude-haiku-4-5"
+                                            :provider              "anthropic"
+                                            :tag                   "test-tag"
+                                            :prompt-tokens         100
+                                            :completion-tokens     50
+                                            :cache-creation-tokens 0
+                                            :cache-read-tokens     nil})
+        (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
+        (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels)))))))
 
 ;;; ------------------------------------------- track-token-usage! -------------------------------------------
 
@@ -110,6 +160,7 @@
             :prometheus          true
             :request-id          "req-123"
             :model-id            "anthropic/claude-haiku-4-5"
+            :provider            "anthropic"
             :tag                 "test-tag"
             :prompt-tokens       100
             :completion-tokens   50
@@ -122,13 +173,11 @@
                              "prompt_tokens" 100}}]
                     (snowplow-test/pop-event-data-and-user-id!))))
           (testing "Prometheus metrics incremented"
-            (let [labels {:model "anthropic/claude-haiku-4-5" :source "test-tag"}]
+            (let [labels {:model "anthropic/claude-haiku-4-5" :source "test-tag" :provider "anthropic"}]
               (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens labels)))
               (is (= 50.0  (mt/metric-value system :metabase-metabot/llm-output-tokens labels)))
               (is (= 150.0 (:sum (mt/metric-value system :metabase-metabot/llm-tokens-per-call labels)))))))))
-
     (clear-llm-metrics!)
-
     (testing "Snowplow suppressed when :snowplow false"
       (snowplow-test/with-fake-snowplow-collector
         (llm-token-usage/track-token-usage! {:snowplow            false
@@ -144,10 +193,8 @@
           (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
         (testing "Prometheus still fires"
           (is (= 100.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
-                                        {:model "anthropic/claude-haiku-4-5" :source "test-tag"}))))))
-
+                                        {:model "anthropic/claude-haiku-4-5" :source "test-tag" :provider "unknown"}))))))
     (clear-llm-metrics!)
-
     (testing "Prometheus suppressed when :prometheus false"
       (mt/with-temporary-setting-values [premium-embedding-token nil
                                          analytics-uuid           "uuid-prometheus-false"]
@@ -165,7 +212,7 @@
                     (snowplow-test/pop-event-data-and-user-id!))))
           (testing "no Prometheus metrics incremented"
             (is (= 0.0 (mt/metric-value system :metabase-metabot/llm-input-tokens
-                                        {:model "openai/gpt-4" :source "none"})))))))))
+                                        {:model "openai/gpt-4" :source "none" :provider "unknown"})))))))))
 
 (deftest track-token-usage!-both-false-error-test
   (testing "throws when both :snowplow and :prometheus are false"

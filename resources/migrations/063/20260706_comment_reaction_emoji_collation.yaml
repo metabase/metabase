@@ -1,0 +1,29 @@
+## Fix MySQL/MariaDB collation collapse of distinct emoji in comment_reaction.emoji
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-07-06T00:00:00
+      author: ranquild
+      dbms: mysql,mariadb
+      comment: >-
+        comment_reaction tables were created with the default utf8mb4_unicode_ci collation, which -- because its
+        Unicode Collation Algorithm weight table predates most emoji -- treats distinct supplementary-plane (4-byte)
+        emoji such as 👍 and 🎉 as equal. That collapsed the unique_user_comment_emoji constraint and every
+        exists?/delete equality check in metabase.comments.models.comment-reaction, silently deleting an existing
+        reaction instead of adding a second, different one. Switch the column to utf8mb4_bin so comparisons are
+        exact (byte-for-byte), matching the fix already applied to metabase_field.name in v49.2024-06-27T00:00:00.
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE comment_reaction MODIFY
+              emoji VARCHAR(10)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_bin;
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE comment_reaction MODIFY
+              emoji VARCHAR(10)
+              CHARACTER SET utf8mb4
+              COLLATE utf8mb4_unicode_ci;

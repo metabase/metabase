@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.fields-test
   "Tests for the `:fields` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.fields-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.fields-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.test-util :as qp.test-util]

@@ -5,6 +5,7 @@ export function op(
   ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
 ): Lib.ExpressionParts {
   return {
+    // Unjustified type cast. FIXME
     operator: operator as Lib.ExpressionOperator,
     options: {},
     args,
@@ -17,6 +18,7 @@ export function opt(
   ...args: (Lib.ExpressionParts | Lib.ExpressionArg)[]
 ): Lib.ExpressionParts {
   return {
+    // Unjustified type cast. FIXME
     operator: operator as Lib.ExpressionOperator,
     options,
     args,

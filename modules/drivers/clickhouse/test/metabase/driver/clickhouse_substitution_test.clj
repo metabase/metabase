@@ -8,7 +8,7 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
    [schema.core :as s])
-  (:import (java.time LocalDate LocalDateTime)))
+  (:import (java.time Clock LocalDate LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +31,7 @@
                    :target ["dimension" ["template-tag" "x"]]
                    :id uuid}]}))
 
-(def ^:private clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC")))
+(def ^:private ^Clock clock (t/mock-clock (t/instant "2019-11-30T23:00:00Z") (t/zone-id "UTC")))
 (s/defn ^:private local-date-now      :- LocalDate     [] (LocalDate/now clock))
 (s/defn ^:private local-date-time-now :- LocalDateTime [] (LocalDateTime/now clock))
 
@@ -373,7 +373,7 @@
                                        :id     uuid}]}]
               (is (= [[1 1574982000000 "Event A"]
                       [2 1575068400000 "Event B"]]
-                     (mt/rows (qp/process-query query)))))))))))
+                     (mt/formatted-rows [int long str] (qp/process-query query)))))))))))
 
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
@@ -407,4 +407,3 @@
           (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
                       (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
                  (:query (qp.compile/compile-with-inline-parameters query)))))))))
-

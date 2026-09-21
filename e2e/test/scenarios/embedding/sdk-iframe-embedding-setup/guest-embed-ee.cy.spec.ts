@@ -3,7 +3,6 @@ import {
   JWT_SHARED_SECRET,
   embedModalEnableEmbedding,
   entityPickerModal,
-  getParametersContainer,
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
@@ -135,13 +134,33 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      // Experience step
+      // Switch to Guest auth (wizard now defaults to SSO when SSO isn't configured)
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
+
+      // Combined experience + resource step
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
         cy.findByTestId("upsell-card").should("not.exist");
 
         cy.findByText("Chart").click();
+
+        cy.findByTestId("embed-browse-entity-button").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByTestId("item-picker-level-0")
+          .findByText("Our analytics")
+          .click();
+
+        cy.findByText("Select a chart").should("be.visible");
+        cy.findByText(FIRST_QUESTION_NAME).click();
+      });
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Next").click();
       });
 
@@ -149,20 +168,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         event: "embed_wizard_experience_completed",
         event_detail:
           "authType=guest-embed,experience=chart,isDefaultExperience=false",
-      });
-
-      // Entity selection step
-      getEmbedSidebar().within(() => {
-        cy.findByTestId("embed-browse-entity-button").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        cy.findByText("Select a chart").should("be.visible");
-        cy.findByText(FIRST_QUESTION_NAME).click();
-      });
-
-      getEmbedSidebar().within(() => {
-        cy.findByText("Next").click();
       });
 
       H.expectUnstructuredSnowplowEvent({
@@ -299,13 +304,12 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         navigateToEmbedOptionsStep({
           experience: "chart",
           resourceName: FIRST_QUESTION_NAME,
+          preselectGuest: true,
         });
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text", "Disabled");
 
         getEmbedSidebar().within(() => {
           cy.findByText("Back").click();
@@ -314,7 +318,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
           cy.findAllByText(SECOND_QUESTION_NAME).first().click();
         });
 
@@ -324,13 +330,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text1")
-          .should("contain.text", "Editable");
+        H.assertEmbeddingParameter("Text1", "Editable");
 
-        getParametersContainer()
-          .findByLabelText("Text2")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text2", "Disabled");
 
         H.setEmbeddingParameter("Text1", "Locked");
 
@@ -343,7 +345,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
           cy.findAllByText(FIRST_QUESTION_NAME).first().click();
         });
 
@@ -353,9 +357,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text", "Disabled");
       });
     });
 
@@ -370,6 +372,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         navigateToEmbedOptionsStep({
           experience: "dashboard",
           resourceName: DASHBOARD_NAME,
+          preselectGuest: true,
         });
 
         getEmbedSidebar().within(() => {
@@ -389,7 +392,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
           cy.findByText("Back").click();
           cy.findByText("Back").click();
-          cy.findByText("Back").click();
 
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
@@ -399,7 +401,6 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         embedModalEnableEmbedding();
 
         getEmbedSidebar().within(() => {
-          cy.findByText("Next").click();
           cy.findByText("Next").click();
           cy.findByText("Get code").click();
 

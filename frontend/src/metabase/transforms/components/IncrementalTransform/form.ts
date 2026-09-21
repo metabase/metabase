@@ -1,18 +1,37 @@
 import * as Yup from "yup";
 
 import * as Errors from "metabase/utils/errors";
+import {
+  type FieldTypeInfo,
+  isDate,
+  isTime,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
+  LookbackUnit,
   Transform,
   TransformSource,
   TransformTarget,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
+// Same rule as the BE's `date-or-datetime?`: temporal but not time-only (time watermarks wrap at
+// midnight). The predicates check effective_type first, so coerced columns (e.g. unix
+// timestamps) count as temporal.
+export const fieldSupportsLookback = (
+  field: FieldTypeInfo | null | undefined,
+): boolean => isDate(field) && !isTime(field);
+
 export type IncrementalSettingsFormValues = {
   incremental: boolean;
   sourceStrategy: "checkpoint";
   checkpointFilterFieldId: string | null; // String because Mantine Select requires string values
-  targetStrategy: "append";
+  // Comma-separated target column names. Empty → append. Non-empty → the target is upserted
+  // (merge/restate) on these columns instead of appended.
+  uniqueKey: string;
+  // Lookback window: re-read this much data behind the checkpoint on every run. Null → none.
+  // Only supported for temporal checkpoint columns.
+  lookbackValue: number | null;
+  lookbackUnit: LookbackUnit;
 };
 
 export const VALIDATION_SCHEMA = Yup.object({
@@ -27,7 +46,9 @@ export const VALIDATION_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable().defined(),
     }),
-  targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
+  uniqueKey: Yup.string().default(""),
+  lookbackValue: Yup.number().nullable().positive().integer().default(null),
+  lookbackUnit: Yup.mixed<LookbackUnit>().default("day"),
 });
 
 export const getInitialValues = (
@@ -36,9 +57,18 @@ export const getInitialValues = (
   incremental: false,
   sourceStrategy: "checkpoint",
   checkpointFilterFieldId: null,
-  targetStrategy: "append",
+  uniqueKey: "",
+  lookbackValue: null,
+  lookbackUnit: "day",
   ...defaults,
 });
+
+const parseUniqueKey = (uniqueKey: string) =>
+  uniqueKey
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+    .map((name) => ({ name }));
 
 export const getIncrementalSettingsFromTransform = (
   transform: Transform,
@@ -51,6 +81,13 @@ export const getIncrementalSettingsFromTransform = (
       ? (strategy["checkpoint-filter-field-id"] ?? null)
       : null;
 
+  const lookback = strategy?.type === "checkpoint" ? strategy.lookback : null;
+
+  const targetStrategy =
+    transform.target.type === "table-incremental"
+      ? transform.target["target-incremental-strategy"]
+      : undefined;
+
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
@@ -58,7 +95,15 @@ export const getIncrementalSettingsFromTransform = (
       isIncremental && checkpointFilterFieldId != null
         ? String(checkpointFilterFieldId)
         : null,
-    targetStrategy: "append",
+    lookbackValue: lookback?.value ?? null,
+    lookbackUnit: lookback?.unit ?? "day",
+    uniqueKey:
+      targetStrategy?.type === "merge"
+        ? targetStrategy["unique-key"]
+            .map((column) => column.name)
+            .filter((name): name is string => name != null)
+            .join(", ")
+        : "",
   };
 };
 
@@ -96,6 +141,13 @@ export const buildIncrementalSource = (
             "checkpoint-filter-field-id": Number(
               formValues.checkpointFilterFieldId,
             ),
+            lookback:
+              formValues.lookbackValue !== null
+                ? {
+                    value: formValues.lookbackValue,
+                    unit: formValues.lookbackUnit,
+                  }
+                : undefined,
           }
         : undefined,
   };
@@ -114,11 +166,13 @@ export const buildIncrementalTarget = (
   if (!values.incremental) {
     return base;
   }
+  const uniqueKey = parseUniqueKey(values.uniqueKey);
   return {
     ...base,
     type: "table-incremental",
-    "target-incremental-strategy": {
-      type: values.targetStrategy,
-    },
+    "target-incremental-strategy":
+      uniqueKey.length > 0
+        ? { type: "merge", "unique-key": uniqueKey }
+        : { type: "append" },
   };
 };

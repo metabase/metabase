@@ -1,5 +1,6 @@
 import { Card, Flex, Text } from "metabase/ui";
 
+import { ColorHarmonyDemo } from "./ColorHarmonyStory/ColorHarmonyDemo";
 import { colors } from "./colors";
 
 export default {
@@ -10,7 +11,7 @@ const COLOR_NAMES = Object.keys(colors);
 
 export function Default() {
   return (
-    <Flex gap="md" wrap="wrap" pb="lg">
+    <Flex gap="lg" wrap="wrap" pb="xl">
       {COLOR_NAMES.map((colorName) => {
         return (
           <Card
@@ -30,3 +31,10 @@ export function Default() {
     </Flex>
   );
 }
+
+export function ColorHarmony() {
+  return <ColorHarmonyDemo />;
+}
+// Interactive demo: HSL sliders + draggable hue ring make the rendered output
+// non-deterministic across snapshots, so skip Loki.
+ColorHarmony.parameters = { loki: { skip: true } };

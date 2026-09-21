@@ -1,16 +1,15 @@
 import { t } from "ttag";
 
 import { HelpCard } from "metabase/common/components/HelpCard";
-import { useSelector } from "metabase/redux";
 import { migrateToCloudGuideUrl } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 
-import { getIsHosted } from "../../selectors";
 import { useStep } from "../../useStep";
 import { SetupCardContainer } from "../SetupCardContainer";
 
 export const CloudMigrationHelp = () => {
   const { isStepActive } = useStep("completed");
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
 
   const isVisible = isHosted && isStepActive;
 

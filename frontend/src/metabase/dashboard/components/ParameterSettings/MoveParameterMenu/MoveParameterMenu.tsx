@@ -5,10 +5,14 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
+import { Flex, Group, Icon, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import visualizations from "metabase/visualizations";
-import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
+import { visualizations } from "metabase/viz-core";
+import type {
+  BaseDashboardCard,
+  IconName,
+  ParameterId,
+} from "metabase-types/api";
 
 import { moveParameter } from "../../../actions";
 import { getCurrentDashcards, getTabs } from "../../../selectors";
@@ -95,12 +99,10 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
     [dashcardMap],
   );
 
-  const value = useMemo(() => {
-    if (!isOpen) {
-      return;
-    }
-    return parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE;
-  }, [isOpen, parameterDashcard]);
+  const value = useMemo(
+    () => (parameterDashcard ? String(parameterDashcard?.id) : TOP_NAV_VALUE),
+    [parameterDashcard],
+  );
 
   const options = useMemo(() => {
     const rootGroup = {
@@ -140,6 +142,12 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
         // Hides the chevron-down icon on the right to make it look like a button
         section: !isOpen ? CS.hidden : undefined,
       }}
+      wrapperProps={{
+        className: !isOpen
+          ? S.CollapsedMoveParameterMenuInputWrapper
+          : undefined,
+        "data-label": t`Move filter`,
+      }}
       placeholder={t`Move filter`}
       data={options}
       renderOption={renderOption}
@@ -156,7 +164,7 @@ export function MoveParameterMenu({ parameterId }: MoveParameterMenuProps) {
 function SelectItem({ icon, title }: { icon: IconName; title: string }) {
   return (
     <Group p="sm" w="100%">
-      <Flex direction="column" flex={1} justify="center" gap="xs" miw={0}>
+      <Flex direction="column" flex={1} justify="center" gap="xxs" miw={0}>
         <Text
           className={S.MoveParameterMenuOptionText}
           fw="400"

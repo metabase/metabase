@@ -1,7 +1,7 @@
 import {
   isInstanceAnalyticsCustomCollection,
   isTrashedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 export function canCleanUp(collection: Collection): boolean {

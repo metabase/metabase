@@ -4,27 +4,30 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.usage :as metabot.usage]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private generate-content-body-schema
-  [:map
+  [:map {:closed true}
    [:instructions ms/NonBlankString]
-   [:references {:optional true} ms/Map]])
+   [:references {:optional true} ms/OpaqueJSONObject]])
 
 (def ^:private generate-content-response-schema
   [:map
    [:draft_card [:maybe [:map
                          [:name ms/NonBlankString]
-                         [:dataset_query ms/Map]
+                         [:dataset_query ::lib-be.schema/maybe-legacy-query]
                          [:database_id ms/PositiveInt]
-                         [:parameters [:maybe [:sequential ms/Map]]]
-                         [:visualization_settings ms/Map]]]]
+                         [:parameters [:maybe ::parameters.schema/parameters]]
+                         [:visualization_settings ms/VisualizationSettings]]]]
    [:error [:maybe ms/NonBlankString]]
    [:description [:maybe ms/NonBlankString]]])
 
@@ -53,7 +56,7 @@
     (when (and chart-name (map? query) chart-type)
       {:name                   chart-name
        :display                (name chart-type)
-       :dataset_query          query
+       :dataset_query          (lib-be/normalize-query nil query)
        :database_id            (:database query)
        :parameters             []
        :visualization_settings {}})))
@@ -89,33 +92,38 @@
   "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
   [_route-params
    _query-params
-
    {:keys [instructions references]} :- generate-content-body-schema]
-  (metabot.config/check-metabot-enabled!)
-  (metabot.usage/check-metabase-managed-free-limit!)
-  (let [context      (assoc
-                      (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
-                      :references references)
-        parts        (into [] (metabot.agent/run-agent-loop
-                               {:messages      [{:role    :user
-                                                 :content instructions}]
-                                :profile-id    :document-generate-content
-                                :state         {}
-                                :context       context
-                                :tracking-opts {:source "document_generate_content"}}))
-        chart-output (latest-chart-structured-output parts)
-        draft-card   (draft-card-from-chart-output chart-output)
-        description  (or (:description chart-output)
-                         (:name chart-output)
-                         (:name draft-card))]
-    (if draft-card
-      {:draft_card  draft-card
-       :description description
-       :error       nil}
-      {:draft_card  nil
-       :description nil
-       :error       (or (last-agent-message parts)
-                        "Unable to generate chart content.")})))
+  (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
+    (metabot.config/check-metabot-enabled! metabot-id)
+    (metabot.usage/check-metabase-managed-free-limit!)
+    (let [context      (assoc
+                        ;; a request, not a grant: `enforce-permissions` drops it unless the user
+                        ;; really can write native queries
+                        (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}}
+                                                        {:metabot-id metabot-id
+                                                         :profile-id :document-generate-content})
+                        :references references)
+          parts        (into [] (metabot.agent/run-agent-loop
+                                 {:messages      [{:role    :user
+                                                   :content instructions}]
+                                  :metabot-id    metabot-id
+                                  :profile-id    :document-generate-content
+                                  :state         {}
+                                  :context       context
+                                  :tracking-opts {:source "document_generate_content"}}))
+          chart-output (latest-chart-structured-output parts)
+          draft-card   (draft-card-from-chart-output chart-output)
+          description  (or (:description chart-output)
+                           (:name chart-output)
+                           (:name draft-card))]
+      (if draft-card
+        {:draft_card  draft-card
+         :description description
+         :error       nil}
+        {:draft_card  nil
+         :description nil
+         :error       (or (last-agent-message parts)
+                          "Unable to generate chart content.")}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/document` routes."

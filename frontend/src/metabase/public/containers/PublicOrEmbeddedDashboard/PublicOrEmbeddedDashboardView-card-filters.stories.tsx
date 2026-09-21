@@ -3,24 +3,22 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
-import { getNextId } from "__support__/utils";
-import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { Api } from "metabase/api";
-import { Heading } from "metabase/dashboard/visualizations/Heading";
-import {
-  MockDashboardContext,
-  type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { publicReducers } from "metabase/reducers-public";
-import { MetabaseReduxProvider } from "metabase/redux";
+import { getPublicStore } from "__support__/entities-store";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockState,
-} from "metabase/redux/store/mocks";
-import { registerVisualization } from "metabase/visualizations";
+} from "__support__/state";
+import { getNextId } from "__support__/utils";
+import { NumberColumn, StringColumn } from "__support__/visualizations";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/dashboard/context/mock-context";
+import { Heading } from "metabase/dashboard/visualizations/Heading";
+import { MetabaseReduxProvider } from "metabase/redux";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
@@ -37,9 +35,7 @@ import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Heading);
 
 export default {
@@ -59,6 +55,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+  // Unjustified type cast. FIXME
   const dashboard = context.args.dashboard as Dashboard;
   const initialState = createMockState({
     settings: createMockSettingsState({
@@ -92,7 +89,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     }),
   });
 
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />

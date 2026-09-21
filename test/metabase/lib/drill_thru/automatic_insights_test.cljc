@@ -57,7 +57,7 @@
          (and (not (:native? test-case))
               (or ;; Any pivot or legend click is good.
                (#{:pivot :legend} click)
-                   ;; As are cell clicks with at least 1 breakout.
+               ;; As are cell clicks with at least 1 breakout.
                (and (= click :cell)
                     (seq (:dimensions context))))))))
     (testing "not available at all with xrays disabled"

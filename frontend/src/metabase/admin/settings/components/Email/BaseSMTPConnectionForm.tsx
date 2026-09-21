@@ -4,10 +4,6 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { isErrorWithMessage } from "metabase/admin/performance/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -17,11 +13,14 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/settings";
+import { SetByEnvVarWrapper } from "metabase/settings-components";
 import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SettingDefinitionMap, SettingKey } from "metabase-types/api";
-
-import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 type GetFullFormKey = (
   shortFormKey: "port" | "host" | "username" | "security" | "password",
@@ -124,7 +123,7 @@ export const BaseSMTPConnectionForm = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: isErrorWithMessage(result.error)
           ? result.error.data.message
           : t`Error clearing email settings`,
@@ -151,7 +150,7 @@ export const BaseSMTPConnectionForm = ({
       } catch (error) {
         sendToast({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message: getErrorMessage(error, t`Error updating email settings`),
         });
 
@@ -169,6 +168,7 @@ export const BaseSMTPConnectionForm = ({
         .map((formKey) => getFullFormKey(formKey))
         .every(
           (field) =>
+            // Unjustified type cast. FIXME
             settingsDetails[field as keyof typeof settingsDetails]
               ?.is_env_setting,
         )
@@ -194,10 +194,10 @@ export const BaseSMTPConnectionForm = ({
       title={t`SMTP Configuration`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       data-testid={dataTestId}
     >
-      <Box data-testid="settings-updates" pt="lg">
+      <Box data-testid="settings-updates" pt="xl">
         <FormProvider
           initialValues={initialValues}
           validationSchema={getFormValueSchema(
@@ -210,7 +210,7 @@ export const BaseSMTPConnectionForm = ({
         >
           {({ dirty, isValid, isSubmitting }) => (
             <Form>
-              <Stack gap="lg">
+              <Stack gap="xl">
                 <SetByEnvVarWrapper
                   settingKey={getFullFormKey("host")}
                   settingDetails={settingsDetails?.[getFullFormKey("host")]}
@@ -235,13 +235,13 @@ export const BaseSMTPConnectionForm = ({
                       label={t`SMTP Port`}
                       groupProps={{ mt: "0.5rem" }}
                     >
-                      <Chip value={"465"} variant="brand">
+                      <Chip value={"465"} variant="filled">
                         465
                       </Chip>
-                      <Chip value={"587"} variant="brand">
+                      <Chip value={"587"} variant="filled">
                         587
                       </Chip>
-                      <Chip value={"2525"} variant="brand">
+                      <Chip value={"2525"} variant="filled">
                         2525
                       </Chip>
                     </FormChipGroup>
@@ -264,7 +264,7 @@ export const BaseSMTPConnectionForm = ({
                     groupProps={{ mt: "0.5rem" }}
                   >
                     {securityOptions.map(({ value, label }) => (
-                      <Chip key={value} value={value} variant="brand">
+                      <Chip key={value} value={value} variant="filled">
                         {label}
                       </Chip>
                     ))}
@@ -294,7 +294,7 @@ export const BaseSMTPConnectionForm = ({
                   />
                 </SetByEnvVarWrapper>
 
-                <Flex mt="1rem" gap="md" justify="end">
+                <Flex mt="1rem" gap="lg" justify="end">
                   <Button
                     onClick={handleClearEmailSettings}
                     disabled={allSetByEnvVars || isSubmitting}
@@ -305,7 +305,7 @@ export const BaseSMTPConnectionForm = ({
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
                     loading={isSubmitting}
-                    variant="filled"
+                    variant="brand"
                   />
                 </Flex>
               </Stack>

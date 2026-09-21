@@ -3,8 +3,8 @@ import type {
   CompletionResult as CodeMirrorCompletionResult,
 } from "@codemirror/autocomplete";
 
-import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 export type ExpressionSuggestion = CodeMirrorCompletion & {
   icon: IconName;

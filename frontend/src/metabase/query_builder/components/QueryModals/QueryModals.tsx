@@ -1,35 +1,38 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import { Modal } from "metabase/common/components/Modal";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { CopyModal } from "metabase/common/components/CopyModal";
+import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
-import { setArchivedQuestion } from "metabase/query_builder/actions";
-import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
-import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import { useNavigate } from "metabase/router";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import { Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import Question from "metabase-lib/v1/Question";
+import { Modal, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
-import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
+import { setArchivedQuestion } from "../../actions";
+import { updateUrl } from "../../actions/url";
+import {
+  getQuestionWithoutComposing,
+  getVisualizationSettings,
+} from "../../store/selectors";
+import { ImpossibleToCreateModelModal } from "../ImpossibleToCreateModelModal";
+import { NewDatasetModal } from "../NewDatasetModal";
+import { PreviewQueryModal } from "../view/PreviewQueryModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
@@ -67,10 +70,16 @@ export function QueryModals({
   onChangeLocation,
 }: QueryModalsProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
+  const visualizationSettings = useSelector(getVisualizationSettings);
+
+  const handleAlertCreatedOrUpdated = useCallback(() => {
+    dispatch(updateUrl(question, { dirty: false }));
+  }, [dispatch, question]);
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -114,9 +123,9 @@ export function QueryModals({
         { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
         { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
-      dispatch(push(url));
+      navigate(url);
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const handleSaveModalCreate = useCallback(
@@ -159,7 +168,7 @@ export function QueryModals({
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
-      const newQuestion = new Question(newCard, question.metadata());
+      const newQuestion = question.setCard(newCard);
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
@@ -194,7 +203,6 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
@@ -211,7 +219,13 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <QuestionAlertListModal question={question} onClose={onCloseModal} />
+        <QuestionAlertListModal
+          question={question}
+          visualizationSettings={visualizationSettings}
+          onAlertCreated={handleAlertCreatedOrUpdated}
+          onAlertUpdated={handleAlertCreatedOrUpdated}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
@@ -223,7 +237,6 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          initialCollectionId={initialCollectionId}
         />
       );
     case MODAL_TYPES.MOVE:
@@ -239,7 +252,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CLONE:
       return (
-        <EntityCopyModal
+        <CopyModal
           entityType="cards"
           entityObject={{
             ...question.card(),
@@ -249,7 +262,7 @@ export function QueryModals({
           }}
           copy={async (formValues) => {
             if (!underlyingQuestion) {
-              return;
+              throw new Error(t`Unable to duplicate this question.`);
             }
 
             const question = underlyingQuestion
@@ -270,19 +283,37 @@ export function QueryModals({
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (
-        <Modal small onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="md"
+          withCloseButton={false}
+          padding={0}
+        >
           <NewDatasetModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <ImpossibleToCreateModelModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.NEW_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <NewEventModal
             cardId={question.id()}
             collectionId={question.collectionId()}
@@ -292,13 +323,25 @@ export function QueryModals({
       );
     case MODAL_TYPES.EDIT_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <EditEventModal eventId={modalContext} onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.MOVE_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          onClose={onCloseModal}
+          size="lg"
+          withCloseButton={false}
+          padding={0}
+        >
           <MoveEventModal
             eventId={modalContext}
             collectionId={question.collectionId()}

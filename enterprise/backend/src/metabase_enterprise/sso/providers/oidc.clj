@@ -14,7 +14,7 @@
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
-(derive :provider/custom-oidc :provider/oidc)
+(auth-identity/derive! :provider/custom-oidc :provider/oidc)
 
 ;;; -------------------------------------------------- Configuration --------------------------------------------------
 
@@ -74,7 +74,6 @@
               {:success? false
                :error :configuration-error
                :message (tru "Failed to build OIDC configuration for provider ''{0}''" provider-key)}
-
               (let [auth-result (next-method _provider (assoc request :oidc-config oidc-config))]
                 (if (and (:success? auth-result)
                          (:user-data auth-result))

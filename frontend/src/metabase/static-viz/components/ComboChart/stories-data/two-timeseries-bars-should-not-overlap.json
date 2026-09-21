@@ -1,0 +1,551 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": "2026-06-22T13:40:24.847668Z",
+      "description": null,
+      "archived": false,
+      "view_count": 4,
+      "collection_position": null,
+      "source_card_id": null,
+      "table_id": 2,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "lib/temporal-unit": "month",
+          "lib/deduplicated-name": "CREATED_AT",
+          "lib/original-name": "CREATED_AT",
+          "lib/breakout?": true,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "lib/source": "source/table-defaults",
+          "lib/source-column-alias": "CREATED_AT",
+          "lib/original-display-name": "Created At",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "active": true,
+          "id": 13,
+          "lib/desired-column-alias": "CREATED_AT",
+          "position": 7,
+          "visibility_type": "normal",
+          "inherited_temporal_unit": "month",
+          "display_name": "Created At: Month",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10040,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2025-04-30T18:56:13.352Z",
+                "latest": "2029-04-19T14:07:15.657Z",
+                "skewness": -0.3385205567875194,
+                "weekday-distribution": [
+                  0.1463,
+                  0.1393,
+                  0.1465,
+                  0.1394,
+                  0.1435,
+                  0.1439,
+                  0.1411
+                ],
+                "hour-distribution": [
+                  0.0433,
+                  0.0426,
+                  0.04,
+                  0.0426,
+                  0.0414,
+                  0.0418,
+                  0.04,
+                  0.0412,
+                  0.0385,
+                  0.0433,
+                  0.0383,
+                  0.0413,
+                  0.0425,
+                  0.0386,
+                  0.0402,
+                  0.0427,
+                  0.0419,
+                  0.0412,
+                  0.0422,
+                  0.0443,
+                  0.0452,
+                  0.0394,
+                  0.0434,
+                  0.0441
+                ],
+                "mode-fraction": 0.0001,
+                "top-3-fraction": 0.0003
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": "type/Quantity",
+          "lib/deduplicated-name": "count",
+          "lib/original-name": "count",
+          "name": "count",
+          "lib/source": "source/aggregations",
+          "lib/source-column-alias": "count",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "effective_type": "type/BigInteger",
+          "lib/desired-column-alias": "count",
+          "display_name": "Count",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "skewness": null,
+                "min": 206,
+                "q1": 206,
+                "q3": 256,
+                "excess-kurtosis": null,
+                "zero-fraction": 0,
+                "mode-fraction": 0.5,
+                "top-3-fraction": 1,
+                "max": 256,
+                "sd": 35.35533905932738,
+                "avg": 231
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "embedding_type": null,
+      "dependency_analysis_version": 0,
+      "creator": {
+        "email": "kevin.kelleher@metabase.com",
+        "first_name": "Kevin",
+        "is_data_analyst": false,
+        "last_login": "2026-06-18T16:54:06.232168Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Kelleher",
+        "tenant_id": null,
+        "date_joined": "2026-01-07T22:26:30.692014Z",
+        "common_name": "Kevin Kelleher"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "card_schema": 23,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": 6,
+      "query_type": "query",
+      "name": "71634",
+      "last_query_start": "2026-06-22T14:27:12.305623Z",
+      "is_remote_synced": false,
+      "dashboard_count": 0,
+      "document_id": null,
+      "last_used_at": "2026-06-22T14:27:12.41195Z",
+      "dashboard": null,
+      "type": "question",
+      "dimensions": null,
+      "average_query_time": 147,
+      "creator_id": 1,
+      "can_restore": false,
+      "moderation_reviews": [],
+      "updated_at": "2026-06-22T13:40:24.842105Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "database": 1,
+        "stages": [
+          {
+            "source-table": 2,
+            "breakout": [
+              [
+                "field",
+                {
+                  "base-type": "type/DateTime",
+                  "lib/uuid": "d3dc242f-509a-4462-a17f-675421f164fe",
+                  "effective-type": "type/DateTime",
+                  "temporal-unit": "month"
+                },
+                13
+              ]
+            ],
+            "lib/type": "mbql.stage/mbql",
+            "aggregation": [
+              [
+                "count",
+                {
+                  "lib/uuid": "6348ac1d-88b2-479d-a1f8-7046ee3365af"
+                }
+              ]
+            ],
+            "filters": [
+              [
+                "between",
+                {
+                  "lib/uuid": "231dec62-7f35-4cac-b931-bc979a190f6a"
+                },
+                [
+                  "field",
+                  {
+                    "lib/uuid": "a065e5e2-b69a-4a9e-84e6-178bf791b349",
+                    "effective-type": "type/DateTime",
+                    "base-type": "type/DateTime"
+                  },
+                  13
+                ],
+                "2026-02-01",
+                "2026-03-31"
+              ]
+            ]
+          }
+        ]
+      },
+      "dimension_mappings": null,
+      "id": 956,
+      "legacy_query": null,
+      "parameter_mappings": [],
+      "can_manage_db": true,
+      "display": "bar",
+      "archived_directly": false,
+      "entity_id": "baZekGMsuGYPiQ9VjLOVX",
+      "param_fields": {},
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "kevin.kelleher@metabase.com",
+        "first_name": "Kevin",
+        "last_name": "Kelleher",
+        "timestamp": "2026-06-22T13:40:24.886208Z"
+      },
+      "visualization_settings": {
+        "graph.x_axis.scale": "timeseries",
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "graph.metrics": [
+          "count"
+        ]
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "kevin_kelleher_s_personal_collection",
+        "archive_operation_id": null,
+        "name": "Kevin Kelleher's Personal Collection",
+        "is_remote_synced": false,
+        "personal_owner_id": 1,
+        "type": null,
+        "is_sample": false,
+        "id": 6,
+        "archived_directly": null,
+        "entity_id": "JNVXeRiI0n1JvPH29Siez",
+        "location": "/",
+        "namespace": null,
+        "is_personal": true,
+        "created_at": "2026-01-07T22:27:02.302189Z"
+      },
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "parameters": [],
+      "dashboard_id": null,
+      "created_at": "2026-06-22T12:42:46.345049Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        [
+          "2026-02-01T00:00:00Z",
+          206
+        ],
+        [
+          "2026-03-01T00:00:00Z",
+          256
+        ]
+      ],
+      "results_timezone": "UTC",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "database_type": "TIMESTAMP",
+            "semantic_type": "type/CreationTimestamp",
+            "table_id": 2,
+            "lib/temporal-unit": "month",
+            "lib/deduplicated-name": "CREATED_AT",
+            "lib/original-name": "CREATED_AT",
+            "lib/breakout?": true,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "lib/source": "source/table-defaults",
+            "lib/source-column-alias": "CREATED_AT",
+            "lib/original-display-name": "Created At",
+            "source": "breakout",
+            "field_ref": [
+              "field",
+              13,
+              {
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "active": true,
+            "id": 13,
+            "lib/desired-column-alias": "CREATED_AT",
+            "position": 7,
+            "visibility_type": "normal",
+            "inherited_temporal_unit": "month",
+            "display_name": "Created At: Month",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10040,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2025-04-30T18:56:13.352Z",
+                  "latest": "2029-04-19T14:07:15.657Z",
+                  "skewness": -0.3385205567875194,
+                  "weekday-distribution": [
+                    0.1463,
+                    0.1393,
+                    0.1465,
+                    0.1394,
+                    0.1435,
+                    0.1439,
+                    0.1411
+                  ],
+                  "hour-distribution": [
+                    0.0433,
+                    0.0426,
+                    0.04,
+                    0.0426,
+                    0.0414,
+                    0.0418,
+                    0.04,
+                    0.0412,
+                    0.0385,
+                    0.0433,
+                    0.0383,
+                    0.0413,
+                    0.0425,
+                    0.0386,
+                    0.0402,
+                    0.0427,
+                    0.0419,
+                    0.0412,
+                    0.0422,
+                    0.0443,
+                    0.0452,
+                    0.0394,
+                    0.0434,
+                    0.0441
+                  ],
+                  "mode-fraction": 0.0001,
+                  "top-3-fraction": 0.0003
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "database_type": "BIGINT",
+            "semantic_type": "type/Quantity",
+            "lib/deduplicated-name": "count",
+            "lib/original-name": "count",
+            "name": "count",
+            "lib/source": "source/aggregations",
+            "lib/source-column-alias": "count",
+            "source": "aggregation",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "effective_type": "type/BigInteger",
+            "lib/desired-column-alias": "count",
+            "display_name": "Count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "skewness": null,
+                  "min": 206,
+                  "q1": 206,
+                  "q3": 256,
+                  "excess-kurtosis": null,
+                  "zero-fraction": 0,
+                  "mode-fraction": 0.5,
+                  "top-3-fraction": 1,
+                  "max": 256,
+                  "sd": 35.35533905932738,
+                  "avg": 231
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "format-rows?": true,
+      "pivot-export-options": {
+        "show-row-totals": true,
+        "show-column-totals": true
+      },
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "lib/temporal-unit": "month",
+          "lib/deduplicated-name": "CREATED_AT",
+          "lib/original-name": "CREATED_AT",
+          "lib/breakout?": true,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "lib/source": "source/table-defaults",
+          "lib/source-column-alias": "CREATED_AT",
+          "lib/original-display-name": "Created At",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "active": true,
+          "id": 13,
+          "lib/desired-column-alias": "CREATED_AT",
+          "position": 7,
+          "visibility_type": "normal",
+          "inherited_temporal_unit": "month",
+          "display_name": "Created At: Month",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10040,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2025-04-30T18:56:13.352Z",
+                "latest": "2029-04-19T14:07:15.657Z",
+                "skewness": -0.3385205567875194,
+                "weekday-distribution": [
+                  0.1463,
+                  0.1393,
+                  0.1465,
+                  0.1394,
+                  0.1435,
+                  0.1439,
+                  0.1411
+                ],
+                "hour-distribution": [
+                  0.0433,
+                  0.0426,
+                  0.04,
+                  0.0426,
+                  0.0414,
+                  0.0418,
+                  0.04,
+                  0.0412,
+                  0.0385,
+                  0.0433,
+                  0.0383,
+                  0.0413,
+                  0.0425,
+                  0.0386,
+                  0.0402,
+                  0.0427,
+                  0.0419,
+                  0.0412,
+                  0.0422,
+                  0.0443,
+                  0.0452,
+                  0.0394,
+                  0.0434,
+                  0.0441
+                ],
+                "mode-fraction": 0.0001,
+                "top-3-fraction": 0.0003
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": "type/Quantity",
+          "lib/deduplicated-name": "count",
+          "lib/original-name": "count",
+          "name": "count",
+          "lib/source": "source/aggregations",
+          "lib/source-column-alias": "count",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "effective_type": "type/BigInteger",
+          "lib/desired-column-alias": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp '2026-02-01 00:00:00.000') AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp '2026-04-01 00:00:00.000') GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "insights": [
+        {
+          "previous-value": 206,
+          "unit": "month",
+          "offset": -36374.357142857145,
+          "last-change": 0.24271844660194175,
+          "col": "count",
+          "slope": 1.7857142857142858,
+          "last-value": 256,
+          "best-fit": [
+            "+",
+            -363191.73001117096,
+            [
+              "*",
+              36605.35145153626,
+              [
+                "log",
+                "x"
+              ]
+            ]
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,9 @@
+.InfoIcon {
+  color: var(--mb-color-text-disabled);
+  cursor: pointer;
+  flex-shrink: 0;
+  /* Nudge for SVG glyph offset within its bounding box. */
+  transform: translateY(1px);
+  /* Parent input's right section disables pointer events; re-enable here. */
+  pointer-events: auto;
+}

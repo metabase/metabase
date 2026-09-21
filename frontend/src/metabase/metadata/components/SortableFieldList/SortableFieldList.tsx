@@ -33,6 +33,7 @@ export function SortableFieldList<T extends number | string>({
   const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
+    // Unjustified type cast. FIXME
     onChange(itemIds as T[]);
   };
 

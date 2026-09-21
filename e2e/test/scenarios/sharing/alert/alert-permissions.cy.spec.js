@@ -58,6 +58,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
       H.modal().findByTestId("select-frequency").click();
       H.popover().findByText("weekly").click();
+      H.selectScheduleTime();
       H.modal().button("Save changes").click();
 
       // Check that changes stuck
@@ -137,6 +138,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
         cy.findByTestId("select-frequency").click();
       });
       H.popover().findByText("weekly").click();
+      H.selectScheduleTime();
 
       H.modal().button("Save changes").click();
 
@@ -159,10 +161,11 @@ function createBasicAlert({ includeNormal } = {}) {
       .findByText("Email")
       .closest('[data-testid="channel-block"]')
       .findByTestId("token-field")
-      .click();
-    cy.findByText(H.getFullName(normal)).click();
+      .findByRole("combobox")
+      .type(`${H.getFullName(normal)}{enter}`);
   }
 
+  H.selectScheduleTime();
   cy.findByText("Done").click();
   cy.findByText("New alert").should("not.exist");
 }

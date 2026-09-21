@@ -2,7 +2,13 @@ import { useState } from "react";
 import _ from "underscore";
 
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { SearchFilterKeys } from "metabase/common/search/constants";
+import type {
+  FilterTypeKeys,
+  SearchFilterComponent,
+  SearchQueryParamValue,
+  URLSearchFilterQueryParams,
+} from "metabase/common/search/types";
 import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
@@ -13,13 +19,7 @@ import { NativeQueryFilter } from "metabase/search/components/filters/NativeQuer
 import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { SearchFilterKeys } from "metabase/search/constants";
-import type {
-  FilterTypeKeys,
-  SearchFilterComponent,
-  SearchQueryParamValue,
-  URLSearchFilterQueryParams,
-} from "metabase/search/types";
+import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugins";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {
@@ -38,7 +38,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
-    [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+    [SearchFilterKeys.Verified]: PLUGIN_SEARCH_FILTERS.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
     [SearchFilterKeys.PersonalCollections]: PersonalCollectionsFilter,
@@ -99,7 +99,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const showOtherUsersCollections = useShowOtherUsersCollections();
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       {getFilter(SearchFilterKeys.Type)}
       <Stack gap="sm">
         {getFilter(SearchFilterKeys.CreatedBy)}

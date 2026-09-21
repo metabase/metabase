@@ -28,10 +28,8 @@ export function modifyPermission(
         cy.findByRole("switch")
           .as("toggle")
           .then(($el) => {
-            if (
-              $el.attr("aria-checked") !== shouldPropagateToChildren.toString()
-            ) {
-              cy.get("@toggle").click();
+            if ($el.prop("checked") !== shouldPropagateToChildren) {
+              cy.get("@toggle").click({ force: true });
             }
           });
       }

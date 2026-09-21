@@ -1,32 +1,23 @@
 import cx from "classnames";
-import type { Location } from "history";
 import { type ComponentType, type ReactNode, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
-import { Tables } from "metabase/entities/tables";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import type { Location } from "metabase/router";
+import { queryToSearch, useNavigate } from "metabase/router";
 import { Icon } from "metabase/ui";
-import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
-
-type LocationWithQuery = Location<{
-  table?: string;
-}>;
+import type { ConcreteTableId, Segment } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
-  location: LocationWithQuery;
-  push: (location: LocationWithQuery) => void;
+  location: Location;
   segments: Segment[];
 };
 
-function getTableIdFromLocation(
-  location: LocationWithQuery,
-): ConcreteTableId | null {
-  const tableId = location.query?.table;
+function getTableIdFromLocation(location: Location): ConcreteTableId | null {
+  const tableId = new URLSearchParams(location.search).get("table");
   return tableId != null ? parseInt(tableId, 10) : null;
 }
 
@@ -41,20 +32,25 @@ export function FilteredToUrlTable(
 ) {
   const Inner = ({
     location,
-    push,
     segments,
     ...props
   }: FilteredToUrlTableInnerProps) => {
+    const navigate = useNavigate();
     const [tableId, setTableIdState] = useState<ConcreteTableId | null>(() =>
       getTableIdFromLocation(location),
     );
 
     const setTableId = (newTableId: ConcreteTableId | null) => {
       setTableIdState(newTableId);
-      push({
-        ...location,
-        query: newTableId == null ? {} : { table: String(newTableId) },
-      });
+      navigate(
+        {
+          ...location,
+          search: queryToSearch(
+            newTableId == null ? {} : { table: String(newTableId) },
+          ),
+        },
+        { state: location.state },
+      );
     };
 
     const filteredItems =
@@ -73,23 +69,19 @@ export function FilteredToUrlTable(
     return <ComposedComponent {...composedProps} />;
   };
 
-  return connect(null, { push })(Inner);
+  return Inner;
 }
 
-type TableSelectorInnerProps = {
-  table?: Table & {
-    // Attributes from entity framework object wrapper
-    displayName(): string;
-  };
+type TableSelectorProps = {
   tableId: ConcreteTableId | null;
   setTableId: (tableId: ConcreteTableId | null) => void;
 };
 
-function TableSelectorInner({
-  table,
-  tableId,
-  setTableId,
-}: TableSelectorInnerProps) {
+function TableSelector({ tableId, setTableId }: TableSelectorProps) {
+  const { data: table } = useGetTableQuery(
+    tableId != null ? { id: tableId } : skipToken,
+  );
+
   return (
     <FieldSet
       noPadding
@@ -98,7 +90,9 @@ function TableSelectorInner({
       <div className={CS.p2} style={{ width: 200 }}>
         <DatabaseSchemaAndTableDataSelector
           selectedTableId={tableId}
-          setSourceTableFn={setTableId}
+          setSourceTableFn={(newTableId) =>
+            setTableId(typeof newTableId === "number" ? newTableId : null)
+          }
           triggerElement={
             <span
               className={cx(
@@ -111,7 +105,7 @@ function TableSelectorInner({
               )}
               data-testid="segment-list-table"
             >
-              {table ? table.displayName() : t`Filter by table`}
+              {table ? table.display_name : t`Filter by table`}
               <Icon
                 name={table ? "close" : "chevrondown"}
                 size={12}
@@ -129,9 +123,3 @@ function TableSelectorInner({
     </FieldSet>
   );
 }
-
-const TableSelector = Tables.load({
-  id: (_state: State, props: { tableId: ConcreteTableId | null }) =>
-    props.tableId,
-  loadingAndErrorWrapper: false,
-})(TableSelectorInner);

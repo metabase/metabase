@@ -28,8 +28,8 @@
   (cond
     (re-matches #"(?i)true|t|yes|y|1" s) true
     (re-matches #"(?i)false|f|no|n|0" s) false
-    :else                                (throw (IllegalArgumentException.
-                                                 (tru "''{0}'' is not a recognizable boolean" s)))))
+    :else                                (throw (ex-info (tru "''{0}'' is not a recognizable boolean" s)
+                                                         {:status-code 422}))))
 
 (def local-date-patterns
   "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (uuuu-MM-dd) because there's
@@ -78,8 +78,8 @@
   (try
     (LocalDate/parse s local-date-formatter)
     (catch Exception _
-      (throw (IllegalArgumentException.
-              (tru "''{0}'' is not a recognizable date" s))))))
+      (throw (ex-info (tru "''{0}'' is not a recognizable date" s)
+                      {:status-code 422})))))
 
 (defn parse-local-datetime
   "Parses a string representing a local datetime into a LocalDateTime.
@@ -103,8 +103,8 @@
       (try
         (parse-local-datetime s)
         (catch Exception _
-          (throw (IllegalArgumentException.
-                  (tru "''{0}'' is not a recognizable datetime" s))))))))
+          (throw (ex-info (tru "''{0}'' is not a recognizable datetime" s)
+                          {:status-code 422})))))))
 
 (def ^:private auxillary-offset-datetime-formatter
   (-> (DateTimeFormatterBuilder.)
@@ -150,26 +150,38 @@
         (catch DateTimeParseException _
           (OffsetDateTime/parse ss auxillary-offset-datetime-formatter)))
       (catch Exception _
-        (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s)))))))
+        (throw (ex-info (tru "''{0}'' is not a recognizable zoned datetime" s)
+                        {:status-code 422}))))))
 
 (defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
   [s]
   (str/replace s currency-regex ""))
 
-(let [us (NumberFormat/getInstance (Locale. "en" "US"))
-      de (NumberFormat/getInstance (Locale. "de" "DE"))
-      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
-      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+(defn- number-format-thread-local
+  "A `ThreadLocal` holding one `NumberFormat` per thread for `locale`."
+  ^ThreadLocal [^Locale locale]
+  (ThreadLocal/withInitial
+   #(NumberFormat/getInstance locale)))
+
+;; NumberFormat is not thread-safe: it keeps mutable parse state inside itself, so parsing with a
+;; shared instance lets concurrent uploads corrupt each other - either throwing or silently
+;; returning the wrong number. We give each thread its own formatter per locale via ThreadLocal,
+;; so a thread reuses its copy across every cell instead of reallocating one per value.
+;; See https://linear.app/metabase/issue/GDGT-304
+(let [us (number-format-thread-local (Locale. "en" "US"))
+      de (number-format-thread-local (Locale. "de" "DE"))
+      fr (number-format-thread-local (Locale. "fr" "FR"))
+      ch (number-format-thread-local (Locale. "de" "CH"))]
   (defn- parse-plain-number [number-separators s]
     (let [has-parens?       (re-matches #"\(.*\)" s)
           deparenthesized-s (str/replace s #"[()]" "")
           parse-pos         (ParsePosition. 0)
           parsed-number     (case number-separators
-                              ("." ".,") (. us parse deparenthesized-s parse-pos)
-                              ",."       (. de parse deparenthesized-s parse-pos)
-                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
-                              ".’"       (. ch parse deparenthesized-s parse-pos))]
+                              ("." ".,") (. ^NumberFormat (.get us) parse deparenthesized-s parse-pos)
+                              ",."       (. ^NumberFormat (.get de) parse deparenthesized-s parse-pos)
+                              ", "       (. ^NumberFormat (.get fr) parse (str/replace deparenthesized-s \space \u00A0) parse-pos) ; \u00A0 is a non-breaking space
+                              ".’"       (. ^NumberFormat (.get ch) parse deparenthesized-s parse-pos))]
       (let [parsed-idx (.getIndex parse-pos)]
         (when-not (= parsed-idx (count deparenthesized-s))
           (throw (ex-info "Unexpected trailing characters - this is probably not a number"
@@ -190,15 +202,17 @@
          (str/trim)
          (remove-currency-signs)
          (parse-plain-number number-separators))
-    (catch Exception e
-      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s) e)))))
+    (catch Exception _
+      (throw (ex-info (tru "''{0}'' is not a recognizable number" s)
+                      {:status-code 422})))))
 
 (defn- parse-as-biginteger
   "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
   [number-separators s]
   (let [n (parse-number number-separators s)]
     (when-not (zero? (mod n 1))
-      (throw (IllegalArgumentException. (tru "''{0}'' is not an integer" s))))
+      (throw (ex-info (tru "''{0}'' is not an integer" s)
+                      {:status-code 422})))
     (biginteger n)))
 
 (defmulti upload-type->parser

@@ -1,9 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
-import type { IconName } from "metabase/ui";
-import type { Collection, Timeline, TimelineIcon } from "metabase-types/api";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
+import type {
+  Collection,
+  IconName,
+  Timeline,
+  TimelineIcon,
+} from "metabase-types/api";
 
 export const getTimelineName = (timeline: Timeline) => {
   return timeline.default && timeline.collection
@@ -18,9 +22,12 @@ export const getTimelineIcons = (): {
 }[] => {
   return (
     [
+      { label: t`Info`, value: "info" },
+      { label: t`Note`, value: "note" },
+      { label: t`Event`, value: "event" },
       { label: t`Star`, value: "star" },
       { label: t`Cake`, value: "cake" },
-      { label: t`Mail`, value: "mail" },
+      { label: t`Mail`, value: "mail_at" },
       { label: t`Warning`, value: "warning" },
       { label: t`Bell`, value: "bell" },
       { label: t`Cloud`, value: "cloud" },

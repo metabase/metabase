@@ -4,24 +4,22 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.llm.anthropic :as llm.anthropic]
+   [metabase.llm.api.provider]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.db :as llm.db]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.self :as metabot.self]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [stencil.core :as stencil]
-   [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [throttle.core :as throttle])
   (:import
    (java.time LocalDateTime)
    (java.time.format DateTimeFormatter)))
@@ -43,7 +41,7 @@
   "Get the engine keyword for a database."
   [database-id]
   (when database-id
-    (t2/select-one-fn :engine :model/Database :id database-id)))
+    (llm.db/database-engine database-id)))
 
 (def ^:private load-dialect-instructions
   "Load dialect-specific instructions from resources, if available.
@@ -80,32 +78,15 @@
 (defn- track-sqlgen-event!
   "Track SQL generation usage via Snowplow simple_event."
   [{:keys [duration-ms result engine]}]
-  (snowplow/track-event! :snowplow/simple_event
-                         {:event        "metabot_oss_sqlgen_used"
-                          :event_detail (some-> engine name)
-                          :duration_ms  (some-> duration-ms long)
-                          :result       result}
-                         api/*current-user-id*))
-
-(api.macros/defendpoint :get "/list-models"
-  :- [:map [:models [:sequential [:map
-                                  [:id :string]
-                                  [:display_name :string]]]]]
-  "List available LLM models from the configured provider.
-
-   Requires LLM to be configured for the selected provider in admin settings."
-  [_route-params
-   _query-params]
-  (when-not (metabot.settings/llm-metabot-configured?)
-    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
-                    {:status-code 403})))
-  (let [provider-and-model (metabot.settings/llm-metabot-provider)
-        ai-proxy?          (metabot/metabase-provider? provider-and-model)
-        provider           (metabot/provider-and-model->provider provider-and-model)]
-    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
+  (analytics/track-event! :snowplow/simple_event
+                          {:event        "metabot_oss_sqlgen_used"
+                           :event_detail (some-> engine name)
+                           :duration_ms  (some-> duration-ms long)
+                           :result       result}
+                          api/*current-user-id*))
 
 (def ^:private table-with-columns-schema
-  "Schema for table metadata with columns returned by /extract-tables."
+  "Schema for table metadata with columns returned by /extract-sources."
   [:map
    [:id pos-int?]
    [:name :string]
@@ -124,24 +105,36 @@
                  [:table_name :string]
                  [:field_name :string]]]]]]])
 
-(api.macros/defendpoint :post "/extract-tables"
-  :- [:map [:tables [:sequential table-with-columns-schema]]]
-  "Parse SQL and return referenced tables with their columns.
+(def ^:private template-tags-schema
+  [:map-of :string
+   [:map {:closed true}
+    [:type :string]
+    [:card-id {:optional true} pos-int?]]])
 
-   Uses Macaw to parse the SQL, resolves table names to IDs,
-   and returns permission-filtered tables with column metadata.
+(api.macros/defendpoint :post "/extract-sources"
+  :- [:map
+      [:tables [:sequential table-with-columns-schema]]
+      [:card_ids [:sequential pos-int?]]]
+  "Parse native query sources and return referenced tables and cards/models.
 
-   This is a lightweight endpoint that does not trigger fingerprinting
-   or field value fetching."
+    Uses Macaw to parse the SQL, resolves table names to IDs,
+    and returns permission-filtered tables with column metadata. Card and model
+    references are extracted from native query template tags.
+
+    This is a lightweight endpoint that does not trigger fingerprinting
+    or field value fetching."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:database_id pos-int?]
-            [:sql :string]]]
-  (let [{:keys [database_id sql]} body
+            [:sql :string]
+            [:template_tags {:optional true} template-tags-schema]]]
+  (let [{:keys [database_id sql template_tags]} body
         table-ids (llm.context/extract-tables-from-sql database_id sql)
+        card-ids  (llm.context/extract-card-ids-from-template-tags template_tags)
         tables    (llm.context/get-tables-with-columns database_id table-ids)]
-    {:tables (or tables [])}))
+    {:tables   (or tables [])
+     :card_ids (sort (or (llm.context/get-accessible-card-ids card-ids) #{}))}))
 
 (api.macros/defendpoint :post "/generate-sql"
   :- [:map
@@ -175,12 +168,12 @@
    Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:referenced_entities {:optional true}
-             [:sequential [:map
+             [:sequential [:map {:closed true}
                            [:model :string]
                            [:id pos-int?]]]]]
    request]
@@ -231,6 +224,7 @@
                 :user-id             api/*current-user-id*
                 :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
                 :model-id            (:model usage)
+                :provider            "anthropic"
                 :prompt-tokens       (:prompt usage)
                 :completion-tokens   (:completion usage)
                 :total-tokens        (+ (:prompt usage) (:completion usage))
@@ -240,10 +234,12 @@
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
               (metabot/log-ai-usage!
-               {:source            "oss-sql-gen"
-                :model             (:model usage)
-                :prompt-tokens     (:prompt usage)
-                :completion-tokens (:completion usage)})
+               {:source             "sql-gen"
+                :model              (:model usage)
+                :provider           "anthropic"
+                :model-name         (:model usage)
+                :prompt-tokens      (:prompt usage)
+                :completion-tokens  (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"
@@ -261,4 +257,5 @@
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."
   (handlers/routes
+   (+auth metabase.llm.api.provider/routes)
    (api.macros/ns-handler *ns* +auth)))

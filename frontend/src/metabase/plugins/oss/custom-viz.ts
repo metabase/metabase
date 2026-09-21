@@ -1,0 +1,100 @@
+import type { ComponentType } from "react";
+
+import type { ToastArgs } from "metabase/common/hooks";
+import type { IconData } from "metabase/common/utils/icon";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Dispatch } from "metabase/redux/store";
+import type { CustomVizSettingWidgetProps } from "metabase/viz-core";
+import type {
+  CustomVizPluginId,
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+  WidgetMount,
+} from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
+
+import { definePluginSlot } from "../slot";
+
+export type LoadCustomVizPluginForDisplayResult =
+  | { status: "loaded"; display: VisualizationDisplay }
+  | { status: "unavailable" }
+  | { status: "error" };
+
+// prevents infinite render loop
+const noopCustomVizIcon = (
+  _display: VisualizationDisplay,
+): { icon: IconData | undefined; isLoading: boolean } => ({
+  icon: undefined,
+  isLoading: false,
+});
+
+const getDefaultPluginCustomViz = () => ({
+  // Admin settings pages
+  ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
+  CustomVizPage: PluginPlaceholder as ComponentType<any>,
+  // Unjustified type cast. FIXME
+  CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
+
+  // Hooks & functions
+  useAutoLoadCustomVizPlugin: (_display: string | undefined) => ({
+    loading: false,
+  }),
+  useCustomVizPlugins: (_opts?: { enabled?: boolean }) =>
+    // Unjustified type cast. FIXME
+    ({ plugins: undefined, isLoading: false }) as {
+      plugins: CustomVizPluginRuntime[] | undefined;
+      isLoading: boolean;
+    },
+  loadCustomVizPlugin: async (
+    _plugin: CustomVizPluginRuntime,
+    _options?: {
+      cacheBustSuffix?: string;
+      onMessage?: (toast: ToastArgs) => void;
+    },
+  ): Promise<VisualizationDisplay | null> => null,
+  /**
+   * Load (and register) the plugin backing a `custom:*` display, if it is
+   * installed and enabled. No-op in OSS.
+   */
+  loadCustomVizPluginForDisplay: async (
+    _dispatch: Dispatch,
+    _display: string,
+  ): Promise<LoadCustomVizPluginForDisplayResult> => ({
+    status: "unavailable",
+  }),
+  getPluginAssetUrl: (
+    _pluginId: CustomVizPluginId,
+    _assetPath: string | null,
+    // Unjustified type cast. FIXME
+  ) => undefined as string | undefined,
+
+  // Only the SDK really implements these: its icon `<img>` is cross-origin and
+  // can't carry the session header, so the sdk fetches the asset with auth, hands back
+  // a `blob:` url, and revokes it via `releaseCustomVizAsset`. The main app just
+  // builds a plain url.
+  resolveCustomVizAssetUrl: (
+    _pluginId: CustomVizPluginId,
+    _assetPath: string | null | undefined,
+  ): Promise<string | undefined> => Promise.resolve(undefined),
+  releaseCustomVizAsset: (_pluginId: CustomVizPluginId) => {},
+
+  useCustomVizPluginsIcon: () => noopCustomVizIcon,
+
+  // Must be functional in OSS — pure string check used by getSensibleVisualizations
+  isCustomVizDisplay,
+
+  /**
+   *  Always false in OSS as there is no plugin to produce a mount handle.
+   */
+  isWidgetMount: (
+    _value: unknown,
+  ): _value is WidgetMount<CustomVizSettingWidgetProps> => false,
+
+  CustomVizSettingWidget: PluginPlaceholder<{
+    mount: WidgetMount<CustomVizSettingWidgetProps>;
+    widgetProps: CustomVizSettingWidgetProps;
+  }>,
+});
+
+export const PLUGIN_CUSTOM_VIZ = definePluginSlot(getDefaultPluginCustomViz);

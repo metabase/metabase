@@ -41,7 +41,7 @@ export CYPRESS_BASE_URL="${CYPRESS_BASE_URL:-http://localhost:3000}"
 
 CYPRESS_ARGS=(
   --config-file "e2e/cross-version/cypress.config.js"
-  --env "grepTags=@${PHASE}"
+  --expose "grepTags=@${PHASE}"
 )
 
 if [[ -n "${CYPRESS_SPEC_PATTERN:-}" ]]; then

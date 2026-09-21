@@ -1,13 +1,14 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
 
+import type * as Lib from "metabase-lib";
+
 import { CALL, FIELD, IDENTIFIER, type Token } from "../pratt";
-import type { MBQLClauseFunctionConfig } from "../types";
 
 import type { ExpressionSuggestion } from "./types";
 
 export function expressionClauseCompletion(
-  clause: MBQLClauseFunctionConfig,
+  clause: Lib.MBQLClauseFunctionConfig,
   {
     type,
     matches,
@@ -24,7 +25,7 @@ export function expressionClauseCompletion(
   return { ...completion, icon: "function", matches };
 }
 
-export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
+export function expressionClauseSnippet(clause: Lib.MBQLClauseFunctionConfig) {
   const args =
     clause.args
       .filter((arg) => arg.name !== "…")

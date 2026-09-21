@@ -4,7 +4,7 @@ import { Link } from "metabase/common/components/Link";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import type { InsightsLinkProps } from "metabase/plugins";
 import { Flex, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
@@ -19,7 +19,8 @@ export const InsightsLink = ({
 
   const collection = dashboard
     ? dashboard.collection
-    : (question.collection() as Collection);
+    : // Unjustified type cast. FIXME
+      (question.collection() as Collection);
 
   if (isLoading) {
     return <div data-testid="loading-indicator" />;
@@ -65,7 +66,7 @@ export const InsightsLink = ({
       role="link"
       {...linkProps}
     >
-      <Flex gap="xs" className={SidesheetS.TabSibling}>
+      <Flex gap="xxs" className={SidesheetS.TabSibling}>
         <Icon name="external" />
         {t`Insights`}
       </Flex>

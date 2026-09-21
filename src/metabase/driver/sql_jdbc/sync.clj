@@ -11,6 +11,7 @@
 
 (comment sql-jdbc.dbms-version/keep-me sql-jdbc.sync.interface/keep-me sql-jdbc.describe-database/keep-me sql-jdbc.describe-table/keep-me)
 
+;; facade ns must keep re-exporting the interface's deprecated vars until drivers migrate off them
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.sync.interface
@@ -26,7 +27,6 @@
   fallback-metadata-query
   filtered-syncable-schemas
   have-select-privilege?]
-
  [sql-jdbc.describe-table
   add-table-pks
   database-type->base-type-or-warn
@@ -40,15 +40,14 @@
   describe-table
   describe-table-fields
   describe-table-fields-xf
-  describe-table-fks
   describe-table-indexes
   get-catalogs
-  pattern-based-database-type->base-type]
-
+  pattern-based-database-type->base-type
+  reducible-fks-for-tables-matching-options
+  reducible-table-fks-from-jdbc-metadata]
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables
   post-filtered-active-tables]
-
  [sql-jdbc.dbms-version
   dbms-version])

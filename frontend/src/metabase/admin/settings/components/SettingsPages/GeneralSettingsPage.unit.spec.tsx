@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { Route } from "metabase/router";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -33,17 +34,21 @@ const generalSettings = {
   "redirect-all-requests-to-https": false,
   "humanization-strategy": "simple",
   "enable-xrays": false,
-  "allowed-iframe-hosts": "https://cooldashboards.limo",
   "search-engine": "appdb",
 } as const;
 
-const setup = async (
-  { isCloudPlan }: { isCloudPlan: boolean } = { isCloudPlan: false },
-) => {
+const setup = async ({
+  isCloudPlan,
+  hasAuditApp,
+}: {
+  isCloudPlan?: boolean;
+  hasAuditApp?: boolean;
+} = {}) => {
   const settings = createMockSettings({
     ...generalSettings,
     "token-features": createMockTokenFeatures({
-      hosting: isCloudPlan,
+      hosting: isCloudPlan ?? false,
+      audit_app: hasAuditApp ?? true,
     }),
   });
 
@@ -61,6 +66,7 @@ const setup = async (
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -72,10 +78,16 @@ const setup = async (
   });
 
   renderWithProviders(
-    <>
-      <GeneralSettingsPage />
-      <UndoListing />
-    </>,
+    <Route
+      path="*"
+      element={
+        <>
+          <GeneralSettingsPage />
+          <UndoListing />
+        </>
+      }
+    />,
+    { withRouter: true, initialRoute: "/admin/settings/general" },
   );
 
   await screen.findByText("Site name");
@@ -89,13 +101,12 @@ describe("GeneralSettingsPage", () => {
       "Site name",
       "Site url",
       "Redirect to HTTPS",
-      "Custom homepage",
+      "Homepage",
       "Email address for help requests",
       "Send anonymous tracking data to Metabase",
       "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
-      "Allowed domains for iframes in dashboards",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -140,6 +151,9 @@ describe("GeneralSettingsPage", () => {
     await screen.findByDisplayValue("Metabasey");
 
     const emailInput = await screen.findByDisplayValue("help@mysite.biz");
+    await waitFor(() => {
+      expect(emailInput).toBeEnabled();
+    });
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@mySite.biz");
     blur();
@@ -180,5 +194,47 @@ describe("GeneralSettingsPage", () => {
     expect(
       screen.queryByText("Send anonymous tracking data to Metabase"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show Collect User Data input when the audit_app token feature is enabled", async () => {
+    await setup({ hasAuditApp: true });
+
+    expect(
+      screen.getByText("Collect user data to display in usage analytics"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show Collect User Data input when the audit_app token feature is disabled", async () => {
+    await setup({ hasAuditApp: false });
+
+    expect(
+      screen.queryByText("Collect user data to display in usage analytics"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("Usage tracking section visibility", () => {
+    it("should hide the Usage tracking section on Starter Cloud (hosting without audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: false });
+
+      expect(screen.queryByText("Usage tracking")).not.toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on Pro Cloud (hosting with audit_app)", async () => {
+      await setup({ isCloudPlan: true, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted OSS (no hosting, no audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: false });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
+
+    it("should show the Usage tracking section on self-hosted EE (no hosting, audit_app)", async () => {
+      await setup({ isCloudPlan: false, hasAuditApp: true });
+
+      expect(screen.getByText("Usage tracking")).toBeInTheDocument();
+    });
   });
 });

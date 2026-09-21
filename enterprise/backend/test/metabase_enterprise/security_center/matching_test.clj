@@ -31,7 +31,6 @@
       nil
       "")))
 
-#_:clj-kondo/ignore
 (deftest ^:parallel affected-by-version?-test
   (let [v            matching/parse-version
         in-range?    @#'matching/affected-by-version?
@@ -75,9 +74,11 @@
       (is (false? (in-range? nil []))))))
 
 (deftest ^:parallel evaluate-advisory-test
-  (testing ":error query-result propagates regardless of in-range?"
-    (is (= :error (matching/evaluate-advisory true  :error)))
-    (is (= :error (matching/evaluate-advisory false :error))))
+  (testing ":error only survives when the version check didn't already settle it"
+    (is (= :error (matching/evaluate-advisory true :error)))
+    (testing "out-of-range: the version alone rules the instance out, so an
+              undeterminable query must not escalate to :error"
+      (is (= :not_affected (matching/evaluate-advisory false :error)))))
   (testing "falsey query-result → :not_affected regardless of in-range?"
     (is (= :not_affected (matching/evaluate-advisory true  false)))
     (is (= :not_affected (matching/evaluate-advisory false false))))
@@ -103,12 +104,12 @@
                                 :where [:= :email "nonexistent@example.com"] :limit 1}}))))
   (testing "falls back to :default when dialect not present"
     (is (true? (matching/execute-matching-query!
-                {:some_other_db {:select [1] :from [:core_user]
-                                 :where [:= :email "nonexistent@example.com"] :limit 1}
-                 :default       {:select [1] :from [:core_user] :limit 1}}))))
+                {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user]
+                                                                       :where [:= :email "nonexistent@example.com"] :limit 1}
+                 :default                                             {:select [1] :from [:core_user] :limit 1}}))))
   (testing "no dialect match and no default → :error"
     (is (= :error (matching/execute-matching-query!
-                   {:some_other_db {:select [1] :from [:core_user] :limit 1}}))))
+                   {(first (disj #{:h2 :mysql :postgres} (mdb/db-type))) {:select [1] :from [:core_user] :limit 1}}))))
   (testing "query against missing table returns :error"
     (is (= :error (matching/execute-matching-query!
                    {:default {:select [1] :from [:nonexistent_table_xyz] :limit 1}}))))
@@ -183,10 +184,32 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
+(deftest evaluate-advisory!-out-of-range-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
+    ;; An advisory whose query names a table this version doesn't have yet. Reported as
+    ;; :error before, which the notification task treats the same as :active — so instances
+    ;; the version check had already cleared got notified anyway. See GDGT-2972.
+    (testing "out-of-range + query error → :not_affected, never :error"
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     {:advisory_id       "SC-MATCH-005"
+                      :severity          "high"
+                      :title             "Test"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                      :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                      :match_status      "unknown"
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
+        (matching/evaluate-advisory! advisory)
+        (is (=? {:match_status      :not_affected
+                 :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
-  ;; The matching_query in these tests would throw if executed — that's how we
-  ;; verify the short-circuit actually avoids running the query.
+    ;; The matching_query in these tests would throw if executed — that's how we
+    ;; verify the short-circuit actually avoids running the query.
     (let [past #t "2020-01-01T00:00:00Z"]
       (testing "out-of-range + already :resolved → skip entirely (query not run, timestamp preserved)"
         (mt/with-temp [:model/SecurityAdvisory advisory
@@ -237,10 +260,13 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :resolved
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-  ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
-  ;; must never produce :active — we cannot claim an instance is affected when
-  ;; we can't even compare its version to the affected ranges.
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
+;; must never produce :active — we cannot claim an instance is affected when
+;; we can't even compare its version to the affected ranges.
+(deftest evaluate-advisory!-unparseable-version-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
     (doseq [tag ["vLOCAL_DEV" "vUNKNOWN"]]
       (testing (str "unparseable instance version " (pr-str tag) " never yields :active")
         (is (nil? (matching/parse-version tag)))
@@ -250,7 +276,7 @@
                         :title             "Test"
                         :description       "Test"
                         :remediation       "Upgrade"
-                      ;; Range that would normally match any realistic version.
+                        ;; Range that would normally match any realistic version.
                         :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                         :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                         :match_status      "unknown"
@@ -259,6 +285,72 @@
           (matching/evaluate-advisory! advisory (matching/parse-version tag))
           (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
             (is (not= :active (:match_status reloaded)))))))))
+
+(deftest evaluate-advisory!-reactivation-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
+    (let [acked-at #t "2026-04-01T00:00:00Z"
+          notified #t "2026-04-02T00:00:00Z"]
+      (testing "acked unaffected advisory transitioning to :active or :error clears the ack but preserves last_notified_at"
+        (doseq [prior-status        ["resolved" "not_affected"]
+                [label new-status query]
+                [["active" :active {:default {:select [1] :from [:core_user] :limit 1}}]
+                 ["error"  :error  {:default {:select [1] :from [:nonexistent_table] :limit 1}}]]]
+          (testing (str prior-status " -> " label)
+            (mt/with-temp [:model/SecurityAdvisory advisory
+                           {:advisory_id       (str "SC-REACT-" prior-status "-" label)
+                            :severity          "high"
+                            :title             "Test"
+                            :description       "Test"
+                            :remediation       "Upgrade"
+                            :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                            :matching_query    query
+                            :match_status      prior-status
+                            :acknowledged_at   acked-at
+                            :acknowledged_by   (mt/user->id :rasta)
+                            :last_notified_at  notified
+                            :published_at      #t "2026-03-24T00:00:00Z"
+                            :updated_at        #t "2026-03-24T00:00:00Z"}]
+              (matching/evaluate-advisory! advisory)
+              (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+                (is (= new-status (:match_status reloaded)))
+                (is (nil? (:acknowledged_at reloaded)))
+                (is (nil? (:acknowledged_by reloaded)))
+                (is (= (t/instant notified) (t/instant (:last_notified_at reloaded)))))))))
+      (testing "advisory already :active stays acked"
+        (mt/with-temp [:model/SecurityAdvisory advisory
+                       {:advisory_id       "SC-REACT-NOOP"
+                        :severity          "high"
+                        :title             "Test"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
+                        :match_status      "active"
+                        :acknowledged_at   acked-at
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-advisory! advisory)
+          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+            (is (= :active (:match_status reloaded)))
+            (is (= (t/instant acked-at) (t/instant (:acknowledged_at reloaded))))
+            (is (= (mt/user->id :rasta) (:acknowledged_by reloaded))))))
+      (testing "unacked advisory transitioning to :active is unaffected by reactivation logic"
+        (mt/with-temp [:model/SecurityAdvisory advisory
+                       {:advisory_id       "SC-REACT-UNACKED"
+                        :severity          "high"
+                        :title             "Test"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                        :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
+                        :match_status      "not_affected"
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-advisory! advisory)
+          (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+            (is (= :active (:match_status reloaded)))
+            (is (nil? (:acknowledged_at reloaded)))))))))
 
 (deftest evaluate-all-advisories!-test
   (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
@@ -315,16 +407,52 @@
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
           (is (not= past (:last_evaluated_at (fetch "SC-EVAL-001")))))
-        (testing "acknowledged + not_affected advisories are skipped"
+        (testing "acknowledged + not_affected + in-range advisories are still re-evaluated"
           (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-002"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
-          (is (= (t/instant past)
-                 (t/instant (:last_evaluated_at (fetch "SC-EVAL-002"))))))
+          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-002")))))
         (testing "acknowledged + error advisories are still re-evaluated"
           (t2/update! :model/SecurityAdvisory {:advisory_id "SC-EVAL-003"}
                       {:acknowledged_at (mi/now) :acknowledged_by (mt/user->id :rasta)
                        :last_evaluated_at past})
           (matching/evaluate-all-advisories!)
-          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-003")))))))))
+          (is (not= past (:last_evaluated_at (fetch "SC-EVAL-003")))))))
+    (testing "acknowledged + terminal + out-of-range advisories are skipped (version-range opt)"
+      (let [past #t "2020-01-01T00:00:00Z"]
+        (mt/with-temp [:model/SecurityAdvisory _resolved
+                       {:advisory_id       "SC-EVAL-OOR-001"
+                        :severity          "high"
+                        :title             "Out-of-range resolved"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                        ;; would error if executed — proves the short-circuit avoids the query
+                        :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                        :match_status      "resolved"
+                        :acknowledged_at   (mi/now)
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :last_evaluated_at past
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}
+                       :model/SecurityAdvisory _not-affected
+                       {:advisory_id       "SC-EVAL-OOR-002"
+                        :severity          "low"
+                        :title             "Out-of-range not_affected"
+                        :description       "Test"
+                        :remediation       "Upgrade"
+                        :affected_versions [{:min "0.0.1" :fixed "0.0.2"}]
+                        :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
+                        :match_status      "not_affected"
+                        :acknowledged_at   (mi/now)
+                        :acknowledged_by   (mt/user->id :rasta)
+                        :last_evaluated_at past
+                        :published_at      #t "2026-03-24T00:00:00Z"
+                        :updated_at        #t "2026-03-24T00:00:00Z"}]
+          (matching/evaluate-all-advisories!)
+          (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))]
+            (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-001")))))
+            (is (= :resolved (:match_status (fetch "SC-EVAL-OOR-001"))))
+            (is (= (t/instant past) (t/instant (:last_evaluated_at (fetch "SC-EVAL-OOR-002")))))
+            (is (= :not_affected (:match_status (fetch "SC-EVAL-OOR-002"))))))))))

@@ -3,18 +3,17 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
+   [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp]
-   ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.queue :as queue]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2])
+   [metabase.util.queue :as queue])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
@@ -28,11 +27,22 @@
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
+(def ^:private ^:dynamic *invalidate-select-batch-size*
+  "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
+  clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
+  500)
+
 (defn- batch-invalidate-field-values!
-  "Recalculate the field values for the given fields."
+  "Recalculate the field values for the given fields. Groups by table and uses the UNION-distinct
+  path (one warehouse query per table) on SQL drivers."
   [field-batches]
-  (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
-       (run! field-values/create-or-update-full-field-values!)))
+  (let [field-ids (into #{} cat field-batches)
+        fields    (when (seq field-ids)
+                    (->> field-ids
+                         (partition-all *invalidate-select-batch-size*)
+                         (mapcat (fn [batch]
+                                   (action-v2.db/fields batch)))))]
+    (sync.field-values/sync-fields-grouped-by-table! fields)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
   (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
@@ -41,7 +51,7 @@
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
   [table-id]
-  (u/prog1 (api/check-404 (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true))
+  (u/prog1 (api/check-404 (action-v2.db/pk-fields-for-table table-id))
     (api/check-500 (pos? (count <>)))))
 
 (defn get-row-pks
@@ -76,31 +86,30 @@
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (when (seq rows)
-    (let [{:keys [db_id]} (api/check-404 (t2/select-one :model/Table table-id))
+    (let [{:keys [db_id]} (api/check-404 (action-v2.db/table table-id))
           row-pks (seq (map (partial get-row-pks pk-fields) rows))]
       (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
-      (qp.store/with-metadata-provider db_id
-        (let [mp    (qp.store/metadata-provider)
-              query (lib/query mp (lib.metadata/table mp table-id))
-              query (lib/filter
-                     query
-                     ;; We can optimize the most common case considerably.
-                     (if (= 1 (count pk-fields))
-                       (apply lib/in
-                              (lib.metadata/field mp (:id (first pk-fields)))
-                              (map (comp val first) row-pks))
-                       ;; Optimizing this could be done in many cases, but it would be complex.
-                       (apply* lib/or
-                               (for [row-pk row-pks]
-                                 (apply* lib/and
-                                         (for [field pk-fields]
-                                           (lib/= (lib.metadata/field mp (:id field))
-                                                  (get row-pk (:name field)))))))))]
-          (->> query
-               qp/userland-query-with-default-constraints
-               qp/process-query
-               :data
-               qp-result->row-map))))))
+      (let [mp    (lib-be/application-database-metadata-provider db_id)
+            query (lib/query mp (lib.metadata/table mp table-id))
+            query (lib/filter
+                   query
+                   ;; We can optimize the most common case considerably.
+                   (if (= 1 (count pk-fields))
+                     (apply lib/in
+                            (lib.metadata/field mp (:id (first pk-fields)))
+                            (map (comp val first) row-pks))
+                     ;; Optimizing this could be done in many cases, but it would be complex.
+                     (apply* lib/or
+                             (for [row-pk row-pks]
+                               (apply* lib/and
+                                       (for [field pk-fields]
+                                         (lib/= (lib.metadata/field mp (:id field))
+                                                (get row-pk (:name field)))))))))]
+        (->> query
+             qp/userland-query-with-default-constraints
+             qp/process-query
+             :data
+             qp-result->row-map)))))
 
 (defn apply-coercions
   "For fields that have a coercion_strategy, apply the coercion function (defined in data-editing.coerce) to the corresponding value in each row.
@@ -109,10 +118,10 @@
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
         fields      (when (seq field-names)
-                      (t2/select :model/Field :table_id table-id :name [:in field-names]))
+                      (action-v2.db/fields-by-name table-id field-names))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
-                           [(keyword field-name)
+                           [field-name
                             (or (when (nil? coercion_strategy) identity)
                                 (:in (data-editing.coerce/coercion-fns coercion_strategy))
                                 (throw (ex-info "Coercion strategy has no defined coercion function"
@@ -120,7 +129,7 @@
                                                  :field field-name
                                                  :coercion_strategy coercion_strategy})))])
                          (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn (keyword k) identity))))]
+        coerce      (fn [k v] (some-> v ((coerce-fn (name k) identity))))]
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
@@ -132,17 +141,10 @@
         ln->ids     (when (seq lower-names)
                       (u/group-by
                        :lower_name :id
-                       (t2/query {:select [:id [[:lower :name] :lower_name]]
-                                  :from   [(t2/table-name :model/Field)]
-                                  :where  [:and
-                                           [:= :table_id table-id]
-                                           [:in [:lower :name] lower-names]
-                                           [:in :has_field_values ["list" "auto-list"]]
-                                           [:= :semantic_type "type/Category"]]})))
+                       (action-v2.db/category-list-field-ids-by-name table-id lower-names)))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
-                                      old-values (into #{} cat (t2/select-fn-vec :values :model/FieldValues
-                                                                                 :field_id [:in field-ids]))]]
+                                      old-values (into #{} cat (action-v2.db/field-values-of-fields field-ids))]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]
@@ -173,7 +175,9 @@
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)]
+                                     :when (or before after)
+                                     :let [before (some-> before (update-keys u/qualified-name))
+                                           after  (some-> after (update-keys u/qualified-name))]]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
                                   :before before
                                   :after  after}])]

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListColumns } from "metabase/list-view/components/ListView";
 import {
   Button,
   type FlexProps,
@@ -12,7 +11,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { useListColumns } from "metabase/visualizations/visualizations/List/components/ListView";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListViewColumnsSidebar.module.css";
@@ -77,14 +77,14 @@ export function ListViewColumnsSidebar({
         <Text fw="bold">{t`Customize List layout`}</Text>
         <Button size="xs" variant="subtle" onClick={onDone}>{t`Done`}</Button>
       </Group>
-      <Stack gap="md">
+      <Stack gap="lg">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-tertiary" />}
+          leftSection={<Icon name="search" size={14} c="text-disabled" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
-        <Text mt="md">{t`Drag a column into a well to place it there.`}</Text>
+        <Text mt="lg">{t`Drag a column into a well to place it there.`}</Text>
         <Stack gap="sm">
           {filtered.map((opt) => (
             <ColumnItem
@@ -98,7 +98,7 @@ export function ListViewColumnsSidebar({
             />
           ))}
           {filtered.length === 0 ? (
-            <Text size="sm" c="text-tertiary">{t`No available columns`}</Text>
+            <Text size="sm" c="text-disabled">{t`No available columns`}</Text>
           ) : null}
         </Stack>
       </Stack>{" "}

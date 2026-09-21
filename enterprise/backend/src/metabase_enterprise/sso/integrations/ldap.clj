@@ -14,9 +14,23 @@
   [:merge sso/LDAPUserInfo
    [:map [:attributes [:maybe [:map-of :string :any]]]]])
 
-(defn- syncable-user-attributes [m]
+(defn- syncable-user-attributes
+  "Directory attributes to sync onto the user. Only attributes named in the allowlist are kept, so an
+  empty allowlist syncs nothing; `:objectclass` and the configured blacklist are always dropped.
+  Surviving attributes are normalized by
+  [[metabase-enterprise.sso.integrations.sso-utils/stringify-valid-attributes]]."
+  [m]
   (when (ee.sso.settings/ldap-sync-user-attributes)
-    (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ee.sso.settings/ldap-sync-user-attributes-blacklist)))))
+    (let [allowlist (set (map u/lower-case-en (ee.sso.settings/ldap-sync-user-attributes-allowlist)))
+          blocked   (into #{:objectclass}
+                          (map (comp keyword u/lower-case-en))
+                          (ee.sso.settings/ldap-sync-user-attributes-blacklist))]
+      (->> m
+           (remove (fn [[k _]]
+                     (let [k-lower (u/lower-case-en (name k))]
+                       (or (contains? blocked (keyword k-lower))
+                           (not (contains? allowlist k-lower))))))
+           sso-utils/stringify-valid-attributes))))
 
 (defenterprise-schema find-user :- [:maybe EEUserInfo]
   "Get user information for the supplied username."
@@ -30,7 +44,7 @@
                           result
                           settings
                           (ee.sso.settings/ldap-group-membership-filter))]
-      (assoc user-info :attributes (some-> (syncable-user-attributes result) (update-keys name))))))
+      (assoc user-info :attributes (syncable-user-attributes result)))))
 
 (defenterprise check-provision-ldap
   "Throw if creating new users from ldap is disallowed."

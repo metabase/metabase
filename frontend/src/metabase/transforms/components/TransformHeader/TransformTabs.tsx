@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {
@@ -17,12 +17,12 @@ type TransformTabsProps = {
 
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
   const tabs = getTabs(transform.id);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 };
 
-function getTabs(id: TransformId): PaneHeaderTab[] {
+function getTabs(id: TransformId): PillTab[] {
   const inspectUrl = Urls.transformInspect(id);
-  const tabs: PaneHeaderTab[] = [
+  const tabs: PillTab[] = [
     {
       label: t`Definition`,
       to: Urls.transform(id),
@@ -36,12 +36,19 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
       to: Urls.transformSettings(id),
     },
     {
+      label: t`Indexes`,
+      to: Urls.transformIndexes(id),
+    },
+  ];
+
+  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
+    tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
       isGated: !PLUGIN_TRANSFORMS_PYTHON.isEnabled,
       isSelected: (pathname: string) => pathname.startsWith(inspectUrl),
-    },
-  ];
+    });
+  }
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isLibraryCollection } from "metabase/collections/utils";
-import type { IconName } from "metabase/ui";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,
+  IconName,
   RemoteSyncEntity,
   RemoteSyncEntityModel,
   RemoteSyncEntityStatus,
@@ -61,6 +61,13 @@ const displayGroupSpecs: DisplayGroupSpec[] = [
     icon: "snippet",
     pathPrefixGroupId: "library",
     priority: 90,
+  },
+  {
+    id: "glossary",
+    models: new Set(["glossary"]),
+    icon: "glossary",
+    pathPrefixGroupId: "library",
+    priority: 80,
   },
   {
     id: "tables",
@@ -170,7 +177,7 @@ const getGroupKeyInfo = (
   if (entity.collection_id != null) {
     return { groupKey: entity.collection_id, spec };
   }
-  if (spec.id === "snippets" && libraryCollectionId != null) {
+  if (spec.pathPrefixGroupId === "library" && libraryCollectionId != null) {
     return { groupKey: libraryCollectionId, spec };
   }
   return { groupKey: 0, spec };

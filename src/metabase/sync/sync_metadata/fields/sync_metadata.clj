@@ -4,6 +4,7 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -12,8 +13,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
+
+(defn- normalize-nfc-path
+  "Normalize a `nfc-path` to a vector of strings so a driver emitting keywords doesn't churn against the
+  JSON-stringified values stored in the application DB."
+  [path]
+  (some->> path (mapv name)))
 
 (defn- crufty-field? [db field-metadata]
   (crufty/name? (:name field-metadata)
@@ -36,6 +42,8 @@
    metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
          old-base-type                  :base-type
+         old-effective-type             :effective-type
+         old-coercion-strategy          :coercion-strategy
          old-field-comment              :field-comment
          old-semantic-type              :semantic-type
          old-database-position          :database-position
@@ -49,7 +57,8 @@
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
          old-visibility-type            :visibility-type
-         old-preview-display            :preview-display} metabase-field
+         old-preview-display            :preview-display
+         old-nfc-path                   :nfc-path} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
@@ -61,7 +70,8 @@
          new-database-is-generated      :database-is-generated
          new-database-is-nullable       :database-is-nullable
          new-db-partitioned             :database-partitioned
-         new-db-required                :database-required} field-metadata
+         new-db-required                :database-required
+         new-nfc-path                   :nfc-path} field-metadata
         new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
@@ -74,7 +84,6 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
@@ -98,6 +107,8 @@
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?           (not= old-db-required new-db-required)
         new-visibility-type?       (not= old-visibility-type new-visibility-type)
+        new-nfc-path?              (not= (normalize-nfc-path old-nfc-path)
+                                         (normalize-nfc-path new-nfc-path))
         ;; set preview_display=false for crufty fields (prevents FieldValues from being created)
         is-crufty?                 (crufty-field? database field-metadata)
         set-preview-display-false? (and is-crufty? old-preview-display)
@@ -116,17 +127,26 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (doto
-            {:base_type           new-base-type
-             :effective_type      new-base-type
-             :coercion_strategy   nil
-                ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-             :fingerprint_version 0
-             :fingerprint         nil
-                ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-             :semantic_type       nil}
-             ;; we must override user-set values
-             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
+           (field-user-settings/unset-user-settings!
+            (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
+           {:base_type           new-base-type
+            :effective_type      new-base-type
+            :coercion_strategy   nil
+            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+            :fingerprint_version 0
+            :fingerprint         nil
+            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+            :semantic_type       nil})
+         (when (and (not new-base-type?)
+                    (nil? old-coercion-strategy)
+                    (some? old-effective-type)
+                    (not= old-effective-type new-base-type))
+           (log/warnf "Healing %s: effective_type %s ≠ base_type %s with no coercion_strategy. Resetting effective_type to match base_type."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-effective-type
+                      new-base-type)
+           (field-user-settings/unset-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
+           {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -160,7 +180,7 @@
            ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
            (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
                   (some? old-pk)
-                     ;; otherwise, log only if logical pk status has changed
+                  ;; otherwise, log only if logical pk status has changed
                   (not= new-pk (= old-semantic-type :type/PK)))
              (log/infof "Database pk of %s has changed from '%s' to '%s'"
                         (common/field-metadata-name-for-logging table metabase-field)
@@ -205,11 +225,17 @@
            {:database_required new-db-required})
          (when new-visibility-type?
            {:visibility_type new-visibility-type})
+         (when new-nfc-path?
+           (log/infof "NFC path of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-nfc-path
+                      new-nfc-path)
+           {:nfc_path new-nfc-path})
          (when set-preview-display-false?
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
+             (pos? (sync.db/update-field! (u/the-id metabase-field) updates)))
       1
       0)))
 

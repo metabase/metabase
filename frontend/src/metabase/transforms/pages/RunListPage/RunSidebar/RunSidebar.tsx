@@ -1,15 +1,15 @@
 import { memo } from "react";
 
+import { ErrorSection } from "metabase/transforms/components/ErrorSection";
+import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
 import { CancelationSection } from "./CancelationSection";
-import { ErrorSection } from "./ErrorSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import S from "./RunSidebar.module.css";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type RunSidebarProps = {
   run: TransformRun;
@@ -34,12 +34,12 @@ export const RunSidebar = memo(function RunSidebar({
     >
       <Stack
         className={S.sidebar}
-        p="lg"
-        gap="xl"
-        bg="background-primary"
+        p="xl"
+        gap="xxl"
+        bg="background_page-primary"
         data-testid="run-list-sidebar"
       >
-        <Stack gap="lg">
+        <Stack gap="xl">
           <SidebarHeader run={run} onClose={onClose} />
           <LocationSection run={run} />
           <InfoSection run={run} />

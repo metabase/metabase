@@ -45,7 +45,7 @@ describe("scenarios > embedding-sdk > requests", () => {
 
       const sessionIds: string[] = [];
 
-      cy.intercept("GET", "/auth/sso?jwt=**", (req) => {
+      cy.intercept("POST", "/auth/sso", (req) => {
         req.continue((res) => {
           sessionIds.push(res.body.id);
         });
@@ -91,14 +91,22 @@ describe("scenarios > embedding-sdk > requests", () => {
         cy.findByText("Product ID").should("be.visible");
 
         cy.wait("@jwtProvider");
-        // We ensure that both `dataset` requests are made after the token refresh request
+
+        // Adding then removing the breakout triggers two queries while the token
+        // is expired. They share a single token refresh (dedup); the earlier
+        // query is superseded and dropped before dispatch, so only the latest
+        // dataset request goes out — and it carries the refreshed session token.
         cy.get("@dataset.all", { timeout: 60_000 })
-          .should("have.length", 2)
+          .should("have.length", 1)
           .each((interception: any) => {
             expect(interception.request.headers["x-metabase-session"]).to.equal(
               sessionIds[1],
             );
           });
+
+        // One `/auth/sso` at mount + one after expiry = 2 (deduped, not one
+        // refresh per query).
+        cy.get("@jwtToSession.all").should("have.length", 2);
       });
     });
   });

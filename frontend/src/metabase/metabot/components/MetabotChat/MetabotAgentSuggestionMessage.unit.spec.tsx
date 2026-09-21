@@ -1,14 +1,12 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
-} from "metabase-types/api";
+import type { MetabotSuggestedTransform, Transform } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockUser,
@@ -18,9 +16,10 @@ import {
   createMockTransform,
 } from "metabase-types/api/mocks/transform";
 
-import type { MetabotAgentEditSuggestionChatMessage } from "../../state/types";
-
-import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
+import {
+  AgentSuggestionMessage,
+  type SuggestionMessage,
+} from "./MetabotAgentSuggestionMessage";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -31,29 +30,30 @@ const createMockSuggestedTransform = (
   ...overrides,
 });
 
-const createMockTransformInfo = (
-  overrides: Partial<MetabotTransformInfo>,
-): MetabotTransformInfo => ({
-  type: "transform",
-  ...createMockTransform(),
-  ...overrides,
-});
+const createMockTransformSuggestionMessage = (overrides: {
+  payload: { suggestedTransform: MetabotSuggestedTransform };
+}): SuggestionMessage => {
+  const {
+    active: _active,
+    suggestionId: _suggestionId,
+    ...value
+  } = overrides.payload.suggestedTransform;
+  return {
+    id: "msg-123",
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "data-transform_suggestion",
+      data: value,
+    },
+  };
+};
 
-const createMockTransformSuggestionMessage = (
-  overrides: Partial<MetabotAgentEditSuggestionChatMessage>,
-): MetabotAgentEditSuggestionChatMessage => ({
-  id: "msg-123",
-  role: "agent",
-  type: "edit_suggestion",
-  model: "transform",
-  payload: {
-    editorTransform: undefined,
-    suggestedTransform: createMockSuggestedTransform({}),
-  },
-  ...overrides,
-});
+const setupTransformEndpoint = (transform: Transform) => {
+  fetchMock.get(`path:/api/transform/${transform.id}`, transform);
+};
 
-const setup = (message: MetabotAgentEditSuggestionChatMessage) => {
+const setup = (message: SuggestionMessage) => {
   setupEnterprisePlugins();
   return renderWithProviders(<AgentSuggestionMessage message={message} />, {
     storeInitialState: createMockState({
@@ -68,7 +68,6 @@ describe("AgentSuggestionMessage", () => {
     setup(
       createMockTransformSuggestionMessage({
         payload: {
-          editorTransform: undefined,
           suggestedTransform: createMockSuggestedTransform({
             id: undefined,
             source: {
@@ -88,15 +87,17 @@ describe("AgentSuggestionMessage", () => {
   });
 
   it("should show diff view for edited transforms", async () => {
+    setupTransformEndpoint(
+      createMockTransform({
+        id: 123,
+        source: createMockPythonTransformSource({
+          body: "# Original code\nprint('original')",
+        }),
+      }),
+    );
     setup(
       createMockTransformSuggestionMessage({
         payload: {
-          editorTransform: createMockTransformInfo({
-            id: 123,
-            source: createMockPythonTransformSource({
-              body: "# Original code\nprint('original')",
-            }),
-          }),
           suggestedTransform: createMockSuggestedTransform({
             id: 123,
             source: createMockPythonTransformSource({
@@ -117,11 +118,30 @@ describe("AgentSuggestionMessage", () => {
     ).toBeInTheDocument();
   });
 
+  it("should always disable the action button", async () => {
+    setup(
+      createMockTransformSuggestionMessage({
+        payload: {
+          suggestedTransform: createMockSuggestedTransform({
+            id: undefined,
+            source: {
+              type: "query",
+              query: createMockNativeDatasetQuery(),
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Create/ }),
+    ).toBeDisabled();
+  });
+
   it("should be collapsible", async () => {
     setup(
       createMockTransformSuggestionMessage({
         payload: {
-          editorTransform: undefined,
           suggestedTransform: createMockSuggestedTransform({
             id: undefined, // Make sure this is a new transform
             name: "Test Transform",

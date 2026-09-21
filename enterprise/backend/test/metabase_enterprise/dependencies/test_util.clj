@@ -5,7 +5,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.test :as mt]))
 
@@ -43,9 +42,14 @@
    :template-tags template-tags
    :lib/type      :metadata/native-query-snippet})
 
-(defn mock-metadata-provider [{:keys [cards snippets]}]
+(defn mock-metadata-provider
+  "Cards and snippets from an in-memory mock, Tables from the application database.
+
+  The Tables have to be real rows: resolving a table name parsed out of native SQL is a lookup against the appdb, so a
+  purely in-memory base would have no rows to find."
+  [{:keys [cards snippets]}]
   (lib/composed-metadata-provider
-   meta/metadata-provider
+   (mt/metadata-provider)
    (providers.mock/mock-metadata-provider
     {:cards cards
      :native-query-snippets snippets})))
@@ -72,10 +76,10 @@
         initial-mock-mp (mock-metadata-provider {:snippets snippets})
         initial-card-a  (mock-card initial-mock-mp
                                    {:id    1
-                                    :query (lib/query initial-mock-mp (meta/table-metadata :products))})
+                                    :query (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :products)))})
         initial-card-b  (mock-card initial-mock-mp
                                    {:id    2
-                                    :query (lib/query initial-mock-mp (meta/table-metadata :orders))})]
+                                    :query (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :orders)))})]
     (mock-metadata-provider
      {:cards    (into [initial-card-a
                        initial-card-b]
@@ -160,7 +164,7 @@
                         :query "SELECT CATEGORY FROM {{#31}}"}
                        ;; Card 33: MBQL card with subset of products columns (simulates MBQL intermediary)
                        {:id      33
-                        :query   (lib/query initial-mock-mp (meta/table-metadata :products))
+                        :query   (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :products)))
                         :details {:result-metadata
                                   (vec (filter #(#{"ID" "TITLE"} (:name %))
                                                (:result-metadata initial-card-a)))}}

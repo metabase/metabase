@@ -1,7 +1,8 @@
 import { Text } from "@mantine/core";
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import { Icon, type IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { SelectItem, type SelectItemProps } from "./SelectItem";
 

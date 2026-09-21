@@ -65,11 +65,9 @@ describe("Admin Settings Routing - Enterprise without features", () => {
   describe("does not render the premium routes", () => {
     it.each(notFoundRoutes)(
       "should not find the $name enterprise route",
-      async ({ path }) => {
+      async ({ path, testPattern }) => {
         await setup({ isAdmin: true, initialRoute: path });
-        expect(
-          await screen.findByText("We're a little lost..."),
-        ).toBeInTheDocument();
+        expect(screen.queryByText(testPattern)).not.toBeInTheDocument();
       },
     );
   });

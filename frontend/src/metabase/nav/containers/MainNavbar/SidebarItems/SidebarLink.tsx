@@ -2,8 +2,11 @@ import type { MouseEvent, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconData } from "metabase/common/utils/icon";
+import type { IconProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   FullWidthButton,
@@ -19,19 +22,23 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps;
+  icon?: IconName | IconProps | IconData;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: ReactNode;
   right?: ReactNode;
   onClick?: (event: MouseEvent) => void;
+  target?: string;
+  rel?: string;
 }
 
 type ContentProps = {
   children: ReactNode;
 };
 
-function isIconPropsObject(icon: string | IconProps): icon is IconProps {
+function isIconPropsObject(
+  icon: string | IconProps | IconData,
+): icon is IconProps | IconData {
   return _.isObject(icon);
 }
 
@@ -52,6 +59,8 @@ function SidebarLink({
   left = null,
   right = null,
   onClick,
+  target,
+  rel,
   ...props
 }: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
@@ -62,9 +71,20 @@ function SidebarLink({
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
+
     return (
       <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
+        {hasIconUrl ? (
+          <EntityIcon
+            name={iconProps.name}
+            iconUrl={iconProps.iconUrl}
+            size="1rem"
+            color="core-brand"
+          />
+        ) : (
+          <SidebarIcon {...iconProps} isSelected={isSelected} />
+        )}
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);
@@ -72,7 +92,13 @@ function SidebarLink({
   const Content = useMemo(() => {
     return url
       ? (props: ContentProps) => (
-          <FullWidthLink {...props} to={url} onClick={onClick} />
+          <FullWidthLink
+            {...props}
+            to={url}
+            target={target}
+            rel={rel}
+            onClick={onClick}
+          />
         )
       : (props: ContentProps) => (
           <FullWidthButton
@@ -81,7 +107,7 @@ function SidebarLink({
             onClick={onClick}
           />
         );
-  }, [url, isSelected, onClick]);
+  }, [url, isSelected, onClick, target, rel]);
 
   return (
     <NodeRoot

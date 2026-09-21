@@ -21,11 +21,11 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.number :as u.number]
    [metabase.util.performance :as perf :refer [every? some mapv empty? #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
@@ -130,7 +130,7 @@
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year
                 :get-year :year-of-era}]
-    (lib.util.match/match-lite expr
+    (match/match-one expr
       [(op :guard #{:= :in :!= :not-in}) _ [:get-hour _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} {1} {2}" (->unbucketed-display-name a) (if (#{:= :in} op) "is at" "excludes the hour of")
                 (u.time/format-unit b :hour-of-day))
@@ -238,7 +238,7 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
-    (lib.util.match/match-lite expr
+    (match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
       ((binary-filter-display-fns :is-before)                   (->display-name x) (->temporal-name y))
 
@@ -266,7 +266,7 @@
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)]
-    (lib.util.match/match-lite expr
+    (match/match-one expr
       [:between _ x (y :guard string?) (z :guard string?)]
       ((binary-filter-display-fns :is)
        (->unbucketed-display-name x)
@@ -346,10 +346,10 @@
         (clojure.core/= unit :day)))
     ((binary-filter-display-fns :is)
      (lib.metadata.calculation/display-name query stage-number expr style)
-     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit (perf/select-keys opts [:include-current]))))
     ((binary-filter-display-fns :is-in-the)
      (lib.metadata.calculation/display-name query stage-number expr style)
-     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit opts)))))
+     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit (perf/select-keys opts [:include-current]))))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
@@ -447,12 +447,12 @@
 (mu/defn filter :- :metabase.lib.schema/query
   "Sets `boolean-expression` as a filter on `query`. Ignores duplicate filters (ignoring :lib/uuid)."
   ([query :- :metabase.lib.schema/query
-    boolean-expression]
+    boolean-expression :- ::lib.common/op-arg]
    (metabase.lib.filter/filter query nil boolean-expression))
 
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]
-    boolean-expression]
+    boolean-expression :- ::lib.common/op-arg]
    ;; if this is a Segment metadata, convert it to `:segment` MBQL clause before adding
    (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
      (recur query stage-number (lib.ref/ref boolean-expression))
@@ -476,6 +476,21 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]]
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
+
+(defn- flatten-and-clause
+  [a-filter]
+  (if (lib.util/clause-of-type? a-filter :and)
+    (into [] (mapcat flatten-and-clause) (drop 2 a-filter))
+    [a-filter]))
+
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]]."
+  ([query :- ::lib.schema/query] (atomic-filters query nil))
+  ([query        :- ::lib.schema/query
+    stage-number :- [:maybe :int]]
+   (perf/not-empty (into [] (mapcat flatten-and-clause) (filters query stage-number)))))
 
 (defn- leading-ref
   "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
@@ -535,7 +550,7 @@
   a `column`, and arguments."
   [filter-operator :- [:or ::lib.schema.filter/operator :keyword :string]
    column          :- ::lib.schema.metadata/column
-   & args]
+   & args          :- [:* ::lib.common/op-arg]]
   (let [tag (if (map? filter-operator)
               (:short filter-operator)
               (keyword filter-operator))]
@@ -553,7 +568,8 @@
 (mu/defn filter-parts :- ::filter-parts
   "Return the parts of the filter clause `a-filter-clause` in query `query` at stage `stage-number`.
   Might obsolete [[filter-operator]]."
-  ([query a-filter-clause]
+  ([query :- ::lib.schema/query
+    a-filter-clause :- ::lib.schema.expression/boolean]
    (filter-parts query -1 a-filter-clause))
 
   ([query :- ::lib.schema/query

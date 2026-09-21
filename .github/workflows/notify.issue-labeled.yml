@@ -1,0 +1,208 @@
+# Send Slack and/or PagerDuty notifications when labels are added to a Github issue.
+name: Notify on Issue Labeled
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  on-escalation-label:
+    if: github.event.label.name == '.Escalation'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Format issue title (escape quotes)
+        uses: actions/github-script@v9
+        id: vars
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        with:
+          script: |
+            core.setOutput('issue_title', process.env.ISSUE_TITLE.replaceAll(/"/g, '\\"'));
+      - name: Send escalated issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+        with:
+          webhook: ${{ secrets.SLACK_ESCALATIONS_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🔥🔥🔥 ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+
+  on-security-label:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    if: github.event.label.name == 'SECURITY'
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v9
+        id: vars
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        with:
+          script: |
+            core.setOutput('issue_title', process.env.ISSUE_TITLE.replaceAll(/"/g, '\\"'));
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+        with:
+          webhook: ${{ secrets.SLACK_SECURITY_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+
+  # Note: this only triggers if a issue is already labeled with `Type:Bug` and `flaky-test-fix` and then a team label is added.
+  on-team-label:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    if: |
+      contains(github.event.label.name, '.Team/') &&
+       ( contains(github.event.issue.labels.*.name, 'Type:Bug') ||
+         contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Build Slack message (with Linear link if available)
+        uses: actions/github-script@v9
+        id: vars
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        with:
+          script: |
+            const { findLinearIssue } = require('./.github/scripts/linear-issues.js');
+
+            const title = context.payload.issue.title;
+            const issueUrl = context.payload.issue.html_url;
+
+            let text = title + '\n' + issueUrl;
+
+            // The Linear issue is usually already synced by the time the
+            // team label lands at triage, but retry briefly just in case.
+            try {
+              const delaysSeconds = [0, 15, 30];
+              let result = null;
+
+              for (const delay of delaysSeconds) {
+                if (delay) await new Promise((r) => setTimeout(r, delay * 1000));
+                result = await findLinearIssue({
+                  githubIssueUrl: issueUrl,
+                  linearApiKey: process.env.LINEAR_API_KEY,
+                });
+                if (result.success) break;
+              }
+
+              if (result && result.success) {
+                const id = result.issue; // e.g. "GIT-1234"
+                text += `\nLinear: <https://linear.app/metabase/issue/${id}|${id}>`;
+              } else {
+                core.info(`No Linear issue found for ${issueUrl}; posting without link.`);
+              }
+            } catch (e) {
+              // Never block the notification on a Linear lookup failure
+              core.warning(`Linear lookup failed: ${e.message}`);
+            }
+
+            core.setOutput('message', JSON.stringify(text));
+
+      - name: Extracting team name
+        id: team_name
+        env:
+          LABEL_NAME: ${{ github.event.label.name }}
+        run: |
+          team_label="${LABEL_NAME//&/$}"
+          echo "$team_label"
+          team_name=${team_label#*.Team/}
+          echo "$team_name"
+          echo "team_name=${team_name^^}_SLACK_ISSUES_WEBHOOK_URL" >> "$GITHUB_OUTPUT"
+      - name: Check webhook secret exists
+        id: check_secret
+        env:
+          WEBHOOK_URL: ${{ secrets[steps.team_name.outputs.team_name] }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "Secret ${{ steps.team_name.outputs.team_name }} is not set, skipping Slack notification"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        if: steps.check_secret.outputs.exists == 'true'
+        id: slack
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
+        with:
+          webhook: ${{ secrets[steps.team_name.outputs.team_name] }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ steps.vars.outputs.message }}
+                  }
+                }
+              ]
+            }
+
+  on-escalation-and-team-querying-label:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    if: |
+      (github.event.label.name == 'Priority:P0' || github.event.label.name == 'Priority:P1' || github.event.label.name == '.Escalation') &&
+      contains(github.event.issue.labels.*.name, '.Team/Querying')
+    steps:
+      - name: Trigger PagerDuty Incident
+        env:
+          ROUTING_KEY: ${{ secrets.QUERYING_PAGERDUTY_INTEGRATION_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          LABEL_NAME: ${{ github.event.label.name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          REPO: ${{ github.repository }}
+          ALL_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+        run: |
+          payload=$(jq -n \
+            --arg rk  "$ROUTING_KEY" \
+            --arg dk  "github-issue-$ISSUE_NUMBER" \
+            --arg sum "[$LABEL_NAME] $ISSUE_TITLE" \
+            --arg src "GitHub Issues - $REPO" \
+            --arg lbl "$ALL_LABELS" \
+            --arg url "$ISSUE_URL" \
+            '{
+              routing_key: $rk,
+              event_action: "trigger",
+              dedup_key: $dk,
+              payload: {
+                summary: $sum,
+                source: $src,
+                severity: "critical",
+                custom_details: { Labels: $lbl }
+              },
+              links: [{ href: $url, text: "View GitHub Issue" }]
+            }')
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H 'Content-Type: application/json' \
+            -d "$payload"

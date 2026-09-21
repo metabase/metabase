@@ -1,10 +1,9 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { Icon, Title } from "metabase/ui";
+import { Ellipsified, Icon, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
@@ -76,14 +75,9 @@ function DefaultParametersSection({
       >{t`If a dashboard filter has a default value, it'll be applied when your subscription is sent.`}</div>
       {formattedParameterValues.map((param, index) => {
         return (
-          <div
-            className={cx(CS.pt1, CS.flex, CS.alignCenter, CS.flexWrap)}
-            key={index}
-          >
-            <Badge inactiveColor="text-primary" isSingleLine={true}>
-              {param.name}: {param.value}
-            </Badge>
-          </div>
+          <Ellipsified fz="sm" key={index} lh="normal" pt="sm">
+            {param.name}: {param.value}
+          </Ellipsified>
         );
       })}
     </div>

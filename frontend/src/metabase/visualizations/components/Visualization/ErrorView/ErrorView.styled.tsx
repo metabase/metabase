@@ -15,7 +15,7 @@ export const Root = styled.div<{ isDashboard?: boolean }>`
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
   color: ${({ isDashboard }) =>
-    isDashboard ? color("text-secondary") : color("text-tertiary")};
+    isDashboard ? color("text-secondary") : color("text-disabled")};
 `;
 
 export const StyledIcon = styled(Icon)`

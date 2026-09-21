@@ -1,3 +1,5 @@
+import type { MatcherOptions } from "@testing-library/cypress";
+
 import type {
   MeasureId,
   SegmentId,
@@ -19,8 +21,22 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
+  visit: () => {
+    cy.visit("/data-studio");
+    // The target is only known once the `hasSeenGuide` request comes back.
+    cy.location("pathname").should("match", /^\/data-studio\/.+/);
+    DataStudio.nav().should("be.visible");
+  },
   Transforms: {
-    header: () => cy.findByTestId("transforms-header"),
+    // The transform page shows a loader until the transform, databases and the
+    // lazy editor chunk have loaded, which can take longer than the default 4s
+    header: (options: MatcherOptions = {}) =>
+      cy.findByTestId("transforms-header", { timeout: 10_000, ...options }),
+    sectionHeader: () => cy.findByTestId("transforms-section-header"),
+    transformsTab: () =>
+      DataStudio.Transforms.sectionHeader().findByText("Transforms"),
+    jobsTab: () => DataStudio.Transforms.sectionHeader().findByText("Jobs"),
+    runsTab: () => DataStudio.Transforms.sectionHeader().findByText("Runs"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),
@@ -36,17 +52,24 @@ export const DataStudio = {
     inspectTab: () => DataStudio.Transforms.header().findByText("Inspect"),
     targetTab: () => DataStudio.Transforms.header().findByText("Target"),
     settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
+    indexesTab: () => DataStudio.Transforms.header().findByText("Indexes"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
     visit: () => {
       cy.visit("/data-studio/transforms");
       DataStudio.Transforms.list().should("be.visible");
     },
+    visitTransform: (transformId: TransformId) => {
+      cy.visit(`/data-studio/transforms/${transformId}`);
+    },
     visitInspect: (transformId: TransformId) => {
       cy.visit(`/data-studio/transforms/${transformId}/inspect`);
     },
     visitSettingsTab: (transformId: TransformId) =>
       cy.visit(`/data-studio/transforms/${transformId}/settings`),
+    visitIndexes: (transformId: TransformId) =>
+      cy.visit(`/data-studio/transforms/${transformId}/indexes`),
+    runButton: () => cy.findAllByTestId("run-button").eq(0),
     pythonResults: () => cy.findByTestId("python-results"),
     enableTransformPage: () => cy.findByTestId("enable-transform-page"),
   },
@@ -77,6 +100,8 @@ export const DataStudio = {
     saveButton: () => cy.findByRole("button", { name: "Save" }),
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
+    visitSnippet: (snippetId: number) =>
+      cy.visit(`/data-studio/library/snippets/${snippetId}`),
   },
   Metrics: MetricPage,
   Tables: {
@@ -137,19 +162,33 @@ export const DataStudio = {
     visit: () => {
       cy.visit("/data-studio/library");
       DataStudio.Library.libraryPage().should("be.visible");
+      DataStudio.Library.collectionItem("Data").should("be.visible");
+      DataStudio.Library.collectionItem("Metrics").should("be.visible");
+      DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
     },
     noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
-    metricItem: (name: string) =>
-      cy.findAllByTestId("metric-name").contains(name),
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
+    rowCheckbox: (name: string) =>
+      DataStudio.Library.result(name).findByRole("checkbox"),
+    selectRow: (name: string) => DataStudio.Library.rowCheckbox(name).check(),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
-    collectionItem: (name: string) =>
+    collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
+    expandCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Expand" })
+        .click(),
+    collapseCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Collapse" })
+        .click(),
+    emptyStateRow: (description: string | RegExp) =>
+      libraryPage().contains('[data-testid="empty-state-row"]', description),
   },
 };

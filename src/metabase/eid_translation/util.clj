@@ -2,9 +2,12 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.batch-processing.core :as grouper]
+   [metabase.eid-translation.db :as eid-translation.db]
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -28,6 +31,7 @@
    :dataset           :model/Card
    :dimension         :model/Dimension
    :document          :model/Document
+   :exploration       :model/Exploration
    :measure           :model/Measure
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup
@@ -71,12 +75,29 @@
 
 ;; -------------------- Entity Id Translation Analytics --------------------
 
+(def ^:private update-translation-count-interval-seconds (* 5 60))
+
+(def ^:private update-translation-count-queue-capacity 1000)
+
+(defn- update-translation-counts!*
+  "Update the entity-id translation counter with the statuses of a batch of entity-id translations."
+  [statuses]
+  (eid-translation.settings/entity-id-translation-counter!
+   (merge-with + (frequencies statuses) (eid-translation.settings/entity-id-translation-counter))))
+
+(defonce ^:private update-translation-count-queue
+  (delay (grouper/start!
+          #'update-translation-counts!*
+          :capacity update-translation-count-queue-capacity
+          :interval (* update-translation-count-interval-seconds 1000))))
+
 (mu/defn- update-translation-count!
-  "Update the entity-id translation counter with the results of a batch of entity-id translations."
+  "Count the results of a batch of entity-id translations. The counter is only used for the daily anonymous usage
+  stats, so the updates are batched and written asynchronously instead of paying for a (cluster-wide, cache-invalidating)
+  Setting update on every translation."
   [results :- [:sequential eid-translation/Status]]
-  (let [processed-result (frequencies results)]
-    (eid-translation.settings/entity-id-translation-counter!
-     (merge-with + processed-result (eid-translation.settings/entity-id-translation-counter)))))
+  (doseq [status results]
+    (grouper/submit! @update-translation-count-queue status)))
 
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
                                                     ;; We want to pass incorrectly formatted entity-ids through here,
@@ -84,9 +105,29 @@
                                                     :string
                                                     [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
-  [api-name eids]
+  [api-name :- [:or ApiName ApiModel]
+   eids     :- [:sequential :string]]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+        eid->id (into {} (case model
+                           :model/Action             (eid-translation.db/action-ids-by-entity-ids eids)
+                           :model/Card                (eid-translation.db/card-ids-by-entity-ids eids)
+                           :model/Collection           (eid-translation.db/collection-ids-by-entity-ids eids)
+                           :model/Dashboard            (eid-translation.db/dashboard-ids-by-entity-ids eids)
+                           :model/DashboardCard        (eid-translation.db/dashboard-card-ids-by-entity-ids eids)
+                           :model/DashboardTab         (eid-translation.db/dashboard-tab-ids-by-entity-ids eids)
+                           :model/Dimension            (eid-translation.db/dimension-ids-by-entity-ids eids)
+                           :model/Document             (eid-translation.db/document-ids-by-entity-ids eids)
+                           :model/Exploration          (eid-translation.db/exploration-ids-by-entity-ids eids)
+                           :model/Measure              (eid-translation.db/measure-ids-by-entity-ids eids)
+                           :model/PermissionsGroup     (eid-translation.db/permissions-group-ids-by-entity-ids eids)
+                           :model/Pulse                (eid-translation.db/pulse-ids-by-entity-ids eids)
+                           :model/PulseCard            (eid-translation.db/pulse-card-ids-by-entity-ids eids)
+                           :model/PulseChannel         (eid-translation.db/pulse-channel-ids-by-entity-ids eids)
+                           :model/Segment              (eid-translation.db/segment-ids-by-entity-ids eids)
+                           :model/NativeQuerySnippet   (eid-translation.db/native-query-snippet-ids-by-entity-ids eids)
+                           :model/Timeline             (eid-translation.db/timeline-ids-by-entity-ids eids)
+                           :model/Transform            (eid-translation.db/transform-ids-by-entity-ids eids)
+                           :model/User                 (eid-translation.db/user-ids-by-entity-ids eids)))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}
@@ -116,9 +157,16 @@
 
 (mu/defn ->id :- :int
   "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
-   Please use that if you have to do man lookups at once."
+   Please use that if you have to do man lookups at once.
+
+   The non-string branch is a runtime guard, not the `:-`/argument schemas: those are `mu/defn`
+   schemas, which are compiled out of production builds, so they cannot be relied on to keep a
+   non-scalar value (e.g. a keyword-keyed map decoded from a JWT claim) out of the query built from
+   the return value. A map returned here reaches a Toucan2 value position and is compiled as HoneySQL
+   query structure rather than bound as a parameter."
   [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
-  (if (string? id)
+  (cond
+    (string? id)
     (let [model (->model api-name-or-model)
           [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
       (update-translation-count! [status])
@@ -129,7 +177,12 @@
                          :id id
                          :status status}))
         (:id info)))
-    id))
+
+    (pos-int? id)
+    id
+
+    :else
+    (throw (ex-info (tru "Invalid ID.") {:status-code 400}))))
 
 (mu/defn ->id-or-404 :- :int
   "Translates a single entity_id -> id, throwing a 404 error if not found.

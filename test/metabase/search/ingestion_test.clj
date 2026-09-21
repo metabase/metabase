@@ -3,12 +3,19 @@
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
-   [metabase.test :as mt]))
+   [metabase.search.test-util :as search.tu]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (deftest extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
@@ -26,27 +33,25 @@
                    :name        "Test Name"
                    :description "Test Description"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
-
   (testing "searchable-text with map format and transforms"
     (let [spec-fn              (constantly {:search-terms {:name        search.spec/explode-camel-case
                                                            :description true}})
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
-
   (testing "searchable-text filters out blank values"
     (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
           record  {:model       "test"
                    :name        "Test Name"
                    :description "  " ;; whitespace only
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
@@ -57,48 +62,107 @@
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text with map format"
     (let [spec-fn (constantly {:search-terms {:name        true
                                               :description true}})
           record  {:model       "dashboard"
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text filters out blank values"
     (let [spec-fn (constantly {:search-terms [:name :description :empty-field]})
           record  {:model       "card"
                    :name        "Test Card"
                    :description "  "
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
-
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
-            "Transformation functions should not be applied to embeddable text for semantic search")))))
+            "Transformation functions should not be applied to embeddable text for semantic search"))))
+  (testing "embeddable-text omits fields listed in :embedding-exclude"
+    (let [spec-fn (constantly {:search-terms      {:name true :document str}
+                               :embedding-exclude #{:document}})
+          record  {:model    "document"
+                   :name     "Q3 Planning"
+                   :document "the full document body"}]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+        (is (= "[document]\nname: Q3 Planning"
+               (#'search.ingestion/embeddable-text record))
+            "Excluded fields must not appear in the semantic-search embedding text")
+        (is (= "Q3 Planning the full document body"
+               (#'search.ingestion/searchable-text record))
+            "Excluded fields remain in full-text searchable-text")))))
+
+(deftest execute-all-function-attrs-test
+  (testing "function-attr result is written under the snake_case attr-key"
+    (let [spec {:attrs {:native-query {:fn (constantly "SELECT 1")}}}]
+      (is (= {:native_query "SELECT 1"}
+             (#'search.ingestion/execute-all-function-attrs spec {})))))
+  (testing "function-attr receives only the record keys declared in :fields"
+    (let [spec {:attrs {:native-query {:fn     #(vec (sort (keys %)))
+                                       :fields [:dataset_query :query_type]}}}]
+      (is (= {:native_query [:dataset_query :query_type]}
+             (#'search.ingestion/execute-all-function-attrs
+              spec
+              {:dataset_query "{}" :query_type "native" :name "ignored"})))))
+  (testing "a throwing function-attr leaves its column nil"
+    (let [spec {:attrs {:native-query {:fn (fn [_] (throw (ex-info "boom" {})))}}}]
+      (is (= {:native_query nil}
+             (#'search.ingestion/execute-all-function-attrs spec {}))))))
+
+(deftest execute-all-function-attrs-metric-reference-cycle-test
+  (testing "a card whose metric references form a cycle yields a document without temporal keys, instead of throwing (#74954)"
+    (letfn [(metric-query [metric-id]
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :orders)
+                          :aggregation  [["metric" metric-id]]}})]
+      ;; keep the cyclic cards out of the shared ingestion queue, where concurrently-running tests would index them
+      (binding [search.ingestion/*disable-updates* true]
+        (mt/with-temp
+          [:model/Card
+           {a-id :id}
+           {:name "Metric A"
+            :type :metric
+            :dataset_query (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                 (lib/aggregate (lib/count))
+                                 lib.convert/->legacy-MBQL))}
+           :model/Card
+           {b-id :id}
+           {:name "Metric B"
+            :type :metric
+            :dataset_query (metric-query a-id)}]
+          ;; close the cycle A -> B -> A; nothing rejects reference cycles at write time
+          (t2/update! :model/Card a-id {:dataset_query (metric-query b-id)})
+          (let [result (#'search.ingestion/execute-all-function-attrs
+                        (search.spec/spec "card")
+                        {:dataset_query (json/encode (metric-query a-id))
+                         :query_type    "query"})]
+            (is (map? result))
+            (is (not (contains? result :has_temporal_dim)))
+            (is (not (contains? result :non_temporal_dim_ids)))))))))
 
 (deftest search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns [:name :description])))))
-
+           (set (#'search.ingestion.query/search-term-columns [:name :description])))))
   (testing "search-term-columns with map format"
     (is (= #{:name :description}
-           (set (#'search.ingestion/search-term-columns {:name identity
-                                                         :description nil}))))))
+           (set (#'search.ingestion.query/search-term-columns {:name identity
+                                                               :description nil}))))))
 
 (deftest search-items-count-test
   (testing "search-items-count returns correct count with various searchable items"
@@ -139,10 +203,12 @@
 (deftest bulk-ingest!-caches-metadata-providers-test
   (testing "bulk-ingest! caches metadata providers so the factory is only called once per database-id"
     (let [factory-calls (atom 0)]
-      (with-redefs [search.engine/active-engines                                (fn []
-                                                                                  (simulate-metadata-lookups)
-                                                                                  nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (search.ingestion/bulk-ingest! [])
         (is (= 1 @factory-calls)
             "Factory should be called once, not once per metadata-provider lookup")))))
@@ -151,10 +217,12 @@
   (testing "bulk-ingest! reuses an outer cache and does not rebuild providers already in it"
     (let [factory-calls  (atom 0)
           existing-cache (atom (cache/basic-cache-factory {}))]
-      (with-redefs [search.engine/active-engines (fn []
-                                                   (simulate-metadata-lookups)
-                                                   nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (binding [metadata.jvm/*metadata-provider-cache* existing-cache]
           (metadata.jvm/application-database-metadata-provider 1)
           (let [pre-calls @factory-calls]
@@ -179,3 +247,19 @@
         (search/init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest curation-signals-surfaced-in-results-test
+  (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
+            so Metabot can render them (BOT-1570) — not just stored in the filtering column"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id          db-id
+                                     :name           "Curatedgoldtbl"
+                                     :active         true
+                                     :data_authority :authoritative
+                                     :data_layer     :final}]
+        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                          (filter (comp #{"table"} :model))
+                          first)]
+          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                  result)))))))

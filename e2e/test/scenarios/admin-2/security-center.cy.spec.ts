@@ -218,4 +218,50 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     cy.findByTestId("sync-advisories").click();
     cy.wait("@sync");
   });
+
+  describe("per-version download link", () => {
+    const DOWNLOADABLE_ADVISORY = {
+      advisory_id: "TEST-DL",
+      severity: "critical",
+      title: "Critical bug with a downloadable fix",
+      description: "A critical issue shipping a per-version JAR fix.",
+      remediation: "Upgrade to the patched release",
+      affected_versions: [{ min: "0.58.0", fixed: "0.59.11" }],
+      download_jar_urls: [
+        { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+        { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+      ],
+      match_status: "active",
+      published_at: "2026-03-24T00:00:00Z",
+      updated_at: "2026-03-24T00:00:00Z",
+    } as const;
+
+    it("stores and returns download_jar_urls through the real backend", () => {
+      H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
+      cy.request("GET", "/api/ee/security-center").then(({ body }) => {
+        const advisory = body.advisories.find(
+          (a: { advisory_id: string }) => a.advisory_id === "TEST-DL",
+        );
+        expect(advisory.download_jar_urls).to.deep.equal([
+          { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+        ]);
+      });
+    });
+
+    it("shows a single download button for the fix matching the instance major version", () => {
+      H.mockSessionProperty("version", { tag: "v0.59.3" });
+      H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
+      cy.visit("/admin/security-center");
+
+      cy.findAllByTestId("advisory-card")
+        .first()
+        .within(() => {
+          cy.findByRole("link", { name: /Download v0\.59\.11/ })
+            .should("have.attr", "href", "https://downloads.example.com/59.jar")
+            .and("have.attr", "target", "_blank");
+          cy.findByText("Download v0.58.11").should("not.exist");
+        });
+    });
+  });
 });

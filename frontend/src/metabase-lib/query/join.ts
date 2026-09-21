@@ -213,15 +213,6 @@ export function withJoinFields(join: Join, newFields: JoinFields): Join {
   return ML.with_join_fields(join, newFields);
 }
 
-export function renameJoin(
-  query: Query,
-  stageIndex: number,
-  joinSpec: Join | string | number,
-  newName: string,
-): Query {
-  return ML.rename_join(query, stageIndex, joinSpec, newName);
-}
-
 export function removeJoin(
   query: Query,
   stageIndex: number,

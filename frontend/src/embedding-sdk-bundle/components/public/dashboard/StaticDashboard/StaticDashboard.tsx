@@ -1,16 +1,20 @@
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
+import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkStaticMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { isQuestionCard } from "metabase/utils/dashboard";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 import { staticDashboardSchema } from "./StaticDashboard.schema";
+
+const staticClickActionMode = getEmbeddingMode({
+  queryMode: EmbeddingSdkStaticMode,
+});
 
 /**
  * @interface
@@ -33,18 +37,27 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   const normalizedProps =
     useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
 
-  const { withDownloads } = normalizedProps;
+  const { withDownloads, withTitle, withSubscriptions, autoRefreshInterval } =
+    normalizedProps;
 
-  const getClickActionMode: ClickActionModeGetter = ({ question }) =>
-    getEmbeddingMode({
-      question,
-      queryMode: EmbeddingSdkStaticMode,
-    });
+  const dashboardId = "dashboardId" in props ? props.dashboardId : undefined;
+
+  useTrackSdkComponentMount(
+    "StaticDashboard",
+    dashboardId != null ? dashboardId : null,
+    {
+      with_title: withTitle,
+      with_downloads: withDownloads,
+      with_subscriptions: withSubscriptions,
+      auto_refresh: autoRefreshInterval != null,
+    },
+  );
 
   return (
     <SdkDashboard
+      // Unjustified type cast. FIXME
       {...(normalizedProps as SdkDashboardProps)}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={staticClickActionMode}
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
@@ -53,7 +66,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>
         withDownloads &&
-        isQuestionCard(dashcard.card) &&
+        isQuestionDashCard(dashcard) &&
         !!result?.data &&
         !result?.error && (
           <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />

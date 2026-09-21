@@ -23,11 +23,7 @@
                            :messages_tab_read_only_enabled false}
                 :bot_user {:display_name bot-name
                            :always_online false}
-                :assistant_view {:assistant_description "Your AI-powered data assistant"}
-                :slash_commands [{:command "/metabot"
-                                  :url (str base-url "/api/metabot/slack/commands")
-                                  :description (str "Issue a " bot-name " command")
-                                  :should_escape false}]}
+                :assistant_view {:assistant_description "Your AI-powered data assistant"}}
      :oauth_config {:redirect_urls [(str base-url "/auth/sso/slack-connect/callback")]
                     :scopes {:bot ["app_mentions:read"
                                    "assistant:write"
@@ -73,6 +69,7 @@
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 
+;; referenced from with-slackbot-setup's syntax-quoted with-redefs, which clojure-lsp cannot see
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!
   "Validate a Slack bot token using the auth.test endpoint.

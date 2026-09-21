@@ -1,13 +1,13 @@
 import { useState } from "react";
 
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
-import type { IconName } from "metabase/ui";
 import { Badge, Flex, Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import { MetricsFilterPill } from "./MetricsFilterPill";
 import { getFilterDisplayParts } from "./utils";
@@ -66,25 +66,32 @@ export function MetricsFilterPillPopover({
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xxs">
             {metricName && (
-              <Text component="span" fw={700} c="inherit" fz="inherit">
-                {metricName}
-              </Text>
-            )}
-            {metricName && (metricCount ?? 0) > 1 && (
-              <Badge
-                circle
-                color="filter"
-                // override background from Badge.config.tsx
-                styles={{ root: { background: "var(--badge-bg)" } }}
-              >
-                {metricCount}
-              </Badge>
+              <Flex align="center">
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
+                  {metricName}
+                </Text>
+                {(metricCount ?? 0) > 1 && (
+                  <Badge
+                    circle
+                    color="core-filter"
+                    // override background from Badge.config.tsx
+                    styles={{ root: { background: "var(--badge-bg)" } }}
+                    ml="xxs"
+                    variant="light"
+                  >
+                    {metricCount}
+                  </Badge>
+                )}
+                <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
+                  {", "}
+                </Text>
+              </Flex>
             )}
             {displayParts.label}
             {displayParts.value && (
-              <Text component="span" fw={700} c="inherit" fz="inherit">
+              <Text component="span" fw={700} c="inherit" fz="inherit" lh="1">
                 {" "}
                 {displayParts.value}
               </Text>

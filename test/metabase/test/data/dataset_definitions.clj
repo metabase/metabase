@@ -160,7 +160,7 @@
                                                                         (fn [tabledef]
                                                                           (update tabledef :field-definitions concat [(tx/map->FieldDefinition
                                                                                                                        {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
-      ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
+                                                                        ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
                                                                         :rows
                                                                         (fn [rows]
                                                                           (for [[idx [username last-login password-text]] (m/indexed rows)]

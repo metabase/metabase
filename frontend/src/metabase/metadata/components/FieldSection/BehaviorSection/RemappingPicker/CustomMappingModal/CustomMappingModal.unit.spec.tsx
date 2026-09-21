@@ -9,7 +9,7 @@ import {
 } from "__support__/ui";
 
 import { CustomMappingModal } from "./CustomMappingModal";
-import type { Mapping } from "./types";
+import type { DraftMapping, Mapping } from "./types";
 
 const setup = ({
   isOpen = true,
@@ -18,7 +18,7 @@ const setup = ({
   onClose = jest.fn(),
 }: {
   isOpen?: boolean;
-  value?: Mapping;
+  value?: DraftMapping;
   onChange?: (value: Mapping) => void;
   onClose?: () => void;
 } = {}) => {
@@ -165,10 +165,10 @@ describe("CustomMappingModal", () => {
   it("fills missing mappings with original values as strings", async () => {
     const onChange = jest.fn();
     setup({
-      value: new Map([
+      value: new Map<number | null, string | undefined>([
         [1, undefined],
         [null, undefined],
-      ]) as unknown as Mapping,
+      ]),
       onChange,
     });
 

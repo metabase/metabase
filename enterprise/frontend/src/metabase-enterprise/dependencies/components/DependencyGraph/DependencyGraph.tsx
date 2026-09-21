@@ -1,3 +1,8 @@
+// Deliberate import-time side effect: xyflow's stylesheet must load with this
+// chunk. If this module is ever declared side-effect free, the bundler would
+// drop this import and the graph would render unstyled.
+import "@xyflow/react/dist/style.css";
+
 import {
   Background,
   Controls,
@@ -16,7 +21,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 

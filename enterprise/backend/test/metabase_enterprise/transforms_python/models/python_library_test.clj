@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest update-python-library-source-test
   (testing "update-python-library-source!"
@@ -19,7 +22,6 @@
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (= "def new_func(): return 1"
              (t2/select-one-fn :source :model/PythonLibrary))))
-
     (testing "updates existing record"
       (is (= 1 (t2/count :model/PythonLibrary)))
       (is (=? {:source "def updated_func(): return 2"
@@ -31,7 +33,6 @@
       (is (= 1 (t2/count :model/PythonLibrary)) "Should not create duplicate")
       (is (= "def updated_func(): return 2"
              (t2/select-one-fn :source :model/PythonLibrary))))
-
     (testing "rejects invalid paths"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid library path"
@@ -49,7 +50,6 @@
                :created_at some?
                :updated_at some?}
               (python-library/get-python-library-by-path "common"))))
-
     (testing "rejects invalid paths"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid library path"
@@ -59,10 +59,8 @@
   (testing "normalize-path function"
     (testing "adds .py extension when missing"
       (is (= "common.py" (#'python-library/normalize-path "common"))))
-
     (testing "doesn't duplicate .py extension"
       (is (= "common.py" (#'python-library/normalize-path "common.py"))))
-
     (testing "works with paths that already have .py extension when updating"
       (t2/delete! :model/PythonLibrary)
       (python-library/update-python-library-source! "common.py" "def test(): pass")

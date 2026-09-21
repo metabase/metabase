@@ -1,15 +1,8 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import {
-  Card,
-  Group,
-  Icon,
-  type IconName,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Card, Group, Icon, SimpleGrid, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./RelatedSettingsSection.module.css";
 import type { RelatedSettingItem } from "./constants";
@@ -20,12 +13,12 @@ export function RelatedSettingsSection({
   items?: RelatedSettingItem[];
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Text size="lg" fw="bold" lh="xs">
         {t`Related settings`}
       </Text>
 
-      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="md">
+      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="lg">
         {items?.map((item) => (
           <RelatedSettingCard
             key={item.to}
@@ -52,8 +45,8 @@ export const RelatedSettingCard = ({
     <Card
       component={Link}
       to={to}
-      px="md"
-      py="xs"
+      px="lg"
+      py="xxs"
       withBorder
       data-testid="related-setting-card"
       shadow="none"
@@ -61,7 +54,7 @@ export const RelatedSettingCard = ({
       className={S.relatedSettingCard}
     >
       <Group gap="sm" align="center" h="100%">
-        <Icon name={icon} c="brand" />
+        <Icon name={icon} c="core-brand" />
 
         <Text fw={500} ta="center">
           {name}

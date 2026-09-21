@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { trackMeasureCreated } from "metabase/data-studio/analytics";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import {
+  type MetadataSelectorOpts,
+  useMetadataProvider,
+} from "metabase/metadata-store";
+import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
@@ -21,21 +22,26 @@ import { NewMeasureHeader } from "../../components/NewMeasureHeader";
 import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
 
+// Hoisted: the metadata selector memoises on the options object, so a fresh
+// literal each render would defeat it.
+const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
+
 type NewMeasurePageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (measure: Measure) => string;
 };
 
 export function NewMeasurePage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewMeasurePageProps) {
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadataWithHiddenTables);
+  const navigate = useNavigate();
+  const metadataProvider = useMetadataProvider(
+    table?.db_id ?? null,
+    WITH_HIDDEN_TABLES,
+  );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");
@@ -48,11 +54,11 @@ export function NewMeasurePage({
   useEffect(() => {
     if (table && !isInitialized.current) {
       isInitialized.current = true;
-      setDefinition(createInitialQueryForTable(table, metadata));
+      setDefinition(createInitialQueryForTable(table, metadataProvider));
     }
-  }, [table, metadata]);
+  }, [table, metadataProvider]);
 
-  const { query, aggregations } = useMeasureQuery(definition, metadata);
+  const { query, aggregations } = useMeasureQuery(definition);
 
   const isDirty =
     !savedMeasure &&
@@ -77,7 +83,6 @@ export function NewMeasurePage({
     }
     const { data: measure, error } = await createMeasure({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });
@@ -103,12 +108,12 @@ export function NewMeasurePage({
 
   useEffect(() => {
     if (savedMeasure) {
-      dispatch(push(getSuccessUrl(savedMeasure)));
+      navigate(getSuccessUrl(savedMeasure));
     }
-  }, [savedMeasure, dispatch, getSuccessUrl]);
+  }, [savedMeasure, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-measure-page" gap="xl">
+    <PageContainer data-testid="new-measure-page" gap="xxl">
       <NewMeasureHeader
         previewUrl={previewUrl}
         onNameChange={setName}
@@ -132,7 +137,7 @@ export function NewMeasurePage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

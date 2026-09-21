@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
-} from "metabase/collections/schemas";
+} from "metabase/common/collections/schemas";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -68,7 +68,7 @@ export function CreateTransformCollectionModal({
       title={t`Transform folder`}
       opened
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider
@@ -77,7 +77,7 @@ export function CreateTransformCollectionModal({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="lg" mt="sm">
+          <Stack gap="xl" mt="sm">
             <FormTextInput
               name="name"
               label={t`Name`}

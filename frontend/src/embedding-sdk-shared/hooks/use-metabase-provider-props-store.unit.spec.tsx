@@ -1,5 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
-import { StrictMode, useEffect } from "react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode, useEffect, useState } from "react";
 
 import { ensureMetabaseProviderPropsStore } from "../lib/ensure-metabase-provider-props-store";
 
@@ -7,7 +7,12 @@ import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-sto
 
 const PROPS_STORE_KEY = "METABASE_PROVIDER_PROPS_STORE" as const;
 
+type TestProps = {
+  authConfig?: { metabaseInstanceUrl?: string };
+};
+
 const resetWindow = () => {
+  // Unjustified type cast. FIXME
   delete (window as any)[PROPS_STORE_KEY];
 };
 
@@ -25,7 +30,7 @@ const ParentWithCleanup = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Consumer = () => {
-  const { state } = useMetabaseProviderPropsStore();
+  const { state } = useMetabaseProviderPropsStore<TestProps>();
   return (
     <div data-testid="instance-url">
       {state.props?.authConfig?.metabaseInstanceUrl ?? "none"}
@@ -33,7 +38,7 @@ const Consumer = () => {
   );
 };
 
-describe("useMetabaseProviderPropsStore under StrictMode", () => {
+describe("useMetabaseProviderPropsStore", () => {
   beforeEach(resetWindow);
   afterEach(resetWindow);
 
@@ -51,13 +56,63 @@ describe("useMetabaseProviderPropsStore under StrictMode", () => {
     expect(screen.getByTestId("instance-url")).toHaveTextContent("none");
 
     act(() => {
-      ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://example.com" } as any,
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
+        authConfig: { metabaseInstanceUrl: "https://example.com" },
       });
     });
 
     expect(screen.getByTestId("instance-url")).toHaveTextContent(
       "https://example.com",
+    );
+  });
+
+  it("keeps observing updates when the provider unmounts and remounts while the consumer stays mounted", () => {
+    // Reproduces EMB-1684: a consumer of `useMetabaseAuthStatus`/`useMetabaseProviderPropsStore`
+    // that outlives a `<MetabaseProvider>` mount cycle previously got orphaned
+    // on the wiped store and never saw updates from the next mount.
+    const App = () => {
+      const [showProvider, setShowProvider] = useState(true);
+      return (
+        <>
+          <Consumer />
+          {showProvider && <ParentWithCleanup>{null}</ParentWithCleanup>}
+          <button
+            type="button"
+            data-testid="toggle"
+            onClick={() => setShowProvider((v) => !v)}
+          >
+            toggle
+          </button>
+        </>
+      );
+    };
+
+    render(<App />);
+
+    act(() => {
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
+        authConfig: { metabaseInstanceUrl: "https://before.com" },
+      });
+    });
+    expect(screen.getByTestId("instance-url")).toHaveTextContent(
+      "https://before.com",
+    );
+
+    // Unmount the provider — its cleanup wipes the props store while the
+    // Consumer is still mounted.
+    fireEvent.click(screen.getByTestId("toggle"));
+
+    // Remount the provider.
+    fireEvent.click(screen.getByTestId("toggle"));
+
+    act(() => {
+      ensureMetabaseProviderPropsStore<TestProps>().setProps({
+        authConfig: { metabaseInstanceUrl: "https://after.com" },
+      });
+    });
+
+    expect(screen.getByTestId("instance-url")).toHaveTextContent(
+      "https://after.com",
     );
   });
 });

@@ -43,7 +43,7 @@ export const LegendDescriptionIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   margin: 0 0.25rem;
 
   &:hover {

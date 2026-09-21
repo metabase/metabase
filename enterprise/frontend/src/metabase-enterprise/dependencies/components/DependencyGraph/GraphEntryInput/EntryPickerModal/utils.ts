@@ -123,6 +123,7 @@ export function getEntryPickerValue(
     return;
   }
 
+  // Unjustified type cast. FIXME
   const groupType = SEARCH_MODEL_TO_GROUP_TYPE[item.model as SearchModel];
   if (groupType != null) {
     return { id: item.id, type: getDependencyType(groupType) };

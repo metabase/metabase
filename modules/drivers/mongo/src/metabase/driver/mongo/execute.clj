@@ -34,7 +34,7 @@
   "Returns a map of column name in result row -> unescaped column name to return in metadata e.g.
 
     {\"date_field~~~month\" \"date_field\"}"
-  [projections :- mongo.qp/Projections]
+  [projections :- ::mongo.qp/projections]
   (into
    {}
    (for [k     projections
@@ -42,10 +42,12 @@
          :when (not (= k unescaped))]
      [k unescaped])))
 
-(defn check-columns
+(mu/defn- check-columns
   "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
   wrong here and the query we generated is off."
-  [columns first-row-col-names]
+  [columns             :- ::mongo.qp/projections
+   ;; first row col names seems to be `java.util.LinkedHashMap$LinkedKeySet`
+   first-row-col-names :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   {:pre [(every? string? columns) (every? string? first-row-col-names)]}
   (when (seq first-row-col-names)
     (let [expected-cols   (set (for [col-name columns]
@@ -82,12 +84,12 @@
                                [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} :- :map
-   query
-   first-row-col-names]
+  [{:keys [mbql? projections]} :- ::mongo.qp/compiled-pipeline-with-collection
+   query                :- ::mongo.qp/pipeline
+   first-row-col-names  :- [:maybe (driver-api/instance-of-class java.util.Collection)]]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
-  (if-not (and mbql? projections)
+  (if-not (and mbql? (seq projections))
     (let [project-stage (->> query (filter #(contains? % "$project")) last)
           projected (keep (fn [[k v]] (when-not (contains? suppressing-values v) k))
                           (get project-stage "$project"))
@@ -199,7 +201,7 @@
                     (.next cursor))
         {row-col-names :row
          unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
-    (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
+    (log/tracef "Renaming %d columns in results" (count row-col-names))
     (respond (result-metadata unescaped-col-names)
              (if-not first-row
                []

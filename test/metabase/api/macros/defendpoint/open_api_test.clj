@@ -38,11 +38,30 @@
                            :required   ["id"]
                            :properties {"id" {:type :integer}}}}
             (#'defendpoint.open-api/fix-json-schema
-             (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
+             (#'defendpoint.open-api/normalize-raw-json-schema
+              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id))))))))
+
+(deftest ^:parallel default-params-are-optional-test
+  (testing "a param carrying a :default is advertised as optional, since omitting it is safe"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [by-name (into {}
+                          (map (juxt :name identity))
+                          (#'defendpoint.open-api/schema->params*
+                           [:map
+                            [:required-param :string]
+                            [:defaulted-param {:default :api} [:enum :api :x]]
+                            [:optional-param {:optional true} :string]]
+                           (constantly :query)
+                           {}))]
+        (is (true?  (get-in by-name ["required-param" :required])))
+        (is (false? (get-in by-name ["defaulted-param" :required])))
+        (is (false? (get-in by-name ["optional-param" :required])))
+        (testing "the default value is still rendered in the param schema"
+          (is (= :api (get-in by-name ["defaulted-param" :schema :default]))))))))
 
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
-    (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
+    (is (=? {:properties {"value" {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
             (#'defendpoint.open-api/mjs-collect-definitions [:map [:value ::lib.schema.common/non-blank-string]])))
     (is (= [{"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}]
            @@#'defendpoint.open-api/*definitions*))))
@@ -59,7 +78,6 @@
             result (#'defendpoint.open-api/path-item "/api/test" form)]
         (is (true? (:deprecated result)))
         (is (= "GET /api/test" (:summary result))))))
-
   (testing "Non-deprecated endpoints do not have deprecated field"
     (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
       (let [form {:method :get
@@ -70,7 +88,6 @@
             result (#'defendpoint.open-api/path-item "/api/test" form)]
         (is (nil? (:deprecated result)))
         (is (= "A normal endpoint." (:description result))))))
-
   (testing "Deprecated with multipart metadata"
     (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
       (let [form {:method :post

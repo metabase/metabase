@@ -1,4 +1,8 @@
-import { formatNumber, numberFormatterForOptions } from "./numbers";
+import {
+  formatNumber,
+  formatPercent,
+  numberFormatterForOptions,
+} from "./numbers";
 
 describe("formatNumber", () => {
   it("should respect the decimals setting even when compact is true (metabase#54063)", () => {
@@ -402,5 +406,50 @@ describe("formatNumber with scale (multiply function)", () => {
     expect(formatNumber(-5, { scale: 3 })).toBe("-15");
     expect(formatNumber(BigInt(-5), { scale: 3 })).toBe("-15");
     expect(formatNumber(BigInt(-5), { scale: 2.5 })).toBe("-12.5");
+  });
+});
+
+describe("formatPercent", () => {
+  it("formats percent with two decimals", () => {
+    expect(formatPercent(0.12245)).toBe("12.25 %");
+    expect(formatPercent(0)).toBe("0.00 %");
+  });
+});
+
+describe("numberFormatterForOptions caching", () => {
+  it("should reuse the formatter for equivalent options", () => {
+    const options = { number_style: "currency" as const, currency: "EUR" };
+
+    expect(numberFormatterForOptions(options)).toBe(
+      numberFormatterForOptions({ ...options }),
+    );
+  });
+
+  it("should build a separate formatter for different options", () => {
+    const usd = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "USD",
+    });
+    const eur = numberFormatterForOptions({
+      number_style: "currency",
+      currency: "EUR",
+    });
+
+    expect(eur).not.toBe(usd);
+    expect(usd.format(1)).not.toBe(eur.format(1));
+  });
+
+  it("should evict the oldest formatter once the cache is full", async () => {
+    jest.resetModules();
+    const { numberFormatterForOptions: freshCache } = await import("./numbers");
+    const oldest = freshCache({ minimumIntegerDigits: 7 });
+    expect(freshCache({ minimumIntegerDigits: 7 })).toBe(oldest);
+
+    // NUMBER_FORMATTER_CACHE_SIZE is 100, so this pushes the first entry out
+    for (let digits = 0; digits <= 100; digits++) {
+      freshCache({ maximumFractionDigits: digits });
+    }
+
+    expect(freshCache({ minimumIntegerDigits: 7 })).not.toBe(oldest);
   });
 });

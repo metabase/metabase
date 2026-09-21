@@ -9,7 +9,7 @@ import type {
 export {
   SAVE_DEBOUNCE_MS,
   sanitizeUsageLimitValue,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
 } from "../../utils";
 
 export type GroupLimitsTabProps = {
@@ -32,8 +32,7 @@ export function getGroupLimitAriaLabel(
   groupName: string,
 ) {
   if (limitType === "tokens") {
-    return c("{0} is the group name")
-      .t`Max tokens per user for ${groupName} (millions)`;
+    return c("{0} is the group name").t`Max tokens per user for ${groupName}`;
   }
 
   return c("{0} is the group name").t`Max messages per user for ${groupName}`;
@@ -45,9 +44,9 @@ const columnNameMap: Record<
 > = {
   get tokens() {
     return {
-      daily: t`Max tokens per user each day (millions)`,
-      weekly: t`Max tokens per user each week (millions)`,
-      monthly: t`Max tokens per user each month (millions)`,
+      daily: t`Max tokens per user each day`,
+      weekly: t`Max tokens per user each week`,
+      monthly: t`Max tokens per user each month`,
     };
   },
   get messages() {

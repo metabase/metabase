@@ -2,10 +2,7 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import type {
-  DefinedClauseName,
-  ExpressionError,
-} from "metabase/querying/expressions";
+import type { ExpressionError } from "metabase/querying/expressions";
 import { Box, Button, Flex } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
@@ -34,7 +31,7 @@ export type ExpressionWidgetProps = {
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
-  initialExpressionClause?: DefinedClauseName | null;
+  initialExpressionClause?: Lib.DefinedClauseName | null;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   readOnly?: boolean;
@@ -63,6 +60,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   } = props;
 
   const [name, setName] = useState(initialName || "");
+  // Unjustified type cast. FIXME
   const [clause, setClause] = useState<Lib.ExpressionClause | null>(
     (initialClause ?? null) as Lib.ExpressionClause | null,
   );
@@ -212,7 +210,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
       />
 
       <LayoutFooter>
-        <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
+        <Flex gap="xxs" align="center" justify="end" p="0" pr="sm">
           {withName && (
             <NameInput
               value={name}

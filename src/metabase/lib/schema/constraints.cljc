@@ -9,14 +9,16 @@
   override these values."
   [:and
    [:map
-    {:decode/normalize lib.schema.common/normalize-map}
+    {:decode/normalize lib.schema.common/normalize-map
+     :decode/api       lib.schema.common/remove-internal-keys
+     :encode/serialize lib.schema.common/remove-internal-keys
+     :closed           true}
     [:max-results
      {:optional true
       :description
       "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
   applies to all queries"}
      nat-int?]
-
     [:max-results-bare-rows
      {:optional true
       :description

@@ -2,6 +2,8 @@
   "Tests for /api/ee/data-studio/table endpoints (enterprise-only: publish-tables, unpublish-tables)."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.core :as perms]
@@ -9,11 +11,42 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- user-table
+  "The Table with `table-id` as users see it. A bare `t2/select :model/Table` shows what sync wrote."
+  [table-id]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+
+(defn- user-tables
+  "The Tables with `table-ids` as users see it, ordered by `order-by`."
+  [table-ids order-by]
+  (t2/select :model/Table :id [:in table-ids] {:from     [(warehouse-schema-overlay/table-query)]
+                                               :order-by [order-by]}))
+
+(defn- user-table-fn
+  "The value of `column` on the Table with `table-id` as users see it."
+  [column table-id]
+  (get (user-table table-id) column))
+
+(deftest table-metadata-survives-deleted-transform-test
+  (testing "a table whose creating transform has since been deleted (metabase#69904)"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Transform transform {}
+                     :model/Table     {table-id :id} {:transform_id (:id transform)}]
+        (t2/delete! :model/Transform (:id transform))
+        (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
+          (is (nil? (user-table-fn :transform_id table-id))))
+        (testing "GET /api/table/:id does not crash"
+          (is (=? {:id table-id} (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))
+        (testing "GET /api/table (list, which hydrates :transform when transforms are enabled) does not crash"
+          (is (=? {:id table-id :transform nil}
+                  (m/find-first #(= table-id (:id %)) (mt/user-http-request :crowberto :get 200 "table")))))))))
 
 (deftest publish-table-test
   (mt/with-premium-features #{:library :audit-app}
@@ -23,9 +56,11 @@
          (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
            (testing "normal users are not allowed to publish"
              (mt/user-http-request :rasta :post 403 "ee/data-studio/table/publish-tables"
-                                   {:table_ids [(mt/id :users) (mt/id :venues)]}))
+                                   {:table_ids     [(mt/id :users) (mt/id :venues)]
+                                    :collection_id collection-id}))
            (let [response (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                                {:table_ids [(mt/id :users) (mt/id :venues)]})]
+                                                {:table_ids     [(mt/id :users) (mt/id :venues)]
+                                                 :collection_id collection-id})]
              (is (=? {:id collection-id} (:target_collection response)))
              (testing "collection_id and is_published are set"
                (is (=? [{:display_name "Users"
@@ -34,7 +69,7 @@
                         {:display_name "Venues"
                          :collection_id collection-id
                          :is_published true}]
-                       (t2/select :model/Table :id [:in [(mt/id :users) (mt/id :venues)]] {:order-by [:display_name]}))))
+                       (user-tables [(mt/id :users) (mt/id :venues)] :display_name))))
              (testing "audit log entries are created for publish"
                (is (=? {:topic :table-publish, :model "Table", :model_id (mt/id :users)}
                        (mt/latest-audit-log-entry "table-publish" (mt/id :users))))
@@ -49,7 +84,7 @@
                (is (=? {:display_name "Venues"
                         :collection_id nil
                         :is_published false}
-                       (t2/select-one :model/Table (mt/id :venues))))
+                       (user-table (mt/id :venues))))
                (testing "audit log entry is created for unpublish"
                  (is (=? {:topic :table-unpublish, :model "Table", :model_id (mt/id :venues)}
                          (mt/latest-audit-log-entry "table-unpublish" (mt/id :venues)))))))))
@@ -57,23 +92,111 @@
          (is (=? {:display_name "Users"
                   :collection_id nil
                   :is_published false}
-                 (t2/select-one :model/Table (mt/id :users))))))
+                 (user-table (mt/id :users))))))
      (testing "returns 404 when no library-data collection exists"
        (is (= "Not found."
               (mt/user-http-request :crowberto :post 404 "ee/data-studio/table/publish-tables"
-                                    {:table_ids [(mt/id :users)]}))))
-     (testing "returns 409 when multiple library-data collections exist"
-       (mt/with-temp [:model/Collection _ {:type collection/library-data-collection-type}
-                      :model/Collection _ {:type collection/library-data-collection-type}]
-         (is (= "Multiple library-data collections found."
-                (mt/user-http-request :crowberto :post 409 "ee/data-studio/table/publish-tables"
-                                      {:table_ids [(mt/id :users)]}))))))))
+                                    {:table_ids     [(mt/id :users)]
+                                     :collection_id Integer/MAX_VALUE}))))
+     (testing "returns 400 when collection_id is missing"
+       (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
+                             {:table_ids [(mt/id :users)]}))
+     (testing "returns 400 when target collection is not a library-data collection"
+       (mt/with-temp [:model/Collection {collection-id :id} {}]
+         (is (= "Tables can only be published to Library/Data collections."
+                (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
+                                      {:table_ids     [(mt/id :users)]
+                                       :collection_id collection-id})))))
+     (testing "publishes tables into library-data subcollections"
+       (mt/with-temp [:model/Collection {data-id :id} {:type collection/library-data-collection-type}
+                      :model/Collection {subcollection-id :id} {:type     collection/library-data-collection-type
+                                                                :location (str "/" data-id "/")}]
+         (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                               {:table_ids     [(mt/id :users)]
+                                :collection_id subcollection-id})
+         (is (=? {:collection_id subcollection-id
+                  :is_published  true}
+                 (user-table (mt/id :users)))))))))
+
+(deftest publishing-info-test
+  (mt/with-premium-features #{:library :audit-app}
+    (let [older-timestamp (t/offset-date-time "2026-08-25T12:00:00Z")
+          newer-timestamp (t/offset-date-time "2026-08-26T12:00:00Z")]
+      (mt/with-temp [:model/Table {table-id :id} {:is_published true}
+                     :model/AuditLog _ {:topic     :table-publish
+                                        :model     "Table"
+                                        :model_id  table-id
+                                        :user_id   (mt/user->id :rasta)
+                                        :timestamp older-timestamp}
+                     :model/AuditLog _ {:topic     :table-publish
+                                        :model     "Table"
+                                        :model_id  table-id
+                                        :user_id   (mt/user->id :crowberto)
+                                        :timestamp newer-timestamp}]
+        (testing "returns the latest publishing event"
+          (is (=? {:published_at "2026-08-26T12:00:00Z"
+                   :published_by {:id          (mt/user->id :crowberto)
+                                  :common_name "Crowberto Corv"}}
+                  (mt/user-http-request :crowberto :get 200
+                                        (format "ee/data-studio/table/%d/publishing-info" table-id))))))
+      (testing "returns no content when there is no publishing event"
+        (mt/with-temp [:model/Table {table-id :id} {:is_published true}]
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id))))))
+      (testing "returns no content when the latest lifecycle event is an unpublish"
+        (mt/with-temp [:model/Table {table-id :id} {:is_published true}
+                       :model/AuditLog _ {:topic     :table-publish
+                                          :model     "Table"
+                                          :model_id  table-id
+                                          :user_id   (mt/user->id :rasta)
+                                          :timestamp older-timestamp}
+                       :model/AuditLog _ {:topic     :table-unpublish
+                                          :model     "Table"
+                                          :model_id  table-id
+                                          :user_id   (mt/user->id :crowberto)
+                                          :timestamp newer-timestamp}]
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id))))))
+      (testing "returns no content for an unpublished table"
+        (mt/with-temp [:model/Table {table-id :id} {:is_published false}]
+          (is (nil? (mt/user-http-request :crowberto :get 204
+                                          (format "ee/data-studio/table/%d/publishing-info" table-id)))))))))
+
+(deftest publish-tables-goes-through-toucan-hooks-test
+  (testing "publish/unpublish update via the Toucan pipeline, so model hooks fire"
+    (mt/with-premium-features #{:library}
+      (without-library
+       (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
+         ;; a bumped updated_at proves the write went through the Toucan pipeline (:hook/timestamped?),
+         (let [baseline   (t/offset-date-time 2020)
+               ;; raw update, precisely to keep the timestamped hook from overwriting the backdate
+               backdate!  #(do (t2/query {:update (t2/table-name :model/TableUserSettings)
+                                          :set    {:updated_at baseline}
+                                          :where  [:= :table_id (mt/id :venues)]})
+                               (t2/query {:update (t2/table-name :model/Table)
+                                          :set    {:updated_at baseline}
+                                          :where  [:= :id (mt/id :venues)]}))
+               updated-at #(or (t2/select-one-fn :updated_at :model/TableUserSettings
+                                                 :table_id (mt/id :venues))
+                               (user-table-fn :updated_at (mt/id :venues)))]
+           (backdate!)
+           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                 {:table_ids     [(mt/id :venues)]
+                                  :collection_id collection-id})
+           (testing "updated_at bumps on publish"
+             (is (pos? (compare (updated-at) baseline))))
+           (backdate!)
+           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
+                                 {:table_ids [(mt/id :venues)]})
+           (testing "updated_at bumps on unpublish"
+             (is (pos? (compare (updated-at) baseline))))))))))
 
 (deftest requests-data-studio-feature-flag-test
   (mt/with-premium-features #{}
     (is (= "Library is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
            (:message (mt/user-http-request :crowberto :post 402 "ee/data-studio/table/publish-tables"
-                                           {:table_ids [(mt/id :users)]}))))))
+                                           {:table_ids     [(mt/id :users)]
+                                            :collection_id 1}))))))
 
 (deftest data-analyst-can-access-endpoints-test
   (mt/with-premium-features #{:library :advanced-permissions}
@@ -86,12 +209,13 @@
                        :model/PermissionsGroupMembership _ {:user_id analyst-id :group_id data-analyst-group-id}
                        :model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}
-                       :model/Collection _ {:type collection/library-data-collection-type}]
+                       :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
           ;; Grant data analyst group view-data permission on this database
           (data-perms/set-database-permission! data-analyst-group-id db-id :perms/view-data :unrestricted)
           (testing "data analyst can publish tables"
             (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
-                                            {:table_ids [table-id]}))))
+                                            {:table_ids     [table-id]
+                                             :collection_id collection-id}))))
           (testing "data analyst can unpublish tables"
             (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
                                             {:table_ids [table-id]})))))))))
@@ -104,11 +228,12 @@
                                                 :email "regular-user@metabase.com"}
                      :model/Database {db-id :id} {}
                      :model/Table {table-id :id} {:db_id db-id}
-                     :model/Collection _ {:type collection/library-data-collection-type}]
+                     :model/Collection {collection-id :id} {:type collection/library-data-collection-type}]
         (testing "regular user cannot publish tables"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/publish-tables"
-                                       {:table_ids [table-id]}))))
+                                       {:table_ids     [table-id]
+                                        :collection_id collection-id}))))
         (testing "regular user cannot unpublish tables"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user-id :post 403 "ee/data-studio/table/unpublish-tables"
@@ -119,7 +244,7 @@
 (deftest publish-tables-with-upstream-dependencies-test
   (mt/with-premium-features #{:library}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id}    {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
                      ;; Products table (upstream)
                      :model/Table      {products-id :id}    {:db_id db-id :name "products" :is_published false}
@@ -139,20 +264,53 @@
                                                              :type :external}]
         (testing "publishing orders also publishes products (upstream dependency)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                {:table_ids [orders-id]})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
+                                {:table_ids     [orders-id]
+                                 :collection_id collection-id})
+          (are [table-id] (true? (user-table-fn :is_published table-id))
             orders-id products-id))))))
+
+(deftest publish-tables-does-not-move-already-published-upstream-test
+  (mt/with-premium-features #{:library}
+    (testing "POST /api/ee/data-studio/table/publish-tables leaves already-published upstream tables in place (UXW-4169)"
+      (mt/with-temp [:model/Collection {coll-x :id}         {:type collection/library-data-collection-type}
+                     :model/Collection {coll-y :id}         {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}          {}
+                     ;; Products already published in collection X
+                     :model/Table      {products-id :id}    {:db_id db-id :name "products"
+                                                             :is_published true :collection_id coll-x}
+                     :model/Field      _                    {:table_id products-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {prod-name-f :id}    {:table_id products-id :name "name"
+                                                             :semantic_type :type/Name :base_type :type/Text}
+                     ;; Orders (unpublished) remaps to products
+                     :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
+                     :model/Field      _                    {:table_id orders-id :name "id"
+                                                             :semantic_type :type/PK :base_type :type/Integer}
+                     :model/Field      {product-fk :id}     {:table_id orders-id :name "product_id"
+                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Dimension  _                    {:field_id product-fk
+                                                             :human_readable_field_id prod-name-f
+                                                             :type :external}]
+        (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                              {:table_ids     [orders-id]
+                               :collection_id coll-y})
+        (testing "the selected table is published into the target collection"
+          (is (=? {:is_published true :collection_id coll-y}
+                  (user-table orders-id))))
+        (testing "the already-published upstream table stays in its original collection"
+          (is (=? {:is_published true :collection_id coll-x}
+                  (user-table products-id))))))))
 
 (deftest publish-tables-recursive-upstream-test
   (mt/with-premium-features #{:library}
     (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
-      (mt/with-temp [:model/Collection _                      {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id}    {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
-                     ;; Customers table (upstream of orders)
-                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published false}
-                     :model/Field      _                    {:table_id customers-id :name "id"
+                     ;; Purchasers table (upstream of orders)
+                     :model/Table      {purchasers-id :id}   {:db_id db-id :name "purchasers" :is_published false}
+                     :model/Field      _                    {:table_id purchasers-id :name "id"
                                                              :semantic_type :type/PK :base_type :type/Integer}
-                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                     :model/Field      {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
                      ;; Orders table (upstream of order_items, downstream of customers)
                      :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
@@ -160,8 +318,8 @@
                                                              :semantic_type :type/PK :base_type :type/Integer}
                      :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
-                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Field      {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Order items table (downstream of orders)
                      :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published false}
                      :model/Field      _                    {:table_id items-id :name "id"
@@ -169,7 +327,7 @@
                      :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Dimensions for FK remapping
-                     :model/Dimension  _                    {:field_id customer-fk
+                     :model/Dimension  _                    {:field_id purchaser-fk
                                                              :human_readable_field_id cust-name-f
                                                              :type :external}
                      :model/Dimension  _                    {:field_id order-fk
@@ -177,9 +335,10 @@
                                                              :type :external}]
         (testing "publishing order_items also publishes orders and customers (recursive upstream)"
           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
-                                {:table_ids [items-id]})
-          (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
-            items-id orders-id customers-id))))))
+                                {:table_ids     [items-id]
+                                 :collection_id collection-id})
+          (are [table-id] (true? (user-table-fn :is_published table-id))
+            items-id orders-id purchasers-id))))))
 
 (deftest unpublish-tables-with-downstream-dependents-test
   (mt/with-premium-features #{:library}
@@ -207,7 +366,7 @@
         (testing "unpublishing products also unpublishes orders (downstream dependent)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
                                 {:table_ids [products-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
+          (are [table-id] (false? (user-table-fn :is_published table-id))
             products-id orders-id))))))
 
 (deftest unpublish-tables-recursive-downstream-test
@@ -215,12 +374,12 @@
     (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes recursive downstream dependents"
       (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
-                     ;; Customers table (upstream of orders, published)
-                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published true
-                                                             :collection_id coll-id}
-                     :model/Field      _                    {:table_id customers-id :name "id"
+                     ;; Purchasers table (upstream of orders, published)
+                     :model/Table      {purchasers-id :id}   {:db_id db-id :name "purchasers" :is_published true
+                                                              :collection_id coll-id}
+                     :model/Field      _                    {:table_id purchasers-id :name "id"
                                                              :semantic_type :type/PK :base_type :type/Integer}
-                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                     :model/Field      {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
                      ;; Orders table (downstream of customers, upstream of items, published)
                      :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published true
@@ -229,8 +388,8 @@
                                                              :semantic_type :type/PK :base_type :type/Integer}
                      :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
-                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Field      {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Order items table (downstream of orders, published)
                      :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published true
                                                              :collection_id coll-id}
@@ -239,7 +398,7 @@
                      :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Dimensions for FK remapping
-                     :model/Dimension  _                    {:field_id customer-fk
+                     :model/Dimension  _                    {:field_id purchaser-fk
                                                              :human_readable_field_id cust-name-f
                                                              :type :external}
                      :model/Dimension  _                    {:field_id order-fk
@@ -247,16 +406,62 @@
                                                              :type :external}]
         (testing "unpublishing customers also unpublishes orders and order_items (recursive downstream)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
-                                {:table_ids [customers-id]})
-          (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
-            customers-id orders-id items-id))))))
+                                {:table_ids [purchasers-id]})
+          (are [table-id] (false? (user-table-fn :is_published table-id))
+            purchasers-id orders-id items-id))))))
+
+(defn- with-fk-linked-published-tables
+  "Sets up two Library/Data collections A and B, with published Table X in A and published Table Y in B, where Y has an
+  FK remapping (Dimension) pointing at X (so X is upstream / Y is downstream). Calls `f` with a map of the ids."
+  [f]
+  (mt/with-temp [:model/Collection {coll-a :id} {:type collection/library-data-collection-type}
+                 :model/Collection {coll-b :id} {:type collection/library-data-collection-type}
+                 :model/Database   {db-id :id}  {}
+                 ;; Table X in collection A (published)
+                 :model/Table      {x-id :id}   {:db_id db-id :name "x" :is_published true :collection_id coll-a}
+                 :model/Field      _            {:table_id x-id :name "id"
+                                                 :semantic_type :type/PK :base_type :type/Integer}
+                 :model/Field      {x-name :id} {:table_id x-id :name "name"
+                                                 :semantic_type :type/Name :base_type :type/Text}
+                 ;; Table Y in collection B (published), FK -> X
+                 :model/Table      {y-id :id}   {:db_id db-id :name "y" :is_published true :collection_id coll-b}
+                 :model/Field      _            {:table_id y-id :name "id"
+                                                 :semantic_type :type/PK :base_type :type/Integer}
+                 :model/Field      {y-fk :id}   {:table_id y-id :name "x_id"
+                                                 :semantic_type :type/FK :base_type :type/Integer}
+                 :model/Dimension  _            {:field_id y-fk :human_readable_field_id x-name :type :external}]
+    (f {:coll-a coll-a :coll-b coll-b :x-id x-id :y-id y-id})))
+
+(deftest unpublish-fk-linked-tables-on-collection-delete-test
+  (mt/with-premium-features #{:library}
+    (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (t2/delete! :model/Collection :id coll-a)
+          (testing "Table X (in the deleted collection) is unpublished"
+            (is (=? {:is_published false :collection_id nil} (user-table x-id))))
+          (testing "Table Y (FK-linked, in another collection) is also unpublished"
+            (is (=? {:is_published false :collection_id nil} (user-table y-id)))))))))
+
+(deftest unpublish-fk-linked-tables-on-collection-archive-test
+  (mt/with-premium-features #{:library}
+    (testing "archiving a Library collection unpublishes its tables and their FK-linked tables in other collections"
+      (with-fk-linked-published-tables
+        (fn [{:keys [coll-a x-id y-id]}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (collection/archive-or-unarchive-collection!
+             (t2/select-one :model/Collection :id coll-a) {:archived true}))
+          (testing "Table X (in the archived collection) is unpublished"
+            (is (=? {:is_published false :collection_id nil} (user-table x-id))))
+          (testing "Table Y (FK-linked, in another collection) is also unpublished"
+            (is (=? {:is_published false :collection_id nil} (user-table y-id)))))))))
 
 ;;; ------------------------------------------ Publish/Unpublish requires write and query perms ------------------------------------------
 
 (deftest publish-tables-requires-write-and-query-perms-test
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "POST /api/ee/data-studio/table/publish-tables requires write and query permission on all tables"
-      (mt/with-temp [:model/Collection _              {:type collection/library-data-collection-type}
+      (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}    {}
                      :model/Table      {table-id :id} {:db_id db-id :name "restricted_table"}
                      :model/User       {analyst-id :id} {:first_name "Data"
@@ -271,7 +476,8 @@
           ;; Analyst has data analyst role but no data perms on the table
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/publish-tables"
-                                       {:table_ids [table-id]}))))))))
+                                       {:table_ids     [table-id]
+                                        :collection_id collection-id}))))))))
 
 (deftest unpublish-tables-requires-write-and-query-perms-test
   (mt/with-premium-features #{:library :advanced-permissions}
@@ -289,7 +495,7 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
           (perms/revoke-collection-permissions! (perms-group/data-analyst) coll-id)
-            ;; Analyst has data analyst role but no data perms on the table
+          ;; Analyst has data analyst role but no data perms on the table
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
                                        {:table_ids [table-id]}))))))))

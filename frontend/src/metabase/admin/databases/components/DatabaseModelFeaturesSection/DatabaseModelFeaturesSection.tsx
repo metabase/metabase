@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Flex } from "metabase/ui";
-import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
-
 import {
   hasActionsEnabled,
   hasDbRoutingEnabled,
-  hasFeature,
-} from "../../utils";
+} from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
+import { Flex } from "metabase/ui";
+import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
+
 import { DatabaseInfoSection } from "../DatabaseInfoSection";
 
 import { ModelActionsSection } from "./ModelActionsSection";
@@ -55,7 +55,7 @@ export const DatabaseModelFeaturesSection = ({
       description={t`Choose whether to enable features related to Metabase models. These will often require a write connection.`}
       data-testid="database-model-features-section"
     >
-      <Flex direction="column" gap="md">
+      <Flex direction="column" gap="lg">
         {contentVisibility.showModelActions && (
           <ModelActionsSection
             hasModelActionsEnabled={hasActionsEnabled(database)}

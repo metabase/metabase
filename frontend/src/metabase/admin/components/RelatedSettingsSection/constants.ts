@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { IconName } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export interface RelatedSettingItem {
   icon: IconName;
   name: string;

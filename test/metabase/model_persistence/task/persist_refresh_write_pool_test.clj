@@ -1,63 +1,49 @@
-(ns ^:mb/driver-tests metabase.model-persistence.task.persist-refresh-write-pool-test
+(ns metabase.model-persistence.task.persist-refresh-write-pool-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]))
 
-(deftest refresh-creates-write-pool-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:persist-models]})
-    (let [db-id           (mt/id)
-          write-cache-key [db-id :write-data]]
-      (with-redefs [driver.conn/effective-connection-type
-                    (fn [_database]
-                      (if (= driver.conn/*connection-type* :write-data)
-                        :write-data
-                        :default))]
-        (try
-          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-          (testing "write pool does not exist before refresh"
-            (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-          (let [test-refresher (reify task.persist-refresh/Refresher
-                                 (refresh! [_ database _definition _card]
-                                   (sql-jdbc.conn/db->pooled-connection-spec (:id database))
-                                   {:state :success})
-                                 (unpersist! [_ _database _persisted-info]))]
-            (mt/with-temp [:model/Card model {:type :model :database_id db-id}
-                           :model/PersistedInfo _pi {:card_id (:id model) :database_id db-id}]
-              (#'task.persist-refresh/refresh-tables! db-id test-refresher)))
-          (testing "write pool is created during refresh"
-            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
-          (finally
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))
+;; Verify that the driver's refresh!/unpersist! establish a write-connection context for their DDL: drive the
+;; real refresher with the warehouse calls stubbed, and capture *connection-type* at the DDL boundary.
 
-(deftest prune-creates-write-pool-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:persist-models]})
-    (let [db-id           (mt/id)
-          write-cache-key [db-id :write-data]]
-      (with-redefs [driver.conn/effective-connection-type
-                    (fn [_database]
-                      (if (= driver.conn/*connection-type* :write-data)
-                        :write-data
-                        :default))]
-        (try
-          (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-          (testing "write pool does not exist before prune"
-            (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-          (let [test-refresher (reify task.persist-refresh/Refresher
-                                 (refresh! [_ _database _definition _card]
-                                   {:state :success})
-                                 (unpersist! [_ database _persisted-info]
-                                   (sql-jdbc.conn/db->pooled-connection-spec (:id database))))]
-            (mt/with-temp [:model/Card model {:type :model :database_id db-id}
-                           :model/PersistedInfo pi {:card_id         (:id model)
-                                                    :database_id     db-id
-                                                    :state           "deletable"
-                                                    :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
-              (#'task.persist-refresh/prune-deletables! test-refresher [pi])))
-          (testing "write pool is created during prune"
-            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
-          (finally
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))
+(deftest refresh-runs-ddl-under-write-connection-test
+  (doseq [engine [:postgres :mysql]]
+    (driver/the-initialized-driver engine)
+    (testing (str engine " refresh! runs its DDL under a write-connection context")
+      (mt/with-model-cleanup [:model/TaskHistory]
+        (mt/with-temp [:model/Database     db {:engine engine :settings {:persist-models-enabled true}}
+                       :model/Card         model {:type :model :database_id (:id db)}
+                       :model/PersistedInfo _pi {:card_id (:id model) :database_id (:id db)}]
+          (let [ddl-ctx (atom ::unset)]
+            (with-redefs [driver-api/compile                               (fn [_query] {:query "SELECT 1" :params []})
+                          sql-jdbc.conn/db->pooled-connection-spec         (fn [_database] {:fake :spec})
+                          sql-jdbc.execute/do-with-connection-with-options (fn [_driver _database _opts _f]
+                                                                             (reset! ddl-ctx @#'driver.conn/*connection-type*)
+                                                                             {:state :success})]
+              (#'task.persist-refresh/refresh-tables! (:id db) @#'task.persist-refresh/dispatching-refresher nil))
+            (is (= :write-data @ddl-ctx))))))))
+
+(deftest unpersist-runs-ddl-under-write-connection-test
+  (doseq [engine [:postgres :mysql]]
+    (driver/the-initialized-driver engine)
+    (testing (str engine " unpersist! runs its DDL under a write-connection context")
+      (mt/with-model-cleanup [:model/TaskHistory]
+        (mt/with-temp [:model/Database     db {:engine engine :settings {:persist-models-enabled true}}
+                       :model/Card         model {:type :model :database_id (:id db)}
+                       :model/PersistedInfo pi {:card_id         (:id model)
+                                                :database_id     (:id db)
+                                                :state           "deletable"
+                                                :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+          (let [ddl-ctx (atom ::unset)]
+            (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _database _opts _f]
+                                                                             (reset! ddl-ctx @#'driver.conn/*connection-type*)
+                                                                             nil)]
+              (#'task.persist-refresh/prune-deletables! @#'task.persist-refresh/dispatching-refresher [pi]))
+            (is (= :write-data @ddl-ctx))))))))

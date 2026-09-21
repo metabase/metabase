@@ -7,7 +7,13 @@ import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 export const createMockTokenState = ({
   ...opts
 }: Partial<EmbeddingSessionTokenState> = {}): EmbeddingSessionTokenState => {
-  return { error: null, loading: false, token: null, rawToken: null, ...opts };
+  return {
+    error: null,
+    loading: false,
+    token: null,
+    guestTokensByMount: {},
+    ...opts,
+  };
 };
 
 export const createMockLoginStatusState = ({
@@ -39,6 +45,8 @@ export const createMockSdkState = ({
     error: null,
     fetchRefreshTokenFn: null,
     pluginsReady: true,
+    initialDashboardTabId: null,
+    sdkTrackerReady: false,
     ...opts,
   };
 };

@@ -1,59 +1,59 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
-import _ from "underscore";
 
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetTableQuery,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { Actions } from "metabase/entities/actions";
-import { Databases } from "metabase/entities/databases";
-import { Questions } from "metabase/entities/questions";
-import { Tables } from "metabase/entities/tables";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import { fetchTableForeignKeys } from "metabase/redux/tables";
+import { Outlet, useNavigate, useParams } from "metabase/router";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card, WritebackAction } from "metabase-types/api";
+import { type Card, isConcreteTableId } from "metabase-types/api";
 
-type OwnProps = {
-  params: {
-    slug: string;
-  };
-  children: React.ReactNode;
+type ModelActionsParams = {
+  slug: string;
 };
 
 type EntityLoadersProps = {
-  actions: WritebackAction[];
   model: Question;
 };
 
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & EntityLoadersProps & DispatchProps;
+type Props = EntityLoadersProps & DispatchProps;
 
 const mapDispatchToProps = {
   loadMetadataForCard,
-  fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
-  onChangeLocation: replace,
+  fetchTableForeignKeys,
 };
 
 function ModelActions({
   model,
-  actions,
-  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
-  onChangeLocation,
 }: Props) {
+  const navigate = useNavigate();
+  useListDatabasesQuery();
+  const { data: actions = [] } = useListActionsQuery({
+    "model-id": model.id(),
+  });
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   usePageTitle(model?.displayName() || "");
@@ -63,7 +63,8 @@ function ModelActions({
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
-  const mainTable = useMemo(() => {
+  // A card source (`card__123`) has no foreign keys of its own.
+  const mainTableId = useMemo(() => {
     const query = model.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -72,8 +73,9 @@ function ModelActions({
     }
 
     const sourceTableId = Lib.sourceTableOrCardId(query);
-    const table = model.metadata().table(sourceTableId);
-    return table;
+    return sourceTableId != null && isConcreteTableId(sourceTableId)
+      ? sourceTableId
+      : null;
   }, [model]);
 
   useMount(() => {
@@ -84,12 +86,18 @@ function ModelActions({
         loadMetadataForCard(card);
       }
     } else {
-      onChangeLocation(Urls.question(card));
+      navigate(Urls.card(card), { replace: true });
     }
   });
 
+  // The table request is also the permission check: a user who cannot read the
+  // table gets no table, and its foreign keys are not asked for.
+  const { data: mainTable } = useGetTableQuery(
+    mainTableId != null ? { id: mainTableId } : skipToken,
+  );
+
   useEffect(() => {
-    if (mainTable && !hasFetchedTableMetadata) {
+    if (mainTable != null && !hasFetchedTableMetadata) {
       setHasFetchedTableMetadata(true);
       fetchTableForeignKeys({ id: mainTable.id });
     }
@@ -105,27 +113,31 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
-      {children}
+      {/* Required for rendering child modal routes */}
+      <Outlet />
     </>
   );
 }
 
-function getModelId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.slug);
+function ModelActionsLoader(dispatchProps: DispatchProps) {
+  const params = useParams<ModelActionsParams>();
+  const modelId = Urls.extractEntityId(params.slug);
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(modelId != null ? { id: modelId } : skipToken);
+  const model = useQuestionFromCard(card);
+
+  if (!model) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <ModelActions model={model} {...dispatchProps} />;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Questions.load({ id: getModelId, entityAlias: "model" }),
-  Databases.loadList(),
-  Actions.loadList({
-    query: (state: State, props: OwnProps) => ({
-      "model-id": getModelId(state, props),
-    }),
-  }),
-  connect<null, DispatchProps, OwnProps & EntityLoadersProps, State>(
-    null,
-    mapDispatchToProps,
-  ),
-)(ModelActions);
+export default connect<unknown, DispatchProps, unknown, State>(
+  null,
+  mapDispatchToProps,
+)(ModelActionsLoader);

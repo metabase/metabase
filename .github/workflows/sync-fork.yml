@@ -24,18 +24,25 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          RELEASE_BRANCH_COUNT: ${{ inputs.release_branch_count || 5 }}
+          FORCE: ${{ inputs.force || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          SENDER: ${{ github.event.sender.login }}
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `release_branch_count`: ${{ inputs.release_branch_count || 5 }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `force`: ${{ inputs.force || false }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `trigger`: ${{ github.event_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
-          else
-            echo 'triggered by: schedule' >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo '**Inputs:**'
+            echo ''
+            echo "- \`release_branch_count\`: $RELEASE_BRANCH_COUNT"
+            echo "- \`force\`: $FORCE"
+            echo "- \`trigger\`: $EVENT_NAME"
+            echo ''
+            if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+              echo "triggered by: @$SENDER"
+            else
+              echo 'triggered by: schedule'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   sync-master:
     # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
@@ -43,7 +50,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: master
           fetch-depth: 0
@@ -89,9 +96,9 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           if [ "${{ steps.sync.outcome }}" = "success" ]; then
-            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ✅ ${{ steps.sync.outputs.detail }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ✅ ${{ steps.sync.outputs.detail }} |" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ❌ failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| [\`master\`](https://github.com/${REPO}/tree/master) | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   list-release-branches:
@@ -102,7 +109,7 @@ jobs:
       branches: ${{ steps.discover.outputs.branches }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -140,7 +147,7 @@ jobs:
         branch: ${{ fromJson(needs.list-release-branches.outputs.branches) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -190,7 +197,7 @@ jobs:
         run: |
           branch="${{ matrix.branch }}"
           if [ "${{ steps.sync.outcome }}" = "success" ]; then
-            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ✅ ${{ steps.sync.outputs.detail }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ✅ ${{ steps.sync.outputs.detail }} |" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ❌ failed |" >> $GITHUB_STEP_SUMMARY
+            echo "| [\`${branch}\`](https://github.com/${REPO}/tree/${branch}) | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"
           fi

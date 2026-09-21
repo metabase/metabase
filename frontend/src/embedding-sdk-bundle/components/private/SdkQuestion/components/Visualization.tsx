@@ -13,11 +13,10 @@ import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
 
 import { useSdkQuestionContext } from "../context";
 
@@ -53,7 +52,6 @@ export const QuestionVisualization = ({
     updateQuestion,
     originalId,
     onVisualizationChange,
-    token,
   } = useSdkQuestionContext();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
@@ -61,7 +59,7 @@ export const QuestionVisualization = ({
 
   useEffect(() => {
     if (display && onVisualizationChange) {
-      onVisualizationChange(display as CardDisplayType);
+      onVisualizationChange(display);
     }
   }, [display, onVisualizationChange]);
 
@@ -111,8 +109,8 @@ export const QuestionVisualization = ({
         result={result}
         noHeader
         mode={mode}
-        token={token}
-        navigateToNewCardInsideQB={navigateToNewCard}
+        hasColumnReordering
+        navigateToNewCardInsideQB={navigateToNewCard ?? undefined}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })

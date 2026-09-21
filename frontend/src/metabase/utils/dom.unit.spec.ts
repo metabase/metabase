@@ -1,146 +1,58 @@
-import { setupSdkPlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import {
-  getUrlTarget,
-  open,
-  shouldOpenInBlankWindow,
-} from "metabase/utils/dom";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { getPathnameWithoutSubPath } from "./dom";
 
-describe("shouldOpenInBlankWindow", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+describe("getPathnameWithoutSubPath", () => {
+  it("should leave the pathname unchanged when the site url has no subpath", () => {
+    expect(
+      getPathnameWithoutSubPath("/dashboard/1", "http://example.com"),
+    ).toBe("/dashboard/1");
+    expect(
+      getPathnameWithoutSubPath("/dashboard/1", "http://example.com/"),
+    ).toBe("/dashboard/1");
   });
 
-  it("should return false for same origin links by default", () => {
-    const url = `${window.location.origin}/dashboard/1`;
-    const result = shouldOpenInBlankWindow(url);
-    expect(result).toBe(false);
+  it("should strip the subpath from the pathname", () => {
+    expect(
+      getPathnameWithoutSubPath(
+        "/metabase/dashboard/1",
+        "http://example.com/metabase",
+      ),
+    ).toBe("/dashboard/1");
   });
 
-  it("should always return true when in embedding SDK", async () => {
-    await mockIsEmbeddingSdk();
-    const url = `${window.location.origin}/dashboard/1`;
-    const result = shouldOpenInBlankWindow(url);
-    expect(result).toBe(true);
-  });
-});
-
-describe("getUrlTarget", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+  it("should strip the subpath case-insensitively", () => {
+    expect(
+      getPathnameWithoutSubPath(
+        "/Metabase/dashboard/1",
+        "http://example.com/metabase",
+      ),
+    ).toBe("/dashboard/1");
   });
 
-  it("should return _self for same origin links by default", () => {
-    const url = `${window.location.origin}/dashboard/1`;
-    const result = getUrlTarget(url);
-    expect(result).toBe("_self");
+  it("should not strip a subpath that appears mid-pathname", () => {
+    expect(
+      getPathnameWithoutSubPath(
+        "/dashboard/metabase/1",
+        "http://example.com/metabase",
+      ),
+    ).toBe("/dashboard/metabase/1");
   });
 
-  it("should always return _blank when in the embedding SDK", async () => {
-    await mockIsEmbeddingSdk();
-    const url = `${window.location.origin}/dashboard/1`;
-    const result = getUrlTarget(url);
-    expect(result).toBe("_blank");
-  });
-});
-
-describe("open()", () => {
-  beforeEach(async () => {
-    await mockIsEmbeddingSdk();
-    // Ensure a clean store before each test
-    ensureMetabaseProviderPropsStore().cleanup();
-
-    mockSettings({
-      "token-features": createMockTokenFeatures({ embedding_sdk: true }),
-    });
-    setupSdkPlugins();
+  it("should not strip a subpath that only matches a partial path segment", () => {
+    expect(
+      getPathnameWithoutSubPath(
+        "/metabase2/dashboard/1",
+        "http://example.com/metabase",
+      ),
+    ).toBe("/metabase2/dashboard/1");
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-    ensureMetabaseProviderPropsStore().cleanup();
+  it("should leave a pathname shorter than the subpath unchanged", () => {
+    expect(
+      getPathnameWithoutSubPath("/metabase", "http://example.com/metabase/sub"),
+    ).toBe("/metabase");
   });
 
-  it("should prevent default behavior when handleLink returns { handled: true }", async () => {
-    const handleLink = jest.fn().mockReturnValue({ handled: true });
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
-    const openInSameWindow = jest.fn();
-    const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
-
-    await open(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
-
-    expect(handleLink).toHaveBeenCalledWith(url);
-    expect(openInSameWindow).not.toHaveBeenCalled();
-    expect(openInBlankWindow).not.toHaveBeenCalled();
-  });
-
-  it("should allow default behavior when handleLink returns { handled: false }", async () => {
-    const handleLink = jest.fn().mockReturnValue({ handled: false });
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
-    const openInSameWindow = jest.fn();
-    const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
-
-    await open(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
-
-    expect(handleLink).toHaveBeenCalledWith(url);
-    expect(openInBlankWindow).toHaveBeenCalledWith(url);
-  });
-
-  it("should throw error when handleLink returns invalid value", async () => {
-    const handleLink = jest.fn().mockReturnValue(true);
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
-    const openInSameWindow = jest.fn();
-    const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
-
-    await expect(
-      open(url, {
-        openInSameWindow,
-        openInBlankWindow,
-      }),
-    ).rejects.toThrow(
-      "handleLink plugin must return an object with a 'handled' property",
-    );
-
-    expect(handleLink).toHaveBeenCalledWith(url);
-  });
-
-  it("should not call handleLink when not in embedding SDK", async () => {
-    await mockIsEmbeddingSdk(false);
-    const handleLink = jest.fn();
-    ensureMetabaseProviderPropsStore().setProps({
-      pluginsConfig: { handleLink },
-    });
-
-    const openInSameWindow = jest.fn();
-    const openInBlankWindow = jest.fn();
-    const url = "https://example.com/dashboard/1";
-
-    await open(url, {
-      openInSameWindow,
-      openInBlankWindow,
-    });
-
-    expect(handleLink).not.toHaveBeenCalled();
+  it("should leave the pathname unchanged when the site url is empty", () => {
+    expect(getPathnameWithoutSubPath("/dashboard/1", "")).toBe("/dashboard/1");
   });
 });

@@ -35,21 +35,21 @@ export const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <Flex {...props} ref={ref} direction="column" mb="md">
+    <Flex {...props} ref={ref} direction="column" mb="lg">
       {(hasTitle || hasDescription) && (
         <Box>
-          <Flex align="center" mb={hasDescription ? "xs" : undefined}>
+          <Flex align="center" mb={hasDescription ? "xxs" : undefined}>
             {hasTitle && (
               <Text
                 component="label"
-                c={hasError ? "error" : "text-primary"}
+                c={hasError ? "feedback-negative" : "text-primary"}
                 htmlFor={htmlFor}
                 fw="bold"
                 fz="md"
               >
                 {title}
                 {hasError && (
-                  <Text component="span" c="error" role="alert">
+                  <Text component="span" c="feedback-negative" role="alert">
                     : {error}
                   </Text>
                 )}
@@ -61,7 +61,7 @@ export const FormField = forwardRef(function FormField(
                 c={"text-secondary"}
                 fw="900"
                 fz="sm"
-                ml="xs"
+                ml="xxs"
               >{t`(optional)`}</Text>
             )}
             {(infoLabel || infoTooltip) && (
@@ -71,7 +71,11 @@ export const FormField = forwardRef(function FormField(
                     {infoLabel}
                   </Text>
                 ) : (
-                  <Icon c="background-tertiary-inverse" ml="sm" name="info" />
+                  <Icon
+                    c="background_page-tertiary-inverse"
+                    ml="sm"
+                    name="info"
+                  />
                 )}
               </Tooltip>
             )}

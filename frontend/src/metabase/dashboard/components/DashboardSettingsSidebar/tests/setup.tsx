@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
@@ -8,10 +6,11 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import { createMockState } from "metabase/redux/store/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { Route } from "metabase/router";
 import type { Dashboard, Settings } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -53,7 +52,6 @@ export async function setup({
     }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      dashboards: [dashboard],
     }),
   });
 
@@ -68,7 +66,7 @@ export async function setup({
   );
 
   renderWithProviders(
-    <Route path="*" component={TestDashboardSettingsSidebar} />,
+    <Route path="*" element={<TestDashboardSettingsSidebar />} />,
 
     { storeInitialState: state, withRouter: true },
   );

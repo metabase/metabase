@@ -31,31 +31,41 @@ export type MetabotAgentChartMessage = {
   Chart: React.ComponentType<MetabotChartProps>;
 };
 
-// Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
-// - `tool_call`: debug-only, gated on metabot's `debugMode`.
-// - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
-// - `action`: unused in shipped code.
-// - `todo_list`: only reachable via the `codegen/transforms` profile, not the SDK.
+// Internal variants intentionally omitted. `use-metabot.tsx` only exposes
+// `type === "text"` messages and `generated_entity` chart cards:
+// - `tool_call` messages: debug-only, gated on metabot's `debugMode`.
+// - `action` user messages: produced only when replaying historical audit conversations,
+//   never via the SDK input path.
+// - `data_part` messages other than `generated_entity` cards (`code_edit`,
+//   `transform_suggestion`, `todo_list`, `adhoc_viz`, `static_viz`, `state`): in-app
+//   surfaces (Transform editor, codegen profiles) the SDK does not render.
 export type MetabotAgentMessage =
   | MetabotAgentTextMessage
   | MetabotAgentChartMessage;
 
+/** @category useMetabot */
 export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
+/** @category useMetabot */
 export type MetabotChartProps =
-  | (Omit<StaticQuestionProps, "questionId" | "token" | "query"> & {
+  | (Omit<StaticQuestionProps, "questionId" | "token" | "query" | "card"> & {
       drills?: false;
     })
-  | (Omit<InteractiveQuestionProps, "questionId" | "token" | "query"> & {
+  | (Omit<
+      InteractiveQuestionProps,
+      "questionId" | "token" | "query" | "card"
+    > & {
       drills: true;
     });
 
+/** @category useMetabot */
 export type MetabotErrorMessage = {
   /** `"alert"` renders with a warning icon and error color; `"message"` renders as plain text. */
   type: "message" | "alert" | "locked";
   message: string;
 };
 
+/** @category useMetabot */
 export type UseMetabotResult = {
   /** Submit a new message to the conversation. */
   submitMessage: (message: string) => Promise<void>;
@@ -78,9 +88,13 @@ export type UseMetabotResult = {
    * completes — including success, error, or cancellation.
    */
   isProcessing: boolean;
+  /** How much of the model's context window the conversation occupies, 0-100. */
+  contextWindowPercentUsage: number;
+  /** Whether the conversation has consumed its entire context window. */
+  isContextWindowFull: boolean;
 
   /**
-   * A pre-wired component bound to the latest `navigate_to` path.
+   * A pre-wired component bound to the latest chart the agent produced.
    * `null` until the agent sends a chart — lets consumers detect presence
    * and render a placeholder or swap panel content only when set.
    *

@@ -3,31 +3,32 @@ import { createSelector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getPlan } from "metabase/common/utils/plan";
-import { getIsHosted } from "metabase/databases/selectors";
-import { Groups } from "metabase/entities/groups";
-import { Tables } from "metabase/entities/tables";
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import {
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getTokenFeature } from "metabase/setup";
-import { getSpecialGroupType, isDefaultGroup } from "metabase/utils/groups";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type { Database, Group, GroupsPermissions } from "metabase-types/api";
+import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import type {
+  Group,
+  GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
+} from "metabase-types/api";
 
 import type {
   DataRouteParams,
-  EntityId,
   PermissionEditorType,
   PermissionSectionConfig,
-  PermissionSubject,
   RawGroupRouteParams,
-  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
 import {
@@ -36,13 +37,19 @@ import {
   getTableEntityId,
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
+import { getDatabaseSchema, getDatabaseSchemas } from "../../utils/metadata";
 
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
+import {
+  getDatabaseTablesQuery,
+  getPermissionsDatabase,
+  getPermissionsDatabases,
+} from "./databases";
 import { buildFieldsPermissions } from "./fields";
-import { getOrderedGroups } from "./groups";
+import { getOrderedGroups, selectGroupById, selectGroupList } from "./groups";
 import { buildSchemasPermissions } from "./schemas";
 import { buildTablesPermissions } from "./tables";
 
@@ -57,27 +64,31 @@ const getGroupHint = (groupType: SpecialGroupType): string | null => {
   }
 };
 
+// The database's tables are loaded via getDatabaseMetadata (see DataPermissionsPage
+// and updateDataPermission below); read that request's state to drive the
+// editor/sidebar loading and error UI.
+const selectDatabaseTablesMetadata = (state: State, databaseId: string) =>
+  getDatabaseTablesQuery(state, Number(databaseId));
+
 export const getIsLoadingDatabaseTables = (
   state: State,
   { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
-) =>
-  Tables.selectors.getLoading(state, {
-    entityQuery: {
-      dbId: params.databaseId,
-      include_hidden: true,
-    },
-  });
+): boolean => {
+  if (params.databaseId == null) {
+    return false;
+  }
+  return selectDatabaseTablesMetadata(state, params.databaseId).isLoading;
+};
 
 export const getLoadingDatabaseTablesError = (
   state: State,
   { params }: { params: Pick<RawGroupRouteParams, "databaseId"> },
-) => {
-  return Tables.selectors.getError(state, {
-    entityQuery: {
-      dbId: params.databaseId,
-      include_hidden: true,
-    },
-  });
+): string | undefined => {
+  if (params.databaseId == null) {
+    return undefined;
+  }
+  const { error } = selectDatabaseTablesMetadata(state, params.databaseId);
+  return error ? getResponseErrorMessage(error) : undefined;
 };
 
 type RouteParamsSelectorParameters = {
@@ -117,6 +128,30 @@ const getGroupRouteParams = createSelector(
   }),
 );
 
+// The database whose permissions the current route is editing. Its tables come
+// from the getDatabaseMetadata request DataPermissionsPage keeps subscribed.
+const getEditedDatabase = (
+  state: State,
+  props: { params: RawGroupRouteParams },
+) =>
+  getPermissionsDatabase(
+    state,
+    props.params.databaseId != null
+      ? parseInt(props.params.databaseId)
+      : undefined,
+  );
+
+const getViewedDatabase = (
+  state: State,
+  props: RouteParamsSelectorParameters,
+) =>
+  getPermissionsDatabase(
+    state,
+    props.params.databaseId != null
+      ? Number(props.params.databaseId)
+      : undefined,
+  );
+
 const getEditorEntityName = (
   { databaseId, schemaName }: DataRouteParams,
   hasSingleSchema: boolean,
@@ -150,9 +185,7 @@ const getGroup = (state: State, props: { params: RawGroupRouteParams }) => {
     return null;
   }
 
-  return Groups.selectors.getObject(state, {
-    entityId: parseInt(groupId),
-  });
+  return selectGroupById(state, parseInt(groupId));
 };
 
 const hasViewDataOptions = (entities: any[]) => {
@@ -168,7 +201,7 @@ const hasViewDataOptions = (entities: any[]) => {
 type EntityWithPermissions = {
   id: string | number;
   name: string;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   canSelect?: boolean;
   permissions: PermissionSectionConfig[];
   callout?: string;
@@ -176,7 +209,7 @@ type EntityWithPermissions = {
 
 export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
-  getIsHosted,
+  (state: State) => getSetting(state, "is-hosted?"),
   (state: State) => getSetting(state, "transforms-enabled"),
   (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {
@@ -200,20 +233,22 @@ export const getShouldShowTransformPermissions = createSelector(
 );
 
 export const getDatabasesPermissionEditor = createSelector(
-  getMetadataWithHiddenTables,
+  getPermissionsDatabases,
+  getEditedDatabase,
   getGroupRouteParams,
   getDataPermissions,
   getOriginalDataPermissions,
   getGroup,
-  Groups.selectors.getList,
+  selectGroupList,
   getIsLoadingDatabaseTables,
   getShouldShowTransformPermissions,
   (
-    metadata,
+    databases,
+    database,
     params,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
-    group: Group,
+    group: Group | null | undefined,
     groups: Group[],
     isLoading,
     showTransformPermissions,
@@ -241,22 +276,18 @@ export const getDatabasesPermissionEditor = createSelector(
 
     const groupType = getSpecialGroupType(group, isExternal);
 
-    const hasSingleSchema =
-      databaseId != null &&
-      metadata.database(databaseId)?.getSchemas().length === 1;
-
-    const database = metadata?.database(databaseId);
+    const schemas = database ? getDatabaseSchemas(database) : [];
+    const hasSingleSchema = databaseId != null && schemas.length === 1;
 
     let entities: EntityWithPermissions[] = [];
     let permissionSubject: PermissionSubject | null = null;
 
     if (database && (schemaName != null || hasSingleSchema)) {
-      const schema: Schema = hasSingleSchema
-        ? database.getSchemas()[0]
-        : (database.schema(schemaName) as Schema);
+      const schema = hasSingleSchema
+        ? schemas[0]
+        : getDatabaseSchema(database, schemaName);
       permissionSubject = "fields";
-      entities = schema
-        .getTables()
+      entities = (schema?.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
         .map((table) => {
           const entityId = getTableEntityId(table);
@@ -277,10 +308,8 @@ export const getDatabasesPermissionEditor = createSelector(
           };
         });
     } else if (database && databaseId != null) {
-      const maybeDbEntities = metadata
-        ?.database(databaseId)
-        ?.getSchemas()
-        .sort((a, b) => a.name.localeCompare(b.name))
+      const maybeDbEntities = schemas
+        .toSorted((a, b) => a.name.localeCompare(b.name))
         .map((schema) => {
           const entityId = getSchemaEntityId(schema);
           return {
@@ -306,17 +335,17 @@ export const getDatabasesPermissionEditor = createSelector(
       }
     } else if (groupId != null) {
       permissionSubject = "schemas";
-      entities = metadata
-        .databasesList({ savedQuestions: false })
-        .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
-        .filter((db) => !(db as Database).router_database_id)
+      entities = databases
+        .filter((db) => !db.is_saved_questions)
+        .filter((db) => !PLUGIN_AUDIT.isAuditDb(db))
+        .filter((db) => !db.router_database_id)
         .map((database) => {
           const entityId = getDatabaseEntityId(database);
           return {
             id: database.id,
             name: database.name,
             entityId,
-            callout: database.hasDatabaseRoutingEnabled()
+            callout: hasDbRoutingEnabled(database)
               ? t`(Database routing enabled)`
               : undefined,
             canSelect: true,
@@ -351,7 +380,7 @@ export const getDatabasesPermissionEditor = createSelector(
         : []),
     ]);
 
-    const breadcrumbs = getDatabasesEditorBreadcrumbs(params, metadata, group);
+    const breadcrumbs = getDatabasesEditorBreadcrumbs(params, database, group);
     const title = t`Permissions for the `;
 
     const hasLegacyNoSelfServiceValueInPermissionGraph =
@@ -366,7 +395,7 @@ export const getDatabasesPermissionEditor = createSelector(
       title,
       breadcrumbs,
       description:
-        group != null
+        typeof group?.member_count === "number"
           ? ngettext(
               msgid`${group.member_count} person`,
               `${group.member_count} people`,
@@ -394,14 +423,16 @@ type GetGroupsDataPermissionEditorSelector = Selector<
 
 export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelector =
   createSelector(
-    getMetadataWithHiddenTables,
+    getViewedDatabase,
+    getPermissionsDatabases,
     getRouteParams,
     getDataPermissions,
     getOriginalDataPermissions,
     getOrderedGroups,
     getShouldShowTransformPermissions,
     (
-      metadata,
+      database,
+      databases,
       params,
       permissions,
       originalPermissions,
@@ -409,7 +440,6 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       showTransformPermissions,
     ) => {
       const { databaseId, schemaName, tableId } = params;
-      const database = metadata?.database(databaseId);
 
       if (!permissions || databaseId == null || !database) {
         return null;
@@ -535,7 +565,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       return {
         title: t`Permissions for`,
         filterPlaceholder: t`Search for a group`,
-        breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
+        breadcrumbs: getGroupsDataEditorBreadcrumbs(params, database),
         columns,
         entities,
         hasLegacyNoSelfServiceValueInPermissionGraph,

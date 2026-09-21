@@ -34,6 +34,24 @@ export * from "./main.bundle.js";
 writeToFile("nextjs.cjs", nextjs_cjs);
 writeToFile("nextjs.js", nextjs_js);
 
+// Data-app specific imports
+const dataApp_cjs = `
+const DataApp = require("./data-app.bundle");
+
+module.exports = DataApp;
+`.trim();
+
+const dataApp_js = `
+export * from "./data-app.esm.js";
+`.trim();
+
+writeToFile("data-app.cjs", dataApp_cjs);
+writeToFile("data-app.js", dataApp_js);
+
+// The data-app dev preset (`data-app-dev.js`, ESM-only) and the dev entry
+// (`data-app-dev-entry.js`) are emitted directly by the rspack builds, so they
+// need no wrappers here.
+
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
 // this file sets a window global so the SDK bundle can detect dev mode.
@@ -46,7 +64,7 @@ try {
   console.warn("Metabase SDK: Failed to set dev mode flag", e);
 }
 
-module.exports = require("./main.bundle");
+export * from "./main.esm.js";
 `.trim();
 
 writeToFile("main.development.js", devMode_js);

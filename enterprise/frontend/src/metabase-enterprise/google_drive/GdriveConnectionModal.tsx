@@ -1,13 +1,11 @@
-import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
-import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDispatch } from "metabase/redux";
+import { dayjs } from "metabase/dayjs";
 import {
   Box,
   Button,
@@ -43,7 +41,7 @@ export function GdriveConnectionModal({
   onClose: (success?: boolean) => void;
   reconnect: boolean;
 }) {
-  const shouldShow = useShowGdrive();
+  const { showGdrive: shouldShow } = useShowGdrive();
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
@@ -81,7 +79,7 @@ const ModalWrapper = ({
   onClose: () => void;
 }) => (
   <Modal opened onClose={onClose} padding="3rem" title={title} size="44rem">
-    <Flex gap="md" pt="xl" direction="column" justify="center">
+    <Flex gap="lg" pt="xxl" direction="column" justify="center">
       {children}
     </Flex>
   </Modal>
@@ -98,7 +96,6 @@ function GoogleSheetsConnectModal({
   folderUrl: string | null;
   serviceAccountEmail: string;
 }) {
-  const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
   const [errorMessage, setErrorMessage] = useState("");
   const [linkType, setLinkType] = useState<UploadType>("folder");
@@ -124,7 +121,6 @@ function GoogleSheetsConnectModal({
     })
       .unwrap()
       .then(() => {
-        dispatch(reloadSettings());
         onClose(true);
       })
       .catch((response) => {
@@ -137,14 +133,15 @@ function GoogleSheetsConnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
-      <SegmentedControl
+      <SegmentedControl<UploadType>
         fullWidth
         autoContrast
-        color="brand"
+        color="core-brand"
         c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
+          // Unjustified type cast. FIXME
           [
             { value: "folder", label: t`Entire folder` },
             { value: "file", label: t`Single Sheet` },
@@ -152,11 +149,11 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
-        p="md"
+        p="lg"
         direction="column"
-        gap="md"
+        gap="lg"
       >
         <Box>
           <Text>1.{" " + clickInstruction}</Text>
@@ -198,8 +195,8 @@ function GoogleSheetsConnectModal({
             {copyInstruction}
           </Text>
         </Box>
-        <Flex justify="space-between" align="center" mt="sm" gap="md">
-          <Text c="error" lh="1.2rem">
+        <Flex justify="space-between" align="center" mt="sm" gap="lg">
+          <Text c="feedback-negative" lh="1.2rem">
             {errorMessage}
           </Text>
           <Button
@@ -238,16 +235,16 @@ function GoogleSheetsDisconnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={title}>
-      <Stack gap="md">
+      <Stack gap="lg">
         <DriveConnectionDisplay />
-        <Text c="text-secondary" pb="md">
+        <Text c="text-secondary" pb="lg">
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
-          <Text c="error" ta="start">
+          <Text c="feedback-negative" ta="start">
             {errorMessage}
           </Text>
-          <Flex justify="flex-end" gap="md">
+          <Flex justify="flex-end" gap="lg">
             <Button
               variant="outline"
               onClick={onClose}
@@ -257,7 +254,7 @@ function GoogleSheetsDisconnectModal({
             </Button>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
@@ -303,13 +300,13 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
-        p="md"
+        p="lg"
         style={{ borderRadius: "0.5rem" }}
       >
-        <Icon name="google_drive" mt="xs" />
+        <Icon name="google_drive" mt="xxs" />
         <Box>
           <Text fw="bold">{t`Google Drive connected`}</Text>
           {!!userName && (

@@ -42,17 +42,22 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
 
   return (
     <>
-      <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
-        <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background-secondary">
-          <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
+      <Group className={S.root} p="xl" gap="0.75rem" wrap="nowrap">
+        <Center
+          w="2.75rem"
+          h="2.75rem"
+          bdrs="50%"
+          bg="background_page-secondary"
+        >
+          <FixedSizeIcon name={getNodeIcon(node)} c="core-brand" size={20} />
         </Center>
-        <Stack gap="xs" flex={1}>
+        <Stack gap="xxs" flex={1}>
           <Title className={CS.textWrap} order={3} lh="1.5rem">
             {getNodeLabel(node)}
           </Title>
           {location != null && <GraphBreadcrumbs links={location.links} />}
         </Stack>
-        <Group m="-sm" gap="xs" wrap="nowrap">
+        <Group m="-sm" gap="xxs" wrap="nowrap">
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
@@ -80,6 +85,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         <PLUGIN_REPLACEMENT.SourceReplacementModal
           opened={isReplaceModalOpened}
           initialSource={sourceEntry}
+          triggeredFrom="dependency_graph"
           onClose={closeReplaceModal}
         />
       )}

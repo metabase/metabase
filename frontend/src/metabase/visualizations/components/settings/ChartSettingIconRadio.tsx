@@ -1,9 +1,12 @@
-import { IconButton } from "./ChartSettingIconRadio.styled";
+import { ActionIcon, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
+
+import S from "./ChartSettingIconRadio.module.css";
 
 interface ChartSettingIconRadioProps {
   value: string;
   onChange: (val: string | null) => void;
-  options: { iconName: string; value: string }[];
+  options: { iconName: IconName; value: string }[];
 }
 
 export const ChartSettingIconRadio = ({
@@ -22,12 +25,16 @@ export const ChartSettingIconRadio = ({
   return (
     <div>
       {options.map((option) => (
-        <IconButton
-          icon={option.iconName}
-          onClick={() => handleClick(option.value)}
-          primary={option.value === value}
+        <ActionIcon
           key={`radio-icon-${option.iconName}`}
-        />
+          className={S.iconButton}
+          variant={option.value === value ? "filled" : "default"}
+          size="2rem"
+          ml="sm"
+          onClick={() => handleClick(option.value)}
+        >
+          <Icon name={option.iconName} />
+        </ActionIcon>
       ))}
     </div>
   );

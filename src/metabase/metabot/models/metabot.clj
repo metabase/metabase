@@ -1,5 +1,7 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -16,6 +18,13 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
+;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),
+;; which covers verified items, official collections, and library/published content, not just verified
+;; cards. The column keeps its original name on purpose: renaming it would need an appdb migration and
+;; would break the serdes `:copy`/`:defaults` contract and the API/FE field, for no behavioural gain.
+;; The user-facing label ("Verified or curated content") carries the broadened meaning instead.
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
@@ -24,19 +33,16 @@
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+              (metabot.db/prompts-for-metabots (map :id metabots)))
    :id
    {:default []}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Metabot
-  [_table]
-  [:name])
-
-(defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts]}]
-  (set (mapcat serdes/dependencies prompts)))
+(defmethod serdes/deserialization-dependencies "Metabot"
+  [{:keys [collection_id prompts]}]
+  (cond-> (set (mapcat serdes/deserialization-dependencies prompts))
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])

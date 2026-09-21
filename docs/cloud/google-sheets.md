@@ -31,7 +31,7 @@ Here's how to set it up:
 2. Select **Entire Folder** or **Single sheet**.
 3. Metabase will ask you to share the Google Drive folder or sheet. You can only share a single folder or sheet with Metabase at a time.
 4. In Google Drive, share the folder or sheet with the service account that Metabase provides.
-5. Give the service account **Viewer** permissions. Metabase will only have access to this folder or sheet; it won't have access to any other files in your Google Drive. If you select folder, Metabase will also sync any sheets it finds in any subfolders.
+5. Give the service account **Viewer** permissions. Metabase will only have access to this folder or sheet; it won't have access to any other files in your Google Drive. If you select a folder, Metabase will also sync any sheets it finds in any subfolders.
 6. Click **Send** to share the folder with the Metabase service account.
 7. Copy the sharing link for the folder or sheet.
 8. Return to Metabase and paste the sharing link into "the sharing link for this folder/file" field.
@@ -100,4 +100,4 @@ To check how much storage you're using:
 
 The quota numbers update every 6 hours, so there might be a slight delay. Once you hit your quota limit, you won't be able to upload/sync more data until you either free up some space or increase your storage.
 
-To store more rows, see [increasing Metabase Cloud storage](./storage.md#increasing-metabase-cloud-storage).
+To store more rows, see [increase Metabase Cloud storage](./storage.md#increase-metabase-cloud-storage).

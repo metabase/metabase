@@ -28,7 +28,6 @@
   (let [collection (analytics-dev/find-analytics-collection)]
     (when-not collection
       (throw (ex-info "Analytics collection not found" {:status 404})))
-
     (let [temp-dir   (Files/createTempDirectory "analytics-export" (make-array FileAttribute 0))
           parent-dir (doto (.toFile temp-dir) .mkdirs)
           export-dir (doto (io/file parent-dir "instance_analytics") .mkdirs)
@@ -39,19 +38,15 @@
                          (run! io/delete-file (reverse (file-seq parent-dir))))
                        (when (.exists dst)
                          (io/delete-file dst)))]
-
       (try
         (log/info "Exporting analytics collection" (:id collection))
         (analytics-dev/export-analytics-content! (:id collection) user-email (.getPath export-dir))
-
         (log/info "Creating tarball" (.getPath dst))
         (u.compress/tgz parent-dir dst)
-
         {:archive  (when (.exists dst) dst)
          :cleanup! cleanup!}
-
         (catch Exception e
-          (log/error e "Error during analytics export")
+          (log/errorf "Error during analytics export: %s" (ex-message e))
           (try (cleanup!) (catch Error _))
           {:error-message (.getMessage e)})))))
 
@@ -66,17 +61,13 @@
   Requires superuser permissions."
   []
   (api/check-superuser)
-
   (api/check-400
    (audit/analytics-dev-mode)
    "Analytics dev mode is not enabled")
-
   (let [timer (u/start-timer)
         {:keys [archive error-message cleanup!]} (export-and-pack)
         duration (u/since-ms timer)]
-
     (log/infof "Analytics export completed in %.0fms" duration)
-
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"

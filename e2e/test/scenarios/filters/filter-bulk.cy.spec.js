@@ -254,22 +254,26 @@ describe("scenarios > filters > bulk filtering", () => {
       H.createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       });
 
       H.createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
-        table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+          },
         },
       });
     });

@@ -152,7 +152,7 @@
     (let [provider (merged-mock/merged-mock-metadata-provider
                     meta/metadata-provider
                     {:fields [;; Make Checkins.VENUE_ID + Checkins.USER_ID into a two-part primary key.
-                               ;; Turn Checkins.ID into a basic numeric field.
+                              ;; Turn Checkins.ID into a basic numeric field.
                               {:id                 (meta/id :checkins :id)
                                :semantic-type      :type/Quantity}
                               {:id                 (meta/id :checkins :venue-id)
@@ -161,8 +161,7 @@
                               {:id                 (meta/id :checkins :user-id)
                                :semantic-type      :type/PK
                                :fk-target-field-id nil}
-
-                               ;; Then turn Orders.USER_ID and Orders.PRODUCT_ID into FKs pointing at Checkins.
+                              ;; Then turn Orders.USER_ID and Orders.PRODUCT_ID into FKs pointing at Checkins.
                               {:id                 (meta/id :orders :user-id)
                                :semantic-type      :type/FK
                                :fk-target-field-id (meta/id :checkins :user-id)}
@@ -187,11 +186,10 @@
           :expected       {:type            :drill-thru/fk-details
                            :column          {:name "PRODUCT_ID"}
                            :object-id       venue-id
-                            ;; TODO: This field actually refers to the source table, not the target one. Is that right?
-                            ;; Tech Debt Issue: #39409
+                           ;; TODO: This field actually refers to the source table, not the target one. Is that right?
+                           ;; Tech Debt Issue: #39409
                            :many-pks?       false}
           :expected-query {:stages [{:filters [[:= {} exp-venue-id venue-id]]}]}}))
-
       (testing "preserve any existing filter for another PK on the same table"
         (testing "existing USER_ID, new \"VENUE_ID\" (really PRODUCT_ID)"
           (letfn [(filtered-user [query]

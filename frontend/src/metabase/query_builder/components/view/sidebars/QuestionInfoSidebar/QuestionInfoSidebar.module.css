@@ -1,5 +1,5 @@
 .BrandCircle {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
   color: var(--mb-color-text-primary-inverse);
   border-radius: 50%;
   height: 1rem;

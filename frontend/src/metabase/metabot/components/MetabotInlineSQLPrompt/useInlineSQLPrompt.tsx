@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { EditorView as EV, keymap } from "@codemirror/view";
+import { EditorView as EV, ViewPlugin, keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import {
   useCallback,
@@ -51,19 +51,28 @@ export interface UseInlineSqlEditResult {
   proposedQuestion: Question | undefined;
   handleAcceptProposed?: (datasetQuery: DatasetQuery) => void;
   handleRejectProposed?: () => void;
+  togglePrompt: () => void;
+  isPromptOpen: boolean;
 }
 
 export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
-  const { canUseSqlGeneration: isEnabled } = useUserMetabotPermissions();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
 
   const databaseId = question.databaseId();
 
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+  const [isPromptOpen, setIsPromptOpen] = useState(false);
   const [promptValue, setPromptValue] = useState("");
   const onGenerated = useCallback(() => setPromptValue(""), []);
+
+  const viewRef = useRef<EditorView | null>(null);
+
+  const hasAccessRef = useRef(hasSqlGenerationAccess);
+  hasAccessRef.current = hasSqlGenerationAccess;
 
   useRegisterCodeEditorMetabotContext(
     portalTarget?.view ?? undefined,
@@ -84,16 +93,8 @@ export function useInlineSQLPrompt(
   } = useMetabotSQLSuggestion({ databaseId, bufferId, onGenerated });
 
   const getSourceSql = useCallback(() => {
-    return portalTarget?.view?.state.doc.toString() ?? "";
-  }, [portalTarget?.view]);
-
-  const prevDatabaseIdRef = useRef(databaseId);
-  useEffect(() => {
-    if (prevDatabaseIdRef.current !== databaseId) {
-      setPromptValue("");
-      prevDatabaseIdRef.current = databaseId;
-    }
-  }, [databaseId]);
+    return viewRef.current?.state.doc.toString() ?? "";
+  }, []);
 
   const generatedSqlRef = useRef(generatedSource);
   generatedSqlRef.current = generatedSource;
@@ -104,9 +105,9 @@ export function useInlineSQLPrompt(
   }, [clearSuggestion]);
 
   const hideInput = useCallback(() => {
-    portalTarget?.view.dispatch({ effects: hideEffect.of() });
-    portalTarget?.view.focus();
-  }, [portalTarget?.view]);
+    viewRef.current?.dispatch({ effects: hideEffect.of() });
+    viewRef.current?.focus();
+  }, []);
 
   const hideInputRef = useRef(hideInput);
   useLayoutEffect(() => {
@@ -122,20 +123,55 @@ export function useInlineSQLPrompt(
     [generatedSource, hideInput],
   );
 
+  const prevDatabaseIdRef = useRef(databaseId);
+  useEffect(() => {
+    if (prevDatabaseIdRef.current !== databaseId) {
+      resetSuggestionState();
+      prevDatabaseIdRef.current = databaseId;
+    }
+  }, [databaseId, resetSuggestionState]);
+
   useEffect(
-    function resetOnDbChangeAndUnmount() {
+    function resetOnUnmount() {
       return () => {
         hideInputRef.current();
         resetSuggestionState();
       };
     },
-    [resetSuggestionState, databaseId],
+    [resetSuggestionState],
   );
 
   const resetInput = useCallback(() => {
     clearSuggestion();
     hideInput();
   }, [clearSuggestion, hideInput]);
+
+  const togglePrompt = useCallback(() => {
+    const view = viewRef.current;
+    if (!view || !hasAccessRef.current) {
+      return;
+    }
+    if (isPromptOpen) {
+      hideInput();
+      return;
+    }
+    if (generatedSqlRef.current) {
+      resetInput();
+    }
+
+    view.dispatch({ effects: toggleEffect.of({ view }) });
+    // wait until input has mounted before scrolling it into view so scroll calculations are correct
+    view.scrollDOM.addEventListener(
+      "focusin",
+      () => {
+        view.dispatch({
+          effects: EV.scrollIntoView(view.state.selection.main.head),
+        });
+        view.dom.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      },
+      { once: true },
+    );
+  }, [isPromptOpen, hideInput, resetInput]);
 
   const handleClose = () => {
     hideInput();
@@ -167,47 +203,64 @@ export function useInlineSQLPrompt(
 
   const handleAcceptProposed = generatedSource ? resetInput : undefined;
 
-  const extensions = useMemo(
-    () =>
-      isEnabled
-        ? [
-            createPromptInputExtension(setPortalTarget),
-            keymap.of([
-              {
-                key: `Mod-Shift-i`,
-                run: (view) => {
-                  if (generatedSqlRef.current) {
-                    resetInputRef.current();
-                  }
-                  view.dispatch({ effects: toggleEffect.of({ view }) });
-                  return true;
-                },
-              },
-            ]),
-            EV.updateListener.of((update) => {
-              if (!update.docChanged || !generatedSqlRef.current) {
-                return;
-              }
-              // Only clear suggestion if change was from user input, not programmatic
-              const isUserEdit = update.transactions.some(
-                (tr) =>
-                  tr.isUserEvent("input") ||
-                  tr.isUserEvent("delete") ||
-                  tr.isUserEvent("move"),
-              );
-              if (isUserEdit) {
-                clearSuggestionRef.current();
-              }
-            }),
-          ]
-        : [],
-    [isEnabled],
-  );
+  const extensions = useMemo(() => {
+    const promptField = createPromptInputExtension(setPortalTarget);
+    return [
+      promptField,
+      ViewPlugin.define((view) => {
+        viewRef.current = view;
+        return {
+          destroy: () => {
+            if (viewRef.current === view) {
+              viewRef.current = null;
+            }
+          },
+        };
+      }),
+      keymap.of([
+        {
+          key: `Mod-Shift-i`,
+          run: (view) => {
+            if (!hasAccessRef.current) {
+              return false;
+            }
+            if (generatedSqlRef.current) {
+              resetInputRef.current();
+            }
+            view.dispatch({ effects: toggleEffect.of({ view }) });
+            return true;
+          },
+        },
+      ]),
+      EV.updateListener.of((update) => {
+        const promptState = update.state.field(promptField, false);
+        const isVisible = promptState?.visible ?? false;
+        setIsPromptOpen(isVisible);
+        if (!isVisible) {
+          setPortalTarget(null);
+        }
+
+        if (!update.docChanged || !generatedSqlRef.current) {
+          return;
+        }
+        // Only clear suggestion if change was from user input, not programmatic
+        const isUserEdit = update.transactions.some(
+          (tr) =>
+            tr.isUserEvent("input") ||
+            tr.isUserEvent("delete") ||
+            tr.isUserEvent("move"),
+        );
+        if (isUserEdit) {
+          clearSuggestionRef.current();
+        }
+      }),
+    ];
+  }, []);
 
   return {
     extensions,
     portalElement:
-      isEnabled && portalTarget
+      hasSqlGenerationAccess && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -224,8 +277,14 @@ export function useInlineSQLPrompt(
             portalTarget.container,
           )
         : null,
-    proposedQuestion: isEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
-    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
+    proposedQuestion: canUseSqlGeneration ? proposedQuestion : undefined,
+    handleRejectProposed: canUseSqlGeneration
+      ? handleRejectProposed
+      : undefined,
+    handleAcceptProposed: canUseSqlGeneration
+      ? handleAcceptProposed
+      : undefined,
+    togglePrompt,
+    isPromptOpen,
   };
 }

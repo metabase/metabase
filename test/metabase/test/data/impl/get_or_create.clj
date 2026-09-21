@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
@@ -18,6 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -36,7 +37,7 @@
   multiple times in parallel -- for example my Oracle test that runs 30 sync calls at the same time to make sure
   nothing explodes and cursors aren't leaked. To make sure this doesn't happen we'll keep a map of
 
-    [driver dataset-name] -> ReentrantReadWriteLock
+    [driver dataset-name] -> ReadWriteLock
 
   and make sure data can be loaded and synced for a given driver + dataset in a synchronized fashion. Code path looks
   like this:
@@ -57,14 +58,14 @@
 
   Because each driver and dataset has its own lock, various datasets can be loaded in parallel, but this will prevent
   the same dataset from being loaded multiple times."
-  {:arglists '(^java.util.concurrent.locks.ReentrantReadWriteLock [driver dataset-name])}
+  {:arglists '(^java.util.concurrent.locks.ReadWriteLock [driver dataset])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod dataset-lock :default
-  [driver dataset-name]
-  {:pre [(keyword? driver) (string? dataset-name)]}
-  (let [key-path [driver dataset-name]]
+  [driver {:keys [database-name] :as _dbdef}]
+  {:pre [(keyword? driver) (string? database-name)]}
+  (let [key-path [driver database-name]]
     (or
      (get-in @dataset-locks key-path)
      (locking dataset-locks
@@ -77,8 +78,8 @@
           (swap! dataset-locks assoc-in key-path lock)
           lock))))))
 
-(defn- get-existing-database-with-read-lock [driver {:keys [database-name], :as dbdef}]
-  (let [lock (dataset-lock driver database-name)]
+(defn- get-existing-database-with-read-lock [driver dbdef]
+  (let [lock (dataset-lock driver dbdef)]
     (try
       (.. lock readLock lock)
       (tx/metabase-instance dbdef driver)
@@ -87,9 +88,8 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- [:map
-                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
-   db                                                    :- :map]
+  [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
+   db                                                    :- :metabase.warehouses.schema/database]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -101,10 +101,22 @@
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
+          (doseq [property [:visibility-type :semantic-type]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
+              (t2/update! :model/Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)})))
+          ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
+          ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
+          ;; sequence that sets effective_type alone first would be reverted before
+          ;; coercion_strategy lands.
+          (let [eff-type (:effective-type field-definition)
+                coerce   (:coercion-strategy field-definition)
+                upd      (cond-> {}
+                           eff-type (assoc :effective_type (u/qualified-name eff-type))
+                           coerce   (assoc :coercion_strategy (u/qualified-name coerce)))]
+            (when (seq upd)
+              (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
+              (t2/update! :model/Field (:id @field) upd))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -145,7 +157,7 @@
                            (:native base-type)
 
                            (and (map? base-type) (contains? base-type :natives))
-                           (get-in base-type [:natives driver])
+                           (get-in base-type [:natives (u/qualified-name driver)])
 
                            :else
                            ;; Use fake-sync-database-type to get the type the database reports
@@ -165,7 +177,7 @@
                            (some? fk) :type/FK
                            :else      semantic-type)]
     {:name              field-name
-     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :display_name      (warehouse-schema.humanization/name->human-readable-name :simple field-name)
      :database_type     database-type
      :base_type         actual-base-type
      :effective_type    (or effective-type actual-base-type)
@@ -187,7 +199,7 @@
         table-row      {:db_id               db-id
                         :name                sync-table-name
                         :schema              schema
-                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :display_name        (warehouse-schema.humanization/name->human-readable-name :simple table-name)
                         :description         table-comment
                         :active              true
                         :visibility_type     nil
@@ -269,7 +281,7 @@
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
+  (assert (= (warehouse-schema.settings/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
@@ -284,15 +296,15 @@
                 full-sync?         (= scan :full)]
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-            ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-            ;;
-            ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-            ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-            ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-            ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+              ;;
+              ;; `*log-exceptions-and-continue?*` is true in production; pinning it false here makes one bad table fail
+              ;; the whole test database setup, which is what we want for drivers whose table listing is authoritative.
+              ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
+              ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
+              (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
                 (sync/sync-database! db {:scan scan}))
-            ;; add extra metadata for fields
+              ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
                 (catch Throwable e
@@ -403,15 +415,14 @@
     (do
       (log/info "Data has not been loaded yet. Loading...")
       (u/with-timeout create-database-timeout-ms
-      ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
+        ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef)))))
-  (tx/track-dataset driver dbdef))
+          (tx/create-db! driver dbdef))))))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
+   {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge
@@ -433,8 +444,14 @@
     (load-dataset-data-if-needed! driver database-definition)
     (create-and-sync-Database! driver database-definition)
     (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
+      ;; Destroying the DB when there's a failure loading and syncing is fine
+      ;; for most DBs, but for cloud databases it makes things worse.
+      (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        ;; test-harness console notice; stays visible even when log output is captured
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println "create-database! failed; destroying database"
+                 driver (pr-str database-name))
+        (tx/destroy-db! driver database-definition))
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]
@@ -452,8 +469,8 @@
        thunk)
       (thunk))))
 
-(defn- create-and-sync-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
-  (let [lock (dataset-lock driver database-name)]
+(defn- create-and-sync-database-with-write-lock! [driver dbdef]
+  (let [lock (dataset-lock driver dbdef)]
     (try
       (.. lock writeLock lock)
       (or
@@ -473,7 +490,7 @@
     (log/infof "Test data for %s %s was loaded by previous session, checking to see if data needs to be reloaded..."
                driver
                (pr-str database-name))
-    (let [lock (dataset-lock driver database-name)]
+    (let [lock (dataset-lock driver dbdef)]
       (try
         (.. lock writeLock lock)
         ;; once we acquire the write lock, check that the value of `created_at` hasn't been updated by another thread

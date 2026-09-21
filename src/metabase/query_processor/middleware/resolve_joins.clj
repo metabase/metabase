@@ -14,7 +14,7 @@
    [metabase.util.performance :refer [every? mapv empty?]]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
-  [join]
+  [join :- ::lib.schema.join/join]
   (merge {:strategy lib.schema.join/default-strategy}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
@@ -38,7 +38,6 @@
                                                               (not (contains? duplicate-ids field-id)))
                                    force-field-name-ref? (and (pos-int? id-or-name)
                                                               (contains? duplicate-ids field-id))]]
-
       (cond
         force-id-ref?
         [:field opts field-id]

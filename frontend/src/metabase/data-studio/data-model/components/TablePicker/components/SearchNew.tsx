@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
-import { trackDataStudioTablePickerSearchPerformed } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase/common/data-studio/analytics";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
@@ -121,6 +121,7 @@ export function SearchNew({
     "owner-email": filters.ownerEmail ?? undefined,
     "orphan-only": filters.ownerUserId === "unknown" ? true : undefined,
     "unused-only": filters.unusedOnly === true ? true : undefined,
+    "published-only": filters.publishedOnly === true ? true : undefined,
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
@@ -144,7 +145,7 @@ export function SearchNew({
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
   }, [allowedDatabaseIds, tables]);
 
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingTables || isFetchingTables || isLoadingDatabases;
 
   const resultTree = useMemo(
     () => buildResultTree(filteredTables),
@@ -171,7 +172,7 @@ export function SearchNew({
 
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" p="xl">
+      <Flex justify="center" align="center" p="xxl">
         <Loader />
       </Flex>
     );
@@ -179,8 +180,8 @@ export function SearchNew({
 
   if (filteredTables.length === 0) {
     return (
-      <Box p="xl">
-        <Text c="text-tertiary">{t`No tables found`}</Text>
+      <Box p="xxl">
+        <Text c="text-disabled">{t`No tables found`}</Text>
       </Box>
     );
   }

@@ -2,6 +2,7 @@
   "Integration tests that verify `is_db_routed` is recorded on `:model/QueryExecution` rows when a query is routed
   to a destination database via DB routing. Drives a full userland query through the QP and inspects the persisted
   row."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.database-routing.query-execution-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.database-routing.e2e-test :as e2e]
@@ -9,7 +10,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -22,10 +22,7 @@
     (binding [driver.settings/*allow-testing-h2-connections* true
               qp.util/*execute-async?* false]
       (met/with-user-attributes! :rasta {"db_name" "destination-db"}
-        (e2e/with-temp-dbs! [router-db destination-db]
-          (t2/update! :model/Database (u/the-id destination-db)
-                      {:name "destination-db" :router_database_id (u/the-id router-db)})
-          (sync/sync-database! router-db)
+        (e2e/with-routing-setup! [router-db [[destination-db "destination-db"]]]
           (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                   :user_attribute "db_name"}]
             (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('hi')")

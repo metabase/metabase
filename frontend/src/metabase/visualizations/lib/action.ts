@@ -1,9 +1,9 @@
-import type { LocationDescriptorObject } from "history";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import type { Dispatch } from "metabase/redux/store";
-import { open } from "metabase/utils/dom";
+import type { Path } from "metabase/router";
+import { navigate } from "metabase/router";
+import { openUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import type {
@@ -16,7 +16,7 @@ type ActionProps = {
   dispatch: Dispatch;
   onChangeCardAndRun?: OnChangeCardAndRun;
   onUpdateQuestion?: (question: Question) => void;
-  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
+  onSameOriginNavigation?: (location: Partial<Path>) => void;
 };
 
 export function performAction(
@@ -43,12 +43,12 @@ export function performAction(
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      open(url, {
+      openUrl(url, {
         openInSameOrigin: (location) => {
           if (props.onSameOriginNavigation) {
             props.onSameOriginNavigation(location);
           } else {
-            dispatch(push(location));
+            navigate(location);
           }
         },
         ignoreSiteUrl,
@@ -70,6 +70,7 @@ export function performAction(
           nextCard: question.card(),
           ...extra,
           objectId,
+          drillName: action.name,
         });
       } else if (questionChangeBehavior === "updateQuestion") {
         onUpdateQuestion?.(question);

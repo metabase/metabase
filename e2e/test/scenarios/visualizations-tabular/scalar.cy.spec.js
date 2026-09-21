@@ -21,8 +21,6 @@ describe("scenarios > visualizations > scalar", () => {
     it(`should render human readable numbers on ${size} screen size (metabase`, () => {
       const [width, height] = viewport;
 
-      cy.skipOn(size === "mobile");
-
       cy.viewport(width, height);
       H.createQuestionAndDashboard({
         questionDetails: {
@@ -41,7 +39,14 @@ describe("scenarios > visualizations > scalar", () => {
         },
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
-        cy.findByText("1.5T");
+        // cards on mobile take up the full viewport width so there is enough room to display the uncompacted value
+        // If https://github.com/metabase/metabase/issues/6201 is completed this may change but in this instance showing
+        // the uncompacted value for mobile is the expected behaviour.
+        if (size === "mobile") {
+          cy.findByText("1,510,621,683,050.63");
+        } else {
+          cy.findByText("1.5T");
+        }
       });
     });
   });

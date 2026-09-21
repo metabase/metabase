@@ -50,7 +50,9 @@
   (testing "Make sure our schema validates `:field` clauses correctly"
     (doseq [[clause expected] {[:field 1 nil]                                                          true
                                [:field 1 {}]                                                           false
-                               [:field 1 {:x true}]                                                    true
+                               ;; a real option -- the map is closed, so a non-empty map only validates when what is
+                               ;; in it is declared
+                               [:field 1 {:join-alias "Wow"}]                                          true
                                [:field 1 2]                                                            false
                                [:field "wow" nil]                                                      false
                                [:field "wow" {}]                                                       false
@@ -143,8 +145,8 @@
                                                                   "[[WHERE {{date_range}}]]"
                                                                   "ORDER BY \"TIMESTAMP\" ASC"
                                                                   " LIMIT 1"])
-                              :template-tags {"date_range" template-tag}
-                              :parameters    [parameter]}}]
+                              :template-tags {"date_range" template-tag}}
+                   :parameters [parameter]}]
         (is (nil? (me/humanize (mr/explain ::mbql.s/Query query))))))))
 
 (deftest ^:parallel value-test
@@ -162,7 +164,7 @@
       [:or ::mbql.s/absolute-datetime ::mbql.s/value])))
 
 (deftest ^:parallel expression-value-wrapped-literals-test
-  (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLQuery
+  (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLInnerQuery
                                              {:source-table 1, :expressions {"expr" [:value value nil]}})))
     ""
     "192.168.1.1"
@@ -176,7 +178,7 @@
 
 ;; Allowed in #67203 and above
 (deftest ^:parallel expression-unwrapped-literals-test
-  (are [value] (mr/validate ::mbql.s/MBQLQuery {:source-table 1, :expressions {"expr" value}})
+  (are [value] (mr/validate ::mbql.s/MBQLInnerQuery {:source-table 1, :expressions {"expr" value}})
     ""
     "192.168.1.1"
     "2025-03-11"

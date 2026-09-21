@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
-import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
+import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
@@ -30,9 +30,9 @@ export function SegmentList({ table }: SegmentListProps) {
   );
 
   return (
-    <Stack gap="md" data-testid="table-segments-page">
+    <Stack gap="lg" data-testid="table-segments-page">
       {canCreateSegment && (
-        <Group gap="md" justify="flex-start" wrap="nowrap">
+        <Group gap="lg" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
             to={Urls.newDataStudioDataModelSegment({
@@ -42,7 +42,7 @@ export function SegmentList({ table }: SegmentListProps) {
             })}
             h={32}
             px="sm"
-            py="xs"
+            py="xxs"
             size="xs"
             leftSection={<Icon name="add" />}
             onClick={() =>

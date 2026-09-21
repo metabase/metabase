@@ -1,31 +1,36 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
-  TableColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+  QueryColumnInfoIcon,
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
 import CS from "metabase/css/core/index.css";
-import type { IconName } from "metabase/ui";
+import { useMetadataProvider } from "metabase/metadata-store";
+import { getQueryAndColumns } from "metabase/querying/common/utils";
 import { Box, DelayGroup, Icon } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
-import type Table from "metabase-lib/v1/metadata/Table";
+import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import type { IconName } from "metabase-types/api";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
+import type { DataSelectorField, DataSelectorTable } from "../types";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
 
+const STAGE_INDEX = -1;
+
 type DataSelectorFieldPickerProps = {
-  fields: Field[];
+  fields: DataSelectorField[];
   hasFiltering?: boolean;
   hasInitialFocus?: boolean;
   isLoading?: boolean;
-  selectedField?: Field;
-  selectedTable?: Table;
+  selectedField?: DataSelectorField;
+  selectedTable?: DataSelectorTable;
   onBack?: () => void;
-  onChangeField: (field: Field) => void;
+  onChangeField: (field: DataSelectorField) => void;
+  getFieldDisplayName: (field: DataSelectorField) => string;
 };
 
 type HeaderProps = {
@@ -35,7 +40,7 @@ type HeaderProps = {
 
 type FieldWithName = {
   name: string;
-  field: Field;
+  field: DataSelectorField;
 };
 
 export const DataSelectorFieldPicker = ({
@@ -47,7 +52,14 @@ export const DataSelectorFieldPicker = ({
   onBack,
   hasFiltering,
   hasInitialFocus,
+  getFieldDisplayName,
 }: DataSelectorFieldPickerProps) => {
+  const metadataProvider = useMetadataProvider(selectedTable?.db_id ?? null);
+  const queryAndColumns = useMemo(
+    () => getQueryAndColumns(metadataProvider, selectedTable, fields),
+    [metadataProvider, selectedTable, fields],
+  );
+
   const header = <Header onBack={onBack} selectedTable={selectedTable} />;
 
   if (isLoading) {
@@ -58,7 +70,7 @@ export const DataSelectorFieldPicker = ({
     {
       name: header,
       items: fields.map((field) => ({
-        name: field.displayName(),
+        name: getFieldDisplayName(field),
         field: field,
       })),
     },
@@ -67,15 +79,23 @@ export const DataSelectorFieldPicker = ({
   const checkIfItemIsSelected = (item: FieldWithName) =>
     item.field && selectedField && item.field.id === selectedField.id;
 
-  const renderItemIcon = (item: FieldWithName) =>
-    item.field && (
-      <TableColumnInfoIcon
-        field={item.field}
-        position="top-end"
-        size={18}
-        icon={item.field.icon() as unknown as IconName}
-      />
+  const renderItemIcon = (item: FieldWithName) => {
+    const queryAndColumn = queryAndColumns.get(item.field);
+    return (
+      queryAndColumn && (
+        <QueryColumnInfoIcon
+          query={queryAndColumn.query}
+          stageIndex={STAGE_INDEX}
+          column={queryAndColumn.column}
+          position="top-end"
+          size={18}
+          // getIconForField returns one of the icon names in its own
+          // mapping, typed as a plain string.
+          icon={getIconForField(item.field) as IconName}
+        />
+      )
     );
+  };
 
   return (
     <Box w={CONTAINER_WIDTH} className={DataSelectorFieldPickerS.Container}>
@@ -89,7 +109,9 @@ export const DataSelectorFieldPicker = ({
           maxHeight={Infinity}
           width="100%"
           searchable={hasFiltering}
-          onChange={(item: { field: Field }) => onChangeField(item.field)}
+          onChange={(item: { field: DataSelectorField }) =>
+            onChangeField(item.field)
+          }
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={(item: FieldWithName) => Boolean(item.field)}
           renderItemWrapper={renderItemWrapper}

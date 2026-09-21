@@ -1,14 +1,16 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { getActionErrorMessage } from "metabase/actions/utils";
-import { Pulses } from "metabase/entities/pulses";
+import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   ChannelApiResponse,
+  CreateSubscriptionRequest,
   DashboardSubscription,
+  DraftDashboardSubscription,
+  UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
 import { getEditingPulse } from "./selectors";
@@ -24,8 +26,9 @@ export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
 export const FETCH_PULSE_LIST_BY_DASHBOARD_ID =
   "FETCH_PULSE_LIST_BY_DASHBOARD_ID";
 
-export const updateEditingPulse =
-  createAction<DashboardSubscription>(UPDATE_EDITING_PULSE);
+export const updateEditingPulse = createAction<
+  DashboardSubscription | DraftDashboardSubscription
+>(UPDATE_EDITING_PULSE);
 export const cancelEditingPulse = createAction(CANCEL_EDITING_PULSE);
 
 export const saveEditingPulse = createThunkAction(
@@ -37,21 +40,29 @@ export const saveEditingPulse = createThunkAction(
 
       try {
         if (isEdit) {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.update(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.updateSubscription.initiate(
+              // Unjustified type cast. FIXME
+              editingPulse as unknown as UpdateSubscriptionRequest,
+            ),
+          ).unwrap();
         } else {
-          return Pulses.HACK_getObjectFromAction(
-            await dispatch(Pulses.actions.create(editingPulse)),
-          );
+          return await dispatch(
+            subscriptionApi.endpoints.createSubscription.initiate(
+              // Unjustified type cast. FIXME
+              editingPulse as unknown as CreateSubscriptionRequest,
+            ),
+          ).unwrap();
         }
       } catch (error) {
-        const errorMessage = getActionErrorMessage(error);
+        const errorMessage =
+          getResponseErrorMessage(error) ??
+          t`Something went wrong while saving your subscription`;
 
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: isEdit
               ? t`Cannot edit subscription. ${errorMessage} Please contact your administrator.`
               : t`Cannot create subscription. ${errorMessage} Please contact your administrator.`,
@@ -66,9 +77,11 @@ export const saveEditingPulse = createThunkAction(
 
 export const testPulse = createThunkAction(
   TEST_PULSE,
-  function (pulse: DashboardSubscription) {
-    return async function () {
-      return await PulseApi.test(pulse);
+  function (pulse: DashboardSubscription | DraftDashboardSubscription) {
+    return async function (dispatch) {
+      return await dispatch(
+        subscriptionApi.endpoints.testSubscription.initiate(pulse),
+      ).unwrap();
     };
   },
 );
@@ -76,9 +89,11 @@ export const testPulse = createThunkAction(
 export const fetchPulseFormInput = createThunkAction(
   FETCH_PULSE_FORM_INPUT,
   function () {
-    return async function (): Promise<ChannelApiResponse | undefined> {
+    return async function (dispatch): Promise<ChannelApiResponse | undefined> {
       try {
-        return await PulseApi.form_input();
+        return await dispatch(
+          subscriptionApi.endpoints.getChannelInfo.initiate(),
+        ).unwrap();
       } catch {
         // This request is expected to fail when the user lacks
         // "Subscriptions and Alerts" permissions. Swallow the error

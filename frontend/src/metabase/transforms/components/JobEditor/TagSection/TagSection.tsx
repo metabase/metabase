@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { Box } from "metabase/ui";
 import type { TransformTagId } from "metabase-types/api";
 
 import { TagMultiSelect } from "../../TagMultiSelect";
-import { TitleSection } from "../../TitleSection";
 import type { TransformJobInfo } from "../types";
 
 type TagSectionProps = {
@@ -19,7 +19,7 @@ export function TagSection({ job, readOnly, onTagsChange }: TagSectionProps) {
       label={t`Tags to run`}
       description={t`This job will run all transforms tagged with any of the tags you pick here.`}
     >
-      <Box p="xl">
+      <Box p="xxl">
         <TagMultiSelect
           tagIds={job.tag_ids ?? []}
           readOnly={readOnly}

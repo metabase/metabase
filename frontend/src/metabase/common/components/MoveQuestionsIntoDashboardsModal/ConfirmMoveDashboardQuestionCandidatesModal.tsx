@@ -80,13 +80,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         <div className={S.tableRow}>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="folder" c="brand" />
+              <Icon name="folder" c="core-brand" />
               {t`Question`}
             </Flex>
           </div>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="dashboard" c="brand" />
+              <Icon name="dashboard" c="core-brand" />
               {t`Dashboard it'll be moved to`}
             </Flex>
           </div>
@@ -96,13 +96,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         {match({ isLoading, fetchError, rows })
           .with({ isLoading: true }, () => (
             <Flex justify="center" py="18.25rem">
-              <Loader size="xl" data-testid="loading-indicator" />
+              <Loader size="xl" />
             </Flex>
           ))
           .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
             return (
               <Flex justify="center" py="19rem">
-                <Text color="error" size="1.25rem" px="md">
+                <Text color="feedback-negative" size="1.25rem" px="lg">
                   {fetchError instanceof Error
                     ? (fetchError?.message ?? defaultErrMsg)
                     : defaultErrMsg}
@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="md" color="text-tertiary">
+              <Text size="1.25rem" px="lg" color="text-disabled">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>
@@ -130,12 +130,12 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         className={S.modalFooter}
         justify="space-between"
         align="center"
-        gap="md"
+        gap="lg"
         py="1rem"
         px="1.25rem"
       >
         {mutationError ? (
-          <Text color="error">
+          <Text color="feedback-negative">
             {mutationError instanceof Error
               ? (mutationError?.message ?? defaultErrMsg)
               : defaultErrMsg}
@@ -143,14 +143,14 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         ) : (
           <div />
         )}
-        <Flex gap="md" ml="1.5rem">
+        <Flex gap="lg" ml="1.5rem">
           <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
           <Button
             loading={isMutating}
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "error" : "brand"}
+            color={mutationError ? "feedback-negative" : "core-brand"}
           >
             {t`Move these questions`}
           </Button>

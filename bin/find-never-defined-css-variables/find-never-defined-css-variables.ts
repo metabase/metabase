@@ -28,15 +28,25 @@ const shouldWhiteList = (variable: string) => {
 
 // These are variables that were found by the script but were temporarily allowed to get this script + mantine v7 merged
 const knownIssues = [
-  "--mb-bolor-text-error",
-  "--mb-bolor-text-medium",
-  "--mb-color-accent-3",
-  "--mb-spacing-xs",
-  "--mb-text-text-dark",
-  "--multiselect-pill-font-size",
-  "--select-item-font-size",
-  "--select-item-line-height",
   "--button-bg", // Mantine var defined for buttons and used in Button.module.css
+
+  // `accent-gray-light` is one of our theme colors (registered via getMantineThemeColors).
+  // Mantine derives variant vars like `--mantine-color-<color>-filled` from each registered
+  // color at runtime, so they aren't in the static @mantine/core/styles.css this script
+  // reads — hence this allow-list entry.
+  "--mantine-color-accent-gray-light-filled",
+
+  // Custom spacing/radius scale keys. Mantine derives
+  // `--mantine-spacing-*` / `--mantine-radius-*` variables at runtime from the
+  // theme object in frontend/src/metabase/ui/theme.ts, so they are not in the
+  // static @mantine/core/styles.css this script reads.
+  "--mantine-spacing-xxxs",
+  "--mantine-spacing-xxs",
+  "--mantine-spacing-xxl",
+  "--mantine-radius-xxs",
+  "--mantine-shadow-xs_outline",
+  "--mantine-shadow-sm_outline",
+  "--mantine-shadow-lg_outline",
 ];
 
 interface UsageMap {
@@ -45,9 +55,9 @@ interface UsageMap {
 }
 
 const findFiles = (): string[] => {
-  return glob.sync(
-    "{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}",
-  );
+  return glob
+    .sync("{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}")
+    .filter((f) => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
 
 const extractVariableDefinitions = (filePath: string): Set<string> => {
@@ -59,13 +69,13 @@ export const extractVariableDefinitionsFromFileContent = (
   fileContent: string,
 ): Set<string> => {
   const patterns = [
-    /--[a-zA-Z0-9-]+:/g, // css files: --my-css-variable: blue
-    /['"`]--[a-zA-Z0-9-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
+    /--[a-zA-Z0-9_-]+:/g, // css files: --my-css-variable: blue
+    /['"`]--[a-zA-Z0-9_-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
   ];
 
-  const matches = patterns.flatMap(pattern => {
+  const matches = patterns.flatMap((pattern) => {
     const found = fileContent.match(pattern) || [];
-    return found.map(match => {
+    return found.map((match) => {
       const cleaned = match.replace(/['"`{}:,\s]/g, "");
 
       return cleaned;
@@ -83,10 +93,21 @@ const extractVariableUsages = (filePath: string): Set<string> => {
 export const extractVariableUsagesFromFileContent = (
   content: string,
 ): Set<string> => {
-  const pattern = /var\((--[a-zA-Z0-9-]+)\)/g;
-  const matches = Array.from(content.matchAll(pattern)).map(match => match[1]);
+  const pattern = /var\(\s*(--[a-zA-Z0-9_-]+)\s*([,)])/g;
 
-  return new Set(matches);
+  const usages = Array.from(content.matchAll(pattern)).flatMap((match) => {
+    const [, variable, terminator] = match;
+    const hasFallback = terminator === ",";
+
+    // A bare `var(--x)` must resolve to a defined variable. A `var(--x, fallback)`
+    // is safe by construction — unless it's one of our `--mb-*` design-system
+    // primitives, which are expected to always be defined
+    const shouldValidate = !hasFallback || variable.startsWith("--mb-");
+
+    return shouldValidate ? [variable] : [];
+  });
+
+  return new Set(usages);
 };
 
 const main = () => {
@@ -109,15 +130,15 @@ const main = () => {
   });
 
   // Find all variable definitions
-  files.forEach(file => {
+  files.forEach((file) => {
     const definitions = extractVariableDefinitions(file);
-    definitions.forEach(def => allDefinitions.add(def));
+    definitions.forEach((def) => allDefinitions.add(def));
   });
 
   // Find all variable usages
-  files.forEach(file => {
+  files.forEach((file) => {
     const usages = extractVariableUsages(file);
-    usages.forEach(usage => {
+    usages.forEach((usage) => {
       allUsages.add(usage);
       if (!usageLocations[usage]) {
         usageLocations[usage] = [];
@@ -128,21 +149,21 @@ const main = () => {
 
   // Filter out defined or whitelisted variables
   const undefinedVars = Array.from(allUsages)
-    .filter(usage => !allDefinitions.has(usage) && !shouldWhiteList(usage))
+    .filter((usage) => !allDefinitions.has(usage) && !shouldWhiteList(usage))
     .sort();
 
   if (undefinedVars.length > 0) {
     console.log("Found undefined CSS variables:\n");
-    undefinedVars.forEach(variable => {
+    undefinedVars.forEach((variable) => {
       console.log(`${variable} used in:`);
-      usageLocations[variable].forEach(location => {
+      usageLocations[variable].forEach((location) => {
         console.log(`  - ${location}`);
       });
       console.log("");
     });
 
     const filesWithUndefinedVars = new Set(
-      undefinedVars.map(variable => usageLocations[variable]).flat(),
+      undefinedVars.map((variable) => usageLocations[variable]).flat(),
     );
 
     console.log(

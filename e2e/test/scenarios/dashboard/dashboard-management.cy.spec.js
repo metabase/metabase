@@ -1,9 +1,8 @@
-import { onlyOn } from "@cypress/skip-test";
-
 const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],

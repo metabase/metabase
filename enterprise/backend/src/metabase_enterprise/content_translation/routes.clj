@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
@@ -65,27 +66,24 @@
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
-  {:multipart true}
+  {:multipart {:max-file-size (long max-content-translation-dictionary-size-bytes)
+               :max-file-count 1}}
   [_route_params
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
-
+   {{:keys [tempfile size]} :file} :- [:map {:closed true}
+                                       [:file
+                                        [:map {:closed true}
+                                         [:filename :string]
+                                         [:size     :int]
+                                         [:tempfile (ms/InstanceOfClass java.io.File)]]]]]
   (api/check-superuser)
-  (let [file (get-in multipart-params ["file" :tempfile])]
-    (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
-      (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
-                      {:status-code http-status-content-too-large})))
-    (when-not (instance? java.io.File file)
-      (throw (ex-info (tru "No file provided") {:status-code 400})))
-    (dictionary/read-and-import-csv! file)
-    {:success true}))
+  (when (> size max-content-translation-dictionary-size-bytes)
+    (throw (ex-info (tru "The dictionary should be less than {0}MB." max-content-translation-dictionary-size-mib)
+                    {:status-code http-status-content-too-large})))
+  (when-not (instance? java.io.File tempfile)
+    (throw (ex-info (tru "No file provided") {:status-code 400})))
+  (dictionary/read-and-import-csv! tempfile)
+  {:success true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -93,9 +91,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]
-   {:keys [locale]}]
+   {:keys [locale]} :- [:map {:closed true} [:locale {:optional true} [:maybe :string]]]]
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
@@ -104,8 +102,9 @@
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [locale]} :- [:map [:locale :string]]]
+   {:keys [locale]} :- [:map {:closed true} [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
   {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 

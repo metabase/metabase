@@ -1,4 +1,8 @@
-import type { AdjustLogLevelsRequest, LoggerPreset } from "metabase-types/api";
+import type {
+  AdjustLogLevelsRequest,
+  Log,
+  LoggerPreset,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { provideLoggerPresetListTags } from "./tags";
@@ -9,6 +13,9 @@ export const loggerApi = Api.injectEndpoints({
       query: () => "/api/logger/presets",
       providesTags: (response) =>
         response ? provideLoggerPresetListTags(response) : [],
+    }),
+    listLogs: builder.query<Log[], void>({
+      query: () => "/api/logger/logs",
     }),
     adjustLogLevels: builder.mutation<void, AdjustLogLevelsRequest>({
       query: (body) => ({
@@ -28,6 +35,8 @@ export const loggerApi = Api.injectEndpoints({
 
 export const {
   useListLoggerPresetsQuery,
+  useListLogsQuery,
+  useLazyListLogsQuery,
   useAdjustLogLevelsMutation,
   useResetLogLevelsMutation,
 } = loggerApi;

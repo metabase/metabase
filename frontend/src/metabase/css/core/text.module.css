@@ -71,9 +71,9 @@
 }
 
 .textCode {
-  font-family: monospace;
+  font-family: var(--mb-default-monospace-font-family);
   color: var(--mb-color-text-secondary);
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;
@@ -81,7 +81,7 @@
 }
 
 .textMonospace {
-  font-family: Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family);
 }
 
 .textPreWrap {

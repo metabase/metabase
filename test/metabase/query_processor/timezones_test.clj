@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.timezones-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.timezones-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.timezones-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -8,6 +11,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -109,8 +113,9 @@
 (defn- field-identifier [table-key field-key]
   (sql.qp/->honeysql driver/*driver*
                      [:field
-                      (mt/id table-key field-key)
-                      {:metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}]))
+                      {:lib/uuid                                                  (str (random-uuid))
+                       :metabase.query-processor.util.add-alias-info/source-table (mt/id table-key)}
+                      (mt/id table-key field-key)]))
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))

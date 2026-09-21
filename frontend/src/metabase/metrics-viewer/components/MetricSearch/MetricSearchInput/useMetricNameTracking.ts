@@ -67,9 +67,14 @@ export function useMetricNameTracking({
     (metric: SelectedMetric) => {
       onAddMetric(metric);
       if (metric.name != null) {
+        const sourceId = createSourceId(metric.id, metric.sourceType);
+        metricNamesRef.current = {
+          ...metricNamesRef.current,
+          [sourceId]: metric.name,
+        };
         setLocalMetricNames((prev) => ({
           ...prev,
-          [createSourceId(metric.id, metric.sourceType)]: metric.name!,
+          [sourceId]: metric.name!,
         }));
       }
     },
@@ -80,6 +85,9 @@ export function useMetricNameTracking({
     (metricId: number, sourceType: "metric" | "measure") => {
       onRemoveMetric(metricId, sourceType);
       const sourceId = createSourceId(metricId, sourceType);
+      const nextMetricNames = { ...metricNamesRef.current };
+      delete nextMetricNames[sourceId];
+      metricNamesRef.current = nextMetricNames;
       setLocalMetricNames((prev) => {
         const next = { ...prev };
         delete next[sourceId];
@@ -92,9 +100,17 @@ export function useMetricNameTracking({
   const handleSwapMetric = useCallback(
     (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
       onSwapMetric(oldMetric, newMetric);
+      const oldSourceId = createSourceId(oldMetric.id, oldMetric.sourceType);
+      const nextMetricNames = { ...metricNamesRef.current };
+      delete nextMetricNames[oldSourceId];
+      if (newMetric.name != null) {
+        nextMetricNames[createSourceId(newMetric.id, newMetric.sourceType)] =
+          newMetric.name;
+      }
+      metricNamesRef.current = nextMetricNames;
       setLocalMetricNames((prev) => {
         const next = { ...prev };
-        delete next[createSourceId(oldMetric.id, oldMetric.sourceType)];
+        delete next[oldSourceId];
         if (newMetric.name != null) {
           next[createSourceId(newMetric.id, newMetric.sourceType)] =
             newMetric.name;

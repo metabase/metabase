@@ -6,7 +6,8 @@ const HEALTH_CHECK_WAIT_TIME_MS = 2000;
 export async function waitForHealth(url: string, identifier: string) {
   for (let i = 0; i < HEALTH_CHECK_ATTEMPTS_COUNT; i++) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: { Accept: "text/html" } });
+
       if (res.ok) {
         console.log(`${identifier} is ready`);
         return;

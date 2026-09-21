@@ -7,20 +7,29 @@ import {
   columnFinder,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   ParameterTarget,
   ParameterType,
   ParameterValueOrArray,
 } from "metabase-types/api";
-import { createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockField,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { applyParameter } from "./query";
+import { applyParameter, convertParametersToMbql } from "./query";
 
 type FilterParameterCase = {
   type: ParameterType;
@@ -60,6 +69,26 @@ const METADATA = createMockMetadata({
 });
 
 const PROVIDER = createMetadataProvider({ metadata: METADATA });
+
+const BASE_QUESTION = new Question(
+  createMockCard({
+    dataset_query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: { "source-table": ORDERS_ID },
+    }),
+  }),
+  METADATA,
+);
+
+const NATIVE_QUESTION = new Question(
+  createMockCard({
+    dataset_query: createMockNativeDatasetQuery({
+      database: SAMPLE_DB_ID,
+      native: { query: "SELECT count(*) FROM orders" },
+    }),
+  }),
+  METADATA,
+);
 
 describe("applyParameter", () => {
   describe("filter parameters", () => {
@@ -428,5 +457,43 @@ describe("applyParameter", () => {
         });
       },
     );
+  });
+});
+
+describe("convertParametersToMbql", () => {
+  it("should do nothing to a native question", () => {
+    expect(
+      convertParametersToMbql(NATIVE_QUESTION, { isComposed: false }),
+    ).toBe(NATIVE_QUESTION);
+  });
+
+  it("should convert a question with parameters into a new question with filters", () => {
+    const parameters = [
+      createMockParameter({
+        type: "string/starts-with",
+        name: "foo",
+        id: "foo_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      }),
+      createMockParameter({
+        type: "string/=",
+        name: "bar",
+        id: "bar_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      }),
+    ];
+
+    const question = BASE_QUESTION.setParameters(parameters).setParameterValues(
+      {
+        foo_id: "abc",
+      },
+    );
+
+    const questionWithFilters = convertParametersToMbql(question, {
+      isComposed: false,
+    });
+
+    expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
+    expect(Lib.filters(questionWithFilters.query(), -1)).toHaveLength(1);
   });
 });

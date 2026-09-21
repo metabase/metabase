@@ -14,7 +14,7 @@ const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
 
-export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
+export const addUndo = createThunkAction(ADD_UNDO, (undo: Partial<Undo>) => {
   return (dispatch, getState) => {
     const { icon = "check_filled", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;

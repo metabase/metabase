@@ -10,12 +10,16 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 const getDefaultPluginDbRouting = () => ({
+  // Unjustified type cast. FIXME
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
   getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
@@ -25,22 +29,26 @@ const getDefaultPluginDbRouting = () => ({
   ): "default" | "hidden" | "disabled" => "default",
 });
 
-export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
+export const PLUGIN_DB_ROUTING = definePluginSlot(getDefaultPluginDbRouting);
 
 const getDefaultPluginDatabaseReplication = () => ({
+  // Unjustified type cast. FIXME
   DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
 });
 
-export const PLUGIN_DATABASE_REPLICATION =
-  getDefaultPluginDatabaseReplication();
+export const PLUGIN_DATABASE_REPLICATION = definePluginSlot(
+  getDefaultPluginDatabaseReplication,
+);
 
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  // Unjustified type cast. FIXME
   getRoutes: () => null as React.ReactElement | null,
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  // Unjustified type cast. FIXME
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
     settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
@@ -50,16 +58,6 @@ const getDefaultPluginTableEditing = () => ({
   }>,
 });
 
-export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_DB_ROUTING, getDefaultPluginDbRouting());
-  Object.assign(
-    PLUGIN_DATABASE_REPLICATION,
-    getDefaultPluginDatabaseReplication(),
-  );
-  Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
-}
+export const PLUGIN_TABLE_EDITING = definePluginSlot(
+  getDefaultPluginTableEditing,
+);

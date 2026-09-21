@@ -6,13 +6,12 @@ import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
+import type { CardQuestionBuilder } from "metabase/metadata-store";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
 
@@ -35,14 +34,15 @@ export function isOpenStreetMapHost(hostname: string): boolean {
   );
 }
 
-type MapSettings = {
-  "map.latitude_column"?: string;
-  "map.longitude_column"?: string;
-  "map.metric_column"?: string;
-  "map.center_latitude"?: number;
-  "map.center_longitude"?: number;
-  "map.zoom"?: number;
-};
+type MapSettings = Pick<
+  VisualizationSettings,
+  | "map.latitude_column"
+  | "map.longitude_column"
+  | "map.metric_column"
+  | "map.center_latitude"
+  | "map.center_longitude"
+  | "map.zoom"
+>;
 
 export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   className?: string;
@@ -52,7 +52,7 @@ export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   settings: MapSettings;
   points?: TPoint[] | null;
   series: Series;
-  metadata?: Metadata;
+  buildQuestion: CardQuestionBuilder;
   token?: string | null;
   zoomControl?: boolean;
   zoom?: number | null;
@@ -62,7 +62,7 @@ export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   onMapZoomChange: (zoom: number) => void;
   onRenderError: (error?: unknown) => void;
   onFiltering: (filtering: boolean) => void;
-  onChangeCardAndRun: OnChangeCardAndRun;
+  onChangeCardAndRun?: OnChangeCardAndRun | null;
 }
 
 export class LeafletMap<
@@ -238,7 +238,7 @@ export class LeafletMap<
   supportsFilter() {
     const {
       series: [{ card }],
-      metadata,
+      buildQuestion,
       token,
     } = this.props;
 
@@ -248,7 +248,7 @@ export class LeafletMap<
       return false;
     }
 
-    const question = new Question(card, metadata);
+    const question = buildQuestion(card);
     const { isNative } = Lib.queryDisplayInfo(question.query());
     return !isNative || question.isSaved();
   }
@@ -287,7 +287,7 @@ export class LeafletMap<
       ],
       settings,
       onChangeCardAndRun,
-      metadata,
+      buildQuestion,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -297,7 +297,7 @@ export class LeafletMap<
       name: settings["map.longitude_column"],
     });
 
-    const question = new Question(card, metadata);
+    const question = buildQuestion(card);
     if (this.supportsFilter() && latitudeColumn && longitudeColumn) {
       const query = question.query();
       const stageIndex = -1;
@@ -325,7 +325,7 @@ export class LeafletMap<
       const updatedQuestion = question.setQuery(updatedQuery);
       const nextCard = updatedQuestion.card();
 
-      onChangeCardAndRun({ nextCard });
+      onChangeCardAndRun?.({ nextCard });
     }
 
     this.props.onFiltering(false);

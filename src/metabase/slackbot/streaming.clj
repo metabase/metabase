@@ -4,17 +4,18 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
-   [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -24,7 +25,8 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.string :as u.str])
   (:import
    (java.util.concurrent
     Callable
@@ -64,6 +66,17 @@
        (or (= (:text msg) thinking-placeholder)
            (str/blank? (:text msg)))))
 
+(defn- user-msg-content
+  "What a user message contributes to the chat history: its text without the bot mention.
+  A message with no other text names its attachments instead, or contributes nothing."
+  [{:keys [text files]} bot-user-id]
+  ;; The model rejects an empty user message, and a file shared on its own arrives with empty text.
+  (let [content (slackbot.events/strip-bot-mention (or text "") bot-user-id)]
+    (if-not (str/blank? content)
+      content
+      (when-let [names (seq (keep :name files))]
+        (str "Attached files: " (str/join ", " names))))))
+
 (defn- thread->bot-msg-ids
   "Slack message ids produced by our bot."
   [thread]
@@ -82,7 +95,6 @@
         msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
         deleted-ids (slackbot.persistence/deleted-message-ids conversation-id bot-msg-ids)]
     (->> (:messages thread)
-         (filter :text)
          (remove ignore-msg?)
          (remove (fn [{:keys [ts] :as msg}]
                    (and (slackbot.events/bot-message? msg)
@@ -92,7 +104,8 @@
                      ;; bot messages: merge on tool call info from db
                      (conj (get msg-history ts []) {:role :assistant :content text})
                      ;; user messages: user slack history instead to respect user edits
-                     [{:role :user :content (slackbot.events/strip-bot-mention text bot-user-id)}])))
+                     (when-let [content (user-msg-content msg bot-user-id)]
+                       [{:role :user :content content}]))))
          vec)))
 
 (defn- compute-capabilities
@@ -113,16 +126,41 @@
       (str/replace ">" "&gt;")
       (str/replace "|" "\u2502")))
 
+(def ^:private image-alt-text-limit
+  "Slack rejects an `image` block whose `alt_text` exceeds this many characters.
+   Tighter than [[slackbot.channel/section-text-limit]], so a title can fit the section and still
+   fail here.
+   See https://docs.slack.dev/reference/block-kit/blocks/image-block."
+  2000)
+
 (defn- format-viz-title
-  "Build the title text for a visualization message.
-   Combines the title with a link to the query in Metabase."
+  "Build the title text for a visualization message, combining the title with a link to the query.
+   Returns nil when nothing is left to show, and never exceeds
+   [[slackbot.channel/section-text-limit]]."
   [title link]
-  (let [full-link (when link (str (system/site-url) link))]
-    (cond
-      (and title full-link) (str "\ud83d\udcca <" full-link "|" (escape-slack-link-text title) ">")
-      title                 title
-      full-link             (str "\ud83d\udcca <" full-link "|Open in Metabase>")
-      :else                 nil)))
+  (let [limit     slackbot.channel/section-text-limit
+        full-link (when link (str (system/site-url) link))
+        text      (cond
+                    (and title full-link) (str "\ud83d\udcca <" full-link "|" (escape-slack-link-text title) ">")
+                    title                 title
+                    full-link             (str "\ud83d\udcca <" full-link "|Open in Metabase>")
+                    :else                 nil)]
+    ;; An adhoc `/question#<base64-query>` link can run past the section limit on its own, and Slack
+    ;; then rejects the whole message (BOT-1606). A cut URL is a broken URL, so drop the link rather
+    ;; than truncate it; with no title left, `viz-output->blocks` falls back to "Query results".
+    (if (and text (> (count text) limit))
+      (do
+        ;; Either way the answer is the same elided title -- only what we report differs, because
+        ;; with no link there is nothing to drop and the counter would overstate what happened.
+        (if full-link
+          (do
+            (log/infof "[slackbot] viz title over limit, dropping query link (text_length=%d link_length=%d limit=%d)"
+                       (count text) (count full-link) limit)
+            (analytics/inc! :metabase-slackbot/viz-links-dropped))
+          (log/infof "[slackbot] viz title over limit with no link to drop, eliding it (title_length=%d limit=%d)"
+                     (count text) limit))
+        (u.str/elide title limit))
+      text)))
 
 (defn- viz-output->blocks
   "Build blocks for a visualization to be included in the finalized stop-stream message."
@@ -138,7 +176,10 @@
                                  :text {:type "mrkdwn" :text text}}
                                 {:type       "image"
                                  :slack_file {:id id}
-                                 :alt_text   (or title filename "Visualization")}]]
+                                 ;; Plain text, so it is cut rather than elided -- no ellipsis to add.
+                                 :alt_text   (or (some-> title (u.str/limit-chars image-alt-text-limit))
+                                                 filename
+                                                 "Visualization")}]]
                blocks))))
 
 (def ^:private tool-friendly-names
@@ -159,6 +200,49 @@
    headroom for tool-update and other non-text API calls."
   600)
 
+(def ^:private generic-error-message
+  "Something went wrong. Please try again.")
+
+(def ^:private provider-config-error-codes
+  "Error codes that mean the LLM provider connection is misconfigured.
+
+   Thrown by [[metabase.metabot.self/parse-provider-model]] and by the provider
+   adapters' own setup validation; all deserve the same check-your-AI-settings copy."
+  #{"llm-not-configured" "api-key-missing" "credentials-unavailable" "base-url-missing"
+    "model-missing" "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
+    "not-a-service-account-key" "invalid-location" "project-id-required"
+    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
+
+(defn- known-error-message
+  "User-facing copy for a failure this namespace recognizes, or nil.
+
+   Failures are recognized by error code, and permission denials also by the
+   `:type :metabot/permission-denied` tag. `error` is a streamed `:error` part's
+   payload or a thrown exception's ex-data; errors the agent loop caught nest their
+   ex-data under `:data`. Only whitelisted markers get copy, and only the usage-limit
+   codes pass their server-authored message through: everything else, raw provider
+   errors and permission keywords included, must stay out of shared Slack channels."
+  [error]
+  (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
+    (cond
+      (or (= code "permission_denied")
+          (= :metabot/permission-denied (:type error))
+          (= :metabot/permission-denied (get-in error [:data :type])))
+      "You do not have permission to use the AI assistant."
+
+      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"} code)
+      (:message error)
+
+      (provider-config-error-codes code)
+      "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
+
+      :else nil)))
+
+(defn- error-message
+  "[[known-error-message]] with the generic fallback applied."
+  [error]
+  (or (known-error-message error) generic-error-message))
+
 (defn- make-streaming-ai-request
   "Run the agent loop for a slackbot conversation, dispatching parts to callbacks.
 
@@ -168,11 +252,40 @@
    - on-tool-end: Called with {:id :result} when a tool completes
    - on-data: Called with (index, {:type data-type :value data}) for each data part
    - req-slack-msg-id: The Slack message ts for the user's incoming message
-   - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response"
+   - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response
+
+   Returns `{:msg-id <pk> :external-id <uuid-str>}` so callers can both reference
+   the assistant `metabot_message` row by primary key (e.g. to backfill
+   `slack_msg_id` after `chat.postMessage` returns) and bake the `external_id`
+   into feedback button payloads."
   [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
-  (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
+   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
+           request-prompt team-id thread-ts]}]
+  (let [message         (metabot.envelope/user-message prompt)
+        ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+        ;; Persist a placeholder assistant row up front so its `created_at` pins
+        ;; turn ordering before any retry can sneak in earlier-timestamped rows.
+        ;; `:user-id` stamps the author on both rows so participation-based
+        ;; conversation read permissions work for multi-user Slack threads.
+        {:keys [assistant-msg-id assistant-external-id]}
+        (metabot.persistence/with-conversation-lock conversation-id
+          (metabot.persistence/start-turn! conversation-id "slackbot" message
+                                           :channel-id      channel-id
+                                           :slack-team-id   team-id
+                                           :slack-thread-ts thread-ts
+                                           :slack-msg-id    req-slack-msg-id
+                                           :user-id         api/*current-user-id*
+                                           :ai-proxy?       ai-proxy?))
+        ;; Slack replays message text from the thread itself, but the state earlier turns
+        ;; produced only ever existed in the app DB — without it a follow-up cannot resolve
+        ;; an id an earlier turn generated. Mirrors the in-app path in [[metabase.metabot.api]].
+        ;;
+        ;; Deliberately outside the lock's transaction: this turn's own rows are excluded
+        ;; anyway (user row by role, placeholder by NULL `finished`), and a failure here
+        ;; must not roll back the turn we just persisted (BOT-1279).
+        state-messages  (slackbot.persistence/state-messages conversation-id)
+        baseline-state  (metabot.persistence/conversation-state state-messages)
+        data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -180,13 +293,18 @@
         context         (metabot.context/create-context
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
-                          :slack_channel_id           channel-id})
+                          :slack_channel_id           channel-id}
+                         {:metabot-id metabot.config/internal-metabot-id
+                          :profile-id :slackbot})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
-                                                            :channel-id   channel-id
-                                                            :slack-msg-id req-slack-msg-id
-                                                            :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))
         parts-atom      (atom [])
+        memory-atom     (atom nil)
+        ;; Sibling capture for throwables that escape the agent loop's own
+        ;; `catch Exception`. The slack `send-dm-response` / `send-channel-response`
+        ;; wrappers already turn the rethrown error into a user-facing slack message;
+        ;; this volatile is purely so the persisted row's `:error` column matches the
+        ;; failure shape of a streamed `:error` part.
+        thrown          (volatile! nil)
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
                          (keep (fn [part]
@@ -213,27 +331,47 @@
 
                                    :error
                                    (when on-text
-                                     (on-text "Something went wrong. Please try again."))
+                                     (on-text (error-message (:error part))))
 
                                    nil)
                                  nil)))]
-    (transduce dispatch-xf (constantly nil) nil
-               (agent/run-agent-loop
-                {:messages   messages
-                 :state      {}
-                 :profile-id :slackbot
-                 :context    context}))
-    (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
-          pk        (metabot.persistence/store-message!
-                     conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
-                     :channel-id   channel-id
-                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                     :user-id      api/*current-user-id*
-                     :ai-proxy?   (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
-      (when stored-msg-id
-        (reset! stored-msg-id pk)))))
+    (try
+      (transduce dispatch-xf (constantly nil) nil
+                 (agent/run-agent-loop
+                  {:messages        messages
+                   :state           baseline-state
+                   :profile-id      :slackbot
+                   :conversation-id conversation-id
+                   :context         context
+                   :memory-atom     memory-atom
+                   :tracking-opts   {:source     "slackbot"
+                                     :session-id conversation-id}}))
+      (catch Throwable t
+        ;; Capture for the finally's `:error` payload, then re-throw so the
+        ;; existing slack error-handling path (DM/channel) still surfaces a
+        ;; user-facing message. Unlike the HTTP path we *do* want the throw to
+        ;; propagate — the caller flushes / posts a fallback / cancels viz.
+        (vreset! thrown t)
+        (throw t))
+      (finally
+        ;; UPDATE the placeholder with whatever parts we collected, even if the
+        ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
+        ;; round-trip) preserve tool-output :structured-output for analytics.
+        (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)]
+          (metabot.persistence/finalize-assistant-turn!
+           assistant-msg-id
+           combined-parts
+           :profile-id   "slackbot"
+           :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+           :turn-state   (some-> @memory-atom memory/turn-state)
+           ;; A thrown error is more authoritative, but the agent loop catches most
+           ;; failures internally and emits an `:error` part instead of throwing. Without
+           ;; the fallback such a turn persists as a clean `finished` row, and
+           ;; `conversation-state` then merges its partial state into every later turn.
+           :error        (or (some-> @thrown metabot.persistence/throwable->error-payload)
+                             (:error (u/seek #(= :error (:type %)) combined-parts)))))))
+    {:msg-id      assistant-msg-id
+     :external-id assistant-external-id}))
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
@@ -275,7 +413,7 @@
                                           :thread_ts thread-ts
                                           :text      (viz-error-message e)})
     (catch Exception post-e
-      (log/error post-e "Failed to post visualization error"))))
+      (log/errorf "Failed to post visualization error: %s" (ex-message post-e)))))
 
 (defn- collect-viz-blocks
   "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
@@ -291,10 +429,10 @@
          (assoc acc :blocks (into blocks (viz-output->blocks output filename resolved-title link))))
        (catch ExecutionException e
          (let [cause (or (.getCause e) e)]
-           (log/errorf cause "Visualization future %d failed" idx)
+           (log/errorf "Visualization future %d failed: %s" idx (ex-message cause))
            {:blocks blocks :errors (conj errors cause)}))
        (catch Exception e
-         (log/errorf e "Visualization future %d failed" idx)
+         (log/errorf "Visualization future %d failed: %s" idx (ex-message e))
          {:blocks blocks :errors (conj errors e)})))
    {:blocks [] :errors []}
    (sort-by first prefetched-viz)))
@@ -391,7 +529,7 @@
         thinking-ts       (atom nil)
         slack-writer      (agent nil
                                  :error-mode    :continue
-                                 :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack write failed")))
+                                 :error-handler (fn [_ e] (log/warnf "[slackbot] Async Slack write failed: %s" (ex-message e))))
         stream-opts       {:channel   channel
                            :thread_ts thread-ts
                            :team_id   team-id
@@ -469,21 +607,25 @@
   (str (java.util.UUID/nameUUIDFromBytes
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
 
-(defn- feedback-blocks [conversation-id]
+(defn- feedback-blocks
+  "Build the feedback-button block appended to the final assistant reply.
+   `message-external-id` lets the modal handler resolve the rated
+   `metabot_message` row directly, without a `(channel, slack_msg_id)` reverse
+   lookup. Nil is tolerated for safety (e.g. callers racing persistence) but
+   the modal handler will then have to fall back to the slack_msg_id path."
+  [conversation-id message-external-id]
   [{:type     "context_actions"
     :block_id "metabot_feedback"
     :elements [{:type            "feedback_buttons"
                 :action_id       "metabot_feedback"
                 :positive_button {:text  {:type "plain_text" :text "Good"}
-                                  :value (json/encode {:conversation_id conversation-id :positive true})}
+                                  :value (json/encode {:conversation_id     conversation-id
+                                                       :message_external_id message-external-id
+                                                       :positive            true})}
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
-                                  :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
-
-(defn- free-limit-error-message
-  [e]
-  (let [{:keys [error-code message]} (ex-data e)]
-    (when (= error-code "metabase_ai_managed_locked")
-      (or message (ex-message e)))))
+                                  :value (json/encode {:conversation_id     conversation-id
+                                                       :message_external_id message-external-id
+                                                       :positive            false})}}]}])
 
 (defn- prepare-response-context
   "Fetch thread/auth context shared by DM and channel delivery paths."
@@ -522,19 +664,22 @@
     (try
       ;; Start stream early so assistant persistence has :slack_msg_id.
       (request-flush! true)
-      (let [_data-parts (make-streaming-ai-request
-                         conversation-id
-                         prompt
-                         thread
-                         bot-user-id
-                         channel-id
-                         extra-history
-                         {:on-text              on-text
-                          :on-tool-start        on-tool-start
-                          :on-tool-end          on-tool-end
-                          :on-data              on-data
-                          :req-slack-msg-id     (:ts event)
-                          :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+      (let [{message-external-id :external-id}
+            (make-streaming-ai-request
+             conversation-id
+             prompt
+             thread
+             bot-user-id
+             channel-id
+             extra-history
+             {:on-text              on-text
+              :on-tool-start        on-tool-start
+              :on-tool-end          on-tool-end
+              :on-data              on-data
+              :team-id              (:team_id auth-info)
+              :thread-ts            thread-ts
+              :req-slack-msg-id     (:ts event)
+              :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
         (request-flush! true)
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
@@ -542,7 +687,7 @@
           ;; Hold stop-stream until all viz futures finish so text + viz + controls
           ;; finalize as a single message.
           (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
-                final-blocks            (into blocks (feedback-blocks conversation-id))
+                final-blocks            (into blocks (feedback-blocks conversation-id message-external-id))
                 stop-result             (slackbot.client/stop-stream client channel stream_ts final-blocks)]
             (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
                         channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
@@ -552,30 +697,30 @@
                                                                        message-ctx
                                                                        "I generated a response, but Slack could not render it. Please try again.")]
                 (when-not (:ok fallback-result)
-                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result)))))
+                  (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s"
+                              (:error fallback-result))
+                  (analytics/inc! :metabase-slackbot/responses-undeliverable))))
             (doseq [e errors]
               (post-viz-error! client channel thread-ts e)))
           (slackbot.client/post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again.")))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
-        (log/error e "[slackbot] Error in streaming response")
+        (log/errorf "[slackbot] Error in streaming response: %s" (ex-message e))
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
-        (if-let [{:keys [stream_ts channel]} @stream-state]
-          (try
-            (slackbot.client/append-markdown-text client channel stream_ts
-                                                  "\nSomething went wrong. Please try again.")
-            (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
-              (when-not (:ok stop-result)
-                (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
-                (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                         message-ctx
-                                                                         "Something went wrong. Please try again.")]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
-            (catch Exception stop-e
-              (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-          (slackbot.client/post-thread-reply client message-ctx "Something went wrong. Please try again."))))))
+        (let [message (error-message (ex-data e))]
+          (if-let [{:keys [stream_ts channel]} @stream-state]
+            (try
+              (slackbot.client/append-markdown-text client channel stream_ts (str "\n" message))
+              (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
+                (when-not (:ok stop-result)
+                  (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
+                  (let [fallback-result (slackbot.client/post-thread-reply client message-ctx message)]
+                    (when-not (:ok fallback-result)
+                      (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
+              (catch Exception stop-e
+                (log/debugf "[slackbot] Failed to stop stream during error cleanup: %s" (ex-message stop-e))))
+            (slackbot.client/post-thread-reply client message-ctx message)))))))
 
 (defn send-response
   "Send a metabot response using Slack delivery suited to the conversation type.
@@ -599,11 +744,12 @@
                                                     :feedback-blocks            feedback-blocks
                                                     :post-viz-error!            post-viz-error!
                                                     :make-viz-prefetch-callback make-viz-prefetch-callback
-                                                    :cancel-prefetched-viz!     cancel-prefetched-viz!})))
+                                                    :cancel-prefetched-viz!     cancel-prefetched-viz!
+                                                    :error-message              error-message})))
        (catch Exception e
-         (if-let [message (free-limit-error-message e)]
+         (if-let [message (known-error-message (ex-data e))]
            (let [result (slackbot.client/post-thread-reply client message-ctx message)]
              (when-not (:ok result)
-               (log/errorf "[slackbot] Failed to post managed free limit error message: %s" (:error result))
+               (log/errorf "[slackbot] Failed to post pre-flight error message: %s" (:error result))
                (throw e)))
            (throw e)))))))

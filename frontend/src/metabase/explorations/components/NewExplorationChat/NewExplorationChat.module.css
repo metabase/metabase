@@ -1,0 +1,14 @@
+.messagesContainer {
+  overflow-y: auto;
+}
+
+.inputContainer {
+  min-height: 8rem;
+  /*
+  keep the container and ProseMirror min-heights in sync
+  otherwise there's a huge area that looks like the ProseMirror editor, but clicking on it doesn't focus the editor
+  */
+  :global(.ProseMirror) {
+    min-height: 8rem;
+  }
+}

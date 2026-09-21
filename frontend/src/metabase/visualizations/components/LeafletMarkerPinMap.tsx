@@ -1,8 +1,8 @@
 import L from "leaflet";
 import _ from "underscore";
 
-import { getSubpathSafeUrl } from "metabase/utils/urls";
-import type { HoveredObject } from "metabase/visualizations/types";
+import { getSubpathSafeUrl } from "metabase/urls";
+import type { HoveredObject } from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 

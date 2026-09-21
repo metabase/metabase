@@ -1,25 +1,20 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 
 export function useRedirectDestinationDatabase(
   database: Pick<Database, "id" | "router_database_id"> | undefined,
 ) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (database?.router_database_id) {
-      dispatch(
-        replace(
-          Urls.editDestinationDatabase(
-            database.router_database_id,
-            database.id,
-          ),
-        ),
+      navigate(
+        Urls.editDestinationDatabase(database.router_database_id, database.id),
+        { replace: true },
       );
     }
-  }, [dispatch, database?.router_database_id, database?.id]);
+  }, [database?.router_database_id, database?.id, navigate]);
 }

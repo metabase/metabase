@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
+import type { IconData } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Icon } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import { isEmpty } from "metabase/utils/validate";
 import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
@@ -19,18 +21,28 @@ export const EntityDisplay = ({
   entity: UnrestrictedLinkEntity;
   showDescription?: boolean;
 }) => {
+  const getIcon = useGetIcon();
+
+  const getSearchIcon = (entity: UnrestrictedLinkEntity): IconData => {
+    const entityIcon = getIcon(entity) ?? { name: "link" as const };
+    if (entity.model === "table") {
+      entityIcon.name = "database";
+    }
+    return entityIcon;
+  };
+
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon c="brand" name={getSearchIconName(entity)} />
+        <EntityIcon color="core-brand" {...getSearchIcon(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={
-            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
             </Markdown>
           }
@@ -43,7 +55,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" c="text-tertiary" />
+      <Icon name="key" c="text-disabled" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
@@ -56,7 +68,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon c={"brand"} name={urlIcon} />
+        <Icon c={"core-brand"} name={urlIcon} />
         <EllipsifiedEntityContainer>
           {!isEmpty(url) ? url : t`Choose a link`}
         </EllipsifiedEntityContainer>
@@ -64,14 +76,3 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
     </EntityDisplayContainer>
   );
 };
-
-function getSearchIconName(entity: UnrestrictedLinkEntity) {
-  const entityIcon = getIcon(entity) ?? { name: "link" };
-
-  // we need to change this icon to make it match the icon in the search results
-  if (entity.model === "table") {
-    entityIcon.name = "database";
-  }
-
-  return entityIcon.name;
-}

@@ -81,26 +81,6 @@ describe("scenarios > public > question", () => {
     });
   });
 
-  it("should only allow non-admin users to see a public link if one has already been created", () => {
-    H.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      H.createPublicQuestionLink(id);
-      cy.signOut();
-      cy.signInAsNormalUser().then(() => {
-        H.visitQuestion(id);
-
-        H.openSharingMenu("Public link");
-
-        cy.findByTestId("public-link-popover-content").within(() => {
-          cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").should(($input) => {
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
-          });
-          cy.findByText("Remove public URL").should("not.exist");
-        });
-      });
-    });
-  });
-
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public questions", () => {
@@ -266,7 +246,7 @@ describe("scenarios [EE] > public > question", () => {
     );
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("/app/locales/de.json").as("deLocale");
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
     cy.get("@questionId").then((id) => {
       H.visitPublicQuestion(id, {

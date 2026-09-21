@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]))
@@ -76,3 +77,24 @@
                   {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
                    :type     :native
                    :database (mt/id)}))))))
+
+(deftest ^:parallel malformed-sql-error-type-test
+  (testing "Malformed native SQL is classified as :invalid-query regardless of whether the query has parameters (#71637)"
+    (testing "without parameters (Statement path)"
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s)Column \"ASDF\" not found.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query (mt/metadata-provider) "SELECT * FROM ORDERS GROUP BY ASDF"))))))
+    (testing "with parameters (PreparedStatement path)"
+      (let [query (-> (lib/native-query (mt/metadata-provider)
+                                        "SELECT * FROM ORDERS WHERE CATEGORY = {{category}} GROUP BY ASDF")
+                      (assoc :parameters [{:type   :text
+                                           :name   "category"
+                                           :target [:variable [:template-tag "category"]]
+                                           :value  "Widget"}]))]
+        (is (=? {:status     :failed
+                 :error_type :invalid-query
+                 :error      #"(?s)Column \"ASDF\" not found.*"}
+                (qp/process-query (qp/userland-query query))))))))

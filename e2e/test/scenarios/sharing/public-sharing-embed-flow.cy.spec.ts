@@ -9,6 +9,13 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
+// The Behavior/Parameters/Appearance cards share a wrapper that is dimmed and
+// made non-interactive (`pointer-events: none`) while the selected auth type
+// isn't ready. The wrapper always carries an inline `opacity` style, so it can
+// be selected in either state.
+const optionCardsWrapper = () =>
+  getEmbedSidebar().findByText("Behavior").closest("[style*='opacity']");
+
 describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
@@ -48,6 +55,41 @@ describe(suiteTitle, () => {
       event: "embed_wizard_options_completed",
       event_detail: "settings=default",
     });
+  });
+
+  it("lets Guest embedding proceed after accepting only the Guest terms, without requiring the SSO terms (EMB-1884)", () => {
+    // Reproduce a fresh Pro instance where neither auth type's terms have
+    // been accepted yet, so the option cards start dimmed.
+    H.updateSetting("show-simple-embed-terms", true);
+    H.updateSetting("show-static-embed-terms", true);
+    H.updateSetting("enable-embedding-static", false);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.openSharingMenu("Embed");
+
+    cy.log("switch to Guest authentication");
+    getEmbedSidebar().findByLabelText("Guest").click();
+
+    cy.log(
+      "the Behavior options aren't interactive until the Guest terms are accepted",
+    );
+    optionCardsWrapper().should("have.css", "pointer-events", "none");
+
+    cy.log("accept the Guest terms only — never the SSO terms");
+    H.embedModalEnableEmbedding();
+
+    cy.log(
+      "the Behavior options become interactive without accepting the SSO terms",
+    );
+    optionCardsWrapper().should("have.css", "pointer-events", "all");
+    getEmbedSidebar()
+      .findByLabelText("Allow downloads")
+      .click()
+      .should("be.checked");
+
+    getEmbedSidebar().findByText("Get code").click();
+    getEmbedSidebar().findByText("publish this dashboard").click();
+    H.codeMirrorValue().should("contain", 'with-downloads="true"');
   });
 
   it("pre-selects question in embed flow when opened from question sharing modal", () => {

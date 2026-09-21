@@ -4,7 +4,7 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [malli.destructure]
-   [metabase.util :as u]
+   [me.flowthing.pp :as pp]
    [metabase.util.malli.fn :as mu.fn]
    [net.cgrand.macrovich :as macros]))
 
@@ -53,7 +53,11 @@
                                                 (map (comp pr-str :args :values)
                                                      (:arities arities-value)))
                                       ")"))
-          "\n  Return: " (str/replace (u/pprint-to-str (:schema (:values return) :any))
+          "\n  Return: " (str/replace (with-out-str
+                                        ;; renders the schema into the generated docstring via with-out-str
+                                        #_{:clj-kondo/ignore [:discouraged-var]}
+                                        (pp/pprint (:schema (:values return) :any)
+                                                   {:max-width 120}))
                                       "\n"
                                       "\n          ")
           (when (not-empty doc)
@@ -101,7 +105,7 @@
   {:style/indent [:defn]}
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
-        cosmetic-name    (gensym (munge (str fn-name)))
+        cosmetic-name    (symbol (munge (str fn-name "&")))
         {attr-map :meta} (:values parsed)
         docstring        (annotated-docstring parsed)
         attr-map         (merge
@@ -118,7 +122,8 @@
        ~(if instrument?
           (macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name))
+                    (mu.fn/instrumented-fn-form error-context :clj parsed cosmetic-name
+                                                (symbol (str *ns*) (str fn-name))))
             :cljs (mu.fn/deparameterized-fn-form :cljs parsed cosmetic-name))
           (mu.fn/deparameterized-fn-form (macros/case :clj :clj, :cljs :cljs) parsed)))))
 

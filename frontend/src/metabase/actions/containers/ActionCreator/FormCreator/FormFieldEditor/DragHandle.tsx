@@ -17,6 +17,7 @@ export const DragHandle = forwardRef<HTMLElement, DragHandleProps>(
     return (
       <div
         data-testid="drag-handle"
+        // Unjustified type cast. FIXME
         ref={ref as MutableRefObject<HTMLDivElement>}
         className={styles.dragHandle}
         {...dragHandleListeners}

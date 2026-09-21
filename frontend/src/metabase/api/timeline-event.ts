@@ -35,6 +35,7 @@ export const timelineEventApi = Api.injectEndpoints({
       invalidatesTags: (event, error) =>
         invalidateTags(error, [
           listTag("timeline-event"),
+          tag("timeline"),
           ...(event ? [idTag("timeline", event.timeline_id)] : []),
         ]),
     }),

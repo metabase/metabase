@@ -3,10 +3,10 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.sql Timestamp)
    (org.quartz DisallowConcurrentExecution)))
@@ -23,7 +23,7 @@
   (when (semantic.u/semantic-search-available?)
     (log/info "Attempting to delete old semantic search usage data.")
     (let [t (Timestamp/valueOf (.minusMonths (java.time.LocalDateTime/now) storage-months))]
-      (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at t]}))
+      (semantic-search.db/delete-token-tracking-created-before! t))
     (log/info "Semantic search old data cleanup successful.")))
 
 (task/defjob ^{DisallowConcurrentExecution true
@@ -33,7 +33,7 @@
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
                (jobs/with-identity trimmer-job-key))
@@ -41,6 +41,6 @@
                    (triggers/with-identity trimmer-trigger-key)
                    (triggers/start-now)
                    (triggers/with-schedule
-                     ;; daily at 22:59:42
+                    ;; daily at 22:59:42
                     (cron/cron-schedule "42 59 22 * * ?")))]
       (task/schedule-task! job trigger))))

@@ -1,19 +1,63 @@
 (ns metabase.metabot.feedback
-  "Shared feedback submission to Harbormaster via the Store API."
+  "Local persistence of Metabot feedback."
   (:require
-   [clj-http.client :as http]
-   [clojure.string :as str]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.store-api.core :as store-api]
-   [metabase.util.json :as json]))
+   [metabase.api.common :as api]
+   [metabase.metabot.db :as metabot.db]
+   [metabase.models.interface :as mi]))
 
-(defn submit-to-harbormaster!
-  "Submit metabot feedback to Harbormaster via the Store API.
-   Returns the HTTP response on success, or nil if the token or Store API URL is missing."
-  [feedback]
-  (let [token    (premium-features/premium-embedding-token)
-        base-url (store-api/store-api-url)]
-    (when-not (or (str/blank? token) (str/blank? base-url))
-      (http/post (str base-url "/api/v2/metabot/feedback/" token)
-                 {:content-type :json
-                  :body         (json/encode feedback)}))))
+(set! *warn-on-reflection* true)
+
+(defn- resolve-rated-message
+  "Return the `metabot_message` row (`:id` + `:conversation_id`) identified by
+  `external-id`, plus the enclosing `:model/MetabotConversation` as `:conversation`.
+  Throws 404 if the message is missing, the conversation is missing, or the
+  current user cannot read the conversation (superuser / originator / participant)."
+  [external-id]
+  (let [message      (metabot.db/message-by-external-id external-id)
+        _            (api/check-404 message)
+        conversation (metabot.db/conversation-id-and-user-id (:conversation_id message))
+        _            (api/check-404 conversation)
+        _            (api/check-404 (mi/can-read? conversation))]
+    (assoc message :conversation conversation)))
+
+(defn- upsert-feedback!
+  "Insert or update the `metabot_feedback` row for `(message-row-id, submitter-user-id)`."
+  [message-row-id submitter-user-id {:keys [positive issue_type freeform_feedback]}]
+  (let [base-fields {:positive          positive
+                     :issue_type        issue_type
+                     :freeform_feedback freeform_feedback}]
+    (metabot.db/upsert-feedback! message-row-id submitter-user-id
+                                 (fn [existing]
+                                   (cond-> base-fields
+                                     existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+
+(defn- upsert-source-feedback!
+  "Insert or update the `metabot_source_feedback` row for one source, message, and submitter."
+  [message-row-id submitter-user-id {:keys [positive source_id source_type]}]
+  (let [base-fields {:positive positive}]
+    (metabot.db/upsert-source-feedback! message-row-id submitter-user-id source_id source_type
+                                        (fn [existing]
+                                          (cond-> base-fields
+                                            existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+
+(defn persist-feedback!
+  "Upsert a `metabot_feedback` row for the rated message and return the
+  resolved `metabot_message` row (with its `:conversation`). Throws 404 when
+  the external_id does not resolve to a message the current user can read.
+
+  The submitter is always `api/*current-user-id*` — both the row's `user_id`
+  and the `can-read?` authorization check key on the same identity. Callers
+  that dispatch on behalf of another user (e.g. the Slack modal handler) must
+  establish the binding via `request/with-current-user` before calling."
+  [{:keys [message_id] :as body}]
+  (let [message (resolve-rated-message message_id)]
+    (upsert-feedback! (:id message) api/*current-user-id* body)
+    message))
+
+(defn persist-source-feedback!
+  "Upsert a `metabot_source_feedback` row for a source used by the rated message.
+   Returns the resolved `metabot_message` row (with its `:conversation`)."
+  [{:keys [message_id] :as body}]
+  (let [message (resolve-rated-message message_id)]
+    (upsert-source-feedback! (:id message) api/*current-user-id* body)
+    message))

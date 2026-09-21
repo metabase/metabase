@@ -33,9 +33,11 @@
 ;;; These modes don't need the full Metabase infrastructure (app-db, events,
 ;;; etc.) and can run with minimal namespace loading for fast startup.
 ;;;
-;;; Usage: java -jar metabase.jar --mode checker [checker-specific args...]
+;;; Usage:
+;;;   java -jar metabase.jar --mode complexity-score [scorer-specific args...]
 ;;; ===========================================================================
 
+;; standalone-mode CLI output: stdout is the user interface, not the log
 #_{:clj-kondo/ignore [:discouraged-var]}
 (def output!
   "Alias for println so can suppress warning in one place"
@@ -46,15 +48,15 @@
    The mode's -main function is responsible for calling System/exit."
   [mode args]
   (let [startup (case mode
-                  ;; schema checker was moved out to js. Perhaps this will get a long running server mode checker? Or
-                  ;; perhaps just this one.
-                  "checker" 'metabase-enterprise.checker.cli/entrypoint
+                  "complexity-score" 'metabase-enterprise.data-complexity-score.cli/entrypoint
                   nil)]
     (if startup
+      ;; the target is selected from the fixed standalone-mode dispatch above
+      #_{:clj-kondo/ignore [:metabase/modules]}
       ((requiring-resolve startup) args)
       (do (binding [*out* *err*]
             (output! (str "Unknown mode: " mode))
-            (output! "Available modes: checker"))
+            (output! "Available modes: complexity-score"))
           (System/exit 1)))))
 
 (defn -main

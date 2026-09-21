@@ -1,15 +1,16 @@
 (ns metabase.cmd.core-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.cmd.core :as cmd]))
+   [metabase.cmd.core :as cmd]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
-  (with-redefs [cmd/call-enterprise list]
+  (dynamic-redefs/with-dynamic-fn-redefs [cmd/call-enterprise list]
     (thunk)))
 
 (deftest ^:parallel error-message-test
   (is (=? ["Unrecognized command: 'a-command-that-does-not-exist'"
-           #"\QValid commands: version, help, drop-entity-ids, import,\E.*"]
+           #"\QValid commands: version, help, import,\E.*"]
           (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))

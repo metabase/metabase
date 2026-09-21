@@ -8,11 +8,11 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
-import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
 import S from "./PreviewPanel.module.css";
@@ -99,7 +99,14 @@ export function ResourcePreview({
       pos="relative"
       style={{ backgroundColor: theme?.colors?.background }}
     >
-      {createElement(componentName, attributes)}
+      {/* `key` forces a remount when chart colors change. The embed runtime
+          propagates other theme keys via CSS variables, but chart colors are
+          applied through a module-level side effect on mount, so already-rendered
+          charts don't pick up updates without a full remount. */}
+      {createElement(componentName, {
+        ...attributes,
+        key: JSON.stringify(theme.colors?.charts),
+      })}
 
       {isLoading && (
         <Box
@@ -107,7 +114,8 @@ export function ResourcePreview({
           inset={0}
           style={{
             backgroundColor:
-              theme?.colors?.background ?? "var(--mb-color-background-primary)",
+              theme?.colors?.background ??
+              "var(--mb-color-background_page-primary)",
           }}
         >
           <Center h="100%" w="100%">

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -31,6 +31,7 @@ export function SavedQuestionHeaderButton({
         maxLength={QUESTION_NAME_MAX_LENGTH}
         onChange={onSave}
         data-testid="saved-question-header-title"
+        lh={undefined}
       />
 
       <Flex

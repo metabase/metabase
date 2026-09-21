@@ -22,6 +22,7 @@ const setupEnterprise = async (
   return setupSdkDashboard({
     ...options,
     enterprisePlugins: ["sdk_notifications"],
+    // Unjustified type cast. FIXME
     component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };

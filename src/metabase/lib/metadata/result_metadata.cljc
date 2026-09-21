@@ -13,7 +13,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   ;; result metadata's field-ref wire format is still legacy MBQL; schemas describe legacy refs
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ;; legacy ref munging (update-field-options) on the legacy wire format; dies with the MBQL 5 port
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]} [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
@@ -30,12 +32,15 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
+
+(comment metabase.types.core/keep-me)
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -43,9 +48,7 @@
   ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
   ;; there. (See QUE2-361)
   [:and
-   [:map
-    [::source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-    [::field-ref {:optional true} ::mbql.s/Reference]]
+   ::lib.schema.metadata/column.map
    (lib.schema.common/disallowed-keys
     {:source       "Use ::source instead of :source"
      :field-ref    "Use ::field-ref instead of :field-ref"
@@ -65,26 +68,48 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
+(mr/def ::driver-col
+  "A [[mbql.s/driver-column]] with its keys kebab-cased."
+  [:map {:closed true}
+   [:name           {:optional true} :string]
+   [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:database-type  {:optional true} [:maybe :string]]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:field-ref      {:optional true} [:maybe [:ref ::mbql.s/Reference]]]])
+
+(mr/def ::initial-cols
+  "The columns a driver reported, as the QP passes them in: legacy result metadata or bare driver columns."
+  [:maybe [:sequential [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column ::driver-col]]])
+
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from Lib. We'll generally prefer the values
   from the driver to values calculated by Lib."
-  [driver-col :- [:maybe ::col]
+  [driver-col :- [:maybe [:or ::col ::driver-col]]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)
+        driver-base-type (:base-type driver-col)
+        lib-col-type ((some-fn :effective-type :base-type) lib-col)
+        ;; When the driver type is text but the lib type is temporal, this is usually because the driver doesn't
+        ;; support temporal types natively (e.g. sqlite (#75604)). So we'll prefer the lib types in this case,
+        ;; and when the driver type is missing or `:type/*`.
+        prefer-lib-type? (or (#{nil :type/*} driver-base-type)
+                             (and (isa? driver-base-type :type/Text)
+                                  (isa? lib-col-type :type/Temporal)))]
     (merge lib-col
            (m/filter-vals some? driver-col)
-           ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
-           (when (#{nil :type/*} (:base-type driver-col))
+           ;; Prefer our inferred base type if the driver type is unreliable and ours is more specific
+           (when prefer-lib-type?
              (when-let [lib-base-type (:base-type lib-col)]
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
            ;; aggregations). Same for `:lib/source`
            (u/select-non-nil-keys lib-col [:name :lib/source])
-           ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
-           ;; type calculated by Lib
-           {:effective-type (or (when-let [driver-base-type (:base-type driver-col)]
-                                  (when-not (= driver-base-type :type/*)
-                                    driver-base-type))
+           ;; whatever type comes back from the query is by definition the effective type, but fall back to the
+           ;; type calculated by Lib if the driver type is unreliable
+           {:effective-type (or (when-not prefer-lib-type?
+                                  driver-base-type)
                                 (:effective-type lib-col)
                                 (:base-type lib-col)
                                 :type/*)})))
@@ -94,7 +119,7 @@
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
   the order supposed by Lib)."
-  [initial-cols :- [:maybe [:sequential ::kebab-cased-map]]
+  [initial-cols :- [:maybe [:sequential [:or ::kebab-cased-map ::driver-col]]]
    lib-cols     :- [:maybe [:sequential ::kebab-cased-map]]]
   (cond
     (= (count initial-cols) (count lib-cols))
@@ -122,7 +147,7 @@
         ;; meantime -- see
         ;; https://metaboat.slack.com/archives/C0645JP1W81/p1757457633926199?thread_ts=1757457374.178329&cid=C0645JP1W81
         (do
-          (log/error e)
+          (log/error (ex-message e))
           (mapv merge-col
                 initial-cols
                 ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
@@ -142,14 +167,15 @@
 (mu/defn- basic-native-col :- ::kebab-cased-map
   "Generate basic column metadata for a column coming back from a native query for which we have only barebones metadata
   coming back from the driver like name and base type."
-  [col :- ::col]
+  [col :- [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column ::driver-col]]
   (let [base-type (or ((some-fn :base-type :base_type) col)
                       :type/*)]
-    {:lib/type       :metadata/column
-     :lib/source     :source/native
-     :display-name   (:name col)
-     :base-type      base-type
-     :effective-type base-type}))
+    (cond-> {:lib/type       :metadata/column
+             :lib/source     :source/native
+             :display-name   (:name col)
+             :base-type      base-type
+             :effective-type base-type}
+      (:name col) (assoc :name (:name col)))))
 
 ;;; TODO (Cam 6/17/25) -- move this into [[metabase.lib.expression]] or something and have it be part of the mainline
 ;;; methods for metadata calculation
@@ -167,10 +193,9 @@
                                        (when-let [expr (try
                                                          (lib.expression/resolve-expression query expression-name)
                                                          (catch #?(:clj Throwable :cljs :default) e
-                                                           (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
-                                                           (log/debugf "In query:\n%s" (u/pprint-to-str query))
+                                                           (log/errorf "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342): %s" (ex-message e))
                                                            nil))]
-                                         (lib.util.match/match-lite expr
+                                         (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]
                                            source-tz))))]
             (cond-> col
@@ -228,6 +253,7 @@
   used by individual pieces of middleware or driver implementations for tracking little bits of information that
   should not be considered relevant when comparing clauses for equality."
   [legacy-ref]
+  ;; operates on legacy refs kept for FE compat; the legacy options helper matches that shape
   ^{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
                                                                      (qualified-keyword? k))))))
@@ -240,7 +266,7 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace-lite a-ref
+    (match/replace a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)
@@ -308,7 +334,8 @@
                               ;; needed since [[deduplicate-field-refs]] will fix this anyway?)
                               (= (:lib/deduplicated-name col) (:lib/original-name col))
                               (not (= (:lib/original-ref-style-for-result-metadata-purposes col) :original-ref-style/name))))
-                     (string? id-or-name))
+                     (string? id-or-name)
+                     (not= (:lib/source col) :source/expressions))
                 [tag (dissoc opts :base-type) (:id col)]
 
                 (pos-int? id-or-name)
@@ -403,10 +430,26 @@
             col))
         cols))
 
+(defn- remove-field-ids-from-expressions
+  "Strip the `:id`/`:table-id` that [[metabase.lib.expression/metadata-method]] propagates onto a plain-field
+  expression's metadata (#70233) before it ends up in *persisted* results metadata.
+
+  That propagation only exists to let numeric `:field` ID refs resolve against the expression later in the *same*
+  query. It must not survive into a Card's saved `result_metadata`: once a Card is used as the source table for
+  another query, its columns come back with `:lib/source :source/card`, not `:source/expressions`, so none of the
+  'this is actually an expression' special-casing applies anymore -- the column just looks like an ordinary
+  Field-backed column that happens to share an `:id` with whatever Field the expression wrapped, which confuses
+  downstream ref-building and display-name resolution."
+  [cols]
+  (mapv (fn [col]
+          (cond-> col
+            (= (:lib/source col) :source/expressions) (dissoc :id :table-id)))
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
-   initial-cols :- ::cols]
+   initial-cols :- ::initial-cols]
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [lib-cols (doall (lib.metadata.calculation/returned-columns
                            query
@@ -423,6 +466,7 @@
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
+           remove-field-ids-from-expressions
            (add-converted-timezone query)
            (remove-implicit-join-aliases query)
            add-legacy-source
@@ -495,11 +539,11 @@
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  ([query]
+  ([query :- ::lib.schema/query]
    (returned-columns query []))
 
   ([query         :- ::lib.schema/query
-    initial-cols  :- ::cols]
+    initial-cols  :- ::initial-cols]
    (->> initial-cols
         (add-extra-metadata query)
         cols->legacy-metadata)))

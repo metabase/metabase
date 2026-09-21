@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useGetSettingsQuery, useTokenRefreshUntil } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -31,10 +30,10 @@ export function UpgradeModalLoading({
         t`Setting up Metabase Pro, please wait`;
 
     return (
-      <Stack align="center" gap="lg" py="xl">
+      <Stack align="center" gap="xl" py="xxl">
         <Loader size="xl" />
 
-        <Stack align="center" gap="xs">
+        <Stack align="center" gap="xxs">
           <Title order={3} ta="center">
             {title}
           </Title>
@@ -44,7 +43,7 @@ export function UpgradeModalLoading({
         </Stack>
 
         <Flex justify="center" w="100%">
-          <Button variant="filled" color="brand" disabled>
+          <Button variant="filled" color="core-brand" disabled>
             {t`Done`}
           </Button>
         </Flex>
@@ -59,19 +58,19 @@ export function UpgradeModalLoading({
       t`Metabase Pro is ready to use`;
 
   return (
-    <Stack align="center" gap="lg" py="xl">
+    <Stack align="center" gap="xl" py="xxl">
       <Flex
         align="center"
         justify="center"
         w={64}
         h={64}
-        bg="success"
+        bg="feedback-positive"
         style={{ borderRadius: "50%" }}
       >
-        <Icon name="check" c="white" size={32} />
+        <Icon name="check" c="core-white" size={32} />
       </Flex>
 
-      <Stack align="center" gap="xs">
+      <Stack align="center" gap="xxs">
         <Title order={3} ta="center">
           {successTitle}
         </Title>
@@ -83,7 +82,7 @@ export function UpgradeModalLoading({
       <Flex justify="center" w="100%">
         <Button
           variant="filled"
-          color="brand"
+          color="core-brand"
           onClick={() => {
             onDone();
             window.location.reload();

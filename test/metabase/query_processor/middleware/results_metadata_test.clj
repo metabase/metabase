@@ -2,7 +2,10 @@
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since it's checking whether we actually save stuff to the
                        ;; app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var  {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.results-metadata-test]}
+                                                    metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.results-metadata-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,6 +19,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -90,8 +94,8 @@
                    (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
                                                                           :max 74.0
                                                                           :avg 29.98
-                                                                          :q1  6.9
-                                                                          :q3  49.24
+                                                                          :q1  7.0
+                                                                          :q3  49.0
                                                                           :sd  23.06}}))]
     (assoc column :display_name (:name column))))
 
@@ -111,6 +115,25 @@
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
                (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
+
+(deftest data-sensitivity-in-result-metadata-test
+  (testing "a Field's data_sensitivity label reaches query results through the Lib column metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:data_sensitivity :PII}
+      (let [query (mt/mbql-query venues {:fields [$id $name]})]
+        (mt/with-temp [:model/Card card {:dataset_query query}]
+          (let [result (qp/process-query
+                        (qp/userland-query
+                         query
+                         {:card-id    (u/the-id card)
+                          :query-hash (qp.util/query-hash {})}))]
+            (when-not (= :completed (:status result))
+              (throw (ex-info "Query failed." result)))
+            (testing "the label reaches the live query response through the Lib column metadata"
+              (is (= [nil :PII]
+                     (map :data_sensitivity (get-in result [:data :cols])))))
+            (testing "the persisted Card result_metadata stores the label as its string form, and only on the labeled column"
+              (is (= [nil "PII"]
+                     (map :data_sensitivity (card-metadata card)))))))))))
 
 (defn- test-card-1 []
   (let [eid (u/generate-nano-id)]
@@ -191,11 +214,11 @@
           (middleware.results-metadata/store-previous-result-metadata!
            {:result_metadata cols-1})
           (let [call-count      (atom 0)
-                t2-update!-orig t2/update!]
-            (with-redefs [t2/update! (fn [modelable & args]
-                                       (when (= :model/Card modelable)
-                                         (swap! call-count inc))
-                                       (apply t2-update!-orig modelable args))]
+                t2-update!-orig (mt/original-fn #'t2/update!)]
+            (mt/with-dynamic-fn-redefs [t2/update! (fn [modelable & args]
+                                                     (when (= :model/Card modelable)
+                                                       (swap! call-count inc))
+                                                     (apply t2-update!-orig modelable args))]
               (let [result (qp/process-query
                             (qp/userland-query
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
@@ -290,7 +313,7 @@
                 :semantic_type :type/Quantity
                 :fingerprint  {:global {:distinct-count 3
                                         :nil%           0.0}
-                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.25, :sd 143.5}}}
+                               :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 235.0, :q3 498.0, :sd 143.5}}}
                 :field_ref    [:aggregation 0]}]
               (-> card
                   card-metadata
@@ -331,7 +354,6 @@
                  :source       :native
                  :field_ref    [:field "D" {:base-type :type/Date}]}
                 (first (:cols results)))))
-
       (testing "Results metadata should have the same type info"
         (is (=? {:base_type    :type/Date
                  :effective_type :type/Date
@@ -522,7 +544,7 @@
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
               (qp/process-query-for-card
-               card-id :api
+               (t2/select-one :model/Card card-id) :api
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
@@ -545,7 +567,7 @@
 (deftest parameterized-queries-do-not-thrash-result-metadata-test
   ;; When parameters are applied via :parameters, result_metadata should not be updated.
   ;; See QUE2-502 for details.
-  (mt/with-temp [:model/Card {card-id :id}
+  (mt/with-temp [:model/Card {card-id :id, :as card}
                  {:dataset_query   (mt/mbql-query orders
                                      {:aggregation [[:count] [:sum $total]]
                                       :breakout    [$product_id]})
@@ -556,7 +578,7 @@
             (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
               (mt/as-admin
                 (qp/process-query-for-card
-                 card-id :api
+                 card :api
                  :parameters [{:id     "product-id-param"
                                :type   :id
                                :target [:dimension (mt/$ids orders $product_id)]

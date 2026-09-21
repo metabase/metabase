@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming.csv-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
@@ -9,7 +10,8 @@
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -112,29 +114,88 @@
               ["5" "118.26100000° W" "34.07780000° N"]]
              (parse-and-sort-csv result))))))
 
-(defn- csv-export
-  "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
-  [rows]
+(defn- csv-export-with-cols
+  "Given `ordered-cols` and a seq of result rows, write it as a CSV, then read the CSV back. Includes the header row."
+  [ordered-cols rows]
   (driver/with-driver :h2
     (mt/with-metadata-provider (mt/id)
       (with-open [bos (ByteArrayOutputStream.)
                   os  (BufferedOutputStream. bos)]
         (let [results-writer (qp.si/streaming-results-writer :csv os)]
-          (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
-                                                              {:base_type :type/*}
-                                                              {:base_type :type/*}]}} {})
+          (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} {})
           (doall (map-indexed
                   (fn [i row] (qp.si/write-row! results-writer row i [] {}))
                   rows))
           (qp.si/finish! results-writer {:row_count (count rows)}))
         (let [bytea (.toByteArray bos)]
-          (rest (csv/read-csv (String. bytea))))))))
+          (->> (csv/read-csv (u/strip-bom (String. bytea)))
+               (map vec)))))))
+
+(defn- csv-export
+  "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
+  [rows]
+  (rest (csv-export-with-cols [{:name "A", :display_name "A", :base_type :type/*}
+                               {:name "B", :display_name "B", :base_type :type/*}
+                               {:name "C", :display_name "C", :base_type :type/*}]
+                              rows)))
+
+(deftest csv-export-includes-utf8-bom-test
+  (testing "CSV exports start with a UTF-8 BOM so Excel renders non-ASCII chars like £ correctly"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:name "A", :display_name "A", :base_type :type/*}]}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (is (= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                 (take 3 (seq (.toByteArray bos))))))))))
+
+(deftest csv-export-omits-utf8-bom-when-disabled-test
+  (testing "CSV exports omit the UTF-8 BOM when `:csv-include-bom?` is false (#75875)"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:name "A", :display_name "A", :base_type :type/*}] :csv-include-bom? false}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (let [bytes (seq (.toByteArray bos))]
+            (is (not= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                      (take 3 bytes))
+                "should not start with a BOM")
+            ;; first byte should be the start of the (empty) header line, not the BOM
+            (is (not= (unchecked-byte 0xEF) (first bytes)))))))))
+
+(deftest csv-export-bom-respects-csv-include-bom-param-test
+  (testing "the csv_include_bom API param controls whether the downloaded CSV starts with a UTF-8 BOM (#75875)"
+    (let [bom-prefix? (fn [^String s] (str/starts-with? s u/utf8-bom))
+          download    (fn [params]
+                        (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                              (merge {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}
+                                                     params)))]
+      (testing "omitted by default so external API consumers don't get an unexpected BOM"
+        (is (false? (bom-prefix? (download {})))))
+      (testing "included when explicitly true"
+        (is (true? (bom-prefix? (download {:csv_include_bom true})))))
+      (testing "omitted when false"
+        (is (false? (bom-prefix? (download {:csv_include_bom false})))))
+      (testing "the card query endpoint also honors the param"
+        ;; allowing `with-temp` here since it tests against the REST API
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}]
+          (let [download-card (fn [params]
+                                (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" card-id) params))]
+            (is (false? (bom-prefix? (download-card {}))))
+            (is (true? (bom-prefix? (download-card {:csv_include_bom true}))))
+            (is (false? (bom-prefix? (download-card {:csv_include_bom false}))))))))))
 
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
-
   (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
       (is (= ["[\"2021-03-30\"]"] row)))))
@@ -193,3 +254,14 @@
         (is (= 2 (count lines)) "Should have header and one data row")
         (is (str/includes? (second lines) "\"")
             "Value containing separator should be quoted")))))
+
+(deftest formula-injection-test
+  (testing "cell values that a spreadsheet would evaluate as a formula are neutralized (SEC-763)"
+    (is (= [["'=1+1" "'@SUM(1+1)" "'+cmd|' /C calc'!A0"]
+            ["'-cmd|' /C calc'!A0" "not a formula" "-1,234.56"]]
+           (csv-export [["=1+1" "@SUM(1+1)" "+cmd|' /C calc'!A0"]
+                        ["-cmd|' /C calc'!A0" "not a formula" "-1,234.56"]]))))
+  (testing "column titles are neutralized too, since they can come from attacker-controlled table metadata"
+    (let [result (csv-export-with-cols [{:name "=1+1" :display_name "=1+1" :base_type :type/Text}]
+                                       [["ok"]])]
+      (is (= ["'=1+1"] (first result))))))

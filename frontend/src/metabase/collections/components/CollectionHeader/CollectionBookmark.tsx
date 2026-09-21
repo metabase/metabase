@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { isRootCollection } from "metabase/collections/utils";
+import { isRootCollection } from "metabase/common/collections/utils";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import type { Collection } from "metabase-types/api";
 

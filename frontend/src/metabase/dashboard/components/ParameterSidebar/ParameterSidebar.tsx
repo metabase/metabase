@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
-import { t } from "ttag";
+import { c, msgid, t } from "ttag";
 
+import { skipToken, useListSubscriptionsQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
 import { useSelector } from "metabase/redux";
-import type { IconName } from "metabase/ui";
 import { Tabs } from "metabase/ui";
 import { slugify } from "metabase/utils/formatting";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  IconName,
   Parameter,
   ParameterId,
   TemporalUnit,
@@ -71,7 +73,27 @@ export const ParameterSidebar = (): JSX.Element | null => {
   const [tab, setTab] = useState<"filters" | "settings">(
     tabs[0]?.value || "settings",
   );
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
   const prevParameterId = usePrevious(parameterId);
+
+  // Active dashboard subscriptions may bind values to this parameter. Deleting
+  // the filter will archive any such subscription and email its recipients,
+  // so we warn before letting that happen.
+  const { data: subscriptions } = useListSubscriptionsQuery(
+    dashboard ? { dashboard_id: dashboard.id, archived: false } : skipToken,
+  );
+  const areSubscriptionsLoaded = subscriptions !== undefined;
+  const affectedSubscriptions = useMemo(
+    () =>
+      parameterId && subscriptions
+        ? subscriptions.filter(
+            (subscription) =>
+              !subscription.archived &&
+              subscription.parameters.some((p) => p.id === parameterId),
+          )
+        : [],
+    [parameterId, subscriptions],
+  );
 
   const embeddedParameterVisibility = useSelector((state) =>
     parameter ? getEmbeddedParameterVisibility(state, parameter.slug) : null,
@@ -155,12 +177,32 @@ export const ParameterSidebar = (): JSX.Element | null => {
     [parameterId, setParameterFilteringParameters],
   );
 
-  const handleRemove = useCallback(() => {
+  const performRemove = useCallback(() => {
     if (parameterId) {
       removeParameter(parameterId);
       closeSidebar();
     }
   }, [parameterId, removeParameter, closeSidebar]);
+
+  const handleRemove = useCallback(() => {
+    if (!parameterId) {
+      return;
+    }
+    if (affectedSubscriptions.length > 0) {
+      setIsRemoveConfirmOpen(true);
+    } else {
+      performRemove();
+    }
+  }, [parameterId, affectedSubscriptions.length, performRemove]);
+
+  const handleConfirmRemove = useCallback(() => {
+    setIsRemoveConfirmOpen(false);
+    performRemove();
+  }, [performRemove]);
+
+  const handleCancelRemove = useCallback(() => {
+    setIsRemoveConfirmOpen(false);
+  }, []);
 
   const isParameterSlugUsed = useCallback(
     (value: string) =>
@@ -180,12 +222,10 @@ export const ParameterSidebar = (): JSX.Element | null => {
     }
   };
 
-  const handleTabChange = (newTab: string | null) => {
-    if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
-      return;
+  const handleTabChange = (newTab: "filters" | "settings" | null) => {
+    if (newTab) {
+      setTab(newTab);
     }
-
-    return setTab(newTab);
   };
 
   if (!dashboard || !editingParameter || !parameter) {
@@ -206,27 +246,24 @@ export const ParameterSidebar = (): JSX.Element | null => {
           : undefined
       }
       onRemove={handleRemove}
+      isRemoveDisabled={!areSubscriptionsLoaded}
+      removeTooltip={
+        !areSubscriptionsLoaded ? t`Checking subscriptions…` : undefined
+      }
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs radius={0} value={tab} onChange={handleTabChange}>
+      <Tabs value={tab} onChange={handleTabChange}>
         {tabs.length > 1 && (
           <Tabs.List grow>
             {tabs.map((tab) => (
-              <Tabs.Tab
-                pl={0}
-                pr={0}
-                pt="md"
-                pb="md"
-                value={tab.value}
-                key={tab.value}
-              >
+              <Tabs.Tab value={tab.value} key={tab.value}>
                 {tab.name}
               </Tabs.Tab>
             ))}
           </Tabs.List>
         )}
 
-        <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
+        <Tabs.Panel pr="lg" pl="lg" value="settings" key="settings">
           <ParameterSettings
             editingParameterInlineDashcard={editingParameterInlineDashcard}
             parameter={parameter}
@@ -245,7 +282,7 @@ export const ParameterSidebar = (): JSX.Element | null => {
           />
         </Tabs.Panel>
 
-        <Tabs.Panel pr="md" pl="md" value="filters" key="filters">
+        <Tabs.Panel pr="lg" pl="lg" value="filters" key="filters">
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
@@ -253,6 +290,21 @@ export const ParameterSidebar = (): JSX.Element | null => {
           />
         </Tabs.Panel>
       </Tabs>
+      <ConfirmModal
+        opened={isRemoveConfirmOpen}
+        title={t`Remove this filter?`}
+        message={c(
+          "Warning shown when deleting a dashboard filter that has active subscriptions referencing it. The number can be 1 or more.",
+        ).ngettext(
+          msgid`${affectedSubscriptions.length} active subscription uses this filter. Removing it will archive the subscription and email its recipients.`,
+          `${affectedSubscriptions.length} active subscriptions use this filter. Removing it will archive these subscriptions and email their recipients.`,
+          affectedSubscriptions.length,
+        )}
+        confirmButtonText={t`Remove filter`}
+        closeButtonText={t`Cancel`}
+        onConfirm={handleConfirmRemove}
+        onClose={handleCancelRemove}
+      />
     </Sidebar>
   );
 };

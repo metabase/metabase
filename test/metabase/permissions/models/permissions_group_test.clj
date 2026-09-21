@@ -158,14 +158,16 @@
                    :perms/manage-table-metadata :no
                    :perms/manage-database :no}}}
                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))
-
       (mt/with-temp [:model/Database         {db-id :id}    {}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
             (is
              (= {group-id
                  {db-id
-                  {:perms/view-data :unrestricted
+                  ;; When EE code is on the classpath, a new group fails CLOSED to :blocked for a DB
+                  ;; where All Users is blocked, regardless of token features (UXW-4927); only a true
+                  ;; OSS jar falls back to :unrestricted.
+                  {:perms/view-data (if config/ee-available? :blocked :unrestricted)
                    :perms/create-queries :no
                    :perms/download-results :no
                    :perms/manage-table-metadata :no
@@ -191,13 +193,11 @@
                                 (into {} results)
                                 (update-vals results (fn [members]
                                                        (set (map #(select-keys % [:id :is_group_manager]) members))))))]
-
       (testing "hydrate members only return active users for each group"
         (is (= {group-id-1 #{{:id user-1-g1}
                              {:id user-2-g1}}
                 group-id-2 #{{:id user-1-g2}}}
                (group-id->members))))
-
       (testing "return is_group_manager for each group if premium features are enabled"
         (when config/ee-available?
           (mt/with-premium-features #{:advanced-permissions}

@@ -12,8 +12,10 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.middleware.cache.impl :as qp.cache.impl]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.limit :as qp.limit]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -44,13 +46,18 @@
  ;; Metadata — metabase.query-processor.metadata
  [qp.metadata
   result-metadata]
+ ;; Result-cache serialization — metabase.query-processor.middleware.cache.impl
+ [qp.cache.impl
+  do-with-serialization]
  ;; Constraints — metabase.query-processor.middleware.constraints
  [qp.constraints
   default-query-constraints]
  ;; Limit — metabase.query-processor.middleware.limit
  [qp.limit
   disable-max-results]
-
+ ;; Userland query — metabase.query-processor.middleware.process-userland-query
+ [qp.process-userland-query
+  do-with-captured-execution-context]
  ;; Pivot — metabase.query-processor.pivot
  [qp.pivot
   run-pivot-query]
@@ -79,3 +86,5 @@
  ;; Writeback — metabase.query-processor.writeback
  [qp.writeback
   execute-write-query!])
+
+(shared.ns/import-macro qp.cache.impl/with-reducible-deserialized-results)

@@ -1,9 +1,10 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { fieldApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import CS from "metabase/css/core/index.css";
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
@@ -20,15 +21,14 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
-import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
@@ -42,6 +42,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValuesMap,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -85,6 +86,9 @@ import {
 } from "../utils";
 
 import {
+  REMOVE_PARAMETER,
+  RESET_PARAMETERS,
+  SET_PARAMETER_VALUE,
   type SetDashCardAttributesOpts,
   setDashCardAttributes,
   setDashboardAttributes,
@@ -139,7 +143,10 @@ export function duplicateParameters(
   getState: GetState,
   parameterIds: ParameterId[],
 ) {
-  const parameters = getParameters(getState());
+  // getParameters returns UiParameters, which are not serializable
+  // so the duplicated parameter will throw on save. we need dashboard.parameters instead
+  const dashboard = getDashboard(getState());
+  const parameters = dashboard?.parameters ?? [];
 
   const newParameters = parameterIds.map((parameterId) => {
     const parameter = parameters.find((p) => p.id === parameterId);
@@ -243,7 +250,6 @@ export const moveParameter =
 
       dispatch(
         addUndo({
-          undo: true,
           action: undoMove,
 
           // Workaround to make the text show up without being truncated
@@ -257,7 +263,7 @@ export const moveParameter =
 
           // Top nav filters are always visible, so we don't need a "Show" button
           extraAction: isMovedToTopNav
-            ? null
+            ? undefined
             : {
                 label: t`Show filter`,
                 action: () => {
@@ -379,7 +385,6 @@ export function removeParameterAndReferences(
   });
 }
 
-export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
@@ -418,24 +423,15 @@ export const setParameterMapping = createThunkAction(
     cardId: CardId | null,
     target: ParameterTarget | null,
   ) => {
-    return (dispatch, getState) => {
+    return async (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
       const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (
-        target !== null &&
-        isQuestionDashCard(dashcard) &&
-        !isDashcardInlineParameter(parameterId, dashcards)
-      ) {
-        const selectedTabId = getSelectedTabId(getState());
-
-        dispatch(
-          showAutoWireToast(parameterId, dashcard, target, selectedTabId),
-        );
-      }
-
+      // this has to run first so auto-wire can see the updated dashcard
+      // otherwise the toast will be shown when it shouldn't be shown
+      // and undo would wipe the mapping the user just set.
       dispatch(
         setDashCardAttributes({
           id: dashcardId,
@@ -450,6 +446,24 @@ export const setParameterMapping = createThunkAction(
         }),
       );
 
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
+        const selectedTabId = getSelectedTabId(getState());
+
+        dispatch(
+          showAutoWireToast(
+            parameterId,
+            dashcardId,
+            cardId,
+            target,
+            selectedTabId,
+          ),
+        );
+      }
+
       // QUE2-326: when an ID parameter is mapped to a field, replace the
       // placeholder "id" type with a concrete type based on the field.
       if (target !== null && isDimensionTarget(target)) {
@@ -457,9 +471,10 @@ export const setParameterMapping = createThunkAction(
           (p) => p.id === parameterId,
         );
         if (parameter?.type === "id") {
+          const type = await resolveIdParameterType(dispatch, target);
           updateParameter(dispatch, getState, parameterId, (p) => ({
             ...p,
-            type: resolveIdParameterType(getState, target),
+            type,
             // Preserve sectionId so getParameterType() still returns "id" for
             // UI purposes (column compatibility, widget rendering) even though
             // the QP-facing type is now concrete.
@@ -477,10 +492,10 @@ export const setParameterMapping = createThunkAction(
  * refs (reads base-type from the field ref options). Falls back to "number/="
  * since most PKs are numeric.
  */
-function resolveIdParameterType(
-  getState: GetState,
+async function resolveIdParameterType(
+  dispatch: Dispatch,
   target: ParameterTarget,
-): string {
+): Promise<string> {
   const fieldRef = target[1];
   if (!Array.isArray(fieldRef) || fieldRef[0] !== "field") {
     return "number/=";
@@ -488,9 +503,15 @@ function resolveIdParameterType(
 
   const fieldIdOrName = fieldRef[1];
 
-  // By-ID: look up the field from the metadata store
+  // By-ID: the target can be an FK-linked field the card never returns, so ask
+  // the API for it rather than reading the card's result metadata.
   if (typeof fieldIdOrName === "number") {
-    const field = getMetadata(getState()).field(fieldIdOrName);
+    const field = await runRtkEndpoint(
+      { id: fieldIdOrName },
+      dispatch,
+      fieldApi.endpoints.getField,
+      { forceRefetch: false },
+    ).catch(() => null);
     if (field) {
       return isNumericBaseType(field) ? "number/=" : "string/=";
     }
@@ -822,7 +843,6 @@ export const setParameterFilteringParameters = createThunkAction(
     },
 );
 
-export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
@@ -877,7 +897,6 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
 export const resetParameters = createThunkAction(
   RESET_PARAMETERS,
   () => (_dispatch, getState) => {
@@ -952,6 +971,7 @@ export const setParameterTemporalUnits = createThunkAction(
         temporal_units: temporalUnits,
         default:
           parameter.default &&
+          // Unjustified type cast. FIXME
           temporalUnits.includes(parameter.default as TemporalUnit)
             ? parameter.default
             : undefined,
@@ -1067,7 +1087,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: LocationDescriptorObject["query"] = {}) =>
+  (queryParams: ParameterValuesMap = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
@@ -1106,7 +1126,9 @@ export const SHOW_AUTO_APPLY_FILTERS_TOAST =
 export const showAutoApplyFiltersToast = createThunkAction(
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   () => (dispatch, getState) => {
-    const action = toggleAutoApplyFilters(false);
+    const action = () => {
+      dispatch(toggleAutoApplyFilters(false));
+    };
     const toastId = _.uniqueId();
     const dashboardId = getDashboardId(getState());
 
@@ -1136,3 +1158,5 @@ export const closeAutoApplyFiltersToast = createThunkAction(
     }
   },
 );
+
+export { REMOVE_PARAMETER, RESET_PARAMETERS, SET_PARAMETER_VALUE };

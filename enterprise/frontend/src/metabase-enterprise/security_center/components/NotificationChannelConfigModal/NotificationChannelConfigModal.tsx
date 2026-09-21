@@ -1,12 +1,16 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useSendTestNotificationMutation } from "metabase/api/security-center";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
-import { useNotificationConfig } from "../../hooks/use-notification-config";
+import { useSendTestNotificationMutation } from "../../api";
+import {
+  serializeNotificationConfig,
+  useNotificationConfig,
+} from "../../hooks/use-notification-config";
 
 import { EmailChannelCard } from "./EmailChannelCard/EmailChannelCard";
 import { SlackChannelCard } from "./SlackChannelCard/SlackChannelCard";
@@ -36,13 +40,13 @@ export function NotificationChannelConfigModal({
       await save();
       sendToast({
         message: t`Notification settings saved`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
       onClose();
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to save notification settings`,
       });
     } finally {
@@ -53,21 +57,21 @@ export function NotificationChannelConfigModal({
   const handleSendTest = useCallback(async () => {
     setIsSendingTest(true);
     try {
-      await sendTestNotification().unwrap();
+      await sendTestNotification(serializeNotificationConfig(config)).unwrap();
       sendToast({
         message: t`Test notification sent`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to send test notification`,
       });
     } finally {
       setIsSendingTest(false);
     }
-  }, [sendTestNotification, sendToast]);
+  }, [sendTestNotification, sendToast, config]);
 
   const emailHasRecipients =
     config.email.sendToAllAdmins || config.email.handler.recipients.length > 0;
@@ -84,10 +88,10 @@ export function NotificationChannelConfigModal({
       size="lg"
       fullScreen={isSmallScreen}
     >
-      <Stack gap="md" mt="md">
+      <Stack gap="lg" mt="lg">
         <EmailChannelCard isConfigured={isEmailConfigured} />
         <SlackChannelCard isConfigured={isSlackConfigured} />
-        <Flex justify="space-between" gap="md" mt="md">
+        <Flex justify="space-between" gap="lg" mt="lg">
           <Button
             variant="subtle"
             leftSection={<Icon name="mail" />}
@@ -96,7 +100,7 @@ export function NotificationChannelConfigModal({
           >
             {t`Send test notification`}
           </Button>
-          <Group gap="md">
+          <Group gap="lg">
             <Button
               variant="subtle"
               onClick={() => {

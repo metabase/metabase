@@ -2,18 +2,18 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
-import { useMetabotName } from "metabase/metabot/hooks";
-import { getMetabotId, getMetabotState } from "metabase/metabot/state";
+import { getMetabotId } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { MetabotFeedback } from "metabase-types/api";
+import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
+
+import { getIssueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -23,6 +23,7 @@ type IssueTypesRequiringFreeform =
 const isFreeformRequired = (
   value: string,
 ): value is IssueTypesRequiringFreeform =>
+  // Unjustified type cast. FIXME
   ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as IssueTypesRequiringFreeform);
 
 const FEEDBACK_SCHEMA = Yup.object({
@@ -63,31 +64,28 @@ export const MetabotFeedbackModal = ({
   positive,
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
-  const isAdmin = useSelector(getUserIsAdmin);
-  const version = useSetting("version");
-  const metabotName = useMetabotName();
-
+  const metabotName = useSetting("metabot-name");
   const metabotId = useSelector(getMetabotId);
-  const metabotState = useSelector(getMetabotState);
 
-  const handleSubmit = (
-    values: Pick<
-      MetabotFeedback["feedback"],
-      "issue_type" | "freeform_feedback"
-    >,
-  ) =>
-    onSubmit({
-      version,
+  const handleSubmit = (values: {
+    freeform_feedback: string;
+    issue_type?: MetabotIssueType | "";
+  }) => {
+    const base = {
       metabot_id: metabotId,
-      feedback: {
-        message_id: messageId,
-        positive,
-        ...values,
-      },
-      conversation_data: metabotState,
-      is_admin: isAdmin,
-      submission_time: new Date().toISOString(),
-    });
+      message_id: messageId,
+      freeform_feedback: values.freeform_feedback,
+    };
+    onSubmit(
+      positive
+        ? { ...base, positive: true }
+        : {
+            ...base,
+            positive: false,
+            issue_type: values.issue_type || undefined,
+          },
+    );
+  };
 
   return (
     <Modal
@@ -106,35 +104,18 @@ export const MetabotFeedbackModal = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <Stack gap="md">
+          <Stack gap="lg">
             {!positive && (
-              <Stack gap="xs">
+              <Stack gap="xxs">
                 <Text>{t`What kind of issue are you reporting? (optional)`}</Text>
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={[
-                    { label: t`UI bug`, value: "ui-bug" },
-                    {
-                      label: t`Took incorrect actions`,
-                      value: "took-incorrect-actions",
-                    },
-                    { label: t`Overall refusal`, value: "overall-refusal" },
-                    {
-                      label: t`Did not follow request`,
-                      value: "did-not-follow-request",
-                    },
-                    { label: t`Not factually correct`, value: "not-factual" },
-                    {
-                      label: t`Incomplete response`,
-                      value: "incomplete-response",
-                    },
-                    { label: t`Other`, value: "other" },
-                  ]}
+                  data={getIssueTypeOptions()}
                 />
               </Stack>
             )}
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
@@ -150,13 +131,13 @@ export const MetabotFeedbackModal = ({
               />
             </Stack>
 
-            <Text size="sm" color="text-secondary">
+            <Text size="sm" c="text-secondary">
               {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>
 
-            <Group justify="flex-end" gap="md" mt="md">
+            <Group justify="flex-end" gap="lg" mt="lg">
               <Button variant="subtle" onClick={onClose}>
                 {t`Cancel`}
               </Button>

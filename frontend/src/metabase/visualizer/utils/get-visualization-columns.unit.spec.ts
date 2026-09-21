@@ -159,6 +159,139 @@ describe("getVisualizationColumns", () => {
       ]);
     });
 
+    it("should rewrite remapped_from/remapped_to to the renamed COLUMN_N (UXW-3359)", () => {
+      const visualizerEntity: VisualizerVizDefinition = {
+        display: "bar",
+        settings: {},
+        columnValuesMapping: {
+          COLUMN_1: [
+            {
+              name: "COLUMN_1",
+              originalName: "buyingstatus",
+              sourceId: "card:1",
+            },
+          ],
+          COLUMN_2: [
+            {
+              name: "COLUMN_2",
+              originalName: "buyingstatus_display",
+              sourceId: "card:1",
+            },
+          ],
+          COLUMN_3: [
+            {
+              name: "COLUMN_3",
+              originalName: "count",
+              sourceId: "card:1",
+            },
+          ],
+        },
+      };
+
+      const dataSource: VisualizerDataSource = {
+        id: "card:1",
+        sourceId: 1,
+        name: "Source 1",
+        type: "card",
+      };
+
+      const buyingStatusColumn = createMockColumn({
+        name: "buyingstatus",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+        semantic_type: "type/Category",
+        remapped_to: "buyingstatus_display",
+      });
+      const buyingStatusDisplayColumn = createMockColumn({
+        name: "buyingstatus_display",
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        remapped_from: "buyingstatus",
+      });
+      const countColumn = createMockColumn({
+        name: "count",
+        base_type: "type/BigInteger",
+      });
+
+      const dataset: Dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [buyingStatusColumn, buyingStatusDisplayColumn, countColumn],
+        }),
+      });
+
+      const columns = getVisualizationColumns(
+        visualizerEntity,
+        { "card:1": dataset },
+        [dataSource],
+      );
+
+      const base = columns.find((c) => c.name === "COLUMN_1");
+      const display = columns.find((c) => c.name === "COLUMN_2");
+
+      expect(base?.remapped_to).toBe("COLUMN_2");
+      expect(display?.remapped_from).toBe("COLUMN_1");
+    });
+
+    it("should scope rewrites to the same data source", () => {
+      const visualizerEntity: VisualizerVizDefinition = {
+        display: "bar",
+        settings: {},
+        columnValuesMapping: {
+          COLUMN_1: [
+            {
+              name: "COLUMN_1",
+              originalName: "buyingstatus",
+              sourceId: "card:1",
+            },
+          ],
+          COLUMN_2: [
+            {
+              name: "COLUMN_2",
+              originalName: "buyingstatus",
+              sourceId: "card:2",
+            },
+          ],
+        },
+      };
+
+      const dataSource1: VisualizerDataSource = {
+        id: "card:1",
+        sourceId: 1,
+        name: "Source 1",
+        type: "card",
+      };
+      const dataSource2: VisualizerDataSource = {
+        id: "card:2",
+        sourceId: 2,
+        name: "Source 2",
+        type: "card",
+      };
+
+      const colWithRemap = createMockColumn({
+        name: "buyingstatus",
+        remapped_to: "buyingstatus_display",
+      });
+      const colWithoutRemap = createMockColumn({ name: "buyingstatus" });
+
+      const datasets = {
+        "card:1": createMockDataset({
+          data: createMockDatasetData({ cols: [colWithRemap] }),
+        }),
+        "card:2": createMockDataset({
+          data: createMockDatasetData({ cols: [colWithoutRemap] }),
+        }),
+      };
+
+      const columns = getVisualizationColumns(visualizerEntity, datasets, [
+        dataSource1,
+        dataSource2,
+      ]);
+
+      // remapped_to gets cleared, not silently mapped to card:2's COLUMN_2.
+      const fromCard1 = columns.find((c) => c.name === "COLUMN_1");
+      expect(fromCard1?.remapped_to).toBeUndefined();
+    });
+
     it("should ignore missing dataset column or data source", () => {
       const visualizerEntity: VisualizerVizDefinition = {
         display: "bar",

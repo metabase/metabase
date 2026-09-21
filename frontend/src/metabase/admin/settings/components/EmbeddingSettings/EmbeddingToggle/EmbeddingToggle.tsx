@@ -2,8 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting, useAdminSettings } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import {
+  useAdminSetting,
+  useAdminSettings,
+  useSetting,
+} from "metabase/settings";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
 import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
@@ -69,7 +72,6 @@ export function EmbeddingToggle({
     <>
       <Switch
         label={isEnabled ? t`Enabled` : t`Disabled`}
-        size="sm"
         labelPosition={labelPosition}
         checked={isEnabled}
         wrapperProps={{

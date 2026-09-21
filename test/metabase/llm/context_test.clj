@@ -3,7 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.context :as context]
-   [metabase.test :as mt]))
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,36 +17,28 @@
   (testing "extracts single table ID"
     (is (= #{42}
            (context/parse-table-mentions "Show [Orders](metabase://table/42)"))))
-
   (testing "extracts multiple table IDs"
     (is (= #{42 15}
            (context/parse-table-mentions
             "Join [Orders](metabase://table/42) with [Products](metabase://table/15)"))))
-
   (testing "handles no mentions"
     (is (= #{} (context/parse-table-mentions "Show me all sales"))))
-
   (testing "handles nil input"
     (is (nil? (context/parse-table-mentions nil))))
-
   (testing "handles empty string"
     (is (= #{} (context/parse-table-mentions ""))))
-
   (testing "ignores malformed mentions - invalid ID"
     (is (= #{42}
            (context/parse-table-mentions
             "[Valid](metabase://table/42) [Invalid](metabase://table/abc)"))))
-
   (testing "handles display names with special characters"
     (is (= #{123}
            (context/parse-table-mentions
             "[Order's & Items](metabase://table/123)"))))
-
   (testing "handles multiple mentions of same table (returns set)"
     (is (= #{42}
            (context/parse-table-mentions
             "[Orders](metabase://table/42) and also [Orders Table](metabase://table/42)"))))
-
   (testing "handles text before and after mentions"
     (is (= #{1 2}
            (context/parse-table-mentions
@@ -55,12 +51,10 @@
     (let [tables [{:name "users" :schema nil :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (= "CREATE TABLE users (\n  id INTEGER\n);" result))))
-
   (testing "formats table with schema"
     (let [tables [{:name "users" :schema "public" :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (= "CREATE TABLE public.users (\n  id INTEGER\n);" result))))
-
   (testing "formats table with multiple columns"
     (let [tables [{:name "orders"
                    :schema nil
@@ -71,20 +65,17 @@
       (is (str/includes? result "id INTEGER"))
       (is (str/includes? result "total DECIMAL"))
       (is (str/includes? result "created_at TIMESTAMP"))))
-
   (testing "escapes special characters in identifiers"
     (let [tables [{:name "user data" :schema nil :columns [{:name "first name" :database_type "VARCHAR"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (str/includes? result "\"user data\""))
       (is (str/includes? result "\"first name\""))))
-
   (testing "formats multiple tables"
     (let [tables [{:name "users" :schema nil :columns [{:name "id" :database_type "INTEGER"}]}
                   {:name "orders" :schema nil :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (str/includes? result "CREATE TABLE users"))
       (is (str/includes? result "CREATE TABLE orders"))))
-
   (testing "formats table with description"
     (let [tables [{:name "orders"
                    :schema "public"
@@ -92,7 +83,6 @@
                    :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
       (is (= "-- Customer purchase transactions\nCREATE TABLE public.orders (\n  id INTEGER\n);" result))))
-
   (testing "formats table without description (no comment line)"
     (let [tables [{:name "orders"
                    :schema nil
@@ -116,16 +106,12 @@
           (is (str/includes? result "orders"))
           (is (str/includes? result "id"))
           (is (str/includes? result "total"))))
-
       (testing "returns nil for empty table-ids"
         (is (nil? (context/build-schema-context (:id db) #{}))))
-
       (testing "returns nil for nil table-ids"
         (is (nil? (context/build-schema-context (:id db) nil))))
-
       (testing "returns nil for nil database-id"
         (is (nil? (context/build-schema-context nil #{(:id table1)}))))
-
       (testing "returns nil for non-existent tables"
         (is (nil? (context/build-schema-context (:id db) #{99999})))))))
 
@@ -152,15 +138,12 @@
   (testing "formats integer range"
     (is (= "range: 1-100, avg: 50"
            (#'context/format-numeric-stats {:min 1 :max 100 :avg 50}))))
-
   (testing "formats decimal range"
     (is (= "range: 0.00-999.99, avg: 127.50"
            (#'context/format-numeric-stats {:min 0.0 :max 999.99 :avg 127.5}))))
-
   (testing "handles missing avg"
     (is (= "range: 0-100"
            (#'context/format-numeric-stats {:min 0 :max 100}))))
-
   (testing "returns nil when min/max missing"
     (is (nil? (#'context/format-numeric-stats {:avg 50})))
     (is (nil? (#'context/format-numeric-stats {})))))
@@ -170,12 +153,10 @@
     (is (= "2020-01-01 to 2024-12-31"
            (#'context/format-temporal-stats {:earliest "2020-01-01T00:00:00Z"
                                              :latest   "2024-12-31T23:59:59Z"}))))
-
   (testing "handles short date strings"
     (is (= "2020-01-01 to 2024-12-31"
            (#'context/format-temporal-stats {:earliest "2020-01-01"
                                              :latest   "2024-12-31"}))))
-
   (testing "returns nil when dates missing"
     (is (nil? (#'context/format-temporal-stats {:earliest "2020-01-01"})))
     (is (nil? (#'context/format-temporal-stats {})))))
@@ -189,54 +170,46 @@
             {:description "Customer email address"
              :semantic_type :type/Email}
             nil nil))))
-
   (testing "sample values for category"
     (is (= "active, inactive, pending"
            (#'context/build-column-comment
             {:semantic_type :type/Category}
             ["active" "inactive" "pending"]
             nil))))
-
   (testing "FK reference"
     (is (= "FK->users.id"
            (#'context/build-column-comment
             {:fk_target_field_id 123}
             nil
             {:table "users" :field "id"}))))
-
   (testing "semantic type hints"
     (is (= "PK"
            (#'context/build-column-comment {:semantic_type :type/PK} nil nil)))
     (is (= "Email"
            (#'context/build-column-comment {:semantic_type :type/Email} nil nil))))
-
   (testing "numeric fingerprint stats"
     (is (= "range: 0-1000, avg: 127.50"
            (#'context/build-column-comment
             {:fingerprint {:type {:type/Number {:min 0 :max 1000 :avg 127.5}}}}
             nil nil))))
-
   (testing "temporal fingerprint stats"
     (is (= "2020-01-01 to 2024-12-31"
            (#'context/build-column-comment
             {:fingerprint {:type {:type/DateTime {:earliest "2020-01-01T00:00:00Z"
                                                   :latest   "2024-12-31T23:59:59Z"}}}}
             nil nil))))
-
   (testing "combined metadata"
     (is (= "Order status; pending, shipped, delivered"
            (#'context/build-column-comment
             {:description "Order status"}
             ["pending" "shipped" "delivered"]
             nil))))
-
   (testing "returns nil for no metadata"
     (is (nil? (#'context/build-column-comment {} nil nil)))))
 
 (deftest truncate-value-test
   (testing "short values unchanged"
     (is (= "active" (#'context/truncate-value "active"))))
-
   (testing "long values truncated"
     (is (= "this is a very long value t..."
            (#'context/truncate-value "this is a very long value that exceeds the limit")))))
@@ -257,7 +230,6 @@
       (is (str/includes? result "id INTEGER"))
       (is (str/includes? result "status VARCHAR"))
       (is (str/includes? result "total DECIMAL"))))
-
   (testing "formats table with mixed commented and non-commented columns"
     (let [tables [{:name "users"
                    :schema nil
@@ -270,7 +242,6 @@
       (is (str/includes? result "id INTEGER"))
       (is (str/includes? result "name VARCHAR"))
       (is (str/includes? result "email VARCHAR"))))
-
   (testing "formats table without any comments (backward compatible)"
     (let [tables [{:name "simple"
                    :schema nil
@@ -319,6 +290,40 @@
           (is (some? result))
           (is (str/includes? result "FK->users.id")))))))
 
+(deftest get-tables-with-columns-hides-unreadable-fk-target-test
+  (testing "an FK on a readable table does not reveal an unreadable target table or field"
+    (mt/with-temp [:model/Database db         {}
+                   :model/Table    target     {:db_id              (:id db)
+                                               :name               "secret_table"
+                                               :schema             "private"}
+                   :model/Field    target-id  {:table_id           (:id target)
+                                               :name               "secret_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Table    source     {:db_id              (:id db)
+                                               :name               "orders"
+                                               :schema             "public"}
+                   :model/Field    _source-id {:table_id           (:id source)
+                                               :name               "id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer}
+                   :model/Field    _source-fk {:table_id           (:id source)
+                                               :name               "user_id"
+                                               :database_type      "INTEGER"
+                                               :base_type          :type/Integer
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (:id target-id)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) source :perms/create-queries :query-builder-and-native)
+        (mt/with-test-user :rasta
+          (let [result (context/get-tables-with-columns (:id db) #{(:id source)})
+                fk-col (some #(when (= "user_id" (:name %)) %) (-> result first :columns))]
+            (is (some? fk-col) "the readable source FK column is returned")
+            (is (not (contains? fk-col :fk_target)))
+            (is (not (str/includes? (pr-str result) "secret_table")))
+            (is (not (str/includes? (pr-str result) "secret_id")))))))))
+
 (deftest build-schema-context-with-field-values-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database   db    {}
@@ -355,6 +360,113 @@
           (is (str/includes? result "-- Customer purchase transactions"))
           (is (str/includes? result "CREATE TABLE")))))))
 
+(deftest build-schema-context-constrains-tables-to-requested-database-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database other-db {}
+                   :model/Table    other-table {:db_id (:id other-db) :name "secret" :schema "public"}
+                   :model/Field    _of {:table_id      (:id other-table)
+                                        :name          "id"
+                                        :database_type "INTEGER"
+                                        :base_type     :type/Integer}
+                   :model/Database db {}
+                   :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                   :model/Field    _f {:table_id      (:id table)
+                                       :name          "id"
+                                       :database_type "INTEGER"
+                                       :base_type     :type/Integer}]
+      (testing "a table ID from a different database is not included in the DDL, even though the user can read it"
+        (let [{:keys [ddl tables]} (context/build-schema-context (:id db) #{(:id table) (:id other-table)})]
+          (is (str/includes? ddl "orders"))
+          (is (not (str/includes? ddl "secret")))
+          (is (= [(:id table)] (map :id tables)))))
+      (testing "requesting only the other database's table returns nil (no accessible tables in the requested db)"
+        (is (nil? (context/build-schema-context (:id db) #{(:id other-table)})))))))
+
+(deftest build-schema-context-requires-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database is denied, rather than silently returning nil"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that\."
+                                (context/build-schema-context (:id db) #{(:id table)}))))))))
+
+(deftest get-tables-with-columns-does-not-require-database-read-access-test
+  (mt/with-temp [:model/Database db {}
+                 :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (testing "a user with no access to the database gets an empty result, rather than a hard 403 -- this
+                  endpoint (POST /api/llm/extract-sources) shares fetch-accessible-tables-with-columns with
+                  build-schema-context, but must not deny its :card_ids behavior over unrelated table access
+                  (that 403 belongs to generate-sql, see build-schema-context-requires-database-read-access-test)"
+          (is (nil? (context/get-tables-with-columns (:id db) #{(:id table)}))))))))
+
+(deftest fetch-field-values-caps-restricted-columns-test
+  (testing "columns of a row-restricted table are capped at max-restricted-field-values-fetches per request;
+            columns of an unrestricted table are not capped"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    restricted-table {:db_id (:id db)}
+                   :model/Table    open-table       {:db_id (:id db)}]
+      (let [field-defs (fn [table n prefix]
+                         (for [i (range n)]
+                           {:table_id (:id table) :name (str prefix i) :database_type "VARCHAR"
+                            :base_type :type/Text :has_field_values :list}))
+            restricted-fields (t2/insert-returning-instances!
+                               :model/Field (field-defs restricted-table 40 "r"))
+            open-fields       (t2/insert-returning-instances!
+                               :model/Field (field-defs open-table 3 "o"))
+            columns (fn [fields table-id]
+                      (mapv (fn [f] {:id (:id f) :table-id table-id}) fields))
+            all-columns (into (columns restricted-fields (:id restricted-table))
+                              (columns open-fields (:id open-table)))
+            calls (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [params.field-values/get-or-create-field-values!
+                                      (fn [_field] (swap! calls inc) nil)]
+            (#'context/fetch-field-values all-columns #{(:id restricted-table)}))
+          (is (= (+ 3 @#'context/max-restricted-field-values-fetches) @calls)
+              "3 unrestricted + the restricted cap, not all 40 restricted columns")
+          (finally
+            (t2/delete! :model/Field :id [:in (map :id (concat restricted-fields open-fields))])))))))
+
+(deftest fetch-field-values-applies-cap-after-eligibility-filter-test
+  (testing "the restricted-table cap is applied after narrowing to fields that should have FieldValues,
+            so ineligible fields ahead of an eligible one can't consume its budget"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    restricted-table {:db_id (:id db)}]
+      (let [ineligible-fields (t2/insert-returning-instances!
+                               :model/Field
+                               (for [i (range (inc @#'context/max-restricted-field-values-fetches))]
+                                 {:table_id (:id restricted-table) :name (str "ineligible" i)
+                                  :database_type "TEXT" :base_type :type/Text
+                                  :has_field_values :none}))
+            eligible-field    (first (t2/insert-returning-instances!
+                                      :model/Field
+                                      [{:table_id (:id restricted-table) :name "eligible"
+                                        :database_type "VARCHAR" :base_type :type/Text
+                                        :has_field_values :list}]))
+            all-columns (mapv (fn [f] {:id (:id f) :table-id (:id restricted-table)})
+                              (concat ineligible-fields [eligible-field]))
+            calls (atom 0)]
+        (try
+          (mt/with-dynamic-fn-redefs [params.field-values/get-or-create-field-values!
+                                      (fn [_field] (swap! calls inc) nil)]
+            (#'context/fetch-field-values all-columns #{(:id restricted-table)}))
+          (is (= 1 @calls)
+              "only the one eligible field is fetched -- the ineligible fields ahead of it in the raw
+               column list didn't consume its slot in the cap")
+          (finally
+            (t2/delete! :model/Field :id [:in (map :id (conj ineligible-fields eligible-field))])))))))
+
 ;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
 
 (deftest extract-tables-from-sql-test
@@ -362,7 +474,6 @@
     (is (= #{} (context/extract-tables-from-sql nil nil)))
     (is (= #{} (context/extract-tables-from-sql 1 nil)))
     (is (= #{} (context/extract-tables-from-sql nil "SELECT 1"))))
-
   (testing "returns empty set for empty SQL"
     (is (= #{} (context/extract-tables-from-sql 1 "")))
     (is (= #{} (context/extract-tables-from-sql 1 "   ")))))
@@ -373,24 +484,31 @@
       (let [result (context/extract-tables-from-sql (mt/id) "SELECT * FROM ORDERS")]
         (is (set? result))
         (is (contains? result (mt/id :orders)))))
-
     (testing "extracts multiple tables from JOIN"
       (let [result (context/extract-tables-from-sql (mt/id)
                                                     "SELECT * FROM ORDERS o JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID")]
         (is (set? result))
         (is (contains? result (mt/id :orders)))
         (is (contains? result (mt/id :products)))))
-
     (testing "extracts tables from subquery"
       (let [result (context/extract-tables-from-sql (mt/id)
                                                     "SELECT * FROM (SELECT * FROM PEOPLE) sub")]
         (is (set? result))
         (is (contains? result (mt/id :people)))))
-
     (testing "returns empty set for non-existent table"
       (let [result (context/extract-tables-from-sql (mt/id) "SELECT * FROM NONEXISTENT_TABLE")]
         (is (= #{} result))))
-
     (testing "returns empty set for invalid SQL (graceful failure)"
       (let [result (context/extract-tables-from-sql (mt/id) "THIS IS NOT SQL")]
         (is (= #{} result))))))
+
+(deftest extract-card-ids-from-template-tags-test
+  (testing "extracts card template tag IDs and ignores other tag types"
+    (is (= #{1 2}
+           (context/extract-card-ids-from-template-tags
+            {"#1" {:type "card" :card-id 1}
+             "#2" {:type :card :card_id 2}
+             "id" {:type "dimension"}
+             "orders" {:type "table" :table-id 10}}))))
+  (testing "returns an empty set for missing template tags"
+    (is (= #{} (context/extract-card-ids-from-template-tags nil)))))

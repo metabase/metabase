@@ -24,6 +24,7 @@ import {
   formatDateRange,
   getInterval,
   getUnitOptions,
+  isOutOfBounds,
   setInterval,
 } from "../utils";
 
@@ -32,6 +33,8 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
@@ -40,6 +43,8 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -47,6 +52,7 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
+  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -67,12 +73,15 @@ export function DateIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (outOfBounds) {
+      return;
+    }
     onSubmit();
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <Flex p="md" align="center">
+      <Flex p="lg" align="center">
         <NumberInputWithFallbackValue
           allowDecimal={false}
           value={interval}
@@ -84,7 +93,7 @@ export function DateIntervalPicker({
           data={unitOptions}
           value={value.unit}
           aria-label={t`Unit`}
-          ml="md"
+          ml="lg"
           onChange={handleUnitChange}
           comboboxProps={{
             withinPortal: false,
@@ -101,16 +110,16 @@ export function DateIntervalPicker({
           />
         </Tooltip>
       </Flex>
-      <Flex p="md" pt={0}>
+      <Flex p="lg" pt={0}>
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" justify="space-between">
+      <Group px="lg" py="sm" justify="space-between">
         <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value, isDisabled: false })}
+        {renderSubmitButton({ value, isDisabled: outOfBounds })}
       </Group>
     </form>
   );

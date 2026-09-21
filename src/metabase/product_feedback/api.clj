@@ -24,7 +24,7 @@
                                             :source   source
                                             :email    email})})
     (catch Exception e
-      (log/warn e)
+      (log/warn (ex-message e))
       (throw e))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -35,7 +35,7 @@
   "Endpoint to provide feedback from the product"
   [_route-params
    _query-params
-   {:keys [comments source email]} :- [:map
+   {:keys [comments source email]} :- [:map {:closed true}
                                        [:comments {:optional true} [:maybe ms/NonBlankString]]
                                        [:source   ms/NonBlankString]
                                        [:email    {:optional true} [:maybe ms/NonBlankString]]]]

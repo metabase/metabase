@@ -1,4 +1,5 @@
 export * from "./EntityPicker";
+export { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 export { CollectionPickerModal } from "./CollectionPicker";
 export { DashboardPickerModal } from "./DashboardPicker";
 export { DataPickerModal } from "./DataPicker";

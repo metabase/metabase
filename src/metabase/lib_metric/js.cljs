@@ -390,6 +390,37 @@
   [dimension]
   (to-array (map name (lib-metric.filter/filterable-dimension-operators dimension))))
 
+(defn ^:export availableSegments
+  "Return segments that can be applied as filters on this metric definition.
+   Segments are scoped to the source table(s) of the definition's expression leaves.
+   Each segment metadata is annotated with `:lib-metric/instance-uuid` so the FE
+   can pass the same opaque value back to `addSegmentFilter` / `filter`.
+   Returns a JS array of (opaque) CLJS segment metadata maps."
+  [definition]
+  (to-array (lib-metric.filter/available-segments definition)))
+
+(defn ^:export isSegmentFilter
+  "Return true if the filter-clause is a segment reference."
+  [filter-clause]
+  (lib-metric.filter/segment-clause? filter-clause))
+
+(defn ^:export segmentMetadataForFilter
+  "Return the segment metadata referenced by a segment filter-clause, or nil."
+  [definition filter-clause]
+  (lib-metric.filter/segment-metadata-for-clause definition filter-clause))
+
+(defn ^:export addSegmentFilter
+  "Add a segment as a filter on this metric definition. `segment-metadata` is an
+   opaque CLJS segment metadata map returned by `availableSegments`."
+  [definition segment-metadata]
+  (lib-metric.filter/add-segment-filter definition segment-metadata))
+
+(defn ^:export segmentMetadataId
+  "Return the numeric id of a segment metadata map returned by `availableSegments`
+   or `segmentMetadataForFilter`."
+  [segment-metadata]
+  (:id segment-metadata))
+
 ;;; -------------------------------------------------- Filter Parts JS Conversion --------------------------------------------------
 
 (defn- js-key->cljs-key
@@ -625,6 +656,12 @@
   ([definition dimension-ref source-instance]
    (lib-metric.projection/project-for-source definition dimension-ref (->source-instance source-instance))))
 
+(defn ^:export projectDimension
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition dimension]
+  (assert-single-source! definition)
+  (lib-metric.projection/project-dimension definition dimension))
+
 (defn ^:export projectionDimension
   "Get the dimension metadata for a projection clause.
    Returns the dimension or null if not found."
@@ -843,11 +880,50 @@
   "Check if two dimensions share at least one common source.
    Returns false if either dimension has no sources."
   [dimension1 dimension2]
-  (let [sources1 (:sources dimension1)
-        sources2 (:sources dimension2)]
-    (boolean
-     (when (and (seq sources1) (seq sources2))
-       (some (set sources1) sources2)))))
+  (lib-metric.dimension/same-source? dimension1 dimension2))
+
+(defn ^:export fromMetricDimension
+  "Convert a plain JS MetricDimension object to a CLJS DimensionMetadata map."
+  [js-dimension]
+  (lib-metric.metadata.js/parse-dimension js-dimension))
+
+(defn- dimension-source->js [source]
+  (clj->js (-> source
+               (update :type name)
+               (update-keys (comp u/->kebab-case-en name)))))
+
+(defn- dimension-group->js
+  "Emit the snake_case API shape (`display_name`) from the internal kebab-case group."
+  [group]
+  (clj->js (update-keys group (comp u/->snake_case_en name))))
+
+(defn ^:export toMetricDimension
+  "Convert a CLJS DimensionMetadata map to a plain JS MetricDimension object.
+   Emits the snake_case API shape the TS `MetricDimension` type describes (internal
+   lib-metric keys are kebab-case)."
+  [dimension]
+  (let [obj #js {}]
+    (doseq [[k v] dimension
+            :when (not (qualified-keyword? k))]
+      (let [js-key (u/->snake_case_en (name k))
+            js-val (case k
+                     (:effective-type :semantic-type :has-field-values)
+                     (u/qualified-name v)
+
+                     :sources
+                     (some-> v (as-> srcs (to-array (map dimension-source->js srcs))))
+
+                     :group
+                     (some-> v dimension-group->js)
+
+                     v)]
+        (gobject/set obj js-key js-val)))
+    obj))
+
+(defn ^:export groupDimensionsBySource
+  "Group DimensionMetadata values that transitively share sources."
+  [dimensions]
+  (to-array (map to-array (lib-metric.dimension/group-by-source dimensions))))
 
 (defn ^:export isCompatibleType
   "Check if two dimensions have compatible effective types for cross-database matching.

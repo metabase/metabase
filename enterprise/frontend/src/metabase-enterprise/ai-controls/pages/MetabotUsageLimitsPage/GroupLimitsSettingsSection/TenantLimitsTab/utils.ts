@@ -10,7 +10,7 @@ import type {
 export {
   SAVE_DEBOUNCE_MS,
   sanitizeUsageLimitValue,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
 } from "../../utils";
 
 export type SpecificTenantsTabProps = {
@@ -36,11 +36,11 @@ export function getInputLabel(
   > = {
     tokens: {
       daily: c("{0} is the tenant name")
-        .t`Max total daily tokens for ${tenantName} (millions)`,
+        .t`Max total daily tokens for ${tenantName}`,
       weekly: c("{0} is the tenant name")
-        .t`Max total weekly tokens for ${tenantName} (millions)`,
+        .t`Max total weekly tokens for ${tenantName}`,
       monthly: c("{0} is the tenant name")
-        .t`Max total monthly tokens for ${tenantName} (millions)`,
+        .t`Max total monthly tokens for ${tenantName}`,
     },
     messages: {
       daily: c("{0} is the tenant name")
@@ -61,9 +61,9 @@ const columnNameMap: Record<
 > = {
   get tokens() {
     return {
-      daily: t`Max total daily token usage (millions)`,
-      weekly: t`Max total weekly token usage (millions)`,
-      monthly: t`Max total monthly token usage (millions)`,
+      daily: t`Max total daily token usage`,
+      weekly: t`Max total weekly token usage`,
+      monthly: t`Max total monthly token usage`,
     };
   },
   get messages() {

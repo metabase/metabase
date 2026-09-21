@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
@@ -33,9 +34,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
@@ -49,6 +48,20 @@
   (testing "POST /api/session - basic login works"
     (is (malli= SessionResponse
                 (mt/client :post 200 "session" (mt/user->credentials :rasta))))))
+
+(deftest login-logs-user-id-test
+  (testing "POST /api/session log line includes the user ID after login (#74017)"
+    (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+      (is (malli= SessionResponse
+                  (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+      (let [rasta-id (test.users/user->id :rasta)
+            log-line (->> (messages)
+                          (m/find-first (fn [{:keys [message]}]
+                                          (and (string? message)
+                                               (re-find #"POST /api/session" message)))))]
+        (is (some? log-line))
+        (is (re-find (re-pattern (str ":metabase-user-id " rasta-id))
+                     (:message log-line)))))))
 
 (deftest login-mixed-case-email-test
   (testing "POST /api/session - login with email of mixed case"
@@ -89,12 +102,12 @@
       (mt/with-log-messages-for-level [messages :error]
         (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
                 (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
-        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+        (is (=? {:level :error, :e nil, :message #"^Authentication endpoint error: .+"}
                 (or (->> (messages)
                          ;; geojson can throw errors and we want the authentication error
                          ;;
                          ;; TODO -- huh? geojson???? -- Cam
-                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                         (m/find-first #(re-find #"^Authentication endpoint error" (:message %))))
                     ["no matching message:" (messages)])))))))
 
 (deftest login-validation-username-required-test
@@ -118,6 +131,14 @@
             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                                (assoc :password "something else")))))))
 
+(deftest login-unknown-email-does-not-leak-account-existence-test
+  (testing "POST /api/session - an unknown email returns the same 401 error as a wrong password (anti-enumeration)"
+    (let [unknown-email-resp  (mt/client :post 401 "session" {:username "definitely-not-a-user@metabase.test"
+                                                              :password "whatever-UP12!!"})
+          wrong-password-resp (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
+                                                                 (assoc :password "whatever-UP12!!")))]
+      (is (= wrong-password-resp unknown-email-resp)))))
+
 (deftest login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
@@ -134,7 +155,9 @@
       (testing "Error should be logged (#14317)"
         (mt/with-log-messages-for-level [messages :error]
           (login)
-          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+          (is (=? {:level   :error
+                   :e       nil
+                   :message #"^Authentication endpoint error: Too many attempts! You must wait \d+ seconds before trying again\.$"}
                   (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
@@ -231,15 +254,14 @@
 
 (deftest forgot-password-initiate-reset-test
   (testing "POST /api/session/forgot_password - initiate password reset"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
-                  (let [{:keys [reset_token reset_triggered]} (t2/select-one [:model/User :reset_token :reset_triggered]
-                                                                             :id (mt/user->id :rasta))]
-                    (boolean (and reset_token reset_triggered))))]
-          (t2/update! :model/User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
+                  (boolean (t2/select-one :model/AuthIdentity :user_id (mt/user->id :rasta)
+                                          :provider "emailed-secret-password-reset")))]
+          (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "emailed-secret-password-reset")
           (assert (not (reset-fields-set?)))
           (is (= nil
                  (mt/user-http-request :rasta :post 204 "session/forgot_password"
@@ -247,14 +269,14 @@
               "Request should return no content")
           (is (true?
                (reset-fields-set?))
-              "User `:reset_token` and `:reset_triggered` should be updated")
+              "the password-reset AuthIdentity should be created")
           (is (mt/received-email-subject? :rasta #"Password Reset")))))))
 
 (deftest forgot-password-uses-site-url-test
   (testing "POST /api/session/forgot_password - uses site-url in email"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (let [my-url "abcdefghij"]
         (mt/with-temporary-setting-values [site-url my-url]
           (mt/with-fake-inbox
@@ -272,11 +294,20 @@
     (is (= nil
            (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))
 
+(deftest forgot-password-throttle-is-case-insensitive-test
+  (testing "POST /api/session/forgot_password - the per-email throttle treats casing variants as one address"
+    (let [forgot (fn [email] (:status (mt/client-full-response :post "session/forgot_password" {:email email})))]
+      (dotimes [_ 3]
+        (is (= 204 (forgot "user@metabase.com"))))
+      (testing "a different casing of the same address shares the now-exhausted bucket"
+        (is (= 400 (forgot "User@metabase.com")))
+        (is (= 400 (forgot "USER@METABASE.COM")))))))
+
 (deftest forgot-password-google-sso-enabled-test
   (testing "POST /api/session/forgot_password - Google SSO user cannot reset when Google SSO enabled"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -294,9 +325,9 @@
 
 (deftest forgot-password-google-sso-disabled-test
   (testing "POST /api/session/forgot_password - Google SSO user can reset when Google SSO disabled"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -317,10 +348,10 @@
     (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
       (testing (str "sso_source = " sso-source)
         ;; Mock sso-source-enabled? to return false (provider is disabled, e.g., after downgrade)
-        (with-redefs [api.session/forgot-password-impl
-                      (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
-                      metabase.sso.settings/sso-source-enabled? (constantly false)]
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                                    metabase.sso.settings/sso-source-enabled? (constantly false)]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
                                                :email      (str (name sso-source) "-user@example.com")
@@ -338,10 +369,10 @@
     (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
       (testing (str "sso_source = " sso-source)
         ;; Mock sso-source-enabled? to return true (provider is active)
-        (with-redefs [api.session/forgot-password-impl
-                      (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
-                      metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                                    metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
                                                :email      (str (name sso-source) "-user@example.com")
@@ -356,9 +387,9 @@
 
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-model-cleanup [:model/User]
         (testing "Test that forgot password event is logged."
           (mt/client :post 204 "session/forgot_password"
@@ -367,7 +398,7 @@
             (is (=? {:topic    :password-reset-initiated
                      :model_id rasta-id
                      :model    "User"
-                     :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                     :details  {:token (auth-identity/reset-token-hash rasta-id)}}
                     (mt/latest-audit-log-entry :password-reset-initiated rasta-id)))))))))
 
 (deftest forgot-password-throttling-test
@@ -393,9 +424,9 @@
     (mt/with-fake-inbox
       (let [password {:old "password"
                       :new "whateverUP12!!"}]
-        (mt/with-temp [:model/User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-          (let [token (u/prog1 (str id "_" (random-uuid))
-                        (t2/update! :model/User id {:reset_token <>}))
+        (mt/with-temp [:model/User {:keys [email id]} {}]
+          (auth-identity/set-password! id (:old password))
+          (let [token (auth-identity/create-password-reset! id)
                 creds {:old {:password (:old password)
                              :username email}
                        :new {:password (:new password)
@@ -409,9 +440,9 @@
                    (mt/client :post 401 "session" (:old creds))))
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" (:new creds))))
-            (is (= {:reset_token     nil
-                    :reset_triggered nil}
-                   (mt/derecordize (t2/select-one [:model/User :reset_token :reset_triggered], :id id))))))))))
+            (is (nil? (t2/select-one :model/AuthIdentity
+                                     :user_id id :provider "emailed-secret-password-reset"))
+                "the reset token is removed once the password has been set")))))))
 
 (deftest reset-password-throttling-test
   (testing "POST /api/session/reset_password - endpoint is throttled"
@@ -438,10 +469,10 @@
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
-            (mt/with-temp [:model/User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-              (let [token       (u/prog1 (str id "_" (random-uuid))
-                                  (t2/update! :model/User id {:reset_token <> :last_login :%now}))
-                    reset-token (t2/select-one-fn :reset_token :model/User :id id)]
+            (mt/with-temp [:model/User {:keys [id]} {}]
+              (t2/update! :model/User id {:last_login :%now})
+              (let [token       (auth-identity/create-password-reset! id)
+                    reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
                                                                :password (:new password)})
                 (is (= {:topic    :password-reset-successful
@@ -458,39 +489,55 @@
               (mt/client :post 400 "session/reset_password" {})))
       (is (=? {:errors {:password "password is too common."}}
               (mt/client :post 400 "session/reset_password" {:token "anything"}))))
-
     (testing "Test that malformed token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that invalid token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that an expired token doesn't work"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (=? {:errors {:password "Invalid reset token"}}
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
 
+(deftest reset-password-from-token-invalidates-sessions-test
+  (testing "POST /api/session/reset_password deletes the user's existing sessions"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "reset-test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)
+            token   (auth-identity/create-password-reset! (:id user))]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the reset")
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the pre-existing session should be deleted after resetting the password via token")))))
+
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
+      (let [token (auth-identity/create-password-reset! (mt/user->id :rasta))]
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
-
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
-
     (testing "Check that an expired but valid token returns false"
-      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
-        (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
+      (let [uid (mt/user->id :rasta)
+            token (auth-identity/create-password-reset! uid)
+            ai (t2/select-one :model/AuthIdentity :user_id uid :provider "emailed-secret-password-reset")]
+        (t2/update! :model/AuthIdentity (:id ai)
+                    {:credentials (assoc (:credentials ai) :expires_at (java.time.Instant/ofEpochMilli 0))})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
@@ -499,19 +546,15 @@
     (testing "reset-token-ttl-hours-test is reset to default when not set"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours nil]
         (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 36]
         (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to large positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours (inc Integer/MAX_VALUE)]
         (is (= (inc Integer/MAX_VALUE) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to zero"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 0]
         (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to negative value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours -1]
         (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
@@ -521,23 +564,19 @@
     (testing "Unauthenticated"
       (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
-
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :admin-write-authed-read})))
                (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
-
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
-
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
-
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
@@ -545,7 +584,6 @@
         :user-local :only
         :type       :string
         :default    "FOO")
-
       (mt/with-test-user :lucky
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
@@ -585,6 +623,7 @@
       (mt/with-model-cleanup [:model/User]
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
+          ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -606,13 +645,13 @@
                                                   :is_active true
                                                   :first_name "last"
                                                   :last_name "luser"}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (testing "with throttling enabled"
               (is (malli= SessionResponse
                           (mt/client :post 200 "session/google_auth" {:token "foo"})))
@@ -625,15 +664,38 @@
                             (mt/client :post 200 "session/google_auth" {:token "foo"}))))))))
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:_error "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+
+(deftest google-auth-logs-user-id-test
+  (testing "POST /api/session/google_auth log line includes the user ID after login (#74017)"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temp [:model/User {user-id :id} {:email "test@metabase.com"
+                                                :is_active true}]
+        (with-redefs [http/post (constantly
+                                 {:status 200
+                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                               "\"email_verified\":\"true\","
+                                               "\"given_name\":\"test\","
+                                               "\"family_name\":\"user\","
+                                               "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session/google_auth" {:token "foo"})))
+            (let [log-line (->> (messages)
+                                (m/find-first (fn [{:keys [message]}]
+                                                (and (string? message)
+                                                     (re-find #"POST /api/session/google_auth" message)))))]
+              (is (some? log-line))
+              (is (re-find (re-pattern (str ":metabase-user-id " user-id))
+                           (:message log-line))))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
@@ -648,7 +710,8 @@
   (testing "LDAP login - no fallback when password login disabled"
     (ldap.test/with-ldap-server!
       (mt/with-premium-features #{:disable-password-login}
-        (mt/with-temporary-setting-values [enable-password-login false]
+        (mt/with-temporary-setting-values [enable-password-login false
+                                           mfa-enforcement       :off]
           (is (= "Password login is disabled for this instance."
                  (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))))
 
@@ -670,9 +733,10 @@
 (deftest ldap-login-fallback-for-broken-settings-test
   (testing "LDAP login - fallback to local for broken LDAP settings"
     (ldap.test/with-ldap-server!
-      (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                      :password "1234"}]
+      (mt/with-temporary-setting-values [mfa-enforcement :off
+                                         ldap-user-base  "cn=wrong,cn=com"]
+        (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
+          (auth-identity/set-password! user-id "1234")
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                       :password "1234"}))))))))
@@ -680,11 +744,12 @@
 (deftest ldap-login-fallback-for-slow-ldap-test
   (testing "LDAP login - fallback to local for slow LDAP"
     (ldap.test/with-ldap-server!
-      (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
+      (mt/with-temporary-setting-values [mfa-enforcement      :off
+                                         ldap-timeout-seconds 0.01]
         (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
                                                                                       (Thread/sleep 500))]
-          (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                        :password "1234"}]
+          (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
+            (auth-identity/set-password! user-id "1234")
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
                                                         :password "1234"})))))))))
@@ -692,31 +757,34 @@
 (deftest ldap-login-new-user-test
   (testing "LDAP login - can login with new user"
     (ldap.test/with-ldap-server!
-      (try
-        (is (malli= SessionResponse
-                    (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
-        (finally
-          (t2/delete! :model/User :email "sally.brown@metabase.com"))))))
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (try
+          (is (malli= SessionResponse
+                      (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
+          (finally
+            (t2/delete! :model/User :email "sally.brown@metabase.com")))))))
 
 (deftest ldap-login-uppercase-email-test
   (testing "LDAP login - can login multiple times with uppercase email (#13739)"
     (ldap.test/with-ldap-server!
-      (try
-        (is (malli=
-             SessionResponse
-             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
-        (is (malli=
-             SessionResponse
-             (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
-        (finally
-          (t2/delete! :model/User :email "john.smith@metabase.com"))))))
+      (mt/with-temporary-setting-values [mfa-enforcement :off]
+        (try
+          (is (malli=
+               SessionResponse
+               (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+          (is (malli=
+               SessionResponse
+               (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
+          (finally
+            (t2/delete! :model/User :email "john.smith@metabase.com")))))))
 
 (deftest ldap-login-group-sync-without-uid-test
   (testing "LDAP login - group sync works even if ldap doesn't return uid (#22014)"
     (ldap.test/with-ldap-server!
       (mt/with-temp [:model/PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
-          [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          [ldap-group-mappings (json/encode {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})
+           mfa-enforcement     "off"]
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (let [user-id (t2/select-one-pk :model/User :email "fred.taylor@metabase.com")]

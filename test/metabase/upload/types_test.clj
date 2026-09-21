@@ -275,7 +275,6 @@
     (is (= [::text] (vec (ancestors h ::varchar-255))))
     (is (= [::varchar-255 ::text] (vec (ancestors h ::boolean))))
     (is (= [::*float-or-int* ::float ::varchar-255 ::text] (vec (ancestors h ::int)))))
-
   (testing "Non-linear ancestors are listed in topological order, following edges in the order they were defined."
     (is (= [::boolean
             ::int
@@ -291,7 +290,6 @@
     (is (nil? (descendants h ::date)))
     (is (= [::date] (vec (descendants h ::datetime))))
     (is (= [::*boolean-int*] (vec (descendants h ::boolean)))))
-
   (testing "Non-linear descendants are listed in reverse topological order, following edges in reserve order."
     (is (= [::*float-or-int*
             ::int

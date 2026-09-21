@@ -1,7 +1,7 @@
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export interface StaticChartProps {
@@ -12,4 +12,6 @@ export interface StaticChartProps {
   height?: number;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  // When true, width/height are the exact output box: charts fit their legend inside it
+  fitWithinBounds?: boolean;
 }

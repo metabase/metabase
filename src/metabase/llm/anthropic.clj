@@ -86,7 +86,7 @@
    - :duration-ms - Request duration in milliseconds
 
    Options:
-   - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
+   - :model    - Model to use; defaults to the `llm-anthropic-model` setting
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
@@ -94,23 +94,29 @@
         request    {:model    model
                     :system   system
                     :messages messages}
-        start-time (u/start-timer)]
-    (try
-      (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
-            response (http/post url
-                                {:headers            (build-request-headers (get-api-key-or-throw))
-                                 :body               (json/encode (build-request-body request))
-                                 :as                 :json
-                                 :content-type       :json
-                                 :socket-timeout     (llm.settings/llm-request-timeout-ms)
-                                 :connection-timeout (llm.settings/llm-connection-timeout-ms)})
-            duration-ms (u/since-ms start-time)
-            body        (:body response)
-            usage       (:usage body)]
-        {:result      (extract-tool-input body)
-         :duration-ms duration-ms
-         :usage       {:model      model
-                       :prompt     (:input_tokens usage)
-                       :completion (:output_tokens usage)}})
-      (catch Exception e
-        (handle-api-error e)))))
+        start-time (u/start-timer)
+        url        (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")]
+    ;; Outside the try so the e2e guard and a malformed URL fail loudly instead of being
+    ;; routed through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
+    (llm.settings/assert-llm-host-allowed! url)
+    (let [policy-opts (llm.settings/llm-request-opts url)]
+      (try
+        (let [response (http/post url
+                                  (merge {:headers            (build-request-headers (get-api-key-or-throw))
+                                          :body               (json/encode (build-request-body request))
+                                          :as                 :json
+                                          :content-type       :json
+                                          :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                          :connection-timeout (llm.settings/llm-connection-timeout-ms)}
+                                         policy-opts))
+              duration-ms (u/since-ms start-time)
+              body        (:body response)
+              usage       (:usage body)]
+          {:result      (extract-tool-input body)
+           :duration-ms duration-ms
+           :usage       {:model      model
+                         :prompt     (:input_tokens usage)
+                         :completion (:output_tokens usage)}})
+        (catch Exception e
+          (llm.settings/rethrow-if-llm-network-policy-error! e url)
+          (handle-api-error e))))))

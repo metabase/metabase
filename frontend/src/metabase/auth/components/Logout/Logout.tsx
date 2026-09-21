@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 
 import { useDispatch } from "metabase/redux";
-
-import { logout } from "../../actions";
+import { logout } from "metabase/redux/auth";
 
 export const Logout = (): JSX.Element | null => {
   const dispatch = useDispatch();

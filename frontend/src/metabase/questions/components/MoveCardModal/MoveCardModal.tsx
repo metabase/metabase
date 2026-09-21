@@ -1,26 +1,25 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
-import type { MoveDestination } from "metabase/collections/types";
+import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
+import type { MoveDestination } from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
   getEntityTypeFromCardType,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
-import { Dashboards } from "metabase/entities/dashboards";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/redux";
-import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
+import { questionUpdated } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigate } from "metabase/router";
 import { Box, Icon, Radio, Title } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 
 import MoveCardToast from "./MoveCardToast";
@@ -37,6 +36,7 @@ type ConfirmationTypes =
 
 export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [updateCard] = useUpdateCardMutation();
 
@@ -58,7 +58,8 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   ) => {
     const update =
       destination.model === "dashboard"
-        ? { dashboard_id: destination.id as number }
+        ? // Unjustified type cast. FIXME
+          { dashboard_id: destination.id as number }
         : {
             dashboard_id: null,
             collection_id: canonicalCollectionId(destination.id),
@@ -73,16 +74,11 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       .then(async (updatedCard) => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
-        dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-        dispatch({
-          type: INJECT_RTK_QUERY_QUESTION_VALUE,
-          payload: updatedCard,
-        });
+        dispatch(questionUpdated(updatedCard));
 
         dispatch(
           addUndo({
             message: <MoveCardToast card={card} destination={destination} />,
-            undo: false,
           }),
         );
 
@@ -106,7 +102,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             { id: destination.id, name: "", ...dashboard },
             { editMode: true, scrollToDashcard: dashcard?.id },
           );
-          dispatch(push(url));
+          navigate(url);
         }
 
         onClose();
@@ -169,7 +165,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={card.dashboard_id} />
+                <DashboardName key="name" id={card.dashboard_id} />
               </>
             )}?`}
           </Title>
@@ -189,14 +185,14 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                 value={"true"}
               />
               <Radio
-                mt="md"
+                mt="lg"
                 label={t`No, remove it from that dashboard`}
                 value={"false"}
               />
             </Radio.Group>
           </>
         }
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
       />
     );
@@ -220,14 +216,14 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   style={{ marginBottom: -2 }}
                   size={20}
                 />{" "}
-                <Dashboards.Name key="name" id={card.dashboard_id} />
+                <DashboardName key="name" id={card.dashboard_id} />
               </>
             )}`}
           </Title>
         }
         message={t`You can move it to a collection if you want to use it in both dashboards.`}
         confirmButtonText={t`Okay`}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
       />
     );
   }

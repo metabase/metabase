@@ -1,23 +1,37 @@
 import { Component } from "react";
 
-import { FrontendErrorsApi } from "metabase/services";
+import { useReportFrontendErrorMutation } from "metabase/api";
 
 interface ChartRenderingErrorBoundaryProps {
   onRenderError: (errorMessage: string) => void;
   children: React.ReactNode;
 }
 
-export class ChartRenderingErrorBoundary extends Component<ChartRenderingErrorBoundaryProps> {
-  constructor(props: ChartRenderingErrorBoundaryProps) {
-    super(props);
-  }
+interface ChartRenderingErrorBoundaryInnerProps extends ChartRenderingErrorBoundaryProps {
+  onReportError: () => void;
+}
 
+class ChartRenderingErrorBoundaryInner extends Component<ChartRenderingErrorBoundaryInnerProps> {
   componentDidCatch(error: any) {
-    FrontendErrorsApi.report({ type: "chart-render-error" }).catch(() => {});
+    this.props.onReportError();
     this.props.onRenderError(error.message || error);
   }
 
   render() {
     return this.props.children;
   }
+}
+
+export function ChartRenderingErrorBoundary(
+  props: ChartRenderingErrorBoundaryProps,
+) {
+  const [reportFrontendError] = useReportFrontendErrorMutation();
+  return (
+    <ChartRenderingErrorBoundaryInner
+      {...props}
+      onReportError={() =>
+        void reportFrontendError({ type: "chart-render-error" })
+      }
+    />
+  );
 }

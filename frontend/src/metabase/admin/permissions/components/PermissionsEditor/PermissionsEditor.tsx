@@ -22,7 +22,7 @@ export const PermissionsEditor = ({
     <div className={S.PermissionsEditorRoot}>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <>
-          <Box mx="xl" mb="md">
+          <Box mx="xxl" mb="lg">
             <UpsellPermissions location="settings-permissions" />
           </Box>
           <PermissionsEditorContent {...contentProps} />

@@ -7,9 +7,9 @@
    ;; legacy usages, do not use legacy MBQL stuff in new code.
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [MBQL]]))
 
@@ -40,7 +40,7 @@
 
 (defn- extract-dimensions
   [mbql]
-  (lib.util.match/match-many (domain-entities.specs/normalize-mbql-clause mbql)
+  (match/match-many (domain-entities.specs/normalize-mbql-clause mbql)
     [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
@@ -72,7 +72,7 @@
 
 (def ^:private Joins
   [:sequential
-   [:map
+   [:map {:closed true}
     [:source    Source]
     [:condition MBQL]
     [:strategy {:optional true} JoinStrategy]]])
@@ -81,7 +81,7 @@
 
 (def Step
   "Transform step"
-  [:map
+  [:map {:closed true}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -117,7 +117,7 @@
 
 (def TransformSpec
   "Transform spec"
-  [:map
+  [:map {:closed true}
    [:name     TransformName]
    [:requires Requires]
    [:provides Provides]

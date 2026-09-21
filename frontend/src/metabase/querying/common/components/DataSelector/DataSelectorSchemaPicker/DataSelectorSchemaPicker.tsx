@@ -1,21 +1,20 @@
 import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Box, Icon } from "metabase/ui";
-import type Schema from "metabase-lib/v1/metadata/Schema";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { SchemaId } from "metabase-types/api";
 
 import { CONTAINER_WIDTH } from "../constants";
+import type { DataSelectorSchema } from "../types";
 
 type DataSelectorSchemaPickerProps = {
-  hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  schemas: Schema[];
-  selectedSchemaId: SchemaId;
-  onBack: () => void;
-  onChangeSchema: (item: { schema: Schema }) => void;
+  schemas: DataSelectorSchema[];
+  selectedSchemaId?: SchemaId;
+  onChangeSchema: (schema?: DataSelectorSchema) => void;
 };
 
 export const DataSelectorSchemaPicker = ({
@@ -29,7 +28,7 @@ export const DataSelectorSchemaPicker = ({
   const sections = [
     {
       items: schemas.map((schema) => ({
-        name: schema.displayName(),
+        name: getSchemaDisplayName(schema.name),
         schema: schema,
       })),
     },
@@ -45,7 +44,7 @@ export const DataSelectorSchemaPicker = ({
         sections={sections}
         searchable={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
-        itemIsSelected={(item: { schema: Schema }) =>
+        itemIsSelected={(item: { schema: DataSelectorSchema }) =>
           item?.schema.id === selectedSchemaId
         }
         renderItemIcon={() => <Icon name="folder" size={16} />}

@@ -3,21 +3,17 @@ import {
   createAction,
   createSlice,
 } from "@reduxjs/toolkit";
-import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
-  Dispatch,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
-import {
-  isSmallScreen,
-  openInBlankWindow,
-  shouldOpenInBlankWindow,
-} from "metabase/utils/dom";
+import { LOCATION_CHANGE, navigate } from "metabase/router";
+import { shouldOpenInBlankWindow } from "metabase/urls";
+import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -48,11 +44,11 @@ export function resetErrorPage() {
   };
 }
 
-export const openUrl = (url: string) => (dispatch: Dispatch) => {
+export const openUrl = (url: string) => () => {
   if (shouldOpenInBlankWindow(url)) {
     openInBlankWindow(url);
   } else {
-    dispatch(push(url));
+    navigate(url);
   }
 };
 
@@ -135,6 +131,7 @@ const detailView = handleActions(
 
 const tempStorageSlice = createSlice({
   name: "tempStorage",
+  // Unjustified type cast. FIXME
   initialState: {} as TempStorage,
   reducers: {
     setTempSetting: (

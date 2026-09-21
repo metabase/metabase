@@ -55,12 +55,17 @@
   api-call?
   auth-call?
   cacheable?
+  data-app-embed-prefix
+  data-app-url-segment
+  data-app?
   device-info
+  embed-sdk-eajs-entrypoint?
   embed?
   embedded?
   geocode-ip-addresses
-  https?
-  public?])
+  https-state
+  public?
+  referer])
 
 (defn enabled-session-timeout-seconds
   "Return the session timeout in seconds if the session-timeout-config premium feature is enabled and a timeout is

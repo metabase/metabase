@@ -29,7 +29,7 @@
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
   ;; two things with different dispatch values (for maps, the `:lib/type` key; for MBQL clauses, the tag, and for
-  ;; everything else, the `:dispatch-type/*` key) can't be equal.
+  ;; everything else, a `:dispatch-type/...` keyword) can't be equal.
   (fn [x y]
     (let [x-dispatch-value (lib.dispatch/dispatch-value x)
           y-dispatch-value (lib.dispatch/dispatch-value y)]
@@ -137,37 +137,37 @@ are known to be the same."
   "Returns a keyword representing the reason why two columns fail an [[=]] check (for debugging purposes)."
   [col-1 col-2]
   (or
-    ;; two column metadatas with different IDs are NEVER equal.
+   ;; two column metadatas with different IDs are NEVER equal.
    (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
-    ;; from the same source.
+   ;; from the same source.
    (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
-    ;; same join alias
+   ;; same join alias
    (columns-not-equal-by-fn :lib/join-alias col-1 col-2)
-    ;; same FK Field (for implicitly joined columns)
+   ;; same FK Field (for implicitly joined columns)
    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
    (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
-    ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
-    ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
-    ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
-    ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
+   ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
+   ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
+   ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
+   ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
    (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
-    ;;
-    ;; columns that don't have the same binning or temporal bucketing are never the same.
-    ;;
-    ;; same binning
+   ;;
+   ;; columns that don't have the same binning or temporal bucketing are never the same.
+   ;;
+   ;; same binning
    (columns-not-equal-by-fn :lib/binning col-1 col-2)
-    ;; same bucketing
+   ;; same bucketing
    (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
      'temporal-bucket)
-    ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
-    ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
-    ;; just historical metadata and shouldn't affect identity. See #70231.
+   ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
+   ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
+   ;; just historical metadata and shouldn't affect identity. See #70231.
    (when (and (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-1)))
               (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-2)))
               (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2))
      :inherited-temporal-unit)
-    ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
-    ;; some reason they do not)
+   ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
+   ;; some reason they do not)
    (let [k (m/find-first (fn [k]
                            (and (k col-1)
                                 (k col-2)))
@@ -178,9 +178,12 @@ are known to be the same."
 (defmethod = :metadata/column
   [col-1 col-2]
   (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
-    (if not-equal-reason
-      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
-      (log/debug "Columns are equal."))
+    ;; This block is commented out for performance reasons. Even when DEBUG level is not enabled, computing level
+    ;; eligibility on each comparison operation is significantly expensive. If you need to debug this, consider
+    ;; restricting the log to particular columns.
+    #_(if not-equal-reason
+        (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+        (log/debug "Columns are equal."))
     (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
@@ -290,9 +293,7 @@ are known to be the same."
   (or (when-let [join-alias (:join-alias opts)]
         (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
             ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
-            (do (log/warnf "Failed to find match for column %s with join alias %s, looking for match without join alias..."
-                           (pr-str ref-name)
-                           (pr-str join-alias))
+            (do (log/warn "Failed to find match for column with its join alias, looking for match without join alias...")
                 nil)))
       (plausible-matches-for-name-no-join-alias ref-name columns)))
 
@@ -316,7 +317,7 @@ are known to be the same."
            {:ref a-ref
             :columns columns}))
 
-(mu/defn- expression-column? [column]
+(mu/defn- expression-column? [column :- ::lib.schema.metadata/column]
   (or (clojure.core/= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
@@ -333,7 +334,7 @@ are known to be the same."
       ;; In all other cases, this is an ambiguous match.
       #_(throw (ambiguous-match-error a-ref columns))
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
-         :clj  (log/warn (ambiguous-match-error a-ref columns)))))
+         :clj  (log/warn (ex-message (ambiguous-match-error a-ref columns))))))
 
 (defn- matching-col-with-fn [columns col-fn]
   (let [matching-columns (filter col-fn columns)]
@@ -406,15 +407,16 @@ are known to be the same."
          ;; try again ignoring join alias.
          (do
            (when join-alias
-             (#?(:cljs js/console.warn :clj log/warn)
-              "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-              {:ref     a-ref
-               :matches matches}))
+             #?(:cljs (js/console.warn
+                       "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+                       {:ref     a-ref
+                        :matches matches})
+                :clj  (log/warn "Multiple plausible matches with the same :join-alias - more disambiguation needed")))
            nil)))
      (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
-  [:map [:generous? {:optional true} :boolean]])
+  [:map {:closed true} [:generous? {:optional true} :boolean]])
 
 (mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -440,7 +442,8 @@ are known to be the same."
     - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
   Returns the matching column, or nil if no match is found."
-  ([a-ref columns]
+  ([a-ref   :- ::lib.schema.ref/ref
+    columns :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column a-ref columns {}))
 
   ([[ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
@@ -462,7 +465,10 @@ are known to be the same."
                       (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
-  ([query stage-number a-ref-or-column columns]
+  ([query           :- [:maybe ::lib.schema/query]
+    stage-number    :- :int
+    a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+    columns         :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column query stage-number a-ref-or-column columns {}))
 
   ([query           :- [:maybe ::lib.schema/query]
@@ -572,12 +578,14 @@ are known to be the same."
 (mu/defn find-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
   "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
   FE names for similar functions."
-  ([query legacy-ref metadatas]
+  ([query        :- ::lib.schema/query
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
+    metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-column-for-legacy-ref query -1 legacy-ref metadatas))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- :some
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 
@@ -603,7 +611,7 @@ are known to be the same."
                                         (keep (fn [selected-col-or-ref]
                                                 (or (find-matching-column query stage-number selected-col-or-ref cols)
                                                     (do
-                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str selected-col-or-ref))
+                                                      (log/warn "[mark-selected-columns] failed to find match for a selected column or ref")
                                                       nil))))
                                         selected-columns-or-refs)]
        (when-not (clojure.core/= (count selected-columns-or-refs) (count matching-selected-cols))

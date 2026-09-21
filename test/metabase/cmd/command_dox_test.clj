@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.cmd.command-dox :as sut]))
+   [metabase.cmd.command-dox :as sut]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel format-arglist-test
   (testing "format-arglist handles various arglist patterns"
@@ -26,27 +27,27 @@
              (#'sut/format-arglists "command" '([arg1] [arg1 arg2])))))))
 
 (deftest ^:parallel format-option-test
-  (testing "format-option handles option specs correctly"
+  (testing "format-option returns the bullet contents; the `- ` prefix is md/bullets' job"
     (testing "short and long option"
-      (is (= "- `-k, --keep-existing` - Do not delete target file"
+      (is (= "`-k, --keep-existing` - Do not delete target file"
              (#'sut/format-option ["-k" "--keep-existing" "Do not delete target file"]))))
     (testing "long option only"
-      (is (= "- `--full-stacktrace` - Output full stacktraces"
+      (is (= "`--full-stacktrace` - Output full stacktraces"
              (#'sut/format-option [nil "--full-stacktrace" "Output full stacktraces"]))))
     (testing "short option only"
-      (is (= "- `-e` - Continue on error"
+      (is (= "`-e` - Continue on error"
              (#'sut/format-option ["-e" nil "Continue on error"]))))
     (testing "option with additional metadata is ignored"
-      (is (= "- `-c, --collection` - Export only specified IDs"
+      (is (= "`-c, --collection` - Export only specified IDs"
              (#'sut/format-option ["-c" "--collection" "Export only specified IDs" :id :collection-ids]))))
     (testing "empty string for short option should be ignored"
-      (is (= "- `--full-stacktrace` - Output full stacktraces"
+      (is (= "`--full-stacktrace` - Output full stacktraces"
              (#'sut/format-option ["" "--full-stacktrace" "Output full stacktraces"]))))
     (testing "empty string for long option should be ignored"
-      (is (= "- `-e` - Continue on error"
+      (is (= "`-e` - Continue on error"
              (#'sut/format-option ["-e" "" "Continue on error"]))))
     (testing "both options as empty strings should handle gracefully"
-      (is (= "- `` - Some description"
+      (is (= "`` - Some description"
              (#'sut/format-option ["" "" "Some description"]))))))
 
 (deftest ^:parallel format-options-test
@@ -153,8 +154,8 @@
 
 (deftest generate-documentation-test
   (testing "generate-documentation produces complete markdown document"
-    (let [doc (with-redefs [sut/header-section (constantly "# Test Header")
-                            sut/footer-section (constantly "# Test Footer")]
+    (let [doc (mt/with-dynamic-fn-redefs [sut/header-section (constantly "# Test Header")
+                                          sut/footer-section (constantly "# Test Footer")]
                 (#'sut/generate-documentation))]
       (testing "includes header"
         (is (str/starts-with? doc "# Test Header")))

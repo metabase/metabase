@@ -34,7 +34,11 @@ Try out your changes before deploying to production.
 
 Export your questions, dashboards, and more as YAML files that you can check into version control.
 
-## [Monitoring your Metabase](./monitoring-metabase.md)
+## [Metabase CLI](./metabase-cli.md)
+
+A command-line client that drives a Metabase instance over its API, on its own or through an AI agent.
+
+## [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)
 
 Monitor your Metabase with JMX.
 
@@ -54,10 +58,10 @@ We collect anonymous Metabase usage data to improve the product. We don't collec
 
 Notes on Metabase's accessibility.
 
-## [Command line commands](./commands.md)
+## [Metabase JAR commands](./commands.md)
 
-Metabase's CLI.
+Administrative commands built into the Metabase JAR.
 
 ---
 
-If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners).

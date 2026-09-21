@@ -1,9 +1,10 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { Link } from "react-router";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Ellipsified, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -17,12 +18,12 @@ type FieldItemProps = {
   active?: boolean;
   parent?: Field;
   readOnly?: boolean;
-  onSelect?: () => void;
-  onNameChange: (newName: string) => void;
-  onDescriptionChange: (newDescription: string | null) => void;
+  onSelect?: (field: Field) => void;
+  onNameChange: (field: Field, newName: string) => void;
+  onDescriptionChange: (field: Field, newDescription: string | null) => void;
 };
 
-export function FieldItem({
+const FieldItemBase = ({
   active,
   field,
   href,
@@ -31,13 +32,15 @@ export function FieldItem({
   onSelect,
   onNameChange,
   onDescriptionChange,
-}: FieldItemProps) {
-  const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
+}: FieldItemProps) => {
+  const icon = useMemo(() => {
+    return getColumnIcon(Lib.legacyColumnTypeInfo(field));
+  }, [field]);
 
   const handleNameChange = async (newValue: string) => {
     const newName = newValue.trim();
     if (field.display_name !== newName) {
-      onNameChange(newName);
+      onNameChange(field, newName);
     }
   };
 
@@ -46,7 +49,7 @@ export function FieldItem({
     const newDescription = trimmedValue.length === 0 ? null : trimmedValue;
 
     if (field.description !== newDescription) {
-      onDescriptionChange(newDescription);
+      onDescriptionChange(field, newDescription);
     }
   };
 
@@ -69,14 +72,16 @@ export function FieldItem({
     ) {
       event.preventDefault();
     } else {
-      onSelect?.();
+      onSelect?.(field);
     }
   };
 
   return (
     <Card
       aria-label={field.display_name}
-      bg={active ? "background-brand" : "background-primary"}
+      bg={
+        active ? "background_surface-brand-subtle" : "background_page-primary"
+      }
       c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
@@ -96,7 +101,7 @@ export function FieldItem({
         justify="space-between"
         mih={rem(40)}
         pos="relative"
-        px="md"
+        px="lg"
         py={rem(12)}
         to={href}
         w="100%"
@@ -105,7 +110,7 @@ export function FieldItem({
       >
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           flex="0 0 auto"
           gap={0}
           maw="100%"
@@ -121,7 +126,7 @@ export function FieldItem({
               lh="normal"
               maw="50%"
               mb={rem(-4)}
-              mr="xs"
+              mr="xxs"
               mt={rem(-3)}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>
@@ -171,4 +176,41 @@ export function FieldItem({
       </Flex>
     </Card>
   );
+};
+
+export function areFieldItemPropsEqual(
+  prevProps: FieldItemProps,
+  nextProps: FieldItemProps,
+) {
+  return (
+    prevProps.active === nextProps.active &&
+    prevProps.href === nextProps.href &&
+    prevProps.readOnly === nextProps.readOnly &&
+    prevProps.onSelect === nextProps.onSelect &&
+    prevProps.onNameChange === nextProps.onNameChange &&
+    prevProps.onDescriptionChange === nextProps.onDescriptionChange &&
+    areFieldsEqual(prevProps.field, nextProps.field) &&
+    areParentFieldsEqual(prevProps.parent, nextProps.parent)
+  );
 }
+
+function areFieldsEqual(prevField: Field, nextField: Field) {
+  return (
+    prevField.id === nextField.id &&
+    prevField.display_name === nextField.display_name &&
+    prevField.description === nextField.description &&
+    prevField.base_type === nextField.base_type &&
+    prevField.effective_type === nextField.effective_type &&
+    prevField.semantic_type === nextField.semantic_type &&
+    prevField.fk_target_field_id === nextField.fk_target_field_id
+  );
+}
+
+function areParentFieldsEqual(prevField?: Field, nextField?: Field) {
+  return (
+    prevField?.id === nextField?.id &&
+    prevField?.display_name === nextField?.display_name
+  );
+}
+
+export const FieldItem = memo(FieldItemBase, areFieldItemPropsEqual);

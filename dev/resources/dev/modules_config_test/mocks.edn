@@ -1,0 +1,36 @@
+;;
+;; Mock inputs for dev.modules-config-test — the four values dev.modules-config/compute-desired takes.
+;; Shaped like the real dev.deps-graph outputs, but tiny and hand-authored so the expected output is
+;; predictable. `:config` mirrors (kondo-config): connection-pool is intentionally absent (the deps graph
+;; dissocs it), which is what makes the rewriter leave that module untouched.
+;;
+{:config
+ {alpha           {}
+  beta            {}
+  gamma           {:model-imports :bypass}
+  enterprise/zeta {}}
+
+ ;; one entry per source file: {:module M :namespace NS :deps [{:module M :namespace NS} ...]}
+ :dependencies
+ [{:module alpha :namespace metabase.alpha.core
+   :deps [{:module beta :namespace metabase.beta.core}
+          {:module gamma :namespace metabase.gamma.core}]}
+  {:module beta :namespace metabase.beta.core :deps []}
+  {:module gamma :namespace metabase.gamma.core :deps []}
+  {:module enterprise/zeta :namespace metabase-enterprise.zeta.core
+   :deps [{:module alpha :namespace metabase.alpha.core}
+          {:module beta :namespace metabase.beta.core}]}]
+
+ ;; {:model/X => owning module}
+ :model-ownership
+ {:model/Alpha alpha
+  :model/Beta  beta
+  :model/Gamma gamma
+  :model/Zeta  enterprise/zeta}
+
+ ;; {module => #{models it references}}
+ :model-references
+ {alpha           #{:model/Alpha :model/Beta :model/Gamma}
+  beta            #{:model/Beta}
+  gamma           #{:model/Gamma :model/Alpha}
+  enterprise/zeta #{:model/Zeta :model/Alpha}}}

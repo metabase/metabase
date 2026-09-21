@@ -8,6 +8,7 @@
 
 (defsetting version
   "Metabase's version info"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info)
@@ -51,7 +52,7 @@
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
   applications. (See [[metabase.premium-features.settings/site-uuid-for-premium-features-token-checks]] for more
   reasoning.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base)
 
@@ -62,7 +63,7 @@
       (prevent-upgrade? current-major (-> raw-version-info :latest) upgrade-threshold-value)
       (dissoc :latest))
     (catch Exception e
-      (log/error e "Error processing version info")
+      (log/errorf "Error processing version info: %s" (ex-message e))
       raw-version-info)))
 
 (defsetting version-info

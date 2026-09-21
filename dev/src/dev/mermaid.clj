@@ -1,4 +1,5 @@
-#_:clj-kondo/ignore
+;; dev scratch ns: these requires and aliases are kept for REPL convenience even when this file does not use them
+#_{:clj-kondo/ignore [:consistent-alias :unused-alias :unused-namespace]}
 (ns dev.mermaid
   (:require
    [clojure.java.shell :as sh]

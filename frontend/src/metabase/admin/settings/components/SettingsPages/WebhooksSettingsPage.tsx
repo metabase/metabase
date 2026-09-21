@@ -1,23 +1,22 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { useListChannelsQuery } from "metabase/api/channel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useListChannelsQuery } from "metabase/api/channel";
+} from "metabase/settings-components";
 import {
   Button,
   Flex,
   Group,
   Icon,
-  type IconName,
   Paper,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import type { NotificationChannel } from "metabase-types/api";
+import type { IconName, NotificationChannel } from "metabase-types/api";
 
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
@@ -97,7 +96,7 @@ const ChannelBox = ({
   <Paper
     shadow="0"
     withBorder
-    p="lg"
+    p="xl"
     onClick={onClick}
     style={{ cursor: "pointer" }}
   >

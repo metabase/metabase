@@ -1,18 +1,19 @@
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import {
   setupCollectionTreeEndpoint,
   setupDatabaseListEndpoint,
   setupListTransformsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -56,6 +57,7 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   setupCollectionTreeEndpoint([]);
   setupListTransformsEndpoint([]);
   setupDatabaseListEndpoint([]);
+  setupUserMetabotPermissionsEndpoint();
 
   const state = createMockState({
     settings: mockSettings({
@@ -64,7 +66,7 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   });
 
   const path = "/transforms";
-  renderWithProviders(<Route path={path} component={TransformListPage} />, {
+  renderWithProviders(<Route path={path} element={<TransformListPage />} />, {
     storeInitialState: state,
     withRouter: true,
     initialRoute: path,

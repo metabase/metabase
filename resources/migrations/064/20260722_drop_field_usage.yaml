@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.nofieldusage
+      author: technomancy
+      comment: The field_usage table has been unused for a long time; get rid of it!
+      changes:
+        - dropTable:
+            tableName: field_usage
+      # real rollback is not needed since this table has been unused since Jan 2025
+      # but the tests require rolling down and back again so let's just create
+      # an empty table
+      rollback:
+        - createTable:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false

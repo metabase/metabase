@@ -1,15 +1,7 @@
 import type { ReactNode } from "react";
 
-import {
-  Box,
-  Card,
-  FixedSizeIcon,
-  Group,
-  type IconName,
-  Stack,
-  Text,
-} from "metabase/ui";
-
+import { Box, Card, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 type EntitySectionProps = {
   icon: IconName;
   error?: string;
@@ -18,15 +10,15 @@ type EntitySectionProps = {
 
 export function EntitySection({ icon, error, children }: EntitySectionProps) {
   return (
-    <Card px="md" py="lg" withBorder shadow="none">
+    <Card px="lg" py="xl" withBorder shadow="none">
       <Group align="start" wrap="nowrap">
-        <Box p="sm" bg="background-brand" bdrs="md">
-          <FixedSizeIcon c="brand" name={icon} />
+        <Box p="sm" bg="background_surface-brand-subtle" bdrs="sm">
+          <FixedSizeIcon c="core-brand" name={icon} />
         </Box>
         <Stack gap="sm" miw={0}>
           {children}
           {error && (
-            <Text c="error" size="sm">
+            <Text c="feedback-negative" size="sm">
               {error}
             </Text>
           )}

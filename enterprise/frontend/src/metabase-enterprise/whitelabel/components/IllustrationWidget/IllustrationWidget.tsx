@@ -3,14 +3,14 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   BasicAdminSettingInput,
-  SetByEnvVar,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
-import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
-import CS from "metabase/css/core/index.css";
+  SettingHeader,
+} from "metabase/settings-components";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
@@ -56,24 +56,18 @@ const getIllustrationType = (
   }
 };
 
-const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
+const getSelectOptions = (): Record<IllustrationType, SelectOption[]> => ({
   background: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Lighthouse`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Sailboat`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
-} as const;
+});
 
 export function IllustrationWidget({
   name,
@@ -90,8 +84,9 @@ export function IllustrationWidget({
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const type = getIllustrationType(name);
-  const options = SELECT_OPTIONS[type];
+  const options = getSelectOptions()[type];
   const customIllustrationSettingName =
+    // Unjustified type cast. FIXME
     `${name}-custom` as EnterpriseSettingKey;
   const {
     value: settingValue,
@@ -140,6 +135,7 @@ export function IllustrationWidget({
 
       const reader = new FileReader();
       reader.onload = async (readerEvent) => {
+        // Unjustified type cast. FIXME
         const dataUri = readerEvent.target?.result as string;
         if (!(await isFileIntact(dataUri))) {
           setErrorMessage(
@@ -184,7 +180,7 @@ export function IllustrationWidget({
     <Box data-testid={`${name}-setting`}>
       <SettingHeader id={name} title={title} description={description} />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}
@@ -196,15 +192,16 @@ export function IllustrationWidget({
             justify="center"
             w="7.5rem"
             pos="relative"
-            style={{ borderRight: "1px solid var(--mb-color-border)" }}
+            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,
+              // Unjustified type cast. FIXME
               customSource: customIllustrationSource as string,
               defaultPreviewType: type,
             })}
           </Flex>
-          <Flex p="lg" gap="md" direction="column" justify="center" w="100%">
+          <Flex p="xl" gap="lg" direction="column" justify="center" w="100%">
             {settingDetails?.is_env_setting && settingDetails?.env_name ? (
               <SetByEnvVar varName={settingDetails.env_name} />
             ) : (
@@ -214,6 +211,7 @@ export function IllustrationWidget({
                 value={settingValue}
                 options={options}
                 onChange={(newValue) =>
+                  // Unjustified type cast. FIXME
                   handleChange(newValue as IllustrationSettingValue)
                 }
               />
@@ -241,7 +239,7 @@ export function IllustrationWidget({
                     accept="image/jpeg,image/png,image/svg+xml"
                     multiple={false}
                   />
-                  <Text ml="lg" truncate="end">
+                  <Text ml="xl" truncate="end">
                     {!customIllustrationSource
                       ? t`No file chosen`
                       : fileName
@@ -253,7 +251,7 @@ export function IllustrationWidget({
                       leftSection={<Icon name="close" />}
                       variant="subtle"
                       c="text-primary"
-                      ml="md"
+                      ml="lg"
                       size="compact-md"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}

@@ -1,8 +1,11 @@
 (ns metabase.xrays.api.automagic-dashboards-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.xrays.api.automagic-dashboards-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.xrays.api.automagic-dashboards-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -11,9 +14,11 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
@@ -77,7 +82,6 @@
 (deftest table-xray-test
   (testing "GET /api/automagic-dashboards/table/:id"
     (is (some? (api-call! "table/%s" [(mt/id :venues)]))))
-
   (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
     (is (some? (api-call! "table/%s/rule/example/indepth" [(mt/id :venues)])))))
 
@@ -143,13 +147,11 @@
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
                    (is (some? (api-call! "question/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query"
                    (is (some? (api-call! "question/%s/cell/%s"
                                          [card-id cell-query]
                                          #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query/rule/example/indepth"
                    (is (some? (api-call! "question/%s/cell/%s/rule/example/indepth"
@@ -172,13 +174,11 @@
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
                      (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query"
                      (is (some? (api-call! "model/%s/cell/%s"
                                            [card-id cell-query]
                                            #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query/rule/example/indepth"
                      (is (some? (api-call! "model/%s/cell/%s/rule/example/indepth"
@@ -218,10 +218,8 @@
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call! "adhoc/%s" [query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
       (is (some? (api-call! "adhoc/%s/cell/%s" [query cell-query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
@@ -311,13 +309,6 @@
                                       :dataset_query
                                       qp/process-query))))))))))))
 
-(deftest cards-have-can-run-adhoc-query-test
-  (api-call! "table/%s" [(mt/id :venues)]
-             (constantly true)
-             (fn [dashboard]
-               (is (every? #(get-in % [:card :can_run_adhoc_query])
-                           (filter :card (:dashcards dashboard)))))))
-
 ;;; ------------------- Index Entities Xrays -------------------
 
 (deftest add-source-model-link-auto-width-test
@@ -342,11 +333,9 @@
                                              :value-ref  value-ref
                                              :creator-id (mt/user->id :crowberto)})]
         (model-index/add-values! model-index)
-        (f {:model             model
-            :model-index       (t2/select-one :model/ModelIndex :id (:id model-index))
-            :model-index-value (t2/select-one :model/ModelIndexValue
-                                              :model_index_id (:id model-index)
-                                              :model_pk 1)})))))
+        (f {:model       model
+            :model-index (t2/select-one :model/ModelIndex :id (:id model-index))
+            :model-pk    1})))))
 
 (defmacro with-indexed-model!
   "Creates a model based on `query-info`, which is indexed.
@@ -364,10 +353,10 @@
   [:fn neg-int?])
 
 (defn- expected-filters
-  [{:keys [model-index-value] :as info}]
+  [{:keys [model-pk] :as info}]
   (let [linked-tables (api.magic/linked-entities info)]
     (into #{} (map (fn [{fk-id :linked-field-id}]
-                     [:= [:field fk-id nil] (:model_pk model-index-value)]))
+                     [:= [:field fk-id nil] model-pk]))
           linked-tables)))
 
 (defn- cards-have-filters?
@@ -392,22 +381,22 @@
                                                    :virtual_card        {:display :text},
                                                    :dashcard.background false,
                                                    :text.align_vertical :bottom}}]}
-            (#'api.magic/create-linked-dashboard {:model             nil
-                                                  :linked-tables     ()
-                                                  :model-index       nil
-                                                  :model-index-value nil})))))
+            (#'api.magic/create-linked-dashboard {:model         nil
+                                                  :linked-tables ()
+                                                  :model-index   nil
+                                                  :model-pk      1})))))
 
 (deftest create-linked-dashboard-test-regular-queries
   (mt/dataset test-data
     (testing "x-ray an mbql model"
-      (with-indexed-model! [{:keys [model model-index model-index-value]}
+      (with-indexed-model! [{:keys [model model-index model-pk]}
                             {:query     (mt/mbql-query products)
                              :pk-ref    (mt/$ids :products $id)
                              :value-ref (mt/$ids :products $title)}]
         (let [dash (#'api.magic/create-linked-dashboard
-                    {:model             model
-                     :model-index       model-index
-                     :model-index-value model-index-value
+                    {:model       model
+                     :model-index model-index
+                     :model-pk    model-pk
                      :linked-tables     (mt/$ids [{:linked-table-id $$reviews
                                                    :linked-field-id %reviews.product_id}
                                                   {:linked-table-id $$orders
@@ -430,16 +419,14 @@
                          (group-by :dashboard_tab_id)
                          vals
                          (map first)))))
-          (testing "The generated dashboard has a meaningful name and description"
-            (is (true?
-                 (and
-                  (str/includes? (:name dash) (:name model))
-                  (str/includes? (:name dash) (:name model-index-value)))))
-            (is (true? (str/includes? (:description dash) (:name model-index-value)))))
+          (testing "Without an indexed value the dashboard is named after the model and the pk"
+            (is (str/includes? (:name dash) (:name model)))
+            (is (str/includes? (:name dash) (str model-pk)))
+            (is (str/includes? (:description dash) (:name model))))
           (testing "All query cards have the correct filters"
-            (let [pk-filters (expected-filters {:model             model
-                                                :model-index       model-index
-                                                :model-index-value model-index-value})]
+            (let [pk-filters (expected-filters {:model       model
+                                                :model-index model-index
+                                                :model-pk    model-pk})]
               (cards-have-filters? (:dashcards dash) pk-filters))))))
     (testing "X-ray a native model"
       (letfn [(lower [x] (u/lower-case-en x))
@@ -460,7 +447,7 @@
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))
               id-field-id     (mt/id :products :id)]
-          (with-indexed-model! [{:keys [model model-index model-index-value]}
+          (with-indexed-model! [{:keys [model model-index model-pk]}
                                 {:query     (mt/native-query {:query "select * from products"})
                                  :pk-ref    id-field-ref
                                  :value-ref title-field-ref}]
@@ -475,9 +462,9 @@
                     "Metadata not updated with the mapping to the database column")
             (let [model (t2/select-one 'Card :id (:id model))
                   dash  (#'api.magic/create-linked-dashboard
-                         {:model             model
-                          :model-index       model-index
-                          :model-index-value model-index-value
+                         {:model       model
+                          :model-index model-index
+                          :model-pk    model-pk
                           :linked-tables     (mt/$ids [{:linked-table-id $$reviews
                                                         :linked-field-id %reviews.product_id}
                                                        {:linked-table-id $$orders
@@ -488,22 +475,22 @@
                         :name "A look at Orders" :position 1}]
                       (:tabs dash)))
               (testing "All query cards have the correct filters"
-                (let [pk-filters (expected-filters {:model             model
-                                                    :model-index       model-index
-                                                    :model-index-value model-index-value})]
+                (let [pk-filters (expected-filters {:model       model
+                                                    :model-index model-index
+                                                    :model-pk    model-pk})]
                   (cards-have-filters? (:dashcards dash) pk-filters))))))))))
 
 (deftest create-linked-dashboard-test-single-link
   (mt/dataset test-data
     (testing "with only single linked table"
-      (with-indexed-model! [{:keys [model model-index model-index-value]}
+      (with-indexed-model! [{:keys [model model-index model-pk]}
                             {:query     (mt/mbql-query people)
                              :pk-ref    (mt/$ids :people $id)
                              :value-ref (mt/$ids :people $email)}]
         (let [dash (#'api.magic/create-linked-dashboard
-                    {:model             model
-                     :model-index       model-index
-                     :model-index-value model-index-value
+                    {:model       model
+                     :model-index model-index
+                     :model-pk    model-pk
                      :linked-tables     (mt/$ids [{:linked-table-id $$orders
                                                    :linked-field-id %orders.user_id}])})]
           ;; FE has a bug where it doesn't fire off queries for cards if there's only a single tab. So we hack around
@@ -518,17 +505,64 @@
                                               :model   "dataset"
                                               :display "table"}}}}
                     (->> dash :dashcards first))))
-          (testing "The generated dashboard has a meaningful name and description"
-            (is (true?
-                 (and
-                  (str/includes? (:name dash) (:name model))
-                  (str/includes? (:name dash) (:name model-index-value)))))
-            (is (true? (str/includes? (:description dash) (:name model-index-value)))))
+          (testing "Without an indexed value the dashboard is named after the model and the pk"
+            (is (str/includes? (:name dash) (:name model)))
+            (is (str/includes? (:name dash) (str model-pk)))
+            (is (str/includes? (:description dash) (:name model))))
           (testing "All query cards have the correct filters"
-            (let [pk-filters (expected-filters {:model             model
-                                                :model-index       model-index
-                                                :model-index-value model-index-value})]
+            (let [pk-filters (expected-filters {:model       model
+                                                :model-index model-index
+                                                :model-pk    model-pk})]
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
+
+(defn- linked-pk-filter-values
+  "For every query card in `dashcards` (pMBQL over the wire), the value its `=` filter on one of `fk-field-ids`
+  compares against, or nil when it has no such filter."
+  [dashcards fk-field-ids]
+  (for [{:keys [card]} dashcards
+        :let [query (:dataset_query card)]
+        :when query]
+    (some (fn [[op _opts [_ _ field-id] value]]
+            (when (and (= "=" op) (contains? fk-field-ids field-id))
+              value))
+          (-> query :stages first :filters))))
+
+(deftest model-index-primary-key-endpoint-does-not-expose-indexed-values-test
+  (testing "GET /api/automagic-dashboards/model_index/:model-index-id/primary_key/:pk-id"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type          :model
+                                        :dataset_query (mt/mbql-query products)}]
+        (mt/with-model-cleanup [:model/ModelIndex]
+          (let [model-index  (model-index/create {:model-id   (:id model)
+                                                  :pk-ref     (mt/$ids :products $id)
+                                                  :value-ref  (mt/$ids :products $title)
+                                                  :creator-id (mt/user->id :crowberto)})
+                ;; a value no warehouse row carries, so its presence anywhere in a response is unambiguous
+                sentinel     "SENTINEL-INDEXED-VALUE-7f3a"
+                url          (format "automagic-dashboards/model_index/%d/primary_key/1" (:id model-index))
+                fk-field-ids (mt/$ids #{%orders.product_id %reviews.product_id})]
+            (model-index/add-values! model-index)
+            (t2/update! :model/ModelIndexValue {:model_index_id (:id model-index) :model_pk 1} {:name sentinel})
+            (testing "an admin gets a dashboard filtered on the pk from the URL, titled with the record's value as
+                      read through the QP -- never the cached one"
+              (let [dash       (mt/user-http-request :crowberto :get 200 url)
+                    pk-filters (linked-pk-filter-values (:dashcards dash) fk-field-ids)
+                    title      (-> (mt/run-mbql-query products {:filter [:= $id 1] :fields [$title]}) mt/rows ffirst)]
+                (is (not (str/includes? (json/encode dash) sentinel)))
+                (is (= (format "Here's a look at \"%s\" from \"%s\"" title (:name model)) (:name dash)))
+                (is (str/includes? (:description dash) title))
+                (is (seq pk-filters))
+                (is (every? #{1} pk-filters))))
+            (testing "a user with read access to the model but no data permissions gets neither value: the title
+                      falls back to the pk"
+              (mt/with-no-data-perms-for-all-users!
+                (let [dash (mt/user-http-request :rasta :get 200 url)]
+                  (is (not (str/includes? (json/encode dash) sentinel)))
+                  (is (= (format "Here's a look at \"%s\" #1" (:name model)) (:name dash))))))
+            (testing "a pk with no indexed value still yields a dashboard, so existence is not confirmed either"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "automagic-dashboards/model_index/%d/primary_key/999999"
+                                                      (:id model-index))))))))))))
 
 ;; ------------------------------------------------ `show` limit test  -------------------------------------------------
 ;; Historically, the used params are `nil` and "all", so this tests the integer case.
@@ -617,3 +651,30 @@
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
           (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
+
+(deftest ^:parallel cell-query-decode-strips-extra-properties-test
+  (testing "the ::cell-query schema decodes a base64 JSON filter clause, validates it, and strips undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode [">" {:a 1 :a/b 2} ["field" {} 1] 10]))
+          result  (api.macros/decode-and-validate-params :query ::api.magic/cell-query encoded)]
+      (is (mr/validate ::ads/root.cell-query result)
+          "decoded cell query is a valid filter clause")
+      (is (= :> (first result)))
+      (let [opts (second result)]
+        (is (map? opts))
+        (is (not (contains? opts :a)))
+        (is (not (contains? opts :a/b)))))))
+
+(deftest adhoc-query-decode-strips-extra-keys-test
+  (testing "adhoc queries are validated and stripped of the query processor's internal keys"
+    ;; `:qp/stage-had-source-card` is a key the QP adds to a stage while a query runs and that permissions later read,
+    ;; so a client must never be able to send it in through an x-ray's adhoc query.
+    (mt/with-test-user :rasta
+      (let [q      {:database (mt/id)
+                    :type     "query"
+                    :query    {:source-table             (mt/id :venues)
+                               :qp/stage-had-source-card 1}}
+            dq     (:dataset_query (#'api.magic/adhoc-query-instance q))]
+        (is (mr/validate ::ads/query dq)
+            "decoded adhoc query is a valid MBQL query")
+        (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages dq))
+            "internal keys are stripped from every stage")))))

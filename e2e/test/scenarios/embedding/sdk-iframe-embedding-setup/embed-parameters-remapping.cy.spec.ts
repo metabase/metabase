@@ -154,6 +154,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Remapping",
+        preselectGuest: true,
       });
 
       H.setEmbeddingParameter("Internal", "Editable");
@@ -294,6 +295,7 @@ describe(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Remapping",
+        preselectGuest: true,
       });
 
       H.setEmbeddingParameter("Internal", "Editable");

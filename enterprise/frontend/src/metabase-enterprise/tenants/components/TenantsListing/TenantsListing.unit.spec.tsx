@@ -47,6 +47,13 @@ describe("TenantsListing", () => {
     expect(screen.getByText("Acme Corp")).toBeInTheDocument();
   });
 
+  it("renders the tenant's first initial in the avatar, not a question mark", () => {
+    setup([createMockTenant({ id: 11, name: "Acme Corp", slug: "acme-corp" })]);
+
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.queryByText("?")).not.toBeInTheDocument();
+  });
+
   it("filters non-Latin tenants by search text", async () => {
     setup([
       createMockTenant({ id: 10, name: "здравей", slug: "zdravey" }),

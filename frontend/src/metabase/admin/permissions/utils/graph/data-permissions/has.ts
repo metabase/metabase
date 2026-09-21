@@ -1,18 +1,21 @@
 import _ from "underscore";
 
+import { isSchemaEntityId } from "metabase/admin/permissions/utils/data-entity-id";
+import {
+  getDatabaseSchema,
+  getDatabaseSchemas,
+} from "metabase/admin/permissions/utils/metadata";
 import type {
+  ConcreteTableId,
   DataPermission,
   DataPermissionValue,
   DatabaseEntityId,
-  EntityWithGroupId,
-  SchemaEntityId,
-} from "metabase/admin/permissions/types";
-import { isSchemaEntityId } from "metabase/admin/permissions/utils/data-entity-id";
-import type {
-  ConcreteTableId,
   DatabasePermissions,
+  EntityWithGroupId,
   GroupPermissions,
   GroupsPermissions,
+  PermissionsDatabase,
+  SchemaEntityId,
 } from "metabase-types/api";
 
 import {
@@ -22,28 +25,18 @@ import {
   getTablesPermission,
 } from "./get";
 
-// subtypes to make testing easier and avoid using deprecated Database / Schema types
-type SchemaPartial = {
-  name: string;
-  getTables: () => { id: number | string }[];
-};
-type DatabasePartial = {
-  schemas?: SchemaPartial[];
-  schema(schemaName: string | undefined): SchemaPartial | null | undefined;
-};
-
 export function hasPermissionValueInSubgraph(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: DatabaseEntityId | SchemaEntityId,
-  database: DatabasePartial,
+  database: PermissionsDatabase,
   permission: DataPermission,
   value: DataPermissionValue,
 ) {
   const schemasToSearch = _.compact(
     isSchemaEntityId(entityId)
-      ? [database.schema(entityId.schemaName)]
-      : database.schemas,
+      ? [getDatabaseSchema(database, entityId.schemaName)]
+      : getDatabaseSchemas(database),
   );
 
   if (schemasToSearch) {
@@ -63,7 +56,7 @@ export function hasPermissionValueInSubgraph(
   }
 
   return schemasToSearch.some((schema) => {
-    return schema.getTables().some((table) => {
+    return schema.tables.some((table) => {
       return (
         value ===
         getFieldsPermission(
@@ -72,6 +65,7 @@ export function hasPermissionValueInSubgraph(
           {
             databaseId: entityId.databaseId,
             schemaName: schema.name,
+            // A permission entity always names a real warehouse table, never a card.
             tableId: table.id as ConcreteTableId,
           },
           permission,

@@ -29,6 +29,7 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
+  as?: keyof JSX.IntrinsicElements;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
@@ -51,6 +52,7 @@ const EditableTextInner = forwardRef(function EditableText(
     onFocus,
     onBlur,
     "data-testid": dataTestId,
+    as,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -135,6 +137,7 @@ const EditableTextInner = forwardRef(function EditableText(
   return (
     <Box
       component={EditableTextRoot}
+      as={as}
       onClick={isMarkdown ? handleRootElementClick : undefined}
       ref={ref}
       isEditing={isEditing}
@@ -146,11 +149,13 @@ const EditableTextInner = forwardRef(function EditableText(
       // For a11y, allow typing to activate the textarea
       onKeyDown={(e: React.KeyboardEvent) => {
         if (shouldPassKeyToTextarea(e.key)) {
+          // Unjustified type cast. FIXME
           (e.currentTarget as HTMLTextAreaElement).click();
         }
       }}
       onKeyUp={(e: React.KeyboardEvent) => {
         if (!shouldPassKeyToTextarea(e.key)) {
+          // Unjustified type cast. FIXME
           (e.currentTarget as HTMLTextAreaElement).click();
         }
       }}

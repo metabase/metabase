@@ -26,12 +26,39 @@ dataset_query:
       - - field
         - {base-type: type/Text, effective-type: type/Text, lib/uuid: dff4c1e8-b51b-4250-b6bb-d90b8cd71cc2}
         - embedding_client
+    - - not
+      - {lib/expression-name: is_top_level}
+      - - and
+        - {}
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, entity_type]
+          - card
+        - - not-null
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+          - dashboard
     filters:
     - - =
       - {}
       - - expression
         - {effective-type: type/Boolean}
         - is_embed
+      - true
+    - - =
+      - {}
+      - - expression
+        - {base-type: type/Boolean, effective-type: type/Boolean}
+        - is_top_level
       - true
     - - time-interval
       - {include-current: true}

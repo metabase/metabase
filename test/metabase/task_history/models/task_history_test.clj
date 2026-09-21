@@ -109,25 +109,25 @@
     (testing "on-success-info"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task            task-name
-                                         :task_details    {:id 1}
+                                         :task_details    {:success 1 :error 0}
                                          :on-success-info (fn [info result]
                                                             (testing "info should have task_details, logs, and updated status"
-                                                              (is (=? {:task_details {:id 1}
+                                                              (is (=? {:task_details {:success 1 :error 0}
                                                                        :logs         (mt/malli=? vector?)
                                                                        :status       :success}
                                                                       info)))
-                                                            (update info :task_details assoc :result result))}
+                                                            (update info :task_details assoc :skipped result))}
           42)
         (is (= {:status       :success
-                :task_details {:id     1
-                               :result 42}}
+                :task_details {:success 1
+                               :error   0
+                               :skipped 42}}
                (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))
-
     (testing "on-fail-info"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
           (task-history/with-task-history {:task         task-name
-                                           :task_details {:id 1}
+                                           :task_details {:success 1 :error 0}
                                            :on-fail-info (fn [info e]
                                                            (testing "info should have task_details and updated status"
                                                              (is (=? {:status       :failed
@@ -135,7 +135,7 @@
                                                                                      :message       "test"
                                                                                      :stacktrace    (mt/malli=? :any)
                                                                                      :ex-data       {:reason :test}
-                                                                                     :original-info {:id 1}}}
+                                                                                     :original-info {:success 1 :error 0}}}
                                                                      info)))
                                                            (update info :task_details assoc :reason (ex-message e)))}
             (throw (ex-info "test" {:reason :test}))))
@@ -145,7 +145,7 @@
                                 :message       "test"
                                 :stacktrace    (mt/malli=? :any)
                                 :ex-data       {:reason "test"}
-                                :original-info {:id 1}
+                                :original-info {:success 1 :error 0}
                                 :reason         "test"}}
                 (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))))
 
@@ -164,7 +164,6 @@
                    {:level "warn",  :msg "warning message", :timestamp "1970-01-01T00:00:01Z", :fqns string?}
                    {:level "error", :msg "error message",   :timestamp "1970-01-01T00:00:01Z", :fqns string?}]
                   logs)))))
-
     (testing "logs are captured on failure"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -174,7 +173,6 @@
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :failed status))
           (is (=? [{:level "info", :msg "before exception", :timestamp string?, :fqns string?}] logs)))))
-
     (testing "exception details are captured in logs"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
@@ -188,7 +186,6 @@
                     :fqns      string?
                     :exception (mt/malli=? [:sequential string?])}]
                   logs)))))
-
     (testing "debug/trace are elided"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name}
@@ -197,7 +194,6 @@
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
           (is (=? [{:level "error"} {:level "fatal"}] logs)))))
-
     (testing "task with no logs"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name})

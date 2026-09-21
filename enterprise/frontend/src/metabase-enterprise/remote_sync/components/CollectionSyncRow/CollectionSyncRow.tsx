@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import CS from "metabase/css/core/bordered.module.css";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Flex, Icon, Switch, Text } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -18,15 +18,16 @@ export const CollectionSyncRow = ({
   onToggle,
   isReadOnly,
 }: CollectionSyncRowProps) => {
+  const getIcon = useGetIcon();
   const canWrite = collection.can_write ?? false;
-  const icon = PLUGIN_COLLECTIONS.getIcon({
+  const icon = getIcon({
     model: "collection",
     type: collection.type,
     is_remote_synced: isChecked,
   });
 
   return (
-    <Box p="md" className={CS.borderRowDivider}>
+    <Box p="lg" className={CS.borderRowDivider}>
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Icon name={icon.name} c={icon.color ?? "text-secondary"} />
@@ -34,7 +35,6 @@ export const CollectionSyncRow = ({
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
-            size="sm"
             checked={isChecked}
             onChange={(e) => onToggle(collection, e.currentTarget.checked)}
             disabled={!canWrite || isReadOnly}

@@ -10,6 +10,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.impl :as data.impl]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [next.jdbc]
@@ -49,7 +50,6 @@
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
      (mt/with-temp ~model-bindings ~@body)))
 
@@ -79,7 +79,10 @@
      (with-open [_conn (.getConnection data-source)]
        (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
        (with-db data-source (mdb/finish-db-setup!))
-       (f data-source)))))
+       ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
+       ;; test-data Database, which would add an unexpected Database to serialization extracts.
+       (binding [data.impl/*skip-dataset-prewarm?* true]
+         (f data-source))))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
@@ -199,7 +202,7 @@
                                                                                 :aggregation [:sum [:field numeric-field-id nil]]
                                                                                 :breakout [[:field category-field-id nil]]}}}
                   :model/Card       {card-id-root :id} {:table_id table-id
-                                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
+                                                        ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                                         :name root-card-name
                                                         :dataset_query {:type :query
                                                                         :database db-id
@@ -248,7 +251,7 @@
                                                                 :card_id card-id}
                   :model/DashboardCard       {dashcard-top-level-click-id :id} {:dashboard_id dashboard-id
                                                                                 :card_id card-id-nested
-                                                                         ;; this is how click actions on a non-table card work (ex: a chart)
+                                                                                ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
                                                                                                                           :linkType :question
                                                                                                                           :type     :link}}}
@@ -528,10 +531,17 @@
                    venues-pk-field-id]}]
       ~@body)))
 
-(defn extract-one [model-name where]
-  (let [where (cond
-                (nil? where)    true
-                (number? where) [:= :id where]
-                (string? where) [:= :entity_id where]
-                :else           where)]
-    (u/rfirst (serdes/extract-all model-name {:where where}))))
+(defn extract-one
+  "Extract the first serialized `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL
+  clause, or nil for the first entity of the model. `extract-all` filters by primary key, so a clause is resolved to
+  primary keys here first."
+  [model-name where]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))
+        ids   (cond
+                (nil? where)    nil
+                (number? where) [where]
+                (string? where) (t2/select-fn-vec pk [model pk] :entity_id where)
+                :else           (t2/select-fn-vec pk [model pk] {:where where}))]
+    (u/rfirst (serdes/extract-all model-name (cond-> {}
+                                               ids (assoc :filter-column pk :filter-ids ids))))))

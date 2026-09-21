@@ -23,10 +23,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.match :as match]))
 
 ;;;; Pre-processing
 
@@ -40,7 +40,7 @@
         (map not= coll-1 coll-2)))
 
 (defn- update-clause [clause]
-  (lib.util.match/match-lite clause
+  (match/match-one clause
     ;; cumulative count doesn't necessarily have a field-id arg
     [:cum-count opts]       [:count opts]
     [:cum-count opts field] [:count opts field]

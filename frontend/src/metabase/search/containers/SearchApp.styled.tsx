@@ -10,6 +10,7 @@ import { Flex, Stack } from "metabase/ui";
 const SEARCH_BODY_WIDTH = "90rem";
 const SEARCH_SIDEBAR_WIDTH = "18rem";
 
+// Unjustified type cast. FIXME
 export const SearchMain = styled(Flex)`
   width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);
   padding: 1.5rem 1rem;
@@ -19,6 +20,7 @@ export const SearchMain = styled(Flex)`
   }
 ` as unknown as typeof Flex;
 
+// Unjustified type cast. FIXME
 export const SearchBody = styled(Flex)`
   flex-direction: column;
 

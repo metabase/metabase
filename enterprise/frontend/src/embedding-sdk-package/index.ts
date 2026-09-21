@@ -29,9 +29,34 @@ export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
-
+export { useAction } from "./hooks/public/use-action";
+export type {
+  ActionExecuteError,
+  ActionKind,
+  ActionResultForBulk,
+  ActionResultForCreate,
+  ActionResultForDelete,
+  ActionResultForKind,
+  ActionResultForSql,
+  ActionResultForUpdate,
+  AnyActionResult,
+  UseActionResult,
+} from "./hooks/public/use-action";
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
+
+export {
+  DataAppRouter,
+  type DataAppRouterProps,
+} from "./components/public/DataAppRouter";
+export {
+  DataAppLink,
+  type DataAppLinkProps,
+} from "./components/public/DataAppLink";
+export {
+  useDataAppLocation,
+  type UseDataAppLocationResult,
+} from "./hooks/public/use-data-app-location";
 
 export {
   type CollectionBrowserProps,
@@ -77,9 +102,9 @@ export {
 } from "embedding-sdk-bundle/components/public/StaticQuestion";
 export { type MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 
+export type { DashCardMenuItem } from "metabase/embedding-sdk/types/plugins";
 export type {
   CustomDashboardCardMenuItem,
-  DashCardMenuItem,
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   DashboardCardMenu,
@@ -106,6 +131,7 @@ export type {
   MetabaseCollection,
   MetabaseCollectionItem,
   MetabaseDataPointObject,
+  MetabaseQueryObject,
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseEmbeddingColorKeyV2,
@@ -114,6 +140,7 @@ export type {
   MetabaseFontFamily,
   MetabaseGlobalPluginsConfig,
   ProtectedColorKey,
+  MetabaseCard,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
@@ -126,8 +153,11 @@ export type {
   MetabotErrorMessage,
   MetabotMessage,
   MetabotUserTextMessage,
+  ParameterChangeSource,
+  ParameterChangePayload,
   UseMetabotResult,
   SdkEntityToken,
+  SdkBrowserCollectionId,
   SdkCollectionId,
   SdkDashboardId,
   SdkDashboardEntityPublicProps,
@@ -139,9 +169,23 @@ export type {
   SdkQuestionId,
   SdkQuestionEntityPublicProps,
   SdkQuestionTitleProps,
+  SqlParameterChangeSource,
+  SqlParameterChangePayload,
   SdkUserId,
   SqlParameterValues,
+  SdkActionId,
+  SdkActionDefinition,
+  SdkActionInput,
 } from "embedding-sdk-bundle/types";
+export type {
+  FieldSchema,
+  QueryData,
+  RowValue,
+  SchemaColumn,
+  SchemaJavaScriptType,
+  SchemaRow,
+} from "./hooks/public/data-schema";
+export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
   EmbeddingEntityType,

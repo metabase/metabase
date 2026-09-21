@@ -78,13 +78,13 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`Password reset link for ${user.common_name}`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
         message={
           <>
-            <Text pb="lg">{t`Share this link with the user. It will expire in 48 hours.`}</Text>
+            <Text pb="xl">{t`Share this link with the user. It will expire in 48 hours.`}</Text>
             <TextInput
               value={resetUrl}
               readOnly
@@ -103,13 +103,13 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`${user.common_name}'s password has been reset`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
         message={
           <>
-            <Text pb="lg">{t`Here's a temporary password they can use to log in and then change their password.`}</Text>
+            <Text pb="xl">{t`Here's a temporary password they can use to log in and then change their password.`}</Text>
             <PasswordReveal password={temporaryPassword} />
           </>
         }
@@ -124,17 +124,17 @@ const UserPasswordResetModalInner = ({
       onClose={onClose}
       size="lg"
     >
-      <Flex direction="column" gap="lg" mt="md">
+      <Flex direction="column" gap="xl" mt="lg">
         <Text>{t`Are you sure you want to do this?`}</Text>
-        <Flex align="center" justify="flex-end" gap="md">
+        <Flex align="center" justify="flex-end" gap="lg">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color="brand"
+            color="core-brand"
             onClick={handleGetResetLink}
           >{t`Get reset link`}</Button>
           <Button
-            color="danger"
+            color="feedback-negative"
             variant="filled"
             onClick={handleResetConfirm}
           >{t`Reset password`}</Button>

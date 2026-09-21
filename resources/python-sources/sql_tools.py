@@ -1,12 +1,37 @@
 import json
+import logging
 import re
 
 import sqlglot
+
+# sqlglot's parser warnings quote raw chunks of the SQL being parsed ("... contains unsupported
+# syntax. Falling back to parsing as a 'Command'."); silence them so customer SQL never reaches
+# stderr/server logs.
+logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.lineage as lineage
 import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
+from sqlglot.dialects.clickhouse import ClickHouse
 from sqlglot.errors import OptimizeError, ParseError
+from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
+
+# sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
+# syntax `{name: Type}`, so a positional JDBC placeholder `?` (a nameless Placeholder)
+# round-trips to `{?: }`, which ClickHouse rejects with "Expected substitution name"
+# (Code 62). Compiled queries we rewrite can carry prepared-statement params — e.g.
+# workspace table remapping of an incremental transform's checkpoint filter — so keep
+# positional placeholders as `?`; named query parameters still take the upstream path.
+_clickhouse_placeholder_sql = ClickHouse.Generator.placeholder_sql
+
+
+def _placeholder_sql_keep_positional(self, expression: exp.Placeholder) -> str:
+    if not expression.this:
+        return "?"
+    return _clickhouse_placeholder_sql(self, expression)
+
+
+ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
 
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
@@ -49,6 +74,20 @@ def unquote_identifier(name: str, dialect: str = None):
         pass
     return (name, False)
 
+def temp_table_prefix(table):
+    """
+    The T-SQL temp table prefix of a table expression: "##" for a global temp table, "#" for a local one, and "" for
+    any other table. SQLGlot keeps the prefix as a flag on the identifier rather than in its name.
+    """
+    identifier = table.this
+    if not isinstance(identifier, exp.Identifier):
+        return ""
+    if identifier.args.get("global_"):
+        return "##"
+    if identifier.args.get("temporary"):
+        return "#"
+    return ""
+
 def table_parts(table):
     """
     Extract (catalog, schema, table) 3-tuple from a table expression.
@@ -57,13 +96,58 @@ def table_parts(table):
     SQLGlot naming:
     - table.catalog → SQL catalog (e.g., BigQuery project, Snowflake database)
     - table.db      → SQL schema (e.g., BigQuery dataset, Postgres schema)
-    - table.name    → table name
+    - table.name    → table name, to which the T-SQL temp table prefix is added (see `temp_table_prefix`)
     """
     name = table.name
     if not isinstance(name, str) or not name:
         # UDTFs and other function-based sources don't have traditional table names
         return None
-    return (table.catalog or None, table.db or None, name)
+    return (table.catalog or None, table.db or None, temp_table_prefix(table) + name)
+
+def shadowing_cte_names(node):
+    """The CTE names that shadow a table at `node`: those declared by a query `node` sits inside."""
+    names = set()
+    own = set()
+    current = node
+    while current is not None:
+        # A CTE does not shadow the table its own body reads: `WITH orders AS (SELECT * FROM orders)` selects
+        # from the real table. A recursive CTE is the exception -- reading its own name is what recursion is.
+        if isinstance(current, exp.CTE) and current.alias:
+            declaration = current.parent
+            if not (isinstance(declaration, exp.With) and declaration.args.get("recursive")):
+                own.add(current.alias.lower())
+        # Found by type rather than by arg name, which sqlglot spells `with_` in some versions and `with` in
+        # others.
+        for value in current.args.values():
+            if isinstance(value, exp.With):
+                names.update(cte.alias.lower() for cte in value.expressions if cte.alias)
+        current = current.parent
+    return names - own
+
+
+def statements(sql, dialect=None):
+    """Every statement in `sql`, without the empty ones a stray semicolon leaves behind.
+
+    A caller asking what a query reads, or rewriting what it reads, is asking about the whole string it was handed:
+    reading only the first statement answers a question nobody asked, quietly.
+    """
+    return [ast for ast in sqlglot.parse(sql, read=dialect) if ast is not None]
+
+
+def table_references(ast):
+    """Every table the statement `ast` names, as sqlglot Table nodes.
+
+    A CTE reference, a derived table, a VALUES clause and a table function are not tables and are left out; the
+    table a statement writes -- an INSERT, UPDATE, DELETE or MERGE target -- is one, and is included. This is the
+    walk `replace_names` rewrites by, so what a caller is told a query reads is what a rewrite would replace.
+    """
+    for table in ast.find_all(exp.Table):
+        if table_parts(table) is None:
+            continue
+        if not table.db and not table.catalog and table.name.lower() in shadowing_cte_names(table):
+            continue
+        yield table
+
 
 def referenced_tables(sql: str, dialect: str = "postgres") -> str:
     """
@@ -87,17 +171,9 @@ def referenced_tables(sql: str, dialect: str = "postgres") -> str:
         referenced_tables("SELECT * FROM myproject.analytics.events", "bigquery")
         => '[["myproject", "analytics", "events"]]'
     """
-    ast = sqlglot.parse_one(sql, read=dialect)
-    root_scope = optimizer.build_scope(ast)
-
-    tables = set()
-    for scope in root_scope.traverse():
-        for source in scope.sources.values():
-            if isinstance(source, exp.Table):
-                parts = table_parts(source)
-                if parts is not None:
-                    tables.add(parts)
-
+    tables = {table_parts(table)
+              for ast in statements(sql, dialect)
+              for table in table_references(ast)}
     # Sort for deterministic output (nulls sort first via empty string)
     return json.dumps(sorted(tables, key=lambda x: (x[0] or "", x[1] or "", x[2])))
 
@@ -378,29 +454,83 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
+def _wrap_base_table(table, alias):
+    """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
+    property inherited from it (see `add_into_clause`)."""
+    bare_table = table.copy()
+    bare_table.set("alias", None)
+    self_union = exp.union(
+        exp.select("*").from_(bare_table.copy()),
+        exp.select("*").from_(bare_table.copy()).where("1 = 0"),
+        distinct=False,
+    )
+    return self_union.subquery(alias=alias)
+
 def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     """
-    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
+    Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax, and rewrite every
+    base-table reference into a self-UNION subquery so the new table doesn't inherit a source
+    column's IDENTITY property.
 
     Transforms: SELECT * FROM products
-    Into:       SELECT * INTO "new_table" FROM products
+    Into:       SELECT * INTO "new_table" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products
 
-    Used by SQL Server transforms which require SELECT INTO syntax
-    instead of CREATE TABLE AS SELECT.
+    Used by SQL Server transforms which require SELECT INTO syntax instead of CREATE TABLE AS SELECT.
+    A plain `SELECT ... INTO` copies a directly-projected source IDENTITY column onto the new table,
+    which later breaks an incremental append (`INSERT INTO <target> SELECT ...`) with SQL Server error
+    8101. Wrapping each base table in a self-UNION breaks that IDENTITY lineage -- the UNION's second
+    branch is always empty and gets elided by SQL Server's contradiction detection, so each table is
+    still scanned once -- without touching filters, ORDER BY, TOP, or query params. CTEs, derived
+    tables, table-valued functions, and T-SQL `#`/`##` temp tables are left untouched.
+
+    A table with no explicit alias is wrapped under an alias equal to its bare name, and any column
+    in the same scope that referenced it via a schema/catalog-qualified name (e.g. `dbo.products.id`,
+    legal only against a real table) has that now-invalid qualifier stripped, since a derived table can
+    only be referenced by its single-part alias.
 
     :param sql: The SELECT SQL query string
     :param table_name: The target table name (already formatted/quoted)
     :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
-    :return: Modified SQL string with INTO clause
+    :return: Modified SQL string with INTO clause and base tables wrapped
 
     Examples:
         add_into_clause("SELECT * FROM products", '"PRODUCTS_COPY"', "tsql")
-        => 'SELECT * INTO "PRODUCTS_COPY" FROM products'
+        => 'SELECT * INTO [PRODUCTS_COPY] FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
     """
     ast = sqlglot.parse_one(sql, read=dialect)
 
     if not isinstance(ast, exp.Select):
         raise ValueError("SQL must be a SELECT statement")
+
+    cte_names = {cte.alias for cte in ast.find_all(exp.CTE) if cte.alias}
+    seen_ids = set()
+
+    for scope in optimizer.build_scope(ast).traverse():
+        scope_replacements = []
+        for alias, source in scope.sources.items():
+            if not isinstance(source, exp.Table):
+                continue
+            table_name_only = source.name
+            if not table_name_only or table_name_only in cte_names or alias in cte_names:
+                continue
+            # A T-SQL `#`/`##` temp table has no IDENTITY lineage worth breaking, and its derived-table alias would lose
+            # the prefix that qualified column references keep.
+            if temp_table_prefix(source):
+                continue
+            if id(source) in seen_ids:
+                continue
+            seen_ids.add(id(source))
+            scope_replacements.append((source, alias))
+
+        for table, alias in scope_replacements:
+            # Columns in this scope may reference the table via a schema/catalog-qualified name
+            # (e.g. `dbo.products.id`), which only resolves against a real table. Once the table
+            # becomes a derived table it's only reachable by its single-part alias, so strip the
+            # now-invalid qualifiers.
+            for column in scope.source_columns(alias):
+                column.set("db", None)
+                column.set("catalog", None)
+            table.replace(_wrap_base_table(table, alias))
 
     # Create the Into expression with the table identifier
     # The table_name is pre-formatted, so parse it to preserve quotes
@@ -473,6 +603,29 @@ def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_
     return json.dumps(dependencies)
 
 
+def fold_keys(mapping):
+    """
+    Case-insensitive view of a replacement map, for matching an identifier written in another case.
+
+    An identifier names the same thing however it is cased (Metabase treats every database as case-agnostic, see
+    `macaw-options`), so `FROM people` must match a key of `PEOPLE`. Keys that differ only in case have no single
+    answer, so they are dropped rather than resolved arbitrarily: an exact match still finds them.
+    """
+    folded = {}
+    ambiguous = set()
+    for key, value in mapping.items():
+        folded_key = tuple(part.lower() if isinstance(part, str) else part for part in key)
+        if folded_key in folded and folded[folded_key] != value:
+            ambiguous.add(folded_key)
+        folded[folded_key] = value
+    return {key: value for key, value in folded.items() if key not in ambiguous}
+
+
+def fold_lookup(folded, key):
+    """The value `key` maps to in a [[fold_keys]] map, ignoring the case of every part."""
+    return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -502,111 +655,138 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     replacements = json.loads(replacements_json)
     schemas = replacements.get("schemas") or {}
-    tables = replacements.get("tables") or []  # List of [key, value] pairs
-    columns = replacements.get("columns") or []  # List of [key, value] pairs
+    # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
+    # None when the key doesn't name one.
+    table_map = {(key.get("db"), key.get("schema"), key["table"]): new_name
+                 for key, new_name in replacements.get("tables") or []}
+    # Columns: (schema, table, column) -> new name. `table` is None for a key that matches any table.
+    column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
+                  for key, new_name in replacements.get("columns") or []}
+    folded_schemas = fold_keys({(name,): new_name for name, new_name in schemas.items()})
 
-    # Convert list-of-pairs to lookup dicts for O(1) matching
-    # Tables: (schema, table) -> new_name
-    table_map = {}
-    for item in tables:
-        key, new_name = item
-        schema = key.get("schema")  # may be None
-        table = key["table"]
-        table_map[(schema, table)] = new_name
+    def rewrite(ast):
+        """The statement `ast` with every replacement applied."""
 
-    # Columns: (schema, table, column) -> new_name
-    column_map = {}
-    for item in columns:
-        key, new_name = item
-        schema = key.get("schema")
-        table = key.get("table")  # may be None for unqualified
-        column = key["column"]
-        column_map[(schema, table, column)] = new_name
+        # Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names. Folded,
+        # because a reference matches a name whatever its case.
+        aliases = {node.alias.lower() for node in ast.find_all(exp.Table, exp.Subquery, exp.CTE) if node.alias}
 
-    ast = sqlglot.parse_one(sql, read=dialect)
+        def part_matches(key_part, ref_part, quoted):
+            """Whether one part of a replacement key names the same thing as the reference's."""
+            if key_part is None or ref_part is None:
+                return key_part is None and ref_part is None
+            # A quoted reference is case-significant to the engine — Postgres `"Orders"` is not `orders` — so that part
+            # matches only as written. An unquoted one matches whatever its case.
+            return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
 
-    def rename_fn(node):
-        # Schema rename (appears in Table.db)
-        if isinstance(node, exp.Table):
-            # Capture original values BEFORE any modifications (important for lookup)
-            original_schema = node.db
-            original_table = node.name
-            # Preserve original quoting status for renamed identifiers
-            original_schema_quoted = node.args.get("db").quoted if node.args.get("db") else False
-            original_table_quoted = node.this.quoted if node.this else False
+        def find_table_replacement(db, schema, table, quoted):
+            # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
+            # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
+            # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
+            # differ only in the case of an unquoted part answer nothing rather than one of them arbitrarily.
+            shapes = ((db, schema, table), (None, schema, table), (None, None, table))
+            for key in shapes:
+                replacement = table_map.get(key)
+                if replacement:
+                    return replacement
+            for key in shapes:
+                matched = [table_map[map_key]
+                           for map_key in table_map
+                           if all(part_matches(map_part, ref_part, was_quoted)
+                                  for map_part, ref_part, was_quoted in zip(map_key, key, quoted))]
+                if matched:
+                    # Keys that differ only in the case of an unquoted part are ambiguous unless they all name the same
+                    # replacement, and an ambiguous reference is left alone rather than pointed at one of them.
+                    first = matched[0]
+                    return first if all(other == first for other in matched) else None
+            return None
 
-            # Rename schema if present
-            if original_schema and original_schema in schemas:
-                raw_schema, was_quoted = unquote_identifier(schemas[original_schema], dialect)
-                schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
-                node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
+        def quoted_parts(node, table_arg):
+            """Which parts of a table reference the query quoted, in replacement-key order."""
+            def quoted(arg):
+                value = node.args.get(arg)
+                return isinstance(value, exp.Identifier) and value.quoted
 
-            # Rename table - try exact match first (with original schema), then without schema
-            new_table = (table_map.get((original_schema, original_table)) or
-                         table_map.get((None, original_table)))
-            if new_table:
-                if isinstance(new_table, dict):
-                    # New format: {schema: x, table: y}
-                    if new_table.get("schema"):
-                        # When injecting a new schema, quote if it contains special characters
-                        raw_schema, was_quoted = unquote_identifier(new_table["schema"], dialect)
-                        schema_quoted = original_schema_quoted or was_quoted or needs_quoting(raw_schema, dialect)
-                        node.set("db", exp.Identifier(this=raw_schema, quoted=schema_quoted))
-                    elif "schema" in new_table and new_table["schema"] is None:
-                        # Explicitly clear the schema from the AST node. This matches Macaw's
-                        # behavior: {:schema nil :table "x"} means "remove the schema qualifier",
-                        # turning e.g. `FROM public.orders` into `FROM x`.
-                        node.set("db", None)
-                    if new_table.get("table"):
-                        raw_table, was_quoted = unquote_identifier(new_table["table"], dialect)
-                        table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_table, dialect)
-                        node.set("this", exp.Identifier(this=raw_table, quoted=table_quoted))
-                else:
-                    # String: just the table name
-                    raw_name, was_quoted = unquote_identifier(new_table, dialect)
-                    table_quoted = original_table_quoted or was_quoted or needs_quoting(raw_name, dialect)
-                    node.set("this", exp.Identifier(this=raw_name, quoted=table_quoted))
+            return (quoted("catalog"), quoted("db"), quoted(table_arg))
 
-        # Column rename
-        elif isinstance(node, exp.Column):
-            col_name = node.name
-            col_table = node.table  # May be None if column is unqualified (e.g., "SELECT id" not "SELECT t.id")
-            # Preserve original quoting status
-            original_col_quoted = node.this.quoted if isinstance(node.this, exp.Identifier) else False
+        def set_identifier(node, arg, name):
+            # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
+            # quoted, or if `name` needs quoting. Some nodes hold non-Identifier children (e.g. Anonymous), which count
+            # as unquoted.
+            original = node.args.get(arg)
+            original_quoted = isinstance(original, exp.Identifier) and original.quoted
+            raw_name, was_quoted = unquote_identifier(name, dialect)
+            quoted = original_quoted or was_quoted or needs_quoting(raw_name, dialect)
+            node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
 
-            # Try to find a matching column rename.
-            # The challenge: replacement key might be {:table "orders" :column "id"}
-            # but the SQL column ref might just be "id" (unqualified).
-            # We need to match flexibly:
-            # - Exact match: (schema, table, column) all match
-            # - Table match: column and table match, schema is None in key
-            # - Column-only match: just column matches (when no table qualifier in SQL)
-            new_col = None
+        def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
+            # Applies a table replacement to the name parts `node` keeps under the given args: a Table node keeps them in
+            # catalog/db/this, a Column node keeps its qualifier in catalog/db/table. A string replacement renames the
+            # table. A {db?, schema?, table?} replacement sets each part it names, and a nil db or schema clears that
+            # qualifier, so {:schema nil :table "x"} turns `public.orders` into `x` (matching Macaw).
+            if isinstance(replacement, str):
+                replacement = {"table": replacement}
+            for key, arg in (("db", catalog_arg), ("schema", schema_arg), ("table", table_arg)):
+                if replacement.get(key):
+                    set_identifier(node, arg, replacement[key])
+                elif key != "table" and key in replacement and replacement[key] is None:
+                    node.set(arg, None)
 
-            # Iterate through all column mappings and find best match
-            for (key_schema, key_table, key_col), new_name in column_map.items():
-                if key_col != col_name:
-                    continue
-                # Column name matches, now check table qualifier
-                # Note: SQLGlot uses empty string (not None) for missing table qualifier
-                if col_table:
-                    # SQL has table qualifier - match if tables are equal
-                    if key_table == col_table:
-                        new_col = new_name
-                        break
-                else:
-                    # SQL has no table qualifier - accept any table in key
-                    # (this is the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"})
-                    new_col = new_name
-                    break
+        def rename_fn(node):
+            if isinstance(node, exp.Table):
+                # SQLGlot stores a 3-part name as catalog.db.this: catalog is the BigQuery project or ClickHouse database,
+                # db the schema. The replacement is looked up by the original parts, before the schema is renamed.
+                db, schema, table = node.catalog or None, node.db, node.name
+                new_schema = schemas.get(schema) or fold_lookup(folded_schemas, (schema,)) if schema else None
+                if new_schema:
+                    set_identifier(node, "db", new_schema)
+                # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
+                # enclosing query names the CTE and must be left alone — renaming it would point the query at the
+                # replacement table and silently skip the CTE.
+                if not db and not schema and table.lower() in shadowing_cte_names(node):
+                    return node
+                replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
+                if replacement:
+                    replace_table(node, replacement, "catalog", "db", "this")
 
-            if new_col:
-                node.set("this", exp.Identifier(this=new_col, quoted=original_col_quoted))
+            elif isinstance(node, exp.Column):
+                # SQLGlot uses "" (not None) for a missing qualifier part.
+                column, table = node.name, node.table
+                # A qualifier naming a replaced table (e.g. `public.orders.id`) follows the table. A qualifier without a
+                # schema may name an alias instead, which is left alone.
+                if table and (node.db or table.lower() not in aliases):
+                    replacement = find_table_replacement(
+                        node.catalog or None, node.db, table, quoted_parts(node, "table")
+                    )
+                    if replacement:
+                        replace_table(node, replacement, "catalog", "db", "table")
+                # A column key matches a column qualified by the key's table, or an unqualified column with any table
+                # (the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"}).
+                def column_matches(key_table, key_column):
+                    return (key_column.lower() == column.lower()
+                            and (not table or (key_table or "").lower() == table.lower()))
 
-        return node
+                new_column = next((new_name
+                                   for (_, key_table, key_column), new_name in column_map.items()
+                                   if column_matches(key_table, key_column)),
+                                  None)
+                if new_column:
+                    column_quoted = isinstance(node.this, exp.Identifier) and node.this.quoted
+                    node.set("this", exp.Identifier(this=new_column, quoted=column_quoted))
 
-    transformed = ast.transform(rename_fn)
-    return transformed.sql(dialect=dialect)
+            return node
+
+        # Mutated in place rather than through `ast.transform`, whose copy detaches a node from its parents while the
+        # function runs — and a CTE only shadows a table for the query that declares it, which is a question about
+        # ancestors.
+        for table_node in list(ast.find_all(exp.Table)):
+            rename_fn(table_node)
+        for column_node in list(ast.find_all(exp.Column)):
+            rename_fn(column_node)
+        return ast.sql(dialect=dialect)
+
+    rewritten = [rewrite(ast) for ast in statements(sql, dialect)]
+    return "; ".join(rewritten) if rewritten else sql
 
 
 #############################################################################
@@ -1552,18 +1732,81 @@ def has_metabase_templates(sql: str) -> bool:
     """
     return bool(_METABASE_TEMPLATE_RE.search(sql))
 
-# Dialects that require identifier quoting due to case sensitivity.
-# These dialects fold unquoted identifiers to uppercase or lowercase,
-# which can cause issues when the LLM generates mixed-case identifiers.
-CASE_SENSITIVE_DIALECTS: set[str] = {
-    "snowflake",  # Folds unquoted to UPPERCASE
-    "oracle",  # Folds unquoted to UPPERCASE
-    "redshift",  # PostgreSQL-based, folds to lowercase
-    "postgres",  # Folds unquoted to lowercase
+# Reserved words that cannot appear as bare identifiers in the target dialect, for the
+# dialects whose sqlglot generator ships an empty RESERVED_KEYWORDS set. Sourced from the
+# vendors' reserved-word documentation. Dialects absent here fall back to sqlglot's own
+# per-dialect generator set; where that is empty too (e.g. SQLite, whose double-quote
+# quirk turns an unresolved quoted identifier into a string literal), identifiers pass
+# through untouched and the warehouse reports its own error.
+_DIALECT_RESERVED = {
+    'postgres': frozenset("""
+        all analyse analyze and any array as asc asymmetric authorization binary both case
+        cast check collate collation column concurrently constraint create cross
+        current_catalog current_date current_role current_schema current_time
+        current_timestamp current_user default deferrable desc distinct do else end except
+        false fetch for foreign freeze from full grant group having ilike in initially
+        inner intersect into is isnull join lateral leading left like limit localtime
+        localtimestamp natural not notnull null offset on only or order outer overlaps
+        placing primary references returning right select session_user similar some
+        symmetric system_user table tablesample then to trailing true union unique user
+        using variadic verbose when where window with
+    """.split()),
+    'snowflake': frozenset("""
+        account all alter and any as between by case cast check column connect connection
+        constraint create cross current current_date current_time current_timestamp
+        current_user database delete distinct drop else exists false following for from
+        full grant group gscluster having ilike in increment inner insert intersect into
+        is issue join lateral left like localtime localtimestamp minus natural not null
+        of on or order organization qualify regexp revoke right rlike row rows sample
+        schema select set some start table tablesample then to trigger true try_cast
+        union unique update using values view when whenever where with
+    """.split()),
+    'oracle': frozenset("""
+        access add all alter and any as asc audit between by char check cluster column
+        column_value comment compress connect create current date decimal default delete
+        desc distinct drop else exclusive exists file float for from grant group having
+        identified immediate in increment index initial insert integer intersect into is
+        level like lock long maxextents minus mlslabel mode modify nested_table_id noaudit
+        nocompress not nowait null number of offline on online option or order pctfree
+        prior public raw rename resource revoke row rowid rownum rows select session set
+        share size smallint start successful synonym sysdate table then to trigger uid
+        union unique update user validate values varchar varchar2 view whenever where with
+    """.split()),
 }
+
+def _quote_reserved_identifiers(expression, dialect):
+    """Quote identifiers that collide with the target dialect's reserved words.
+
+    The identifier is folded first, the way the server would have folded the bare name,
+    so the quoting never changes what it resolves to; it only stops the server from
+    reading it as a keyword. Only words reserved in the specific target dialect are
+    touched: a generic list would misfire, e.g. quoting `user` on SQLite, where USER is
+    not a keyword and the quoted form of a nonexistent column silently becomes a string
+    literal instead of an error.
+    """
+    # `dialect` may carry options (`postgres, normalization_strategy=lowercase`), so key off the class.
+    reserved = (dialect.generator_class.RESERVED_KEYWORDS
+                | _DIALECT_RESERVED.get(type(dialect).__name__.lower(), frozenset()))
+    if reserved:
+        for ident in expression.find_all(exp.Identifier):
+            if not ident.quoted and ident.name.lower() in reserved:
+                normalize_identifiers(ident, dialect=dialect)
+                ident.set('quoted', True)
+    return expression
 
 def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.
+
+    Identifiers keep the quoting they were written with: an unquoted identifier stays
+    unquoted, so the database folds it exactly as it would have folded the input.
+    Quoting everything (identify=True) would instead freeze the written casing, which
+    breaks on dialects that fold unquoted identifiers (Snowflake uppercases, Postgres
+    lowercases). The tradeoff runs the other way for objects created with quoted
+    mixed-case names (ORMs emit CREATE TABLE "Orders"): those only resolve when the
+    model also writes them quoted, since the bare name folds away from the stored one.
+    The one exception to pass-through is an identifier that collides with the target
+    dialect's reserved words: it is quoted, folded first so the quoting cannot change
+    what it resolves to.
 
     Args:
         sql: SQL query string
@@ -1571,8 +1814,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         to_dialect: target sql dialect
 
     Returns:
-        JSON string with keys transpiled and use_identify on success.
-        On failure the object contains keys is_valid and error_message.
+        JSON string with keys transpiled_sql and status on success.
+        On failure the object contains keys status and error_message.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1585,22 +1828,15 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
         result['reason'] = 'missing_dialect'
     else:
         try:
-            use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS
-                            or to_dialect in CASE_SENSITIVE_DIALECTS)
+            write = sqlglot.Dialect.get_or_raise(to_dialect)
+            expressions = sqlglot.parse(sql, read=from_dialect)
 
-            transpiled = sqlglot.transpile(
-                sql,
-                read=from_dialect,
-                write=to_dialect,
-                pretty=True,
-                identify=use_identify,
-            )
-
-            if len(transpiled) > 1:
+            if len(expressions) > 1:
                 result['status'] = 'error'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
-                result['transpiled_sql'] = transpiled[0]
+                ast = _quote_reserved_identifiers(expressions[0], write)
+                result['transpiled_sql'] = write.generate(ast, copy=False, pretty=True)
                 result['status'] = 'success'
         except Exception as e:
             result['status'] = 'error'
@@ -1608,16 +1844,39 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
-def is_single_select_stmt(sql: str, dialect: str = None) -> str:
-    """Validates that a query is a single SELECT statement
+def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
+    """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only Databricks'
+    parser consumes it (the `expr?::type` try-cast operator). So a JDBC parameter followed by a
+    cast (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in every
+    other dialect. To work around this we rewrite `?::` to `? ::` outside Databricks (#81373).
+    """
+    if dialect == "databricks" or "?::" not in sql:
+        return sql
+    try:
+        tokens = sqlglot.tokenize(sql, read=dialect)
+    except Exception:
+        return sql
+    # Insert right-to-left so earlier token offsets stay valid.
+    for tok in reversed(tokens):
+        if tok.token_type == sqlglot.TokenType.QDCOLON:
+            sql = sql[: tok.start + 1] + " " + sql[tok.start + 1 :]
+    return sql
+
+
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
+    """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
     """
-    is_single_select = {"is_single_select?": False}
+    result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
-        stmts = sqlglot.parse(sql, read=dialect)
-        if len(stmts) == 1 and isinstance(stmts[0], exp.Select):
-            is_single_select["is_single_select?"] = True
-            is_single_select["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+        stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
+        allowed_types = (exp.Select, exp.SetOperation)
+        if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
+        if len(stmts) == 1:
+            result["is_single_stmt?"] = True
+            if isinstance(stmts[0], allowed_types):
+                result["allowed_stmt_type?"] = True
+            result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
-        is_single_select["error"] = str(e)
-    return json.dumps(is_single_select)
+        result["error"] = str(e)
+    return json.dumps(result)

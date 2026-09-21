@@ -14,6 +14,7 @@ export const zoomDrill: Drill<Lib.ZoomDrillThruInfo> = ({
 }) => {
   const { objectId, isManyPks } = drillInfo;
   const isDashboard = clicked.extraData?.dashboard != null;
+  // Unjustified type cast. FIXME
   const zoomInRow = clicked.extraData?.zoomInRow as
     | ((opts: { objectId: string | number }) => Dispatcher)
     | undefined;

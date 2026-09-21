@@ -2,9 +2,8 @@ import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
-import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getPlan, getSetting, isProPlan } from "metabase/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -13,12 +12,11 @@ import {
   Flex,
   Group,
   Icon,
-  type IconName,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export function EnableTransformsCard({
   onEnableClick,
   permissionsErrorMessage,
@@ -38,15 +36,14 @@ export function EnableTransformsCard({
   const plan = useSelector((state) =>
     getPlan(getSetting(state, "token-features")),
   );
-  const permissionsDescription =
-    plan === "pro-self-hosted"
-      ? t`Only Analysts and Admins can create and run transforms`
-      : t`Only Admins can create and run transforms`;
+  const permissionsDescription = isProPlan(plan)
+    ? t`Only Analysts and Admins can create and run transforms`
+    : t`Only Admins can create and run transforms`;
 
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
       <Flex w="100%" p={{ xs: "2.5rem", xl: "3rem" }}>
-        <Stack gap="lg" align="start" pt="xl" pl="lg" flex="1 1 auto">
+        <Stack gap="xl" align="start" pt="xxl" pl="xl" flex="1 1 auto">
           {leftContent ?? (
             <>
               <Title order={2}>{t`Customize and clean up your data`}</Title>
@@ -56,7 +53,7 @@ export function EnableTransformsCard({
                 lh={1.4}
               >{t`Transforms let you create new tables within your connected databases, helping you make nicer and more self-explanatory datasets for your end users to look at and explore.`}</Text>
               {permissionsErrorMessage || (
-                <Stack gap="lg" align="start">
+                <Stack gap="xl" align="start">
                   <Text
                     c="text-secondary"
                     fz="1rem"
@@ -75,19 +72,19 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
-                      icon={<Icon name="warning" size={16} />}
-                      title={t`No writable database connection`}
+                      icon={<Icon name="warning" />}
+                      title={t`No compatible database connection`}
                     >
-                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins can see this */}
-                      {jt`Transforms create tables in your database, so Metabase needs write access. ${(
+                      {jt`None of your connected databases can be used with transforms. ${(
                         <Link
                           key="link"
                           to="/admin/databases"
                           style={{ textDecoration: "underline" }}
-                        >{t`Reconnect or add a connection`}</Link>
-                      )} with a user that has the right privileges.`}
+                        >{t`Connect a compatible database`}</Link>
+                      )} to get started.`}
                     </Alert>
                   )}
                 </Stack>
@@ -131,10 +128,10 @@ const SimpleCard = ({
   title: string;
   description: string;
 }) => (
-  <Card bg="background-secondary" shadow="none">
+  <Card bg="background_page-secondary" shadow="none">
     <Group wrap="nowrap" align="start" gap="sm">
-      <Icon name={icon} c="brand" size={16} flex="0 0 1rem" />
-      <Stack gap="xs">
+      <Icon name={icon} c="core-brand" size={16} flex="0 0 1rem" />
+      <Stack gap="xxs">
         <Text fw="bold" lh="1rem">
           {title}
         </Text>

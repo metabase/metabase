@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { Icon } from "metabase/ui";
 
 export const SettingsPopoverBody = styled.div`
-  padding: var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-xxl);
 `;
 
 export const RequiredToggleLabel = styled.label`
@@ -12,8 +12,8 @@ export const RequiredToggleLabel = styled.label`
 `;
 
 export const Divider = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
-  margin: var(--mantine-spacing-md) 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  margin: var(--mantine-spacing-lg) 0;
 `;
 
 export const ToggleContainer = styled.div`
@@ -24,9 +24,9 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

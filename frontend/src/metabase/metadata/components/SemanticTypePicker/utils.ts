@@ -4,7 +4,10 @@ import { isTypeFK, isTypePK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { Field } from "metabase-types/api";
 
 export function getCompatibleSemanticTypes(
-  field: Field,
+  field: {
+    base_type?: Field["base_type"];
+    effective_type?: Field["effective_type"];
+  },
   currentValue: string | null,
 ) {
   const fieldType = field.effective_type ?? field.base_type;

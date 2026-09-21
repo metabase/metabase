@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   ACTIVE_STATUS,
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { Outlet } from "metabase/router";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
@@ -16,13 +17,7 @@ import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButto
 import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
-import S from "./TenantsListingApp.module.css";
-
-export const TenantsListingApp = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const TenantsListingApp = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
   const [searchInputValue, setSearchInputValue] = useState("");
@@ -43,9 +38,9 @@ export const TenantsListingApp = ({
     [data?.data],
   );
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      setStatus(tab as ActiveStatus);
+      setStatus(tab);
     }
   };
 
@@ -60,7 +55,7 @@ export const TenantsListingApp = ({
   return (
     // Make the layout narrow when there are no tenants
     <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
-      <Group justify="space-between" w="100%" mb="lg">
+      <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
@@ -70,8 +65,13 @@ export const TenantsListingApp = ({
       </Group>
 
       {isAdmin && hasDeactivatedTenants && (
-        <Tabs value={status} onChange={handleTabChange} pl="md">
-          <Tabs.List className={S.tabs}>
+        <Tabs
+          value={status}
+          onChange={handleTabChange}
+          pl="lg"
+          listBorder={false}
+        >
+          <Tabs.List>
             <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
 
             <Tabs.Tab
@@ -93,7 +93,7 @@ export const TenantsListingApp = ({
           />
         </LoadingAndErrorWrapper>
 
-        {children}
+        <Outlet />
       </SettingsSection>
     </Box>
   );

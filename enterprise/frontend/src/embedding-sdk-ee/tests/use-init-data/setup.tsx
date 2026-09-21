@@ -74,6 +74,7 @@ export const TestComponent = ({ config }: { config: MetabaseConfigProps }) => {
       data-testid="test-component"
       data-is-logged-in={isLoggedIn}
       data-login-status={loginStatus.status}
+      // Unjustified type cast. FIXME
       data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component

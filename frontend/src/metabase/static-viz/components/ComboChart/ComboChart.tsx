@@ -1,28 +1,26 @@
 import { Group } from "@visx/group";
 import { init } from "echarts/core";
-import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
-import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
+import {
+  getCartesianChartModel,
+  getCartesianChartOption,
+  getChartLayout,
+  getLegendItems,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
 const WIDTH = 540;
 const HEIGHT = 360;
 const LEGEND_PADDING = 8;
-
-const DATA_OUT_OF_RANGE_RECT = {
-  height: 40,
-  width: 210,
-};
 
 registerEChartsModules();
 
@@ -34,14 +32,8 @@ export const ComboChart = ({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chart = init(null, null, {
-    renderer: "svg",
-    ssr: true,
-    width,
-    height,
-  });
-
   const chartModel = getCartesianChartModel(
     rawSeries,
     settings,
@@ -60,18 +52,28 @@ export const ComboChart = ({
       isReversed,
     });
 
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
   const option = getCartesianChartOption(
     chartModel,
     chartLayout,
+    false,
     null,
     [],
     settings,
@@ -83,12 +85,12 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
-  const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
-    chartModel,
-    settings,
-  );
 
-  const totalHeight = height + legendHeight;
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
+
+  chart.dispose();
+
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
     <>
@@ -113,21 +115,11 @@ export const ComboChart = ({
           />
         )}
         {allPointsOutOfRange && (
-          <g>
-            <rect
-              x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
-              y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
-              fill={renderingContext.getColor("background-primary")}
-              stroke={renderingContext.getColor("border")}
-              strokeWidth="1"
-              width={DATA_OUT_OF_RANGE_RECT.width}
-              height={DATA_OUT_OF_RANGE_RECT.height}
-              rx="8"
-            />
-            <text x="50%" y={totalHeight / 2 + 4} textAnchor="middle">
-              {t`Every data point is out of range`}
-            </text>
-          </g>
+          <DataOutOfRangeOverlay
+            width={width}
+            height={totalHeight}
+            renderingContext={renderingContext}
+          />
         )}
       </svg>
     </>

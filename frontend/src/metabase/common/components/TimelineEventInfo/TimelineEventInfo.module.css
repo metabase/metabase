@@ -1,0 +1,9 @@
+.title {
+  word-wrap: break-word;
+}
+
+.description {
+  margin-top: 0.25rem;
+  color: var(--mb-color-text-primary);
+  word-wrap: break-word;
+}

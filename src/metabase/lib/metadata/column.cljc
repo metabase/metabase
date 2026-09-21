@@ -26,13 +26,14 @@
 
 (mu/defn column-with-unique-key :- [:maybe ::lib.metadata.calculation/returned-column]
   "Get metadata for the returned column with `unique-key`."
-  ([query unique-key]
+  ([query      :- ::lib.schema/query
+    unique-key :- ::lib.schema/column-unique-key]
    (column-with-unique-key query -1 unique-key))
   ([query        :- ::lib.schema/query
     stage-number :- :int
     unique-key   :- ::lib.schema/column-unique-key]
    (let [[version column-key] (unpack-unique-key unique-key)]
      (m/find-first
-      (case version
+      (case (long version)
         1 #(= (:lib/desired-column-alias %) column-key))
       (lib.metadata.calculation/returned-columns query stage-number)))))

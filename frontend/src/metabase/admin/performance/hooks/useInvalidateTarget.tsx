@@ -35,8 +35,8 @@ export const useInvalidateTarget = (
           addUndo({
             icon: "warning",
             message: e.data.message,
-            toastColor: "error",
-            dismissIconColor: "var(--mb-color-text-primary-inverse)",
+            toastColor: "feedback-negative",
+            dismissIconColor: "text-primary-inverse",
           }),
         );
       }

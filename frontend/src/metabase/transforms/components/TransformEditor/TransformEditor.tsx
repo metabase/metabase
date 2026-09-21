@@ -1,13 +1,11 @@
 import { useMemo } from "react";
 
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import {
-  QueryEditor,
-  type QueryEditorUiOptions,
-  type QueryEditorUiState,
+import { useMetadataProvider } from "metabase/metadata-store";
+import { QueryEditorWithParameters } from "metabase/parameters/components/QueryEditorWithParameters";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -23,12 +21,9 @@ export type TransformEditorProps = {
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
-  proposedSource: QueryTransformSource | undefined;
   databases: Database[];
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
-  onAcceptProposed: () => void;
-  onRejectProposed: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   transform?: Transform;
@@ -38,43 +33,28 @@ export type TransformEditorProps = {
 
 export function TransformEditor({
   source,
-  proposedSource,
   databases,
   uiState,
   uiOptions,
   onChangeSource,
   onChangeUiState,
-  onAcceptProposed,
-  onRejectProposed,
   onRunQueryStart,
   onBlur,
   transform,
   isEditMode,
   readOnly,
 }: TransformEditorProps) {
-  const metadata = useSelector(getMetadata);
+  const metadataProvider = useMetadataProvider(source.query.database);
   const query = useMemo(
-    () => Lib.fromJsQueryAndMetadata(metadata, source.query),
-    [source, metadata],
-  );
-  const proposedQuery = useMemo(
-    () =>
-      proposedSource
-        ? Lib.fromJsQueryAndMetadata(metadata, proposedSource.query)
-        : undefined,
-    [proposedSource, metadata],
+    () => Lib.fromJsQuery(metadataProvider, source.query),
+    [source, metadataProvider],
   );
   const mergedUiOptions = useMemo(
     () => ({ ...getEditorOptions(databases, !isEditMode), ...uiOptions }),
     [databases, isEditMode, uiOptions],
   );
 
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-
-  const showEditButton =
-    !!transform && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
+  const showEditButton = !!transform && !readOnly && !isEditMode;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {
@@ -87,15 +67,12 @@ export function TransformEditor({
   };
 
   return (
-    <QueryEditor
+    <QueryEditorWithParameters
       query={query}
       uiState={uiState}
       uiOptions={mergedUiOptions}
-      proposedQuery={proposedQuery}
       onChangeQuery={handleQueryChange}
       onChangeUiState={onChangeUiState}
-      onAcceptProposed={onAcceptProposed}
-      onRejectProposed={onRejectProposed}
       onRunQueryStart={onRunQueryStart}
       onBlur={onBlur}
       topBarInnerContent={

@@ -52,8 +52,8 @@
        result
        (let [result-with-timezone (add-zone-to-local result default-timezone-id)]
          (when-not (= result result-with-timezone)
-           (log/tracef "Applying default timezone %s to temporal literal without timezone '%s' -> %s"
-                       default-timezone-id s (pr-str result-with-timezone)))
+           (log/tracef "Applying default timezone %s to temporal literal without timezone"
+                       default-timezone-id))
          result-with-timezone)))))
 
 (defn- temporal->iso-8601-formatter [t]
@@ -181,7 +181,8 @@
     (add (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :month 2)
     ->
     (t/zoned-date-time \"2020-01-05T15:44-08:00[US/Pacific]\")"
-  ([unit amount]
+  ([unit   :- (into [:enum] add-units)
+    amount :- [:maybe :int]]
    (add (t/zoned-date-time) unit amount))
 
   ([t      :- TemporalInstance
@@ -248,7 +249,7 @@
 
   Values are returned as numbers (currently, always and integers, but this may change if we add support for
   `:fraction-of-second` in the future.)"
-  ([unit]
+  ([unit :- (into [:enum] (conj extract-units :day-of-week-iso))]
    (extract (t/zoned-date-time) unit))
 
   ([t    :- TemporalInstance
@@ -329,7 +330,7 @@
   "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
   supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
   reasons."
-  ([unit]
+  ([unit :- (into [:enum] truncate-units)]
    (truncate (t/zoned-date-time) unit))
 
   ([^Temporal t :- TemporalInstance
@@ -354,7 +355,7 @@
 
     (group-by #(bucket % :quarter-of-year) (map t/local-date [\"2019-01-01\" \"2019-01-02\" \"2019-01-04\"]))
     ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}"
-  ([unit]
+  ([unit :- (into [:enum] cat [extract-units truncate-units])]
    (bucket (t/zoned-date-time) unit))
 
   ([t    :- TemporalInstance
@@ -375,10 +376,11 @@
     ->
     {:start (t/zoned-date-time \"2019-10-27T00:00Z[UTC]\")
      :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}"
-  ([unit]
+  ([unit :- (into [:enum] add-units)]
    (range (t/zoned-date-time) unit))
 
-  ([t unit]
+  ([t    :- TemporalInstance
+    unit :- (into [:enum] add-units)]
    (range t unit nil))
 
   ([t    :- TemporalInstance
@@ -386,7 +388,11 @@
     {:keys [start end resolution]
      :or   {start      :inclusive
             end        :exclusive
-            resolution :millisecond}}]
+            resolution :millisecond}}
+    :- [:maybe [:map {:closed true}
+                [:start      {:optional true} [:enum :inclusive :exclusive]]
+                [:end        {:optional true} [:enum :inclusive :exclusive]]
+                [:resolution {:optional true} (into [:enum] add-units)]]]]
    (let [t (truncate t unit)]
      {:start (case start
                :inclusive t
@@ -570,7 +576,6 @@
   (defmethod print-method klass
     [t writer]
     ((get-method print-dup klass) t writer))
-
   (defmethod print-dup klass
     [t ^java.io.Writer writer]
     (.write writer (clojure.core/format "#t \"%s\"" (str t)))))

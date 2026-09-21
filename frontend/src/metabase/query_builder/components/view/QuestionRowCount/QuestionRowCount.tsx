@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   type NumberFormatter,
   useNumberFormatter,
@@ -11,22 +11,22 @@ import {
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
-import { setLimit } from "metabase/query_builder/actions";
-import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
-import {
-  getFirstQueryResult,
-  getIsResultDirty,
-  getQuestion,
-} from "metabase/query_builder/selectors";
 import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
+
+import { setLimit } from "../../../actions";
+import {
+  getFirstQueryResult,
+  getIsResultDirty,
+  getQuestion,
+} from "../../../store/selectors";
+import type { QueryBuilderStoreState } from "../../../store/state";
+import { LimitPopover } from "../../LimitPopover";
 
 import QuestionRowCountS from "./QuestionRowCount.module.css";
 
@@ -38,24 +38,17 @@ interface OwnProps {
 
 interface StateProps {
   question: Question;
-  result: Dataset;
+  result: Dataset | null;
   isResultDirty: boolean;
-}
-
-interface EntityLoaderProps {
-  loading: boolean;
 }
 
 interface DispatchProps {
   onChangeLimit: (limit: Limit) => void;
 }
 
-type QuestionRowCountProps = OwnProps &
-  StateProps &
-  DispatchProps &
-  EntityLoaderProps;
+type QuestionRowCountProps = OwnProps & StateProps & DispatchProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: QueryBuilderStoreState) {
   // Not expected to render before question is loaded
   const question = getQuestion(state) as Question;
 
@@ -74,14 +67,20 @@ function QuestionRowCountInner({
   question,
   result,
   isResultDirty,
-  loading,
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
   const [opened, { close, toggle }] = useDisclosure(false);
+  const databaseId = question.databaseId();
+  const { isLoading: loading } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const formatNumber = useNumberFormatter();
   const message = useMemo(() => {
+    if (result == null) {
+      return "";
+    }
     if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result, formatNumber);
     }
@@ -116,7 +115,7 @@ function QuestionRowCountInner({
   }
 
   return (
-    <Popover opened={opened} onClose={close} position="bottom-start">
+    <Popover opened={opened} onDismiss={close} position="bottom-end">
       <Popover.Target>
         <UnstyledButton onClick={toggle} id={POPOVER_ID} aria-haspopup="dialog">
           <RowCountLabel
@@ -197,20 +196,13 @@ function getLimitMessage(
   return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
 }
 
-function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
-  return question.databaseId();
-}
-
-const ConnectedQuestionRowCount = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Databases.load({
-    id: getDatabaseId,
-    loadingAndErrorWrapper: false,
-  }),
+const ConnectedQuestionRowCount = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(QuestionRowCountInner);
 
 export type QuestionRowCountOpts = {
-  result?: Dataset;
+  result?: Dataset | null;
   isObjectDetail: boolean;
 };
 

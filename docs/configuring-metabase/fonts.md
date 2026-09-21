@@ -19,9 +19,10 @@ To change your Metabase font:
 
 1. Click the **grid** icon in the upper right of the screen.
 2. Select **Admin**.
-3. In Admin console, go to **Settings** > **Appearance** > **Branding**
+3. In the Admin console, go to **Settings** > **Appearance** > **Branding**
 4. Under **Font**, select from a list of included fonts:
 
+- [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
 - [Merriweather](https://fonts.google.com/specimen/Merriweather)
@@ -75,7 +76,7 @@ For custom fonts, Metabase supports woff, woff2, ttf files. If the URL you provi
 
 ### Google Font URLs
 
-To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the tff file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
+To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Font page and select the style you want to use. Then make an HTTP request to get the URL of the ttf file. For example, say we want to use Roboto Mono: here's how we could get the font file URLs for both the 400 and 700 styles:
 
 We'd paste the URL [https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap) into our browser's address bar. This URL will return a response like:
 
@@ -128,6 +129,12 @@ raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
 
 Note that in the raw link, there is no `/blob/` directory in the URL.
 
+### Custom fonts and Content Security Policy
+
+When you add a custom font hosted on another domain, Metabase automatically allows that domain in the browser's Content Security Policy for fonts. You don't need to configure anything for the font to work.
+
+If you don't add any custom fonts, Metabase only allows fonts served from your own instance.
+
 ### Supporting multiple languages
 
 To support multiple character sets, for example both Latin and Cyrillic, you'll need to merge font files.
@@ -139,5 +146,4 @@ When configuring [guest embeds](../embedding/guest-embedding.md), you can select
 ## Further reading
 
 - [Customizing Metabase's appearance](./appearance.md)
-- [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding)
 - [Embedding documentation](../embedding/start.md)

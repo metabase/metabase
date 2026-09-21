@@ -3,7 +3,9 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
+   [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -38,22 +40,19 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
-  (cond-> (t2/hydrate (t2/select :model/Timeline
-                                 :collection_id collection-id
-                                 :archived (boolean archived?))
-                      :creator
-                      [:collection :can_write])
+  (cond-> (t2/hydrate (timeline.db/timelines-for-collection collection-id (boolean archived?)) :creator [:collection :can_write])
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
 ;;;; serialization
 
-(defmethod serdes/hash-fields :model/Timeline
-  [_timeline]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
-(defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
+(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
+
+(defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
+  ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]

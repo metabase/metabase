@@ -1,11 +1,8 @@
-import type { RouterState } from "react-router-redux";
-
 import type { Api } from "metabase/api/api";
 import type { DocumentsState } from "metabase/redux/store/documents";
-import type { User } from "metabase-types/api";
+import type { ExplorationsState } from "metabase/redux/store/explorations";
 
 import type { AdminState } from "./admin";
-import type { AnalyticsExportState } from "./analytics-export";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
@@ -18,8 +15,6 @@ import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
 import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
-import type { RequestsState } from "./requests";
-import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
@@ -29,10 +24,8 @@ type MetabaseApiState = ReturnType<typeof Api.reducer>;
 
 export interface State {
   admin: AdminState;
-  analyticsExport: AnalyticsExportState;
   app: AppState;
   auth: AuthState;
-  currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
   embeddingDataPicker: EmbeddingDataPickerState;
@@ -40,9 +33,6 @@ export interface State {
   parameters: ParametersState;
   pulse: PulseState;
   qb: QueryBuilderState;
-  requests: RequestsState;
-  routing: RouterState;
-  settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
   modal: ModalState;
@@ -56,6 +46,7 @@ export interface State {
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
   metabot: MetabotState;
+  explorations: ExplorationsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

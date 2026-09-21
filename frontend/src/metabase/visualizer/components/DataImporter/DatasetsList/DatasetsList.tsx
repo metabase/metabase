@@ -3,24 +3,17 @@ import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getDashboard } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Skeleton } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
-import { isCartesianChart } from "metabase/visualizations";
 import {
   getDataSources,
   getDatasets,
-  getVisualizationColumns,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerComputedSettingsForFlatSeries,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import {
-  createDataSource,
-  partitionTimeDimensions,
-} from "metabase/visualizer/utils";
+import { createDataSource } from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
@@ -36,6 +29,12 @@ import { trackVisualizerDataChanged } from "../../analytics";
 
 import { DatasetsListItem, type Item } from "./DatasetsListItem";
 import { getIsCompatible } from "./getIsCompatible";
+
+const SEARCH_LIMIT = 50;
+// Without a text query, incompatible results are filtered out client-side
+// rather than marked as not recommended, so fetch a wider window to avoid
+// showing an empty list when compatible datasets rank below the limit.
+const NO_QUERY_SEARCH_LIMIT = 200;
 
 function shouldIncludeDashboardQuestion(
   searchItem: SearchResult,
@@ -56,6 +55,12 @@ interface DatasetsListProps {
    * so next time it is rendered, it will show the data immediately.
    */
   muted?: boolean;
+  /**
+   * The id of the dashboard the visualizer was opened from, or `undefined` when
+   * it wasn't opened from a dashboard. Used to filter out dashboard questions
+   * that belong to other dashboards.
+   */
+  dashboardId: DashboardId | undefined;
 }
 
 export function DatasetsList({
@@ -63,8 +68,8 @@ export function DatasetsList({
   setDataSourceCollapsed,
   style,
   muted,
+  dashboardId,
 }: DatasetsListProps) {
-  const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
   const dataSourceIds = useMemo(
@@ -74,7 +79,6 @@ export function DatasetsList({
 
   // Get current visualization context
   const visualizationType = useSelector(getVisualizationType);
-  const visualizationColumns = useSelector(getVisualizationColumns);
 
   // Get data needed for compatibility checking
   const columns = useSelector(getVisualizerDatasetColumns);
@@ -112,31 +116,15 @@ export function DatasetsList({
       },
     );
 
-  const { timeDimensions, otherDimensions } = useMemo(() => {
-    return partitionTimeDimensions(visualizationColumns || []);
-  }, [visualizationColumns]);
-
-  const nonTemporalDimIds = useMemo(() => {
-    return otherDimensions
-      .map((dim) => dim.id)
-      .filter(isNotNull)
-      .sort() as number[];
-  }, [otherDimensions]);
-
   const { data: visualizationSearchResult, isFetching: isSearchFetching } =
     useSearchQuery(
       {
         q: search.length > 0 ? search : undefined,
-        limit: 50,
+        limit: search.length > 0 ? SEARCH_LIMIT : NO_QUERY_SEARCH_LIMIT,
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
-        ...(visualizationType &&
-          isCartesianChart(visualizationType) &&
-          search.length === 0 && {
-            has_temporal_dim: timeDimensions.length > 0,
-            non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
-          }),
+        context: "data-picker",
       },
       {
         skip: muted,
@@ -245,18 +233,18 @@ export function DatasetsList({
 
   return (
     <Flex
-      gap="xs"
+      gap="xxs"
       direction="column"
       data-testid="datasets-list"
       style={{ overflow: "auto", ...style }}
     >
       {debouncedIsFetching && (
         <>
-          <Skeleton height={30} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
-          <Skeleton height={30} mt={6} radius="sm" />
+          <Skeleton height={30} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
+          <Skeleton height={30} mt={6} radius="xs" />
         </>
       )}
       {items && items.length === 0 && (

@@ -44,35 +44,81 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
+(defn- scale-px
+  "`px` scaled by `scale`, rounded *up* to a whole pixel so the scaled box never falls short of the
+  content it has to hold."
+  ^long [px scale]
+  (long (Math/ceil (* (double px) (double scale)))))
+
+(defn- painted-px
+  "`px` scaled by `scale`, rounded *down* to a whole pixel (at least one) -- the canvas must not reach past
+  where the scaled graphics paints. Rounding up leaves a fractional `scale`'s last row/column untouched, and
+  that transparent edge fringes grey in viewers that resample without premultiplying (poppler does)."
+  ^long [px scale]
+  (max 1 (long (Math/floor (* (double px) (double scale))))))
+
+(defn- redraw-at-scale!
+  "Re-render the already-laid-out boxes of `graphics-engine` into a fresh image `scale`x the device size
+  of `base`, for crisp supersampled output. Returns the new [[BufferedImage]]."
+  ^java.awt.image.BufferedImage [^GraphicsEngine graphics-engine ^java.awt.image.BufferedImage base scale]
+  (let [big (BufferedImage. (painted-px (.getWidth base) scale)
+                            (painted-px (.getHeight base) scale)
+                            BufferedImage/TYPE_INT_ARGB)]
+    (.setImage graphics-engine big)
+    (.redrawBoxes graphics-engine)
+    big))
+
 (defn- render-to-png
-  ^java.awt.image.BufferedImage [^String html width]
-  (style/register-fonts-if-needed!)
-  (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
-              doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-    (let [dimension       (Dimension. width 1)
-          doc             (.parse (DefaultDOMSource. doc-source))
-          da              (dom-analyzer doc doc-source dimension)
-          graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
-                            (setupGraphics [^Graphics2D g]
-                              (doto g
-                                (.setRenderingHint RenderingHints/KEY_RENDERING
-                                                   RenderingHints/VALUE_RENDER_QUALITY)
-                                (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
-                                                   RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
-                                (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
-                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
-                                (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
-                                                   RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
-      (.createLayout graphics-engine dimension)
-      (let [image         (.getImage graphics-engine)
-            viewport      (.getViewport graphics-engine)
-            ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
-            content-width (max (int (.getMinimalWidth viewport))
-                               (int (.getMaximalWidth viewport)))]
-        ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
-        (if (< content-width (.getWidth image))
-          (.getSubimage image 0 0 content-width (.getHeight image))
-          image)))))
+  "Render `html` to a [[BufferedImage]] at `width` logical pixels. `scale` > 1 rasterizes to that many
+  device pixels for crispness (via scaled device graphics, since CSSBox ignores CSS `zoom`/`transform`).
+
+  `scale` may instead be a function of the laid-out content's width and height in logical px, returning a
+  positive factor -- for callers that can only choose one once they know how big the content turned out."
+  (^java.awt.image.BufferedImage [^String html width]
+   (render-to-png html width 1.0))
+  (^java.awt.image.BufferedImage [^String html width scale]
+   (style/register-fonts-if-needed!)
+   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
+               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+     ;; `setupGraphics` runs for the measuring layout and again for the redraw, but a function `scale` can't be
+     ;; resolved until the first has happened -- so the factor it applies lives here, set just before the redraw.
+     (let [device-scale    (volatile! 1.0)
+           dimension       (Dimension. width 1)
+           doc             (.parse (DefaultDOMSource. doc-source))
+           da              (dom-analyzer doc doc-source dimension)
+           graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                             (setupGraphics [^Graphics2D g]
+                               (let [s (double @device-scale)]
+                                 (when (not= 1.0 s)
+                                   (.scale g s s)))
+                               (doto g
+                                 (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                    RenderingHints/VALUE_RENDER_QUALITY)
+                                 (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                    RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                    RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                 (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+       (.createLayout graphics-engine dimension)
+       (let [base          (.getImage graphics-engine)
+             viewport      (.getViewport graphics-engine)
+             ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+             content-width (max (int (.getMinimalWidth viewport))
+                                (int (.getMaximalWidth viewport)))
+             ;; a function `scale` sees the dims a 1:1 render would return: cropped width, full height
+             scale         (if (ifn? scale)
+                             (double (scale (min content-width (.getWidth base)) (.getHeight base)))
+                             (double scale))
+             image         (if (= 1.0 scale)
+                             base
+                             (do (vreset! device-scale scale)
+                                 (redraw-at-scale! graphics-engine base scale)))
+             crop-width    (scale-px content-width scale)]
+         ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
+         (if (< crop-width (.getWidth image))
+           (.getSubimage image 0 0 crop-width (.getHeight image))
+           image))))))
 
 (defn- font-can-fully-render?
   [^Font font s]
@@ -124,15 +170,16 @@
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   (^bytes [rendered-info :- ::body/RenderedPartCard
-           width]
+           width         :- pos-int?]
    (render-html-to-png rendered-info width nil))
 
   (^bytes [{:keys [content]} :- ::body/RenderedPartCard
-           width
-           options]
+           width   :- pos-int?
+           options :- [:maybe ::body/options]]
    (try
      (let [padding-x (or (:channel.render/padding-x options) 0)
            padding-y (or (:channel.render/padding-y options) 0)
+           scale     (or (:channel.render/scale options) 1.0)
            padding-css (str padding-y "px " padding-x "px")
            ;; Wrap content in a container div with padding to ensure padding is included in content-width
            ;; calculation (body padding gets cropped off by render-to-png)
@@ -149,9 +196,9 @@
                                         :background-color :white})}
                         (wrap-non-lato-chars padded-content)]])]
        (with-open [os (ByteArrayOutputStream.)]
-         (-> (render-to-png html width)
+         (-> (render-to-png html width scale)
              (write-image! "png" os))
          (.toByteArray os)))
      (catch Throwable e
-       (log/error e "Error rendering Pulse")
+       (log/errorf "Error rendering Pulse: %s" (ex-message e))
        (throw e)))))

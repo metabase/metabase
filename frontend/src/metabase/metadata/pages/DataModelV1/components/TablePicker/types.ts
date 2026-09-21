@@ -29,6 +29,7 @@ export type DatabaseNode = {
   key: NodeKey;
   value: { databaseId: DatabaseId };
   children: SchemaNode[];
+  loaded?: boolean;
 };
 
 export type SchemaNode = {
@@ -37,6 +38,7 @@ export type SchemaNode = {
   key: string;
   value: { databaseId: DatabaseId; schemaName: SchemaName };
   children: TableNode[];
+  loaded?: boolean;
 };
 
 export type TableNode = {
@@ -57,11 +59,12 @@ export type Item = DatabaseItem | SchemaItem | TableItem;
 
 export type ItemType = Item["type"];
 
-export type FlatItem = LoadingItem | ExpandedItem;
+export type FlatItem = LoadingItem | EmptyItem | ExpandedItem;
 
 type ExpandedItem = Item & {
   isExpanded?: boolean;
   isLoading?: false;
+  isEmpty?: false;
   parent?: NodeKey;
   level: number;
   disabled?: boolean;
@@ -69,6 +72,23 @@ type ExpandedItem = Item & {
 
 type LoadingItem = {
   isLoading: true;
+  isEmpty?: false;
+  type: ItemType;
+  key: string;
+  level: number;
+  isExpanded?: boolean;
+  value?: TreePath;
+  label?: string;
+  parent?: NodeKey;
+  table?: undefined;
+  disabled?: never;
+};
+
+// Shown when a database or schema has finished loading but has no children, so
+// we communicate "empty" instead of leaving a blank gap or a forever skeleton.
+type EmptyItem = {
+  isEmpty: true;
+  isLoading?: false;
   type: ItemType;
   key: string;
   level: number;

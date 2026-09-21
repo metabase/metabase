@@ -1,18 +1,14 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { Outlet } from "metabase/router";
 import { Flex } from "metabase/ui";
 
-interface TransformTopNavLayoutProps {
-  children: ReactNode;
-}
-
-export const JobSectionLayout = ({ children }: TransformTopNavLayoutProps) => {
+export const JobSectionLayout = () => {
   usePageTitle(t`Jobs`, { titleIndex: 0 });
   return (
     <Flex direction="column" w="100%" h="100%">
-      {children}
+      <Outlet />
     </Flex>
   );
 };

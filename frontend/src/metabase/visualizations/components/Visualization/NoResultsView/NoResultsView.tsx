@@ -12,12 +12,12 @@ interface NoResultsViewProps {
 function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
     <Root>
-      <Tooltip label={t`No results!`} disabled={!isSmall}>
+      <Tooltip label={t`No results`} disabled={!isSmall}>
         <span>
           <NoDataError data-testid="no-results-image" mb="1rem" />
         </span>
       </Tooltip>
-      {!isSmall && <ShortMessage>{t`No results!`}</ShortMessage>}
+      {!isSmall && <ShortMessage>{t`No results`}</ShortMessage>}
     </Root>
   );
 }

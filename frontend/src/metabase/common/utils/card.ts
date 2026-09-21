@@ -18,6 +18,8 @@ import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ActionParametersMapping,
   Card,
+  CardId,
+  DashCardSeries,
   DashboardParameterMapping,
   DatasetQuery,
   LegacyDatasetQuery,
@@ -26,6 +28,9 @@ import type {
   UnsavedCard,
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
+import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
+
+export const QUESTION_NAME_MAX_LENGTH = 254;
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -62,7 +67,8 @@ function getCleanCard(
   if (includeDatasetQuery) {
     keysToInclude.push("dataset_query");
   }
-  if (includeOriginalCardId) {
+  if (includeOriginalCardId && !isTransientCardId(value.original_card_id)) {
+    // transient card id's are never included
     keysToInclude.push("original_card_id");
   }
   if (includeDisplayIsLocked) {
@@ -94,6 +100,40 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
   }
 }
 
+export function getMetricSeriesWithDefaultDisplay(
+  series: DashCardSeries,
+  metadataProvider: Lib.MetadataProvider,
+): DashCardSeries {
+  if (series.length !== 1 || !isDashCardDataSeries(series)) {
+    return series;
+  }
+
+  const [metricSeries] = series;
+  if (metricSeries.card.type !== "metric" || !metricSeries.json_query) {
+    return series;
+  }
+
+  const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
+  const { display, settings = {} } = Lib.defaultDisplay(
+    query,
+    metricSeries.data.cols,
+  );
+
+  return [
+    {
+      ...metricSeries,
+      card: {
+        ...metricSeries.card,
+        display,
+        visualization_settings: {
+          ...metricSeries.card.visualization_settings,
+          ...settings,
+        },
+      },
+    },
+  ];
+}
+
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(
   card: Card | UnsavedCard,
@@ -107,11 +147,11 @@ export function deserializeCardFromUrl(serialized: string): Card {
 }
 
 /**
- * Converts a Metabot `navigate_to` path like `/question#<base64>` into a
+ * Converts a Metabot question path like `/question#<base64>` into a
  * Card suitable for `deserializedCard`.
  *
- * Sole producer is Metabot's `navigate_to` stream part, which always emits
- * `/question#<base64>`. Intentionally not guarded against other shapes.
+ * Sole producer is Metabot's `generated_entity` card stream part, whose path
+ * is always `/question#<base64>`. Intentionally not guarded against other shapes.
  */
 export function deserializeCardFromQuery(query: string): Card {
   const base64 = query.replace(/^\/question#/, "");
@@ -149,7 +189,7 @@ export function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export function isNative(card?: Card | null | undefined) {
+export function isNative(card?: UnsavedCard | null | undefined) {
   if (!card) {
     return false;
   }
@@ -157,7 +197,7 @@ export function isNative(card?: Card | null | undefined) {
   return question.isNative();
 }
 
-function cardVisualizationIsEquivalent(cardA: Card, cardB: Card) {
+function cardVisualizationIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return _.isEqual(
     _.pick(cardA, "display", "visualization_settings"),
     _.pick(cardB, "display", "visualization_settings"),
@@ -183,7 +223,7 @@ function datasetQueryForComparison(datasetQuery: DatasetQuery): DatasetQuery {
   return res;
 }
 
-export function cardQueryIsEquivalent(cardA: Card, cardB: Card) {
+export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
   const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
   return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
@@ -193,7 +233,7 @@ export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {
   return _.isEqual(cardA.parameters || [], cardB.parameters || []);
 }
 
-export function cardIsEquivalent(cardA: Card, cardB: Card) {
+export function cardIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   return (
     cardQueryIsEquivalent(cardA, cardB) &&
     cardVisualizationIsEquivalent(cardA, cardB)
@@ -250,10 +290,12 @@ export function applyParameters(
     if (mapping) {
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
+      // Unjustified type cast. FIXME
       datasetQuery.parameters.push(queryParameter as UiParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
+      // Unjustified type cast. FIXME
       datasetQuery.parameters.push(queryParameter as UiParameter);
     }
 
@@ -264,4 +306,8 @@ export function applyParameters(
   }
 
   return datasetQuery;
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }

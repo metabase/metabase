@@ -5,13 +5,13 @@ import { useUpdateTableMutation } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import {
   DataSourceInput,
   EntityTypeInput,
   UserInput,
 } from "metabase/metadata/components";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   Box,
@@ -24,9 +24,11 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import type { Table, TableDataSource, UserId } from "metabase-types/api";
+
+import { PublishingInfo } from "../PublishingInfo";
 
 import S from "./DescriptionSection.module.css";
 
@@ -155,7 +157,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   return (
     <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
       {/* Entity Type Selector */}
-      <Flex justify="space-between" align="center" px="lg" py="md">
+      <Flex justify="space-between" align="center" px="xl" py="lg">
         <Text size="md" c="text-secondary">
           {t`Entity type`}
         </Text>
@@ -187,10 +189,10 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       </Box>
 
       {/* Metadata Sections */}
-      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
-        <Card.Section withBorder p="md">
+      <Card mx="xl" bg="background_page-secondary" shadow="none" radius="1rem">
+        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
-            <Icon name="pencil" c="brand" />
+            <Icon name="pencil" c="core-brand" />
             <Text size="md" fw={600} lh="1rem">
               <DateTime value={table.updated_at} />
             </Text>
@@ -199,9 +201,9 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Last edited at`}
           </Text>
         </Card.Section>
-        <Card.Section withBorder p="md">
+        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
-            <Icon name="database" c="brand" />
+            <Icon name="database" c="core-brand" />
             {table.db ? (
               <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
                 <Text size="md" fw={600} lh="1rem">
@@ -218,11 +220,11 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Database`}
           </Text>
         </Card.Section>
-        <Card.Section withBorder p="md">
+        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
             <Icon
               name="refresh_downstream"
-              c={table.data_source ? "brand" : "icon-secondary"}
+              c={table.data_source ? "core-brand" : "icon-disabled"}
             />
 
             <DataSourceInput
@@ -245,11 +247,11 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Source`}
           </Text>
         </Card.Section>
-        <Card.Section withBorder p="md">
+        <Card.Section withBorder p="lg">
           <Group gap="sm" mb={4}>
             <Icon
               name="person"
-              c={isOwnerSpecified ? "brand" : "icon-secondary"}
+              c={isOwnerSpecified ? "core-brand" : "icon-disabled"}
             />
 
             <UserInput
@@ -272,11 +274,12 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             {t`Owner`}
           </Text>
         </Card.Section>
+        <PublishingInfo table={table} />
       </Card>
 
       {/* Statistics */}
-      <Card mx="lg" my="lg" shadow="none">
-        <Card.Section withBorder py={rem(12)} px="md">
+      <Card mx="xl" my="xl" shadow="none">
+        <Card.Section withBorder py={rem(12)} px="lg">
           <Flex justify="space-between" align="center">
             <Text size="md" c="text-secondary">
               {t`Fields`}
@@ -293,7 +296,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         </Card.Section>
 
         {!isNullOrUndefined(table.estimated_row_count) && (
-          <Card.Section withBorder py={rem(12)} px="md">
+          <Card.Section withBorder py={rem(12)} px="lg">
             <Flex justify="space-between" align="center">
               <Text size="md" c="text-secondary">
                 {t`Rows`}
@@ -306,7 +309,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         )}
 
         {isDependenciesEnabled && (
-          <Card.Section withBorder py={rem(12)} px="md">
+          <Card.Section withBorder py={rem(12)} px="lg">
             <Flex justify="space-between" align="center">
               <Text size="md" c="text-secondary">
                 {t`Dependents`}

@@ -5,24 +5,26 @@
  * good reason.
  */
 
-import "dotenv/config";
 import { Octokit } from "@octokit/rest";
 import "zx/globals";
 import { $ } from "zx";
 $.verbose = false;
 
 import {
-  isValidVersionString,
-  hasBeenReleased,
-  isValidCommitHash,
-  isEnterpriseVersion,
+  closeMilestone,
   getMajorVersion,
   getVersionInfo,
-  publishRelease,
-  closeMilestone,
+  hasBeenReleased,
+  isEnterpriseVersion,
+  isValidCommitHash,
+  isValidVersionString,
   openNextMilestones,
+  publishRelease,
   versionRequirements,
 } from "./src";
+import {
+  publishVersionInfoFiles,
+} from "./version-info-s3";
 
 const {
   GITHUB_TOKEN,
@@ -50,7 +52,6 @@ const isWithoutGithub = process.argv?.[5]?.trim() === "--without-github";
 let latestFlag: string | boolean | null = process.argv?.[6]?.trim();
 
 const log = (message, color = "blue") =>
-  // eslint-disable-next-line no-console
   console.log(chalk[color](`\n${message}\n`));
 
 function error(message) {
@@ -306,13 +307,11 @@ async function versionInfo() {
 
   fs.writeFileSync(versionInfoName, JSON.stringify(newVersionInfo, null, 2));
 
-  await $`aws s3 cp ${versionInfoName} s3://${AWS_S3_STATIC_BUCKET}/${versionInfoName}`.pipe(
-    process.stdout,
-  );
-
-  await $`aws cloudfront create-invalidation \
-    --distribution-id ${AWS_CLOUDFRONT_STATIC_ID} \
-    --paths /${versionInfoName}`.pipe(process.stdout);
+  await publishVersionInfoFiles({
+    files: [versionInfoName],
+    bucket: AWS_S3_STATIC_BUCKET,
+    distributionId: AWS_CLOUDFRONT_STATIC_ID,
+  });
 
   log(`✅ Published ${versionInfoName} to s3`);
 }

@@ -1,6 +1,5 @@
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { getParameterOperatorName } from "metabase-lib/v1/parameters/utils/operators";
 import {
   getParameterSubType,
@@ -13,6 +12,18 @@ import type {
   Parameter,
   TemplateTag,
 } from "metabase-types/api";
+
+import type { FieldTypeInfo } from "../../types/utils/isa";
+import {
+  isAddress,
+  isBoolean,
+  isDate,
+  isFK,
+  isNumeric,
+  isPK,
+  isString,
+  isStringLike,
+} from "../../types/utils/isa";
 
 type ColumnInfo = {
   isString: boolean;
@@ -63,17 +74,25 @@ function isParameterCompatibleWithColumn(
   }
 }
 
+/**
+ * The subset of a field a parameter compatibility check reads. Satisfied by both
+ * the API field and the metabase-lib v1 wrapper.
+ */
+export type ParameterFilterableField = FieldTypeInfo & {
+  has_field_values?: FieldValuesType;
+};
+
 export function fieldFilterForParameter(
   parameter: Parameter | string,
-): (field: Field) => boolean {
+): (field: ParameterFilterableField) => boolean {
   return (field) =>
     isParameterCompatibleWithColumn(parameter, {
-      isString: field.isString() || field.isStringLike(),
-      isNumeric: field.isNumeric(),
-      isBoolean: field.isBoolean(),
-      isTemporal: field.isDate(),
-      isID: field.isID(),
-      isAddress: field.isAddress(),
+      isString: isString(field) || isStringLike(field),
+      isNumeric: isNumeric(field),
+      isBoolean: isBoolean(field),
+      isTemporal: isDate(field),
+      isID: isPK(field) || isFK(field),
+      isAddress: isAddress(field),
       isTemporalBucketable: false,
       hasFieldValues: field.has_field_values,
     });

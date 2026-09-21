@@ -2,9 +2,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.events]
+   [metabase-enterprise.remote-sync.events :as events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.task.import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
@@ -39,6 +40,8 @@
           (save [] nil))))))
 
 (defn- remote-sync-init []
+  ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
+  (remote-sync.task/supersede-stale-tasks!)
   (if (settings/remote-sync-enabled)
     (do
       (when (= :read-only (settings/remote-sync-type))
@@ -46,16 +49,28 @@
           (when (str/blank? branch)
             (throw (ex-info "Remote sync is enabled with read-only type, but no branch is set." {})))
           (when (remote-sync.object/dirty?)
-            (if (str/includes? (settings/remote-sync-allow) "overwrite-unpublished")
-              (impl/async-import! branch true {})
+            (if (some-> (settings/remote-sync-allow) (str/includes? "overwrite-unpublished"))
+              (impl/async-import! branch true {}
+                                  :on-success (fn [task-id _result]
+                                                (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                          {:branch branch :auto true} nil)))
               (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
-
+      ;; Read-only instances are skipped: a dirty ledger would fail the check above, and their next full pull
+      ;; rebuilds the ledger anyway.
+      (when (and (= :read-write (settings/remote-sync-type))
+                 (settings/library-is-remote-synced?))
+        (let [n (events/backfill-glossary-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing glossary entries for remote sync" n))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
-          (do
+          (let [branch (settings/remote-sync-branch)]
             (log/info "Remote sync is enabled but no remote-sync collection exists. Importing")
-            (impl/async-import! (settings/remote-sync-branch) true {})))))
+            (impl/async-import! branch true {}
+                                :on-success (fn [task-id _result]
+                                              (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                        {:branch branch :auto true} nil)))))))
     (when (collection/has-remote-synced-collection?)
       (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
       (collection/clear-remote-synced-collection!))))
@@ -65,3 +80,7 @@
 (defmethod startup/def-startup-logic! ::remote-sync-setup
   [_]
   (remote-sync-init))
+
+(defmethod startup/def-shutdown-logic! ::remote-sync-shutdown
+  [_]
+  (impl/fail-running-tasks! "Interrupted by server shutdown"))

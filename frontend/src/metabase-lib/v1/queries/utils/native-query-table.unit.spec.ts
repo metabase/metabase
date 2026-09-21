@@ -76,6 +76,7 @@ const metadata = createMockMetadata({
 
 describe("metabase-lib/v1/queries/utils/native-query-table", () => {
   describe("native query associated with a model", () => {
+    // Unjustified type cast. FIXME
     const virtualTable = metadata.table(MODEL_VIRTUAL_TABLE_ID) as Table;
 
     it("should return a nested card table using the given query's question", () => {
@@ -98,12 +99,15 @@ describe("metabase-lib/v1/queries/utils/native-query-table", () => {
   });
 
   describe("native query associated with both a `collection` and a `database`", () => {
+    // Unjustified type cast. FIXME
     const productsTable = metadata.table(PRODUCTS_ID) as Table;
+    // Unjustified type cast. FIXME
     const nativeQuestionWithCollection = metadata.question(
       cardWithCollection.id,
     ) as Question;
 
     const table = getNativeQueryTable(
+      // Unjustified type cast. FIXME
       nativeQuestionWithCollection.legacyNativeQuery() as NativeQuery,
     );
 
@@ -113,8 +117,10 @@ describe("metabase-lib/v1/queries/utils/native-query-table", () => {
   });
 
   describe("basic native query question", () => {
+    // Unjustified type cast. FIXME
     const nativeQuestion = metadata.question(card.id) as Question;
     const table = getNativeQueryTable(
+      // Unjustified type cast. FIXME
       nativeQuestion.legacyNativeQuery() as NativeQuery,
     );
 

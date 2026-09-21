@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
-import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { FormCollectionAndDashboardPicker } from "metabase/common/collections/containers/FormCollectionAndDashboardPicker";
+import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";
@@ -77,7 +77,7 @@ export const SaveQuestionForm = ({
             },
           }}
         >
-          <Stack gap="sm" mb="md">
+          <Stack gap="sm" mb="lg">
             <Radio
               name={overwriteOptionName}
               value="overwrite"
@@ -103,7 +103,7 @@ export const SaveQuestionForm = ({
         </FormRadioGroup>
       )}
       {values.saveType === "create" && (
-        <Stack gap="md" mb="md">
+        <Stack gap="lg" mb="lg">
           <FormTextInput
             name="name"
             label={t`Name`}

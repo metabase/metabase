@@ -50,16 +50,16 @@
         (is (= "PG replication is only supported for PostgreSQL databases."
                (mt/user-http-request :crowberto :post 400 (str "ee/database-replication/connection/" (:id mysql-db)))))
         (let [url (str "ee/database-replication/connection/" (:id postgres-db))]
-          (with-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
+          (mt/with-dynamic-fn-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
             (mt/with-temporary-setting-values [database-replication-connections {(:id postgres-db) {:connection-id 123}}]
               (is (= "Database already has an active replication connection." (mt/user-http-request :crowberto :post 400 url)))))
-          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
             (is (mt/user-http-request :crowberto :post 500 url))))))))
 
 (deftest delete-fail-test
   (mt/with-premium-features #{:attached-dwh :etl-connections :etl-connections-pg :hosting}
     (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo"]
-      (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+      (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
         (is (mt/user-http-request :crowberto :delete 500 "ee/database-replication/connection/99"))))))
 
 (deftest lifecycle-test
@@ -152,13 +152,11 @@
                        :replicated-tables []
                        :tables-without-pk []
                        :tables-without-owner-match []}]
-
     (testing "successful case with valid tables and quota"
       (is (= (merge base-response
                     {:total-estimated-row-count 1000
                      :replicated-tables [valid-table]})
              (api/preview-replication quotas [valid-table]))))
-
     (testing "no-tables error condition"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern false}
@@ -166,7 +164,6 @@
                      :tables-without-pk [no-pk-table]
                      :tables-without-owner-match [no-ownership-table]})
              (api/preview-replication quotas [no-pk-table no-ownership-table]))))
-
     (testing "no-quota error condition"
       (let [high-row-table {:table-schema "public", :table-name "high_row_table", :estimated-row-count 500000, :has-pkey true, :has-ownership true}]
         (is (= (merge base-response
@@ -175,13 +172,11 @@
                        :can-set-replication false
                        :replicated-tables [high-row-table]})
                (api/preview-replication quotas [high-row-table])))))
-
     (testing "invalid-schema-filters-pattern error condition"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern true}
                      :can-set-replication false})
              (api/preview-replication quotas {:error "Invalid schema pattern"}))))
-
     (testing "mixed tables with various conditions"
       (is (= (merge base-response
                     {:total-estimated-row-count 1000
@@ -189,7 +184,6 @@
                      :tables-without-pk [no-pk-table]
                      :tables-without-owner-match [no-ownership-table]})
              (api/preview-replication quotas [valid-table no-pk-table no-ownership-table]))))
-
     (testing "no quota available"
       (let [no-quota-quotas [{:usage 500000, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}]]
         (is (= (merge base-response
@@ -199,7 +193,6 @@
                        :can-set-replication false
                        :replicated-tables [valid-table]})
                (api/preview-replication no-quota-quotas [valid-table])))))
-
     (testing "empty tables list"
       (is (= (merge base-response
                     {:errors {:no-tables true, :no-quota false, :invalid-schema-filters-pattern false}

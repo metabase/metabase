@@ -32,14 +32,14 @@ describe("detail view", () => {
       H.appBar().within(() => {
         cy.findByRole("link", { name: /Sample Database/ })
           .should("be.visible")
-          .and("have.attr", "href", `/browse/databases/${SAMPLE_DB_ID}`);
-        cy.findByRole("link", { name: "Products" })
-          .should("be.visible")
           .and(
             "have.attr",
             "href",
-            `/question#?db=${SAMPLE_DB_ID}&table=${PRODUCTS_ID}`,
+            `/browse/databases/${SAMPLE_DB_ID}-sample-database`,
           );
+        cy.findByRole("link", { name: "Products" })
+          .should("be.visible")
+          .and("have.attr", "href", `/table/${PRODUCTS_ID}-products`);
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
 

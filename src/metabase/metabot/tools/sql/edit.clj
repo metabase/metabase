@@ -2,6 +2,7 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.metabot.util :as metabot.u]
@@ -47,7 +48,15 @@
   - description: New description for the query (optional)
 
   Returns an `operation-result` map. For details see its docstring."
-  [{:keys [query-id edits queries-state]}]
+  [{:keys [query-id edits queries-state]}
+   :- [:map {:closed true}
+       [:query-id [:or :string :int]]
+       [:edits [:sequential [:map {:closed true}
+                             [:old_string :string]
+                             [:new_string :string]
+                             [:replace_all {:optional true} [:maybe :boolean]]]]]
+       [:checklist {:optional true} [:maybe :string]]
+       [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
   ;; Look up query from in-memory state
@@ -58,13 +67,12 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
+    (metabot.tools.sql.common/check-native-query-access! (:database query))
     (let [current-sql (metabot.u/extract-sql-content query)]
       (when-not current-sql
         (throw (ex-info (tru "Query {0} is not a SQL query" query-id)
                         {:agent-error? true
                          :query-id query-id})))
-
       (let [;; Apply edits sequentially
             new-sql (reduce apply-sql-edit current-sql edits)
             dialect (metabot.tools.sql.validation/query->dialect query)

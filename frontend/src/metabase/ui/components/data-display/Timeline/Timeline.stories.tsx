@@ -6,7 +6,7 @@ const args = {
   align: "left",
   bulletSize: 20,
   lineWidth: 2,
-  color: "var(--mb-color-brand)",
+  color: "var(--mb-color-core-brand)",
 };
 
 const argTypes = {

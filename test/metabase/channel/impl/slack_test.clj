@@ -1,6 +1,8 @@
 (ns metabase.channel.impl.slack-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.slack :as slack]
@@ -32,7 +34,7 @@
 
 (deftest slack-post-receives-at-most-50-blocks-test
   (let [block-inputs (atom [])]
-    (with-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]
+    (mt/with-dynamic-fn-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]
       (channel/send!
        {:type    :channel/slack}
        {:channel "#not-a-channel"
@@ -41,6 +43,23 @@
       (is (every? #(<= 1 (count %) 50) @block-inputs))
       (is (= 423 (reduce + (map count @block-inputs)))))))
 
+(deftest pdf-share-failure-fallback-test
+  (let [pdf {:bytes (byte-array [1 2 3]) :filename "dash.pdf" :comment "the caption"}]
+    (testing "when sharing the PDF into a channel fails, send! posts the caption as a fallback summary"
+      (let [posted (atom [])]
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
+                                    slack/post-chat-message!      (fn [m] (swap! posted conj m))]
+          (channel/send! {:type :channel/slack}
+                         {:channel "C0CHANNEL" :blocks [] :pdf pdf})
+          (is (= [{:channel "C0CHANNEL" :text "the caption"}] @posted)))))
+    (testing "the same fallback applies to a DM, where the caption is never posted ahead of the file"
+      (let [posted (atom [])]
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
+                                    slack/post-chat-message!      (fn [m] (swap! posted conj m))]
+          (channel/send! {:type :channel/slack}
+                         {:channel "U0USER123" :blocks [] :pdf pdf})
+          (is (= [{:channel "U0USER123" :text "the caption"}] @posted)))))))
+
 (deftest mkdwn-link-escaping-test
   (let [parts [{:type :card
                 :card {:id   1
@@ -48,8 +67,8 @@
                {:type :card
                 :card {:id   1
                        :name "> click <https://c.com|here>"}}]
-        processed   (with-redefs [slack/upload-file! (fn [_ _]
-                                                       {:id "uploaded"})]
+        processed   (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _]
+                                                                     {:id "uploaded"})]
                       (mt/with-temporary-setting-values [site-url "a.com"]
                         (mapv #'channel.slack/part->sections! parts)))]
     (is (= [[{:type "section", :text {:type "mrkdwn", :text "<http://a.com/question/1|&amp;amp;a>", :verbatim true}}
@@ -125,7 +144,7 @@
                                     :creator      {:common_name "Test User"}}
                       recipient    {:type    :notification-recipient/raw-value
                                     :details {:value "#foo"}}
-                      processed    (with-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
+                      processed    (mt/with-dynamic-fn-redefs [slack/upload-file! (constantly {:url "a.com", :id "id"})]
                                      (channel/render-notification :channel/slack notification {:recipients [recipient]}))]
                   (->> processed first :blocks last :fields (map :text))))))]
     (when config/ee-available?
@@ -135,6 +154,29 @@
     (testing "When whitelabeling is disabled, branding content should be included"
       (let [links (render-dashboard-links false)]
         (is (= 2 (count links)))))))
+
+(defn- test-dashcard
+  "A DashboardCard row for card `card-id` on dashboard `dashboard-id`, as a Dashboard Subscription part carries it."
+  [id dashboard-id card-id]
+  {:id                     id
+   :dashboard_id           dashboard-id
+   :card_id                card-id
+   :created_at             (t/offset-date-time)
+   :updated_at             (t/offset-date-time)
+   :size_x                 4
+   :size_y                 4
+   :row                    0
+   :col                    0
+   :parameter_mappings     []
+   :visualization_settings {}
+   :entity_id              "test-dashcard-entity"
+   :action_id              nil
+   :dashboard_tab_id       nil
+   :inline_parameters      nil})
+
+(def ^:private empty-result
+  "A QP result with no rows."
+  {:data {:cols [] :rows []} :row_count 0})
 
 (deftest dashboard-card-links-include-parameters-test
   (let [dashboard-id 42
@@ -150,14 +192,40 @@
                                      :parameters      dashboard-params
                                      :dashboard_parts [{:type :card
                                                         :card {:id card-id :name "Test Card"}
-                                                        :dashcard {:id 456 :dashboard_id dashboard-id}}]}
+                                                        :dashcard (test-dashcard 456 dashboard-id card-id)
+                                                        :result empty-result}]}
                       :creator      {:common_name "Test User"}}
         recipient {:type    :notification-recipient/raw-value
                    :details {:value "#test-channel"}}]
-    (with-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
+    (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
       (mt/with-temporary-setting-values [site-url "http://example.com"]
         (let [processed (channel/render-notification :channel/slack notification {:recipients [recipient]})
               card-section (-> processed first :blocks (nth 3))]
           (is (= "section" (:type card-section)))
           (is (= "<http://example.com/dashboard/42?state=CA&state=NY&state=NJ#scrollTo=456|Test Card>"
                  (-> card-section :text :text))))))))
+
+(deftest dashboard-subscription-part-error-isolation-test
+  (testing "One card failing to render does not break the whole Slack dashboard subscription; the
+            failed card degrades to an error placeholder block and the rest still render (#74007)"
+    (let [orig         @#'channel.slack/part->sections!
+          notification {:payload_type :notification/dashboard
+                        :payload {:dashboard       {:id 1 :name "Test Dashboard"}
+                                  :parameters      []
+                                  :dashboard_parts [{:type :card :card {:id 1 :name "Good Card"} :dashcard (test-dashcard 10 1 1) :result empty-result}
+                                                    {:type :card :card {:id 2 :name "Bad Card"}  :dashcard (test-dashcard 20 1 2) :result empty-result}]}
+                        :creator {:common_name "Test User"}}
+          recipient    {:type :notification-recipient/raw-value :details {:value "#test-channel"}}]
+      (mt/with-dynamic-fn-redefs [slack/upload-file!             (fn [_ _] {:id "uploaded-file-id"})
+                                  channel.slack/part->sections! (fn [params part]
+                                                                  (if (= 2 (-> part :card :id))
+                                                                    (throw (ex-info "boom rendering part" {}))
+                                                                    (orig params part)))]
+        (mt/with-temporary-setting-values [site-url "http://example.com"]
+          (let [blocks   (-> (channel/render-notification :channel/slack notification {:recipients [recipient]})
+                             first :blocks)
+                all-text (str/join " " (keep #(-> % :text :text) blocks))]
+            (testing "the failed card degrades to the error placeholder block"
+              (is (str/includes? all-text "An error occurred while displaying this card.")))
+            (testing "the healthy card still produced its block (delivery not aborted)"
+              (is (str/includes? all-text "Good Card")))))))))

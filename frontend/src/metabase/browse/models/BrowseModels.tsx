@@ -7,17 +7,15 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -30,6 +28,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "../components/BrowseContainer.module.css";
 
@@ -39,6 +38,7 @@ import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
 import { trackNewModelInitiated } from "./analytics";
 import type { ModelFilterSettings, ModelResult } from "./types";
+import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
 const {
@@ -59,7 +59,7 @@ export const BrowseModels = () => {
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const canCreateNewModel =
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
@@ -70,7 +70,7 @@ export const BrowseModels = () => {
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       aria-labelledby={titleId}
     >
       <Flex
@@ -87,13 +87,13 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-primary" id={titleId}>
+            <Title order={1} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon size={24} c="icon-brand" name="model" />
                 {t`Models`}
               </Group>
             </Title>
-            <Group gap="xs">
+            <Group gap="xxs">
               {canCreateNewModel && (
                 <Tooltip label={t`Create a new model`} position="bottom">
                   <ActionIcon
@@ -120,20 +120,23 @@ export const BrowseModels = () => {
       </Flex>
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%">
-          <Stack mb="lg" gap="md" w="100%">
+          <Stack mb="xl" gap="lg" w="100%">
             {isEmpty ? (
-              <Stack gap="lg" align="center" data-testid="empty-state">
+              <Stack gap="xl" align="center" data-testid="empty-state">
                 {showMetabaseLinks && (
                   <Box maw="45rem" w="100%">
                     <ModelsVideo autoplay={0} />
                   </Box>
                 )}
-                <Stack gap="xs" maw="28rem">
+                <Stack gap="xxs" maw="28rem">
                   <Title
-                    order={3}
+                    order={2}
                     ta="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  <Text
+                    ta="center"
+                    lh="1.25rem"
+                  >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>
@@ -218,6 +221,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
         },
   );
 
+  // Unjustified type cast. FIXME
   const models = modelsResult.data?.data as ModelResult[] | undefined;
 
   const recentsCap = getMaxRecentModelCount(models?.length ?? 0);

@@ -26,11 +26,11 @@ import {
   buildExpressionText,
   buildFullTextWithIdentities,
   cleanupParens,
-  filterSearchResults,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
   parseFullTextWithPositions,
+  planMetricInsertion,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
@@ -59,91 +59,11 @@ function identitiesForAllMetrics(
     }));
 }
 
-function makeSearchResult(id: number, model: "metric" | "measure") {
-  return { id, model, name: `Result ${id}` };
-}
-
-describe("filterSearchResults", () => {
-  const results = [
-    makeSearchResult(1, "metric"),
-    makeSearchResult(2, "metric"),
-    makeSearchResult(10, "measure"),
-    makeSearchResult(20, "measure"),
-  ];
-
-  it("excludes already-selected metrics by ID", () => {
-    const filtered = filterSearchResults(
-      results,
-      new Set([1]),
-      new Set(),
-      undefined,
-    );
-    expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
-      { id: 2, model: "metric" },
-      { id: 10, model: "measure" },
-      { id: 20, model: "measure" },
-    ]);
-  });
-
-  it("excludes already-selected measures by ID", () => {
-    const filtered = filterSearchResults(
-      results,
-      new Set(),
-      new Set([10, 20]),
-      undefined,
-    );
-    expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
-      { id: 1, model: "metric" },
-      { id: 2, model: "metric" },
-    ]);
-  });
-
-  it("excludes the excludeMetric param", () => {
-    const filtered = filterSearchResults(results, new Set(), new Set(), {
-      id: 2,
-      sourceType: "metric",
-    });
-    expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
-      { id: 1, model: "metric" },
-      { id: 10, model: "measure" },
-      { id: 20, model: "measure" },
-    ]);
-  });
-
-  it("excludeMetric only matches same model type", () => {
-    const filtered = filterSearchResults(results, new Set(), new Set(), {
-      id: 1,
-      sourceType: "measure",
-    });
-    expect(filtered).toHaveLength(4);
-  });
-
-  it("handles empty results", () => {
-    const filtered = filterSearchResults(
-      [],
-      new Set([1]),
-      new Set([2]),
-      undefined,
-    );
-    expect(filtered).toEqual([]);
-  });
-
-  it("combines all exclusion criteria", () => {
-    const filtered = filterSearchResults(results, new Set([1]), new Set([10]), {
-      id: 2,
-      sourceType: "metric",
-    });
-    expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
-      { id: 20, model: "measure" },
-    ]);
-  });
-});
-
 describe("cleanupParens", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -257,7 +177,7 @@ describe("buildExpressionText", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -312,7 +232,7 @@ describe("parseFullText — numeric literal parsing", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -479,7 +399,7 @@ describe("parseFullText — negative numbers", () => {
   const metric = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -660,7 +580,7 @@ describe("parseFullText — metric names with commas", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -1375,6 +1295,7 @@ describe("applyTrackedDefinitions", () => {
       metricNames,
     );
     expect(entities).toHaveLength(1);
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
@@ -1390,6 +1311,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBeNull();
   });
 
@@ -1413,9 +1335,11 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
+    // Unjustified type cast. FIXME
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(
       geoBreakoutDef,
     );
@@ -1467,7 +1391,9 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     const resultExpr = entities[0] as ExpressionDefinitionEntry;
+    // Unjustified type cast. FIXME
     const parsedExpr = parsed[0] as ExpressionDefinitionEntry;
     expect(resultExpr.tokens[1]).toBe(parsedExpr.tokens[1]);
     expect(resultExpr.tokens[2]).toBe(parsedExpr.tokens[2]);
@@ -1484,6 +1410,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
@@ -1503,6 +1430,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).not.toBe(
       revenueDef,
     );
@@ -1557,9 +1485,11 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
+    // Unjustified type cast. FIXME
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
   });
 
@@ -1587,6 +1517,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     const expr = entities[0] as ExpressionDefinitionEntry;
     expect(isExpressionEntry(expr)).toBe(true);
     expect(expr.name).toBe("My sum");
@@ -1604,6 +1535,7 @@ describe("applyTrackedDefinitions", () => {
       text,
       metricNames,
     );
+    // Unjustified type cast. FIXME
     expect((entities[0] as ExpressionDefinitionEntry).name).toBe("My sum");
   });
 
@@ -1612,6 +1544,7 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue+Geo Revenue";
     const parsed = parseFullText(text, metricNames, []);
     const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
+    // Unjustified type cast. FIXME
     const expr = entities[0] as ExpressionDefinitionEntry;
     // Default name is the auto-derived expression text.
     expect(expr.name).toBe(buildExpressionText(expr.tokens, metricNames));
@@ -1659,6 +1592,7 @@ describe("applyTrackedDefinitions", () => {
       metricNames,
     );
     expect(entities).toHaveLength(3);
+    // Unjustified type cast. FIXME
     const [first, middle, last] = entities as ExpressionDefinitionEntry[];
     expect(isExpressionEntry(first)).toBe(true);
     expect(isExpressionEntry(middle)).toBe(true);
@@ -1682,8 +1616,11 @@ describe("buildFullTextWithIdentities", () => {
     "metric:3": "123",
   };
 
+  // Unjustified type cast. FIXME
   const revenueDef = { "display-name": "Revenue" } as any;
+  // Unjustified type cast. FIXME
   const costsDef = { "display-name": "Costs" } as any;
+  // Unjustified type cast. FIXME
   const numericDef = { "display-name": "123" } as any;
 
   it("produces text and identity ranges for standalone metrics", () => {
@@ -1719,9 +1656,9 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "Revenue + Costs",
         tokens: [
-          { type: "metric", sourceId: "metric:1" as const, count: 1 },
+          { type: "metric", sourceId: "metric:1" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
-          { type: "metric", sourceId: "metric:2" as const, count: 1 },
+          { type: "metric", sourceId: "metric:2" as const, occurrenceCount: 1 },
         ],
       },
     ];
@@ -1771,7 +1708,7 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3" as const, count: 1 },
+          { type: "metric", sourceId: "metric:3" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
           { type: "constant", value: 456 },
         ],
@@ -1826,7 +1763,7 @@ describe("parseFullText with identities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3", count: 1 },
+          { type: "metric", sourceId: "metric:3", occurrenceCount: 1 },
           { type: "operator", op: "+" },
           { type: "constant", value: 456 },
         ],
@@ -1856,5 +1793,108 @@ describe("parseFullText with identities", () => {
     expect(result).toEqual([
       { id: "metric:3", type: "metric", definition: null },
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planMetricInsertion
+// ---------------------------------------------------------------------------
+
+describe("planMetricInsertion", () => {
+  it("inserts the metric name into an empty formula", () => {
+    const plan = planMetricInsertion({
+      docText: "",
+      wordStart: 0,
+      wordEnd: 0,
+      metricName: "Revenue",
+    });
+    expect(plan.insertText).toBe("Revenue");
+    expect(plan.replaceFrom).toBe(0);
+    expect(plan.replaceTo).toBe(0);
+    expect(plan.newCursorPos).toBe("Revenue".length);
+    expect(plan.metricFrom).toBe(0);
+    expect(plan.metricTo).toBe("Revenue".length);
+    expect(plan.needsLeadingComma).toBe(false);
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("inserts the metric name when replacing a partial word at the end of the formula", () => {
+    // "Rev" → pick "Revenue"
+    const plan = planMetricInsertion({
+      docText: "Rev",
+      wordStart: 0,
+      wordEnd: 3,
+      metricName: "Revenue",
+    });
+    expect(plan.insertText).toBe("Revenue");
+    expect(plan.replaceFrom).toBe(0);
+    expect(plan.replaceTo).toBe(3);
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("prepends ', ' when chaining after an existing metric name and lands at end of formula", () => {
+    // "Revenue Cos|" cursor after Cos; choosing "Costs" appends the new one
+    const docText = "Revenue Cos";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 8,
+      wordEnd: 11,
+      metricName: "Costs",
+    });
+    expect(plan.insertText).toBe(", Costs");
+    // Leading ", " replaces the trailing whitespace after "Revenue"
+    expect(plan.replaceFrom).toBe("Revenue".length);
+    expect(plan.replaceTo).toBe(docText.length);
+    expect(plan.needsLeadingComma).toBe(true);
+    expect(plan.isAtEndOfFormula).toBe(true);
+    // Metric range starts after the leading ", "
+    expect(plan.metricFrom).toBe("Revenue, ".length);
+    expect(plan.metricTo).toBe("Revenue, Costs".length);
+  });
+
+  it("does not prepend ', ' after operator characters", () => {
+    // "Revenue + Cos|" — operator "+" precedes, so no leading comma
+    const docText = "Revenue + Cos";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 10,
+      wordEnd: 13,
+      metricName: "Costs",
+    });
+    expect(plan.needsLeadingComma).toBe(false);
+    expect(plan.insertText).toBe("Costs");
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("inserts only the metric name when replacement occurs in the middle of the formula", () => {
+    // "Rev|enue + Costs" — replacing "Revenue" mid-formula
+    const docText = "Revenue + Costs";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 0,
+      wordEnd: 7,
+      metricName: "Profit",
+    });
+    expect(plan.insertText).toBe("Profit");
+    expect(plan.isAtEndOfFormula).toBe(false);
+    expect(plan.replaceTo).toBe(7);
+  });
+
+  it("treats trailing whitespace as end of formula", () => {
+    // "Revenue   " — cursor at end, word is empty
+    const docText = "Revenue   ";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: docText.length,
+      wordEnd: docText.length,
+      metricName: "Costs",
+    });
+    // Leading separator added because prev char is alphanumeric (via trimEnd)
+    expect(plan.needsLeadingComma).toBe(true);
+    expect(plan.isAtEndOfFormula).toBe(true);
+    expect(plan.insertText).toBe(", Costs");
+    // Swallows the trailing whitespace
+    expect(plan.replaceFrom).toBe("Revenue".length);
+    expect(plan.replaceTo).toBe(docText.length);
   });
 });

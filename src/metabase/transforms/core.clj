@@ -5,29 +5,39 @@
    [metabase.transforms-base.util]
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
+   [metabase.transforms.dag]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.dag-run]
+   [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
+   [metabase.transforms.notification]
+   [metabase.transforms.run-listing]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
+   [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.transforms.settings
-  transform-timeout]
+  transform-timeout
+  transforms-meter-locked]
+ [metabase.transforms.usage
+  transform-locked?
+  transforms-meter-locked?]
  [metabase.transforms-base.util
   native-query-transform?
   output-table
   python-transform?
   query-transform?
+  target-table-exists?
   transform-source-database
-  transform-source-type
-  transform-type]
+  transform-source-type]
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]
@@ -51,12 +61,18 @@
   get-transform-cycle]
  [metabase.transforms.jobs
   run-job!
+  cancel-job-run!
   job-transforms]
+ [metabase.transforms.dag
+  run-dag!
+  cancel-dag-run!
+  dag-run-transforms]
  [metabase.transforms.schedule
   validate-cron-expression
   initialize-job!
   update-job!
   delete-job!
+  delete-trigger!
   existing-trigger]
  [metabase.transforms.models.transform
   update-transform-tags!]
@@ -64,9 +80,19 @@
   timeout-run!
   paged-runs
   running-run-for-transform-id]
+ [metabase.transforms.models.job-run
+  paged-job-runs
+  transform-runs-for-job-run]
+ [metabase.transforms.models.dag-run
+  transform-runs-for-dag-run]
+ [metabase.transforms.run-listing
+  paged-run-summaries
+  present-run-summaries]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job
+  activate-job!
+  deactivate-job!
   update-job-tags!]
  [metabase.transforms.models.transform-tag
   tag-name-exists?

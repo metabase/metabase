@@ -1,0 +1,16 @@
+.searchResultsContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownFooter {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdownFooter:hover,
+.dropdownFooterSelected {
+  color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-hover);
+  cursor: pointer;
+}

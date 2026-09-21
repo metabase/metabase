@@ -1,5 +1,4 @@
 .container {
-  padding: 0 var(--mantine-spacing-sm);
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -8,6 +7,6 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

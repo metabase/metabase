@@ -6,23 +6,25 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
+import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import {
   trackDataStudioGlossaryTermCreated,
   trackDataStudioGlossaryTermDeleted,
   trackDataStudioGlossaryTermUpdated,
-} from "metabase/data-studio/analytics";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/analytics";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
 import { Box, Card } from "metabase/ui";
 
 import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
   usePageTitle(t`Glossary`);
-  const { data: glossary = [] } = useListGlossaryQuery();
+  const { data } = useListGlossaryQuery();
+  const glossary = data?.data ?? [];
+  const canWrite = data?.can_write ?? false;
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
   const [deleteGlossary] = useDeleteGlossaryMutation();
@@ -35,9 +37,10 @@ export function GlossaryPage() {
         }
       />
       <Box w="100%" className={S.contentWrapper}>
-        <Card px="lg" pb="sm" withBorder shadow="none">
+        <Card px="xl" pb="sm" withBorder shadow="none">
           <GlossaryTable
             glossary={glossary}
+            readOnly={!canWrite}
             onCreate={async (term, definition) => {
               const { data } = await createGlossary({ term, definition });
               if (data?.id) {

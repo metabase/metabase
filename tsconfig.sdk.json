@@ -26,6 +26,8 @@
   ],
   "exclude": [
     "node_modules",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev/vite-env.d.ts",
     "**/*.spec.*",
     "**/mocks/*",
     "**/tests/*",

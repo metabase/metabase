@@ -1,10 +1,17 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
    [metabase.tiles.api-test :as tiles.api-test]
@@ -71,19 +78,17 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-card [card]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          ;; embed tests still assert via the deprecated helper; not yet migrated
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (card-query-url card))))
-
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (card-query-url card)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (card-query-url card))))))))))
@@ -96,15 +101,14 @@
           (testing "check that if embedding is enabled globally fail if the token is missing a `:locked` parameter"
             (is (= "You must specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "locked"}})))))
-
           (testing "if `:locked` param is supplied, request should succeed"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                              :params            {:venue_id 100}}))))
-
           (testing "if `:locked` parameter is present in URL params, request should fail"
-            (is (= "You can only specify a value for :venue_id in the JWT."
+            (is (= "You can only specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200"))))))))))
@@ -115,12 +119,11 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-card [card]
           (testing "check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "disabled"}
                                                                                    :params            {:venue_id 100}})))))
-
           (testing "If a `:disabled` param is passed in the URL the request should fail"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "disabled"}})
                                                                   "?venue_id=200"))))))))))
 
@@ -130,17 +133,18 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-card [card]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-            (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+            (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
-
           (testing "If an `:enabled` param is present in the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                              :params            {:venue_id "enabled"}}))))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
@@ -173,7 +177,7 @@
             (is (= [[107]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
-            (is (= "You're not allowed to specify a value for :date."
+            (is (= "You're not allowed to specify a value for date."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}) "?date=")))))))
       (testing "if the param is locked"
         (mt/with-temp
@@ -263,22 +267,28 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-dashcard [dashcard]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          ;; embed tests still assert via the deprecated helper; not yet migrated
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))))
-
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (dashcard-url dashcard)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (is (= "Embedding is not enabled."
                  (mt/with-temporary-setting-values [enable-embedding-static false]
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (dashcard-url dashcard))))))))))
+
+(deftest dashcard-archived-card-test
+  (testing "GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+    (testing "refuses a trashed Card, even though its DashboardCard row survives"
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:card {:archived true}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (dashcard-url dashcard)))))))))
 
 (deftest dashcard-locked-params-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -289,15 +299,13 @@
             (is (= "You must specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "locked"}})))))
-
           (testing "If `:locked` param is supplied, request should succeed"
             (is (=? {:status   "completed"
                      :data     {:rows     [[1]]}}
                     (mt/user-http-request :crowberto :get 202
                                           (dashcard-url dashcard {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})))))
-
           (testing "If `:locked` parameter is present in URL params, request should fail"
-            (is (= "You can only specify a value for :venue_id in the JWT."
+            (is (= "You can only specify a value for venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard
                                                                                 {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})
                                                                   "?venue_id=200"))))))))))
@@ -308,12 +316,11 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-dashcard [dashcard]
           (testing "check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "disabled"}, :params {:venue_id 100}})))))
-
           (testing "If a `:disabled` param is passed in the URL the request should fail"
-            (is (= "You're not allowed to specify a value for :venue_id."
+            (is (= "You're not allowed to specify a value for venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "disabled"}})
                                                                   "?venue_id=200"))))))))))
 
@@ -323,17 +330,15 @@
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (embed-test/with-temp-dashcard [dashcard]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-            (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+            (is (= "You can't specify a value for venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
                                                                                           :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
-
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             (is (=? {:status "completed"
                      :data   {:rows [[1]]}}
                     (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
                                                                                       :params            {:venue_id 100}})))))
-
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
             (is (=? {:status "completed"
                      :data   {:rows [[0]]}}
@@ -427,20 +432,17 @@
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))))
-
         (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
                  (embed-test/with-embedding-enabled-and-new-secret-key!
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
-
         (testing "should fail if embedding is disabled"
           (is (= "Embedding is not enabled."
                  (mt/with-temporary-setting-values [enable-embedding false]
                    (embed-test/with-new-secret-key!
                      (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                        (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
-
         (testing "should fail if embedding is enabled and the wrong key is used"
           (is (= "Message seems corrupt or manipulated"
                  (embed-test/with-embedding-enabled-and-new-secret-key!
@@ -469,20 +471,27 @@
                 (is (= "completed" (:status result)))
                 (is (= 6 (count (get-in result [:data :cols]))))
                 (is (= 1144 (count rows)))))
-
             (testing "should fail if user is not an admin"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))
-
             (testing "should fail if embedding is disabled"
               (is (= "Embedding is not enabled."
                      (mt/with-temporary-setting-values [enable-embedding-static false]
                        (embed-test/with-new-secret-key!
                          (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
-
             (testing "should fail if embedding is enabled and the wrong key is used"
               (is (= "Message seems corrupt or manipulated"
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (pivot-dashcard-url dashcard))))))))))))
+
+(deftest pivot-dashcard-archived-card-test
+  (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id refuses a trashed Card"
+    (mt/dataset test-data
+      (embed-test/with-embedding-enabled-and-new-secret-key!
+        (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
+                                                  :card     (assoc (api.pivots/pivot-card) :archived true)
+                                                  :dashcard {:parameter_mappings []}}]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 (pivot-dashcard-url dashcard)))))))))
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
@@ -518,7 +527,6 @@
                                                           :dashboard_id       dashboard-id
                                                           :parameter_mappings [{:parameter_id "_name_"
                                                                                 :card_id      card-id
-                                                                                :type         "string/="
                                                                                 :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
@@ -542,7 +550,7 @@
   `(do-with-new-secret-key! (fn [] ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
      (with-new-secret-key!
        ~@body)))
 
@@ -574,6 +582,69 @@
                                          (format "preview_embed/card/%s/params/%s/values"
                                                  signed-token "_STATIC_CATEGORY_"))))))))))
 
+(deftest card-params-values-field-filter-test
+  (testing "GET /api/preview_embed/card/:token/params/:param-key/values with a field filter parameter"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (api.card-test/with-card-param-values-fixtures [{:keys [field-filter-card param-keys]}]
+        (let [embedding-params (zipmap (map (comp keyword :slug) (:parameters field-filter-card))
+                                       (repeat "enabled"))
+              signed-token     (embed-test/card-token field-filter-card
+                                                      {:_embedding_params embedding-params})
+              response         (mt/user-http-request :crowberto :get 200
+                                                     (format "preview_embed/card/%s/params/%s/values"
+                                                             signed-token (:field-values param-keys)))]
+          (is (false? (:has_more_values response)))
+          (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                           (-> response :values set))))))))
+
+(deftest card-params-values-remapped-fields-test
+  (testing "preview embed card values/remapping endpoints work for parameters mapped to remapped fields"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-column-remappings [orders.quantity {5 "N5"}
+                                  orders.product_id products.title]
+        (mt/with-temp [:model/Card card
+                       (let [mp (mt/metadata-provider)]
+                         {:dataset_query
+                          (-> (lib/native-query mp "SELECT * FROM ORDERS JOIN PEOPLE ON ORDERS.USER_ID = PEOPLE.ID WHERE {{quantity}} AND {{product_id_fk}} AND {{user_id_pk}}")
+                              (lib/with-template-tags
+                                {"quantity"      {:id           "quantity"
+                                                  :name         "quantity"
+                                                  :display-name "Internal"
+                                                  :type         :dimension
+                                                  :widget-type  :number/=
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :quantity)))}
+                                 "product_id_fk" {:id           "product_id_fk"
+                                                  :name         "product_id_fk"
+                                                  :display-name "FK"
+                                                  :type         :dimension
+                                                  :widget-type  :id
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :orders :product_id)))}
+                                 "user_id_pk"    {:id           "user_id_pk"
+                                                  :name         "user_id_pk"
+                                                  :display-name "PK->Name"
+                                                  :type         :dimension
+                                                  :widget-type  :id
+                                                  :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :id)))}}))
+                          :parameters [{:id "quantity", :name "Internal", :slug "quantity", :type "number/="
+                                        :target ["dimension" ["template-tag" "quantity"]]}
+                                       {:id "product_id_fk", :name "FK", :slug "product_id_fk", :type "id"
+                                        :target ["dimension" ["template-tag" "product_id_fk"]]}
+                                       {:id "user_id_pk", :name "PK->Name", :slug "user_id_pk", :type "id"
+                                        :target ["dimension" ["template-tag" "user_id_pk"]]}]})]
+          (let [token (embed-test/card-token card {:_embedding_params {:quantity      "enabled"
+                                                                       :product_id_fk "enabled"
+                                                                       :user_id_pk    "enabled"}})]
+            (testing "values for internally-remapped param"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "preview_embed/card/%s/params/quantity/values" token)))))
+            (testing "values for FK-remapped param"
+              (is (map? (mt/user-http-request :crowberto :get 200
+                                              (format "preview_embed/card/%s/params/product_id_fk/values" token)))))
+            (testing "remapping for PK param"
+              (is (some? (mt/user-http-request :crowberto :get 200
+                                               (format "preview_embed/card/%s/params/user_id_pk/remapping" token)
+                                               :value "1"))))))))))
+
 (deftest params-with-static-list-test
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!
@@ -587,7 +658,20 @@
             (testing "\nGET /api/preview_embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
-                     (mt/user-http-request :rasta :get 200 url))))))))))
+                     (mt/user-http-request :crowberto :get 200 url))))))))))
+
+(deftest preview-locked-linked-chain-filter-values-test
+  (testing "GET /api/preview_embed/dashboard/:token/params/:key/values constrains a linked enabled param by a locked param (#41635)"
+    (with-embedding-enabled-and-new-secret-key!
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (let [signed-token (dash-token dashboard {:_embedding_params {:category_id "enabled"
+                                                                      :category_name "enabled"
+                                                                      :price         "locked"}
+                                                  :params            {:price 4}})
+              url           (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_CATEGORY_ID_")]
+          (is (= {:values          [[40 "Japanese"] [67 "Steakhouse"]]
+                  :has_more_values false}
+                 (mt/user-http-request :crowberto :get 200 url))))))))
 
 (deftest dashboard-params-search-test
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
@@ -736,3 +820,46 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+(deftest dashcard-tile-archived-card-test
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y refuses a trashed Card"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (venues-query)
+                                                              :archived      true}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id      card-id
+                                                              :dashboard_id dashboard-id}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                                                 (embed-test/dash-token dashboard-id) dashcard-id card-id)
+                                     :latField (tiles.api-test/encoded-lat-field-ref)
+                                     :lonField (tiles.api-test/encoded-lon-field-ref))))))))
+
+(deftest card-tile-query-implicit-join-ref-test
+  (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (tiles.api-test/implicit-join-query)
+                                                :enable_embedding true}]
+        (let [token (embed-test/card-token card-id)]
+          (is (= "Fields referenced via implicit joins are not supported."
+                 (mt/user-http-request
+                  :crowberto :get 400 (format "preview_embed/tiles/card/%s/1/1/1" token)
+                  :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                  :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
+
+(deftest dashcard-tile-query-implicit-join-ref-test
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
+                     :model/Card          {card-id :id}      {:dataset_query (tiles.api-test/implicit-join-query)}
+                     :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                              :dashboard_id dashboard-id}]
+        (let [token (embed-test/dash-token dashboard-id)]
+          (is (= "Fields referenced via implicit joins are not supported."
+                 (mt/user-http-request
+                  :crowberto :get 400 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
+                                              token
+                                              dashcard-id
+                                              card-id)
+                  :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                  :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))

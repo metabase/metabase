@@ -1,5 +1,5 @@
+import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import * as Urls from "metabase/utils/urls";
 import type { RecentItem } from "metabase-types/api";
 
 export const isItemActive = (item: RecentItem) => {

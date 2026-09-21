@@ -17,14 +17,14 @@ export const ChannelCard = ({
   return (
     <Paper
       withBorder
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       shadow="none"
       onClick={onClick}
       className={cx(CS.cursorPointer, CS.bgLightHover, CS.textBrandHover)}
     >
       <Flex align="center" gap="sm">
-        <Icon name={iconName} c="brand" />
+        <Icon name={iconName} c="core-brand" />
         <Text fw={700} c="inherit">
           {title}
         </Text>

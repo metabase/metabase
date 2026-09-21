@@ -1,6 +1,6 @@
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { findRequests } from "__support__/server-mocks/util";
-import { renderWithProviders } from "__support__/ui";
+import { act, renderWithProviders } from "__support__/ui";
 import type { CacheConfig, CacheStrategy } from "metabase-types/api";
 import { createMockCacheConfig } from "metabase-types/api/mocks";
 
@@ -28,7 +28,9 @@ describe("useSaveStrategy", () => {
 
     const { getSaveStrategy } = setup(1, "question");
 
-    await getSaveStrategy()({ type: "inherit" });
+    await act(async () => {
+      await getSaveStrategy()({ type: "inherit" });
+    });
 
     const deleteRequests = await findRequests("DELETE");
     expect(deleteRequests).toHaveLength(1);
@@ -43,7 +45,9 @@ describe("useSaveStrategy", () => {
 
     const { getSaveStrategy } = setup(1, "metric");
 
-    await getSaveStrategy()({ type: "inherit" });
+    await act(async () => {
+      await getSaveStrategy()({ type: "inherit" });
+    });
 
     const deleteRequests = await findRequests("DELETE");
     expect(deleteRequests).toHaveLength(1);
@@ -55,8 +59,10 @@ describe("useSaveStrategy", () => {
 
     const { getSaveStrategy } = setup(1, "metric");
 
-    await getSaveStrategy()({
-      type: "nocache",
+    await act(async () => {
+      await getSaveStrategy()({
+        type: "nocache",
+      });
     });
 
     const putRequests = await findRequests("PUT");

@@ -1,26 +1,16 @@
-import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useContext, useMemo, useState } from "react";
-import { push } from "react-router-redux";
-import { useLocation, useMount } from "react-use";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useLazyGetTransformQuery } from "metabase/api";
-import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { MetabotContext } from "metabase/metabot/context";
-import {
-  type MetabotAgentEditSuggestionChatMessage,
-  activateSuggestedTransform,
-  getIsSuggestedTransformActive,
+import { skipToken, useGetTransformQuery } from "metabase/api";
+import type {
+  MetabotAgentDataPartMessage,
+  MetabotDataPart,
 } from "metabase/metabot/state";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useMetadataProvider } from "metabase/metadata-store";
 import {
   Button,
   Collapse,
@@ -31,150 +21,81 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  DatabaseId,
+  MetabotSuggestedTransform,
   MetabotTransformInfo,
   SuggestedTransform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
+import {
+  SuggestionPreviewContent,
+  loadSuggestionPreview,
+} from "./lazySuggestionPreviewContent";
 
-const PreviewContent = ({
-  oldSource,
-  newSource,
-}: {
-  oldSource: string;
-  newSource: string;
-}) => {
-  const extensions = useMemo(
-    () =>
-      _.compact([
-        oldSource &&
-          unifiedMergeView({
-            original: oldSource,
-            mergeControls: false,
-            collapseUnchanged: {
-              margin: 1,
-              minSize: 1,
-            },
-          }),
-      ]),
-    [oldSource],
-  );
-
-  return (
-    <CodeMirror
-      className={cx(
-        EditorS.editor,
-        S.suggestionEditor,
-        !oldSource && S.suggestionEditorOnlyNew,
-      )}
-      extensions={extensions}
-      value={newSource}
-      readOnly
-      autoCorrect="off"
-    />
-  );
-};
-
-const useGetOldTransform = ({
-  editorTransform,
-  suggestedTransform,
-}: MetabotAgentEditSuggestionChatMessage["payload"]) => {
-  const [trigger, result] = useLazyGetTransformQuery();
-  useMount(() => {
-    if (!editorTransform && suggestedTransform.id) {
-      trigger(suggestedTransform.id);
-    }
-  });
-
-  if (editorTransform) {
-    return {
-      data: editorTransform,
-      isLoading: false,
-      error: undefined,
-    } as const;
-  }
-
-  return result;
+export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
+  part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
 export const AgentSuggestionMessage = ({
   message,
 }: {
-  message: MetabotAgentEditSuggestionChatMessage;
+  message: SuggestionMessage;
 }) => {
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
-  const { suggestionActions } = useContext(MetabotContext);
-  const { sendErrorToast } = useMetadataToasts();
-  const [isApplying, setIsApplying] = useState(false);
-  const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
-
-  const { suggestedTransform, editorTransform } = message.payload;
+  const suggestedTransform: MetabotSuggestedTransform = {
+    ...message.part.data,
+    active: true,
+    suggestionId: message.id,
+  };
   const existingTransformId =
     typeof suggestedTransform.id === "number"
       ? suggestedTransform.id
       : undefined;
-  const isActive = useSelector((state) =>
-    getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
-  );
-
   const [opened, { toggle }] = useDisclosure(true);
 
   const url = useLocation();
   const isViewing =
     url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false;
 
-  const canApply = suggestionActions
-    ? !hasAppliedInContext && !isApplying
-    : !isViewing || !isActive;
-  const isNew = !isViewing && !editorTransform && existingTransformId == null;
+  const isNew = !isViewing && existingTransformId == null;
 
   const {
     data: originalTransform,
     isLoading,
     error,
-  } = useGetOldTransform(message.payload);
+  } = useGetTransformQuery(existingTransformId ?? skipToken);
 
-  const oldSource = originalTransform
-    ? getSourceCode(originalTransform, metadata)
-    : "";
-  const newSource = getSourceCode(suggestedTransform, metadata);
-
-  const handleApply = async () => {
-    dispatch(activateSuggestedTransform(suggestedTransform));
-
-    if (suggestionActions) {
-      setIsApplying(true);
-      try {
-        const result = await suggestionActions.applySuggestion(message.payload);
-        if (result.status === "applied") {
-          setHasAppliedInContext(true);
-        } else {
-          sendErrorToast(result.message);
-        }
-      } finally {
-        setIsApplying(false);
+  // The preview is a separate chunk. Waiting for it inside the existing
+  // "Loading preview" state means one loading state rather than two in a row.
+  const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadSuggestionPreview().then(() => {
+      if (!cancelled) {
+        setIsPreviewLoaded(true);
       }
-      return;
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
-  };
+  const oldSource = useSourceCode(originalTransform);
+  const newSource = useSourceCode(suggestedTransform);
 
   return (
     <Paper
       shadow="none"
-      radius="md"
-      bg="background-primary"
+      radius="sm"
+      bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
       <Group
-        p="md"
+        p="lg"
         align="center"
         justify="space-between"
         onClick={toggle}
@@ -185,10 +106,10 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
+          <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
-          <Flex align="center" justify="center" h="md" w="md">
+          <Flex align="center" justify="center" h="lg" w="lg">
             <Icon name={opened ? "chevrondown" : "chevronup"} size=".75rem" />
           </Flex>
         </Flex>
@@ -199,22 +120,25 @@ export const AgentSuggestionMessage = ({
         transitionDuration={0}
         transitionTimingFunction="linear"
       >
-        {match({ isLoading, error })
+        {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
-              p="md"
-              bg="background-secondary"
+              p="lg"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
             >
-              <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
+              <Text
+                mb="1px"
+                c="feedback-negative"
+              >{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
             <Flex
-              p="md"
-              bg="background-secondary"
+              p="lg"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
@@ -224,17 +148,20 @@ export const AgentSuggestionMessage = ({
             </Flex>
           ))
           .with({ isLoading: false }, () => (
-            <PreviewContent oldSource={oldSource} newSource={newSource} />
+            <SuggestionPreviewContent
+              oldSource={oldSource}
+              newSource={newSource}
+            />
           ))
           .exhaustive()}
 
         <Group
-          py="xs"
+          py="xxs"
           px="sm"
           align="center"
           justify="space-between"
           style={{
-            borderTop: opened ? `1px solid var(--mb-color-border)` : "",
+            borderTop: opened ? `1px solid var(--mb-color-border-neutral)` : "",
           }}
         >
           <Flex
@@ -249,17 +176,10 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-tertiary"}
-              disabled={!canApply}
-              onClick={handleApply}
+              c="text-disabled"
+              disabled
             >
-              {isApplying
-                ? t`Applying...`
-                : match({ isNew, canApply })
-                    .with({ canApply: false }, () => t`Applied`)
-                    .with({ isNew: true }, () => t`Create`)
-                    .with({ canApply: true }, () => t`Apply`)
-                    .exhaustive()}
+              {isNew ? t`Create` : t`Apply`}
             </Button>
           </Flex>
         </Group>
@@ -268,16 +188,21 @@ export const AgentSuggestionMessage = ({
   );
 };
 
-function getSourceCode(
-  transform: Pick<MetabotTransformInfo, "source">,
-  metadata: Metadata,
+function getSourceDatabaseId(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
+): DatabaseId | null {
+  return transform?.source.type === "query"
+    ? transform.source.query.database
+    : null;
+}
+
+function useSourceCode(
+  transform: Pick<MetabotTransformInfo, "source"> | undefined,
 ): string {
+  const metadataProvider = useMetadataProvider(getSourceDatabaseId(transform));
+
   return match(transform)
     .with({ source: { type: "query" } }, (t) => {
-      const metadataProvider = Lib.metadataProvider(
-        t.source.query.database,
-        metadata,
-      );
       const query = Lib.fromJsQuery(metadataProvider, t.source.query);
       if (Lib.queryDisplayInfo(query).isNative) {
         return Lib.rawNativeQuery(query);

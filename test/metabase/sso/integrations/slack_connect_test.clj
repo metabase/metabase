@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.sso.settings :as sso-settings]
@@ -16,8 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
-
 (def test-encryption-key
   "Test encryption key for OIDC state encryption."
   "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
@@ -26,11 +25,17 @@
   "Hashed test encryption key."
   (encryption/secret-key->hash test-encryption-key))
 
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture test-secret))
+
 (defmacro with-test-encryption!
-  "Wraps body with test encryption key enabled. Use for tests that involve OIDC state cookies."
+  "Wraps body with test encryption key enabled, running against the namespace's isolated, already-encrypted app DB (see
+  [[metabase.app-db.encryption-test-util/with-encrypted-app-db]]) so a strict decrypting read under the active key does
+  not trip over a plaintext setting left in the shared app DB by another namespace. Use for tests that involve OIDC
+  state cookies."
   [& body]
-  `(with-redefs [encryption/default-secret-key test-secret]
-     ~@body))
+  `(encryption-tu/with-encrypted-app-db ~@body))
 
 (defn do-with-url-prefix-disabled
   "Test fixture that disables API URL prefix."
@@ -58,13 +63,13 @@
 
 (defmacro with-successful-oidc! [& body]
   `(do
-     (derive :provider/slack-connect :provider/test-successful-oidc)
+     (auth-identity/derive! :provider/slack-connect :provider/test-successful-oidc)
      ~@body
-     (underive :provider/slack-connect :provider/test-successful-oidc)))
+     (auth-identity/underive! :provider/slack-connect :provider/test-successful-oidc)))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
-(deftest sso-prereqs-test
+(deftest ^:synchronized sso-prereqs-test
   (with-test-encryption!
     (sso.test-helpers/do-with-other-sso-types-disabled!
      (fn []
@@ -105,7 +110,7 @@
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 
-(deftest redirect-test
+(deftest ^:synchronized redirect-test
   (testing "with Slack Connect configured, a GET request should result in a redirect to Slack"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -145,7 +150,7 @@
 
 ;;; -------------------------------------------------- Callback Tests --------------------------------------------------
 
-(deftest callback-state-validation-test
+(deftest ^:synchronized callback-state-validation-test
   (testing "callback should fail if state cookie is missing"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -153,19 +158,19 @@
                                                 {:request-options {:redirect-strategy :none}}
                                                 :code "test-code"
                                                 :state "some-state")]
-        ;; Without a state cookie, the callback fails with invalid/expired state error
+          ;; Without a state cookie, the callback fails with invalid/expired state error
           (is (str/includes? (:body response) "OIDC state cookie is invalid, expired, or missing")))))))
 
-(deftest callback-state-validation-csrf-test
+(deftest ^:synchronized callback-state-validation-csrf-test
   (testing "callback with mismatched state should indicate possible CSRF attack"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
         (with-successful-oidc!
-        ;; First, initiate auth to set state cookie
+          ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                        {:request-options {:redirect-strategy :none}}
                                                        :redirect default-redirect-uri)
-              ;; Convert Set-Cookie headers to Cookie header format (extract name=value parts)
+                ;; Convert Set-Cookie headers to Cookie header format (extract name=value parts)
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";"))) ; Extract name=value before first ;
@@ -175,19 +180,19 @@
                                                                      :headers {"Cookie" cookie-header}}}
                                                   :code "test-code"
                                                   :state "wrong-state")]
-          ;; State mismatch should indicate possible CSRF attack
+            ;; State mismatch should indicate possible CSRF attack
             (is (str/includes? (str (:body response)) "CSRF"))))))))
 
-(deftest happy-path-callback-test
+(deftest ^:synchronized happy-path-callback-test
   (testing "successful callback with valid code and state"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
         (with-successful-oidc!
-        ;; First, initiate auth to set state cookie
+          ;; First, initiate auth to set state cookie
           (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                        {:request-options {:redirect-strategy :none}}
                                                        :redirect default-redirect-uri)
-              ;; Convert Set-Cookie headers to Cookie header format
+                ;; Convert Set-Cookie headers to Cookie header format
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";")))
@@ -202,7 +207,7 @@
 
 ;;; -------------------------------------------------- Link-Only Mode Tests --------------------------------------------------
 
-(deftest link-only-mode-requires-session-test
+(deftest ^:synchronized link-only-mode-requires-session-test
   (testing "link-only mode should require authenticated session for initial request"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -213,7 +218,7 @@
                                                   :redirect default-redirect-uri)]
             (is (str/includes? (str (get response :body)) "authenticated session"))))))))
 
-(deftest link-only-mode-with-session-test
+(deftest ^:synchronized link-only-mode-with-session-test
   (testing "link-only mode should work with authenticated session"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -241,7 +246,7 @@
 
 ;;; -------------------------------------------------- User Provisioning Tests --------------------------------------------------
 
-(deftest create-new-account-test
+(deftest ^:synchronized create-new-account-test
   (testing "A new account will be created for a Slack user we haven't seen before"
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
@@ -251,11 +256,11 @@
             (letfn [(new-user-exists? []
                       (boolean (seq (t2/select :model/User :%lower.email "example@slack.com"))))]
               (is (false? (new-user-exists?)))
-            ;; Initiate auth
+              ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}
                                                            :redirect default-redirect-uri)
-                  ;; Convert Set-Cookie headers to Cookie header format
+                    ;; Convert Set-Cookie headers to Cookie header format
                     set-cookies (get-in init-response [:headers "Set-Cookie"])
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
@@ -265,7 +270,7 @@
                                                                          :headers {"Cookie" cookie-header}}}
                                                       :code "test-code"
                                                       :state "test-state")]
-              ;; Complete callback
+                ;; Complete callback
                 (is (sso.test-helpers/successful-login? response))
                 (let [new-user (t2/select-one :model/User :email "example@slack.com")]
                   (testing "new user"
@@ -290,19 +295,20 @@
                         (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
                                 [:details :email])))))))))))))
 
-(deftest create-new-slack-user-no-user-provisioning-test
+(deftest ^:synchronized create-new-slack-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!
         (mt/with-temporary-setting-values [slack-connect-user-provisioning-enabled false
                                            site-name "test"]
           (with-successful-oidc!
+            ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
             (with-redefs [auth-identity/login!
                           (fn [_provider _request]
                             {:success? false
                              :error :user-provisioning-disabled
                              :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
-            ;; Initiate auth
+              ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}
                                                            :redirect default-redirect-uri)
@@ -310,7 +316,7 @@
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
                                        (str/join "; "))]
-              ;; Try callback - should fail
+                ;; Try callback - should fail
                 (mt/client-real-response :get 401 "/auth/sso/slack-connect/callback"
                                          {:request-options {:redirect-strategy :none
                                                             :headers {"Cookie" cookie-header}}}
@@ -331,7 +337,6 @@
         (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
         (sso-settings/slack-connect-authentication-mode! "link-only")
         (is (= "link-only" (sso-settings/slack-connect-authentication-mode))))
-
       (testing "invalid values are rejected"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

@@ -3,17 +3,19 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.indexed-entities.task.index-values :as task.index-values]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
+  ;; stored refs are legacy MBQL; normalize as legacy to match metadata field_refs
   (if-let [field (some (fn [f] (when ((comp #{#_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-field-ref ref)}
                                             :field_ref)
                                       f)
@@ -41,10 +43,10 @@
   "Create ModelIndex."
   [_route-params
    _query-params
-   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
+   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map {:closed true}
                                                             [:model_id  ms/PositiveInt]
-                                                            [:pk_ref    any?]
-                                                            [:value_ref any?]]]
+                                                            [:pk_ref    ::indexed-entities.schema/model-index.pk-ref]
+                                                            [:value_ref ::indexed-entities.schema/model-index.value-ref]]]
   (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
@@ -63,7 +65,7 @@
                                :model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
-      (t2/select-one :model/ModelIndex :id (:id model-index)))))
+      (indexed-entities.db/model-index (:id model-index)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -76,14 +78,14 @@
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params
-   {:keys [model_id]} :- [:map
+   {:keys [model_id]} :- [:map {:closed true}
                           [:model_id ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
                       {:model_id model_id
                        :status-code 400})))
-    (t2/select :model/ModelIndex :model_id model_id)))
+    (indexed-entities.db/model-indexes-for-model model_id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -91,9 +93,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
+  (let [model-index (api/check-404 (indexed-entities.db/model-index id))
         model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" id)
@@ -107,8 +109,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
+  (api/let-404 [model-index (indexed-entities.db/model-index id)]
     (api/write-check :model/Card (:model_id model-index))
-    (t2/delete! :model/ModelIndex id)))
+    (indexed-entities.db/delete-model-index! id)))

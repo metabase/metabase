@@ -1176,6 +1176,55 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
   });
 });
 
+describe("scenarios > visualizations > table > with tracking", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should track when freeze columns is enabled from viz settings", () => {
+    H.openOrdersTable();
+    H.openVizSettingsSidebar();
+    H.sidebar().findByText("Display").click();
+
+    H.sidebar().findByText("Freeze columns").click();
+
+    // Toggling off should not emit the enabled event again
+    H.sidebar().findByText("Freeze columns").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "table_freeze_columns_enabled",
+        triggered_from: "viz_settings",
+      },
+      1,
+    );
+  });
+
+  it("should track when freeze rows is enabled from viz settings", () => {
+    H.openOrdersTable();
+    H.openVizSettingsSidebar();
+    H.sidebar().findByText("Display").click();
+
+    H.sidebar().findByText("Freeze rows").click();
+
+    // Toggling off should not emit the enabled event again
+    H.sidebar().findByText("Freeze rows").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "table_freeze_rows_enabled",
+        triggered_from: "viz_settings",
+      },
+      1,
+    );
+  });
+});
+
 describe("scenarios > visualizations > table > time formatting (#11398)", () => {
   const singleTimeQuery = `
       WITH t1 AS (SELECT TIMESTAMP '2023-01-01 18:34:00' AS time_value),

@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 export function getMetricLabel(
   definition: LibMetric.MetricDefinition,

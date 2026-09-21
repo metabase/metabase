@@ -321,10 +321,8 @@
         (let [german-result (format-temporal-str "UTC" test-datetime col)]
           (is (re-find #"Juli" german-result))
           (is (= original-jvm-locale (Locale/getDefault)))))
-
       (mt/with-temporary-setting-values [site-locale "fr"]
         (let [french-result (format-temporal-str "UTC" test-datetime col)]
           (is (re-find #"juillet" french-result))
           (is (= original-jvm-locale (Locale/getDefault)))))
-
       (is (= original-jvm-locale (Locale/getDefault))))))

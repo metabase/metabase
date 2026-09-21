@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { useTokenRefreshUntil } from "metabase/settings";
 import {
   Box,
   Button,
@@ -43,7 +43,7 @@ export function MetabotSettingUpModal({
       padding="2.5rem"
       mah="80%"
     >
-      <Stack align="center" gap="lg" my="4.5rem">
+      <Stack align="center" gap="xl" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
           <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
 
@@ -57,13 +57,13 @@ export function MetabotSettingUpModal({
               pos="absolute"
               right={0}
               wrap="nowrap"
-              bg="white"
+              bg="core-white"
               fz={0}
               p="sm"
               ta="center"
               style={{
                 borderRadius: "100%",
-                boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
+                boxShadow: `0 1px 6px 0 var(--mb-color-shadow-default)`,
               }}
             >
               <Loader size="xs" ml={1} mt={1} />

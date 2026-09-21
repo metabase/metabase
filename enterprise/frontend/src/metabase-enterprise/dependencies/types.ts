@@ -1,9 +1,9 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
   AnalysisFindingErrorType,
   DependencyGroupType,
   DependencySortColumn,
+  IconName,
   SortDirection,
 } from "metabase-types/api";
 

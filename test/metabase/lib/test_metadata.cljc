@@ -808,8 +808,8 @@
    :fingerprint         {:global {:distinct-count 4, :nil% 0.0}
                          :type   {:type/Number
                                   {:min 1.0
-                                   :q1  1.4591129021415095
-                                   :q3  2.493086095768049
+                                   :q1  2.0
+                                   :q3  2.0
                                    :max 4.0
                                    :sd  0.7713951678941896
                                    :avg 2.03}}}
@@ -2449,8 +2449,7 @@
    :display-name               "ID"
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/issues :reporter-id]
@@ -2812,8 +2811,7 @@
    :preview-display            true
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/comments :author-id]
@@ -2916,8 +2914,7 @@
    :preview-display            true
    :database-required          true
    :points-of-interest         nil
-   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
-                                :type   {:type/UUID {}}}
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
    :lib/type                   :metadata/column})
 
 (defmethod field-metadata-method [:gh/comments :body-markdown]

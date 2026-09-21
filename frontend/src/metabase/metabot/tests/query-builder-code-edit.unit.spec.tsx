@@ -1,18 +1,22 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -26,7 +30,12 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
 import { sendAgentRequest } from "../state/actions";
-import { getMetabotInitialState } from "../state/reducer-utils";
+
+import {
+  convoForAgent,
+  createTestMetabotState,
+  testConversationId,
+} from "./utils";
 
 jest.mock("metabase/api/ai-streaming", () => ({
   aiStreamingQuery: jest.fn(),
@@ -58,6 +67,19 @@ const QuerySuggestionProbe = ({ question }: { question: Question }) => {
   return <div data-testid="qb-proposed-sql">{proposedSql}</div>;
 };
 
+const ChatMessagesProbe = () => {
+  const { conversationId, messages } = useMetabotAgent("omnibot");
+
+  return (
+    <Messages
+      messages={messages}
+      isDoingScience={false}
+      debug={false}
+      conversationId={conversationId}
+    />
+  );
+};
+
 describe("query builder code edits from omnibot", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
@@ -67,6 +89,20 @@ describe("query builder code edits from omnibot", () => {
       "path:/api/metabot/permissions/user-permissions",
       createMockUserMetabotPermissions(),
     );
+    fetchMock.post("path:/api/llm/extract-sources", {
+      tables: [
+        {
+          id: 2,
+          name: "ORDERS",
+          schema: "PUBLIC",
+          display_name: "Orders",
+          description: null,
+          columns: [],
+        },
+      ],
+      card_ids: [],
+    });
+    fetchMock.get(`path:/api/database/${TEST_DB.id}`, TEST_DB);
   });
 
   afterEach(() => {
@@ -79,10 +115,11 @@ describe("query builder code edits from omnibot", () => {
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
+      callbacks?.onStart?.({ type: "start", messageId: "msg_test_code_edit" });
+      callbacks?.onTextPart?.("Reviewing the query.");
       callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
+        type: "data-code_edit",
+        data: {
           buffer_id: "qb",
           mode: "rewrite",
           value: SUGGESTED_SQL,
@@ -93,12 +130,10 @@ describe("query builder code edits from omnibot", () => {
         aborted: false,
         toolCalls: [],
         data: [],
-        text: null,
-        parts: [],
-        history: [],
       };
     });
 
+    // Unjustified type cast. FIXME
     const storeInitialState = createMockState({
       currentUser: createMockUser(),
       settings: mockSettings({
@@ -108,36 +143,41 @@ describe("query builder code edits from omnibot", () => {
         databases: [TEST_DB],
         questions: [TEST_NATIVE_CARD],
       }),
-      metabot: getMetabotInitialState(),
+      metabot: assocIn(
+        createTestMetabotState(),
+        ["conversations", testConversationId("omnibot"), "title"],
+        "SQL edit",
+      ),
     } as any);
 
-    const metadata = getMetadata(storeInitialState);
+    const metadata = createMockMetadataFromState(storeInitialState);
     const question = checkNotNull(metadata.question(TEST_NATIVE_CARD.id));
 
     const { store } = renderWithProviders(
       <MetabotProvider>
         <QuerySuggestionProbe question={question} />
+        <ChatMessagesProbe />
       </MetabotProvider>,
       {
-        storeInitialState: storeInitialState as any,
+        storeInitialState: storeInitialState,
       },
     );
+    // Unjustified type cast. FIXME
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
-      dispatch: ThunkDispatch<State, void, AnyAction>;
+      dispatch: ThunkDispatch<State, void, UnknownAction>;
       getState: () => State;
     };
 
-    const conversationId =
-      typedStore.getState().metabot.conversations.omnibot?.conversationId;
-
-    expect(conversationId).toBeDefined();
+    const convo = convoForAgent(typedStore);
+    const { conversationId } = convo;
 
     await act(async () => {
       await typedStore.dispatch(
         sendAgentRequest({
-          agentId: "omnibot",
           message: "Please rewrite this query",
-          conversation_id: conversationId as string,
+          conversation_id: convo.conversationId,
+          assistant_message_id: "msg_test_code_edit",
+          isFullPageMetabot: false,
           context: {
             user_is_viewing: [
               {
@@ -158,8 +198,6 @@ describe("query builder code edits from omnibot", () => {
             current_time_with_timezone: "2026-03-04T00:00:00Z",
             capabilities: [],
           },
-          history: [],
-          state: {},
         }),
       );
     });
@@ -170,6 +208,32 @@ describe("query builder code edits from omnibot", () => {
       expect(screen.getByTestId("qb-proposed-sql")).toHaveTextContent(
         SUGGESTED_SQL,
       );
+    });
+
+    expect(
+      typedStore
+        .getState()
+        .metabot.conversations[conversationId]?.messages.at(-1),
+    ).toMatchObject({
+      role: "agent",
+      externalId: "msg_test_code_edit",
+      parts: expect.arrayContaining([
+        expect.objectContaining({ type: "text" }),
+        expect.objectContaining({
+          type: "data_part",
+          part: expect.objectContaining({ type: "data-code_edit" }),
+        }),
+      ]),
+    });
+    fetchMock.post("path:/api/metabot/source-feedback", 200);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Source is correct" }),
+    );
+    const feedbackRequest = fetchMock.callHistory.lastCall(
+      "path:/api/metabot/source-feedback",
+    )?.options;
+    expect(JSON.parse(String(feedbackRequest?.body))).toMatchObject({
+      message_id: "msg_test_code_edit",
     });
 
     expect(requestBody?.context).toEqual(

@@ -35,13 +35,13 @@
     (is (= nil
            (#'style/register-fonts-if-needed!))))
   (testing "If font registration fails, we should an Exception with a useful error message"
-    (with-redefs [style/register-font! (fn [& _]
-                                         (throw (ex-info "Oops!" {})))]
+    (mt/with-dynamic-fn-redefs [style/register-font! (fn [& _]
+                                                       (throw (ex-info "Oops!" {})))]
       (mt/with-log-messages-for-level [messages :error]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Error registering fonts: Metabase will not be able to send Pulses"
              (#'style/register-fonts!)))
         (testing "Should log the Exception"
-          (is (=? {:level :error, :e Throwable, :message #"^Error registering fonts: .*"}
+          (is (=? {:level :error, :e nil, :message #"^Error registering fonts: .*Oops!"}
                   (first (messages)))))))))

@@ -60,18 +60,18 @@ export function UpgradeModalInitial({
   ];
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Flex align="center" gap="sm">
         <UpsellGem size={24} />
         <Title order={2}>{title}</Title>
       </Flex>
 
       <Box
-        bg="background-secondary"
-        p="lg"
-        style={{ borderRadius: "var(--mantine-radius-md)" }}
+        bg="background_page-secondary"
+        p="xl"
+        style={{ borderRadius: "var(--mantine-radius-sm)" }}
       >
-        <Stack gap="md">
+        <Stack gap="lg">
           <Flex justify="space-between" align="center">
             {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
             <Title order={4}>{t`Metabase Pro`}</Title>
@@ -81,7 +81,7 @@ export function UpgradeModalInitial({
           </Flex>
 
           <List
-            spacing="xs"
+            spacing="xxs"
             icon={<Icon name="check" c="text-primary" size={16} />}
             pl={0}
           >
@@ -94,7 +94,7 @@ export function UpgradeModalInitial({
 
           <Divider />
 
-          <Stack gap="xs">
+          <Stack gap="xxs">
             <Flex justify="space-between" align="center">
               <Text c="text-secondary">{t`Due today:`}</Text>
               <Text fw="bold" size="lg">
@@ -128,11 +128,11 @@ export function UpgradeModalInitial({
         </Text>
       )}
 
-      <Flex justify="flex-end" gap="md">
+      <Flex justify="flex-end" gap="lg">
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>
-        <Button variant="filled" color="brand" onClick={onConfirm}>
+        <Button variant="filled" color="core-brand" onClick={onConfirm}>
           {buttonText}
         </Button>
       </Flex>

@@ -1,0 +1,25 @@
+## Add prompt column to mcp_query_handle for construct_query handles.
+## Stores the user's original prompt (e.g. "visualize this orders") alongside
+## the query so visualize_query can surface it in the frontend.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-04-28T00:00:00
+      author: phoomparin
+      comment: Add prompt column to mcp_query_handle to store the user's original prompt
+      changes:
+        - addColumn:
+            tableName: mcp_query_handle
+            columns:
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  remarks: The user's original prompt used to construct the query; nullable for drill-through handles
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: mcp_query_handle
+            columnName: prompt

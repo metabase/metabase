@@ -1,22 +1,17 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { definePluginSlot } from "../slot";
 
 export type AiControlsPlugin = {
   isEnabled: boolean;
   getAiControlsRoutes: () => ReactNode;
-  AiControlsNavItems: ComponentType | null;
+  getAiControlsNavItems: () => ReactNode;
 };
 
 const getDefaultPluginAiControls = (): AiControlsPlugin => ({
   isEnabled: false,
   getAiControlsRoutes: () => null,
-  AiControlsNavItems: null,
+  getAiControlsNavItems: () => null,
 });
 
-export const PLUGIN_AI_CONTROLS = getDefaultPluginAiControls();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_AI_CONTROLS, getDefaultPluginAiControls());
-}
+export const PLUGIN_AI_CONTROLS = definePluginSlot(getDefaultPluginAiControls);

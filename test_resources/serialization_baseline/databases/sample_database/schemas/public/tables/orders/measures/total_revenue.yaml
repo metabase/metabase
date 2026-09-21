@@ -20,10 +20,6 @@ definition:
   lib/type: mbql/query
 entity_id: 8WteUpyQQqObrxLv4KQ-j
 name: Total Revenue
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 serdes/meta:
 - id: 8WteUpyQQqObrxLv4KQ-j
   label: total_revenue

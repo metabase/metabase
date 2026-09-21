@@ -26,17 +26,14 @@
           (mt/with-temporary-setting-values [site-locale nil]
             (is (= "must be 140 characters or less"
                    (f)))))
-
         (testing "If system locale is set but user locale is not, should use system locale"
           (mt/with-temporary-setting-values [site-locale "es"]
             (is (= "deben tener 140 caracteres o menos"
                    (f)))))
-
         (testing "Should use user locale if set"
           (mt/with-user-locale "es"
             (is (= "deben tener 140 caracteres o menos"
                    (f)))
-
             (testing "...even if system locale is set"
               (mt/with-temporary-setting-values [site-locale "en"]
                 (is (= "deben tener 140 caracteres o menos"
@@ -58,12 +55,10 @@
           (mt/with-temporary-setting-values [site-locale nil]
             (is (= "must be 140 characters or less"
                    (f)))))
-
         (testing "Should use system locale if set"
           (mt/with-temporary-setting-values [site-locale "es"]
             (is (= "deben tener 140 caracteres o menos"
                    (f)))
-
             (testing "...even if user locale is set"
               (mt/with-user-locale "en"
                 (is (= "deben tener 140 caracteres o menos"
@@ -82,21 +77,16 @@
           (mt/with-temporary-setting-values [site-locale nil]
             (is (= "0 tables"
                    (f 0)))
-
             (is (= "1 table"
                    (f 1)))
-
             (is (= "2 tables"
                    (f 2)))))
-
         (testing "should use user locale if set"
           (mt/with-user-locale "es"
             (is (= "0 tablas"
                    (f 0)))
-
             (is (= "1 tabla"
                    (f 1)))
-
             (is (= "2 tablas"
                    (f 2)))))))))
 
@@ -120,21 +110,16 @@
           (mt/with-temporary-setting-values [site-locale nil]
             (is (= "0 tables"
                    (f 0)))
-
             (is (= "1 table"
                    (f 1)))
-
             (is (= "2 tables"
                    (f 2)))))
-
         (testing "Should use system locale if set"
           (mt/with-temporary-setting-values [site-locale "es"]
             (is (= "0 tablas"
                    (f 0)))
-
             (is (= "1 tabla"
                    (f 1)))
-
             (is (= "2 tablas"
                    (f 2)))))))))
 
@@ -154,7 +139,6 @@
            AssertionError
            #"expects 2 args, got 1"
            (#'i18n/validate-number-of-args "{0} {1}" [0]))))
-
     (testing "too many args"
       (is (thrown?
            clojure.lang.Compiler$CompilerException
@@ -163,7 +147,6 @@
            AssertionError
            #"expects 2 args, got 3"
            (#'i18n/validate-number-of-args "{0} {1}" [0 1 2]))))
-
     (testing "Missing format specifiers (e.g. {1} but no {0})"
       (testing "num args match num specifiers"
         (is (thrown?
@@ -173,7 +156,6 @@
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
              (#'i18n/validate-number-of-args "{1}" [0]))))
-
       (testing "num args match num specifiers if none were missing"
         (is (thrown?
              clojure.lang.Compiler$CompilerException
@@ -181,8 +163,9 @@
         (is (thrown-with-msg?
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
-             (#'i18n/validate-number-of-args "{1}" [0 1]))))))
+             (#'i18n/validate-number-of-args "{1}" [0 1])))))))
 
+(deftest ^:parallel validate-number-of-args-test-2
   (testing "The number of args is still validated if the first argument is a `str` form"
     (is (thrown?
          clojure.lang.Compiler$CompilerException
@@ -190,8 +173,9 @@
     (is (thrown-with-msg?
          AssertionError
          #"expects 2 args, got 1"
-         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
+         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0])))))
 
+(deftest ^:parallel validate-number-of-args-test-3
   (testing "`trsn` and `trun` should validate that they are being called with at most one arg\n"
     (is (thrown?
          clojure.lang.Compiler$CompilerException
@@ -200,7 +184,6 @@
          AssertionError
          #"only supports a single \{0\} placeholder"
          (#'i18n/validate-n "{1}" "{1}")))
-
     (is (thrown?
          clojure.lang.Compiler$CompilerException
          (walk/macroexpand-all `(i18n/trsn "{0} {1}" "{0} {1}" n))))

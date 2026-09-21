@@ -27,7 +27,6 @@
          :model/Metabot {metabot2-id :id} {:name "Test Metabot 2"}
          :model/MetabotPrompt _ {:metabot_id metabot1-id :prompt "Prompt 1" :model :metric :card_id card1-id}
          :model/MetabotPrompt _ {:metabot_id metabot1-id :prompt "Prompt 2" :model :model :card_id card2-id}]
-
         (let [hydrated-metabots (t2/hydrate (t2/select :model/Metabot :id [:in [metabot1-id metabot2-id]]) :prompts)]
           (testing "should hydrate prompts for metabots with prompts"
             (let [metabot1 (first (filter #(= (:id %) metabot1-id) hydrated-metabots))]
@@ -36,7 +35,6 @@
                      (set (map :prompt (:prompts metabot1)))))
               (is (= #{:metric :model}
                      (set (map :model (:prompts metabot1)))))))
-
           (testing "should return empty list for metabots without prompts"
             (let [metabot2 (first (filter #(= (:id %) metabot2-id) hydrated-metabots))]
               (is (= [] (:prompts metabot2))))))))))

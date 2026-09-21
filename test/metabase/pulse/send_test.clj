@@ -1,6 +1,7 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.pulse.dashboard-subscription-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.send-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -8,6 +9,8 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
@@ -242,6 +245,9 @@
 
            :fixture
            (fn [_ thunk]
+             ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+             ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+             #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
              (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
                (thunk)))
 
@@ -274,7 +280,6 @@
                 (testing "attached-results-text should return nil since it's a slack message"
                   (is (= [nil]
                          (pulse.test-util/output @#'body/attached-results-text))))))}}
-
           "11 rows in the results no longer causes a CSV attachment per issue #36441."
           {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 
@@ -402,7 +407,6 @@
                 (is (=? {:channel "#general"
                          :blocks (default-slack-blocks card-id true)}
                         message)))}}
-
             "with no data"
             {:card
              (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
@@ -411,7 +415,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "too much data"
             {:card
              (pulse.test-util/checkins-query-card {:limit 21, :aggregation nil})
@@ -455,7 +458,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has reached its goal of 5\.9\."))))}}
-
             "no data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
@@ -470,7 +472,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "max")
@@ -511,7 +512,6 @@
                                                        pulse.test-util/csv-attachment]})
                        (mt/summarize-multipart-single-email email test-card-regex
                                                             #"This question has gone below its goal of 1\.1\."))))}}
-
             "with no satisfying data"
             {:card
              (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
@@ -526,7 +526,6 @@
              {:email
               (fn [_ emails]
                 (is (empty? emails)))}}
-
             "with progress bar"
             {:card
              (merge (pulse.test-util/venues-query-card "min")
@@ -635,7 +634,7 @@
          :model/PulseChannel _              {:pulse_id     pulse-id
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (with-redefs [channel/render-notification (fn [& args]
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
@@ -656,7 +655,7 @@
                       (swap! requests conj req)
                       {:status 200
                        :body   "ok"}))]
-      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+      (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-all"]
         (notification.tu/with-notification-testing-setup!
           (channel.http-test/with-server [url [endpoint]]
             (mt/with-temp
@@ -699,10 +698,28 @@
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
 
+(deftest send-pulse-with-no-self-service-creator-test
+  (testing "A dashboard subscription still sends successfully when its creator has no data permissions on the underlying table (#18009)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card      {card-id :id} {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                        (lib/aggregate (lib/count)))}
+                     :model/DashboardCard {dc-id :id} {:dashboard_id dash-id :card_id card-id}]
+        (mt/with-no-data-perms-for-all-users!
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card       card-id
+                                 :pulse      {:dashboard_id dash-id :creator_id (mt/user->id :rasta)}
+                                 :pulse-card {:dashboard_card_id dc-id}}]
+            (mt/with-fake-inbox
+              (let [results (pulse.test-util/with-captured-channel-send-messages!
+                              (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))]
+                (is (seq (:channel/email results)))))))))))
+
 (deftest send-skip-alert-test
   (testing "alerts are skipped (#63189)"
     (let [pulse-sent-called? (atom false)]
-      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse!* (fn [& _args])]
         (mt/with-temp [:model/Pulse {pulse-id :id
                                      :as pulse}   {:creator_id      (mt/user->id :rasta)
                                                    :name            (mt/random-name)

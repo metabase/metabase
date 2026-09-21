@@ -17,6 +17,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -26,11 +27,11 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.formatting.date :as fmt.date]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.number :as u.number]
    [metabase.util.performance :refer [every? mapv select-keys some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time :as u.time]))
@@ -46,13 +47,21 @@
    ::lib.schema.metadata/segment
    ::lib.schema.metadata/metric])
 
+(def ^:private ExpressionOptions
+  "Like `:metabase.lib.schema.common/options`, but `:lib/uuid` need not be set yet;
+  see [[metabase.lib.options/ensure-uuid]]."
+  [:merge
+   ::lib.schema.common/options
+   [:map {:closed true}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+
 (def ^:private ExpressionParts
   [:schema
    {:registry {::expression-parts
-               [:map
+               [:map {:closed true}
                 [:lib/type [:= :mbql/expression-parts]]
                 [:operator [:or :keyword :string]]
-                [:options :map]
+                [:options ExpressionOptions]
                 [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
    ::expression-parts])
 
@@ -140,10 +149,43 @@
    query stage-number (cond-> clause
                         (expandable-temporal-expression? clause) expand-temporal-expression)))
 
+(defn- composite-clause-in-stages-0-to?
+  "True when any stage 0..`max-stage` contains an `:aggregation` or `:expressions` clause with
+  `:lib/uuid = target-uuid`. Searched latest-first since the originating aggregation is usually close to the
+  current stage."
+  [query max-stage target-uuid]
+  (loop [stage-number max-stage]
+    (cond
+      (neg? stage-number) false
+      (let [stage (lib.util/query-stage query stage-number)]
+        (some (fn [clause] (= (lib.options/uuid clause) target-uuid))
+              (concat (:aggregation stage) (:expressions stage)))) true
+      :else (recur (dec stage-number)))))
+
+(defn- restore-previous-stage-source-uuid
+  "Nominal `:field` refs into a previous stage lose the connection to their originating aggregation/expression
+  clause because `resolve-field-ref` overwrites `:lib/source-uuid` with the ref's own uuid. That breaks the
+  `:long` display-name traceback in [[metabase.lib.field]] (source-uuid → source clause), so two same-named
+  aggregations from different joins render identically (#76986). For expression-parts consumers we recover the
+  link: look up the previous-stage returned column by `:lib/deduplicated-name` and copy its `:lib/source-uuid`
+  onto the resolved col — but only when that uuid points at a composite (aggregation/expression) clause
+  somewhere upstream. Scoped to expression-parts; a broader display-name-level fix has a wider blast radius and
+  is deferred to the Column Heritage effort."
+  [query stage-number col]
+  (or (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+        (when-let [dedup-name (:lib/deduplicated-name col)]
+          (when-let [prev-col (m/find-first #(= (:lib/deduplicated-name %) dedup-name)
+                                            (lib.metadata.calculation/returned-columns query previous-stage-number))]
+            (when-let [prev-source-uuid (:lib/source-uuid prev-col)]
+              (when (composite-clause-in-stages-0-to? query previous-stage-number prev-source-uuid)
+                (assoc col :lib/source-uuid prev-source-uuid))))))
+      col))
+
 (defmethod expression-parts-method :field
   [query stage-number field-ref]
   (let [stripped-ref (lib.options/update-options field-ref #(dissoc % :lib/expression-name))]
-    (column-metadata-from-ref query stage-number stripped-ref)))
+    (->> (column-metadata-from-ref query stage-number stripped-ref)
+         (restore-previous-stage-source-uuid query stage-number))))
 
 (defmethod expression-parts-method :segment
   [query _stage-number segment-ref]
@@ -185,7 +227,8 @@
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
-  ([query value]
+  ([query :- ::lib.schema/query
+    value :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts query -1 value))
 
   ([query :- ::lib.schema/query
@@ -255,7 +298,7 @@
 
   ([operator :- [:or :keyword :string]
     args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
-    options  :- [:maybe :map]]
+    options  :- [:maybe ExpressionOptions]]
    (expression-clause-method {:lib/type :mbql/expression-parts
                               :operator operator
                               :options  options
@@ -313,7 +356,7 @@
         string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])
         result (fn [op col-ref args options]
                  {:operator op, :column (ref->col col-ref), :values (vec args), :options options})]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       ;; no arguments
       [(op :guard #{:is-empty :not-empty}) _ (col-ref :guard string-col?) & (args :len 0 :guard (every? string? args))]
       (result op col-ref [] {})
@@ -344,7 +387,7 @@
 
 (defn- expression-arg->number
   [arg]
-  (lib.util.match/match-lite arg
+  (match/match-one arg
     (value :guard number?)
     value
 
@@ -376,20 +419,16 @@
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
         number-col? #(ref-clause-with-type? % [:type/Number])
         number-arg? #(some? (expression-arg->number %))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard number-col?) & (args :len 0 :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:=`
        [(op :guard #{:= :in})             _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; multiple arguments, `:!=`
        [(op :guard #{:!= :not-in})        _ (col-ref :guard number-col?) & (args        :guard (every? number-arg? args))]
-
        ;; exactly 1 argument
        [(op :guard #{:> :>= :< :<=})      _ (col-ref :guard number-col?) & (args :len 1 :guard (every? number-arg? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
       {:operator ({:in :=, :not-in :!=} op op)
@@ -433,7 +472,7 @@
                                    :column (ref->col col-ref)
                                    :values (mapv expression-arg->number args)}
                             lon-col-ref (assoc :longitude-column (ref->col lon-col-ref))))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; multiple arguments, `:=`
        [(op :guard #{:= :in})        _ (col-ref :guard coordinate-col?) & (args        :guard (every? number-arg? args))]
@@ -478,7 +517,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col     #(column-metadata-from-ref query stage-number %)
         boolean-col? #(ref-clause-with-type? % [:type/Boolean])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard boolean-col?) & (args :len 0 :guard (every? boolean? args))]
@@ -521,11 +560,10 @@
                           values (mapv u.time/coerce-to-timestamp args)]
                       (when (every? u.time/valid? values)
                         {:operator op, :column (ref->col col-ref), :values values, :with-time? (not date?)})))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; exactly 1 argument
        [(op :guard #{:= :> :<}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
-
        ;; exactly 2 arguments
        [(op :guard #{:between}) _ (col-ref :guard date-col?) & (args :len 2 :guard (every? string? args))])
       (result op col-ref args)
@@ -564,7 +602,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [:time-interval
        opts
        (col-ref :guard date-col?)
@@ -628,23 +666,25 @@
 (mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
         op->unit  {:get-hour :hour-of-day
                    :get-month :month-of-year
                    :get-quarter :quarter-of-year}]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses
@@ -673,7 +713,7 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         time-col? #(ref-clause-with-type? % [:type/Time])]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       (:or
        ;; no arguments
        [(op :guard #{:is-null :not-null}) _ (col-ref :guard time-col?) & (args :len 0 :guard (every? string? args))]
@@ -711,7 +751,7 @@
         supported-col? #(and (lib.util/ref-clause? %)
                              (not (lib.util/original-isa? % :type/Text))
                              (not (lib.util/original-isa? % :type/TextLike)))]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [(op :guard #{:is-null :not-null}) _ (col-ref :guard supported-col?)]
       {:operator op, :column (ref->col col-ref)}
 
@@ -734,7 +774,7 @@
 (mu/defn join-condition-parts :- [:maybe JoinConditionParts]
   "Destructures a join condition created by [[join-condition-clause]]."
   [join-condition :- ::lib.schema.join/condition]
-  (lib.util.match/match-lite join-condition
+  (match/match-one join-condition
     [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
 
@@ -760,7 +800,9 @@
    Can be expanded as needed but only currently defined for a narrow set of date filters.
 
    Falls back to the full filter display-name"
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit= (fn [maybe-clause unit-or-units]
@@ -772,7 +814,7 @@
         ->unit {:get-hour :hour-of-day
                 :get-month :month-of-year
                 :get-quarter :quarter-of-year}]
-    (lib.util.match/match-lite filter-clause
+    (match/match-one filter-clause
       [#{:= :in} _ [:get-day-of-week _ (_ :guard temporal?) :iso] (b :guard int?)]
       (inflections/plural (u.time/format-unit b :day-of-week-iso))
 
@@ -813,7 +855,7 @@
       (i18n/tru "Is Not Empty")
 
       [:time-interval opts (_ :guard temporal?) n unit]
-      (lib.temporal-bucket/describe-temporal-interval n unit opts)
+      (lib.temporal-bucket/describe-temporal-interval n unit (select-keys opts [:include-current]))
 
       [:relative-time-interval _ (_ :guard temporal?) n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)
@@ -861,7 +903,7 @@
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (concat
         ;; Extract field dependencies from dimension template tags
-        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (:template-tags base-stage)
               :when                                           (and (= tag-type :dimension)
                                                                    (= dim-tag :field)
                                                                    (integer? id))]
@@ -877,7 +919,7 @@
                (query-dependents-snippets metadata-providerable snippet-id #{})
                ;; If we don't have a real metadata provider, just return the direct dependency
                [{:type :native-query-snippet, :id snippet-id}])))
-         (vals (:template-tags base-stage)))))
+         (:template-tags base-stage))))
      (when-let [card-id (:source-card base-stage)]
        (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
@@ -925,9 +967,3 @@
            (cons {:type :table, :id (str "card__" card-id)}
                  (when-let [card (lib.metadata/card query card-id)]
                    (query-dependents query (lib.query/query query card))))))))
-
-(mu/defn table-or-card-dependent-metadata :- [:sequential DependentItem]
-  "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
-  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   table-id               :- [:or ::lib.schema.id/table :string]]
-  [{:type :table, :id table-id}])

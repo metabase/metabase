@@ -54,13 +54,13 @@ export function DependentsSection({ cardId }: DependentsSectionProps) {
     <Stack role="region" aria-label={label}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <Badge variant="filled" bg="brand">
+          <Badge color="brand" size="sm">
             {allDependents.length}
           </Badge>
           <Title order={5}>{label}</Title>
         </Group>
         {allDependents.length > DEPENDENTS_SEARCH_THRESHOLD && (
-          <Group gap={0} my="-xs" wrap="nowrap">
+          <Group gap={0} my="-xxs" wrap="nowrap">
             <SortOptionsPicker
               sortOptions={sortOptions}
               availableSortColumns={DEPENDENTS_SORT_COLUMNS}

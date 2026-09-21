@@ -5,35 +5,49 @@ import {
 } from "@mantine/core";
 
 import { PreventEagerPortal } from "metabase/ui";
+import { useGatedCloseProps } from "metabase/ui/components/overlays/overlay-stack";
 import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
 export type { ModalProps } from "@mantine/core";
 export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
+export * from "./constants";
 
-export const Modal = (props: ModalProps) => {
+export function Modal(props: ModalProps) {
+  const closeProps = useGatedCloseProps(props);
+
   useDisableCommandPalette({
     disabled: props.opened,
   });
 
   return (
     <PreventEagerPortal {...props}>
-      <MantineModal {...props} />
+      <MantineModal
+        {...props}
+        closeOnClickOutside={closeProps.closeOnClickOutside}
+        closeOnEscape={closeProps.closeOnEscape}
+      />
     </PreventEagerPortal>
   );
-};
+}
 
-const ModalRoot = (props: ModalRootProps) => {
+function ModalRoot(props: ModalRootProps) {
+  const closeProps = useGatedCloseProps(props);
+
   useDisableCommandPalette({
     disabled: props.opened,
   });
   return (
     <PreventEagerPortal>
-      <MantineModal.Root {...props} />
+      <MantineModal.Root
+        {...props}
+        closeOnClickOutside={closeProps.closeOnClickOutside}
+        closeOnEscape={closeProps.closeOnEscape}
+      />
     </PreventEagerPortal>
   );
-};
+}
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;
 Modal.Content = MantineModal.Content;

@@ -1,24 +1,43 @@
 import type {
+  KnownDataPart,
+  SearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
+import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
+import type { MetabotProfileId } from "metabase/metabot/constants";
+import type {
   MetabotCodeEdit,
-  MetabotHistory,
-  MetabotSuggestedTransform,
-  MetabotTodoItem,
-  MetabotTransformInfo,
+  MetabotCodeEditorBufferContext,
+  MetabotStateContext,
 } from "metabase-types/api";
+
+export type MetabotDataPart = Exclude<
+  KnownDataPart,
+  | { type: "data-state" }
+  | { type: "data-conversation-title" }
+  | { type: "data-search_results" }
+  | { type: "data-tool_title" }
+>;
+
+export type MetabotSearchResults = {
+  totalCount: number;
+  results: SearchResultItem[];
+};
+
+export type MetabotDataPartMetadata = {
+  codeEditBuffer?: MetabotCodeEditorBufferContext;
+};
+
+export type MetabotAgentTurnError = {
+  message?: string;
+  type?: string;
+  data?: unknown;
+};
 
 export type MetabotUserTextChatMessage = {
   id: string;
   role: "user";
   type: "text";
   message: string;
-};
-
-export type MetabotUserActionChatMessage = {
-  id: string;
-  role: "user";
-  type: "action";
-  message: string;
-  userMessage: string;
 };
 
 export type MetabotAgentTextChatMessage = {
@@ -28,22 +47,16 @@ export type MetabotAgentTextChatMessage = {
   message: string;
 };
 
-export type MetabotAgentTodoListChatMessage = {
+export type MetabotAgentDataPartMessage = {
   id: string;
   role: "agent";
-  type: "todo_list";
-  payload: MetabotTodoItem[];
+  type: "data_part";
+  part: MetabotDataPart;
+  metadata?: MetabotDataPartMetadata;
 };
 
-export type MetabotAgentEditSuggestionChatMessage = {
-  id: string;
-  role: "agent";
-  type: "edit_suggestion";
-  model: "transform";
-  payload: {
-    editorTransform: MetabotTransformInfo | undefined;
-    suggestedTransform: MetabotSuggestedTransform;
-  };
+export type MetabotGeneratedCardPart = MetabotAgentDataPartMessage & {
+  part: { type: "data-generated_entity"; data: { type: "card" } };
 };
 
 export type MetabotDebugToolCallMessage = {
@@ -57,40 +70,65 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
-export type MetabotAgentChartMessage = {
-  id: string;
-  role: "agent";
-  type: "chart";
-  navigateTo: string;
+export type MetabotAgentTurnDisplayError = {
+  type: "alert" | "locked" | "message";
+  message: string;
 };
 
-export type MetabotAgentChatMessage =
-  | MetabotAgentTextChatMessage
-  | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage
-  | MetabotDebugToolCallMessage
-  | MetabotAgentChartMessage;
+export type MetabotAgentChainOfThoughtMessage = {
+  id: string;
+  role: "agent";
+  type: "chain_of_thought";
+  steps: MetabotChainStep[];
+  finished: boolean;
+  startedAtMs?: number;
+  endedAtMs?: number;
+};
 
-export type MetabotUserChatMessage =
-  | MetabotUserTextChatMessage
-  | MetabotUserActionChatMessage;
+export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 
-export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
+export type MetabotIncompleteFinishReason = Exclude<
+  FinishReason,
+  "stop" | "error"
+>;
 
-export type MetabotChatMessage =
-  | MetabotUserChatMessage
-  | MetabotAgentChatMessage
-  | MetabotDebugChatMessage;
-
-export type MetabotErrorMessage =
+export type MetabotMessageStatus =
+  | { type: "streaming" }
+  | { type: "in_progress" }
+  | { type: "done" }
+  | { type: "aborted" }
   | {
-      type: "message" | "alert";
-      message: string;
+      type: "incomplete";
+      finishReason: MetabotIncompleteFinishReason;
+      contextWindowFull?: boolean;
     }
   | {
-      type: "locked";
-      message: string;
+      type: "errored";
+      error: MetabotAgentTurnError;
+      display?: MetabotAgentTurnDisplayError;
+      serverStarted?: boolean;
     };
+
+export type MetabotMessagePart =
+  | MetabotUserTextChatMessage
+  | MetabotAgentTextChatMessage
+  | MetabotAgentDataPartMessage
+  | MetabotDebugToolCallMessage
+  | MetabotAgentChainOfThoughtMessage;
+
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
+
+export type MetabotMessage = {
+  id: string;
+  externalId?: string;
+  role: "user" | "agent";
+  parts: MetabotMessagePart[];
+  status: MetabotMessageStatus;
+  contextTokens?: number;
+};
 
 export type MetabotToolCall = {
   id: string;
@@ -99,39 +137,65 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
+export type MetabotChainStep =
+  | { kind: "reasoning"; text: string; startedAtMs?: number }
+  | {
+      kind: "tool";
+      id: string;
+      name: string;
+      title?: string;
+      searchResults?: MetabotSearchResults;
+      status: "started" | "ended";
+      startedAtMs?: number;
+    };
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;
-  suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-export interface MetabotConverstationState {
+export interface MetabotConversationState {
   conversationId: string;
+  title: string | undefined;
+  forkedFromConversationId: string | undefined;
   isProcessing: boolean;
-  messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
-  visible: boolean;
-  history: MetabotHistory;
-  state: any;
+  hasMessagedInSession: boolean;
+  messages: MetabotMessage[];
+  state: MetabotStateContext;
+  stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
-  profileOverride: string | undefined;
+  contextWindowTokens?: number;
+  profileOverride: MetabotProfileId | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "sql"] as const;
+export interface MetabotAgentState {
+  conversationId: string;
+  visible: boolean;
+}
+
+export const fixedMetabotAgentIds = [
+  "omnibot",
+  "sql",
+  "ask",
+  "explorations",
+] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;
 
 export interface MetabotState {
-  conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
+  conversations: Record<string, MetabotConversationState | undefined>;
+  agents: Partial<Record<MetabotAgentId, MetabotAgentState>>;
   reactions: MetabotReactionsState;
+  titlePollingConversationIds: string[];
   debugMode: boolean;
+  savedChartCardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

@@ -1,8 +1,16 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
    [metabase-enterprise.sso.settings :as ee-sso-settings]
-   [metabase.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
+
+(defn request-jwt
+  "JWT from the SSO request. GET reads `:params` (query string). POST reads JSON `:body` only."
+  [req]
+  (case (:request-method req)
+    :get  (get-in req [:params :jwt])
+    :post (or (get-in req [:body "jwt"])
+              (get-in req [:body :jwt]))
+    nil))
 
 (defn- select-sso-backend
   [req]
@@ -14,7 +22,7 @@
                          (throw (ex-info "Invalid auth method"
                                          {:preferred-method preferred-method
                                           :available        [:jwt :saml]})))
-      (contains? (:params req) :jwt) :jwt
+      (some? (request-jwt req)) :jwt
       :else :saml)))
 
 (defn- sso-backend
@@ -24,8 +32,7 @@
   [req]
   (let [enabled-count (count (filter identity
                                      [(ee-sso-settings/saml-enabled)
-                                      (ee-sso-settings/jwt-enabled-and-configured)
-                                      (sso-settings/slack-connect-enabled)]))]
+                                      (ee-sso-settings/jwt-enabled-and-configured)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
       (> enabled-count 1) (select-sso-backend req)
@@ -33,7 +40,6 @@
       ;; Single SSO method enabled
       (ee-sso-settings/saml-enabled) :saml
       (ee-sso-settings/jwt-enabled-and-configured)  :jwt
-      (sso-settings/slack-connect-enabled)  :slack-connect
 
       ;; No SSO method enabled
       :else nil)))

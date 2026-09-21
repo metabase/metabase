@@ -1,4 +1,6 @@
-import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
+
+import { CHILD_TYPES } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
@@ -12,6 +14,14 @@ import type {
 
 export function hasChildren(type: ItemType): boolean {
   return type !== "table";
+}
+
+// Whether a node's children have finished fetching. Only database and schema
+// nodes load their children lazily, so only they carry the `loaded` flag.
+function isLoaded(node: TreeNode): boolean {
+  return (
+    (node.type === "database" || node.type === "schema") && node.loaded === true
+  );
 }
 
 // Returns a new state object with all the nodes along the path expanded.
@@ -103,6 +113,14 @@ export function flatten(
     if (!childType) {
       return [{ ...node, level, parent }];
     }
+    if (isLoaded(node)) {
+      // Children have been fetched and there genuinely are none (e.g. an empty
+      // database). Show an "Empty" placeholder rather than a forever skeleton.
+      return [
+        { ...node, isExpanded: true, level, parent },
+        emptyItem(childType, level + 1, node),
+      ];
+    }
     return [
       { ...node, isExpanded: true, level, parent },
       loadingItem(childType, level + 1, node),
@@ -175,6 +193,7 @@ type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export function node<T extends TreeNode>(
   x: Optional<T, "key" | "children">,
 ): T {
+  // Unjustified type cast. FIXME
   return {
     ...x,
     key: toKey(x.value),
@@ -203,5 +222,21 @@ export function loadingItem(
     parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
+  };
+}
+
+export function emptyItem(
+  type: ItemType,
+  level: number,
+  parent?: TreeNode,
+): FlatItem {
+  return {
+    type,
+    level,
+    value: parent?.type === "root" ? undefined : parent?.value,
+    parent: parent?.type === "root" ? undefined : parent?.key,
+    isEmpty: true,
+    // Stable key (one empty placeholder per parent) so it isn't remounted.
+    key: `${parent?.key ?? "root"}:empty`,
   };
 }

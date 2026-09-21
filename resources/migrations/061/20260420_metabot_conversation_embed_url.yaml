@@ -1,0 +1,19 @@
+## Embed URL (Referer) for Metabot conversations (web-originated only).
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-20T12:00:00
+      author: tyler
+      comment: Add embed_url to metabot_conversation for web-originated conversations
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: embed_url
+                  type: varchar(2048)
+                  remarks: Referer URL captured at conversation creation (typically the parent page for SDK iframe embeds). NULL for Slack-originated conversations and when the browser strips the header.
+                  constraints:
+                    nullable: true

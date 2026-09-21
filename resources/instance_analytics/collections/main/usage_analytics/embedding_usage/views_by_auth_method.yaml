@@ -125,12 +125,6 @@ result_metadata:
   lib/deduplicated-name: auth_method
   lib/desired-column-alias: auth_method
   lib/from-model?: true
-  lib/internal-remap:
-    human-readable-values: [API key, Guest, JWT, Password, public, SAML]
-    id: 288
-    name: Auth Method
-    values: [api-key, guest, jwt, password, public, saml]
-    lib/type: metadata.column.remapping/internal
   lib/original-display-name: Auth Method
   lib/original-name: auth_method
   lib/source: source/previous-stage

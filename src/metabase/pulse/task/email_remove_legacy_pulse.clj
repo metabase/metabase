@@ -6,29 +6,29 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
    [metabase.channel.urls :as urls]
+   [metabase.pulse.db :as pulse.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defn- has-legacy-pulse? []
-  (pos? (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false)))
+  (pos? (pulse.db/legacy-pulse-count)))
 
-(def ^:private template-path "metabase/channel/email/warn_deprecate_pulse.hbs")
+(def ^:private template-name "warn_deprecate_pulse")
 
 (defn- email-remove-legacy-pulse []
   (when (and (channel.settings/email-configured?)
              (has-legacy-pulse?))
     (log/info "Sending email to admins about removal of legacy pulses")
-    (let [legacy-pulse (->> (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false)
+    (let [legacy-pulse (->> (pulse.db/legacy-pulses)
                             (map #(assoc % :url (urls/legacy-pulse-url (:id %)))))]
-      (doseq [admin (t2/select :model/User :is_superuser true)]
+      (doseq [admin (pulse.db/superusers)]
         (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html
           :subject      "[Metabase] Removal of legacy pulses in upcoming Metabase release"
-          :message      (channel.template/render template-path {:userName    (:common_name admin)
+          :message      (channel.template/render template-name {:userName    (:common_name admin)
                                                                 :pulses      legacy-pulse
                                                                 :instanceURL (urls/site-url)})})))))
 

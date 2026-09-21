@@ -1,5 +1,5 @@
+import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -10,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupEmailEndpoints,
   setupGroupsEndpoint,
+  setupNotificationChannelsEndpoints,
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
@@ -21,9 +22,10 @@ import {
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "__support__/state";
+import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
-import { createMockState } from "metabase/redux/store/mocks";
+import { Outlet, Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -56,9 +58,9 @@ export const ossRoutes: RouteMap = {
   ldap: { path: "/authentication/ldap", testPattern: /Server Settings/i },
   apiKeys: {
     path: "/authentication/api-keys",
-    testPattern: /Allow users to use API keys/i,
+    testPattern: /Create API keys to let users authenticate/i,
   },
-  maps: { path: "/maps", testPattern: /Map tile server URL/i },
+  maps: { path: "/maps", testPattern: /Map tile server public URL/i },
   localization: { path: "/localization", testPattern: /Instance language/i },
   uploads: {
     path: "/uploads",
@@ -74,6 +76,10 @@ export const ossRoutes: RouteMap = {
     testPattern: /Make Metabase look like you/i,
   },
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
+  remoteSync: {
+    path: "/remote-sync",
+    testPattern: /Manage your Metabase content in Git/i,
+  },
 };
 
 export const enterpriseRoutes: RouteMap = {
@@ -81,7 +87,10 @@ export const enterpriseRoutes: RouteMap = {
 };
 
 export const premiumRoutes: RouteMap = {
-  saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
+  saml: {
+    path: "/authentication/saml",
+    testPattern: /Configure your identity provider/i,
+  },
   jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
 };
 
@@ -120,6 +129,7 @@ export const setup = async ({
   if (hasTokenFeatures) {
     // all or nothing token features
     Object.keys(tokenFeatures).forEach((feature) => {
+      // Unjustified type cast. FIXME
       tokenFeatures[feature as TokenFeature] = true;
     });
   }
@@ -149,15 +159,36 @@ export const setup = async ({
     key: "upsell-dev_instances",
     value: true,
   });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: true,
+  });
 
+  setupNotificationChannelsEndpoints({
+    email: { configured: false },
+    slack: { configured: false },
+  });
+  fetchMock.get("path:/api/ee/security-center", {
+    last_checked_at: null,
+    advisories: [],
+  });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
   fetchMock.get("path:/api/ee/sso/oidc", []);
+  fetchMock.get("path:/api/ee/remote-sync/dirty", {
+    data: [],
+    metadata: {
+      changed_collections: {},
+      is_dirty: false,
+      has_removed_items: false,
+    },
+  });
 
   const user = createMockUser({
     is_superuser: isAdmin,
   });
 
-  const store = createMockState({
+  const initialState = createMockState({
     currentUser: user,
     settings: mockSettings(settings),
   });
@@ -171,13 +202,19 @@ export const setup = async ({
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
-  renderWithProviders(
-    <Route path="admin/settings">{getSettingsRoutes()}</Route>,
-    {
-      storeInitialState: store,
-      withRouter: true,
-      initialRoute: `/admin/settings${initialRoute}`,
-    },
+  const { wrapper, store } = getTestStoreAndWrapper({
+    storeInitialState: initialState,
+    withRouter: true,
+    initialRoute: `/admin/settings${initialRoute}`,
+  });
+
+  const PassThroughGuard = () => <Outlet />;
+
+  testingLibraryRender(
+    <Route path="admin/settings">
+      {getSettingsRoutes(store, PassThroughGuard)}
+    </Route>,
+    { wrapper },
   );
 
   await screen.findByTestId("admin-layout-content");

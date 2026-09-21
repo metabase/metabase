@@ -71,7 +71,7 @@ export const SidebarCacheForm = ({
       <Stack
         align="space-between"
         h="calc(100% + 2.5rem)" // to make bottom padding nice with scroll containers
-        gap="md"
+        gap="lg"
         aria-labelledby={headingId}
         {...stackProps}
       >
@@ -85,9 +85,13 @@ export const SidebarCacheForm = ({
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onReset={onBack}
+            onCancel={() =>
+              isStrategyFormDirty
+                ? askBeforeDiscardingChanges(onBack)
+                : onBack()
+            }
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
-            isInSidebar
+            layout="sidebar"
           />
         </DelayedLoadingAndErrorWrapper>
         {confirmationModal}

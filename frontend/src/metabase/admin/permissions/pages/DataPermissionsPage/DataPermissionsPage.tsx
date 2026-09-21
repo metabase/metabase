@@ -1,17 +1,16 @@
-import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
-import _ from "underscore";
 
-import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
-import { Groups } from "metabase/entities/groups";
+import {
+  skipToken,
+  useGetDatabaseMetadataQuery,
+  useListDatabasesQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
-import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -20,63 +19,53 @@ import {
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
+import { DATABASE_TABLES_QUERY } from "../../selectors/data-permissions/databases";
 import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
-type DataPermissionsPageProps = {
-  children: ReactNode;
-  route: typeof Route;
-  params: {
-    databaseId: DatabaseId;
-  };
-  databases: Database[];
-  groups: Group[];
-};
+const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
-function DataPermissionsPage({
-  children,
-  route,
-  params,
-  databases,
-  groups,
-}: DataPermissionsPageProps) {
-  const isDirty = useSelector(getIsDirty);
-  const diff = useSelector((state) => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector((state) =>
-    getSetting(state, "show-updated-permission-modal"),
+export function DataPermissionsPage() {
+  const params = useParams<{ databaseId: string }>();
+  const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
+  const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
+    {},
   );
+  const groups = data ?? EMPTY_GROUP_LIST;
+  const isDirty = useSelector(getIsDirty);
+  const diff = useSelector((state) => getDiff(state, { groups }));
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
   const savePermissions = () => dispatch(saveDataPermissions());
 
   const { loading: isLoadingAllUsers } = useAsync(async () => {
+    if (isLoadingGroups) {
+      return;
+    }
     const allUsers = groups.find(isDefaultGroup);
     await dispatch(loadDataPermissionsForGroup(allUsers?.id));
-  }, []);
+  }, [isLoadingGroups]);
 
   const { loading: isLoadingAdminstrators } = useAsync(async () => {
+    if (isLoadingGroups) {
+      return;
+    }
     const admins = groups.find(isAdminGroup);
     await dispatch(loadDataPermissionsForGroup(admins?.id));
-  }, []);
+  }, [isLoadingGroups]);
 
   const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
     params.databaseId !== undefined
-      ? {
-          id: params.databaseId,
-          include_hidden: true,
-          remove_inactive: true,
-          skip_fields: true,
-        }
+      ? { id: Number(params.databaseId), ...DATABASE_TABLES_QUERY }
       : skipToken,
   );
 
-  if (isLoadingAllUsers || isLoadingAdminstrators || isLoadingTables) {
-    return (
-      <Center h="100%">
-        <Loader size="lg" />
-      </Center>
-    );
-  }
+  const isLoading =
+    isLoadingDatabases ||
+    isLoadingGroups ||
+    isLoadingAllUsers ||
+    isLoadingAdminstrators ||
+    isLoadingTables;
 
   return (
     <PermissionsPageLayout
@@ -85,19 +74,16 @@ function DataPermissionsPage({
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}
-      route={route}
       helpContent={<DataPermissionsHelp />}
-      showSplitPermsModal={showSplitPermsModal}
+      canShowSplitPermsModal={!isLoading}
     >
-      {children}
+      {isLoading ? (
+        <Center h="100%" w="100%">
+          <Loader size="lg" />
+        </Center>
+      ) : (
+        <Outlet />
+      )}
     </PermissionsPageLayout>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Groups.loadList(),
-  Databases.loadList({
-    selectorName: "getListUnfiltered",
-  }),
-)(DataPermissionsPage);

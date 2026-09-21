@@ -8,9 +8,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,6 +48,24 @@
   nil)
 
 ;;; ============================================================
+;;; Agent surface
+;;; ============================================================
+
+(def ^:dynamic *numeric-ids-allowed?*
+  "Whether bare numeric table/field/card ids are accepted alongside portable references inside
+  a query body being resolved.
+
+  False is the default, and the safe direction: a numeric id is rejected with a teaching error
+  rather than resolved against whatever row happens to carry that id. True means the caller has
+  established that its surface may author bare ids, and accepts that every id it passes is an
+  untrusted integer — so the readers gated on this flag re-derive, explicitly, the guarantees a
+  portable reference gets for free from resolving a name (in this database, visible, readable).
+
+  It is ambient rather than a parameter because one of its readers is a registered Malli schema
+  predicate, which has no call site to thread a value through."
+  false)
+
+;;; ============================================================
 ;;; Pure predicates
 ;;; ============================================================
 
@@ -57,35 +76,59 @@
                 (string? id-str)
                 (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
-(defn identity-hash?
-  "Returns true if s is a valid identity hash string."
-  [s]
-  (boolean (re-matches #"^[0-9a-fA-F]{8}$" s)))
-
 (defn- portable-id?
-  "True if the provided string is either an Entity ID or identity-hash string."
+  "True if the provided string is an Entity ID."
   [s]
   (and (string? s)
-       (or (entity-id? s)
-           (identity-hash? s))))
+       (entity-id? s)))
+
+(defn- numeric-source-id?
+  "True for a bare numeric content id, and only on a surface that accepts them (see
+  [[*numeric-ids-allowed?*]]). Off that surface a number in a source slot is not a reference at
+  all, so it must not match — that is what keeps the portable-only surface's behavior unchanged."
+  [x]
+  (and (pos-int? x) *numeric-ids-allowed?*))
+
+(defn- content-ref?
+  "True for any reference to Metabase content the numeric dialect covers — a card, metric,
+  segment, or measure — that this surface may author: a portable entity_id, or, on the
+  numeric-id surface, a bare id. Snippets are deliberately not included; see the `snippet-id`
+  branch below.
+
+  Every `import-mbql` branch that resolves content goes through this one predicate rather than
+  matching `portable-id?` and gaining a numeric twin. The numeric form needs no translation, but
+  it must still reach `import-fk`, because that is what consults the content store — and on
+  agent paths the store is `read-checked`, so the lookup *is* the permission check. A branch
+  that matched only the portable form would silently let a numeric id past it unchecked."
+  [x]
+  (or (portable-id? x)
+      (numeric-source-id? x)))
+
+(defn serialized-query-source-table
+  "Given a serialized query (with portable references), returns the portable reference of the table it is based
+  on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
+  an mbql query and not a native query."
+  [serialized-query]
+  (mu/disable-enforcement
+    (lib/primary-source-table-id serialized-query)))
 
 ;;; ============================================================
-;;; import-mbql — depends only on protocols, lib.util.match, lib.schema.id
+;;; import-mbql — depends only on protocols, match, lib.schema.id
 ;;; ============================================================
 
 (defn- mbql-fully-qualified-names->ids*
   [resolver entity]
-  (lib.util.match/replace-lite entity
+  (match/replace entity
     [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (mbql-fully-qualified-names->ids* resolver opts)
      (import-field-fk resolver fully-qualified-name)]
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
-    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
+    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (import-field-fk resolver fully-qualified-name) (some->> opts (mbql-fully-qualified-names->ids* resolver))]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
+    [#{:field :field-id "field" "field-id"} (id :guard vector?)]
     [:field (import-field-fk resolver id) nil]
 
     ;; source-field is also used within parameter mapping dimensions
@@ -100,31 +143,31 @@
                            (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:card-id (entity-id :guard portable-id?)}
+    {:card-id (entity-id :guard content-ref?)}
     (-> &match
         (assoc :card-id (import-fk resolver entity-id 'Card))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    [#{:metric "metric"} opts (entity-id :guard portable-id?)]
+    [#{:metric "metric"} opts (entity-id :guard content-ref?)]
     [:metric (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} opts (entity-id :guard portable-id?)]
+    [#{:segment "segment"} opts (entity-id :guard content-ref?)]
     [:segment (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} opts (entity-id :guard portable-id?)]
+    [#{:measure "measure"} opts (entity-id :guard content-ref?)]
     [:measure (mbql-fully-qualified-names->ids* resolver opts)
      (import-fk resolver entity-id 'Measure)]
 
     ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
-    [#{:metric "metric"} (entity-id :guard portable-id?)]
+    [#{:metric "metric"} (entity-id :guard content-ref?)]
     [:metric (import-fk resolver entity-id 'Card)]
 
-    [#{:segment "segment"} (entity-id :guard portable-id?)]
+    [#{:segment "segment"} (entity-id :guard content-ref?)]
     [:segment (import-fk resolver entity-id 'Segment)]
 
-    [#{:measure "measure"} (entity-id :guard portable-id?)]
+    [#{:measure "measure"} (entity-id :guard content-ref?)]
     [:measure (import-fk resolver entity-id 'Measure)]
 
     {:source-table (_ :guard vector?)}
@@ -143,11 +186,18 @@
         (assoc :source-table (str "card__" (import-fk resolver id 'Card)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
-    {:source-card (id :guard portable-id?)}
-    (-> &match
-        (assoc :source-card (import-fk resolver id 'Card))
-        (->> (mbql-fully-qualified-names->ids* resolver)))
+    {:source-card (id :guard content-ref?)}
+    ;; Recur on the rest of the map, not on `&match`: `import-fk` of a numeric id returns a
+    ;; numeric id, which still satisfies `content-ref?`, so recurring on the whole match would
+    ;; re-enter this branch on its own output forever. The `:source-table` branch escapes only
+    ;; because it rewrites the value to "card__N" and no longer matches.
+    (assoc (mbql-fully-qualified-names->ids* resolver (dissoc &match :source-card))
+           :source-card (import-fk resolver id 'Card))
 
+    ;; Portable only, deliberately. The numeric dialect does not cover snippets: no resolver
+    ;; implements `NativeQuerySnippet`, so a numeric one would fall through `import-fk`'s model
+    ;; tests to `not-implemented!` and surface as a bare 501 with no `:agent-error?` — never
+    ;; reaching the read-checked store. Widening this needs a store-backed snippet branch first.
     {:snippet-id (id :guard portable-id?)}
     (-> &match
         (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))
@@ -161,21 +211,30 @@
   ([resolver exported]
    (mbql-fully-qualified-names->ids* resolver exported)))
 
+(mr/def ::mbql-node
+  "Any node reached while walking an MBQL form being imported, which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "an MBQL form node"} :any])
+
 (mu/defn- mbql-clause-tag :- [:maybe [:enum :field :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
-  [form]
+  [form :- [:ref ::mbql-node]]
   (when (and (vector? form)
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
+(mr/def ::field-ref
+  "MBQL 5 or legacy `:field` clause. Registered under a keyword so [[lib/normalize]] reuses one cached coercer; an
+  inline literal with a fresh dispatch fn misses the registry cache on every call."
+  [:multi
+   {:dispatch #(and (vector? %)
+                    (map? (second %)))}
+   [true  :mbql.clause/field]
+   [false ::mbql.s/field]])
+
 (defn- normalize [mbql]
   (let [tag    (mbql-clause-tag mbql)
         schema (case tag
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     ::field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
@@ -186,13 +245,13 @@
 
 (defn- mbql-id->fully-qualified-name
   [resolver mbql]
-  (lib.util.match/replace-lite (normalize mbql)
+  (match/replace (normalize mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (mbql-id->fully-qualified-name resolver opts) (export-field-fk resolver id)]
 
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
-    [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
+    [:field (id :guard pos-int?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (export-field-fk resolver id) (mbql-id->fully-qualified-name resolver opts)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
@@ -224,12 +283,12 @@
   inside it into portable references."
   ([entity] (export-mbql *export-resolver* entity))
   ([resolver entity]
-   (lib.util.match/replace-lite entity
+   (match/replace entity
      (_ :guard mbql-clause-tag)
      (mbql-id->fully-qualified-name resolver &match)
 
      (_ :guard sequential?)
-     (mapv export-mbql &match)
+     (mapv (partial export-mbql resolver) &match)
 
      (_ :guard map?)
      (reduce-kv

@@ -1,20 +1,19 @@
 import cx from "classnames";
 import { type MouseEvent, useCallback, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { useSetArchive } from "metabase/archive/hooks";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemNameCell,
-  MaybeItemLink,
   TBody,
   Table,
   TableColumn,
@@ -23,21 +22,19 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Questions } from "metabase/entities/questions";
-import { useDispatch } from "metabase/redux";
+import CS from "metabase/css/core/index.css";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   FixedSizeIcon,
   Flex,
   Icon,
-  type IconName,
   Menu,
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { SortingOptions } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { IconName, SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 
@@ -169,7 +166,7 @@ export function MetricsTable({
 }
 
 function MetricRow({ metric }: { metric?: MetricResult }) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -197,10 +194,10 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     },
-    [metric, dispatch],
+    [metric, navigate],
   );
 
   return (
@@ -231,36 +228,29 @@ function preventDefault(event: MouseEvent) {
 
 function NameCell({ metric }: { metric?: MetricResult }) {
   const headingId = `metric-${metric?.id ?? "dummy"}-heading`;
-
   return (
     <ItemNameCell
       data-testid="metric-name"
       aria-labelledby={headingId}
       {...nameProps}
     >
-      <MaybeItemLink
-        to={
-          metric
-            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
-            : undefined
-        }
-        style={{
-          // To align the icons with "Name" in the <th>
-          paddingInlineStart: "1.4rem",
-          paddingInlineEnd: ".5rem",
-        }}
-        onClick={preventDefault}
-      >
+      <Flex align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
         {metric ? (
-          <EntityItem.Name
-            name={metric?.name || ""}
-            variant="list"
-            id={headingId}
-          />
+          <Link
+            className={CS.overflowHidden}
+            to={Urls.metric({
+              id: metric.id,
+              name: metric.name,
+              type: "metric",
+            })}
+            onClick={preventDefault}
+          >
+            <EntityItemName name={metric.name} id={headingId} />
+          </Link>
         ) : (
           <SkeletonText />
         )}
-      </MaybeItemLink>
+      </Flex>
     </ItemNameCell>
   );
 }
@@ -330,7 +320,8 @@ type MetricAction = {
 function MenuCell({ metric }: { metric?: MetricResult }) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const archive = useSetArchive();
 
   const actions = useMemo(() => {
     if (!metric) {
@@ -349,8 +340,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -365,7 +354,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           });
 
           trackMetricBookmarked();
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }
@@ -376,7 +364,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Open collection`,
         icon: "folder",
         action() {
-          dispatch(push(Urls.collection(metric.collection)));
+          navigate(Urls.collection(metric.collection));
         },
       });
     }
@@ -387,18 +375,13 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Move to trash`,
         icon: "trash",
         action() {
-          dispatch(
-            Questions.actions.setArchived(
-              { id: metric.id, model: "metric" },
-              true,
-            ),
-          );
+          archive({ id: metric.id, model: "metric" }, true);
         },
       });
     }
 
     return actions;
-  }, [metric, createBookmark, deleteBookmark, dispatch]);
+  }, [metric, createBookmark, deleteBookmark, navigate, archive]);
 
   return (
     <td

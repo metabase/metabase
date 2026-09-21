@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";

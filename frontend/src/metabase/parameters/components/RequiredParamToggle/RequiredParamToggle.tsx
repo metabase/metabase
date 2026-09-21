@@ -24,7 +24,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
   const id = `required_param_toggle_${uniqueId}`;
 
   return (
-    <Flex gap="sm" mt="md">
+    <Flex gap="sm" mt="lg">
       <Switch
         disabled={disabled}
         id={id}

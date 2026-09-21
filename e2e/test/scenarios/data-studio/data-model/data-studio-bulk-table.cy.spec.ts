@@ -32,10 +32,6 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.intercept("POST", "/api/data-studio/table/discard-values").as(
       "discardValues",
     );
-    cy.intercept(
-      "GET",
-      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
-    ).as("getSchema");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
     );
@@ -47,14 +43,26 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("pro-self-hosted");
+    // Re-authenticate after restoring the writable-DB snapshot, like the
+    // sibling tests do, otherwise visiting Data Studio can land in an
+    // unauthenticated state and the TablePicker never issues the schema
+    // request.
+    cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    cy.wait("@getSchema").then(({ response }) => {
-      const tables = response?.body ?? [];
-      const accountTableId = getTableId(tables, "Orders");
-      const feedbackTableId = getTableId(tables, "Products");
+    TablePicker.expandDatabase("Writable Postgres12");
 
-      cy.wrap([accountTableId, feedbackTableId]).as("tableIds");
+    // Capture the expected table IDs from a direct API request rather than the
+    // intercepted UI response: under stress the intercepted response body is
+    // occasionally a non-array (e.g. an error map), which made `tables.find`
+    // throw `TypeError: tables.find is not a function`. A `cy.request`
+    // deterministically returns the table list.
+    cy.request<Table[]>(
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
+    ).then(({ body: tables }) => {
+      const ordersTableId = getTableId(tables, "Orders");
+      const productsTableId = getTableId(tables, "Products");
+
+      cy.wrap([ordersTableId, productsTableId]).as("tableIds");
     });
 
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
@@ -124,7 +132,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.expandDatabase("Writable Postgres12");
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -166,7 +174,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.activateToken("pro-self-hosted");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.expandDatabase("Writable Postgres12");
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
@@ -227,9 +235,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       it("should change metadata and see that is changed for all selected tables without filters", () => {
         cy.log("change the owner and check the owner column");
 
-        TablePicker.getDatabase("Writable Postgres12").click();
-        TablePicker.getDatabase("Sample Database").click();
-        TablePicker.getSchema("Domestic").click();
+        TablePicker.expandDatabase("Writable Postgres12");
+        TablePicker.expandDatabase("Sample Database");
+        TablePicker.expandSchema("Domestic");
         TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         H.selectHasValue("Owner", "").click();
@@ -295,6 +303,12 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
+
+    cy.log(
+      "Expand the rows up front - we'll need them later for the assertion",
+    );
+    TablePicker.expandDatabase("Writable Postgres12");
+
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
       .check();
@@ -315,10 +329,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    TablePicker.getDatabase("Writable Postgres12").click();
-
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
+      .should("have.length.greaterThan", 0)
       .each((table) => {
         cy.wrap(table)
           .findByTestId("table-owner")
@@ -337,7 +350,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.expandDatabase("Writable Postgres12");
     TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
     TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();
 
@@ -355,8 +368,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.selectHasValue("Source", "").click();
     H.selectDropdown().contains("Ingested").click();
 
-    TablePicker.getSchema("Schema A").click();
-    TablePicker.getSchema("Schema B").click();
+    TablePicker.expandSchema("Schema A");
+    TablePicker.expandSchema("Schema B");
 
     cy.findByTestId("loading-placeholder").should("not.exist");
     cy.findAllByTestId("tree-item")

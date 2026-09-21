@@ -1,4 +1,5 @@
 (ns metabase-enterprise.snippet-collections.models.native-query-snippet.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.snippet-collections.models.native-query-snippet.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
@@ -28,15 +29,14 @@
     (testing "if EE perms aren't enabled: "
       (mt/with-premium-features #{}
         (testing "should NOT be allowed if you don't have native perms for at least one DB"
-          (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+          (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
             (test-perms* false)))
         (testing "should be allowed if you have native perms for at least one DB"
-          (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+          (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
             (test-perms* true)))))
-
     (testing "if EE perms are enabled: "
       (mt/with-premium-features #{:snippet-collections}
-        (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+        (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
           (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
             (grant-collection-perms!)
             (test-perms* true))
@@ -47,7 +47,7 @@
           (testing "should NOT be allowed if you are sandboxed"
             (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
               (test-perms* false))))
-        (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+        (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
           (testing "should NOT be allowed if you do not have native query perms for at least one DB"
             (test-perms* false)))))))
 
@@ -87,6 +87,13 @@
         :has-perms-for-id?        #(mi/can-write? :model/NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
+
+(deftest nonexistent-snippet-perms-test
+  (testing "checking perms for a nonexistent Snippet ID throws instead of silently allowing root-collection access"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-test-user :rasta
+        (is (thrown? Exception (mi/can-read? :model/NativeQuerySnippet Integer/MAX_VALUE)))
+        (is (thrown? Exception (mi/can-write? :model/NativeQuerySnippet Integer/MAX_VALUE)))))))
 
 ;;; ------------------------------------------- Remote Sync Read-Only Mode Tests -------------------------------------------
 

@@ -20,7 +20,7 @@ export function fillActionQuery(query) {
 }
 /**
  *
- * @param {import("metabase/entities/actions/actions").CreateQueryActionParams} actionDetails
+ * @param {import("metabase/actions/types").CreateQueryActionParams} actionDetails
  */
 export function createAction(actionDetails) {
   return cy.request("POST", "/api/action", actionDetails);

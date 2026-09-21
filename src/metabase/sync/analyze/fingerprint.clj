@@ -2,14 +2,13 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
-   [clojure.set :as set]
-   [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -19,8 +18,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
-   [redux.core :as redux]
-   [toucan2.core :as t2]))
+   [redux.core :as redux]))
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
@@ -36,10 +34,19 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+  (sync.db/update-field! (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+
+(mu/defn- mark-fingerprinting-failed!
+  "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
+  fingerprinting fails for a non-transient reason, so that the Fields are not re-selected by [[fields-to-fingerprint]]
+  and retried on every subsequent sync. Transient failures (see [[metabase.sync.util/transient-exception?]]) are
+  left untouched so they are retried."
+  [fields :- [:maybe [:sequential i/FieldInstance]]]
+  (when-let [ids (seq (map u/the-id fields))]
+    (sync.db/set-fields-fingerprint-version! ids i/*latest-fingerprint-version*)))
 
 (mr/def ::FingerprintStats
-  [:map
+  [:map {:closed true}
    [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
    [:failed-fingerprints    ms/IntGreaterThanOrEqualToZero]
    [:updated-fingerprints   ms/IntGreaterThanOrEqualToZero]
@@ -69,7 +76,9 @@
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
                              (instance? Throwable fingerprint)
-                             (update count-info :failed-fingerprints inc)
+                             (do
+                               (mark-fingerprinting-failed! [field])
+                               (update count-info :failed-fingerprints inc))
 
                              (some-> fingerprint :global :distinct-count zero?)
                              (update count-info :no-data-fingerprints inc)
@@ -89,126 +98,67 @@
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Logic for building the somewhat-complicated query we use to determine which Fields need new Fingerprints
-;;
-;; This ends up giving us a SQL query that looks something like:
-;;
-;; SELECT *
-;; FROM metabase_field
-;; WHERE active = true
-;;   AND (semantic_type NOT IN ('type/PK') OR semantic_type IS NULL)
-;;   AND preview_display = true
-;;   AND visibility_type <> 'retired'
-;;   AND table_id = 1
-;;   AND ((fingerprint_version < 1 AND
-;;         base_type IN ("type/Longitude", "type/Latitude", "type/Integer"))
-;;        OR
-;;        (fingerprint_version < 2 AND
-;;         base_type IN ("type/Text", "type/SerializedJSON")))
-
-(mu/defn- base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
-  "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
-  descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
-  [base-types :- [:set ms/FieldType]]
-  (into #{}
-        (comp (mapcat (fn [base-type]
-                        (cons base-type (descendants base-type))))
-              (map u/qualified-name))
-        base-types))
-
-;; It's even cooler if we could generate efficient SQL that looks at what types have already
-;; been marked for upgrade so we don't need to generate overly-complicated queries.
-;;
-;; e.g. instead of doing:
-;;
-;; WHERE ((version < 2 AND base_type IN ("type/Integer", "type/BigInteger", "type/Text")) OR
-;;        (version < 1 AND base_type IN ("type/Boolean", "type/Integer", "type/BigInteger")))
-;;
-;; we could do:
-;;
-;; WHERE ((version < 2 AND base_type IN ("type/Integer", "type/BigInteger", "type/Text")) OR
-;;        (version < 1 AND base_type IN ("type/Boolean")))
-;;
-;; (In the example above, something that is a `type/Integer` or `type/Text` would get upgraded
-;; as long as it's less than version 2; so no need to also check if those types are less than 1, which
-;; would always be the case.)
-;;
-;; This way we can also completely omit adding clauses for versions that have been "eclipsed" by others.
-;; This would keep the SQL query from growing boundlessly as new fingerprint versions are added
-(mu/defn- versions-clauses :- [:maybe [:sequential :any]]
-  []
-  ;; keep track of all the base types (including descendants) for each version, starting from most recent
-  (let [versions+base-types (reverse (sort-by first (seq i/*fingerprint-version->types-that-should-be-re-fingerprinted*)))
-        already-seen        (atom #{})]
-    (for [[version base-types] versions+base-types
-          :let  [descendants  (base-types->descendants base-types)
-                 not-yet-seen (set/difference descendants @already-seen)]
-          ;; if all the descendants of any given version have already been seen, we can skip this clause altogether
-          :when (seq not-yet-seen)]
-      ;; otherwise record the newly seen types and generate an appropriate clause
-      (do
-        (swap! already-seen set/union not-yet-seen)
-        [:and
-         [:< :fingerprint_version version]
-         [:in :base_type not-yet-seen]]))))
-
-(def ^:private fields-to-fingerprint-base-clause
-  "Base clause to get fields for fingerprinting. When refingerprinting, run as is. When fingerprinting in analysis, only
-  look for fields without a fingerprint or whose version can be updated. This clauses is added on
-  by [[versions-clauses]]."
-  [:and
-   [:= :active true]
-   [:or
-    [:not (app-db/isa :semantic_type :type/PK)]
-    [:= :semantic_type nil]]
-   [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
-                             (u/qualified-name :type/*))]])
-
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."
   false)
-
-(mu/defn- honeysql-for-fields-that-need-fingerprint-updating :- [:map
-                                                                 [:where :any]]
-  "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
-  ([]
-   {:where (cond-> fields-to-fingerprint-base-clause
-             (not *refingerprint?*) (conj (cons :or (versions-clauses))))})
-
-  ([table :- i/TableInstance]
-   (sql.helpers/where (honeysql-for-fields-that-need-fingerprint-updating)
-                      [:= :table_id (u/the-id table)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
-  "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
-   This should include NEW fields that are active and visible."
-  [table :- i/TableInstance]
-  (seq (t2/select :model/Field
-                  (honeysql-for-fields-that-need-fingerprint-updating table))))
+  "Return up to `limit` Fields belonging to `table` for which we should generate (and save) fingerprints, ordered by
+  id so the selection is stable across syncs. This should include NEW fields that are active and visible."
+  [table :- i/TableInstance
+   limit :- ms/PositiveInt]
+  (seq (sync.db/fields-needing-fingerprint-update
+        (u/the-id table)
+        *refingerprint?*
+        i/*fingerprint-version->types-that-should-be-re-fingerprinted*
+        limit)))
+
+(mu/defn- warn-too-many-fields!
+  "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first
+  `limit` are fingerprinted and the rest skipped -- fingerprinting that many Fields at once can exhaust the heap (this
+  has OOM'd instances syncing document databases like Mongo with very large/dynamic schemas)."
+  [table :- i/TableInstance
+   limit :- ms/PositiveInt]
+  (log/warnf (str "Table %s has more than fingerprint-max-fields-per-table (%d) fields to fingerprint; fingerprinting "
+                  "the first %d and skipping the rest. Raise MB_FINGERPRINT_MAX_FIELDS_PER_TABLE to fingerprint more.")
+             (sync-util/name-for-logging table) limit limit))
+
+(mu/defn- fingerprint-fields-of-table!
+  "Fingerprint the (non-empty) `fields` of `table`. On a non-transient error, advance their fingerprint version so we
+  don't re-attempt every sync; transient errors are left untouched to retry next sync."
+  [table  :- i/TableInstance
+   fields :- [:sequential i/FieldInstance]]
+  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+  (let [stats (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                (fingerprint-fields! table fields))]
+    (if-let [throwable (:throwable stats)]
+      (do
+        (when-not (sync-util/transient-exception? throwable)
+          (mark-fingerprinting-failed! fields))
+        (merge (empty-stats-map 0) stats))
+      stats)))
 
 (mu/defn fingerprint-table!
-  "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
+  "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most
+  [[metabase.sync.settings/fingerprint-max-fields-per-table]] fields are processed; if the table has more eligible
+  fields, the rest are skipped (with a warning) so we don't load a huge number of Fields into memory at once."
   [table :- i/TableInstance]
   (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
-    (if-let [fields (fields-to-fingerprint table)]
-      (do
-        (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-        (let [stats
-              (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                (fingerprint-fields! table fields))]
-          (if (:throwable stats)
-            (merge (empty-stats-map 0) stats)
-            stats)))
-      (empty-stats-map 0))))
+    (let [limit  (sync.settings/fingerprint-max-fields-per-table)
+          fields (fields-to-fingerprint table (inc limit))]
+      (when (> (count fields) limit)
+        (warn-too-many-fields! table limit))
+      (if-let [fields (seq (take limit fields))]
+        (fingerprint-fields-of-table! table fields)
+        (empty-stats-map 0)))))
 
 (def ^:private LogProgressFn
-  [:=> [:cat :string [:schema i/TableInstance]] :any])
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
 
 (mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-table!` on every table in `database`"
@@ -218,7 +168,7 @@
 
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn
-    continue?       :- [:=> [:cat ::FingerprintStats] :any]]
+    continue?       :- [:=> [:cat ::FingerprintStats] :boolean]]
    (let [tables (if *refingerprint?*
                   (sync-util/refingerprint-reducible-sync-tables database)
                   (sync-util/reducible-sync-tables database))]

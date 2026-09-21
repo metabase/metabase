@@ -15,8 +15,8 @@ describe("TransformsUpsellPage", () => {
     jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
   });
 
-  it("does not render an enable button if the user is not a store user", async () => {
-    setup({ isHosted: true, isStoreUser: false });
+  it("shows the contact message if the user is not an admin or store user", async () => {
+    setup({ isHosted: true, isAdmin: false, isStoreUser: false });
     await waitForLoadingToFinish();
 
     expect(
@@ -25,6 +25,17 @@ describe("TransformsUpsellPage", () => {
     expect(
       screen.getByText(/contact a store administrator/i),
     ).toBeInTheDocument();
+  });
+
+  it("proceeds to an agree step when the user is an admin", async () => {
+    setup({ isHosted: true, isAdmin: true, isStoreUser: false });
+    await waitForLoadingToFinish();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enable transforms" }),
+    );
+
+    expect(screen.getByText("1,000 free transform runs")).toBeInTheDocument();
   });
 
   it("proceeds to an agree step with an overview of the free bucket", async () => {

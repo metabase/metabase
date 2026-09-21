@@ -1,12 +1,12 @@
-import dayjs from "dayjs";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   Box,
   Flex,
@@ -16,7 +16,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,
@@ -74,7 +74,7 @@ export const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <Flex component="td" align="center" gap="md" c="text-primary-inverse">
+      <Flex component="td" align="center" gap="lg" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>
@@ -130,7 +130,7 @@ export const PeopleListRow = ({
           </td>
           <Box component="td" ta="right">
             {isAdmin && (
-              <Menu shadow="md" position="bottom-end">
+              <Menu shadow="sm" position="bottom-end">
                 <Menu.Target>
                   <UnstyledButton>
                     <Icon name="ellipsis" />
@@ -162,7 +162,7 @@ export const PeopleListRow = ({
                     <Menu.Item
                       component={ForwardRefLink}
                       to={Urls.deactivateUser(user)}
-                      c="danger"
+                      c="feedback-negative"
                     >
                       {t`Deactivate user`}
                     </Menu.Item>

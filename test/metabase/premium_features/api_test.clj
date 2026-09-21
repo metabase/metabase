@@ -5,7 +5,9 @@
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -18,16 +20,14 @@
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"
     (testing "returns correctly"
-      (with-redefs [premium-features/token-status (constantly fake-token-status)]
+      (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)]
         (is (= fake-token-status
                (mt/user-http-request :crowberto :get 200 "premium-features/token/status")))))
-
     (testing "requires superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "premium-features/token/status"))))
-
     (testing "returns 404 if no token is set"
-      (with-redefs [premium-features/token-status (constantly nil)]
+      (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly nil)]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404 "premium-features/token/status")))))))
 
@@ -35,20 +35,18 @@
   (testing "POST /api/premium-features/token/refresh"
     (testing "clears cache and returns fresh token status"
       (let [cleared? (atom false)]
-        (with-redefs [premium-features/token-status           (constantly fake-token-status)
-                      premium-features/premium-embedding-token (constantly nil)
-                      token-check/clear-cache!                (fn [] (reset! cleared? true))]
+        (mt/with-dynamic-fn-redefs [premium-features/token-status           (constantly fake-token-status)
+                                    premium-features/premium-embedding-token (constantly nil)
+                                    token-check/clear-cache!                (fn [] (reset! cleared? true))]
           (is (=? (dissoc fake-token-status :trial)
                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")))
           (is (true? @cleared?))))))
-
   (testing "requires superusers"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 "premium-features/token/refresh"))))
-
   (testing "returns 404 if no token is set"
-    (with-redefs [premium-features/token-status (constantly nil)
-                  premium-features/premium-embedding-token (constantly nil)]
+    (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly nil)
+                                premium-features/premium-embedding-token (constantly nil)]
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "premium-features/token/refresh"))))))
 
@@ -61,25 +59,25 @@
             (mt/with-temporary-setting-values [llm-proxy-base-url  "https://proxy.example.com/llm/"
                                                ai-service-base-url "https://ai-service.example.com/"]
               (let [request* (atom nil)]
-                (with-redefs [premium-features/token-status (constantly fake-token-status)
-                              http/post                     (fn [url request-options]
-                                                              (reset! request* [url request-options])
-                                                              {:status 200})]
+                (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+                                            http/post                     (fn [url request-options]
+                                                                            (reset! request* [url request-options])
+                                                                            {:status 200})]
                   (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")
-                  (is (= [(str "https://ai-service.example.com/v1/invalidate-token-cache/" token)
-                          {:throw-exceptions false}]
-                         @request*))))))))))
-
+                  (let [[url opts] @request*]
+                    (is (= (str "https://ai-service.example.com/v1/invalidate-token-cache/" token) url))
+                    (is (false? (:throw-exceptions opts))))))))))))
   (testing "POST /api/premium-features/token/refresh does not invalidate the AI service cache when it is not configured"
-    (with-redefs [premium-features/token-status            (constantly fake-token-status)
-                  premium-features/premium-embedding-token (constantly "proxy-token")
-                  http/post                                (fn [& _]
-                                                             (throw (ex-info "should not be called" {})))]
+    (mt/with-dynamic-fn-redefs [premium-features/token-status            (constantly fake-token-status)
+                                premium-features/premium-embedding-token (constantly "proxy-token")
+                                http/post                                (fn [& _]
+                                                                           (throw (ex-info "should not be called" {})))]
       (is (=? (dissoc fake-token-status :trial)
               (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh"))))))
 
 (deftest token-refresh-sets-premium-features-cookie-test
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
+    ;; user-real-request hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
     (with-redefs [premium-features/token-status            (constantly fake-token-status)
                   premium-features/premium-embedding-token (constantly nil)]
       (let [cs (cookies/cookie-store)]
@@ -87,3 +85,32 @@
                               {:request-options {:cookie-store cs}})
         (let [pf-cookie (get (cookies/get-cookies cs) "metabase.PREMIUM_FEATURES_LAST_UPDATED")]
           (is (some? pf-cookie) "No premium-features-last-updated cookie set"))))))
+
+(deftest token-cache-invalidation-carries-the-llm-network-policy-test
+  (testing (str "the invalidation URL carries the instance token in its path, and ai-service-base-url is a stored "
+                "setting a superuser can write through the generic settings API, so the request is held to the "
+                "LLM network policy like any other")
+    (let [token    "SOME_RANDOM_TOKEN"
+          request* (atom nil)
+          refresh! (fn []
+                     (reset! request* nil)
+                     (mt/user-http-request :crowberto :post 200 "premium-features/token/refresh")
+                     (second @request*))]
+      (mt/with-premium-features #{:metabase-ai-managed}
+        (mt/with-temp-env-var-value! [mb-premium-embedding-token nil]
+          (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+            (mt/with-dynamic-fn-redefs [premium-features/token-status (constantly fake-token-status)
+                                        http/post (fn [url opts] (reset! request* [url opts]) {:status 200})]
+              (testing "a stored base URL gets no more than llm-allowed-networks allows"
+                (mt/with-temporary-setting-values [ai-service-base-url "http://10.0.0.1/"]
+                  (let [opts (refresh!)]
+                    (testing "no redirect can carry the token off to a host of the responder's choosing"
+                      (is (= :none (:redirect-strategy opts))))
+                    (is (thrown-with-msg?
+                         ExceptionInfo #"non-permitted"
+                         (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver opts) "10.0.0.1"))))))
+              (testing "a base URL the environment supplies is deployment configuration and reaches its own cluster"
+                (mt/with-temp-env-var-value! [mb-ai-service-base-url "http://10.0.0.1/"]
+                  (let [opts (refresh!)]
+                    (is (= 1 (alength ^"[Ljava.net.InetAddress;"
+                              (.resolve ^org.apache.http.conn.DnsResolver (:dns-resolver opts) "10.0.0.1"))))))))))))))

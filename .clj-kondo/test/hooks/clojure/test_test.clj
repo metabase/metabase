@@ -21,6 +21,54 @@
                                             #{:athena}}}}})
     (mapv :message @(:findings clj-kondo.impl.utils/*ctx*))))
 
+(defn- parallel-metadata-findings
+  ([form]
+   (parallel-metadata-findings form 'example.test))
+  ([form ns-sym]
+   (let [linters {:metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}
+                  :metabase/validate-deftest                             {:level :warning}}]
+     (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters linters}
+                                           :ignores    (atom nil)
+                                           :findings   (atom [])
+                                           :namespaces (atom {})}]
+       (hooks.clojure.test/deftest {:node   (api/parse-string form)
+                                    :lang   :clj
+                                    :ns     ns-sym
+                                    :config {:linters {:metabase/validate-deftest {}}}})
+       @(:findings clj-kondo.impl.utils/*ctx*)))))
+
+(deftest ^:parallel explicit-nonparallel-metadata-test
+  (testing "Hawk's supported test markers satisfy the explicit metadata linter"
+    (are [metadata] (empty? (parallel-metadata-findings
+                             (format "(deftest %s example-test (is true))" metadata)))
+      "^:parallel"
+      "^:synchronized"))
+  (testing "an unmarked test still gets the opt-in linter's guidance"
+    (is (=? [{:type    :metabase/deftest-not-marked-parallel-or-synchronized
+              :message "Test should be marked either `^:parallel` or `^:synchronized`"}]
+            (parallel-metadata-findings "(deftest example-test (is true))"))))
+  (testing "the unsupported marker explains that Hawk ignores it"
+    (is (some #(and (= (:type %) :metabase/validate-deftest)
+                    (re-find #"ignored by Hawk" (:message %)))
+              (parallel-metadata-findings
+               "(deftest ^:sequential example-test (is true))"))))
+  (testing "the verbose Hawk spelling is not accepted as Metabase style"
+    (is (some #(and (= (:type %) :metabase/validate-deftest)
+                    (re-find #"Use `\^:synchronized` instead" (:message %)))
+              (parallel-metadata-findings
+               "(deftest ^{:parallel false} example-test (is true))"))))
+  (testing "a test cannot request both execution modes"
+    (is (some #(and (= (:type %) :metabase/validate-deftest)
+                    (re-find #"both `\^:parallel` and `\^:synchronized`" (:message %)))
+              (parallel-metadata-findings
+               "(deftest ^:parallel ^:synchronized example-test (is true))"))))
+  (testing "a namespace-level non-parallel promise rejects parallel tests"
+    (is (=? [{:type    :metabase/validate-deftest
+              :message #(re-find #"namespace marked.*`\^:synchronized`" %)}]
+            (parallel-metadata-findings
+             "(deftest ^:parallel example-test (is true))"
+             (with-meta 'example.test {:synchronized true}))))))
+
 (deftest ^:parallel disallow-hardcoded-driver-names-in-tests-test
   (is (= []
          (deftest-warnings

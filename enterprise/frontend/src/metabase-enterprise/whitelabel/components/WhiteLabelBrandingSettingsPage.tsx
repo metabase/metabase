@@ -1,11 +1,11 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
+  AdminSettingInput,
+  SettingHeader,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+} from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
 import { getLoadingMessageOptions } from "../lib/loading-message";
@@ -49,7 +49,9 @@ export function WhiteLabelBrandingSettingsPage() {
       <SettingsSection>
         <AdminSettingInput
           name="loading-message"
-          title={t`Loading message`}
+          title={c(
+            "Label for a setting that selects the message shown to users while Metabase is loading",
+          ).t`Loading message`}
           inputType="select"
           options={getLoadingMessageOptions()}
         />

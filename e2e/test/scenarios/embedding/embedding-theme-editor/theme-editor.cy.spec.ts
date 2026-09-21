@@ -91,7 +91,10 @@ describe(
       cy.log("save the theme");
       cy.findByRole("button", { name: /Save theme/ }).click();
 
-      H.undoToast().findByText("Theme saved").should("exist");
+      // An earlier undo toast may still be on screen, so use the toast list
+      // (plural) and filter by text — `undoToast()` (singular) yields
+      // undefined when multiple toasts match.
+      H.undoToastList().contains("Theme saved").should("be.visible");
     });
 
     it("can cancel and navigate back to listing", () => {
@@ -222,7 +225,10 @@ describe(
           expect(settings.fontSize).to.eq("16px");
         });
 
-        H.undoToast().findByText("Theme saved").should("exist");
+        // An earlier undo toast (e.g. "reset to defaults") may still be on
+        // screen, so use the toast list (plural) and filter by text — using
+        // `undoToast()` (singular) yields undefined when multiple toasts match.
+        H.undoToastList().contains("Theme saved").should("be.visible");
       });
     });
 
@@ -247,15 +253,15 @@ describe(
 
         cy.log("revert button should appear after changing a main color");
         H.main()
-          .findByLabelText("Revert to default main colors")
+          .findByLabelText("Reset main colors to defaults")
           .should("be.visible");
 
         cy.log("click revert to reset main colors back to defaults");
-        H.main().findByLabelText("Revert to default main colors").click();
+        H.main().findByLabelText("Reset main colors to defaults").click();
 
         cy.log("revert button should disappear after resetting");
         H.main()
-          .findByLabelText("Revert to default main colors")
+          .findByLabelText("Reset main colors to defaults")
           .should("not.exist");
 
         cy.log("change the brand color again");
@@ -269,7 +275,10 @@ describe(
           expect(settings.colors?.brand).to.eq("#ff0000ff");
         });
 
-        H.undoToast().findByText("Theme saved").should("exist");
+        // An earlier undo toast (e.g. "reset to defaults") may still be on
+        // screen, so use the toast list (plural) and filter by text — using
+        // `undoToast()` (singular) yields undefined when multiple toasts match.
+        H.undoToastList().contains("Theme saved").should("be.visible");
       });
     });
 
@@ -309,17 +318,15 @@ describe(
           cy.log(
             "revert button should be visible since the API theme has non-default additional colors",
           );
-          cy.findByLabelText("Revert to default additional colors").should(
+          cy.findByLabelText("Regenerate from brand color").should(
             "be.visible",
           );
 
           cy.log("click revert to reset additional colors to defaults");
-          cy.findByLabelText("Revert to default additional colors").click();
+          cy.findByLabelText("Regenerate from brand color").click();
 
           cy.log("revert button should disappear after resetting");
-          cy.findByLabelText("Revert to default additional colors").should(
-            "not.exist",
-          );
+          cy.findByLabelText("Regenerate from brand color").should("not.exist");
         });
       });
 
@@ -349,7 +356,10 @@ describe(
           expect(settings.colors?.filter).to.eq("#2d2d30ff");
         });
 
-        H.undoToast().findByText("Theme saved").should("exist");
+        // An earlier undo toast (e.g. "reset to defaults") may still be on
+        // screen, so use the toast list (plural) and filter by text — using
+        // `undoToast()` (singular) yields undefined when multiple toasts match.
+        H.undoToastList().contains("Theme saved").should("be.visible");
       });
     });
 

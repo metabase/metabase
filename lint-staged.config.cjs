@@ -7,21 +7,19 @@ module.exports = {
     "oxfmt --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
-    "cross-env LINT_CSS_MODULES=true eslint --max-warnings 0 --fix",
+    "cross-env LINT_CSS_MODULES=true eslint --no-warn-ignored --max-warnings 0 --fix",
     "oxfmt --write",
     "node ./bin/verify-doc-links",
   ],
-  "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,jsx}": [
-    "eslint --max-warnings 0 --fix",
+  "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [
+    "eslint --no-warn-ignored --max-warnings 0 --fix",
     "oxfmt --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [
     "./bin/mage cljfmt-files",
     "./bin/mage fix-unused-requires",
   ],
-  "e2e/test/scenarios/*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}": [
-    "node e2e/validate-e2e-test-files.js",
-  ],
+  "e2e/test/scenarios/**/*.{js,ts}": ["node e2e/validate-e2e-test-files.js"],
   "enterprise/frontend/src/embedding-sdk-package/README.md": [
     "oxfmt --write",
   ],

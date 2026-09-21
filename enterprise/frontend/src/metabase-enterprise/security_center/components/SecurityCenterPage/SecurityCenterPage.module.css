@@ -7,7 +7,7 @@
 
 .header {
   flex-shrink: 0;
-  padding-bottom: var(--mantine-spacing-lg);
+  padding-bottom: var(--mantine-spacing-xl);
 }
 
 @media screen and (max-width: 64em) {

@@ -6,7 +6,7 @@ redirect_from:
 
 # Running Metabase on Docker
 
-> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud/).
+> To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud).
 
 Metabase provides an official Docker image via Docker Hub that can be used for deployments on any system that is running Docker.
 
@@ -46,7 +46,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -337,13 +337,13 @@ secrets:
 
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
-- `MB_DB_USER`
-- `MB_DB_PASS`
-- `MB_DB_CONNECTION_URI`
-- `MB_EMAIL_SMTP_PASSWORD`
-- `MB_EMAIL_SMTP_USERNAME`
-- `MB_LDAP_PASSWORD`
-- `MB_LDAP_BIND_DN`
+- [`MB_DB_USER`](../configuring-metabase/environment-variables.md#mb_db_user)
+- [`MB_DB_PASS`](../configuring-metabase/environment-variables.md#mb_db_pass)
+- [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri)
+- [`MB_EMAIL_SMTP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_email_smtp_password)
+- [`MB_EMAIL_SMTP_USERNAME`](../configuring-metabase/environment-variables.md#mb_email_smtp_username)
+- [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password)
+- [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn)
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 

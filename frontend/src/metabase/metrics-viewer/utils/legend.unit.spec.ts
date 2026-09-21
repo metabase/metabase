@@ -1,9 +1,9 @@
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
 import {
   createMockMetric,
   createMockMetricDimension,
+  createMockMetricDimensionGroup,
 } from "metabase-types/api/mocks/metric";
 
 import type {
@@ -27,9 +27,14 @@ const REVENUE_METRIC = createMockMetric({
     }),
     createMockMetricDimension({
       id: "dim-2",
-      display_name: "Category",
+      display_name: "Product type",
       effective_type: "type/Text",
       semantic_type: "type/Category",
+      group: createMockMetricDimensionGroup({
+        id: "products",
+        type: "connection",
+        display_name: "Products",
+      }),
     }),
   ],
 });
@@ -49,11 +54,8 @@ const ORDERS_METRIC = createMockMetric({
 
 function createMetadata(metrics: ReturnType<typeof createMockMetric>[]) {
   const metadata = new Metadata();
-  metadata.metrics = {};
   for (const metric of metrics) {
-    const instance = new Metric(metric as any);
-    instance.metadata = metadata;
-    metadata.metrics[metric.id] = instance;
+    metadata.metrics[metric.id] = metric;
   }
   return metadata;
 }
@@ -162,7 +164,7 @@ describe("buildLegendGroups", () => {
     ).toEqual([
       {
         key: 0,
-        header: "Category",
+        header: "Product type",
         subtitle: "Revenue",
         items: [
           { label: "Gadgets", color: "#509EE3" },

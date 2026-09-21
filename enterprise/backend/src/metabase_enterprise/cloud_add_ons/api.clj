@@ -2,6 +2,8 @@
   "/api/ee/cloud-add-ons endpoints. "
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase-enterprise.cloud-add-ons.core :as cloud-add-ons]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -27,23 +29,31 @@
   (deferred-tru "Can only access Store API for Metabase Cloud instances."))
 (def ^:private error-not-eligible
   (deferred-tru "Can only purchase add-ons for eligible subscriptions."))
-(def ^:private error-not-store-user
-  (deferred-tru "Only Metabase Store users can purchase add-ons."))
 (def ^:private error-terms-not-accepted
   (deferred-tru "Need to accept terms of service."))
 (def ^:private error-no-quantity
   (deferred-tru "Purchase of add-on requires quantity."))
+(def ^:private error-quantity-not-supported
+  (deferred-tru "This add-on does not support a quantity."))
+(def ^:private error-bundle-only
+  (deferred-tru "This add-on can only be purchased as part of a bundle."))
+(def ^:private error-add-on-on-another-subscription
+  (deferred-tru "This add-on is already active on another subscription in your Metabase Cloud account. Usage-based add-ons can only be active on one subscription at a time."))
 
 (def ^:private response-not-hosted
   {:status 400 :body error-not-hosted})
 (def ^:private response-not-eligible
   {:status 400 :body error-not-eligible})
-(def ^:private response-not-store-user
-  {:status 403 :body error-not-store-user})
 (def ^:private response-terms-not-accepted
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
 (def ^:private response-no-quantity
   {:status 400 :body {:errors {:quantity error-no-quantity}}})
+(def ^:private response-quantity-not-supported
+  {:status 400 :body {:errors {:quantity error-quantity-not-supported}}})
+(def ^:private response-bundle-only
+  {:status 400 :body error-bundle-only})
+(def ^:private response-add-on-on-another-subscription
+  {:status 400 :body error-add-on-on-another-subscription})
 (def ^:private response-success-empty
   {:status 200 :body {}})
 
@@ -57,7 +67,38 @@
    "transforms-basic"
    "transforms-advanced"
    "transforms-basic-metered"
-   "transforms-advanced-metered"])
+   "transforms-advanced-metered"
+   "dwh-rent"
+   "etl-connections"])
+
+(def ^:private add-on-bundles cloud-add-ons/add-on-bundles)
+
+(def ^:private bundle-only-product-types
+  "Product types that are only ever provisioned as part of a bundle (see `add-on-bundles`) and can
+  never be purchased directly. The Store rejects them anyway (`etl-connections` depends on a DWH
+  product), so fail fast with a clear error instead of a confusing Store 400."
+  (into #{}
+        (comp (mapcat val)
+              (map :product-type)
+              (remove (set (keys add-on-bundles))))
+        add-on-bundles))
+
+(defn- add-ons-for-purchase
+  "Add-ons to upsert for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
+  into multiple add-ons; everything else is a single add-on carrying the requested `quantity`."
+  [product-type quantity]
+  (or (add-on-bundles product-type)
+      [(cond-> {:product-type product-type}
+         quantity (assoc :prepaid-units quantity))]))
+
+(def ^:private store-meter-name-conflict-message
+  "already has a product with the same metric-name")
+
+(defn- store-meter-name-conflict?
+  [exception]
+  (let [upsert-error (:upsert-add-ons (ex-data exception))]
+    (boolean (and (string? upsert-error)
+                  (str/includes? upsert-error store-meter-name-conflict-message)))))
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
@@ -93,7 +134,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/plan")}
       (catch Exception e
-        (log/warn e "Error fetching plans information")
+        (log/warnf "Error fetching plans information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -112,7 +153,7 @@
     (try
       {:status 200 :body (make-public-store-request! "/addons")}
       (catch Exception e
-        (log/warn e "Error fetching addons information")
+        (log/warnf "Error fetching addons information: %s" (ex-message e))
         (handle-store-api-error e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -121,17 +162,20 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
-  [{:keys [product-type]} :- [:map
+  [{:keys [product-type]} :- [:map {:closed true}
                               [:product-type cloud-add-on-product-types]]
    _query-params
    {:keys            [quantity]
-    terms-of-service :terms_of_service} :- [:map
+    terms-of-service :terms_of_service} :- [:map {:closed true}
                                             [:quantity {:optional true} [:maybe :int]]
                                             [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
     response-not-hosted
+
+    (bundle-only-product-types product-type)
+    response-bundle-only
 
     (and (requires-terms-of-service? product-type)
          (not terms-of-service))
@@ -141,6 +185,10 @@
          (not quantity))
     response-no-quantity
 
+    (and (contains? add-on-bundles product-type)
+         quantity)
+    response-quantity-not-supported
+
     (and (#{"transforms" "transforms-basic" "transforms-basic-metered"} product-type)
          (premium-features/enable-basic-transforms?))
     response-not-eligible
@@ -149,40 +197,46 @@
          (premium-features/enable-python-transforms?))
     response-not-eligible
 
-    (not (contains? (set (map :email (:store-users (premium-features/token-status))))
-                    (:email @api/*current-user*)))
-    response-not-store-user
+    (and (= product-type "dwh-rent")
+         (premium-features/has-attached-dwh?))
+    response-not-eligible
 
     :else
     (try
-      (let [add-on (cond-> {:product-type product-type}
-                     quantity (assoc :prepaid-units quantity))]
-        (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
-        (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
+      (let [add-ons (add-ons-for-purchase product-type quantity)
+            ;; Single-product purchases keep the original `{:add-on {...}}` audit shape; bundled
+            ;; purchases (Storage) record the full vector.
+            audit-add-on (if (= (count add-ons) 1) (first add-ons) add-ons)]
+        (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on audit-add-on}, :user-id api/*current-user-id*})
+        (hm.client/call :change-add-ons :upsert-add-ons add-ons))
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error purchasing add-on '%s'" product-type)
-        (handle-store-api-error e {400 error-cannot-purchase})))))
+        (log/warnf "Error purchasing add-on '%s': %s" product-type (ex-message e))
+        (if (store-meter-name-conflict? e)
+          response-add-on-on-another-subscription
+          (handle-store-api-error e {400 error-cannot-purchase}))))))
 
 (api.macros/defendpoint :delete "/:product-type" :- [:map
                                                      [:status :int]
                                                      [:body :any]]
   "Remove an add-on."
-  [{:keys [product-type]} :- [:map
+  [{:keys [product-type]} :- [:map {:closed true}
                               [:product-type cloud-add-on-product-types]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
     response-not-hosted
 
+    (bundle-only-product-types product-type)
+    response-bundle-only
+
     :else
     (try
-      (hm.client/call :change-add-ons :remove-add-ons [{:product-type product-type}])
-      (premium-features/clear-cache!)
+      (cloud-add-ons/remove-add-on! product-type)
       response-success-empty
       (catch Exception e
-        (log/warnf e "Error removing add-on '%s'" product-type)
+        (log/warnf "Error removing add-on '%s': %s" product-type (ex-message e))
         (handle-store-api-error e {400 error-cannot-remove})))))
 
 (def ^{:arglists '([request respond raise])} routes

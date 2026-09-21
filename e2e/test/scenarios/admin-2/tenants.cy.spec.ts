@@ -357,9 +357,19 @@ describe("Tenants - management", () => {
     const EXTERNAL_USER_GROUP_NAME = "All tenant users";
     const TENANT_GROUP_NAME = "Favorite tenant users";
 
+    cy.log("Turn on tenants so that we can create a tenant perms group");
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": true,
+    });
+
     cy.request("POST", "/api/permissions/group", {
       name: TENANT_GROUP_NAME,
       is_tenant_group: true,
+    });
+
+    cy.log("Turn tenants back off");
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": false,
     });
 
     cy.visit("/admin/permissions");
@@ -368,6 +378,7 @@ describe("Tenants - management", () => {
       "not.exist",
     );
 
+    cy.log("Turn tenants back on");
     cy.request("PUT", "/api/setting", {
       "use-tenants": true,
     });
@@ -395,7 +406,7 @@ describe("Tenants - management", () => {
       "exist",
     ]);
 
-    cy.findByRole("radio", { name: "Databases" }).click({ force: true });
+    cy.findByRole("tab", { name: "Databases" }).click({ force: true });
     cy.findByRole("menuitem", { name: "Sample Database" }).click();
 
     assertPermissionTableColumnsExist([
@@ -431,7 +442,7 @@ describe("Tenants - management", () => {
 
       cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
 
-      cy.findByRole("radio", { name: "Groups" }).click({ force: true });
+      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
 
       cy.findByRole("menuitem", { name: "All tenant users" }).click();
 
@@ -899,16 +910,12 @@ describe("tenant users", () => {
       .click();
     H.popover().findByText("Edit user").click();
 
-    H.modal().within(() => {
-      cy.findByText("Tenant groups");
-      cy.findByText("All tenant users").click();
-    });
-
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Update").click();
     });
 
@@ -930,12 +937,12 @@ describe("tenant users", () => {
     });
 
     H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByText("All tenant users").click();
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Create").click();
     });
     cy.wait("@createUser").then(

@@ -1,28 +1,16 @@
 import { useMemo } from "react";
 
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
-  SourceBreakoutColorMap,
-} from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
 
 import S from "./BreakoutLegend.module.css";
 
-type BreakoutLegendProps = {
-  formulaEntities: MetricsViewerFormulaEntity[];
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  activeBreakoutColors: SourceBreakoutColorMap;
-};
+export function BreakoutLegend() {
+  const { formulaEntities, definitions, activeBreakoutColors } =
+    useMetricsViewerContext();
 
-export function BreakoutLegend({
-  formulaEntities,
-  definitions,
-  activeBreakoutColors,
-}: BreakoutLegendProps) {
   const groups = useMemo(
     () => buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
     [formulaEntities, definitions, activeBreakoutColors],
@@ -36,14 +24,14 @@ export function BreakoutLegend({
     <Box
       className={S.root}
       w="16rem"
-      pt="md"
-      pr="lg"
-      pb="md"
-      pl={0}
+      pt="lg"
+      pr="xl"
+      pb="lg"
+      pl="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
-      <Paper withBorder radius="md" p="lg">
-        <Stack gap="lg">
+      <Paper withBorder radius="sm" p="xl">
+        <Stack gap="xl">
           {groups.map((group) => (
             <Stack key={group.key} gap="sm">
               <div>
@@ -51,7 +39,7 @@ export function BreakoutLegend({
                   {group.header}
                 </Title>
                 {group.subtitle && (
-                  <Text size="sm" c="text-tertiary" lh={1.3}>
+                  <Text size="sm" c="text-disabled" lh={1.3}>
                     {group.subtitle}
                   </Text>
                 )}

@@ -5,11 +5,13 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.settings :as notification.settings]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -76,6 +78,10 @@
                                                            :notification_id   notification-id
                                                            :notification_type payload-type
                                                            :recipient_ids     (map :id (:recipients handler))}}
+          (when (and (:channel_id handler) (nil? (:channel handler)))
+            (throw (ex-info (tru "The channel this notification is set to send to no longer exists or is inactive.")
+                            {:channel-id   (:channel_id handler)
+                             :channel-type (:channel_type handler)})))
           (retry/with-retry (assoc retry-config
                                    :retry-on Exception
                                    :abort-if (fn [_ ex]
@@ -83,9 +89,9 @@
                                    :on-retry (fn [_ ex]
                                                (vswap! retry-errors conj {:message   (u/strip-error ex)
                                                                           :timestamp (t/offset-date-time)})
-                                               (log/warn ex "Failed to send, retrying..."))
+                                               (log/warnf "Failed to send, retrying: %s" (ex-message ex)))
                                    :on-failure (fn [_ ex]
-                                                 (log/warn ex "Failed to send, not retrying")))
+                                                 (log/warnf "Failed to send, not retrying: %s" (ex-message ex))))
             (channel/send! channel message))
           (log/debugf "Sent with %d retries" (count @retry-errors))
           (log/info "Sent successfully")))
@@ -94,7 +100,7 @@
       (catch Throwable e
         (analytics/inc! :metabase-notification/channel-send-error {:payload-type payload-type
                                                                    :channel-type channel-type})
-        (log/warn e "Failed to send")))))
+        (log/warnf "Failed to send: %s" (ex-message e))))))
 
 (defn- hydrate-notification
   [notification-info]
@@ -146,17 +152,27 @@
         ;; notifications pass through :payload instead and have no :payload_id.
         (when-let [payload-id (when (= :notification/card payload_type)
                                 (:payload_id notification-info))]
-          (when-not (t2/exists? :model/NotificationCard payload-id)
+          (when-not (notification.db/notification-card-exists? payload-id)
             (log/warnf "Payload for notification %d no longer exists, deleting" id)
-            (t2/delete! :model/Notification id)
+            (notification.db/delete-notification! id)
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
+          (try
+            (models.notification/validate-email-handlers! handlers)
+            (catch clojure.lang.ExceptionInfo _e
+              (throw (ex-info "A subscription recipient is not permitted by subscription-allowed-domains"
+                              {:status-code     403
+                               :notification-id id}))))
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
+            ;; :handlers stays on the info so payload impls can tailor execution to them
+            ;; (e.g. attachment-only dashboard subscriptions skip non-attached cards)
+            (let [notification-payload (-> hydrated-notification
+                                           notification.payload/notification-payload
+                                           (dissoc :handlers))
                   skip-reason          (notification.payload/skip-reason notification-payload)]
               (if skip-reason
                 (log/info "Skipping" {:skip-reason skip-reason})
@@ -178,12 +194,12 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
+                          (log/errorf "Error sending to channel %s: %s" (handler->channel-name handler) (ex-message e))))))
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
-          (log/error e "Failed to send")
+          (log/errorf "Failed to send: %s" (ex-message e))
           (analytics/inc! :metabase-notification/send-error {:payload-type payload_type})
           (throw e))
         (finally
@@ -381,7 +397,7 @@
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
                                                  (catch Throwable e
-                                                   (log/error e "Error in notification worker")))))))
+                                                   (log/errorf "Error in notification worker: %s" (ex-message e))))))))
         ensure-enough-workers! (fn []
                                  (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
                                    (log/debugf "Not enough workers, starting a new one %d/%d"
@@ -409,7 +425,6 @@
                         (catch InterruptedException _
                           (log/warn "Interrupted while waiting for notification executor to terminate")
                           (.shutdownNow ^ThreadPoolExecutor executor))))]
-
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))
@@ -427,7 +442,7 @@
   (let [{:keys [dispatch-fn]} (case (:payload_type notification)
                                 :notification/system-event
                                 @simple-blocking-dispatcher
-                                 ;; notification/card, notification/dashboard
+                                ;; notification/card, notification/dashboard
                                 @dedup-priority-dispatcher)]
     (dispatch-fn notification)))
 
@@ -438,7 +453,7 @@
   nil)
 
 (def ^:private Options
-  [:map
+  [:map {:closed true}
    [:notification/sync? :boolean]])
 
 (def ^:dynamic *default-options*
@@ -451,23 +466,26 @@
    - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
    - Returns nil for other notification types or if entity_id would be nil.
    Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
-  [{:keys [payload_type payload payload_id]}]
+  [{:keys [id payload_type payload payload_id]}]
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
-                                                            (t2/select-one-fn :card_id :model/NotificationCard :id)))]
-                              {:run_type    :alert
-                               :entity_type :card
-                               :entity_id   card-id})
+                                                            notification.db/notification-card-card-id))]
+                              {:run_type        :alert
+                               :entity_type     :card
+                               :entity_id       card-id
+                               :notification_id id})
     :notification/dashboard (when-let [dashboard-id (:dashboard_id payload)]
-                              {:run_type    :subscription
-                               :entity_type :dashboard
-                               :entity_id   dashboard-id})
+                              {:run_type        :subscription
+                               :entity_type     :dashboard
+                               :entity_id       dashboard-id
+                               :notification_id id})
     nil))
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification & {:keys [] :as options} :- [:maybe Options]]
+  [notification :- ::notification.payload/Notification
+   & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]
     ;; with-task-run is a no-op if already nested (e.g., from scheduler)
@@ -492,4 +510,4 @@
           ((:shutdown-fn @worker) default-shutdown-timeout-ms))
         (log/info "All notification workers shut down successfully")
         (catch Exception e
-          (log/error e "Error shutting down notification workers"))))))
+          (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))

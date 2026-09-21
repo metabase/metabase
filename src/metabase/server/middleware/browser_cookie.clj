@@ -6,6 +6,7 @@
   (:require
    [java-time.api :as t]
    [metabase.request.core :as request]
+   [metabase.request.schema :as request.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -25,11 +26,15 @@
           :path      "/"
           ;; Set the cookie to expire 20 years from now. That should be sufficient
           :expires   (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20)))}
-         (if (request/https? request)
+         ;; `:unknown` counts as HTTPS here: this only decides whether to add `Secure`
+         (if (#{:https :unknown} (request/https-state request))
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(mu/defn- add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
+(mu/defn- add-browser-id-cookie
+  [request      :- ::request.schema/request
+   response     :- ::request.schema/response
+   browser-id   :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie

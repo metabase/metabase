@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.oracle-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.oracle-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -23,6 +25,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -38,6 +41,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
@@ -108,11 +113,168 @@
                 (catch Throwable e
                   (driver/humanize-connection-error-message :oracle (u/all-ex-messages e))))))))
 
+;;; The Oracle thin driver reads its connect descriptor -- everything after the `@` -- as instructions, not
+;;; just as an address: `@config-https://host/path` makes it fetch that URL and obey the configuration it returns,
+;;; `@config-file:///path` makes it read that file, and `@ldap://host/...` makes it ask that host for the real
+;;; descriptor. The details below are all built by concatenation into that descriptor, so each one has to be what it
+;;; claims to be before it gets there.
+(deftest ^:parallel reject-connect-descriptor-injection-test
+  (doseq [[message details] [["a host naming Oracle's HTTPS configuration provider (SSRF)"
+                              {:host "config-https://evil.example.com/c", :sid "ORCL"}]
+                             ["a host naming Oracle's file configuration provider (local file read)"
+                              {:host "config-file:///etc/passwd", :sid "ORCL"}]
+                             ["a host naming an LDAP directory (SSRF + connection redirection)"
+                              {:host "ldap://evil.example.com/cn=x,cn=OracleContext", :sid "ORCL"}]
+                             ["a host carrying any other scheme"
+                              {:host "tcps://evil.example.com", :sid "ORCL"}]
+                             ["a host carrying descriptor syntax"
+                              {:host "h)(PORT=1521))(ADDRESS=(HOST=evil", :sid "ORCL", :ssl true}]
+                             ["a SID that closes the CONNECT_DATA clause and adds an address"
+                              {:host "h", :sid "x))(ADDRESS=(PROTOCOL=tcp)(HOST=evil)(PORT=80)", :ssl true}]
+                             ["a service name that closes the CONNECT_DATA clause and adds an address"
+                              {:host "h", :service-name "x))(ADDRESS=(PROTOCOL=tcp)(HOST=evil)(PORT=80)", :ssl true}]
+                             ["a service name carrying connection parameters"
+                              {:host "h", :service-name "svc?oracle.net.tns_admin=/etc"}]]]
+    (testing message
+      (testing "is refused when the details are validated"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"(?i)invalid"
+             (driver/validate-db-details! :oracle details))))
+      (testing "is refused when a connection spec is built, so no connection path can skip the check"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"(?i)invalid"
+             (sql-jdbc.conn/connection-details->spec :oracle details)))))))
+
+;;; `::details` types the port as an integer, but that schema is instrumented only in dev and test, so in production a
+;;; string port arrives as-is. These two go through `driver/validate-db-details!`, which is not schema-gated, so they
+;;; exercise what production sees rather than what the schema would have caught first.
+(deftest ^:parallel reject-port-carrying-connection-parameters-test
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #"(?i)invalid"
+       (driver/validate-db-details! :oracle {:host "h", :port "1521 ?oracle.net.tns_admin=/etc", :sid "ORCL"}))))
+
+(deftest ^:parallel accept-port-sent-as-a-string-test
+  (is (nil? (driver/validate-db-details! :oracle {:host "h", :port "1521", :sid "ORCL"}))))
+
+(deftest ^:parallel accept-ordinary-connection-details-test
+  (doseq [[message details] [["a hostname"      {:host "oracle.example.com", :sid "ORCL"}]
+                             ["an IPv4 literal" {:host "10.0.0.4", :sid "ORCL"}]
+                             ["an IPv6 literal" {:host "[2001:db8::1]", :sid "ORCL"}]
+                             ["an underscore in the hostname" {:host "my_db.internal", :sid "ORCL"}]
+                             ["a missing host"  {:sid "ORCL"}]
+                             ["a blank host"    {:host "", :sid "ORCL"}]
+                             ["a qualified service name"
+                              {:host "h", :service-name "g1234_mydb_high.adb.oraclecloud.com"}]
+                             ["a SID with the punctuation Oracle allows in an identifier"
+                              {:host "h", :sid "MY_DB$1#x"}]]]
+    (testing message
+      (is (nil? (driver/validate-db-details! :oracle details)))
+      (is (map? (sql-jdbc.conn/connection-details->spec :oracle details))))))
+
+(deftest ^:parallel descriptor-details-are-normalized-test
+  (testing "the value that was checked is the value the descriptor gets built from"
+    (testing "surrounding whitespace is trimmed rather than passed through"
+      (is (= "@localhost:1521:ORCL/MyService"
+             (:subname (sql-jdbc.conn/connection-details->spec
+                        :oracle
+                        {:host " localhost ", :port 1521, :sid " ORCL ", :service-name " MyService "})))))
+    (testing "a port sent as a string reaches the SSL descriptor as a number"
+      ;; `::details` types the port as an integer, but that schema is instrumented only in dev and test, so in
+      ;; production an API caller's string arrives as-is -- and `ssl-spec` formats the port with `%d`. Enforcement is
+      ;; disabled here to exercise what production does.
+      (is (= "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=h)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))"
+             (mu/disable-enforcement
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "h", :port "1521", :sid "ORCL", :ssl true}))))))
+    (testing "a blank detail names nowhere, so the defaults apply rather than an empty string reaching the descriptor"
+      (is (= "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))"
+             (mu/disable-enforcement
+               (:subname (sql-jdbc.conn/connection-details->spec
+                          :oracle
+                          {:host "  ", :port "", :sid "ORCL", :ssl true}))))))))
+
+(deftest ^:parallel additional-options-warning-test
+  (let [details {:host "h", :port 1521, :sid "ORCL", :additional-options "oracle.net.tns_admin=/etc"}]
+    (testing "validating details warns that additional-options is ignored, so an admin saving one hears about it"
+      (log.capture/with-log-messages-for-level [messages [metabase.driver.oracle :warn]]
+        (driver/validate-db-details! :oracle details)
+        (is (=? [{:level :warn, :message #"(?i).*additional-options.*"}]
+                (messages)))))
+    (testing "building a connection spec does not, since that runs for every pool and every host check"
+      (log.capture/with-log-messages-for-level [messages [metabase.driver.oracle :warn]]
+        (sql-jdbc.conn/connection-details->spec :oracle details)
+        (is (= [] (messages)))))))
+
+(deftest ^:parallel connection-property-allowlist-test
+  (testing "only allowlisted details become JDBC connection properties"
+    (testing "an extra detail key is not handed to the driver as a property"
+      ;; `oracle.net.tns_admin` makes the driver read files under that directory; `oracle.net.httpsProxyHost` routes
+      ;; its egress through a host of the attacker's choosing.
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :oracle
+                  {:host "h", :port 1521, :sid "ORCL", :user "u", :password "p"
+                   (keyword "oracle.net.tns_admin")      "/etc"
+                   (keyword "oracle.net.httpsProxyHost") "evil.example.com"
+                   (keyword "oracle.net.ssl_server_dn_match") "false"})]
+        (is (= #{:classname :subprotocol :subname :user :password (deref #'oracle/prog-name-property)}
+               (set (keys spec))))))
+    (testing "nor when the extra key arrives as a string rather than a keyword"
+      ;; `ms/KeywordizedMap` normalizes details keys on API decode, but the allowlist is what this relies on: it keeps
+      ;; named keys only, so a string key is dropped whichever way the decoding goes.
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :oracle
+                  {:host "h", :port 1521, :sid "ORCL"
+                   "oracle.net.tns_admin" "/etc"
+                   "user"                 "not-the-user"})]
+        (is (= #{:classname :subprotocol :subname (deref #'oracle/prog-name-property)}
+               (set (keys spec))))))
+    (testing "Metabase's own bookkeeping details are not handed to the driver either"
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :oracle
+                  {:host "h", :port 1521, :sid "ORCL"
+                   :tunnel-enabled true, :tunnel-host "bastion.example.com", :tunnel-user "tunnel"
+                   :advanced-options true, :auto-run-queries true, :let-user-control-scheduling false})]
+        (is (= #{:classname :subprotocol :subname (deref #'oracle/prog-name-property)}
+               (set (keys spec))))))
+    (testing "the SSL truststore properties the driver does need still get through"
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :oracle
+                  {:host "h", :port 1521, :sid "ORCL", :ssl true
+                   :ssl-use-truststore            true
+                   :ssl-truststore-options        "uploaded"
+                   :ssl-truststore-value          "data:application/octet-stream;base64,eA=="
+                   :ssl-truststore-password-value "pw"})]
+        (is (= #{:classname :subprotocol :subname (deref #'oracle/prog-name-property)
+                 :javax.net.ssl.trustStore :javax.net.ssl.trustStoreType :javax.net.ssl.trustStorePassword}
+               (set (keys spec))))))))
+
+(deftest ^:parallel ignore-additional-options-test
+  (testing "`additional-options` is not appended to the connect descriptor"
+    ;; Oracle's connection form offers no `additional-options` field, and the only place the driver honored one was
+    ;; the SSL branch, where it became a `?name=value` parameter on the descriptor -- a way around the property
+    ;; allowlist above.
+    (is (= "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=h)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))"
+           (:subname (sql-jdbc.conn/connection-details->spec
+                      :oracle
+                      {:host "h", :port 1521, :sid "ORCL", :ssl true
+                       :additional-options "oracle.net.tns_admin=/etc"}))))))
+
+(deftest ^:parallel configuration-providers-disabled-test
+  (testing "Oracle's centralized configuration providers are turned off for the JVM"
+    ;; They are enabled by default, and turn `@config-https://…` / `@config-file://…` descriptors into an outbound
+    ;; fetch or a local file read. `(NONE)` is the driver's spelling for "no providers at all".
+    (is (= "(NONE)" (System/getProperty "oracle.jdbc.configurationProviders")))))
+
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:name "host"}
-                      {:name "port"}
+      (let [expected [{:type :group
+                       :fields [{:name "host"}
+                                {:name "port"}]}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
@@ -125,13 +287,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-keystore true}}
+                       :visible-if {"ssl-use-keystore" true}}
                       {:name       "ssl-keystore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-keystore-options "uploaded"}}
+                       :visible-if {"ssl-keystore-options" "uploaded"}}
                       {:name       "ssl-keystore-path"
                        :type       "string"
-                       :visible-if {:ssl-keystore-options "local"}}
+                       :visible-if {"ssl-keystore-options" "local"}}
                       {:name "ssl-keystore-password-value"
                        :type "password"}
                       {:name "ssl-use-truststore"}
@@ -141,13 +303,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-truststore true}}
+                       :visible-if {"ssl-use-truststore" true}}
                       {:name       "ssl-truststore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-truststore-options "uploaded"}}
+                       :visible-if {"ssl-truststore-options" "uploaded"}}
                       {:name       "ssl-truststore-path"
                        :type       "string"
-                       :visible-if {:ssl-truststore-options "local"}}
+                       :visible-if {"ssl-truststore-options" "local"}}
                       {:name "ssl-truststore-password-value"
                        :type "password"}
                       {:name "tunnel-enabled"}
@@ -167,15 +329,16 @@
                        :visible-if {"tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-value"
                        :type       "textFile"
-                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                       :visible-if {"tunnel-known-hosts-options" "uploaded"
                                     "tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-path"
                        :type       "string"
-                       :visible-if {:tunnel-known-hosts-options "local"
+                       :visible-if {"tunnel-known-hosts-options" "local"
                                     "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -185,7 +348,7 @@
                           (driver.u/connection-props-server->client :oracle))]
         (is (= (count expected) (count actual))
             (str "actual names: " (pr-str (mapv :name actual))))
-        (is (= expected (mt/select-keys-sequentially expected actual)))))))
+        (is (=? expected actual))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -269,7 +432,9 @@
                                                    :database-type "char"
                                                    :base-type     :type/Text}]})
       (let [hsql (sql.qp/mbql->honeysql :oracle
-                                        {:query {:source-query {:source-table 1
+                                        {:database 1
+                                         :type     :query
+                                         :query {:source-query {:source-table 1
                                                                 :expressions  {"s" [:substring [:field 1 nil] 2]}
                                                                 :fields       [[:field 1 nil]
                                                                                [:expression "s"]]}
@@ -627,16 +792,12 @@
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
       (doseq [[x y] (partition-all 2 ["1970-01-01 00:00:00"
                                       "to_date('1970-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.000"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.001"
                                       "timestamp '1970-01-01 10:09:08.001'"
-
                                       ;; Oracle can't resolve less than milliseconds, so cast to date since we don't lose anything
                                       "1970-01-01 10:09:08.0001"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"])]
@@ -760,3 +921,24 @@
                (mt/with-native-query-testing-context query
                  (is (= [[3 1]]
                         (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
+
+(deftest ^:parallel two-contains-filters-formatted-correct-test
+  (testing "a query with two contains filters should be formatted correctly (#74086)"
+    (mt/test-driver :oracle
+      (let [mp         (mt/metadata-provider)
+            id-field   (lib.metadata/field mp (mt/id :people :id))
+            name-field (lib.metadata/field mp (mt/id :people :name))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/filter (lib/and
+                                   (lib/contains name-field "Alice")
+                                   (lib/contains name-field "ice")))
+                      (lib/with-fields [id-field name-field]))
+            result (qp/process-query query)
+            native-sql (-> result :data :native_form :query)
+            prettified-sql (driver/prettify-native-form driver/*driver* native-sql)
+            native-query (lib/native-query mp prettified-sql)]
+        (is (= "SELECT\n  *\nFROM\n  (\n    SELECT\n      \"mb_test\".\"test_data_people\".\"id\" \"id\",\n      \"mb_test\".\"test_data_people\".\"name\" \"name\"\n    FROM\n      \"mb_test\".\"test_data_people\"\n    WHERE\n      (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%Alice%' ESCAPE CHR(92)\n      )\n      AND (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%ice%' ESCAPE CHR(92)\n      )\n  )\nWHERE\n  rownum <= 1048575"
+               prettified-sql))
+        (is (= [[1345 "Alice Connelly"]]
+               (mt/formatted-rows [int str] result)
+               (mt/formatted-rows [int str] (qp/process-query native-query))))))))

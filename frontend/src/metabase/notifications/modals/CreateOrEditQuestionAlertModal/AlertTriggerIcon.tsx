@@ -4,14 +4,14 @@ export const AlertTriggerIcon = () => {
   return (
     <Center
       p="0.625rem"
-      bg="brand"
+      bg="core-brand"
       w="2.5rem"
       h="2.5rem"
       style={{
         borderRadius: "100%",
       }}
     >
-      <Icon name="alert" c="white" />
+      <Icon name="alert" c="core-white" />
     </Center>
   );
 };

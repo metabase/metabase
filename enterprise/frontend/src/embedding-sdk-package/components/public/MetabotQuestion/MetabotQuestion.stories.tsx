@@ -2,6 +2,7 @@ import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/Comm
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {
   MOCK_AD_HOC_QUESTION_ID,
+  mockGeneratedCardChunk,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 
@@ -18,9 +19,15 @@ export default {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          mockGeneratedCardChunk(),
+          { type: "finish", finishReason: "stop" },
         ]),
       ],
     },

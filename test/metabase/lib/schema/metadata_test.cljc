@@ -157,12 +157,10 @@
         :metabase.lib.field/original-effective-type        :type/Text
         :metabase.lib.field/simple-display-name            "Category: Name"
         :metabase.lib.query/transformation-added-base-type true)
-
       (testing "new key already present takes precedence"
         (is (= (assoc base :lib/temporal-unit :year)
                (lib/normalize ::lib.schema.metadata/column
                               {:name "X", :metabase.lib.field/temporal-unit :month, :lib/temporal-unit :year}))))
-
       (testing "old keys are disallowed by the schema"
         (are [old-key value] (not (mr/validate ::lib.schema.metadata/column
                                                (assoc base old-key value)))
@@ -172,3 +170,21 @@
           :metabase.lib.field/original-effective-type        :type/Text
           :metabase.lib.field/simple-display-name            "Category: Name"
           :metabase.lib.query/transformation-added-base-type true)))))
+
+(deftest ^:parallel column-data-sensitivity-test
+  (testing "every member of the severity-ordered vector validates and the vector has no duplicates"
+    (is (= 10 (count lib.schema.metadata/column-data-sensitivity-types)))
+    (is (apply distinct? lib.schema.metadata/column-data-sensitivity-types))
+    (doseq [member lib.schema.metadata/column-data-sensitivity-types]
+      (is (mr/validate ::lib.schema.metadata/column.data-sensitivity member))))
+  (testing "the most severe member comes first and PUBLIC comes last"
+    (is (= :SEC_KEY (first lib.schema.metadata/column-data-sensitivity-types)))
+    (is (= :PUBLIC (last lib.schema.metadata/column-data-sensitivity-types))))
+  (testing "normalization keywordizes a string member"
+    (is (= :PII (lib/normalize ::lib.schema.metadata/column.data-sensitivity "PII"))))
+  (testing "values outside the enum are rejected"
+    (are [value] (not (mr/validate ::lib.schema.metadata/column.data-sensitivity value))
+      :pii
+      :NOT_A_MEMBER
+      "PII"
+      nil)))

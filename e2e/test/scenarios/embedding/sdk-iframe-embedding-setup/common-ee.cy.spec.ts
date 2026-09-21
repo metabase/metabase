@@ -2,6 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   getEmbedSidebar,
@@ -50,6 +51,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectGuest: true,
     });
 
     H.publishChanges("dashboard");
@@ -114,29 +116,83 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       cy.findByLabelText("Metabase account (SSO)").should("be.enabled");
     });
 
-    it("should reset experience to a default only when switching from SSO to Guest auth type and the current experience does not support guest embeds", () => {
-      visitNewEmbedPage();
+    describe("default auth mode follows SSO configuration", () => {
+      const openFromCommandPalette = () => {
+        cy.visit("/");
+        H.commandPaletteButton().click();
+        H.commandPaletteInput().should("be.visible").type("new embed");
+        H.commandPalette()
+          .findByRole("option", { name: "New embed" })
+          .should("be.visible")
+          .click();
+      };
 
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
+      const openFromAdminEmbedding = () => {
+        cy.visit("/admin/embedding");
+        cy.findAllByTestId("sdk-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+      };
 
-        cy.findByLabelText("Browser").click();
-        cy.findByLabelText("Browser").should("be.checked");
+      const openFromAdminGuestEmbeds = () => {
+        cy.visit("/admin/embedding/guest");
+        cy.findAllByTestId("guest-embeds-setting-card")
+          .first()
+          .within(() => {
+            cy.findByText("New embed").click();
+          });
+      };
 
-        cy.findByLabelText("Guest").click();
+      const openFromSharingMenu = () => {
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        H.openSharingMenu("Embed");
+      };
 
-        cy.findByLabelText("Dashboard").should("be.checked");
+      const assertCheckedAuth = (mode: "sso" | "guest") => {
+        const ssoLabel = "Metabase account (SSO)";
+        const guestLabel = "Guest";
+        getEmbedSidebar().within(() => {
+          cy.findByLabelText(mode === "sso" ? ssoLabel : guestLabel).should(
+            "be.checked",
+          );
+          cy.findByLabelText(mode === "sso" ? guestLabel : ssoLabel).should(
+            "not.be.checked",
+          );
+        });
+      };
 
-        cy.findByLabelText("Chart").click();
-        cy.findByLabelText("Chart").should("be.checked");
+      it("defaults to SSO from non-guest entry points when JWT SSO is configured (EMB-1783)", () => {
+        enableJwtAuth();
 
-        cy.findByLabelText("Metabase account (SSO)").click();
+        openFromCommandPalette();
+        assertCheckedAuth("sso");
 
-        cy.findByLabelText("Chart").should("be.checked");
+        openFromAdminEmbedding();
+        assertCheckedAuth("sso");
 
-        cy.findByLabelText("Guest").click();
+        openFromSharingMenu();
+        assertCheckedAuth("sso");
 
-        cy.findByLabelText("Chart").should("be.checked");
+        // The Guest embeds admin section is intentionally guest-only and
+        // forces guest mode regardless of SSO configuration.
+        openFromAdminGuestEmbeds();
+        assertCheckedAuth("guest");
+      });
+
+      it("defaults to Guest from all entry points when SSO is not configured", () => {
+        openFromCommandPalette();
+        assertCheckedAuth("guest");
+
+        openFromAdminEmbedding();
+        assertCheckedAuth("guest");
+
+        openFromSharingMenu();
+        assertCheckedAuth("guest");
+
+        openFromAdminGuestEmbeds();
+        assertCheckedAuth("guest");
       });
     });
 

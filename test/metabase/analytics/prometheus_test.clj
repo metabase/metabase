@@ -6,12 +6,17 @@
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.core :as search]
+   [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
-   (io.prometheus.client Collector GaugeMetricFamily)))
+   (com.mchange.v2.c3p0 DataSources)
+   (io.prometheus.client Collector GaugeMetricFamily)
+   (java.lang.management ManagementFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -144,6 +149,73 @@
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
 
+(defn- start-daemon-thread! ^Thread [^String thread-name f]
+  (doto (Thread. ^Runnable f thread-name)
+    (.setDaemon true)
+    (.start)))
+
+(deftest connection-pool-info-does-not-deadlock-pool-construction-test
+  (testing "reading pool stats while another thread builds a pool must not deadlock (swaldman/c3p0#95)"
+    ;; The application, Quartz and semantic-search pools are built outside the warehouse pool guard. A scrape that
+    ;; overlapped one of those constructions used to deadlock inside c3p0 (JMX read locks the pool MBean then the
+    ;; pool; construction locks them the other way round) and then hold the guard forever, so no warehouse pool could
+    ;; be built afterwards. One thread scrapes continuously, one builds and destroys a fixed number of pools through
+    ;; the app-db path, and a third builds a warehouse pool through the guarded path. All three must finish.
+    (let [num-builds      25
+          timeout-ms      10000
+          stop?           (atom false)
+          errors          (atom [])
+          scrapes         (atom 0)
+          first-scrape    (promise)
+          builds-done     (promise)
+          warehouse-built (promise)]
+      (mt/with-temp [:model/Database db {:engine :h2, :details {:db (str "mem:" (mt/random-name))}}]
+        (try
+          (start-daemon-thread!
+           "prometheus-test-scraper"
+           (fn []
+             (while (not @stop?)
+               (try
+                 (prometheus/connection-pool-info)
+                 (swap! scrapes inc)
+                 (deliver first-scrape true)
+                 (catch Exception e
+                   (swap! errors conj e))))))
+          (start-daemon-thread!
+           "prometheus-test-app-pool-builder"
+           (fn []
+             (dotimes [_ num-builds]
+               (try
+                 (let [pool (mdb.connection-pool-setup/connection-pool-data-source
+                             :h2
+                             (mdb.data-source/raw-connection-string->DataSource
+                              (format "jdbc:h2:mem:%s" (mt/random-name))))]
+                   (DataSources/destroy pool))
+                 (catch Exception e
+                   (swap! errors conj e))))
+             (deliver builds-done true)))
+          (start-daemon-thread!
+           "prometheus-test-warehouse-pool-builder"
+           (fn []
+             ;; start once scraping is under way, so a wedged guard is what this thread would run into
+             (when (true? (deref first-scrape timeout-ms false))
+               (try
+                 (sql-jdbc.conn/db->pooled-connection-spec db)
+                 (deliver warehouse-built true)
+                 (catch Exception e
+                   (swap! errors conj e))))))
+          (is (true? (deref builds-done timeout-ms false))
+              "the pool-building thread did not finish its builds: a build deadlocked with a scrape")
+          (is (nil? (.findDeadlockedThreads (ManagementFactory/getThreadMXBean)))
+              "a scrape deadlocked with a pool construction")
+          (is (pos? @scrapes) "the scrape thread never completed a read")
+          (is (true? (deref warehouse-built timeout-ms false))
+              "the warehouse pool build did not complete: the pool guard is wedged")
+          (is (empty? @errors))
+          (finally
+            (reset! stop? true)
+            (sql-jdbc.conn/invalidate-pool-for-db! db)))))))
+
 (deftest email-collector-test
   (testing "Registry has email metrics registered"
     (mt/with-prometheus-system! [port _]
@@ -164,12 +236,6 @@
    (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
-  (testing "inc starts a system if it wasn't started"
-    (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/inc! :metabase-email/messages) ; << Does not throw.
-        (is (approx= 1 (mt/metric-value @#'prometheus/system :metabase-email/messages))))))
-
   (testing "inc throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
@@ -179,52 +245,43 @@
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (mt/metric-value system :metabase-email/messages)))))
-
   (testing "inc with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-notification/send-ok {:payload-type :notification/card} 1)
       (is (approx= 1 (mt/metric-value system :metabase-notification/send-ok {:payload-type :notification/card}))))))
 
 (deftest dec!-test
-  (testing "dec starts a system if it wasn't started"
-    (mt/with-temporary-setting-values [prometheus-server-port 0]
-      (with-redefs [prometheus/system nil]
-        (prometheus/dec! :metabase-search/queue-size) ; << Does not throw.
-        (is (approx= -1 (mt/metric-value @#'prometheus/system :metabase-search/queue-size))))))
-
   (testing "dec throws when called with an unknown metric"
     (mt/with-prometheus-system! [_ _system]
       (is (thrown-with-msg? RuntimeException
                             #"error when updating metric"
                             (prometheus/dec! :metabase-email/unknown-metric)))))
-
   (testing "dec is recorded for known metrics"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/queue-size)
       (is (approx= -1 (mt/metric-value system :metabase-search/queue-size)))))
-
   (testing "dec with labels is correctly recorded"
     (mt/with-prometheus-system! [_ system]
       (prometheus/dec! :metabase-search/engine-active {:engine :default} 1)
       (is (approx= -1 (mt/metric-value system :metabase-search/engine-active {:engine :default}))))))
 
-(deftest observe!-test
-  (testing "observe! starts a system if it wasn't started"
-    (with-redefs [prometheus/system nil]
-      (mt/with-temporary-setting-values [prometheus-server-port 0]
-        (prometheus/observe! :metabase-notification/send-duration-ms 2) ; << Does not throw.
-        (is (approx= 2 (:sum (mt/metric-value @#'prometheus/system :metabase-notification/send-duration-ms)))))))
-
-  (testing "observe! with labels is correctly recorded"
+(deftest pull-collector-test
+  (testing "a pull collector implementation runs at scrape time and can update one or more declared metrics"
     (mt/with-prometheus-system! [_ system]
-      (prometheus/observe! :metabase-notification/send-duration-ms {:payload-type :notification/card} 2)
-      (is (approx= 2 (:sum (mt/metric-value system :metabase-notification/send-duration-ms {:payload-type :notification/card}))))))
-
-  (testing "observe! throws when called with an unknown metric"
-    (mt/with-prometheus-system! [_ _system]
-      (is (thrown-with-msg? RuntimeException
-                            #"error when updating metric"
-                            (prometheus/observe! :metabase-email/unknown-metric 1))))))
+      (let [refresher (registry/get (:registry system)
+                                    {:name "metabase_application_pull" :namespace "metabase"} nil)]
+        (try
+          ;; the function makes whatever metric updates it wants -- here it sets the (declared)
+          ;; :metabase-search/appdb-index-size gauge
+          (defmethod prometheus/pull-collector ::test [_]
+            {:min-interval-s 0
+             :f (fn []
+                  (prometheus/set! :metabase-search/appdb-index-size 7))})
+          (.collect ^Collector refresher)   ; runs the registered functions
+          (is (approx= 7 (mt/metric-value system :metabase-search/appdb-index-size)))
+          (finally
+            (remove-method prometheus/pull-collector ::test)
+            (swap! @#'prometheus/pull-collector-last-runs dissoc ::test)))))))
 
 (deftest search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
@@ -234,16 +291,17 @@
         sum           (fn [metric] (reduce + 0 (vals (engine->value metric))))]
     (testing "A consistent set of engines is enumerated"
       (is (= (engines :metabase-search/engine-active)
-             (engines :metabase-search/engine-active))))
+             (engines :metabase-search/engine-default))))
     (testing "The values are boolean"
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-active)))))
       (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-default))))))
-    (testing "Legacy search is always active"
+    (testing "The default engine is active"
+      (is (= 1 (value :metabase-search/engine-active (search.engine/default-engine)))))
+    (testing "In-place can always serve, so it is always active"
       (is (= 1 (value :metabase-search/engine-active :in-place))))
-    (testing "There is at least one other active engine iff we support an index."
-      (if (search/supports-index?)
-        (is (< 1 (sum :metabase-search/engine-active)))
-        (is (= 1 (sum :metabase-search/engine-active)))))
+    (testing "Beyond in-place, engines are active iff their index is maintained"
+      (is (= (inc (count (remove #{:search.engine/in-place} (search.engine/active-engines))))
+             (sum :metabase-search/engine-active))))
     (testing "There is only one default"
       (is (= 1 (sum :metabase-search/engine-default))))))
 
@@ -259,29 +317,23 @@
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-public/response {:status "200"} 0)
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"} 0)
-
       ;; Track SDK responses
       (prometheus/inc! :metabase-sdk/response {:status "200"})
       (prometheus/inc! :metabase-sdk/response {:status "404"})
-
       ;; Track iframe responses
       (prometheus/inc! :metabase-embedding-iframe/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe/response {:status "404"})
-
       ;; Track new embedding responses
       (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status "200"})
       (prometheus/inc! :metabase-embedding-iframe-static/response {:status "200"})
       (prometheus/inc! :metabase-embedding-public/response {:status "200"})
       (prometheus/inc! :metabase-embedding-simple/response {:status "200"})
-
       (testing "SDK response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-sdk/response {:status "404"}))))
-
       (testing "iframe response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe/response {:status "404"}))))
-
       (testing "new embedding response metrics are recorded correctly"
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))

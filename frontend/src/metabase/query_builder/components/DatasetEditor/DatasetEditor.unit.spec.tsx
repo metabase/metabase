@@ -5,9 +5,9 @@ import {
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DatasetEditor } from "metabase/query_builder/components/DatasetEditor";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
@@ -17,6 +17,8 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { DatasetEditor } from ".";
 
 const TEST_DB = createSampleDatabase();
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
@@ -64,6 +66,10 @@ const defaultDatasetEditorProps = {
   dataReferenceStack: [],
   pushDataReferenceStack: noop,
   popDataReferenceStack: noop,
+  setModalSnippet: noop,
+  openSnippetModalWithSelectedText: noop,
+  insertSnippet: noop,
+  snippetCollectionId: null,
 };
 
 const renderDatasetEditor = async (card: Card | UnsavedCard) => {
@@ -71,6 +77,7 @@ const renderDatasetEditor = async (card: Card | UnsavedCard) => {
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupUserMetabotPermissionsEndpoint();
   const question = new Question(card);
 
   fetchMock.get("path:/api/search", { body: { data: [] } });

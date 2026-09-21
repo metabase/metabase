@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
-import type { Plan } from "metabase/common/utils/plan";
+import { dayjs } from "metabase/dayjs";
+import type { Plan } from "metabase/settings";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -15,7 +14,6 @@ export type InProgressCloudMigration = Omit<CloudMigration, "state"> & {
 export const getStartedVisibleStates = new Set<InternalCloudMigrationState>([
   "uninitialized",
   "cancelled",
-  "error",
 ]);
 
 export const progressStates = new Set<InternalCloudMigrationState>([

@@ -1,6 +1,8 @@
 import type { MouseEvent, ReactNode } from "react";
 
-import { ArchiveButton } from "./FormDangerButton.styled";
+import { Button } from "metabase/ui";
+
+import S from "./FormArchiveButton.module.css";
 
 export interface FormArchiveButtonProps {
   children?: ReactNode;
@@ -12,9 +14,16 @@ const FormArchiveButton = ({
   onClick,
 }: FormArchiveButtonProps): JSX.Element => {
   return (
-    <ArchiveButton type="button" borderless onClick={onClick}>
+    <Button
+      className={S.archiveButton}
+      type="button"
+      variant="subtle"
+      color="feedback-negative"
+      px={0}
+      onClick={onClick}
+    >
       {children}
-    </ArchiveButton>
+    </Button>
   );
 };
 

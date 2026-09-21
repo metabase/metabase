@@ -11,7 +11,7 @@ const args = {
   size: "md",
   disabled: false,
   fullWidth: false,
-  radius: "md",
+  radius: "sm",
   loading: false,
 };
 
@@ -21,7 +21,11 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   color: {
-    options: { default: undefined, success: "success", error: "error" },
+    options: {
+      default: undefined,
+      "feedback-positive": "feedback-positive",
+      "feedback-negative": "feedback-negative",
+    },
     control: { type: "inline-radio" },
   },
   size: {
@@ -48,7 +52,7 @@ const argTypes = {
     control: { type: "boolean" },
   },
   radius: {
-    options: ["md", "xl"],
+    options: ["sm", "md", "xl"],
     control: { type: "inline-radio" },
   },
   loading: {
@@ -152,7 +156,7 @@ export const DefaultSizeCustomColor = {
   render: GridTemplate,
   name: "Default size, custom color",
   args: {
-    color: "error",
+    color: "feedback-negative",
   },
 };
 
@@ -210,7 +214,7 @@ export const CompactSizeCustomColor = {
   render: GridTemplate,
   name: "Compact size, custom color",
   args: {
-    color: "error",
+    color: "feedback-negative",
     size: "compact-md",
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {

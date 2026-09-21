@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { Box, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { EntityNameCell } from "./EntityNameCell";
 import { TreeTable } from "./TreeTable";
@@ -246,6 +247,7 @@ export const LargeDataset = {
 export const EmptyState = {
   render: function EmptyStateStory() {
     const instance = useTreeTableInstance({
+      // Unjustified type cast. FIXME
       data: [] as CollectionItem[],
       columns: detailedColumns,
       getSubRows: (node) => node.children,
@@ -257,9 +259,9 @@ export const EmptyState = {
         <TreeTable
           instance={instance}
           emptyState={
-            <Box ta="center" py="xl">
-              <Icon name="folder" size={48} c="text-tertiary" />
-              <Text c="text-secondary" mt="md">
+            <Box ta="center" py="xxl">
+              <Icon name="folder" size={48} c="text-disabled" />
+              <Text c="text-secondary" mt="lg">
                 This collection is empty
               </Text>
             </Box>

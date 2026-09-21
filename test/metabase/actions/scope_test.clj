@@ -52,20 +52,17 @@
                 :collection-id collection-id
                 :type          :dashcard}
                (actions.scope/hydrate-scope {:dashcard-id dashcard-id-1}))))
-
       (testing "hydrate for dashcard with native card"
         (is (= {:dashcard-id   dashcard-id-2
                 :dashboard-id  dashboard-id
                 :collection-id collection-id
                 :type          :dashcard}
                (actions.scope/hydrate-scope {:dashcard-id dashcard-id-2}))))
-
       (testing "hydrate for dashboard"
         (is (= {:dashboard-id  dashboard-id
                 :collection-id collection-id
                 :type          :dashboard}
                (actions.scope/hydrate-scope {:dashboard-id dashboard-id}))))
-
       (testing "hydrate for MBQL card"
         (is (= {:type          :model
                 :model-id       mbql-model-id
@@ -73,14 +70,12 @@
                 :table-id      table-id
                 :database-id   db-id}
                (actions.scope/hydrate-scope {:model-id mbql-model-id}))))
-
       (testing "hydrate for native card"
         (is (= {:type          :model
                 :model-id       native-model-id
                 :collection-id collection-id
                 :database-id   db-id}
                (actions.scope/hydrate-scope {:model-id native-model-id}))))
-
       (testing "hydrate for MBQL model"
         (is (= {:type          :model
                 :model-id      mbql-model-id
@@ -88,14 +83,12 @@
                 :table-id      table-id
                 :database-id   db-id}
                (actions.scope/hydrate-scope {:model-id mbql-model-id}))))
-
       (testing "hydrate for native model"
         (is (= {:model-id      native-model-id
                 :collection-id collection-id
                 :database-id   db-id
                 :type          :model}
                (actions.scope/hydrate-scope {:model-id native-model-id}))))
-
       (testing "hydrate for table"
         (is (= {:table-id    table-id
                 :database-id db-id
@@ -109,19 +102,16 @@
            (actions.scope/normalize-scope {:dashboard-id  1
                                            :dashcard-id   2
                                            :collection-id 5})))
-
     (is (= {:type         :dashboard
             :dashboard-id 1}
            (actions.scope/normalize-scope {:dashboard-id  1
                                            :collection-id 5})))
-
     (is (= {:type     :model
             :model-id 7}
            (actions.scope/normalize-scope {:model-id      7
                                            :table-id      4
                                            :collection-id 5
                                            :database-id   6})))
-
     (is (= {:type     :table
             :table-id 4}
            (actions.scope/normalize-scope {:table-id    4

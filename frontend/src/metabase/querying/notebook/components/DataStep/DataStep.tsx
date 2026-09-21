@@ -66,6 +66,7 @@ export const DataStep = ({
           title={t`Pick your starting data`}
           canChangeDatabase
           hasMetrics
+          hasMetricsInMiniPicker={!isMetric}
           isOpened={isOpened}
           setIsOpened={setIsOpened}
           isDisabled={readOnly}
@@ -134,6 +135,7 @@ export function DataFieldPopover({
           <IconButtonWrapper
             className={S.DataStepIconButton}
             style={
+              // Unjustified type cast. FIXME
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
               } as CSSProperties

@@ -5,6 +5,7 @@
   we can have a uniform interface both via the API and code"
   (:require
    [metabase-enterprise.sso.api.interface :as sso.i]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.jwt :as jwt]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.integrations.saml]
@@ -18,8 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]
-   [stencil.core :as stencil]
-   [toucan2.core :as t2]))
+   [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,10 +33,17 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map {:closed true}
+                     [:jwt              {:optional true} [:maybe :string]]
+                     [:preferred_method {:optional true} [:maybe :string]]
+                     [:redirect         {:optional true} [:maybe :string]]
+                     [:return_to        {:optional true} [:maybe :string]]]
+   _body request]
   (try
     (sso.i/sso-get request)
     (catch Throwable e
@@ -44,7 +51,7 @@
       (throw e))))
 
 (mu/defn- sso-error-page
-  [^Throwable e log-direction :- [:enum :in :out]]
+  [^Throwable e :- (ms/InstanceOfClass Throwable) log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
@@ -63,11 +70,19 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map {:closed true}
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]
+   _body :- [:maybe [:map {:closed true}
+                     [:jwt          {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
+   request]
   (try
     (sso.i/sso-post request)
     (catch Throwable e
-      (log/error e "Error logging in")
+      (log/errorf "Error logging in: %s" (ex-message e))
       (sso-error-page e :in))))
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
@@ -87,16 +102,12 @@
   [_route-params _query-params _body {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
-        {:keys [email sso_source]}
-        (t2/query-one {:select [:u.email :u.sso_source]
-                       :from   [[:core_user :u]]
-                       :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                       :where  [:or [:= :key_hashed metabase-session-key-hashed] [:= :session.id metabase-session-key]]})]
+        {:keys [email sso_source saml_session_index saml_name_id saml_name_id_format]}
+        (sso.db/session-user-email-and-source metabase-session-key-hashed)]
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must delete the session here:
-    ;; NOTE: Only safe to compare the plaintext session-key to core_session.id because of the call to `validate-session-key` above
     (when-not (sso-settings/saml-slo-enabled)
-      (t2/delete! :model/Session {:where [:or [:= :key_hashed metabase-session-key-hashed] [:= :id metabase-session-key]]}))
+      (sso.db/delete-session! metabase-session-key-hashed))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))
@@ -104,7 +115,15 @@
         :credential (metabase-enterprise.sso.integrations.saml/sp-cert-keystore-details)
         :idp-url (sso-settings/saml-identity-provider-slo-uri)
         :issuer (sso-settings/saml-application-name)
-        :user-email email
+        ;; Name the subject the way the IdP does. Its NameID is not necessarily the user's email
+        ;; - Auth0 sends an opaque `auth0|<id>` - and a LogoutRequest naming an identifier the IdP
+        ;; never issued matches no session. Fall back to email for sessions predating this column.
+        :user-email (or saml_name_id email)
+        :name-id-format saml_name_id_format
+        ;; Identifies which session to end. IdPs that map several sessions to one subject (Auth0)
+        ;; reject a LogoutRequest without it. Omitted when we have none, which keeps the request
+        ;; unchanged for IdPs that never sent one.
+        :session-index saml_session_index
         :relay-state (u/encode-base64
                       (str (system/site-url) metabase-slo-redirect-url))))}))
 
@@ -122,7 +141,8 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
+   {:keys [jwt]} :- [:map {:closed true}
+                     [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled-and-configured)
     (throw (ex-info "JWT authentication is not enabled"
@@ -140,14 +160,23 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params :- [:map {:closed true}
+                     [:SAMLRequest  {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]
+   _body :- [:maybe [:map {:closed true}
+                     [:SAMLRequest  {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
+   request]
   (try
     (if (sso-settings/saml-slo-enabled)
       (sso.i/sso-handle-slo request)
       (throw (ex-info "SAML Single Logout is not enabled, request forbidden."
                       {:status-code 403})))
     (catch Throwable e
-      (log/error e "Error handling SLO")
+      (log/errorf "Error handling SLO: %s" (ex-message e))
       (sso-error-page e :out))))
 
 ;; Key schema that excludes `/` so /:key does not greedily match /:key/callback
@@ -159,12 +188,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{provider-key :key} :- [:map [:key ProviderKey]]
-   _query-params _body request]
+  [{provider-key :key} :- [:map {:closed true}
+                           [:key ProviderKey]]
+   _query-params :- [:map {:closed true}
+                     [:redirect {:optional true} [:maybe :string]]]
+   _body request]
   (try
     (oidc-integration/sso-initiate provider-key request)
     (catch Throwable e
-      (log/error e "Error initiating OIDC SSO")
+      (log/errorf "Error initiating OIDC SSO: %s" (ex-message e))
       (throw e))))
 
 ;; GET /auth/sso/:key/callback
@@ -172,10 +204,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{provider-key :key} :- [:map [:key ProviderKey]]
-   _query-params _body request]
+  [{provider-key :key} :- [:map {:closed true}
+                           [:key ProviderKey]]
+   _query-params :- [:map {:closed true}
+                     [:code  {:optional true} [:maybe :string]]
+                     [:state {:optional true} [:maybe :string]]]
+   _body request]
   (try
     (oidc-integration/sso-callback provider-key request)
     (catch Throwable e
-      (log/error e "Error handling OIDC callback")
+      (log/errorf "Error handling OIDC callback: %s" (ex-message e))
       (throw e))))

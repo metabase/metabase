@@ -68,18 +68,24 @@
           our-host (some-> (system/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
-                         (= (.getHost redirect) our-host)))
+                         (and our-host (= (.getHost redirect) our-host))))
       redirect-url)
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
+(defn group-names->strings
+  "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.
+  Non-string entries are ignored."
+  [group-names]
+  (into [] (filter string?) (cond-> group-names (string? group-names) vector)))
+
 (defn group-names->ids
   "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
   [group-names group-mappings]
-  (->> (cond-> group-names (string? group-names) vector)
+  (->> (group-names->strings group-names)
        (map keyword)
        (mapcat group-mappings)
        set))
@@ -90,16 +96,21 @@
   (-> group-mappings vals flatten set))
 
 (defn stringify-valid-attributes
-  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.
+  Multi-value attributes (vectors, lists, lazy seqs — produced by SAML/JWT for repeated attributes) are joined into a
+  comma-separated string so that downstream code receives a usable string value."
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
                (cond
-                 (or (vector? value) (map? value) (nil? value))
-                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 (or (map? value) (nil? value))
+                 (log/warnf "Dropping attribute '%s' with non-stringable value" (name key))
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
+
+                 (sequential? value)
+                 [(u/qualified-name key) (str/join "," (map str value))]
 
                  :else
                  [(u/qualified-name key) (str value)])))

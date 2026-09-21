@@ -11,7 +11,6 @@
           expected-hash "37bc76b4a24279eb90a71c129a629fb8626ad0089f119d6d095bc5135377f2e2884ad80b037495f1962a283cf57cdbad031fd1f06a21d86a40bba7fe674802dd"]
       (testing "We generate a cryptographic hash to validate unsubscribe URLs"
         (is (= expected-hash (messages/generate-pulse-unsubscribe-hash pulse-id email))))
-
       (testing "The hash value depends on the pulse-id, email, and site-uuid"
         (let [alternate-site-uuid "aa147515-ade9-4298-ac5f-c7e42b69286d"
               alternate-hashes    [(messages/generate-pulse-unsubscribe-hash 87654321 email)
@@ -28,7 +27,6 @@
                (mt/client :post 400 "pulse/unsubscribe" {:pulse-id 1
                                                          :email    email
                                                          :hash     "fake-hash"}))))
-
       (testing "Valid hash but not email"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                        :model/PulseChannel _              {:pulse_id pulse-id}]
@@ -36,7 +34,6 @@
                  (mt/client :post 400 "pulse/unsubscribe" {:pulse-id pulse-id
                                                            :email    email
                                                            :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
-
       (testing "Valid hash and email"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "title"}
                        :model/PulseChannel _              {:pulse_id     pulse-id
@@ -73,7 +70,6 @@
                (mt/client :post 400 "pulse/unsubscribe/undo" {:pulse-id 1
                                                               :email    email
                                                               :hash     "fake-hash"}))))
-
       (testing "Valid hash and email doesn't exist"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "title"}
                        :model/PulseChannel _              {:pulse_id pulse-id}]
@@ -81,7 +77,6 @@
                  (mt/client :post 200 "pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                 :email    email
                                                                 :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
-
       (testing "Valid hash and email already exists"
         (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                        :model/PulseChannel _              {:pulse_id     pulse-id

@@ -28,7 +28,7 @@
   Question transformation:
 
   - Set display \"table\""
-  (:refer-clojure :exclude [mapv empty? #?(:clj for)])
+  (:refer-clojure :exclude [mapv empty? not-empty #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -41,6 +41,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -48,8 +49,9 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv empty? not-empty #?(:clj for)]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
@@ -127,42 +129,60 @@
    :row-count  row-count
    :table-name table-name})
 
+(defn- non-empty-seq [value]
+  #?(:clj  (when (sequential? value)
+             (not-empty value))
+     :cljs (cond
+             (array? value)      (not-empty (array-seq value))
+             (sequential? value) (not-empty value))))
+
 (mu/defn- drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    column-ref   :- ::lib.schema.ref/ref
-   value        :- :any]
+   value        :- [:maybe [:or
+                            ::lib.schema.literal/param-value
+                            [:sequential ::lib.schema.literal/param-value]
+                            #?@(:cljs [[:fn {:error/message "JS array"} array?]])]]]
   (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
-        filter-clauses (or (when (lib.binning/binning column)
-                             (let [unbinned-column (-> filter-column
-                                                       (lib.binning/with-binning nil)
-                                                       (dissoc :lib/original-binning))]
-                               (if (some? value)
-                                 (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
-                                   [(lib.filter/>= unbinned-column min-value)
-                                    (lib.filter/< unbinned-column max-value)])
-                                 [(lib.filter/is-null unbinned-column)])))
-                           ;; if the column was temporally bucketed in the top level, make sure the `=` filter we
-                           ;; generate still has that bucket. Otherwise the filter will be something like
-                           ;;
-                           ;;    col = March 2023
-                           ;;
-                           ;; instead of
-                           ;;
-                           ;;    month(col) = March 2023
-                           (let [bucket (or (::lib.underlying/temporal-unit column)
-                                            (lib.temporal-bucket/temporal-bucket column))
-                                 unit   (cond-> bucket
-                                          (map? bucket) :unit)
-                                 column (if unit
-                                          (lib.temporal-bucket/with-temporal-bucket filter-column unit)
-                                          filter-column)]
-                             (if (nil? value)
-                               [(lib.filter/is-null column)]
-                               [(cond-> (lib.filter/= column value)
-                                  (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
-                                  lib.fe-util/expand-temporal-expression)])))]
+        values         (non-empty-seq value)
+        filter-clauses (or
+                        (when (lib.binning/binning column)
+                          (let [unbinned-column (-> filter-column
+                                                    (lib.binning/with-binning nil)
+                                                    (dissoc :lib/original-binning))]
+                            (if (some? value)
+                              (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
+                                [(lib.filter/>= unbinned-column min-value)
+                                 (lib.filter/< unbinned-column max-value)])
+                              [(lib.filter/is-null unbinned-column)])))
+                        ;; if the column was temporally bucketed in the top level, make sure the `=` filter we
+                        ;; generate still has that bucket. Otherwise the filter will be something like
+                        ;;
+                        ;;    col = March 2023
+                        ;;
+                        ;; instead of
+                        ;;
+                        ;;    month(col) = March 2023
+                        (let [bucket (or (::lib.underlying/temporal-unit column)
+                                         (lib.temporal-bucket/temporal-bucket column))
+                              unit   (cond-> bucket
+                                       (map? bucket) :unit)
+                              column (if unit
+                                       (lib.temporal-bucket/with-temporal-bucket filter-column unit)
+                                       filter-column)]
+                          (cond
+                            values
+                            [(apply lib.filter/filter-clause :in column values)]
+
+                            (nil? value)
+                            [(lib.filter/is-null column)]
+
+                            :else
+                            [(cond-> (lib.filter/= column value)
+                               (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
+                               lib.fe-util/expand-temporal-expression)])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))
@@ -203,8 +223,9 @@
 
                                  ;; Default: no filters to add.
                                  nil)))
-        ;; make all joins include all fields
-        new-joins (mapv #(lib.join/with-join-fields % :all)
+        ;; A join with no `:fields` contributes no columns, so default it to `:all` (#48032).
+        ;; Joins with explicit `:fields` keep the user's column selection (#69105).
+        new-joins (mapv #(u/assoc-default % :fields :all)
                         (lib.join/joins agg-filtered))]
     ;; if we have new joins to add, update query with the new joins
     (if (empty? new-joins)

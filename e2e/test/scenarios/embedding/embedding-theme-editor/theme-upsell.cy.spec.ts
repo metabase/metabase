@@ -47,7 +47,14 @@ describe("scenarios > embedding > themes > upsell", () => {
       H.activateToken("starter");
     });
 
-    it("shows the upsell with a Store Admin contact message instead of a CTA", () => {
+    it("shows the Upgrade to Pro CTA when the current admin is not a Metabase Store Admin", () => {
+      cy.log(
+        "keep the trial check deterministic — no trial, so CTA stays 'Upgrade to Pro'",
+      );
+      cy.intercept("POST", "/api/ee/cloud-proxy/mb-plan-trial-up-available", {
+        body: { available: false, plan_alias: "pro-cloud" },
+      });
+
       cy.visit("/admin/embedding/themes");
 
       cy.log("nav label has an upsell gem");
@@ -67,15 +74,11 @@ describe("scenarios > embedding > themes > upsell", () => {
         ).should("be.visible");
 
         cy.log(
-          "hosted, non-Store-Admin users see the contact-admin message instead of a CTA",
+          "hosted starter admins can upgrade even when they are not Store Admins",
         );
-        cy.findByText(
-          /Please ask a Metabase Store Admin.*to upgrade your plan\./,
-        ).should("be.visible");
-        cy.findByRole("button", { name: "Upgrade to Pro" }).should("not.exist");
-        cy.findByRole("link", { name: "Upgrade to Pro" }).should("not.exist");
-
-        cy.findByRole("button", { name: /New theme/ }).should("not.exist");
+        cy.findByRole("button", { name: "Upgrade to Pro" }).should(
+          "be.visible",
+        );
       });
     });
 

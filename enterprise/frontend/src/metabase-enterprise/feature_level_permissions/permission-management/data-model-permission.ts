@@ -1,52 +1,57 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
+import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type SpecialGroupType,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type SpecialGroupType,
+  type TableEntityId,
+} from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   edit: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Yes`,
+    get label() {
+      return t`Yes`;
+    },
     value: DataPermissionValue.ALL,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 
@@ -59,7 +64,7 @@ const DATA_MODEL_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
 ): DataPermissionValue => {
   switch (permissionSubject) {
@@ -67,6 +72,7 @@ const getPermissionValue = (
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
         DataPermission.DATA_MODEL,
       );
@@ -74,6 +80,7 @@ const getPermissionValue = (
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
         DataPermission.DATA_MODEL,
       );
@@ -101,7 +108,7 @@ const getDisabledTooltip = (groupType: SpecialGroupType) => {
 };
 
 export const buildDataModelPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   groupType: SpecialGroupType,
   permissions: GroupsPermissions,
@@ -162,8 +169,7 @@ export const buildDataModelPermission = (
     ],
     postActions: hasChildEntities
       ? {
-          controlled: () =>
-            push(getGroupFocusPermissionsUrl(groupId, entityId)),
+          controlled: () => navigateToGranularPermissions(groupId, entityId),
         }
       : undefined,
   };

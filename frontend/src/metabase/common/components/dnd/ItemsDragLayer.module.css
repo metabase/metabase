@@ -1,0 +1,14 @@
+.dragLayer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  width: 14.5rem;
+  min-height: 3.25rem;
+}

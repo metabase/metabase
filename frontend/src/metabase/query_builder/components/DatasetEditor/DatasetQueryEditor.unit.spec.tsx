@@ -1,15 +1,20 @@
 import _ from "underscore";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import {
@@ -18,6 +23,12 @@ import {
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
+
+// NativeQueryEditor is mocked globally in test/register-visualizations.js, but this suite inspects its children.
+// jest hoists the unmock above the imports, so the query builder graph the store setup loads gets the real editor.
+jest.unmock("metabase/querying/components/NativeQueryEditor");
 
 const TEST_DB = createSampleDatabase();
 
@@ -37,6 +48,7 @@ const ROOT_COLLECTION = createMockCollection({ id: "root" });
 interface SetupOpts {
   card?: Card;
   height?: number;
+  availableHeight?: number;
   isActive: boolean;
   readOnly?: boolean;
 }
@@ -44,6 +56,7 @@ interface SetupOpts {
 const setup = async ({
   card = TEST_NATIVE_CARD,
   height = 300,
+  availableHeight = 600,
   isActive,
   readOnly = false,
 }: SetupOpts) => {
@@ -58,54 +71,33 @@ const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  const query = question.legacyNativeQuery();
-  const DatasetQueryEditor = await importDatasetQueryEditor();
+  const query = checkNotNull(question.legacyNativeQuery());
   const onSetDatabaseId = jest.fn();
 
   const { rerender } = renderWithProviders(
     <DatasetQueryEditor
       isActive={isActive}
       height={height}
+      availableHeight={availableHeight}
       query={query}
       question={question}
       readOnly={readOnly}
       onResizeStop={_.noop}
       onSetDatabaseId={onSetDatabaseId}
+      setDatasetQuery={_.noop}
       isNativeEditorOpen
     />,
   );
 
+  // required for preventing memory leak
+  await waitForLoaderToBeRemoved();
+
   return { query, question, rerender };
 };
 
-/**
- * NativeQueryEditor is globally mocked in test/register-visualizations.js but
- * its actual implementation is needed in this test suite because we need to
- * investigate its children.
- *
- * We're actually testing NativeQueryEditor indirectly by using DatasetQueryEditor
- * (which uses NativeQueryEditor), so the NativeQueryEditor has to be unmocked
- * the moment we import DatasetQueryEditor.
- *
- * Unmocking happens in beforeEach, so we can really only import the component
- * during the unit test.
- *
- * Should the import be at the beginning of this file, the mock NativeQueryEditor
- * would have been used in tests instead of the actual implementation.
- */
-const importDatasetQueryEditor = async () => {
-  const { DatasetQueryEditor } =
-    await import("metabase/query_builder/components/DatasetEditor/DatasetQueryEditor");
-  return DatasetQueryEditor;
-};
-
 describe("DatasetQueryEditor", () => {
-  beforeEach(() => {
-    jest.unmock("metabase/query_builder/components/NativeQueryEditor");
-  });
-
   it("renders sidebar when query tab is active", async () => {
     await setup({ isActive: true });
 
@@ -133,7 +125,6 @@ describe("DatasetQueryEditor", () => {
       height: 0,
       isActive: true,
     });
-    const DatasetQueryEditor = await importDatasetQueryEditor();
     const onSetDatabaseId = jest.fn();
 
     expect(
@@ -144,16 +135,21 @@ describe("DatasetQueryEditor", () => {
       <DatasetQueryEditor
         isActive={false}
         height={0}
+        availableHeight={600}
         query={query}
         question={question}
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
+        setDatasetQuery={_.noop}
+        isNativeEditorOpen
       />,
     );
 
-    expect(
-      screen.queryByTestId("native-query-editor-action-buttons"),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("native-query-editor-action-buttons"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

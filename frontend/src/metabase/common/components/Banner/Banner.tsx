@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { FlexProps, GroupProps, IconName } from "metabase/ui";
+import type { FlexProps, GroupProps } from "metabase/ui";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 interface BaseBannerProps extends FlexProps {
   icon?: IconName;
@@ -30,14 +31,14 @@ export const Banner = ({
     <Flex
       data-testid="app-banner"
       align="center"
-      bg={bg || "background-tertiary"}
+      bg={bg || "background_page-tertiary"}
       py="sm"
       justify="space-between"
       pl="1.325rem"
-      pr="md"
+      pr="lg"
       {...flexProps}
     >
-      <Group gap="xs" {...contentGroupProps}>
+      <Group gap="xxs" {...contentGroupProps}>
         {icon && <Icon name={icon} w={36} c={iconColor} />}
         {body}
       </Group>

@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import {
   FieldEmptyState,
   FieldSection,
@@ -15,6 +15,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "metabase/metadata/components";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -25,7 +26,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
 import { TableHeader } from "../../components/TableHeader";
@@ -37,11 +38,8 @@ type TableFieldsPageParams = {
   fieldId?: string;
 };
 
-type TableFieldsPageProps = {
-  params: TableFieldsPageParams;
-};
-
-export function TableFieldsPage({ params }: TableFieldsPageProps) {
+export function TableFieldsPage() {
+  const params = useParams<TableFieldsPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
@@ -65,12 +63,12 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
   }
 
   return (
-    <PageContainer data-testid="table-fields-page" gap="md" px={0} pb={0}>
+    <PageContainer data-testid="table-fields-page" gap="lg" px={0} pb={0}>
       <TableHeader table={table} px="3.5rem" />
       <Flex
         className={S.body}
         flex={1}
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
@@ -86,7 +84,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
             }
             onSyncOptionsClick={openSyncModal}
             pl="3.5rem"
-            pr="lg"
+            pr="xl"
           />
         </Stack>
         {field != null && (
@@ -96,19 +94,19 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
             miw={320}
             maw={680}
             mih={0}
-            px="lg"
+            px="xl"
             gap="0"
             pos="relative"
           >
             <Group
               justify="space-between"
-              pt="lg"
-              pb="md"
+              pt="xl"
+              pb="lg"
               data-testid="field-section-header"
               pos="sticky"
               top={0}
               className={S.header}
-              bg="background-secondary"
+              bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button
@@ -139,7 +137,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
           </Stack>
         )}
         {isPreviewOpen && field != null && (
-          <Box flex="10 1 0" miw={504} maw={734} p="lg">
+          <Box flex="10 1 0" miw={504} maw={734} p="xl">
             <PreviewSection
               className={S.preview}
               field={field}

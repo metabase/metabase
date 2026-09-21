@@ -1,51 +1,41 @@
 import cx from "classnames";
-import { type PropsWithChildren, forwardRef } from "react";
+import type { PropsWithChildren } from "react";
 
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import CS from "metabase/css/core/index.css";
-import { useDashboardContext } from "metabase/dashboard/context";
 import { Flex } from "metabase/ui";
 
 import SdkDashboardStyleWrapperS from "./SdkDashboardStyleWrapper.module.css";
 
-export const SdkDashboardStyledWrapper = forwardRef(
-  function SdkDashboardStyledWrapperInner(
-    { className, style, children }: PropsWithChildren<CommonStylingProps>,
-    fullscreenRef: React.Ref<HTMLDivElement>,
-  ) {
-    return (
-      <Flex
-        direction="column"
-        justify="flex-start"
-        align="stretch"
-        className={cx(
-          className,
-          SdkDashboardStyleWrapperS.SdkDashboardStyleWrapper,
-          CS.overflowAuto,
-        )}
-        style={style}
-        ref={fullscreenRef}
-      >
-        {children}
-      </Flex>
-    );
-  },
-);
-
-export const SdkDashboardStyledWrapperWithRef = ({
+export const SdkDashboardStyledWrapper = ({
   className,
   style,
+  fullHeight = false,
   children,
-}: PropsWithChildren<CommonStylingProps>) => {
-  const { fullscreenRef } = useDashboardContext();
-
+}: PropsWithChildren<
+  CommonStylingProps & {
+    /**
+     * Stretches the child to the wrapper's height, so children sized with
+     * percentage heights have something to resolve against.
+     */
+    fullHeight?: boolean;
+  }
+>) => {
   return (
-    <SdkDashboardStyledWrapper
-      className={className}
+    <Flex
+      direction="column"
+      justify="flex-start"
+      align="stretch"
+      className={cx(
+        className,
+        SdkDashboardStyleWrapperS.SdkDashboardStyleWrapper,
+        fullHeight && SdkDashboardStyleWrapperS.FullHeight,
+        CS.overflowAuto,
+      )}
       style={style}
-      ref={fullscreenRef}
+      data-testid="sdk-dashboard-styled-wrapper"
     >
       {children}
-    </SdkDashboardStyledWrapper>
+    </Flex>
   );
 };

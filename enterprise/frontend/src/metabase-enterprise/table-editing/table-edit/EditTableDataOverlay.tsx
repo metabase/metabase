@@ -1,5 +1,4 @@
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { Flex, Text } from "metabase/ui";
+import { Flex, Loader, Text } from "metabase/ui";
 
 import S from "./EditTableDataOverlay.module.css";
 
@@ -17,8 +16,8 @@ export function EditTableDataOverlay({
   }
 
   return (
-    <Flex className={S.overlay}>
-      <LoadingSpinner />
+    <Flex className={S.overlay} data-testid="edit-table-data-loading-overlay">
+      <Loader size="lg" />
       {message && <Text className={S.message}>{message}</Text>}
     </Flex>
   );

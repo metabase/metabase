@@ -65,11 +65,11 @@
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  ([database]
+  ([database :- i/DatabaseInstance]
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- [:maybe [:map
+    {:keys [scan], :or {scan :full}} :- [:maybe [:map {:closed true}
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
      (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
@@ -95,7 +95,8 @@
         database (table/database table)]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
-    (if (binding [driver.settings/*allow-testing-h2-connections* true]
+    (if (binding [driver.settings/*allow-testing-h2-connections* true
+                  driver.settings/*allow-testing-sqlite-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))

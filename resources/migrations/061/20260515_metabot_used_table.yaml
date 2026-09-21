@@ -1,0 +1,87 @@
+## Persist tables referenced by Metabot-generated queries
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.zk7xq4
+      author: appleby
+      comment: metabot_used_table table
+      changes:
+        - createTable:
+            tableName: metabot_used_table
+            remarks: Record of which database tables Metabot referenced in generated a queries. Source cards, models, and metrics are recursively expanded to their underlying tables before insertion.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Auto-incrementing primary key
+              - column:
+                  name: message_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'FK to the Metabot message whose query referenced this table'
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'FK to the underlying database table the generated query references'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When this reference was recorded'
+
+  - changeSet:
+      id: v61.zk7xq4-uq
+      author: appleby
+      comment: Unique constraint on metabot_used_table (message_id, table_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_used_table
+            columnNames: message_id, table_id
+            constraintName: uq_metabot_used_table_message_table
+
+  - changeSet:
+      id: v61.zk7xq4-idx-table
+      author: appleby
+      comment: Index on metabot_used_table.table_id for reverse reads and FK lookups
+      changes:
+        - createIndex:
+            tableName: metabot_used_table
+            indexName: idx_metabot_used_table_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v61.zk7xq4-fk-msg
+      author: appleby
+      comment: FK from metabot_used_table.message_id to metabot_message
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_used_table
+            baseColumnNames: message_id
+            constraintName: fk_metabot_used_table_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.zk7xq4-fk-table
+      author: appleby
+      comment: FK from metabot_used_table.table_id to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_used_table
+            baseColumnNames: table_id
+            constraintName: fk_metabot_used_table_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            onDelete: CASCADE

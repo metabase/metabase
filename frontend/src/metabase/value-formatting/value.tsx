@@ -1,0 +1,318 @@
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
+import { getNullDisplayValue } from "metabase/utils/constants";
+import { formatNumber, removeNewLines } from "metabase/utils/formatting";
+import { parseNumber } from "metabase/utils/number";
+import {
+  isBoolean,
+  isCoordinate,
+  isDate,
+  isEmail,
+  isNumber,
+  isTime,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
+
+import { getDataFromClicked } from "./click-data";
+import { formatDateTimeWithUnit, formatRange } from "./date";
+import { formatEmail } from "./email";
+import { formatCoordinate } from "./geography";
+import { formatImage } from "./image";
+import { renderLinkTextForClick } from "./link";
+import { getJsxMarkdownRenderer } from "./registry";
+import { formatTime } from "./time";
+import { formatUrl } from "./url";
+
+export type FormatValueOptions = ColumnSettings & {
+  copyLinkUrl?: boolean;
+};
+
+type ColumnTypePredicates = {
+  isURL: boolean;
+  isEmail: boolean;
+  isTime: boolean;
+  isDate: boolean;
+  isNumber: boolean;
+  isCoordinate: boolean;
+  isBoolean: boolean;
+};
+
+const NO_COLUMN_PREDICATES: ColumnTypePredicates = {
+  isURL: false,
+  isEmail: false,
+  isTime: false,
+  isDate: false,
+  isNumber: false,
+  isCoordinate: false,
+  isBoolean: false,
+};
+
+type ColumnPredicatesEntry = {
+  base_type: DatasetColumn["base_type"];
+  effective_type: DatasetColumn["effective_type"];
+  semantic_type: DatasetColumn["semantic_type"];
+  predicates: ColumnTypePredicates;
+};
+
+// each predicate fans out into several type-hierarchy lookups, and formatting a
+// table re-checks the same column for every cell, so compute them once per column.
+// Cache entries also snapshot the type fields they were computed from because
+// the custom-viz API hands third-party code mutable column objects,
+// so identity alone can go stale.
+const columnPredicatesCache = new WeakMap<
+  DatasetColumn,
+  ColumnPredicatesEntry
+>();
+
+export function getColumnTypePredicates(
+  column: DatasetColumn | null | undefined,
+): ColumnTypePredicates {
+  if (!column || typeof column !== "object") {
+    return NO_COLUMN_PREDICATES;
+  }
+  const entry = columnPredicatesCache.get(column);
+  if (
+    entry &&
+    entry.base_type === column.base_type &&
+    entry.effective_type === column.effective_type &&
+    entry.semantic_type === column.semantic_type
+  ) {
+    return entry.predicates;
+  }
+  const predicates = {
+    isURL: isURL(column),
+    isEmail: isEmail(column),
+    isTime: isTime(column),
+    isDate: isDate(column),
+    isNumber: isNumber(column),
+    isCoordinate: isCoordinate(column),
+    isBoolean: isBoolean(column),
+  };
+  columnPredicatesCache.set(column, {
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    semantic_type: column.semantic_type,
+    predicates,
+  });
+  return predicates;
+}
+
+export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
+  let { prefix, suffix, ...options } = _options;
+  // avoid rendering <ExternalLink> if we have click_behavior set
+  if (
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.view_as !== "image" // images don't conflict with click behavior
+  ) {
+    options = {
+      ...options,
+      view_as: null, // turns off any link rendering
+    };
+  }
+  const formatted = formatValueRaw(value, options);
+  if (options.markdown_template) {
+    const renderJsxMarkdown = options.jsx
+      ? getJsxMarkdownRenderer()
+      : undefined;
+    if (renderJsxMarkdown) {
+      let maybeJson = {};
+      if (typeof value === "string") {
+        try {
+          maybeJson = JSON.parse(value);
+        } catch {
+          // do nothing
+        }
+      }
+      // inject the formatted value as "value" and the unformatted value as "raw"
+      return renderJsxMarkdown(options.markdown_template, {
+        value: formatted,
+        raw: value,
+        json: maybeJson,
+      });
+    }
+    // FIXME: render and get the innerText?
+    console.warn(
+      "formatValue: options.markdown_template not supported when options.jsx = false",
+    );
+    return formatted;
+  }
+  if ((prefix || suffix) && formatted != null) {
+    if (options.jsx && typeof formatted !== "string") {
+      return (
+        <span>
+          {prefix || ""}
+          {formatted}
+          {suffix || ""}
+        </span>
+      );
+    } else {
+      return `${prefix || ""}${formatted}${suffix || ""}`;
+    }
+  } else {
+    return formatted;
+  }
+}
+
+export function getRemappedValue(
+  value: unknown,
+  { remap, column }: ColumnSettings = {},
+) {
+  if (remap && column) {
+    if (column.hasRemappedValue && column.hasRemappedValue(value)) {
+      return column.remappedValue(value);
+    }
+    // or it may be a raw column object with a "remapping" object
+    if (column.remapping instanceof Map && column.remapping.has(value)) {
+      return column.remapping.get(value);
+    }
+    // TODO: get rid of one of these two code paths?
+  }
+}
+
+// fallback for formatting a string without a column semantic_type
+function formatStringFallback(value: any, options: ColumnSettings = {}) {
+  if (options.view_as !== null) {
+    value = formatUrl(value, options);
+    if (typeof value === "string") {
+      value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
+      value = formatImage(value, options);
+    }
+  }
+  if (typeof value === "string" && options.collapseNewlines) {
+    value = removeNewLines(value);
+  }
+  return value;
+}
+
+export function formatValueRaw(
+  value: unknown,
+  options: ColumnSettings = {},
+): React.ReactElement | string | number | null {
+  options = {
+    jsx: false,
+    remap: true,
+    ...options,
+  };
+
+  const { column } = options;
+  const columnPredicates = getColumnTypePredicates(column);
+
+  const remapped = getRemappedValue(value, options);
+  if (remapped !== undefined && options.view_as !== "link") {
+    value = remapped;
+  }
+
+  if (value == null) {
+    return options.stringifyNull ? getNullDisplayValue() : null;
+  } else if (
+    options.view_as !== "image" &&
+    options.click_behavior &&
+    clickBehaviorIsValid(options.click_behavior) &&
+    options.jsx
+  ) {
+    // Style this like a link if we're in a jsx context.
+    // It's not actually a link since we handle the click differently for dashboard and question targets.
+    return (
+      <span
+        data-testid="link-formatted-text"
+        className={cx(CS.link, CS.linkWrappable)}
+      >
+        {formatValueRaw(value, { ...options, jsx: false })}
+      </span>
+    );
+  } else if (
+    options.click_behavior &&
+    "linkTextTemplate" in options.click_behavior &&
+    options.click_behavior.linkTextTemplate
+  ) {
+    return renderLinkTextForClick(
+      options.click_behavior.linkTextTemplate,
+      getDataFromClicked(options.clicked),
+    );
+  } else if (
+    (columnPredicates.isURL && options.view_as == null) ||
+    options.view_as === "link"
+  ) {
+    return formatUrl(value, options);
+  } else if (columnPredicates.isEmail) {
+    // Unjustified type cast. FIXME
+    return formatEmail(value as string, options);
+  } else if (columnPredicates.isTime) {
+    // Unjustified type cast. FIXME
+    return formatTime(value as Dayjs, column.unit, options);
+  } else if (column && column.unit != null) {
+    return formatDateTimeWithUnit(
+      // Unjustified type cast. FIXME
+      value as string | number,
+      column.unit,
+      options,
+    );
+  } else if (
+    columnPredicates.isDate ||
+    isDateValue(value) ||
+    dayjs.isDayjs(value)
+  ) {
+    // Unjustified type cast. FIXME
+    return formatDateTimeWithUnit(value as string | number, "minute", options);
+  } else if (typeof value === "string") {
+    // Check if we're looking for a number isNumber(column) and
+    // check that the value string is a valid number
+    // it could be a remap
+    // TODO(eric, 2025-12-23): The second check should probably be in parseNumber(),
+    // but it caused tests to fail so I put it here.
+    if (columnPredicates.isNumber && Number.isFinite(Number(value))) {
+      const number = parseNumber(value);
+      if (number != null) {
+        return formatNumber(number, options);
+      }
+    }
+    if (options.view_as === "image") {
+      return formatImage(value, options);
+    }
+    if (column?.semantic_type) {
+      return options.collapseNewlines ? removeNewLines(value) : value;
+    }
+    return formatStringFallback(value, options);
+  } else if (typeof value === "number" && columnPredicates.isCoordinate) {
+    const range = rangeForValue(value, column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatCoordinate, options);
+    } else {
+      return formatCoordinate(value, options);
+    }
+  } else if (typeof value === "number" && columnPredicates.isNumber) {
+    const range = rangeForValue(value, column);
+    if (range && !options.noRange) {
+      return formatRange(range, formatNumber, options);
+    } else {
+      return formatNumber(value, options);
+    }
+  } else if (typeof value === "bigint" && columnPredicates.isNumber) {
+    return formatNumber(value, options);
+  } else if (typeof value === "boolean" && columnPredicates.isBoolean) {
+    return JSON.stringify(value);
+  } else if (typeof value === "object") {
+    // no extra whitespace for table cells
+    return JSON.stringify(value);
+  } else {
+    const strValue = String(value);
+    return options.collapseNewlines ? removeNewLines(strValue) : strValue;
+  }
+}
+
+function rangeForValue(value: unknown, column: DatasetColumn) {
+  if (typeof value === "number" && column?.binning_info?.bin_width) {
+    return [value, value + column.binning_info.bin_width];
+  }
+}
+
+function isDateValue(value: unknown): value is Date {
+  return Object.prototype.toString.call(value) === "[object Date]";
+}

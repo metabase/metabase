@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { MeasureSchema } from "metabase/schema";
 import type {
   CreateMeasureRequest,
   FieldValue,
@@ -22,7 +20,6 @@ import {
   provideMeasureTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const measureApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -32,10 +29,6 @@ export const measureApi = Api.injectEndpoints({
         url: "/api/measure",
       }),
       providesTags: (measures = []) => provideMeasureListTags(measures),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [MeasureSchema])),
-        ),
     }),
     getMeasure: builder.query<Measure, MeasureId>({
       query: (id) => ({
@@ -43,10 +36,6 @@ export const measureApi = Api.injectEndpoints({
         url: `/api/measure/${id}`,
       }),
       providesTags: (measure) => (measure ? provideMeasureTags(measure) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, MeasureSchema)),
-        ),
     }),
     getMeasureDimensionValues: builder.query<
       GetMeasureDimensionValuesResponse,

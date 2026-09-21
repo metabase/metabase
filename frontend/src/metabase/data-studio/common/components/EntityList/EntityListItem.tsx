@@ -1,8 +1,7 @@
-import { Link } from "react-router";
-
-import type { IconName } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
 import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import S from "./EntityListItem.module.css";
 
@@ -18,7 +17,7 @@ export function EntityListItem({
   name,
   description,
   icon,
-  iconColor = "brand",
+  iconColor = "core-brand",
   href,
 }: EntityListItemProps) {
   return (
@@ -28,11 +27,11 @@ export function EntityListItem({
       to={href}
       aria-label={name}
       role="listitem"
-      px="md"
+      px="lg"
       py="0.75rem"
       withBorder
     >
-      <Stack gap="xs">
+      <Stack gap="xxs">
         <Flex align="center" gap="sm">
           <Icon name={icon} c={iconColor} />
           <Ellipsified lines={1} tooltip={name}>

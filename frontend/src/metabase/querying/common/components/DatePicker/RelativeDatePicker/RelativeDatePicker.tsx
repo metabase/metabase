@@ -27,6 +27,8 @@ interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
   availableDirections: RelativeIntervalDirection[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
@@ -37,6 +39,8 @@ export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
   availableDirections,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
@@ -48,10 +52,9 @@ export function RelativeDatePicker({
   const tabs = getAvailableTabs(initialValue, availableDirections);
   const direction = getDirection(value);
 
-  const handleTabChange = (tabValue: string | null) => {
-    const tab = tabs.find((tab) => tab.direction === tabValue);
-    if (tab) {
-      setValue(setDirection(value, tab.direction));
+  const handleTabChange = (nextDirection: RelativeIntervalDirection | null) => {
+    if (nextDirection) {
+      setValue(setDirection(value, nextDirection));
     }
   };
 
@@ -65,7 +68,8 @@ export function RelativeDatePicker({
     <Tabs value={direction} onChange={handleTabChange}>
       <Flex>
         <PopoverBackButton
-          p="sm"
+          px="sm"
+          h="var(--tab-height)"
           onClick={onBack}
           disabled={readOnly}
           withArrow={!readOnly}
@@ -85,6 +89,8 @@ export function RelativeDatePicker({
             <DateOffsetIntervalPicker
               value={value}
               availableUnits={availableUnits}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={renderSubmitButton}
               onChange={setValue}
               onSubmit={handleSubmit}
@@ -93,12 +99,14 @@ export function RelativeDatePicker({
             <DateIntervalPicker
               value={value}
               availableUnits={availableUnits}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={renderSubmitButton}
               onChange={setValue}
               onSubmit={handleSubmit}
             />
           ) : (
-            <Box p="md">
+            <Box p="lg">
               <CurrentDatePicker
                 value={value}
                 availableUnits={availableUnits}

@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
 import { useRescanTablesFieldValuesMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { trackDataStudioTableFieldsRescanStarted } from "metabase/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { trackDataStudioTableFieldsRescanStarted } from "metabase/common/data-studio/analytics";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 

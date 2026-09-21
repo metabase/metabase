@@ -6,10 +6,10 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { Flex, Stack, Text, Title, rem } from "metabase/ui";
 
 export const CollectionPermissionsHelp = () => {
-  const { url } = useDocsUrl("permissions/collection");
+  const { url } = useDocsUrl("permissions/collections");
 
   return (
-    <Flex direction="column" py={rem(22)} px="lg">
+    <Flex direction="column" py={rem(22)} px="xl">
       <Title order={3}>{t`Collection permissions`}</Title>
       <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
@@ -18,21 +18,21 @@ export const CollectionPermissionsHelp = () => {
       <Stack gap={16} mt="1rem">
         <PermissionHelpDescription
           icon="check"
-          iconColor="success"
+          iconColor="feedback-positive"
           name={t`Curate`}
           description={t`The group can view, save, edit, pin, and archive items in the collection.`}
         />
 
         <PermissionHelpDescription
           icon="permissions_limited"
-          iconColor="warning"
+          iconColor="feedback-warning"
           name={t`View`}
           description={t`The group can view items in a collection.`}
         />
 
         <PermissionHelpDescription
           icon="close"
-          iconColor="error"
+          iconColor="feedback-negative"
           name={t`No access`}
           description={t`The group won't even see the collection listed.`}
         />

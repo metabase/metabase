@@ -1,7 +1,7 @@
 import {
   type ContentTranslationTestSetupOptions,
   setupForContentTranslationTest,
-} from "metabase/i18n/test-utils";
+} from "metabase/content-translation/test-utils";
 
 import { TitleAndDescription } from "../TitleAndDescription";
 

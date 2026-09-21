@@ -19,7 +19,7 @@ export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
         <Menu.Target>
           <Text
             fw="bold"
-            c="brand"
+            c="core-brand"
             className={CS.cursorDefault}
           >{t`Hide these`}</Text>
         </Menu.Target>

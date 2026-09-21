@@ -14,6 +14,7 @@ export type Document = {
   name: string;
   version: number;
   collection_id: CollectionId | null;
+  collection_position?: number | null;
   collection?: Collection | null;
   created_at: string;
   updated_at: string;
@@ -27,6 +28,8 @@ export type Document = {
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
   view_count?: number;
+  exploration_id?: number | null;
+  is_placeholder?: boolean;
 };
 
 export type GetDocumentRequest = { id: DocumentId };

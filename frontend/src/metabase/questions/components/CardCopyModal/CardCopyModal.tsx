@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { useLatest } from "react-use";
 
 import { useCreateCardMutation } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import type { CopyCardProperties } from "metabase/questions/components/CopyCardForm";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import type { CopyCardProperties } from "metabase/common/components/CopyCardForm";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import type { Card } from "metabase-types/api";
 
 type CardCopyModalProps = {
@@ -45,7 +45,7 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="cards"
       entityObject={initialValues}
       copy={handleCopy}

@@ -7,10 +7,6 @@ import type {
   NativeQuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -77,7 +73,7 @@ describe(
             .findByText(PARAMETER_NAME)
             .click();
         });
-        H.popover().findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -109,7 +105,7 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        H.popover().findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -189,7 +185,7 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        H.popover().findByText(FIELD_NAME).click();
+        H.selectDropdown().findByText(FIELD_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -254,32 +250,6 @@ describe(
         H.queryBuilderHeader().findByText(QUESTION_NAME).should("be.visible");
         H.assertQueryBuilderRowCount(53);
         H.filterWidget().findByText("True").should("be.visible");
-      });
-
-      it("should allow to use boolean parameters mapped to SQL query parameters in a public dashboard", () => {
-        createNativeQuestionWithVariableAndDashboardWithMapping().then(
-          ({ dashboardId }) => H.visitPublicDashboard(dashboardId),
-        );
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "53 rows",
-          falseRowCountText: "54 rows",
-        });
-      });
-
-      it("should allow to use boolean parameters mapped to SQL query parameters in an embedded dashboard", () => {
-        createNativeQuestionWithVariableAndDashboardWithMapping().then(
-          ({ dashboardId }) =>
-            H.visitEmbeddedPage({
-              resource: { dashboard: dashboardId },
-              params: {},
-            }),
-        );
-        testParameterWidget({
-          allRowCountText: "200 rows",
-          trueRowCountText: "53 rows",
-          falseRowCountText: "54 rows",
-        });
       });
     });
   },
@@ -386,45 +356,6 @@ function createNativeQuestionWithVariableAndDashboard() {
   });
 }
 
-function createNativeQuestionWithVariableAndDashboardWithMapping() {
-  return createNativeQuestionWithVariableAndDashboard().then(
-    ({ dashboardId, dashcardId, questionId }) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
-        dashcards: [
-          createMockDashboardCard({
-            id: dashcardId,
-            dashboard_id: dashboardId,
-            card_id: questionId,
-            size_x: 6,
-            size_y: 6,
-            parameter_mappings: [
-              {
-                card_id: questionId,
-                parameter_id: "boolean",
-                target: ["variable", ["template-tag", "boolean"]],
-              },
-            ],
-          }),
-        ],
-        parameters: [
-          createMockParameter({
-            id: "boolean",
-            type: "boolean/=",
-            slug: "boolean",
-            name: "Boolean",
-          }),
-        ],
-        enable_embedding: true,
-        embedding_params: {
-          boolean: "enabled",
-        },
-      }).then(() => {
-        return { dashboardId };
-      });
-    },
-  );
-}
-
 function createAndMapParameter({
   columnName = COLUMN_NAME,
   parameterName = PARAMETER_NAME,
@@ -466,7 +397,7 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
       cy.findByText(DASHBOARD_NAME).click();
     });
     H.sidebar().findByText(PARAMETER_NAME).click();
-    H.popover().findByText(targetName).click();
+    H.selectDropdown().findByText(targetName).click();
     H.saveDashboard();
   });
 }

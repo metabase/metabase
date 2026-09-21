@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.mcp.core :as mcp]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting oauth-server-access-token-ttl
@@ -30,6 +31,7 @@
   :export?    false
   :audit      :never)
 
+;; Gated on mcp-enabled? so registration is off whenever MCP is; stored override can still force false.
 (defsetting oauth-server-dynamic-registration-enabled
   (deferred-tru "Whether dynamic client registration (RFC 7591) is enabled for the embedded OAuth server.")
   :type       :boolean
@@ -37,4 +39,6 @@
   :visibility :internal
   :doc        false
   :export?    false
-  :audit      :getter)
+  :audit      :getter
+  :getter     #(and (mcp/mcp-enabled?)
+                    (setting/get-value-of-type :boolean :oauth-server-dynamic-registration-enabled)))

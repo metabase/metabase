@@ -7,6 +7,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
+   ;; per-query-execution cache via qp.store/cached; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
@@ -36,6 +37,38 @@
    ;; existing usage -- don't use going forward
    #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
+
+(def ^:private formula-trigger-chars
+  "Leading characters that make Excel/Google Sheets/LibreOffice parse an imported cell as a formula rather than as
+  text. Tab and carriage return are included because spreadsheet apps strip them, promoting the next character to the
+  front."
+  #{\= \+ \- \@ \tab \return})
+
+(def ^:private plain-number-re
+  "Matches values a spreadsheet reads as an ordinary number, so a leading `-`/`+` on them is harmless (`-1,234.56` is
+  the number, not a formula). Deliberately conservative: only digits, group/decimal separators, whitespace, currency
+  symbols, an exponent and a trailing `%`. Nothing that matches this can carry formula syntax, so exempting it can't
+  reopen the injection."
+  #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?\s?\p{Sc}?\s?%?")
+
+(defn escape-spreadsheet-formula
+  "Neutralize spreadsheet formula (a.k.a. CSV/DDE) injection in an exported cell value: a value an attacker planted in
+  a queried table -- e.g. `=cmd|' /C calc'!A0` -- would otherwise be evaluated when the export is opened in Excel or
+  Sheets. Prefixes a single quote so the leading character is no longer a formula trigger.
+
+  This applies to *text* export formats only. XLSX does not need it: POI writes cell values as string-typed cells
+  (`t=\"inlineStr\"`, no `<f>` element), which Excel renders literally, and the prefix would be a real character in the
+  cell rather than a text marker -- visible junk for no security gain.
+
+  Only strings are candidates; everything else (numbers, booleans, temporal values) is written as a typed value and
+  passes through untouched. Values that are plainly numeric are left alone so exports stay faithful. See SEC-763."
+  [v]
+  (if (and (string? v)
+           (pos? (count v))
+           (contains? formula-trigger-chars (nth v 0))
+           (not (re-matches plain-number-re v)))
+    (str "'" v)
+    v))
 
 (defprotocol FormatValue
   "Protocol for specifying how objects of various classes in QP result rows should be formatted in various download
@@ -175,13 +208,33 @@
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
 
+(defn currency-settings?
+  "Whether a column's viz `settings` indicate it should be formatted as currency.
+
+  True when `number-style` is explicitly \"currency\", or when a currency / currency label style is set without any
+  `number-style`. The latter case matters because the column-formatting UI hides the style dropdown for
+  currency-semantic columns, so `number-style` is frequently never persisted -- the currency options are then the only
+  signal. Both the CSV (`metabase.formatter.impl`) and XLSX export paths share this predicate so they agree on what
+  counts as currency; when they diverged, CSV showed the symbol while XLSX dropped it (GDGT-2398)."
+  [settings]
+  (let [number-style (::mb.viz/number-style settings)]
+    (boolean
+     (or (= number-style "currency")
+         ;; No explicit number-style, but the user picked a currency or a currency label style -- treat as currency.
+         (and (nil? number-style)
+              (or (::mb.viz/currency-style settings)
+                  (::mb.viz/currency settings)))))))
+
 (defn- column-setting-defaults
   "Look up the setting defaults based on any information in the column-settings. This is the case when a column has no
   special type (e.g. a number) but the user has specified that the type is currency. We prefer the currency defaults to
   the number defaults."
   [global-column-settings column-settings]
-  (case (::mb.viz/number-style column-settings)
-    "currency" (:type/Currency global-column-settings)
+  (if (currency-settings? column-settings)
+    ;; Inject number-style "currency" so consumers that key off it (e.g. the XLSX writer) treat the column as currency
+    ;; even when the user never persisted an explicit number-style.
+    (merge {::mb.viz/number-style "currency"}
+           (:type/Currency global-column-settings))
     {}))
 
 (defn- ensure-global-viz-settings

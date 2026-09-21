@@ -1,39 +1,32 @@
-import { Component } from "react";
-import { t } from "ttag";
+import { useRef } from "react";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import {
-  ScalarValue,
-  ScalarWrapper,
-} from "metabase/visualizations/components/ScalarValue/ScalarValue";
+  ScalarCardShell,
+  useScalarCardShell,
+} from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
-import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import {
   compactifyValue,
   getColor,
   getTooltipContent,
 } from "metabase/visualizations/lib/scalar_utils";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
 import type {
-  ComputedVisualizationSettings,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
+import {
+  type ComputedVisualizationSettings,
+  segmentIsValid,
+} from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
+import { SCALAR_CHART_DEFINITION } from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
-
-const PADDING = 32;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -47,213 +40,109 @@ function legacyScalarSettingsToFormatOptions(
     .value();
 }
 
-// Scalar visualization shows a single number
-// Multiseries Scalar is transformed to a Funnel
-export class Scalar extends Component<
-  VisualizationProps & VisualizationPassThroughProps
-> {
-  static getUiName = () => t`Number`;
-  static identifier = "scalar";
-  static iconName = "number";
-  static canSavePng = false;
+// Scalar visualization shows a single number; multiseries is transformed to a bar chart
+function ScalarComponent(
+  props: VisualizationProps & VisualizationPassThroughProps,
+) {
+  const scalarRef = useRef<HTMLDivElement>(null);
 
-  static minSize = getMinSize("scalar");
-  static defaultSize = getDefaultSize("scalar");
+  const {
+    series: [
+      {
+        data: { cols, rows },
+      },
+    ],
+    settings,
+    visualizationIsClickable,
+    onVisualizationClick,
+    rawSeries,
+    actionButtons,
+  } = props;
 
-  static isSensible({ cols, rows }: DatasetData) {
-    return rows.length === 1 && cols.length === 1;
+  const label = settings["scalar.label"];
+  const sublabel = settings["scalar.sublabel"];
+  const isMetricsViewer = label !== undefined;
+
+  const {
+    tier,
+    availableWidth,
+    title,
+    titleElement,
+    showsTitleTooltip,
+    innerTooltipHoverHandlers,
+  } = useScalarCardShell(props, { hideTitle: isMetricsViewer });
+
+  if (rawSeries.length > 1) {
+    return (
+      <TransformedVisualization
+        transformSeries={scalarToBarTransform}
+        originalProps={props}
+        VisualizationComponent={BarChart}
+      />
+    );
   }
 
-  static checkRenderable() {
-    // scalar can always be rendered, nothing needed here
-  }
+  // clamp the -1 of a missing "scalar.field" to the first column
+  const columnIndex = Math.max(
+    0,
+    cols.findIndex((col) => col.name === settings["scalar.field"]),
+  );
+  const value = rows[0] && rows[0][columnIndex];
+  const column = cols[columnIndex];
 
-  static settings = {
-    ...fieldSetting("scalar.field", {
-      get section() {
-        return t`Formatting`;
-      },
-      get title() {
-        return t`Field to show`;
-      },
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) => cols[0]?.name,
-      getHidden: ([
-        {
-          data: { cols },
-        },
-      ]) => cols.length < 2,
-    }),
-    "scalar.segments": {
-      get section() {
-        return t`Conditional colors`;
-      },
-      getDefault() {
-        return [];
-      },
-      widget: ChartSettingSegmentsEditor,
-      persistDefault: true,
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
-      getProps: () => ({
-        canRemoveAll: true,
-      }),
-    },
-    ...columnSettings({
-      getColumns: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => [
-        _.find(cols, (col) => col.name === settings["scalar.field"]) || cols[0],
-      ],
-      readDependencies: ["scalar.field"],
-    }),
-    // used by metrics viewer
-    "scalar.label": {
-      hidden: true,
-      getDefault: () => undefined,
-    },
-    // used by metrics viewer
-    "scalar.sublabel": {
-      hidden: true,
-      getDefault: () => undefined,
-    },
-    // LEGACY scalar settings, now handled by column level settings
-    "scalar.locale": {
-      // title: t`Separator style`,
-      // widget: "select",
-      // getProps: () => ({
-      //   options: [
-      //     { name: "100000.00", value: null },
-      //     { name: "100,000.00", value: "en" },
-      //     { name: "100 000,00", value: "fr" },
-      //     { name: "100.000,00", value: "de" },
-      //   ],
-      // }),
-      // getDefault:() => "en",
-    },
-    "scalar.decimals": {
-      // title: t`Number of decimal places`,
-      // widget: "number",
-    },
-    "scalar.prefix": {
-      // title: t`Add a prefix`,
-      // widget: "input",
-    },
-    "scalar.suffix": {
-      // title: t`Add a suffix`,
-      // widget: "input",
-    },
-    "scalar.scale": {
-      // title: t`Multiply by a number`,
-      // widget: "number",
-    },
-    click_behavior: {},
+  const formatOptions = {
+    ...legacyScalarSettingsToFormatOptions(settings),
+    ...settings.column?.(column),
+    jsx: true,
   };
 
-  _scalar: HTMLElement | null = null;
+  const segments = settings["scalar.segments"]?.filter((segment) =>
+    segmentIsValid(segment, { allowOpenEnded: true }),
+  );
 
-  _getColumnIndex(
-    cols: DatasetColumn[],
-    settings: ComputedVisualizationSettings,
-  ) {
-    const columnIndex = _.findIndex(
-      cols,
-      (col) => col.name === settings["scalar.field"],
-    );
-    return columnIndex < 0 ? 0 : columnIndex;
-  }
+  const color = getColor(value, segments);
+  const tooltipContent = getTooltipContent(segments);
 
-  render() {
-    const {
-      series: [
-        {
-          data: { cols, rows },
-        },
-      ],
-      settings,
-      visualizationIsClickable,
-      onVisualizationClick,
-      height,
-      width,
-      gridSize,
-      totalNumGridCols,
-      fontFamily,
-      rawSeries,
-    } = this.props;
+  const { displayValue, fullScalarValue } = compactifyValue(
+    value,
+    availableWidth,
+    tier.valueFontSize,
+    formatOptions,
+  );
 
-    if (rawSeries.length > 1) {
-      return (
-        <TransformedVisualization
-          transformSeries={scalarToBarTransform}
-          originalProps={this.props}
-          VisualizationComponent={BarChart}
-        />
-      );
+  const isClickable = onVisualizationClick != null && !isMetricsViewer;
+
+  const handleClick = () => {
+    const element = scalarRef.current;
+    if (element == null) {
+      return;
     }
 
-    const columnIndex = this._getColumnIndex(cols, settings);
-    const value = rows[0] && rows[0][columnIndex];
-    const column = cols[columnIndex];
-
-    const formatOptions = {
-      ...legacyScalarSettingsToFormatOptions(settings),
-      ...settings.column?.(column),
-      jsx: true,
-    };
-
-    const segments = settings["scalar.segments"]?.filter((segment) =>
-      segmentIsValid(segment, { allowOpenEnded: true }),
-    );
-
-    const color = getColor(value, segments);
-    const tooltipContent = getTooltipContent(segments);
-
-    const { displayValue, fullScalarValue } = compactifyValue(
+    const clickData = {
       value,
-      width,
-      formatOptions,
-    );
-
-    const label = settings["scalar.label"];
-    const sublabel = settings["scalar.sublabel"];
-    const isMetricsViewer = label !== undefined;
-
-    const isClickable = onVisualizationClick != null && !isMetricsViewer;
-
-    const handleClick = () => {
-      if (this._scalar == null) {
-        return;
-      }
-
-      const clickData = {
-        value,
-        column,
-        data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
-        settings,
-        element: this._scalar,
-      };
-
-      if (
-        this._scalar &&
-        onVisualizationClick &&
-        visualizationIsClickable(clickData)
-      ) {
-        onVisualizationClick(clickData);
-      }
+      column,
+      data: rows[0]?.map((value, index) => ({ value, col: cols[index] })),
+      settings,
+      element,
     };
 
-    return (
-      <ScalarWrapper>
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
+    }
+  };
+
+  const hasValueTooltip =
+    fullScalarValue !== displayValue || tooltipContent != null;
+
+  return (
+    <ScalarCardShell
+      tier={tier}
+      title={title}
+      showsTitleTooltip={showsTitleTooltip}
+      actionButtons={actionButtons}
+      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+    >
+      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
@@ -264,45 +153,34 @@ export class Scalar extends Component<
             label={tooltipContent}
             position="bottom"
             px="0.375rem"
-            py="xs"
+            py="xxs"
             disabled={!tooltipContent}
           >
-            <Stack
-              onClick={handleClick}
-              ref={(scalar) => (this._scalar = scalar)}
-              align="center"
-              gap={0}
-            >
+            <Stack onClick={handleClick} ref={scalarRef} align="center" gap={0}>
               <ScalarValue
                 color={color}
                 disableHover={isMetricsViewer}
-                fontFamily={fontFamily}
-                gridSize={gridSize}
-                height={Math.max(height - PADDING * 2, 0)}
-                totalNumGridCols={totalNumGridCols}
+                fontSize={tier.valueFontSize}
+                // Unjustified type cast. FIXME
                 value={displayValue as string}
-                width={Math.max(width - PADDING, 0)}
               />
               {label && (
-                <Text fz="14px" lh="16px" c="text-primary" mt="md" ta="center">
+                <Text fz={14} lh="1rem" c="text-primary" mt="lg" ta="center">
                   {label}
                 </Text>
               )}
               {sublabel && (
-                <Text
-                  fz="12px"
-                  lh="16px"
-                  c="text-secondary"
-                  mt="xs"
-                  ta="center"
-                >
+                <Text fz={12} lh="1rem" c="text-secondary" mt="xxs" ta="center">
                   {sublabel}
                 </Text>
               )}
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
-      </ScalarWrapper>
-    );
-  }
+      </Box>
+      {titleElement}
+    </ScalarCardShell>
+  );
 }
+
+export const Scalar = Object.assign(ScalarComponent, SCALAR_CHART_DEFINITION);

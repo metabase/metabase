@@ -7,8 +7,9 @@
    [medley.core :as m]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.setting :as mdb.setting]
+   [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -22,6 +23,12 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
+
+;; side-effect require: registers the DML build guard exercised by
+;; [[migrate-settings!-repairs-past-the-read-only-mode-guard-test]]
+(comment cloud-migration/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -183,7 +190,6 @@
     (test-env-setting! nil)
     (is (= "ABCDEFG"
            (test-env-setting))))
-
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
     (test-setting-2! nil)
     (is (= "[Default Value]"
@@ -199,7 +205,6 @@
          (test-setting-calculated-getter)))
     (is (true?
          (setting/user-facing-value :test-setting-calculated-getter))))
-
   (testing "`user-facing-value` will initialize pending values"
     (mt/discard-setting-changes [:test-setting-custom-init]
       (is (some? (setting/user-facing-value :test-setting-custom-init))))))
@@ -318,26 +323,24 @@
            (db-fetch-setting :test-setting-1)))
     (is (= "For realz"
            (db-fetch-setting :test-setting-2))))
-
   (testing "unregistered settings should be silently skipped"
     (setting/set-many! {:test-setting-1 "known value"
                         :totally-fake-setting "unknown value"})
     (is (= "known value"
            (db-fetch-setting :test-setting-1)))
     (is (not (setting/registered? :totally-fake-setting))))
-
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]
-      (let [orig  setting/set!
+      (let [orig  (mt/original-fn #'setting/set!)
             calls (atom 0)]
         ;; allow the first Setting change to succeed, then throw an Exception after that
-        (with-redefs [setting/set! (fn [& args]
-                                     (if (zero? @calls)
-                                       (do
-                                         (swap! calls inc)
-                                         (apply orig args))
-                                       (throw (ex-info "Oops!" {}))))]
+        (mt/with-dynamic-fn-redefs [setting/set! (fn [& args]
+                                                   (if (zero? @calls)
+                                                     (do
+                                                       (swap! calls inc)
+                                                       (apply orig args))
+                                                     (throw (ex-info "Oops!" {}))))]
           (is (thrown-with-msg?
                Throwable
                #"Oops"
@@ -363,7 +366,6 @@
              (setting/get :test-setting-1)))
       (is (= false
              (setting-exists-in-db? :test-setting-1))))
-
     (testing "w/ default value"
       (test-setting-2! "COOL")
       (is (= "COOL"
@@ -398,31 +400,24 @@
   (testing "user-facing info w/ no db value, no env var value, no default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
            (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil nil))))
-
   (testing "user-facing info w/ no db value, no env var value, default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil nil))))
-
   (testing "user-facing info w/ no db value, env var value, no default value -- shouldn't leak env var value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil "TOUCANS"))))
-
   (testing "user-facing info w/ no db value, env var value, default value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil "TOUCANS"))))
-
   (testing "user-facing info w/ db value, no env var value, no default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
            (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" nil))))
-
   (testing "user-facing info w/ db value, no env var value, default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" nil))))
-
   (testing "user-facing info w/ db value, env var value, no default value -- the env var should take precedence over the db value, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" "ENV VAR"))))
-
   (testing "user-facing info w/ db value, env var value, default value -- env var should take precedence over default, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" "ENV VAR")))))
@@ -442,7 +437,6 @@
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
                    (setting/writable-settings))))
-
       (testing "with a custom getter"
         (test-setting-1! nil)
         (test-setting-2! "TOUCANS")
@@ -456,7 +450,6 @@
                        (when (re-find #"^test-setting-2$" (name (:key setting)))
                          setting))
                      (setting/writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
-
       ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
       (testing "test settings"
         (test-setting-1! nil)
@@ -535,18 +528,15 @@
                     :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}]
       (is (= expected
              (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "true")))
-
       (testing "env var values should be case-insensitive"
         (is (= expected
                (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "TRUE"))))))
-
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
       (is (thrown-with-msg?
            Exception
            #"Invalid value for string: must be either \"true\" or \"false\" \(case-insensitive\)"
            (test-boolean-setting! "X"))))
-
     (testing "user-facing info should just return `nil` instead of failing entirely"
       (is (= {:value          nil
               :is_env_setting true
@@ -560,7 +550,6 @@
            (test-boolean-setting! "FALSE")))
     (is (= false
            (test-boolean-setting)))
-
     (testing "... or a boolean"
       (is (= "false"
              (test-boolean-setting! false)))
@@ -578,20 +567,19 @@
 (deftest db-stored-value-test
   (testing "should expose the raw DB/cache value through the public API"
     (is (= "raw-value"
-           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
+           (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly "raw-value")]
              (setting/db-stored-value :test-setting-1))))))
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value! [v]
-  (with-redefs [setting/db-or-cache-value (constantly v)]
+  (mt/with-dynamic-fn-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
            (fetch-csv-setting-value! "A,B,C"))))
-
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
             (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
@@ -605,23 +593,18 @@
   (testing "should be able to correctly set a simple CSV setting"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C"]))))
-
   (testing "should be a able to set a CSV setting with a value that includes commas"
     (is (= {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))))
-
   (testing "should be able to set a CSV setting with a value that includes spaces"
     (is (= {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))))
-
   (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
     (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
            (set-and-fetch-csv-setting-value! "A,B,C"))))
-
   (testing "should be able to set nil CSV setting"
     (is (= {:db-value nil, :parsed-value nil}
            (set-and-fetch-csv-setting-value! nil))))
-
   (testing "default values for CSV settings should work"
     (test-csv-setting-with-default! nil)
     (is (= ["A" "B" "C"]
@@ -635,45 +618,111 @@
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
-(defn- actual-value-in-db [setting-key]
-  (-> (mdb/query {:select [:value]
+(defn- raw-setting-value-with-aad
+  "The setting's `value_with_aad` exactly as it sits in the DB, bypassing the model's decrypting read."
+  [setting-key]
+  (-> (mdb/query {:select [:value_with_aad]
                   :from   [:setting]
                   :where  [:= :key (name setting-key)]})
-      first :value))
+      first :value_with_aad))
+
+(defn- aad-opts
+  "Encryption opts binding a value to `setting-key`, as the Setting model stores one."
+  [setting-key & {:as more}]
+  (merge {:aad (mdb.setting/setting-aad (name setting-key))} more))
+
+(defn- decrypt-setting-value
+  "Decrypt `raw`, a `value_with_aad`, under the AAD of `setting-key`."
+  [setting-key raw]
+  (encryption/decrypt raw (aad-opts setting-key)))
 
 (deftest encrypted-settings-test
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
-    (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (toucan-name! "Sad Can")
-      (is (u/base64-string? (actual-value-in-db :toucan-name)))
-
-      (testing "make sure it can be decrypted as well..."
-        (is (= "Sad Can"
-               (toucan-name)))))
-
-    (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
-      (encryption-test/with-secret-key nil
+    ;; Setting an encryption key without running encrypt-db leaves the other encrypted settings in the shared app DB
+    ;; stored plaintext, and restoring the whole-table settings cache strictly decrypts every one of them. Use an
+    ;; isolated app DB so this test's key only meets settings it wrote itself -- and write without a key first: every
+    ;; write under a key leaves ciphertext behind (the last-updated marker included) that nothing can read once the
+    ;; key is gone.
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (testing "If encryption is not enabled, of course Settings shouldn't get saved as encrypted."
+        (encryption-test/with-secret-key nil
+          (toucan-name! "Sad Can")
+          (is (= "Sad Can"
+                 (raw-setting-value-with-aad :toucan-name)))))
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        ;; every row so far is plaintext, which a strict read under a key rejects -- so do what `enable-encryption`
+        ;; does before the first write restores the settings cache over them
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
         (toucan-name! "Sad Can")
+        (is (u/base64-string? (raw-setting-value-with-aad :toucan-name)))
+        (testing "the ciphertext is bound to the setting it belongs to: it decrypts under that name and no other"
+          (is (= "Sad Can"
+                 (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))
+          (is (thrown? Throwable (encryption/decrypt (raw-setting-value-with-aad :toucan-name))))
+          (is (thrown? Throwable (decrypt-setting-value :site-name (raw-setting-value-with-aad :toucan-name)))))
+        (testing "make sure it can be decrypted as well..."
+          (is (= "Sad Can"
+                 (toucan-name))))))))
+
+(deftest decrypt-error-names-setting-test
+  (testing "a Setting row that fails the decrypting read names the setting in the message (and never the value)"
+    (encryption-test/with-secret-key "0123456789abcdef"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"Error reading setting \"toucan-name\": Expected an encrypted value"
+                                    (#'setting/read-setting-value {:key "toucan-name" :value_with_aad "plaintext-sekret"})))]
+        (is (not (re-find #"sekret" (ex-message e))))
+        (is (= "toucan-name" (:setting-key (ex-data e))))))))
+
+(deftest setting-value-aad-test
+  (let [read #'setting/read-setting-value]
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (testing "a value round trips through the AAD naming its setting"
         (is (= "Sad Can"
-               (actual-value-in-db :toucan-name)))))))
+               (:value (read {:key "test-setting-1"
+                              :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
+      (testing "a value moved to another setting's row is rejected, and the message never carries the value"
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                      #"Error reading setting \"test-setting-2\""
+                                      (read {:key "test-setting-2"
+                                             :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
+          (is (not (re-find #"Sad Can" (ex-message e))))))
+      (testing "a plaintext value is rejected while a key is set"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Expected an encrypted value"
+                              (read {:key "test-setting-1" :value_with_aad "Sad Can"}))))
+      (testing "a row written only by a version predating `value_with_aad` reads as no value at all"
+        (is (= {:key "test-setting-1" :value nil :value_with_aad nil}
+               (read {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
+      (testing "a key with no `defsetting` reads as no value at all, without so much as a decrypt"
+        (is (= {:key "no-such-setting" :value nil :value_with_aad "not even ciphertext"}
+               (read {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
+    (testing "a key with no `defsetting` cannot be written: how it is stored is the setting's to decide"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
+                            (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
 
 (deftest previously-encrypted-settings-test
   (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
-    (mt/discard-setting-changes [test-json-setting]
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      ;; No `discard-setting-changes`: restoring the setting means writing it back without the key it was written
+      ;; under, and a write restores the whole settings cache over the row it cannot read. The temp app DB is thrown
+      ;; away either way.
       (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
         (test-json-setting! {:abc 123})
         (is (not= "{\"abc\":123}"
-                  (actual-value-in-db :test-json-setting))))
+                  (raw-setting-value-with-aad :test-json-setting))))
       (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
                     "rather than failing entirely")
         (encryption-test/with-secret-key nil
-          (is (= {:key            :test-json-setting
-                  :value          nil
-                  :is_env_setting false
-                  :env_name       "MB_TEST_JSON_SETTING"
-                  :description    "Test setting - this only shows up in dev (4)"
-                  :default        nil}
-                 (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
+          (binding [config/*disable-setting-cache* true]
+            (is (= {:key            :test-json-setting
+                    :value          nil
+                    :is_env_setting false
+                    :env_name       "MB_TEST_JSON_SETTING"
+                    :description    "Test setting - this only shows up in dev (4)"
+                    :default        nil}
+                   (#'setting/user-facing-info (setting/resolve-setting :test-json-setting))))))))))
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
@@ -684,7 +733,6 @@
 
 (deftest timestamp-settings-test
   (test-assert-setting-has-tag #'test-timestamp-setting 'java.time.temporal.Temporal)
-
   (testing "make sure we can set & fetch the value and that it gets serialized/deserialized correctly"
     (test-timestamp-setting! #t "2018-07-11T09:32:00.000Z")
     (is (= #t "2018-07-11T09:32:00.000Z"
@@ -713,15 +761,13 @@
     (testing "make sure uncached setting still saves to the DB"
       (uncached-setting! "ABCDEF")
       (is (= "ABCDEF"
-             (actual-value-in-db "uncached-setting"))))
-
+             (raw-setting-value-with-aad "uncached-setting"))))
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
       (t2/update! :model/Setting {:key "uncached-setting"}
                   {:value "123456"})
       (is (= "123456"
              (uncached-setting))))
-
     (testing "make sure that updating the setting doesn't update the last-updated timestamp in the cache $$"
       (clear-settings-last-updated-value-in-db!)
       (uncached-setting! "abcdef")
@@ -758,12 +804,32 @@
     (test-sensitive-setting! "ABC123")
     (is (=  "**********23"
             (setting/user-facing-value "test-sensitive-setting"))))
-
   (testing "Attempting to set a sensitive setting to an obfuscated value should be ignored -- it was probably done accidentally"
     (test-sensitive-setting! "123456")
     (test-sensitive-setting! "**********56")
     (is (= "123456"
            (test-sensitive-setting)))))
+
+(defsetting test-sensitive-multi-line-setting
+  (deferred-tru "This is a sample sensitive multi-line Setting.")
+  :sensitive? true)
+
+(deftest sensitive-settings-multi-line-test
+  (testing "`user-facing-value` should obfuscate multi-line sensitive settings"
+    (test-sensitive-multi-line-setting! "ABC1\n3")
+    (is (=  "**********\n3"
+            (setting/user-facing-value "test-sensitive-multi-line-setting"))))
+  (testing "Attempting to set a sensitive setting to a multi-line obfuscated value should be ignored"
+    (test-sensitive-multi-line-setting! "1234\n6")
+    (test-sensitive-multi-line-setting! "**********\n6")
+    (is (= "1234\n6"
+           (test-sensitive-multi-line-setting)))))
+
+(deftest obfuscated-value-spanning-a-line-break-test
+  (testing "obfuscated-value? works for values ending in a newline"
+    (let [key-file "{\n  \"type\": \"service_account\"\n}\n"]
+      (is (= "**********}\n" (setting/obfuscate-value key-file)))
+      (is (setting/obfuscated-value? (setting/obfuscate-value key-file))))))
 
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
@@ -826,7 +892,7 @@
         (testing setting
           (is (= expected (setting/can-read-setting? setting (setting/current-user-readable-visibilities))))))))
   (testing "non-admin user with advanced setting access"
-    (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+    (mt/with-dynamic-fn-redefs [setting/has-advanced-setting-access? (constantly true)]
       (mt/with-current-user (mt/user->id :rasta)
         (doseq [[setting expected] {:test-public-setting           true
                                     :test-authenticated-setting    true
@@ -961,7 +1027,6 @@
          clojure.lang.ExceptionInfo
          #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
          (test-database-local-only-setting! 2))))
-
   (testing "Default values should be allowed for Database-local-only Settings"
     (binding [setting/*database-local-values* {}]
       (is (= "DEFAULT"
@@ -1021,10 +1086,8 @@
       (is (= "DEF" (test-user-local-only-setting))))
     (mt/with-current-user (mt/user->id :rasta)
       (is (= "ABC" (test-user-local-only-setting)))))
-
   (testing "A user-local-only setting cannot have a site-wide value"
     (is (thrown-with-msg? Throwable #"Site-wide values are not allowed" (test-user-local-only-setting! "ABC"))))
-
   (testing "Reading and writing a user-local-allowed setting in the context of a user uses the user-local value"
     ;; TODO: mt/with-temporary-setting-values only affects site-wide value, we should figure out whether it should also
     ;; affect user-local settings.
@@ -1044,7 +1107,6 @@
         (is (= "DEF" (test-user-local-allowed-setting))))
       (mt/with-current-user (mt/user->id :rasta)
         (is (= "ABC" (test-user-local-allowed-setting))))))
-
   (testing "Reading and writing a user-local-never setting in the context of a user uses the site-wide value"
     (mt/with-current-user (mt/user->id :rasta)
       (test-user-local-never-setting! "ABC")
@@ -1055,7 +1117,6 @@
     (mt/with-current-user (mt/user->id :rasta)
       (is (= "DEF" (test-user-local-never-setting))))
     (is (= "DEF" (test-user-local-never-setting))))
-
   (testing "A setting cannot be defined to allow both user-local and database-local values"
     (is (thrown-with-msg?
          Throwable
@@ -1083,7 +1144,6 @@
            (deferred-tru "test Setting")
            :driver-feature :actions
            :encryption     :when-encryption-key-set))))
-
   (testing "Having :database-local :allowed is not enough to use :driver-feature"
     (is (thrown-with-msg?
          Throwable
@@ -1093,7 +1153,6 @@
            :database-local :allowed
            :driver-feature :actions/data-editing
            :encryption     :when-encryption-key-set))))
-
   (testing "Having :database-local :only is OK"
     (is (some? test-driver-feature-only-setting))))
 
@@ -1104,16 +1163,13 @@
           setting-without-driver-feature :test-database-local-allowed-setting
           driver-supports-everything?    (constantly true)
           driver-supports-nothing?       (constantly false)]
-
       (testing "should succeed when driver supports required feature"
         (is (nil? (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-everything?))))
-
       (testing "should throw when driver does not support required feature"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Setting test-driver-feature-only-setting requires driver feature :actions, but the database does not support it"
              (setting/validate-settable-for-db! setting-with-driver-feature database driver-supports-nothing?))))
-
       (testing "should succeed for settings without driver-feature requirement"
         (is (nil? (setting/validate-settable-for-db! setting-without-driver-feature database driver-supports-nothing?)))))))
 
@@ -1134,7 +1190,6 @@
            (deferred-tru "test Setting")
            :enabled-for-db? (constantly true)
            :encryption :when-encryption-key-set))))
-
   (testing "Having :database-local :allowed is not enough to use :enabled-for-db?"
     (is (thrown-with-msg?
          ExceptionInfo
@@ -1144,7 +1199,6 @@
            :database-local :allowed
            :enabled-for-db? (constantly true)
            :encryption :when-encryption-key-set))))
-
   (testing "A setting with :enabled-for-db? and :database-local :only should be valid"
     (is (some? test-enabled-for-db-setting))))
 
@@ -1152,12 +1206,10 @@
   (testing "validate-settable-for-db! validates database-specific enablement"
     (let [regular-database {:id 1 :engine :h2}
           routed-database  {:id 2 :engine :h2 :router_database_id 3}]
-
       (testing "should succeed when database passes enabled-for-db? predicate"
         (is (nil? (setting/validate-settable-for-db! :test-enabled-for-db-setting
                                                      regular-database
                                                      (constantly true)))))
-
       (testing "should throw when database fails enabled-for-db? predicate"
         (is (thrown-with-msg?
              ExceptionInfo
@@ -1165,7 +1217,6 @@
              (setting/validate-settable-for-db! :test-enabled-for-db-setting
                                                 routed-database
                                                 (constantly true)))))
-
       (testing "should succeed for settings without enabled-for-db? requirement"
         (is (nil? (setting/validate-settable-for-db! :test-database-local-allowed-setting
                                                      routed-database
@@ -1192,22 +1243,18 @@
         db-with-error   {:id 2 :has-error true                   :settings settings}
         db-with-both    {:id 3 :has-error true :has-warning true :settings settings}
         every-feature   (constantly true)]
-
     (testing "Settings with only warning reasons should not be disabled"
       (with-database db-with-warning
         (testing "configured value is still returned"
           (is (= "custom-value" (test-warn-vs-error-setting))))))
-
     (testing "Settings with error reasons should be disabled"
       (with-database db-with-error
         (testing "configured value is not returned"
           (is (= "default-value" (test-warn-vs-error-setting))))))
-
     (testing "Settings with both warning and error reasons should be disabled"
       (with-database db-with-both
         (testing "configured value is not returned"
           (is (= "default-value" (test-warn-vs-error-setting))))))
-
     (testing "validate-settable-for-db! should only throw for error reasons"
       (testing "should not throw for warnings"
         (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
@@ -1216,14 +1263,6 @@
              ExceptionInfo
              #"Setting test-warn-vs-error-setting is not enabled for this database"
              (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
-
-(deftest identity-hash-test
-  (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
-      (is (= "5f7f150c"
-             (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (t2/select-one :model/Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"
@@ -1253,14 +1292,12 @@
     (mt/with-premium-features #{:test-feature}
       (test-feature-setting! "custom")
       (is (= "custom" (test-feature-setting))))
-
     (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
            (test-feature-setting! "custom 2")))
       (is (= "setting-default" (test-feature-setting)))))
-
   (testing "A setting cannot have both the :enabled? and :feature options at once"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -1273,6 +1310,22 @@
            :enabled?   (fn [] false)
            :feature    :test-feature
            :encryption :when-encryption-key-set)))))
+
+(deftest validate-settable!-ex-data-test
+  (testing "Settings that can't be written report a status code, so the API doesn't surface them as a 500"
+    (testing "premium feature not available"
+      (mt/with-premium-features #{}
+        (is (= {:status-code 402
+                :status      "error-premium-feature-not-available"
+                :setting     "test-feature-setting"
+                :feature     :test-feature}
+               (try (test-feature-setting! "custom")
+                    (catch ExceptionInfo e (ex-data e)))))))
+    (testing ":enabled? returns false"
+      (is (= {:status-code 400
+              :setting     "test-enabled-setting-default"}
+             (try (test-enabled-setting-default! "custom")
+                  (catch ExceptionInfo e (ex-data e))))))))
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
@@ -1439,7 +1492,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [setting/ns-in-test? (constantly false)]
+  (mt/with-dynamic-fn-redefs [setting/ns-in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all
@@ -1487,12 +1540,10 @@
                 :model   "Setting"
                 :details {:key "test-setting-1"}}
                (last-audit-event-fn))))
-
       (testing "Auditing can be disabled with `:audit :never`"
         (test-setting-audit-never! "DON'T AUDIT")
         (is (not= "test-setting-audit-never"
                   (-> (last-audit-event-fn) :details :key))))
-
       (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
         (mt/with-temporary-setting-values [test-setting-audit-raw-value 99]
           (test-setting-audit-raw-value! 100)
@@ -1503,7 +1554,6 @@
                             :previous-value "99"
                             :new-value      "100"}}
                  (last-audit-event-fn)))))
-
       (testing "Values returned from the setting's getter can be logged with `:audit :getter`"
         (mt/with-temporary-setting-values [test-setting-audit-getter "PREVIOUS VALUE"]
           (test-setting-audit-getter! "NEW RAW VALUE")
@@ -1514,7 +1564,6 @@
                             :previous-value "GETTER VALUE"
                             :new-value      "GETTER VALUE"}}
                  (last-audit-event-fn)))))
-
       (testing "Sensitive settings have their values obfuscated automatically"
         (mt/with-temporary-setting-values [test-sensitive-setting-audit nil]
           (test-sensitive-setting-audit! "old password")
@@ -1541,7 +1590,6 @@
         (test-user-local-only-setting! "DON'T AUDIT"))
       (is (not= "test-user-local-only-setting"
                 (-> (mt/latest-audit-log-entry :setting-update) :details :key))))
-
     (testing "User-local settings can be audited"
       (mt/with-test-user :rasta
         (mt/with-temporary-setting-values [test-user-local-only-audited-setting nil]
@@ -1571,7 +1619,6 @@
   (testing "The :export? property is exposed"
     (is (#'setting/export? :exported-setting))
     (is (not (#'setting/export? :non-exported-setting))))
-
   (testing "By default settings are not exported"
     (is (not (#'setting/export? :test-setting-1)))))
 
@@ -1623,7 +1670,7 @@
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
        :json ex
-        ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+       ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
        #_(str "Unexpected end-of-input within/between Array entries\n"
               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
@@ -1664,7 +1711,7 @@
     (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
        :csv ex
-        ;; we don't expose the raw exception here, as it would give away the first character of the secret
+       ;; we don't expose the raw exception here, as it would give away the first character of the secret
        #_"CSV error (unexpected character: $)"
        "Error of type class java.lang.Exception thrown while parsing a setting"))))
 
@@ -1771,25 +1818,57 @@
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
 
-(deftest migrate-encrypted-settings!-works
-  (testing "It works when a secret key is set"
+(deftest migrate-settings!-test
+  (testing "rows a version predating `value_with_aad` wrote get it filled in from `value` on startup"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (t2/delete! :setting :key "toucan-name")
+        (t2/delete! :setting :key "test-never-encrypted-setting")
+        ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
+        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (mdb.setting/migrate-settings!)
+        (testing "an encrypted row's value is stored under its AAD"
+          (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))
+        (testing "a plaintext row's value is too -- every setting's is, whatever its :encryption says"
+          (is (= "foobar" (decrypt-setting-value :test-never-encrypted-setting
+                                                 (raw-setting-value-with-aad :test-never-encrypted-setting)))))
+        (testing "and the values are readable again"
+          (setting.cache/restore-cache!)
+          (is (= "Lenny" (toucan-name))))
+        (testing "a row that already has a stored value is left byte-identical, whatever `value` says beside it"
+          (toucan-name! "Sad Can")
+          (let [before (raw-setting-value-with-aad :toucan-name)]
+            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+            (mdb.setting/migrate-settings!)
+            (is (= before (raw-setting-value-with-aad :toucan-name)))
+            (is (= "Sad Can" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))))))))
+
+(deftest migrate-settings!-writes-past-the-read-only-mode-guard-test
+  ;; The cloud-migration guard on Toucan DML (registered when `metabase.cloud-migration.models.cloud-migration`
+  ;; loads -- required above so this holds in a targeted run too) reads `read-only-mode` through the model before
+  ;; every update, and the model's read is strict. The backfill's writes must not go through it: here that row holds a
+  ;; plaintext value under a key, which the strict read rejects, and the backfill still has to get its other rows done.
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
-      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
-      ;; Sanity check: the value is encrypted
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
-  (testing "It doesn't do anything when the secret key is not set"
-    (encryption-test/with-secret-key "ABCDEFGH12345678"
-      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
-      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
-    (encryption-test/with-secret-key nil
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
-      (setting/migrate-encrypted-settings!)
-      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
+      (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+      (t2/insert! :setting [{:key "read-only-mode", :value "false", :value_with_aad "false"}
+                            {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
+      (mdb.setting/migrate-settings!)
+      (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))))
+
+(deftest setter-none-does-not-imply-encryption-test
+  (testing "`:setter :none` does not imply encryption -- it is decided by type or stated explicitly, like any setting"
+    (testing "a :setter :none setting of a plaintext type is not encrypted"
+      (is (= :no (:encryption (setting/resolve-setting :version)))))
+    (testing "a :setter :none setting that is secret or integrity-critical states it explicitly"
+      (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :setup-token)))))
+    (testing "a :setter :none string setting must state `:encryption`, rather than defaulting to encrypted"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"`:encryption` is a required option"
+                            (#'setting/extract-encryption-or-default
+                             {:name :test-unstated-setter-none-setting :type :string :setter :none}))))))
 
 (deftest boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"
@@ -1864,6 +1943,27 @@
   (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
   (is (= [] (deprecated-env-var-warnings))))
 
+(deftest env-var-source-names-the-variable-actually-set-test
+  (testing "the value comes back with the name of the variable that supplied it, so a message about the value can
+           point at the variable the operator set rather than at one they did not"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"]
+      (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "LEGACY"]
+      (is (= ["MB_OLD_TEST_SETTING_NAME" "LEGACY"]
+             (setting/env-var-source :test-setting-with-deprecated-name))))
+    (testing "the primary wins when both are set"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "PRIMARY"
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (= ["MB_TEST_SETTING_WITH_DEPRECATED_NAME" "PRIMARY"]
+               (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "an empty primary means explicitly unset, and blocks the deprecated fallback"
+      (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
+                                    mb-old-test-setting-name             "LEGACY"]
+        (is (nil? (setting/env-var-source :test-setting-with-deprecated-name)))))
+    (testing "nil when neither is set"
+      (is (nil? (setting/env-var-source :test-setting-with-deprecated-name))))))
+
 (deftest deprecated-name-empty-primary-blocks-fallback-test
   (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
                                 mb-old-test-setting-name             "LEGACY"]
@@ -1927,3 +2027,21 @@
     (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
       (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
         (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))
+
+(deftest get-raw-value-source-test
+  (testing "Returns :default when only the default is set"
+    (mt/with-temporary-setting-values [test-setting-2 nil]
+      (is (= :default (setting/get-raw-value-source :test-setting-2)))))
+  (testing "Returns nil when no value is available from any source"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (is (nil? (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :database when set via the database"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (is (= :database (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Returns :env when provided via env var"
+    (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+      (is (= :env (setting/get-raw-value-source :test-setting-1)))))
+  (testing "Env var takes precedence over database value"
+    (mt/with-temporary-setting-values [test-setting-1 "DB_VALUE"]
+      (mt/with-temp-env-var-value! [mb-test-setting-1 "ENV_VALUE"]
+        (is (= :env (setting/get-raw-value-source :test-setting-1)))))))

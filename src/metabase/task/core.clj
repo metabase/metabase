@@ -24,6 +24,7 @@
   reschedule-trigger!
   schedule-task!
   scheduler
+  scheduler-disabled?
   scheduler-info
   start-scheduler!
   stop-scheduler!

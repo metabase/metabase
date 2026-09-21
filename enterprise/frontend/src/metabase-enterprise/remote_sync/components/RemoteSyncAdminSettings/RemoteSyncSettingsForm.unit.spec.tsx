@@ -39,7 +39,9 @@ describe("RemoteSyncSettingsForm", () => {
       setup({ remoteSyncType: "read-only" });
 
       expect(screen.getByText("Branch to sync with")).toBeInTheDocument();
-      expect(screen.getByLabelText(/Sync branch/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText(/Auto-sync with git/i)).toBeInTheDocument();
     });
 
@@ -94,7 +96,7 @@ describe("RemoteSyncSettingsForm", () => {
         screen.getByRole("heading", { name: "Branch to sync with" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("switch", { name: "Auto-sync with git" }),
+        screen.getByRole("switch", { name: /Auto-sync with git/ }),
       ).toBeInTheDocument();
     });
   });
@@ -527,6 +529,98 @@ describe("RemoteSyncSettingsForm", () => {
     });
   });
 
+  describe("test connection button", () => {
+    it("should be disabled when no URL is provided", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "",
+        remoteSyncEnabled: false,
+      });
+
+      expect(
+        screen.getByRole("button", { name: /Test connection/i }),
+      ).toBeDisabled();
+    });
+
+    it("should be enabled when a URL is provided", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Test connection/i }),
+        ).toBeEnabled();
+      });
+    });
+
+    it("should POST only the URL and token to the test-connection endpoint", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncToken: "ghp_abc123",
+        remoteSyncBranch: "main",
+        remoteSyncEnabled: true,
+      });
+
+      const testButton = await screen.findByRole("button", {
+        name: /Test connection/i,
+      });
+      await waitFor(() => expect(testButton).toBeEnabled());
+      await userEvent.click(testButton);
+
+      await waitFor(async () => {
+        const posts = await findRequests("POST");
+        const testRequest = posts.find((r) =>
+          r.url.includes("/api/ee/remote-sync/test-connection"),
+        );
+        expect(testRequest).toBeDefined();
+        expect(testRequest?.body).toEqual({
+          "remote-sync-url": "https://github.com/test/repo.git",
+          "remote-sync-token": "ghp_abc123",
+        });
+      });
+    });
+
+    it("should still call the endpoint when the connection fails so the user gets feedback", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncToken: "ghp_bad",
+        remoteSyncEnabled: true,
+        testConnectionError: {
+          status: 400,
+          message: "Authentication failed: Please check your git credentials",
+        },
+      });
+
+      const testButton = await screen.findByRole("button", {
+        name: /Test connection/i,
+      });
+      await waitFor(() => expect(testButton).toBeEnabled());
+      await userEvent.click(testButton);
+
+      await waitFor(async () => {
+        const posts = await findRequests("POST");
+        const testRequest = posts.find((r) =>
+          r.url.includes("/api/ee/remote-sync/test-connection"),
+        );
+        expect(testRequest).toBeDefined();
+      });
+
+      // Failures must not crash the form — the button stays enabled afterward
+      // and the URL field keeps its value.
+      expect(
+        screen.getByRole("button", { name: /Test connection/i }),
+      ).toBeEnabled();
+      expect(screen.getByLabelText(/Repository URL/i)).toHaveValue(
+        "https://github.com/test/repo.git",
+      );
+    });
+  });
+
   describe("save error handling", () => {
     it("should show backend error message in toast when save fails", async () => {
       setup({
@@ -718,7 +812,45 @@ describe("RemoteSyncSettingsForm", () => {
         ).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText(/Sync branch/i)).toHaveAttribute("readonly");
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toHaveAttribute("readonly");
+    });
+  });
+
+  describe("DevInstanceUpsell", () => {
+    it("should show the upsell when not a dev instance and upsell has not been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Need a dedicated development environment?"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show the upsell when it has been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: true });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the upsell when it is a dev instance", async () => {
+      setup({ isDevInstance: true, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
     });
   });
 

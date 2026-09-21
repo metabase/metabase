@@ -1,6 +1,6 @@
-import { getIsHosted } from "metabase/databases/selectors";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
@@ -8,7 +8,7 @@ import {
 
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
 
   const {
     data: addOns,
@@ -36,14 +36,22 @@ export function useTransformsBilling() {
         product_type === "transforms-advanced-metered" && self_service,
     ) ?? false;
 
+  const instanceDeployment = isHosted ? "hosting" : "selfhosted";
+
   const basicTransformsAddOn = addOns?.find(
-    ({ active, product_type, self_service }) =>
-      active && self_service && product_type === "transforms-basic-metered",
+    ({ active, product_type, self_service, deployment }) =>
+      active &&
+      self_service &&
+      product_type === "transforms-basic-metered" &&
+      deployment === instanceDeployment,
   );
 
   const advancedTransformsAddOn = addOns?.find(
-    ({ active, product_type, self_service }) =>
-      active && self_service && product_type === "transforms-advanced-metered",
+    ({ active, product_type, self_service, deployment }) =>
+      active &&
+      self_service &&
+      product_type === "transforms-advanced-metered" &&
+      deployment === instanceDeployment,
   );
 
   return {

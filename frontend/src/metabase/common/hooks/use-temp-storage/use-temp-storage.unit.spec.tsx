@@ -1,15 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockAppState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 
 import { useTempStorage } from "./use-temp-storage";
 
@@ -61,7 +58,7 @@ describe("useTempStorage hook", () => {
 
   it("should read and set the value", async () => {
     const tempStorage = {
-      "last-opened-onboarding-checklist-item": "sql" as const,
+      "last-opened-onboarding-checklist-item": "query" as const,
     };
 
     setup({
@@ -70,7 +67,7 @@ describe("useTempStorage hook", () => {
       newValue: "dashboard",
     });
 
-    expect(screen.getByTestId("result")).toHaveTextContent("Value is: sql");
+    expect(screen.getByTestId("result")).toHaveTextContent("Value is: query");
 
     await userEvent.click(screen.getByRole("button"));
     expect(screen.getByTestId("result")).toHaveTextContent(

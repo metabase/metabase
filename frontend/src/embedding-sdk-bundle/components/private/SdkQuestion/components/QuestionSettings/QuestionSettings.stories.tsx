@@ -4,6 +4,7 @@ import { Box, Stack } from "metabase/ui";
 
 import { QuestionSettings } from "./QuestionSettings";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 11;
 
 export default {
@@ -18,7 +19,7 @@ export default {
 export const Default = {
   render() {
     return (
-      <Box p="lg">
+      <Box p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           <Stack>
             <SdkQuestion.QuestionSettings />

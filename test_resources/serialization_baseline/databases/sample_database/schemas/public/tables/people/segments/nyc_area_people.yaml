@@ -31,10 +31,6 @@ definition:
 description: People located within the NYC bounding box
 entity_id: D2R9JpvI8sMfYWqfPsTkx
 name: NYC Area People
-table_id:
-- Sample Database
-- PUBLIC
-- PEOPLE
 serdes/meta:
 - id: D2R9JpvI8sMfYWqfPsTkx
   label: nyc_area_people

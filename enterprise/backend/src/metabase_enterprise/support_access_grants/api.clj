@@ -9,10 +9,6 @@
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   :- ::grants.schema/grant-response
   "Create a new support access grant.
@@ -28,24 +24,16 @@
                         (:ticket_number body)
                         (:notes body)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/revoke"
   :- ::grants.schema/grant-response
   "Revoke an existing support access grant.
 
   Requires superuser permissions. Any admin can revoke any grant."
-  [{id :id} :- [:map [:id ms/PositiveInt]]]
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/write-check :model/SupportAccessGrantLog id)
   (grants/revoke-grant! api/*current-user-id* id))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   :- ::grants.schema/list-grants-response
   "List support access grants with optional filtering and pagination.
@@ -59,7 +47,7 @@
   [_route-params
    {:keys [ticket-number
            user-id
-           include-revoked]} :- [:map
+           include-revoked]} :- [:map {:closed true}
                                  [:ticket-number {:optional true} [:maybe :string]]
                                  [:user-id {:optional true} [:maybe ms/PositiveInt]]
                                  [:include-revoked {:optional true} [:maybe :boolean]]]]
@@ -70,10 +58,6 @@
                        :user-id user-id
                        :include-revoked include-revoked}))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/current"
   :- ::grants.schema/current-grant-response
   "Get the currently active support access grant, if one exists.

@@ -6,12 +6,14 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { Box } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
 } from "metabase-lib/v1/operators/utils";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  ParameterField,
+  UiParameter,
+} from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import {
   getIsMultiSelect,
@@ -26,7 +28,7 @@ import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
-  fields: Field[];
+  fields: ParameterField[];
   isEditing?: boolean;
   parameter: UiParameter;
   parameters?: UiParameter[];
@@ -69,6 +71,7 @@ export function ParameterFieldWidget({
 
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {
+        // Unjustified type cast. FIXME
         setValue(parameter.default as RowValue[]);
       }
       return;
@@ -114,7 +117,6 @@ export function ParameterFieldWidget({
                   getFilterArgumentFormatOptions(operator, index)),
                 ...fields?.[0]?.settings,
               }}
-              color="brand"
               minWidth={300}
               maxWidth={400}
             />

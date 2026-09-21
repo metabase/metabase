@@ -21,7 +21,7 @@ import {
   initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerDataSource } from "metabase-types/api";
+import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
 
 import {
   trackVisualizerAddMoreDataClicked,
@@ -32,7 +32,13 @@ import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
 import { DatasetsList } from "./DatasetsList/DatasetsList";
 
-export const DataImporter = ({ className }: { className?: string }) => {
+export const DataImporter = ({
+  className,
+  dashboardId,
+}: {
+  className?: string;
+  dashboardId: DashboardId | undefined;
+}) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
   const dispatch = useDispatch();
@@ -76,7 +82,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       style={{ height: "100%" }}
       data-testid="visualizer-data-importer"
     >
-      <Title order={4} mb="xs" className={S.Title}>
+      <Title order={4} mb="xxs" className={S.Title}>
         {showDatasets ? t`Add data` : t`Manage data`}
       </Title>
       {dataSources.length > 0 && (
@@ -108,7 +114,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
         display={showDatasets ? "flex" : "none"}
       >
         <TextInput
-          m="xs"
+          m="xxs"
           variant="filled"
           value={search}
           onChange={handleSearchChange}
@@ -121,15 +127,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
           search={debouncedSearch}
           setDataSourceCollapsed={setDataSourceCollapsed}
           muted={!showDatasets}
+          dashboardId={dashboardId}
         />
       </Flex>
       <Flex
         direction="column"
         className={S.Content}
-        bg="background-primary"
+        bg="background_page-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         style={{
           borderRadius: "var(--default-border-radius)",
         }}
@@ -145,11 +152,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
           <Flex
             direction="column"
             className={S.Content}
-            bg="background-primary"
+            bg="background_page-primary"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",
-              border: `1px solid var(--mb-color-border)`,
+              border: `1px solid var(--mb-color-border-neutral)`,
             }}
           >
             {dataSources.length > 0 ? (

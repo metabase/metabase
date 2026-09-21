@@ -30,7 +30,7 @@ async function baseSetup({
 
   await userEvent.click(getIcon("list"));
   await userEvent.unhover(getIcon("list"));
-  await screen.findByRole("tooltip");
+  await screen.findByRole("dialog");
 
   const input = screen.getByPlaceholderText("Enter one option per line");
   const saveButton = screen.getByRole("button", { name: "Save" });
@@ -69,9 +69,15 @@ describe("OptionEditor", () => {
       await userEvent.type(input, options.join("\n"));
       await userEvent.click(saveButton);
 
-      expect(input).toHaveValue(options.join("\n"));
-      expect(saveButton).toBeDisabled();
       expect(onChange).toHaveBeenCalledWith(options);
+
+      await userEvent.click(getIcon("list"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.getByPlaceholderText("Enter one option per line"),
+      ).toHaveValue(options.join("\n"));
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("should close popover on save", async () => {
@@ -81,7 +87,7 @@ describe("OptionEditor", () => {
       await userEvent.click(saveButton);
 
       await waitFor(() =>
-        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
       );
     });
   });

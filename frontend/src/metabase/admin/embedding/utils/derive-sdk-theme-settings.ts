@@ -29,6 +29,7 @@ const SDK_COLORS_TO_PERSIST = [
 
 export const WHITELABEL_CHART_COLOR_NAMES = Array.from(
   { length: ACCENT_COUNT },
+  // Unjustified type cast. FIXME
   (_, i) => `accent${i}` as ColorName,
 );
 

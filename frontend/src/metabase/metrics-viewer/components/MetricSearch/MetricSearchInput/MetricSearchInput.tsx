@@ -3,13 +3,14 @@ import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { Button, Flex, Icon, Popover } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
@@ -17,12 +18,21 @@ import type {
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
 import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
 import {
+  computeMetricSlots,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "../../../utils/metric-slots";
+import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
-import { MetricSearchDropdown } from "../MetricSearchDropdown";
+import {
+  MetricSearchDropdown,
+  type MetricSearchDropdownRef,
+} from "../MetricSearchDropdown";
+import { buildFullTextWithIdentities } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 import { buildEditorExtensions } from "./editorExtensions";
@@ -32,6 +42,7 @@ import { useMetricNameTracking } from "./useMetricNameTracking";
 type MetricSearchInputProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
   onFormulaEntitiesChange: (
     entities: MetricsViewerFormulaEntity[],
     slotMapping?: Map<number, number>,
@@ -50,6 +61,7 @@ type MetricSearchInputProps = {
 export function MetricSearchInput({
   definitions,
   formulaEntities,
+  activeDimensionBreakout,
   onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
@@ -60,6 +72,7 @@ export function MetricSearchInput({
 }: MetricSearchInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const dropdownRef = useRef<MetricSearchDropdownRef>(null);
 
   const {
     metricNames,
@@ -76,7 +89,6 @@ export function MetricSearchInput({
   });
 
   const {
-    editText,
     isFocused,
     isOpen,
     setIsOpen,
@@ -86,6 +98,7 @@ export function MetricSearchInput({
     isExpressionDirty,
     pendingFocusRef,
     handleInputFocus,
+    handleEditorCreate,
     handleInputBlur,
     handleEditExpression,
     handleChange,
@@ -94,11 +107,8 @@ export function MetricSearchInput({
     handleContainerClick,
     handleEditorClick,
     handleEditorKeyDown,
-    handleDropdownHasSelectionChange,
     handleRun,
     handleRunRef,
-    isOpenRef,
-    dropdownHasSelectionRef,
   } = useFormulaEditor({
     formulaEntities,
     onFormulaEntitiesChange,
@@ -109,34 +119,43 @@ export function MetricSearchInput({
     handleRemoveMetric,
     editorRef,
     containerRef,
+    dropdownRef,
   });
 
   const editorExtensions = useMemo(
     () =>
       buildEditorExtensions(formulaEntities.length, {
-        dropdownHasSelectionRef,
         handleRunRef,
-        isOpenRef,
+        dropdownRef,
       }),
-    [formulaEntities.length, dropdownHasSelectionRef, handleRunRef, isOpenRef],
+    [formulaEntities.length, handleRunRef, dropdownRef],
   );
 
   const isCollapsed = !isFocused && formulaEntities.length > 0;
+  const metricSlots = useMemo(
+    () => computeMetricSlots(formulaEntities),
+    [formulaEntities],
+  );
+  // The initial document for a fresh editor: the same text useFormulaEditor
+  // initializes every editing session with. Once the session is active the
+  // document is the source of truth — @uiw/react-codemirror's value-sync
+  // replacement is cancelled by the trustedDocChangesOnly transaction filter.
+  const sessionText = useMemo(
+    () => buildFullTextWithIdentities(formulaEntities, metricNames).text,
+    [formulaEntities, metricNames],
+  );
 
   return (
     <Flex
       ref={containerRef}
       className={S.inputWrapper}
-      bg="background-primary"
       align="center"
       gap="sm"
-      px="sm"
-      py="xs"
       onClick={handleContainerClick}
       data-has-error={validationError ? true : undefined}
       data-testid="metrics-formula-input"
     >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2rem">
         {isCollapsed ? (
           // Unfocused: each formula entity rendered as MetricPill or MetricExpressionPill
           <>
@@ -156,12 +175,21 @@ export function MetricSearchInput({
                   entry,
                   definitions,
                 );
+                const metricSlot = findStandaloneSlot(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  metricSlot != null &&
+                  activeDimensionBreakout.dimensionMapping[
+                    metricSlot.slotIndex
+                  ] == null;
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
+                      isDisabled={isDisabled}
                       onSwap={handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
@@ -178,6 +206,16 @@ export function MetricSearchInput({
                 const expressionColors = metricColors[entryIndex]
                   ? [metricColors[entryIndex][0]]
                   : undefined;
+                const expressionSlots = slotsForEntity(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  expressionSlots.some(
+                    (slot) =>
+                      activeDimensionBreakout.dimensionMapping[
+                        slot.slotIndex
+                      ] == null,
+                  );
 
                 return (
                   <span
@@ -188,6 +226,7 @@ export function MetricSearchInput({
                       expressionEntry={entry}
                       metricNames={metricNames}
                       colors={expressionColors}
+                      isDisabled={isDisabled}
                       onNameChange={(newName) => {
                         const updated = [...formulaEntities];
                         updated[entryIndex] = { ...entry, name: newName };
@@ -220,56 +259,30 @@ export function MetricSearchInput({
                 ref={editorRef}
                 basicSetup={false}
                 autoFocus
-                value={editText}
+                value={sessionText}
                 onChange={handleChange}
+                onCreateEditor={handleEditorCreate}
                 extensions={editorExtensions}
                 data-testid="metrics-viewer-search-input"
               />
             </div>
-            <Popover
-              opened={isOpen}
-              onChange={setIsOpen}
-              position="bottom-start"
-              shadow="md"
-              withinPortal
-            >
-              <Popover.Target>
-                <span
-                  aria-hidden
-                  style={{
-                    position: "fixed",
-                    left: anchorRect.left,
-                    top: anchorRect.top,
-                    width: 0,
-                    height: 0,
-                    pointerEvents: "none",
-                  }}
-                />
-              </Popover.Target>
-              <Popover.Dropdown
-                p={0}
-                miw="19rem"
-                maw="25rem"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                {isOpen && (
-                  <MetricSearchDropdown
-                    onSelect={handleSelect}
-                    externalSearchText={currentWord}
-                    onHasSelectionChange={handleDropdownHasSelectionChange}
-                    onClose={() => setIsOpen(false)}
-                    setSearchMetricNames={setSearchMetricNames}
-                  />
-                )}
-              </Popover.Dropdown>
-            </Popover>
+            {isOpen && (
+              <MetricSearchDropdown
+                anchorRect={anchorRect}
+                onSelect={handleSelect}
+                searchQuery={currentWord}
+                onClose={() => setIsOpen(false)}
+                ref={dropdownRef}
+                setSearchMetricNames={setSearchMetricNames}
+              />
+            )}
           </>
         )}
       </Flex>
       {isFocused && !pendingFocusRef.current && isExpressionDirty && (
         <Button
           variant="light"
-          color="brand"
+          color="core-brand"
           size="xs"
           py="sm"
           px="sm"

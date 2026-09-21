@@ -9,39 +9,42 @@ services:
       - TZ=US/Pacific
     image: metabase/qa-databases:postgres-sample-12
     ports:
-      - 5404:5432
+      - 127.0.0.1:5404:5432
 
   mongo-sample:
     image: metabase/qa-databases:mongo-sample-5
     ports:
-      - 27004:27017
+      - 127.0.0.1:27004:27017
 
   mysql-sample:
     environment:
       - TZ=US/Pacific
     image: metabase/qa-databases:mysql-sample-8
     ports:
-      - 3304:3306
+      - 127.0.0.1:3304:3306
 
   webhook-tester:
     image: tarampampam/webhook-tester:1.1.0
     ports:
-      - 9080:8080
+      - 127.0.0.1:9080:8080
     command: serve --create-session 00000000-0000-0000-0000-000000000000
 
   maildev:
     image: maildev/maildev:2.2.1
+    ## Host ports deliberately differ from the 1080/1025 used for development
     ports:
-      - "1080:1080"
-      - "1025:1025"
+      - "127.0.0.1:1180:1080"
+      - "127.0.0.1:1125:1025"
 
   maildev-ssl:
     ## NOTE: Using this requires a root CA certificate to be added to the Java keystore.
     ## See maildev-keys/README.md for more info.
-    image: maildev/maildev:latest
+    ## Pinned: the unpinned `latest` tag moved to 3.0.0-rc.1 (2026-07-06), which
+    ## breaks the SSL/SMTP setup and fails the custom SMTP e2e tests.
+    image: maildev/maildev:2.2.1
     ports:
-      - "1081:1081"
-      - "465:465"
+      - "127.0.0.1:1081:1081"
+      - "127.0.0.1:465:465"
     environment:
       NODE_TLS_REJECT_UNAUTHORIZED: 0
       MAILDEV_WEB_PORT: 1081
@@ -52,10 +55,20 @@ services:
     volumes:
       - ./maildev-keys:/keys
 
+  saml-idp:
+    image: boxyhq/mock-saml:1.4.2
+    ports:
+      - "127.0.0.1:8090:4000"
+    environment:
+      APP_URL: http://localhost:8090
+      ENTITY_ID: https://saml.example.com/entityid
+    env_file:
+      - ./saml-keys/mock-saml.env
+
   ldap:
     image: bitnamilegacy/openldap:2.6.4
     ports:
-      - "389:389"
+      - "127.0.0.1:389:389"
     environment:
       LDAP_ADMIN_PASSWORD: adminpass
       LDAP_USERS: user01@example.org,user02@example.org

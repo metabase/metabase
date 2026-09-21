@@ -3,15 +3,14 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :area :combo :row :pivot
-    :scatter :waterfall :sankey :scalar :smartscalar :gauge
-    :progress :funnel :object :map})
+  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-for-llm
   "Format chart data as XML for LLM consumption."
@@ -63,24 +62,21 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
           results-url (links/query-and-viz-link query chart-type)
           chart-data {:chart-id chart-id
                       :query-id query-id
                       :chart-type chart-type}]
-
       (log/info "Created chart" {:chart-id chart-id
-                                 :chart-type chart-type
-                                 :results-url results-url})
-
+                                 :chart-type chart-type})
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
        :chart-type chart-type
        :query-id query-id
+       :query query
+       :results-url results-url
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
                           "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
-                          "where 'Chart' is a meaningful description.")
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
+                          "where 'Chart' is a meaningful description.")})))

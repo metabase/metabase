@@ -1,5 +1,5 @@
 .SidebarHeader {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding-left: 32px;
   padding-right: 36px;
   margin-bottom: 16px;
@@ -7,7 +7,7 @@
 
 .SidebarContentBordered {
   padding-bottom: 1rem;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 
   /* increase specificity */
   .SelectedClickBehaviorItemIcon {

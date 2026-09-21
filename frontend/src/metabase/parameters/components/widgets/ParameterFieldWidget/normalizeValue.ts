@@ -4,6 +4,7 @@ export function normalizeValue<T>(
   value: NonArray<T> | NonArray<T>[] | undefined,
 ): T[] {
   if (Array.isArray(value)) {
+    // Unjustified type cast. FIXME
     return value as T[];
   }
 

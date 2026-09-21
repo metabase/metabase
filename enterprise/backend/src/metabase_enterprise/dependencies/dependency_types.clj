@@ -24,6 +24,11 @@
   "The set of all dependency types."
   (-> model->dependency-type vals set))
 
+(def backfillable-dependency-types
+  "Dependency types that the backfill job computes dependencies for. Excludes `:table`: tables aren't
+  backfilled directly; links involving tables are found via analysis of the other side of the relation."
+  (disj dependency-types :table))
+
 (def models
   "The set of all models that are handled by dependencies."
   (-> model->dependency-type keys set))

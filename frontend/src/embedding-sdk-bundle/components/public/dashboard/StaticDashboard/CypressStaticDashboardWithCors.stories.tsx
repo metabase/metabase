@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard";
 import { CommonSdkStoryCorsWrapper } from "embedding-sdk-bundle/test/CommonSdkCorsStoryWrapper";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
 export default {

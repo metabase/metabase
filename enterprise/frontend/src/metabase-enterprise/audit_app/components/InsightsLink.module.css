@@ -1,7 +1,7 @@
 .InsightsLink {
   &:not([data-specificity-hack]) {
     &:hover {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 }

@@ -261,10 +261,8 @@ describe("scenarios > question > snippets (EE)", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("New folder").click());
     H.modal().within(() => {
-      cy.findByText("Create your new folder");
-      cy.findByLabelText("Give your folder a name").type(
-        "my favorite snippets",
-      );
+      cy.findByText("New collection");
+      cy.findByLabelText("Name").type("my favorite snippets");
       cy.findByText("Create").click();
     });
 
@@ -296,12 +294,14 @@ describe("scenarios > question > snippets (EE)", () => {
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("snippet 1").should("not.exist");
+
+    cy.findAllByText("snippet 1").should("have.length", 0);
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("my favorite snippets").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("snippet 1");
+    // The list re-renders while the move's refetch settles; assert on the settled
+    // count so a transient duplicate/empty frame doesn't hard-fail `findByText`.
+
+    cy.findAllByText("snippet 1").should("have.length", 1);
 
     cy.log("via collection picker (metabase#44930");
 
@@ -323,9 +323,9 @@ describe("scenarios > question > snippets (EE)", () => {
     H.modal().findByRole("button", { name: "Save" }).click();
 
     cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("snippet 1").should("not.exist");
+      cy.findAllByText("snippet 1").should("have.length", 0);
       cy.findByText("my special snippets").click();
-      cy.findByText("snippet 1").should("exist");
+      cy.findAllByText("snippet 1").should("have.length", 1);
     });
   });
 

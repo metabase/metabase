@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { useDiscardTableFieldValuesMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -26,7 +25,7 @@ export const DiscardTableFieldValuesButton = ({ tableId }: Props) => {
   };
 
   return (
-    <Button c="error" variant="subtle" onClick={handleClick}>
+    <Button c="feedback-negative" variant="subtle" onClick={handleClick}>
       {started ? t`Discard triggered!` : t`Discard cached field values`}
     </Button>
   );

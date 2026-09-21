@@ -39,21 +39,20 @@
       (when-let [version-info (get-version-info)]
         (version.settings/version-info! version-info))
       (catch Throwable e
-        (log/error e "Error fetching version info; setting version-info value to nil")
+        (log/errorf "Error fetching version info; setting version-info value to nil: %s" (ex-message e))
         (version.settings/version-info! nil)))))
 
 (def ^:private job-key     "metabase.task.upgrade-checks.job")
 (def ^:private trigger-key "metabase.task.upgrade-checks.trigger")
 
 (defn- rand-hours
-  "Give a random hour plus the hour 12 hours away, i.e. one of [0 12], [1 13], [2 14], etc"
+  "Give a random hour plus the hours 6, 12, and 18 hours away, i.e. one of [0 6 12 18], [1 7 13 19], etc"
   []
-  (let [hour-1 (rand-int 24)
-        hour-2 (mod (+ hour-1 12) 24)]
-    [hour-1 hour-2]))
+  (let [hour-1 (rand-int 24)]
+    (mapv #(mod (+ hour-1 %) 24) [0 6 12 18])))
 
 (defmethod task/init! ::CheckForNewVersions [_]
-  (let [[rand-hour-1 rand-hour-2] (rand-hours)
+  (let [[h1 h2 h3 h4] (rand-hours)
         rand-minute (rand-int 60)
         job     (jobs/build
                  (jobs/of-type CheckForNewVersions)
@@ -62,6 +61,6 @@
                  (triggers/with-identity (triggers/key trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   ;; run twice a day
-                  (cron/cron-schedule (format "0 %d %d,%d * * ? *" rand-minute rand-hour-1 rand-hour-2))))]
+                  ;; run every 6 hours, at a random hour/minute offset to spread load
+                  (cron/cron-schedule (format "0 %d %d,%d,%d,%d * * ? *" rand-minute h1 h2 h3 h4))))]
     (task/schedule-task! job trigger)))

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
@@ -65,7 +65,7 @@ export const SyncedCollectionsSidebarSection = ({
         </Flex>
 
         {!hasSyncedCollections && (
-          <Text c="text-tertiary" fz="sm" ta="center">
+          <Text c="text-disabled" fz="sm" ta="center">
             {t`No synced collections`}
           </Text>
         )}

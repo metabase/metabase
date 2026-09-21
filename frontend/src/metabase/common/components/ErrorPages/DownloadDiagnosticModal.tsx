@@ -1,7 +1,11 @@
 import { c, t } from "ttag";
 
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextarea,
+} from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
 
 import { DiagnosticCheckboxes } from "./DiagnosticCheckboxes";
@@ -48,11 +52,13 @@ export const DownloadDiagnosticModal = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <Text py="md">{t`Could you provide us with a little context?`}</Text>
-        <FormTextArea
+        <Text py="lg">{t`Could you provide us with a little context?`}</Text>
+        <FormTextarea
           name="description"
-          autoFocus
+          data-autofocus
           placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+          minRows={5}
+          mb="lg"
         />
         <Text>
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
@@ -67,11 +73,11 @@ export const DownloadDiagnosticModal = ({
         <FormSubmitButton
           variant="filled"
           label={c("This is a verb, not a noun").t`Download`}
-          color="brand"
-          mt="lg"
+          color="core-brand"
+          mt="xl"
           mb="sm"
-          px="lg"
-          radius="md"
+          px="xl"
+          radius="sm"
         />
         <Text>{t`Diagnostic info may contain sensitive data.`}</Text>
       </Form>

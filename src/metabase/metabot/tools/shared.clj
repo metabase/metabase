@@ -5,6 +5,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def chart-types
+  "Display types the chart tools can produce, as model-facing strings. The main
+  and document chart tool enums derive from this list; the Slackbot query tool
+  has its own smaller enum."
+  ["table" "bar" "line" "pie" "sunburst" "treemap" "boxplot" "area" "combo"
+   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
+   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
@@ -14,11 +22,23 @@
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+(def ^:dynamic *profile-id*
+  "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
+   agent loop so that tools can adapt their output to the active profile."
+  nil)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []
   (when *memory-atom*
     @*memory-atom*))
+
+(defn current-conversation-id
+  "The current conversation's id (a UUID string) from agent memory, or nil outside a
+  conversation-backed run. Tools use it to record which conversation an entity they
+  create came from (e.g. `save_entity` stamps it onto the saved card)."
+  []
+  (:conversation-id (current-memory)))
 
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
@@ -29,6 +49,15 @@
   "Returns the current charts state map from agent memory."
   []
   (get-in (current-memory) [:state :charts] {}))
+
+(defn current-client-ids
+  "Ids of the queries and charts seeded from this request's viewing context, as opposed to
+  written by the agent's own tools. A refusal to present one of these is a real access attempt
+  and gets the audited treatment; see `metabase.metabot.tools.shared.content-store`. Kept in state
+  rather than per request, since a tool can persist one of these queries and a later turn read it
+  back after it has left the viewing context."
+  []
+  (get-in (current-memory) [:state :client-ids] #{}))
 
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.

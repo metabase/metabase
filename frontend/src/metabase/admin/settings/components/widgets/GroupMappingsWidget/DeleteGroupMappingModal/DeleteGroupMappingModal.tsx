@@ -5,21 +5,17 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Button } from "metabase/common/components/Button";
-import { Modal } from "metabase/common/components/Modal";
-import { ModalFooter } from "metabase/common/components/ModalContent";
-import { Radio } from "metabase/common/components/Radio";
-import CS from "metabase/css/core/index.css";
-
-import {
-  ModalHeader,
-  ModalRadioRoot,
-  ModalSubtitle,
-} from "./DeleteGroupMappingModal.styled";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
   groupIds: GroupIds;
+  // the Administrators group is never cleared or deleted, so the copy says so when it is mapped
+  hasAdminGroup?: boolean;
+  // an extra consequence the caller wants spelled out, shown under the lead text
+  note?: string;
   onConfirm: (
     value: DeleteMappingModalValueType,
     groupIds: GroupIds,
@@ -28,13 +24,19 @@ export type DeleteGroupMappingModalProps = {
   onHide: () => void;
 };
 
-const DeleteGroupMappingModal = ({
+export const DeleteGroupMappingModal = ({
   name,
   groupIds,
+  hasAdminGroup = false,
+  note,
   onConfirm,
   onHide,
 }: DeleteGroupMappingModalProps) => {
   const [value, setValue] = useState<DeleteMappingModalValueType>("nothing");
+  const applicationName = useSelector(getApplicationName);
+  const isPlural = groupIds.length > 1;
+  // with only the Administrators group, or no group at all, there is nothing a cascade could touch
+  const canCascade = groupIds.length > (hasAdminGroup ? 1 : 0);
 
   const handleChange = (newValue: DeleteMappingModalValueType) => {
     setValue(newValue);
@@ -47,65 +49,89 @@ const DeleteGroupMappingModal = ({
   const submitButtonLabels: Record<DeleteMappingModalValueType, string> = {
     nothing: t`Remove mapping`,
     clear: t`Remove mapping and members`,
-    delete:
-      groupIds.length > 1
-        ? t`Remove mapping and delete groups`
-        : t`Remove mapping and delete group`,
+    delete: isPlural
+      ? t`Remove mapping and delete groups`
+      : t`Remove mapping and delete group`,
   };
 
-  const subtitle =
-    groupIds.length > 1
-      ? t`These groups' user memberships will no longer be synced with the directory server.`
-      : t`This group's user membership will no longer be synced with the directory server.`;
+  const adminNote = hasAdminGroup
+    ? t`The Administrators group is not affected.`
+    : null;
 
-  const whatShouldHappenText =
-    groupIds.length > 1
-      ? t`What should happen with the groups themselves in Metabase?`
-      : t`What should happen with the group itself in Metabase?`;
+  let lead: string;
+  if (groupIds.length === 0) {
+    lead = t`This mapping isn't linked to any group.`;
+  } else if (isPlural) {
+    lead = t`Membership of these groups will no longer be synced when users log in.`;
+  } else {
+    lead = t`Membership of this group will no longer be synced when users log in.`;
+  }
 
   return (
-    <Modal>
-      <div>
-        <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
-        <ModalSubtitle>{subtitle}</ModalSubtitle>
-        <ModalRadioRoot>
-          <p>{whatShouldHappenText}</p>
+    <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
+      <Stack gap="xl" mt="sm">
+        <Text>{lead}</Text>
+        {note && <Text>{note}</Text>}
+        {!canCascade && adminNote && <Text>{adminNote}</Text>}
 
-          <Radio
-            className={CS.ml2}
-            vertical
-            value={value as DeleteMappingModalValueType | undefined}
-            options={[
-              {
-                name: t`Nothing, just remove the mapping`,
-                value: "nothing",
-              },
-              {
-                name: t`Also remove all group members (except from Admin)`,
-                value: "clear",
-              },
-              {
-                name:
-                  groupIds.length > 1
-                    ? t`Also delete the groups (except Admin)`
-                    : t`Also delete the group`,
-                value: "delete",
-              },
-            ]}
-            showButtons
-            onChange={handleChange}
-          />
-        </ModalRadioRoot>
-        <ModalFooter fullPageModal={false} formModal={true}>
+        {canCascade && (
+          <Box>
+            <Text mb="lg">
+              {isPlural
+                ? t`What should happen with the groups themselves in ${applicationName}?`
+                : t`What should happen with the group itself in ${applicationName}?`}
+            </Text>
+            <Radio.Group
+              value={value}
+              onChange={(newValue) =>
+                // Unjustified type cast. FIXME
+                handleChange(newValue as DeleteMappingModalValueType)
+              }
+            >
+              <Stack gap="sm">
+                <Radio
+                  value="nothing"
+                  label={t`Nothing, just remove the mapping`}
+                />
+                <Radio
+                  value="clear"
+                  label={
+                    isPlural
+                      ? t`Also remove all members from these groups`
+                      : t`Also remove all members from this group`
+                  }
+                  description={
+                    <>
+                      {t`Members keep their ${applicationName} accounts.`}{" "}
+                      {adminNote}
+                    </>
+                  }
+                />
+                <Radio
+                  value="delete"
+                  label={
+                    isPlural
+                      ? t`Also delete the groups`
+                      : t`Also delete the group`
+                  }
+                  description={adminNote}
+                />
+              </Stack>
+            </Radio.Group>
+          </Box>
+        )}
+
+        <Group justify="flex-end">
           <Button onClick={onHide}>{t`Cancel`}</Button>
-          <Button danger onClick={handleConfirm}>
-            {submitButtonLabels[value as DeleteMappingModalValueType]}
+          <Button
+            variant="filled"
+            color="feedback-negative"
+            onClick={handleConfirm}
+          >
+            {submitButtonLabels[value]}
           </Button>
-        </ModalFooter>
-      </div>
+        </Group>
+      </Stack>
     </Modal>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteGroupMappingModal;

@@ -24,6 +24,7 @@ export async function createCollection(options: Options) {
 
   await propagateErrorResponse(res);
 
+  // Unjustified type cast. FIXME
   const { id: collectionId } = (await res.json()) as { id: number };
 
   return collectionId;

@@ -1,9 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Icon } from "metabase/ui";
+import { Button, Icon, Popover, UnstyledButton } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
@@ -59,6 +58,7 @@ export const OptionPopover = ({
 }: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
+  const [isOpened, { open, close, toggle }] = useDisclosure(false);
 
   const hasOptions = text.length > 0;
   const isDirty = text !== optionsToText(options);
@@ -82,7 +82,7 @@ export const OptionPopover = ({
     }
   };
 
-  const handleSave = (closePopover: () => void) => {
+  const handleSave = () => {
     setError(null);
 
     const nextOptions = transformOptionsIfNeeded(
@@ -95,18 +95,23 @@ export const OptionPopover = ({
       setError(error);
     } else {
       onChange(nextOptions);
-      closePopover();
+      close();
     }
   };
 
   return (
-    <TippyPopoverWithTrigger
-      placement="bottom-end"
-      triggerContent={
-        <Icon name="list" size={20} tooltip={t`Change options`} />
-      }
-      maxWidth={400}
-      popoverContent={({ closePopover }) => (
+    <Popover
+      opened={isOpened}
+      onChange={(nextOpened) => (nextOpened ? open() : close())}
+      position="bottom-end"
+      trapFocus
+    >
+      <Popover.Target>
+        <UnstyledButton onClick={toggle}>
+          <Icon name="list" size={20} tooltip={t`Change options`} />
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown maw={400}>
         <OptionEditorContainer>
           <TextArea
             value={text}
@@ -117,15 +122,11 @@ export const OptionPopover = ({
             {t`Press enter to add another option`}
           </AddMorePrompt>
           {hasError && <ErrorMessage>{error}</ErrorMessage>}
-          <Button
-            disabled={!canSave}
-            onClick={() => handleSave(closePopover)}
-            small
-          >
+          <Button disabled={!canSave} onClick={handleSave} size="sm">
             {t`Save`}
           </Button>
         </OptionEditorContainer>
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 };

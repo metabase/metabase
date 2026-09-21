@@ -1,16 +1,19 @@
-import type { Middleware } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
+import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type {
-  AdminPathKey,
-  DraftDashboardSubscription,
-  State,
-} from "metabase/redux/store";
+import type { AdminPathKey, State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DraftDashboardSubscription } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
+
+import type {
+  SnippetSidebarContext,
+  SnippetSidebarMenuOption,
+  SnippetSidebarRowRenderers,
+} from "./snippets";
 
 // Types
 export type IllustrationValue = {
@@ -44,40 +47,50 @@ const getLoadingMessage = (isSlow: boolean | undefined = false) =>
 
 const getDefaultAppInitFunctions = (): (() => void)[] => [];
 
-export const PLUGIN_APP_INIT_FUNCTIONS = getDefaultAppInitFunctions();
+export const PLUGIN_APP_INIT_FUNCTIONS = definePluginSlot(
+  getDefaultAppInitFunctions,
+);
 
 const getDefaultLandingPage = () => ({
   getLandingPage: () => "/",
-  LandingPageWidget: PluginPlaceholder,
 });
 
 export const PLUGIN_LANDING_PAGE: {
   getLandingPage: () => string | null | undefined;
-  LandingPageWidget: ComponentType;
-} = getDefaultLandingPage();
+} = definePluginSlot(getDefaultLandingPage);
 
-const getDefaultReduxMiddlewares = (): Middleware[] => [];
+const getDefaultHomepageSetting = () => ({
+  CustomUrlOption: null,
+});
 
-export const PLUGIN_REDUX_MIDDLEWARES = getDefaultReduxMiddlewares();
+export const PLUGIN_HOMEPAGE_SETTING: {
+  CustomUrlOption: { label: string; Control: ComponentType } | null;
+} = definePluginSlot(getDefaultHomepageSetting);
+
+// dispatch is typed as thunk-capable so EE middlewares can dispatch async thunks
+const getDefaultReduxMiddlewares = (): Middleware<
+  Record<string, never>,
+  State,
+  ThunkDispatch<State, unknown, Action>
+>[] => [];
+
+export const PLUGIN_REDUX_MIDDLEWARES = definePluginSlot(
+  getDefaultReduxMiddlewares,
+);
 
 const getDefaultLogoIconComponents = (): ComponentType[] => [];
 
-export const PLUGIN_LOGO_ICON_COMPONENTS = getDefaultLogoIconComponents();
+export const PLUGIN_LOGO_ICON_COMPONENTS = definePluginSlot(
+  getDefaultLogoIconComponents,
+);
 
 const getDefaultAdminAllowedPathGetters = (): ((
   user: any,
 ) => AdminPathKey[])[] => [];
 
-export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS =
-  getDefaultAdminAllowedPathGetters();
-
-const getDefaultAdminTools = () => ({
-  COMPONENT: null,
-});
-
-export const PLUGIN_ADMIN_TOOLS: {
-  COMPONENT: ComponentType | null;
-} = getDefaultAdminTools();
+export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS = definePluginSlot(
+  getDefaultAdminAllowedPathGetters,
+);
 
 const getDefaultSelectors = () => ({
   canWhitelabel: (_state: State) => false,
@@ -100,24 +113,33 @@ const getDefaultSelectors = () => ({
   },
 });
 
-export const PLUGIN_SELECTORS = getDefaultSelectors();
+export const PLUGIN_SELECTORS = definePluginSlot(getDefaultSelectors);
 
 const getDefaultFormWidgets = (): Record<string, ComponentType<any>> => ({});
 
-export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
+export const PLUGIN_FORM_WIDGETS = definePluginSlot(getDefaultFormWidgets);
 
-const getDefaultSnippetSidebarPlusMenuOptions = () => [];
-const getDefaultSnippetSidebarRowRenderers = () => ({});
-const getDefaultSnippetSidebarModals = () => [];
-const getDefaultSnippetSidebarHeaderButtons = () => [];
+const getDefaultSnippetSidebarPlusMenuOptions = (): ((
+  snippetSidebar: SnippetSidebarContext,
+) => SnippetSidebarMenuOption)[] => [];
+const getDefaultSnippetSidebarRowRenderers =
+  (): SnippetSidebarRowRenderers => ({
+    collection: null,
+  });
+const getDefaultSnippetSidebarHeaderButtons = (): ((
+  snippetSidebar: SnippetSidebarContext,
+  opts: { className?: string },
+) => ReactNode)[] => [];
 
-export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS =
-  getDefaultSnippetSidebarPlusMenuOptions();
-export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS =
-  getDefaultSnippetSidebarRowRenderers();
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = getDefaultSnippetSidebarModals();
-export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS =
-  getDefaultSnippetSidebarHeaderButtons();
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = definePluginSlot(
+  getDefaultSnippetSidebarPlusMenuOptions,
+);
+export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = definePluginSlot(
+  getDefaultSnippetSidebarRowRenderers,
+);
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = definePluginSlot(
+  getDefaultSnippetSidebarHeaderButtons,
+);
 
 const getDefaultDashboardSubscriptionParametersSectionOverride =
   (): PluginDashboardSubscriptionParametersSectionOverride => ({
@@ -125,9 +147,10 @@ const getDefaultDashboardSubscriptionParametersSectionOverride =
   });
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
-  getDefaultDashboardSubscriptionParametersSectionOverride();
+  definePluginSlot(getDefaultDashboardSubscriptionParametersSectionOverride);
 
 const getDefaultReducers = () => ({
+  advancedPermissionsPlugin: () => null,
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
@@ -136,65 +159,16 @@ const getDefaultReducers = () => ({
 });
 
 export const PLUGIN_REDUCERS: {
+  advancedPermissionsPlugin: any;
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
   shared: any;
   documents: any;
   remoteSyncPlugin: any;
-} = getDefaultReducers();
+} = definePluginSlot(getDefaultReducers);
 
 const getDefaultIsEeBuild = () => ({
   isEEBuild: () => false,
 });
 
-export const PLUGIN_IS_EE_BUILD = getDefaultIsEeBuild();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  PLUGIN_APP_INIT_FUNCTIONS.length = 0;
-  PLUGIN_APP_INIT_FUNCTIONS.push(...getDefaultAppInitFunctions());
-
-  Object.assign(PLUGIN_LANDING_PAGE, getDefaultLandingPage());
-
-  PLUGIN_REDUX_MIDDLEWARES.length = 0;
-  PLUGIN_REDUX_MIDDLEWARES.push(...getDefaultReduxMiddlewares());
-
-  PLUGIN_LOGO_ICON_COMPONENTS.length = 0;
-  PLUGIN_LOGO_ICON_COMPONENTS.push(...getDefaultLogoIconComponents());
-
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.length = 0;
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
-    ...getDefaultAdminAllowedPathGetters(),
-  );
-
-  Object.assign(PLUGIN_ADMIN_TOOLS, getDefaultAdminTools());
-  Object.assign(PLUGIN_SELECTORS, getDefaultSelectors());
-  Object.assign(PLUGIN_FORM_WIDGETS, getDefaultFormWidgets());
-
-  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.length = 0;
-  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(
-    ...getDefaultSnippetSidebarPlusMenuOptions(),
-  );
-
-  Object.assign(
-    PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-    getDefaultSnippetSidebarRowRenderers(),
-  );
-
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.length = 0;
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(...getDefaultSnippetSidebarModals());
-
-  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.length = 0;
-  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push(
-    ...getDefaultSnippetSidebarHeaderButtons(),
-  );
-
-  Object.assign(
-    PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
-    getDefaultDashboardSubscriptionParametersSectionOverride(),
-  );
-  Object.assign(PLUGIN_REDUCERS, getDefaultReducers());
-  Object.assign(PLUGIN_IS_EE_BUILD, getDefaultIsEeBuild());
-}
+export const PLUGIN_IS_EE_BUILD = definePluginSlot(getDefaultIsEeBuild);

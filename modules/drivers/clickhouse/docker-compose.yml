@@ -5,12 +5,12 @@ services:
   ##########################################################################################################
 
   clickhouse:
-    image: 'clickhouse/clickhouse-server:25.2-alpine'
-    container_name: 'metabase-driver-clickhouse-server'
+    image: 'clickhouse/clickhouse-server:latest-alpine'
+    container_name: 'mb-clickhouse-latest'
     hostname: clickhouse
     ports:
-      - '8123:8123'
-      - '9000:9000'
+      - '127.0.0.1:8123:8123'
+      - '127.0.0.1:9000:9000'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -32,8 +32,8 @@ services:
       dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
     container_name: 'metabase-driver-clickhouse-server-tls'
     ports:
-      - '8443:8443'
-      - '9440:9440'
+      - '127.0.0.1:8443:8443'
+      - '127.0.0.1:9440:9440'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -51,12 +51,13 @@ services:
   ##########################################################################################################
 
   clickhouse_older_version:
+    # if the oldest supported veresion changes please update fetch-oldest-supported-version in mage/mage/start_db.clj
     image: 'clickhouse/clickhouse-server:23.3-alpine'
-    container_name: 'metabase-driver-clickhouse-server-older-version'
+    container_name: 'mb-clickhouse-oldest'
     hostname: clickhouse.older
     ports:
-      - '8124:8123'
-      - '9001:9000'
+      - '127.0.0.1:8124:8123'
+      - '127.0.0.1:9001:9000'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -73,7 +74,7 @@ services:
   ##########################################################################################################
 
   clickhouse_cluster_node1:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.2-alpine}'
+    image: 'clickhouse/clickhouse-server:latest-alpine'
     ulimits:
       nofile:
         soft: 262144
@@ -81,9 +82,9 @@ services:
     hostname: clickhouse1
     container_name: metabase-driver-clickhouse-cluster-node-1
     ports:
-      - '8125:8123'
-      - '9002:9000'
-      - '9181:9181'
+      - '127.0.0.1:8125:8123'
+      - '127.0.0.1:9002:9000'
+      - '127.0.0.1:9181:9181'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
@@ -92,7 +93,7 @@ services:
       - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse_cluster_node2:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-25.2-alpine}'
+    image: 'clickhouse/clickhouse-server:latest-alpine'
     ulimits:
       nofile:
         soft: 262144
@@ -100,9 +101,9 @@ services:
     hostname: clickhouse2
     container_name: metabase-driver-clickhouse-cluster-node-2
     ports:
-      - '8126:8123'
-      - '9003:9000'
-      - '9182:9181'
+      - '127.0.0.1:8126:8123'
+      - '127.0.0.1:9003:9000'
+      - '127.0.0.1:9182:9181'
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     volumes:
@@ -116,7 +117,7 @@ services:
     image: 'nginx:1.23.1-alpine'
     hostname: nginx
     ports:
-      - '8127:8123'
+      - '127.0.0.1:8127:8123'
     volumes:
       - './.docker/nginx/local.conf:/etc/nginx/conf.d/local.conf'
     container_name: metabase-nginx

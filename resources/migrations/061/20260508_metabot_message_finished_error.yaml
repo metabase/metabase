@@ -1,0 +1,31 @@
+## Track per-assistant-turn outcome on metabot_message.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-05-08T10:00:00
+      author: sloansparger
+      comment: Add finished column to metabot_message tracking in-flight/completed/aborted assistant turns
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: finished
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: NULL while in flight, true once completed, false if the client aborted mid-stream.
+
+  - changeSet:
+      id: v61.2026-05-08T10:00:01
+      author: sloansparger
+      comment: Add error column to metabot_message capturing the failure reason for errored assistant turns
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: error
+                  type: ${text.type}
+                  remarks: Error payload from the agent's error stream part.
+                  constraints:
+                    nullable: true

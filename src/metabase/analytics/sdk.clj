@@ -16,7 +16,8 @@
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URI)))
 
@@ -39,6 +40,12 @@
      ~@body))
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
+
+(def ^:dynamic *client-identifier*
+  "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
+  nil)
+
+(defn get-client-identifier "Returns [[*client-identifier*]]." [] *client-identifier*)
 
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
@@ -86,6 +93,16 @@
    :sanitized_user_agent  (request.user-agent/describe-user-agent user-agent)
    :ip_address            ip-address})
 
+(defn pii-fields-from
+  "Like the request-bound `pii-fields` but takes an explicit info map (for callers
+   that have already extracted request fields on-thread, e.g. before async hand-off).
+   Returns the PII map when `analytics-pii-retention-enabled` is true, else nil.
+   Callers that always want the ungated `embedding_hostname` should compute it
+   separately via `extract-hostname` and not read it off the returned map."
+  [info]
+  (when (analytics.settings/analytics-pii-retention-enabled)
+    (pii-request-info info)))
+
 (defn- hostname-fields
   "Returns embedding_hostname from the current request. Always collected (not PII)."
   []
@@ -103,12 +120,58 @@
        :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
        :ip_address           (request.current/ip-address request)})))
 
+(def ^:private sdk-info-row
+  [:map {:closed true}
+   [:user_id                     {:optional true} [:maybe :int]]
+   [:model                       {:optional true} [:maybe [:or :keyword :string]]]
+   [:model_id                    {:optional true} [:maybe :int]]
+   [:timestamp                   {:optional true} [:maybe [:or ms/TemporalInstant :keyword]]]
+   [:metadata                    {:optional true} [:maybe [:map {:closed true}]]]
+   [:has_access                  {:optional true} [:maybe :boolean]]
+   [:hash                        {:optional true} [:maybe [:or bytes? :string]]]
+   [:started_at                  {:optional true} [:maybe ms/TemporalInstant]]
+   [:running_time                {:optional true} [:maybe :int]]
+   [:result_rows                 {:optional true} [:maybe :int]]
+   [:native                      {:optional true} [:maybe :boolean]]
+   [:context                     {:optional true} [:maybe [:or :keyword :string]]]
+   [:error                       {:optional true} [:maybe :string]]
+   [:executor_id                 {:optional true} [:maybe :int]]
+   [:card_id                     {:optional true} [:maybe :int]]
+   [:dashboard_id                {:optional true} [:maybe :int]]
+   [:pulse_id                    {:optional true} [:maybe :int]]
+   [:database_id                 {:optional true} [:maybe :int]]
+   [:cache_hit                   {:optional true} [:maybe :boolean]]
+   [:action_id                   {:optional true} [:maybe :int]]
+   [:is_sandboxed                {:optional true} [:maybe :boolean]]
+   [:cache_hash                  {:optional true} [:maybe [:or bytes? :string]]]
+   [:embedding_client            {:optional true} [:maybe :string]]
+   [:embedding_sdk_version       {:optional true} [:maybe :string]]
+   [:parameterized               {:optional true} [:maybe :boolean]]
+   [:transform_id                {:optional true} [:maybe :int]]
+   [:lens_id                     {:optional true} [:maybe :string]]
+   [:lens_params                 {:optional true} [:maybe [:map {:closed true} [:join_step {:optional true} [:maybe :int]]]]]
+   [:auth_method                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:tenant_id                   {:optional true} [:maybe :int]]
+   [:is_impersonated             {:optional true} [:maybe :boolean]]
+   [:is_db_routed                {:optional true} [:maybe :boolean]]
+   [:parameters                  {:optional true} [:maybe :string]]
+   [:embedding_hostname          {:optional true} [:maybe :string]]
+   [:embedding_path              {:optional true} [:maybe :string]]
+   [:user_agent                  {:optional true} [:maybe :string]]
+   [:ip_address                  {:optional true} [:maybe :string]]
+   [:sanitized_user_agent        {:optional true} [:maybe :string]]
+   [:embedding_route             {:optional true} [:maybe :string]]
+   [:metabase_version            {:optional true} [:maybe :string]]
+   [:embedding_client_identifier {:optional true} [:maybe :string]]
+   [:start_time_millis           {:optional true} [:maybe :int]]])
+
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
    into the `view_log` or `query_execution` table. Falls back to the original value."
-  [m :- :map]
+  [m :- sdk-info-row]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
+      (update :embedding_client_identifier (fn [identifier] (or *client-identifier* identifier)))
       (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_sdk_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
@@ -121,7 +184,8 @@
     "embedding-iframe-full-app"
     "embedding-iframe-static"
     "embedding-public"
-    "embedding-simple"})
+    "embedding-simple"
+    "data-app"})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
@@ -133,7 +197,9 @@
     "embedding-iframe-static"   (analytics/inc! :metabase-embedding-iframe-static/response {:status (str status)})
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
-    (log/infof "Unknown client. client: %s" sdk-client)))
+    ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
+    "data-app"                  nil
+    (log/info "Unknown client.")))
 
 (defn embedding-context?
   "Should we track this request as being made by an embedding client?"
@@ -163,14 +229,18 @@
     [request respond raise]
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
+          ;; column is varchar(254); truncate rather than fail the row insert on an oversized header
+          identifier (some-> (get-in request [:headers "x-metabase-client-identifier"])
+                             (as-> s (subs s 0 (min (count s) 254))))
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
                    preview? (some-> (str "-preview")))]
-      (binding [*client*  client
-                *route*   route
-                *version* version]
+      (binding [*client*            client
+                *client-identifier* identifier
+                *route*             route
+                *version*           version]
         (handler request
                  (fn responder [response]
                    ;; Only track prometheus when NO route match AND header is an embedding context

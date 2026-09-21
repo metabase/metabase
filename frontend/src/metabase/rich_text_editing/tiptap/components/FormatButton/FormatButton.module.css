@@ -5,5 +5,5 @@
   border: none;
   cursor: pointer;
   transition: all 0.15s ease;
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
 }

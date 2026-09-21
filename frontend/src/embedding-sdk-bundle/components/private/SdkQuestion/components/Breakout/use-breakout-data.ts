@@ -1,8 +1,8 @@
 import {
-  type ListItem as BreakoutListItem,
+  type BreakoutListItem,
   getBreakoutListItem,
-} from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
-import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
+} from "metabase/query_builder";
+import { useBreakoutQueryHandlers } from "metabase/query_builder";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -22,6 +22,7 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
     lastVisibleStageIndex: stageIndex,
     ...interactiveQuestionContext
   } = useSdkQuestionContext();
+  // Unjustified type cast. FIXME
   const question = interactiveQuestionContext.question as Question;
   const query = question?.query();
 

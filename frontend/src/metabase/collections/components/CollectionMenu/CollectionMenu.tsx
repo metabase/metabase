@@ -7,13 +7,13 @@ import {
   isPersonalCollection,
   isRootCollection,
   isRootPersonalCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {

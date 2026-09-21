@@ -3,21 +3,22 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.events.core :as events]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.send :as notification.send]
    [metabase.task-history.core :as task-history]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
-(derive :metabase/event ::notification)
+(events/derive! :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
                                   :event/notification-create
                                   :event/slack-token-invalid
                                   :event/comment-created
                                   :event/support-access-grant-created
-                                  :event/transform-failed})
+                                  :event/transform-failed
+                                  :event/transform-failure-digest})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -32,7 +33,7 @@
                                       (if (map? x)
                                         (reduce-kv
                                          (fn [acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc acc key (t2/select-one model (get x k))))
+                                           (assoc acc key (notification.db/instance model (get x k))))
                                          x
                                          hydrates)
                                         x)))))}}}))

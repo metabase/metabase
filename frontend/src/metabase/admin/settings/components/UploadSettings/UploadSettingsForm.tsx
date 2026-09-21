@@ -7,15 +7,17 @@ import {
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils";
 import {
   ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting, useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Alert,
   Box,
@@ -35,15 +37,13 @@ import type {
   UploadsSettings,
 } from "metabase-types/api";
 
-import { SettingHeader } from "../SettingHeader";
-
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
+const getEnableErrorMessage = () =>
+  t`There was a problem enabling uploads. Please try again shortly.`;
+const getDisableErrorMessage = () =>
+  t`There was a problem disabling uploads. Please try again shortly.`;
 
 export function UploadSettingsFormView({
   databases,
@@ -107,7 +107,7 @@ export function UploadSettingsFormView({
       toast: false,
     }).then((response) => {
       if (response.error) {
-        showError(getErrorMessage(enableErrorMessage));
+        showError(getErrorMessage(getEnableErrorMessage()));
         throw new Error(t`Error enabling uploads`);
       }
 
@@ -126,7 +126,7 @@ export function UploadSettingsFormView({
       toast: false,
     }).then((response) => {
       if (response.error) {
-        showError(getErrorMessage(disableErrorMessage));
+        showError(getErrorMessage(getDisableErrorMessage()));
         throw new Error(t`Error disabling uploads`);
       }
       setDbId(null);
@@ -157,7 +157,7 @@ export function UploadSettingsFormView({
   );
 
   return (
-    <Box component="form" aria-label={t`Upload Settings Form`} px="md">
+    <Box component="form" aria-label={t`Upload Settings Form`} px="lg">
       <SettingHeader
         id="upload-settings"
         title={t`Allow people to upload data to collections`}
@@ -172,7 +172,21 @@ export function UploadSettingsFormView({
       {isH2db && <H2PersistenceWarning isHosted={isHosted} />}
       <Group align="flex-start">
         <Select
-          label={t`Database to use for uploads`}
+          label={
+            <Group gap="xxs" wrap="nowrap" align="center">
+              {t`Database to use for uploads`}
+              <Tooltip
+                label={t`PostgreSQL, MySQL, Redshift, ClickHouse, and Snowflake databases are supported for file storage.`}
+              >
+                <Icon
+                  name="info"
+                  size={14}
+                  c="text-secondary"
+                  data-testid="uploads-db-info-icon"
+                />
+              </Tooltip>
+            </Group>
+          }
           value={dbId ? String(dbId) : null}
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}
@@ -206,6 +220,7 @@ export function UploadSettingsFormView({
               schemaLength: !!schemas?.length,
             })
               .with({ schemasError: true }, () =>
+                // Unjustified type cast. FIXME
                 getErrorMessage((schemasError as any)?.data),
               )
               .with(
@@ -228,7 +243,7 @@ export function UploadSettingsFormView({
           />
         )}
       </Group>
-      <Flex mt="lg">
+      <Flex mt="xl">
         {uploadsSettings.db_id ? (
           settingsChanged ? (
             <ActionButton
@@ -238,7 +253,7 @@ export function UploadSettingsFormView({
               disabled={!hasValidSettings}
               failedText={t`Failed to save upload settings`}
               actionFn={handleEnableUploads}
-              primary
+              variant="filled"
               useLoadingSpinner
               type="submit"
             />
@@ -252,7 +267,8 @@ export function UploadSettingsFormView({
               failedText={t`Failed to disable uploads`}
               actionFn={handleDisableUploads}
               type="button"
-              danger
+              variant="filled"
+              color="feedback-negative"
               useLoadingSpinner
             />
           )
@@ -265,7 +281,7 @@ export function UploadSettingsFormView({
             }
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
+            variant={hasValidSettings ? "filled" : "default"}
             disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"
@@ -274,7 +290,7 @@ export function UploadSettingsFormView({
       </Flex>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && (
-        <Text c="danger" mt="md">
+        <Text c="feedback-negative" mt="lg">
           {errorMessage}
         </Text>
       )}
@@ -283,16 +299,14 @@ export function UploadSettingsFormView({
 }
 
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
-  <Stack my="md" maw={620}>
-    <Alert icon={<Icon name="warning" />} color="warning">
-      <Text>
-        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
-      </Text>
+  <Alert my="lg" maw={620} icon={<Icon name="warning" />} color="warning">
+    <Stack gap="sm">
+      {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift, ClickHouse, or Snowflake database.`}
       {isHosted && (
         <Tooltip
           label={
             <>
-              <Text mb="md" c="inherit">
+              <Text mb="lg" c="inherit">
                 {t`By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act).`}
               </Text>
               <Text c="inherit">
@@ -311,8 +325,8 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           >{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
-    </Alert>
-  </Stack>
+    </Stack>
+  </Alert>
 );
 
 const NoValidDatabasesMessage = () => (

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type {
   FilterTypeKeys,
   SearchFilterPropTypes,
-} from "metabase/search/types";
+} from "metabase/common/search/types";
 import type { StackProps } from "metabase/ui";
 import { Button, Center, FocusTrap, Group, Loader } from "metabase/ui";
 
@@ -33,8 +33,8 @@ export const SearchFilterPopoverWrapper = ({
 }: SearchFilterPopoverWrapperProps) => {
   if (isLoading) {
     return (
-      <Center p="lg">
-        <Loader data-testid="loading-indicator" />
+      <Center p="xl">
+        <Loader />
       </Center>
     );
   }

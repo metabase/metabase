@@ -2,7 +2,7 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
-  (:refer-clojure :exclude [mapv not-empty get-in])
+  (:refer-clojure :exclude [mapv not-empty])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -18,16 +17,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv not-empty get-in]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [mapv not-empty]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
-  [:and
-   [:map
-    [:lib/type [:enum :metadata/segment]]]
-   [:multi
-    {:dispatch :lib/type}
-    [:metadata/segment       ::lib.schema.metadata/segment]]])
+  ::lib.schema.metadata/segment)
 
 (mr/def ::macro-type
   [:enum :segment])
@@ -43,7 +38,7 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (lib.util.match/match-many stage
+       (match/match-many stage
          [#{macro-type} _opts (id :guard pos-int?)]
          (conj! ids id))
        nil))
@@ -51,20 +46,18 @@
 
 ;;; a legacy Segment has one or more filter clauses.
 
-(mu/defn- segment-definition->stage :- ::lib.schema/stage.mbql
+(mu/defn- segment-definition->stage :- [:maybe ::lib.schema/stage.mbql]
   "Extract the MBQL 5 stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
   (converted by the segment model's after-select hook), so we just extract the first stage."
-  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
-  (log/tracef "Extracting MBQL 5 stage from segment definition:\n%s" (u/pprint-to-str definition))
-  (u/prog1 (first (:stages definition))
-    (log/tracef "Extracted stage:\n%s" (u/pprint-to-str <>))))
+  [{:keys [definition], :as _legacy-macro} :- ::legacy-macro]
+  (log/trace "Extracting MBQL 5 stage from segment definition")
+  (first (:stages definition)))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
   "Get the filter(s) associated with a Segment."
   [legacy-macro :- ::legacy-macro]
   (mapv lib/fresh-uuids
-        (get-in legacy-macro [:definition :filters])))
+        (:filters (segment-definition->stage legacy-macro))))
 
 (mr/def ::id->legacy-macro
   [:map-of pos-int? ::legacy-macro])
@@ -76,8 +69,7 @@
   (let [metadata-type     (case macro-type ;; left in case we see a :metric here
                             :segment :metadata/segment)]
     (u/prog1 (into {}
-                   (map (juxt :id (fn [legacy-macro]
-                                    (assoc legacy-macro :definition (segment-definition->stage metadata-providerable legacy-macro)))))
+                   (map (juxt :id identity))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]
@@ -95,13 +87,11 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (lib.util.match/replace-lite stage
+  (-> (match/replace stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]
-          (log/debugf "Expanding legacy Segment macro\n%s" (u/pprint-to-str &match))
-          (doseq [filter-clause filter-clauses]
-            (log/tracef "Adding filter clause for legacy Segment %d:\n%s" id (u/pprint-to-str filter-clause)))
+          (log/debugf "Expanding legacy Segment macro for Segment %d (%d filter clauses)" id (count filter-clauses))
           ;; replace a single segment with a single filter, wrapping them in `:and` if needed... we will unwrap once
           ;; we've expanded all of the :segment refs.
           (if (> (count filter-clauses) 1)
@@ -138,7 +128,7 @@
   ([query  :- ::lib.schema/query]
    (expand-macros query 0))
 
-  ([query recursion-depth]
+  ([query :- ::lib.schema/query recursion-depth :- :int]
    (when (> recursion-depth max-recursion-depth)
      (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
                      {:type qp.error-type/invalid-query, :query query})))

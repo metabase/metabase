@@ -5,6 +5,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -22,12 +23,6 @@
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
-
-(defmethod serdes/hash-fields :model/Dimension
-  [_dimension]
-  [(serdes/hydrated-hash :field)
-   (serdes/hydrated-hash :human_readable_field)
-   :created_at])
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]

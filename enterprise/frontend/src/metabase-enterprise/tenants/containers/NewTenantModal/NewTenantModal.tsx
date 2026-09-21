@@ -1,9 +1,9 @@
-import type { Location } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { Location } from "metabase/router";
 import { Modal } from "metabase/ui";
 import { useCreateTenantMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
@@ -41,7 +41,7 @@ export const NewTenantModal = ({ onClose, location }: NewUserModalProps) => {
     <Modal
       opened
       title={isOnboarding ? t`Set up your first tenant` : t`New tenant`}
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <TenantForm

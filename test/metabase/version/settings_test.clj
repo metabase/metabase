@@ -2,14 +2,18 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.version.settings :as version.settings]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def prevent? #'version.settings/prevent-upgrade?)
 
 (deftest upgrade-threshold-test
   (testing "it is stable but changes across releases"
     (letfn [(threshold [version]
-              (with-redefs [config/current-major-version (constantly version)]
+              (mt/with-dynamic-fn-redefs [config/current-major-version (constantly version)]
                 (version.settings/upgrade-threshold)))]
       ;; asserting that across 10 versions we have at leaset 5 distinct values
       (let [thresholds (into [] (map threshold) (range 50 60))]
@@ -27,7 +31,6 @@
     (is (not (prevent? 45 {:version 45} 75)) "version not a version string")
     ;; misshape
     (is (not (prevent? 45 {:latest {:version "0.46" :rollout 80}} 75)) "Wrong shape"))
-
   (testing "Knows when to upgrade"
     (let [threshold 25
           above     50

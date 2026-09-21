@@ -1,17 +1,15 @@
 import type React from "react";
 
 import { Link } from "metabase/common/components/Link";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import {
   Icon,
-  type IconName,
   NavLink,
   type NavLinkProps,
   Stack,
   type StackProps,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps
@@ -19,7 +17,7 @@ export const AdminNavWrapper = ({
   children: React.ReactNode;
 } & StackProps) => {
   return (
-    <Stack w="16rem" gap={0} p="md" h="100%" {...stackProps} component="nav">
+    <Stack w="16rem" gap={0} p="lg" h="100%" {...stackProps} component="nav">
       {children}
     </Stack>
   );
@@ -40,8 +38,8 @@ export function AdminNavItem({
   icon,
   ...navLinkProps
 }: AdminNavItemProps) {
-  const location = useSelector(getLocation);
-  const subpath = location?.pathname;
+  const location = useLocation();
+  const subpath = location.pathname;
 
   return (
     <NavLink
@@ -49,9 +47,9 @@ export function AdminNavItem({
       to={path ?? ""}
       defaultOpened={folderPattern ? subpath.includes(folderPattern) : false}
       active={path === subpath}
-      variant="admin-nav"
+      variant="secondary"
       label={label}
-      mb="xs"
+      mb="xxs"
       {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}
       {...navLinkProps}
     />

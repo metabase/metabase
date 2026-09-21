@@ -1,13 +1,11 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
-import { useCancelCloudMigrationMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import type { Plan } from "metabase/common/utils/plan";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { Plan } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -19,6 +17,8 @@ import {
   Text,
 } from "metabase/ui";
 
+import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
+
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
 import { getMigrationUrl } from "./utils";
@@ -29,12 +29,12 @@ interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
 }
 
-const progressMessage: Record<InProgressStates, string> = {
+const getProgressMessages = (): Record<InProgressStates, string> => ({
   init: t`Talking to Metabase Cloud...`,
   setup: t`Talking to Metabase Cloud...`,
   dump: t`Taking a snapshot of this instance...`,
   upload: t`Uploading the snapshot to the cloud...`,
-};
+});
 
 export const MigrationInProgress = ({
   storeUrl,
@@ -57,7 +57,6 @@ export const MigrationInProgress = ({
       addUndo({
         icon: "info",
         message: t`Migration to Metabase Cloud has been canceled.`,
-        undo: false,
       }),
     );
   };
@@ -69,40 +68,40 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg="background-brand"
+            bg="background_surface-brand-subtle"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
             align="center"
           >
-            <Icon name="cloud_filled" size="2.375rem" c="brand" />
+            <Icon name="cloud_filled" size="2.375rem" c="core-brand" />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
             <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>
             {readOnly ? (
-              <List size="md" mt="md">
+              <List size="md" mt="lg">
                 <List.Item>{t`To complete the migration, set up your account in the Metabase Store`}</List.Item>
                 <List.Item>{t`While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes`}</List.Item>
               </List>
             ) : (
-              <Text mt="md">{t`To complete the migration, set up your account in the Metabase Store`}</Text>
+              <Text mt="lg">{t`To complete the migration, set up your account in the Metabase Store`}</Text>
             )}
 
-            <Box mt="lg" mb="md">
+            <Box mt="xl" mb="lg">
               <Text size="md" c="text-secondary">
-                {progressMessage[migration.state]}
+                {getProgressMessages()[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />
             </Box>
 
             <Flex justify="space-between">
               <Button
-                mt="md"
+                mt="lg"
                 onClick={openModal}
-                c="error"
+                c="feedback-negative"
               >{t`Cancel migration`}</Button>
               <Button
-                mt="md"
+                mt="lg"
                 component={ExternalLink}
                 href={migrationUrl}
                 variant="filled"
@@ -120,11 +119,11 @@ export const MigrationInProgress = ({
         title={t`Cancel migration?`}
         padding="2rem"
       >
-        <Text mt="md">{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
+        <Text mt="lg">{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
         <Flex justify="end" mt="3.5rem">
           <Button
             variant="filled"
-            color="error"
+            color="feedback-negative"
             onClick={handleCancelMigration}
           >{t`Cancel migration`}</Button>
         </Flex>

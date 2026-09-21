@@ -15,6 +15,26 @@ Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when brow
 
 Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
+### `MB_APPLICATION_DB_IDLE_CONNECTION_TEST_PERIOD_SECONDS`
+
+Type: integer<br>
+Default: `60`<br>
+Since: v62.0
+
+How often, in seconds, to test idle connections in the application database pool. Set to `0` to disable idle connection testing.
+
+### `MB_APPLICATION_DB_MAX_CONNECTION_AGE_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+Maximum lifetime, in seconds, of a connection in the application database pool. After this duration the connection is closed and a new one is opened. Set to `0` to keep connections until the database closes them.
+
+The default of one hour is set primarily to limit memory growth (especially on PostgreSQL).
+
+If you are connecting with a short-lived credential (e.g. an AWS RDS IAM auth token) baked into the URL or password at startup, setting this to `0` is a partial workaround — eventual reconnects from the database or the network will still fail. Prefer [MB_DB_AWS_IAM](#mb_db_aws_iam) (AWS RDS / Aurora) or [MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID](#mb_db_azure_managed_identity_client_id) (Azure).
+
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
@@ -28,6 +48,30 @@ Change this to a higher value if you notice that regular usage consumes all or c
 To see how many connections are being used, check the Metabase logs and look for lines that contains the following: `… App DB connections: 12/15 …`. In this example, 12 out of 15 available connections are being used.
 
 See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_max_connection_pool_size) for setting maximum connections to the databases connected to Metabase.
+
+### `MB_APPLICATION_DB_MAX_IDLE_TIME_EXCESS_CONNECTIONS_SECONDS`
+
+Type: integer<br>
+Default: `600`<br>
+Since: v62.0
+
+How long, in seconds, an idle connection beyond the minimum pool size may stay open before being culled. Set to `0` to never cull excess idle connections.
+
+### `MB_APPLICATION_DB_TEST_CONNECTION_ON_CHECKOUT`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v62.0
+
+When `true`, each connection is validated when checked out of the pool. Adds latency to every checkout. Useful when credentials may invalidate connections behind the pool's back.
+
+### `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `3600`<br>
+Since: v62.0
+
+How long, in seconds, before a checked-out but unreturned connection is forcibly reclaimed. The legacy name `MB_APPLICATION_DB_UNRETURNED_CONNECTION_TIMEOUT` continues to work; the suffixed form is preferred.
 
 ### `MB_ASYNC_QUERY_THREAD_POOL_SIZE`
 
@@ -57,6 +101,28 @@ Type: boolean<br>
 Default: `true`
 
 When set to `false`, Metabase will print migrations needed to be done in the application database and exit. Those migrations need to be applied manually. When `true`, Metabase will automatically make changes to the application database. This is not related to migrating away from H2.
+
+### `MB_DB_AWS_IAM`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v0.58.0
+
+When `true`, authenticate to the application database (PostgreSQL or MySQL/MariaDB on AWS RDS or Aurora) using AWS IAM instead of a password. Omit [MB_DB_PASS](#mb_db_pass). Auth tokens are refreshed automatically.
+
+Requires that AWS credentials are available via the standard credential chain (e.g. EKS IRSA, EC2 instance profile, ECS task role, or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`), that the credentials hold the `rds-db:connect` permission for your database user, and that the DB user is set up for IAM authentication.
+
+For MySQL/MariaDB, also set [MB_DB_SSL_CERT](#mb_db_ssl_cert), or pass the SSL parameters in [MB_DB_CONNECTION_URI](#mb_db_connection_uri).
+
+### `MB_DB_AZURE_MANAGED_IDENTITY_CLIENT_ID`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.51.0
+
+Authenticate to a PostgreSQL or MySQL application database using an Azure Managed Identity instead of a password. Set this to the client ID of a user-assigned Managed Identity attached to your compute resource. Omit [MB_DB_PASS](#mb_db_pass). Access tokens are refreshed automatically.
+
+Requires the Database authentication providers Pro/Enterprise feature.
 
 ### `MB_DB_CONNECTION_URI`
 
@@ -121,6 +187,17 @@ Default: `null`
 
 The port for [MB_DB_HOST](#mb_db_host).
 
+### `MB_DB_SSL_CERT`
+
+Type: string<br>
+Default: `null`<br>
+Since: v0.58.0
+
+SSL configuration for the application database. Used with [MB_DB_AWS_IAM](#mb_db_aws_iam) on MySQL/MariaDB, where SSL is required.
+
+- `"trust"` — trust the server certificate without validation.
+- A filesystem path to a PEM file — validate against the supplied CA certificate.
+
 ### `MB_DB_TYPE`
 
 Type: string (`"h2"`, `"postgres"`, `"mysql"`)<br>
@@ -141,6 +218,13 @@ Type: string<br>
 Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
+
+### `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION`
+
+Type: boolean<br>
+Default: `false`
+
+By default, when [MB_ENCRYPTION_SECRET_KEY](#mb_encryption_secret_key) is set, Metabase encrypts on startup any values that an older version of Metabase stored unencrypted, and logs a warning for each column it had to encrypt. When `true`, Metabase will refuse to start instead of encrypting such values, including settings saved by an older version.
 
 ### `MB_DISABLE_SCHEDULER`
 
@@ -191,7 +275,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Application logs](../monitor/application-logs.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -375,7 +459,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_PASSWORD_COMPLEXITY`
 
-Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
@@ -383,6 +467,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 - `weak` no character constraints
 - `normal` at least 1 digit
 - `strong` minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong-enough` minimum 15 characters
 
 ### `MB_PASSWORD_LENGTH`
 
@@ -400,12 +485,38 @@ Path of the "plugins" directory, which is used to store the Metabase database dr
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
+### `MB_PROMETHEUS_SERVER_PORT`
+
+Type: integer<br>
+Default: `null`
+
+Port to serve Prometheus metrics from. If set, Prometheus collectors are registered and served from `localhost:<port>/metrics`.
+
+See [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md).
+
 ### `MB_QP_CACHE_BACKEND`
 
 Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_QUARTZ_MAX_CONNECTION_POOL_SIZE`
+
+Type: integer<br>
+Default: `5`<br>
+Since: v64.0
+
+Maximum number of connections in the dedicated pool that Metabase's internal task scheduler (Quartz) uses to talk to the application database. This pool is separate from the main application database pool (see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size)), so scheduled tasks can always reach the application database even when the main pool is fully in use.
+
+Scheduler operations are short, so the default is enough for most deployments. Consider raising it only if you run a very large number of scheduled items (subscriptions, alerts, syncs) and see tasks firing late.
+
+### `MB_SESSION_SECRET_KEY`
+
+Type: string<br>
+Default: `null`
+
+When set, session keys are stored in the application database signed with this secret, so a valid session cannot be created or used with database access alone. Requirement: minimum 16 characters. Setting or changing this value logs out all active sessions.
 
 ### `MB_SETUP_TOKEN`
 
@@ -436,4 +547,4 @@ Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name
 Type: string<br>
 Default: `null`
 
-Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Certificate_Transparency for more information.

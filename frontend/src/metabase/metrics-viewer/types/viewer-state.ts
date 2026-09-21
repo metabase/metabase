@@ -1,32 +1,41 @@
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
-import type { MetricDefinition } from "metabase-lib/metric";
+import type { GeoSubtype } from "metabase/common/metrics/utils/dimension-types";
 import type {
-  CardDisplayType,
-  ConcreteTableId,
+  MetricsViewerDimensionBreakoutType,
+  MetricsViewerDisplayType,
+  SerializedDefinitionInfo,
+} from "metabase/common/metrics-viewer";
+import type {
+  DimensionGroup,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
+import type {
+  CardId,
   DimensionId,
+  IconName,
   MathOperator,
+  SeriesCard,
+  SingleSeries,
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
-import type { SerializedDefinitionInfo } from "../utils/url-serialization";
+import type { MetricSlot } from "../utils/metric-slots";
+
+export type {
+  MetricsViewerDimensionBreakoutType,
+  MetricsViewerDisplayType,
+} from "metabase/common/metrics-viewer";
 
 // ── Core types ──
-
-export type MetricsViewerDisplayType = Extract<
-  CardDisplayType,
-  "line" | "area" | "bar" | "map" | "scatter" | "scalar"
->;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 export type MetricExpressionId = `expression:${string}`;
 
-export type MetricsViewerTabType = DimensionType | "scalar";
-
-export interface StoredMetricsViewerTab {
+export interface StoredMetricsViewerDimensionBreakout {
   id: string;
-  type: MetricsViewerTabType;
+  type: MetricsViewerDimensionBreakoutType;
   label: string;
   dimensionBySlotIndex: Record<number, DimensionId>;
 }
@@ -36,7 +45,7 @@ export interface StoredMetricsViewerTab {
 export type ExpressionMetricSubToken = {
   type: "metric";
   sourceId: MetricSourceId;
-  count: number;
+  occurrenceCount: number;
   definition?: MetricDefinition;
   serializedDefinitionInfo?: SerializedDefinitionInfo;
 };
@@ -62,7 +71,7 @@ export type ExpressionSubToken =
  * The entry's definition has 0-1 projections where that projection IS the breakout.
  *
  * This is different from the computed/modified definition (from getModifiedDefinition)
- * which adds the tab's dimension as an additional projection.
+ * which adds the dimension breakout's dimension as an additional projection.
  */
 export interface MetricsViewerDefinitionEntry {
   id: MetricSourceId;
@@ -97,22 +106,44 @@ export function isExpressionEntry(
   return entry.type === "expression";
 }
 
-// ── Tab state ──
+// ── Dimension breakout state ──
 
-export interface MetricsViewerTabProjectionConfig {
+export interface MetricsViewerDimensionBreakoutProjectionConfig {
   temporalUnit?: TemporalUnit;
   binningStrategy?: string;
   dimensionFilter?: DimensionFilterValue;
 }
 
-export interface MetricsViewerTabState {
+export interface MetricsViewerDimensionBreakoutState {
   id: string;
-  type: MetricsViewerTabType;
+  type: MetricsViewerDimensionBreakoutType;
   label: string | null;
   display: MetricsViewerDisplayType;
   visualizationSettings?: Partial<VisualizationSettings>;
   dimensionMapping: Record<number, DimensionId | null>;
-  projectionConfig: MetricsViewerTabProjectionConfig;
+  projectionConfig: MetricsViewerDimensionBreakoutProjectionConfig;
+}
+
+export interface DimensionBreakoutInfo {
+  id?: string;
+  type: MetricsViewerDimensionBreakoutType;
+  label: string;
+  dimensionMapping: Record<number, string | null>;
+}
+
+export interface AvailableDimension {
+  icon: IconName;
+  group?: DimensionGroup;
+  canListValues?: boolean;
+  isPreferred?: boolean;
+  isDefault?: boolean;
+  geoSubtype?: GeoSubtype | null;
+  dimensionBreakoutInfo: DimensionBreakoutInfo;
+}
+
+export interface AvailableDimensionsResult {
+  shared: AvailableDimension[];
+  bySource: Record<MetricSourceId, AvailableDimension[]>;
 }
 
 // ── Page state ──
@@ -120,16 +151,18 @@ export interface MetricsViewerTabState {
 export interface MetricsViewerPageState {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // pristine definitions for unique metrics used in formula
   formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
-  tabs: MetricsViewerTabState[]; // visualization settings for a tab
-  selectedTabId: string | null;
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[]; // visualization settings for a dimension breakout
+  selectedDimensionBreakoutId: string | null;
+  showColumnLabels: boolean;
 }
 
 export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
   return {
     definitions: {},
     formulaEntities: [],
-    tabs: [],
-    selectedTabId: null,
+    dimensionBreakouts: [],
+    selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
   };
 }
 
@@ -159,6 +192,62 @@ export type SelectedMetric = {
   id: number;
   name: string | null;
   sourceType: "metric" | "measure";
-  tableId?: ConcreteTableId;
   isLoading?: boolean;
 };
+
+export interface SourceDisplayInfo {
+  type: "metric" | "measure";
+  name: string;
+}
+
+// ── Series types ──
+
+export type MetricsViewerSeries = SingleSeries<
+  SeriesCard & Required<Pick<SeriesCard, "id" | "name">>
+>;
+
+export interface UseViewerStateResult {
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
+  initialLoadComplete: boolean;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  metricSlots: MetricSlot[];
+  series: MetricsViewerSeries[];
+  cardIdToEntityIndex: Record<CardId, number>;
+  activeBreakoutColors: SourceBreakoutColorMap;
+  sourceColors: SourceColorMap;
+  selectedMetrics: SelectedMetric[];
+  sourceOrder: MetricSourceId[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  availableDimensions: AvailableDimensionsResult;
+  sidebarAvailableDimensions: AvailableDimensionsResult;
+  showColumnLabels: boolean;
+  isSidebarOpen: boolean;
+  closeSidebar: () => void;
+  openSidebar: () => void;
+
+  addMetric: (metric: SelectedMetric) => void;
+  swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
+  removeMetric: (id: number, sourceType: "metric" | "measure") => void;
+  selectDimensionBreakout: (
+    dimensionBreakoutInfo: DimensionBreakoutInfo,
+    options?: { updateExisting?: boolean },
+  ) => void;
+  updateActiveDimensionBreakout: (
+    setterFn: (
+      prev: MetricsViewerDimensionBreakoutState,
+    ) => MetricsViewerDimensionBreakoutState,
+  ) => void;
+  setShowColumnLabels: (showColumnLabels: boolean) => void;
+  setBreakoutDimension: (
+    entity: MetricDefinitionEntry,
+    dimension: ProjectionClause | undefined,
+  ) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
+}

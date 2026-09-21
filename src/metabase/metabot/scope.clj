@@ -17,6 +17,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 ;; SQL
+(api-scope/defscope agent-sql-construct "agent:sql:construct"
+  (deferred-tru "Construct SQL queries"))
 (api-scope/defscope agent-sql-create "agent:sql:create"
   (deferred-tru "Create SQL queries"))
 (api-scope/defscope agent-sql-edit "agent:sql:edit"
@@ -34,21 +36,79 @@
 (api-scope/defscope agent-query-execute "agent:query:execute"
   (deferred-tru "Execute queries"))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; Rationalized MCP v2 scopes (GHY-4225)
+;;; ──────────────────────────────────────────────────────────────────
+;;
+;; Five scopes a human can actually read on a consent screen, replacing the per-entity leaves below
+;; across the MCP surface. Those leaves stay declared: the agent API and Metabot's own tools still
+;; gate on them, and a token carrying one satisfies no other name, so they can never be renamed
+;; away. (MCP v1's UI resources still register the `agent:viz:mcp-ui:*` leaves too; that surface
+;; goes with v1's retirement.)
+;;
+;; The `agent:` prefix is deliberate — these gate the agent API and Metabot too, not only MCP, so an
+;; `mcp:` prefix would both misdescribe them and strand two prefixes side by side forever.
+
+(api-scope/defscope agent-content-read "agent:content:read"
+  (deferred-tru "See your Metabase content and data structure"))
+(api-scope/defscope agent-content-write "agent:content:write"
+  (deferred-tru "Create, edit and trash Metabase content"))
+(api-scope/defscope agent-query-run "agent:query:run"
+  (deferred-tru "Run queries against your connected databases and see the results"))
+(api-scope/defscope agent-sql-run "agent:sql:run"
+  (deferred-tru "Write and run its own raw SQL on your connected databases"))
+(api-scope/defscope agent-delivery-write "agent:delivery:write"
+  (deferred-tru "Set up scheduled delivery of your data to email addresses and Slack channels it chooses"))
+
+;; Question (saved cards via Agent API)
+(api-scope/defscope agent-question-create "agent:question:create"
+  (deferred-tru "Create saved questions"))
+(api-scope/defscope agent-question-update "agent:question:update"
+  (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-execute "agent:question:execute"
+  (deferred-tru "Run saved questions"))
+
+;; Metric (saved metric cards via Agent API)
+(api-scope/defscope agent-metric-create "agent:metric:create"
+  (deferred-tru "Create metrics"))
+(api-scope/defscope agent-metric-update "agent:metric:update"
+  (deferred-tru "Update metrics"))
+
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
   (deferred-tru "View transforms"))
-(api-scope/defscope agent-transforms-write "agent:transforms:write"
-  (deferred-tru "Create and edit transforms"))
 
 ;; Snippets
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Timelines
+(api-scope/defscope agent-timelines-read "agent:timelines:read"
+  (deferred-tru "View timelines and timeline events"))
+
+;; Explorations (Research mode)
+(api-scope/defscope agent-explorations-read "agent:explorations:read"
+  (deferred-tru "View exploration research candidates"))
+(api-scope/defscope agent-explorations-write "agent:explorations:write"
+  (deferred-tru "Edit an exploration research plan"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-update "agent:dashboard:update"
+  (deferred-tru "Update dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
+
+;; Collection
+;; `create` still gates the v1 `create_collection` endpoint; tokens carry the literal string, so it
+;; can never be renamed away. The v2 surface gates on `agent:content:write` instead.
+(api-scope/defscope agent-collection-create "agent:collection:create"
+  (deferred-tru "Create collections"))
+
+;; SQL execution (MCP execute_sql tool, distinct from execute_query)
+(api-scope/defscope agent-sql-execute "agent:sql:execute"
+  (deferred-tru "Execute raw SQL queries"))
 
 ;; Document
 (api-scope/defscope agent-document-read "agent:document:read"
@@ -65,8 +125,26 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
+;; Kept explicit (master re-added them after GHY-4225): the v1 MCP UI resources still register these
+;; literal strings and they carry their own consent-screen descriptions. The v2 surface does not gate
+;; on them — see the note below.
+(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
+  (deferred-tru "Render query visualizations in the MCP UI"))
+(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
+  (deferred-tru "Render drill-through visualizations in the MCP UI"))
+;; The v2 UI resources declare `agent:query:run`, not a viz scope of their own. The shell itself is
+;; served to any token -- a host reads it alongside the tool call, and it carries no data; the scope
+;; is what the UI credential a shell embeds costs. It is `agent:query:run` because rendering a chart
+;; is what running a query looks like on screen, and `visualize_query`'s fresh-query path means a
+;; viz-only grant would run a query the user thought they had declined. Client capability is gated
+;; by the `:mcp-app-ui` extension, and the iframe executes under the user's own session, so a
+;; separate scope was not a data boundary. The `agent:viz:mcp-ui:*` leaves declared above stay
+;; exactly as they shipped in v0.62: this slice adds scopes and removes none, so every token minted
+;; against the old concrete strings keeps matching (grant-side matching is prefix-based, and the
+;; `agent:viz:*` wildcard covers them as well).
 
 ;; Alert
+;; Gates the agent-API create-alert endpoint; v2's alert_write gates on `agent:delivery:write`.
 (api-scope/defscope agent-alert-create "agent:alert:create"
   (deferred-tru "Create alerts"))
 
@@ -80,21 +158,13 @@
 
 ;; Resource
 (api-scope/defscope agent-resource-read "agent:resource:read"
-  (deferred-tru "View resources"))
+  (deferred-tru "Read MCP resources"))
 
 ;; Todo
 (api-scope/defscope agent-todo-read "agent:todo:read"
   (deferred-tru "View todos"))
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
-
-;; Table
-(api-scope/defscope agent-table-read "agent:table:read"
-  (deferred-tru "View table metadata and field values"))
-
-;; Metric
-(api-scope/defscope agent-metric-read "agent:metric:read"
-  (deferred-tru "View metric definitions"))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
@@ -135,6 +205,18 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+(def ^:dynamic *current-user-capabilities*
+  "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
+  alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
+  match the manifest, which is built from the same capabilities. Defaults to `#{}`."
+  #{})
+
+(def ^:dynamic *current-loadable-skill-ids*
+  "Request-scoped atom containing the set of skill ids that appeared in the current
+  profile's skill manifest. When bound, `load_skill` rejects ids outside this set
+  even if the skill otherwise satisfies capability/scope gates."
+  nil)
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission → Scope mapping
 ;;; ──────────────────────────────────────────────────────────────────
@@ -143,8 +225,32 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
+   ;; NLQ grants `agent:content:read` (not the `agent:content:*` wildcard): an NLQ-only user reads
+   ;; content and data structure, but content *writes* are an other-tools capability. Granting the
+   ;; wildcard here would satisfy `agent:content:write` too, over-granting NLQ-only users.
+   ;;
+   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+   ;; them silently scope-filtered away.
+   :permission/metabot-nlq            #{"agent:notebook:*"
+                                        "agent:query:*"
+                                        "agent:question:*"
+                                        "agent:metric:*"
+                                        "agent:timelines:*"
+                                        "agent:explorations:*"
+                                        "agent:content:read"}
+   ;; `agent:content:*` (the full read+write wildcard) rides other-tools, which owns content writes.
+   ;; `agent:delivery:*` covers `agent:delivery:write`, the v2 scope that gates scheduled-delivery
+   ;; setup — no other bucket's wildcard reaches it, so without this the scope would be dead config.
+   :permission/metabot-other-tools    #{"agent:viz:*"
+                                        "agent:dashboard:*"
+                                        "agent:document:*"
+                                        "agent:alert:*"
+                                        "agent:delivery:*"
+                                        "agent:timelines:*"
+                                        "agent:collection:*"
+                                        "agent:content:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
@@ -179,6 +285,16 @@
   metabase-enterprise.metabot.permissions
   [_user-id]
   all-yes-permissions)
+
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.

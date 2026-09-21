@@ -1,0 +1,82 @@
+import type {
+  DataApp,
+  DataAppRepoStatus,
+  DataAppUserPermissionWarning,
+  GetDataAppUserPermissionWarningsRequest,
+  SetDataAppEnabledRequest,
+} from "metabase-types/api";
+
+import { EnterpriseApi } from "./api";
+import { idTag, invalidateTags, listTag } from "./tags";
+
+// Repo status is a single resource; tag it so it and the app list both refresh
+// when a sync changes things.
+const REPO_STATUS_TAG = idTag("data-app", "REPO-STATUS");
+
+type ListDataAppsOptions = { available?: boolean };
+
+export const dataAppApi = EnterpriseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    listDataApps: builder.query<DataApp[], ListDataAppsOptions | void>({
+      query: (options) => ({
+        method: "GET",
+        url: "/api/apps",
+        params: options,
+      }),
+      providesTags: (apps = []) => [
+        listTag("data-app"),
+        ...apps.map((app) => idTag("data-app", app.name)),
+      ],
+    }),
+    getDataApp: builder.query<DataApp, string>({
+      query: (name) => ({
+        method: "GET",
+        url: `/api/apps/${encodeURIComponent(name)}`,
+      }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
+    }),
+    getDataAppRepoStatus: builder.query<DataAppRepoStatus, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/apps/repo-status",
+      }),
+      providesTags: () => [REPO_STATUS_TAG],
+    }),
+    getDataAppUserPermissionWarnings: builder.query<
+      DataAppUserPermissionWarning[],
+      GetDataAppUserPermissionWarningsRequest
+    >({
+      query: ({ name, user_ids }) => ({
+        method: "POST",
+        url: `/api/apps/${encodeURIComponent(name)}/user-permission-warnings`,
+        body: { user_ids },
+      }),
+    }),
+    setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
+      query: ({ name, enabled }) => ({
+        method: "PUT",
+        url: `/api/apps/${encodeURIComponent(name)}`,
+        body: { enabled },
+      }),
+      invalidatesTags: (_, error, { name }) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+    }),
+    deleteDataApp: builder.mutation<void, string>({
+      query: (name) => ({
+        method: "DELETE",
+        url: `/api/apps/${encodeURIComponent(name)}`,
+      }),
+      invalidatesTags: (_, error, name) =>
+        invalidateTags(error, [listTag("data-app"), idTag("data-app", name)]),
+    }),
+  }),
+});
+
+export const {
+  useListDataAppsQuery,
+  useGetDataAppQuery,
+  useGetDataAppRepoStatusQuery,
+  useGetDataAppUserPermissionWarningsQuery,
+  useSetDataAppEnabledMutation,
+  useDeleteDataAppMutation,
+} = dataAppApi;

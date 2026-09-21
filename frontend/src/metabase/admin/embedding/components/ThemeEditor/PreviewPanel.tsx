@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Box, Center, Flex, Loader, Text } from "metabase/ui";
 
 import { EnableEmbeddingPrompt } from "./EnableEmbeddingPrompt";
@@ -25,9 +25,9 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
   const resource = selectedResource ?? defaultResource;
 
   return (
-    <Flex direction="column" flex={1} bg="background-secondary">
-      <Box p="xl" pb="sm">
-        <Flex align="center" justify="space-between" gap="md">
+    <Flex direction="column" flex={1} bg="background_page-secondary">
+      <Box p="xxl" pb="sm">
+        <Flex align="center" justify="space-between" gap="lg">
           <Text fw={700} fz="xl">{t`Theme preview`}</Text>
           {isEmbeddingReady && resource && (
             <PreviewResourcePicker
@@ -37,7 +37,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
           )}
         </Flex>
       </Box>
-      <Box flex={1} p="xl" pt="sm" style={{ overflow: "hidden" }}>
+      <Box flex={1} p="xxl" pt="sm" style={{ overflow: "hidden" }}>
         {!isEmbeddingReady ? (
           <EnableEmbeddingPrompt
             isEnabled={isSimpleEmbeddingEnabled}

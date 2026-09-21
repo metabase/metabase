@@ -5,20 +5,17 @@ import { combineReducers } from "@reduxjs/toolkit";
 import { Api } from "metabase/api";
 import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import { documentsReducer as documents } from "metabase/documents/documents.slice";
+import { explorationsReducer as explorations } from "metabase/explorations/explorations.slice";
+import { entitiesReducer } from "metabase/metadata-store";
 import * as parameters from "metabase/parameters/reducers";
-import { reducer as analyticsExport } from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import { reducer as downloads } from "metabase/redux/downloads";
 import { embed } from "metabase/redux/embed";
 import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
-import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
-import { requestsReducer } from "metabase/redux/requests";
-import { settings } from "metabase/redux/settings";
 import { modal } from "metabase/redux/ui";
 import { undoReducer as undo } from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
-import { currentUser } from "metabase/redux/user";
 
 import { metabotReducer as metabot } from "./metabot/state";
 
@@ -27,15 +24,10 @@ export const commonReducers = {
   app,
   embed,
   embeddingDataPicker,
-  currentUser,
-  // "entities" framework needs control over "requests" state
-  requests: enhanceRequestsReducer(requestsReducer),
-  settings,
   undo,
-  entities,
+  entities: entitiesReducer,
   documents,
   upload,
-  analyticsExport,
   auth,
   [Api.reducerPath]: Api.reducer,
   modal,
@@ -43,4 +35,5 @@ export const commonReducers = {
   parameters: combineReducers(parameters),
   downloads,
   metabot,
+  explorations,
 };

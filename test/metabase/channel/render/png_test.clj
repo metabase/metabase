@@ -51,11 +51,13 @@
       (#'png/render-to-png width)))
 
 (defn- render-with-wrapping
-  [content width]
-  (-> {:content     content
-       :attachments {}}
-      (png/render-html-to-png width)
-      bytes->image))
+  ([content width]
+   (render-with-wrapping content width nil))
+  ([content width options]
+   (-> {:content     content
+        :attachments {}}
+       (png/render-html-to-png width options)
+       bytes->image)))
 
 (deftest wrap-non-lato-characters-test
   (testing "HTML Content inside tables with characters not supported by the Lato font are wrapped in a span."
@@ -83,3 +85,47 @@
       ;; We assert that the working render is wider based on the assumption (verified manually by
       ;; actually looking at the rendered images) that the correctly rendered glyphs are wider.
       (is (< (.getWidth broken-render) (.getWidth working-render))))))
+
+(deftest render-html-to-png-scale-test
+  (testing "the :channel.render/scale option supersamples the raster without changing layout"
+    (let [content              [:div {:style "width: 100px; height: 40px;"} "hello"]
+          ^BufferedImage png1x (render-with-wrapping content 200)
+          ^BufferedImage png2x (render-with-wrapping content 200 {:channel.render/scale 2.0})]
+      (is (= (* 2 (.getWidth png1x)) (.getWidth png2x)))
+      (is (= (* 2 (.getHeight png1x)) (.getHeight png2x))))))
+
+(deftest render-html-to-png-scale-fn-test
+  (testing "a function :channel.render/scale is handed the laid-out content size and its factor applied"
+    (let [content              [:div {:style "width: 100px; height: 40px;"} "hello"]
+          ^BufferedImage png1x (render-with-wrapping content 200)
+          seen                 (atom nil)
+          ^BufferedImage png3x (render-with-wrapping content 200
+                                                     {:channel.render/scale (fn [w h]
+                                                                              (reset! seen [w h])
+                                                                              3.0)})]
+      (testing "it sees the dimensions a 1:1 render would have produced"
+        (is (= [(.getWidth png1x) (.getHeight png1x)] @seen)))
+      (testing "and the factor it returns is what the raster is scaled by"
+        (is (= (* 3 (.getWidth png1x)) (.getWidth png3x)))
+        (is (= (* 3 (.getHeight png1x)) (.getHeight png3x)))))))
+
+(defn- edge-alphas
+  "The set of alpha values along `img`'s last column and last row."
+  [^BufferedImage img]
+  (let [w     (.getWidth img)
+        h     (.getHeight img)
+        alpha (fn [x y] (bit-and (bit-shift-right (.getRGB img x y) 24) 0xFF))]
+    (into (sorted-set)
+          (concat (map #(alpha (dec w) %) (range h))
+                  (map #(alpha % (dec h)) (range w))))))
+
+(deftest render-html-to-png-fractional-scale-edge-test
+  (testing "a fractional scale leaves no unpainted edge -- the canvas never reaches past what CSSBox paints"
+    ;; A canvas rounded *up* to a whole pixel leaves its last row/column transparent, which viewers that
+    ;; resample without premultiplying (poppler) fringe grey. Only fractional factors hit this; an integer
+    ;; one lands the paint exactly on the canvas edge.
+    (let [content [:div {:style "width: 137px; height: 43px;"} "hello"]]
+      (doseq [factor [1.4667844117506315 1.5964107160215022 2.000303023900741 3.9005602730645073]]
+        (testing (str "scale " factor)
+          (is (= #{255}
+                 (edge-alphas (render-with-wrapping content 233 {:channel.render/scale factor})))))))))

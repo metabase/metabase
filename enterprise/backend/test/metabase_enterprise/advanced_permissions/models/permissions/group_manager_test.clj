@@ -23,7 +23,6 @@
                                                  :is_group_manager false}
                                                 {:id               (:id group-2)
                                                  :is_group_manager false}])
-
           (is (= #{{:id               (:id (perms-group/all-users))
                     :is_group_manager false}
                    {:id               (:id group-1)
@@ -31,7 +30,6 @@
                    {:id               (:id group-2)
                     :is_group_manager false}}
                  (user-group-memberships user))))))
-
     (testing "should be able to remove User from an existing groups"
       (mt/with-user-in-groups
         [group-1 {:name "Group 1"}
@@ -47,7 +45,6 @@
                    {:id               (:id group-1)
                     :is_group_manager false}}
                  (user-group-memberships user))))))
-
     (testing "should be able to add and remove users' groups at the same time"
       (mt/with-user-in-groups
         [group-1 {:name "Group 1"}
@@ -63,7 +60,6 @@
                    {:id               (:id group-2)
                     :is_group_manager false}}
                  (user-group-memberships user))))))
-
     (testing "Should be able to promote an existing user to Group manager"
       (mt/with-user-in-groups
         [group {:name "Group"}
@@ -78,7 +74,6 @@
                    {:id               (:id group)
                     :is_group_manager true}}
                  (user-group-memberships user))))))
-
     (testing "No-op should be fine"
       (mt/with-user-in-groups
         [group {:name "Group"}

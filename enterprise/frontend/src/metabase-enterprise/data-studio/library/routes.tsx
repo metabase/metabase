@@ -1,20 +1,27 @@
-import { IndexRoute, Route } from "react-router";
+import type { ComponentType } from "react";
 
-import { getDataStudioSegmentRoutes } from "metabase/data-studio/segments/routes";
+import { Route } from "metabase/router";
 
-import { LibraryPage } from "./LibraryPage";
 import { LibrarySectionLayout } from "./LibrarySectionLayout";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
-export const getDataStudioLibraryRoutes = () => {
+/**
+ * The section layout stays eager: it frames every page under it, so it is on
+ * screen before any of them arrive.
+ */
+const libraryPage = () =>
+  import(/* webpackChunkName: "data-studio-library" */ "./LibraryPage").then(
+    ({ LibraryPage }) => ({ Component: LibraryPage }),
+  );
+
+export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
-    <Route path="library" component={LibrarySectionLayout}>
-      <IndexRoute component={LibraryPage} />
-      {getDataStudioTableRoutes()}
+    <Route path="library" element={<LibrarySectionLayout />}>
+      <Route index lazy={libraryPage} />
+      {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
-      {getDataStudioSegmentRoutes()}
       {getDataStudioSnippetRoutes()}
     </Route>
   );

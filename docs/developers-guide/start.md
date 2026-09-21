@@ -6,7 +6,7 @@ redirect_from:
 
 # Developer Guide
 
-This guide contains detailed information on how to work on Metabase codebase.
+This guide contains detailed information on how to work on the Metabase codebase.
 
 ## Contributing
 
@@ -42,6 +42,10 @@ This guide contains detailed information on how to work on Metabase codebase.
 
 - [Community drivers](./community-drivers.md)
 - [Guide to writing a driver](drivers/start.md)
+
+## Customizing Metabase
+
+- [Building custom visualizations](./custom-visualizations.md)
 
 ## Metabase documentation
 

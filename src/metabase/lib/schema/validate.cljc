@@ -13,6 +13,18 @@
    [:type [:= :missing-table-alias]]
    [:name :string]])
 
+(mr/def ::missing-table-error
+  "A stage's `:source-table` references a table that is missing or inactive (e.g. dropped during sync).
+   The offending table is identified by the `:source-entity-*` keys, so no `:name` is carried."
+  [:map
+   [:type [:= :missing-table]]])
+
+(mr/def ::missing-card-error
+  "A stage's `:source-card` references a card that has been deleted.
+   The offending card is identified by the `:source-entity-*` keys, so no `:name` is carried."
+  [:map
+   [:type [:= :missing-card]]])
+
 (mr/def ::duplicate-column-error
   [:map
    [:type [:= :duplicate-column]]
@@ -28,7 +40,8 @@
    [:message :string]])
 
 (mr/def ::validate-error-type
-  [:enum :missing-column :missing-table-alias :duplicate-column :syntax-error :validation-exception-error])
+  [:enum :missing-column :missing-table-alias :missing-table :missing-card :duplicate-column :syntax-error
+   :validation-exception-error])
 
 (mr/def ::error
   [:and
@@ -36,13 +49,15 @@
    [:multi {:dispatch #(-> % :type keyword)}
     [:missing-column             [:ref ::missing-column-error]]
     [:missing-table-alias        [:ref ::missing-table-alias-error]]
+    [:missing-table              [:ref ::missing-table-error]]
+    [:missing-card               [:ref ::missing-card-error]]
     [:duplicate-column           [:ref ::duplicate-column-error]]
     [:syntax-error               [:ref ::syntax-error]]
     [:validation-exception-error [:ref ::validation-exception-error]]]])
 
 (mr/def ::source-entity-type
   "The type of the source entity causing an error."
-  [:enum :table :card])
+  [:enum :table :card :transform])
 
 (mr/def ::source-entity
   "Optional source entity tracking fields for dependency analysis."
@@ -61,6 +76,8 @@
    [:multi {:dispatch #(-> % :type keyword)}
     [:missing-column             [:merge [:ref ::missing-column-error] [:ref ::source-entity]]]
     [:missing-table-alias        [:merge [:ref ::missing-table-alias-error] [:ref ::source-entity]]]
+    [:missing-table              [:merge [:ref ::missing-table-error] [:ref ::source-entity]]]
+    [:missing-card               [:merge [:ref ::missing-card-error] [:ref ::source-entity]]]
     [:duplicate-column           [:merge [:ref ::duplicate-column-error] [:ref ::source-entity]]]
     [:syntax-error               [:merge [:ref ::syntax-error] [:ref ::source-entity]]]
     [:validation-exception-error [:merge [:ref ::validation-exception-error] [:ref ::source-entity]]]]])

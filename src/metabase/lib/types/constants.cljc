@@ -11,7 +11,6 @@
        (reduce (fn [m typ] (doto m (gobj/set (name typ) typ)))
                #js {}
                (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))))
-
      ;; primary field types used for picking operators, etc
      (def ^:export key-number "JS-friendly access for the number type" ::number)
      (def ^:export key-string "JS-friendly access for the string type" ::string)
@@ -25,12 +24,10 @@
      (def ^:export key-json "JS-friendly access for the JSON type" ::json)
      (def ^:export key-xml "JS-friendly access for the JSON type" ::xml)
      (def ^:export key-structured "JS-friendly access for the structured type" ::structured)
-
      ;; other types used for various purposes
      (def ^:export key-summable "JS-friendly access for the summable type" ::summable)
      (def ^:export key-scope "JS-friendly access for the scope type" ::scope)
      (def ^:export key-category "JS-friendly access for the category type" ::category)
-
      (def ^:export key-unknown "JS-friendly access for the unknown type" ::unknown)))
 
 ;; NOTE: be sure not to create cycles using the "other" types

@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Alert,
   Box,
@@ -26,7 +26,7 @@ import {
   getColumnName,
   getDescription,
   getInputLabel,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -50,6 +50,7 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
           ...map,
           [limitObj.tenant_id]: limitObj.max_usage,
         }),
+        // Unjustified type cast. FIXME
         {} as TenantLimitsMap,
       ),
     [tenantLimits],
@@ -118,18 +119,23 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
-    <Stack gap="xl" data-testid="tenant-limits-tab">
+    <Stack gap="xxl" data-testid="tenant-limits-tab">
       <Text c="text-secondary">{getDescription(limitType)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
         error={hasTenantsError ? t`Error loading tenants` : null}
       >
         {noTenantsToShow ? (
-          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
+          <Alert
+            size="compact"
+            mb="lg"
+            color="error"
+            icon={<Icon name="warning" />}
+          >
             {t`No tenants to show`}
           </Alert>
         ) : (
-          <Stack gap="xl">
+          <Stack gap="xxl">
             <TextInput
               placeholder={t`Search...`}
               value={search}
@@ -166,7 +172,10 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                               placeholder={placeholder}
                               value={inputValue}
                               onChange={(value) => handleChange(tenant, value)}
-                              classNames={{ input: S.LimitInput }}
+                              classNames={{
+                                wrapper: S.LimitInputWrapper,
+                                section: S.InputUnitSection,
+                              }}
                               error={
                                 isOverInstanceLimit
                                   ? t`Can't be higher than the instance limit`
@@ -179,10 +188,12 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                                 limitType,
                                 limitPeriod,
                               )}
-                              suffix={getMaxUsageInputSuffix(
+                              rightSection={getMaxUsageInputUnit(
                                 limitType,
                                 localLimitsMap?.[tenant.id],
                               )}
+                              rightSectionWidth="auto"
+                              rightSectionPointerEvents="none"
                             />
                           </td>
                         </tr>

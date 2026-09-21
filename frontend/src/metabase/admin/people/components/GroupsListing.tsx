@@ -3,14 +3,18 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useListApiKeysQuery } from "metabase/api";
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { getErrorMessage } from "metabase/api/utils";
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
@@ -22,14 +26,10 @@ import {
   Menu,
   UnstyledButton,
 } from "metabase/ui";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
+import { useListApiKeysQuery } from "../../settings/api/api-key";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
@@ -144,17 +144,17 @@ function ActionsPopover({
 
   return (
     <>
-      <Menu shadow="md" width={200} position="bottom-end">
+      <Menu shadow="sm" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-tertiary" name="ellipsis" />
+            <Icon c="text-disabled" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item onClick={() => onEditGroupClicked(group)}>
             {t`Edit Name`}
           </Menu.Item>
-          <Menu.Item c="danger" onClick={openModal}>
+          <Menu.Item c="feedback-negative" onClick={openModal}>
             {t`Remove Group`}
           </Menu.Item>
         </Menu.Dropdown>
@@ -187,7 +187,7 @@ function EditingGroupRow({
   const textIsValid = group.name && group.name.length;
 
   return (
-    <Box component="tr" bd="1px solid var(--mb-color-brand)">
+    <Box component="tr" bd="1px solid var(--mb-color-core-brand)">
       <td>
         <Input
           fz="lg"
@@ -215,6 +215,28 @@ function EditingGroupRow({
 
 // ------------------------------------------------------------ Groups Table: not editing ------------------------------------------------------------
 
+function GroupNameCell({ group }: { group: GroupInfo }) {
+  const name = getGroupNameLocalized(group);
+  const membersLink = PLUGIN_TENANTS.isTenantGroup(group)
+    ? `/admin/people/tenants/groups/${group.id}`
+    : `/admin/people/groups/${group.id}`;
+
+  return (
+    <Flex
+      component={Link}
+      align="center"
+      to={membersLink}
+      className={CS.link}
+      gap="md"
+    >
+      <UserAvatar user={{ name }} bg={groupIdToColor(group.id)} />
+      <Box component="span" fw={700} c="core-brand">
+        {name}
+      </Box>
+    </Flex>
+  );
+}
+
 interface GroupRowProps {
   group: GroupInfo;
   groupBeingEdited: GroupInfo | null;
@@ -236,18 +258,11 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const backgroundColor = groupIdToColor(group.id);
   const showActionsButton =
     !isDefaultGroup(group) &&
     !isAdminGroup(group) &&
     !PLUGIN_TENANTS.isExternalUsersGroup(group);
   const editing = groupBeingEdited && groupBeingEdited.id === group.id;
-
-  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
-
-  const membersLink = isTenantGroup
-    ? `/admin/people/tenants/groups/${group.id}`
-    : `/admin/people/groups/${group.id}`;
 
   return editing ? (
     <EditingGroupRow
@@ -260,21 +275,7 @@ function GroupRow({
   ) : (
     <tr aria-label={`group-${group.id}-row`}>
       <td>
-        <Flex
-          component={Link}
-          align="center"
-          to={membersLink}
-          className={CS.link}
-          gap="md"
-        >
-          <UserAvatar
-            user={{ name: getGroupNameLocalized(group) }}
-            bg={backgroundColor}
-          />
-          <Box component="span" fw={700} c="brand">
-            {getGroupNameLocalized(group)}
-          </Box>
-        </Flex>
+        <GroupNameCell group={group} />
       </td>
       <td aria-label="member-count">
         {group.member_count || 0}
@@ -299,7 +300,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-tertiary">
+    <Box component="span" c="text-disabled">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
@@ -517,7 +518,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
           <Button
             variant="filled"
             onClick={onCreateAGroupButtonClicked}
-            flex="0 1 140px"
           >{t`Create a group`}</Button>
         )
       }
@@ -548,7 +548,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "brand" }}
+        confirmButtonProps={{ color: "core-brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

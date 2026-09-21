@@ -1,0 +1,248 @@
+/* The toolbar is dev-only chrome, not part of the app being built: it keeps its
+   own palette instead of the instance theme, so it looks the same whatever the
+   app is themed as, and renders identically before the SDK bundle has loaded. */
+
+.DevToolbar {
+  --toolbar-brand: #509ee3;
+  --toolbar-error: #e35050;
+  --toolbar-border: #eeecec;
+  --toolbar-surface: #fff;
+  --toolbar-surface-muted: #f9fbfc;
+  --toolbar-surface-error: hsl(0deg 76% 97%);
+  --toolbar-surface-warning: hsl(45deg 100% 96%);
+  --toolbar-text: #4c5773;
+  --toolbar-text-muted: #696e7b;
+  --toolbar-text-faint: #949aab;
+  --toolbar-text-on-brand: #fff;
+  --toolbar-shadow: rgb(0 0 0 / 13%);
+
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  /* Stay above any host-app content. */
+  z-index: 2147483647;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 13px;
+}
+
+.Toggle {
+  display: block;
+  margin-left: auto;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--toolbar-text-on-brand);
+  background: var(--toolbar-brand);
+  box-shadow: 0 2px 8px var(--toolbar-shadow);
+  font-weight: 700;
+}
+
+.ToggleHasErrors {
+  background: var(--toolbar-error);
+}
+
+/* Chrome-devtools-style bottom dock: full-width, drag the top edge to resize.
+   Height is set inline from component state (see `startResize`). */
+.Panel {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--toolbar-surface);
+  color: var(--toolbar-text);
+  border-top: 1px solid var(--toolbar-border);
+  box-shadow: 0 8px 24px var(--toolbar-shadow);
+}
+
+/* The drag handle along the panel's top edge. */
+.ResizeHandle {
+  flex: 0 0 auto;
+  height: 6px;
+  cursor: ns-resize;
+  background: var(--toolbar-border);
+}
+
+.ResizeHandle:hover {
+  background: var(--toolbar-brand);
+}
+
+.Header,
+.Tabs {
+  display: flex;
+  background: var(--toolbar-surface-muted);
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.Header {
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.Tabs {
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.Title {
+  font-weight: 700;
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Action,
+.Tab {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.Action {
+  padding: 0;
+  color: var(--toolbar-brand);
+}
+
+.Tab {
+  padding: 8px 10px;
+  color: var(--toolbar-text-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.TabActive {
+  color: var(--toolbar-brand);
+  border-bottom-color: var(--toolbar-brand);
+}
+
+/* After `.TabActive` so a selected tab holding problems still reads as such —
+   the underline keeps showing which tab is open. */
+.TabHasAlerts {
+  color: var(--toolbar-error);
+}
+
+.Body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.Note {
+  margin: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--toolbar-surface-muted);
+  color: var(--toolbar-text-muted);
+  font-size: 12px;
+}
+
+.StatusBody {
+  padding: 8px;
+}
+
+.StatusRow {
+  display: flex;
+  gap: 12px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.StatusLabel {
+  flex: 0 0 140px;
+  font-weight: 600;
+  color: var(--toolbar-text-muted);
+}
+
+.Problem,
+.Warning {
+  margin: 8px 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.Problem {
+  background: var(--toolbar-surface-error);
+  color: var(--toolbar-error);
+}
+
+.Warning {
+  background: var(--toolbar-surface-warning);
+  color: var(--toolbar-text);
+}
+
+/* Collapsed by default, like a DevTools console entry: the headline is always
+   visible, the stack frames only when asked for. */
+.EntrySummary {
+  cursor: pointer;
+}
+
+.StatusValue,
+.EntryMessage,
+.EntryDetail {
+  word-break: break-word;
+  font-family: Monaco, ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.EntryMessage {
+  white-space: pre-wrap;
+  color: var(--toolbar-text);
+}
+
+.EntryDetail {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--toolbar-border);
+  white-space: pre-wrap;
+  font-size: 11px;
+  color: var(--toolbar-text-muted);
+}
+
+.EntryFailed {
+  border-left: 3px solid var(--toolbar-error);
+}
+
+.Filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 4px;
+  color: var(--toolbar-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.EntryHint,
+.Empty {
+  color: var(--toolbar-text-muted);
+}
+
+.EntryHint {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.Empty {
+  padding: 12px;
+}
+
+.Entry {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--toolbar-border);
+}
+
+.EntryTime {
+  color: var(--toolbar-text-faint);
+  font-size: 11px;
+  margin-bottom: 2px;
+}

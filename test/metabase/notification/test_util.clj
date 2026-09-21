@@ -1,5 +1,6 @@
 (ns metabase.notification.test-util
   "Define the `metabase-test` channel and notification test utilities."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.test-util]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -8,12 +9,13 @@
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.slack :as slack]
+   [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
-   [metabase.notification.task.send :as task.notification]
+   [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -61,7 +63,6 @@
                 :content "<svg width=\"300\" height=\"130\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect width=\"200\" height=\"100\" x=\"10\" y=\"10\" rx=\"20\" ry=\"20\" fill=\"blue\" />\n</svg>"})]
      ~@body))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
   (with-javascript-visualization-stub
@@ -93,12 +94,12 @@
   `(let [topics# ~topics]
      (try
        (doseq [topic# topics#]
-         (derive topic# :metabase/event))
+         (events/derive! topic# :metabase/event))
        (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
          ~@body)
        (finally
          (doseq [topic# topics#]
-           (underive topic# :metabase/event))))))
+           (events/underive! topic# :metabase/event))))))
 
 (defmacro with-notification-cleanup!
   "Macro that clean ups notification related models"
@@ -119,6 +120,7 @@
 
 (def default-card-name "Card notification test card")
 
+;; the `!` calls only create and delete this helper's own temp notification, so parallel use is safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
@@ -149,7 +151,6 @@
                                 {:name          default-card-name
                                  :dataset_query (mt/mbql-query products {:aggregation [[:count]]
                                                                          :breakout    [$category]})}
-
                                 card)]
     (do-with-temp-notification
      {:notification  (merge {:payload      (assoc notification-card
@@ -224,7 +225,6 @@
   (with-channel-fixtures (keys channel-type->assert-fn)
     (let [channel-type->captured-message (with-captured-channel-send!
                                            (notification/send-notification! notification))]
-
       (doseq [[channel-type assert-fn] channel-type->assert-fn]
         (testing (format "chanel-type = %s" channel-type)
           (assert-fn (get channel-type->captured-message channel-type)))))))
@@ -261,8 +261,8 @@
   [subscription-id]
   (map
    #(select-keys % [:key :schedule :data :timezone])
-   (task/existing-triggers @#'task.notification/send-notification-job-key
-                           (#'task.notification/send-notification-trigger-key subscription-id))))
+   (task/existing-triggers notification.task.send-trigger/send-notification-job-key
+                           (#'notification.task.send-trigger/send-notification-trigger-key subscription-id))))
 
 (defn notification-triggers
   "Return the quartz triggers for a notification."
@@ -275,7 +275,7 @@
   ([subscription-id cron-schedule]
    (subscription->trigger-info subscription-id cron-schedule "UTC"))
   ([subscription-id cron-schedule timezone]
-   {:key      (.getName ^org.quartz.TriggerKey (#'task.notification/send-notification-trigger-key subscription-id))
+   {:key      (.getName ^org.quartz.TriggerKey (#'notification.task.send-trigger/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
     :data     {"subscription-id" subscription-id}
     :timezone timezone}))

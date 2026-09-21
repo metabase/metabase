@@ -1,28 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
-import { isPublicCollection } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { isPublicCollection } from "metabase/common/collections/utils";
+import { DashboardName } from "metabase/common/components/DashboardName";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
-import { useDashboardQuery } from "metabase/common/hooks";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappings,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   ClickBehavior,
@@ -40,14 +39,19 @@ import S from "../LinkOptions.module.css";
 const LINK_TARGETS = {
   // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
-    Entity: Questions,
+    // Unjustified type cast. FIXME
+    Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
+      <QuestionName id={id as CardId | undefined} />
+    ),
     PickerComponent: QuestionPickerModal,
     pickerIcon: "bar" as const,
     getModalTitle: () => t`Pick a question to link to`,
     getPickerButtonLabel: () => t`Pick a question…`,
   },
   dashboard: {
-    Entity: Dashboards,
+    Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
+      <DashboardName id={id} />
+    ),
     PickerComponent: DashboardPickerModal,
     pickerIcon: "dashboard" as const,
     getModalTitle: () => t`Pick a dashboard to link to`,
@@ -66,16 +70,16 @@ function PickerControl({
   onCancel: () => void;
   onClick?: () => void;
 }) {
-  const { Entity, pickerIcon, getPickerButtonLabel } =
+  const { Name, pickerIcon, getPickerButtonLabel } =
     LINK_TARGETS[clickBehavior.linkType];
 
   const renderLabel = useCallback(() => {
     const hasSelectedTarget = clickBehavior.targetId != null;
     if (hasSelectedTarget) {
-      return <Entity.Name id={clickBehavior.targetId} />;
+      return <Name id={clickBehavior.targetId} />;
     }
     return getPickerButtonLabel();
-  }, [Entity, clickBehavior.targetId, getPickerButtonLabel]);
+  }, [Name, clickBehavior.targetId, getPickerButtonLabel]);
 
   return (
     <Button.Group>
@@ -141,10 +145,7 @@ function TargetClickMappings({
       ? { id: clickBehavior.targetId }
       : skipToken,
   );
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return card ? new Question(card, metadata) : undefined;
-  }, [card, metadata]);
+  const question = useQuestionFromCard(card);
 
   const object = isDashboard ? dashboard : question;
   const isLoading = isDashboard ? dashboardIsLoading : cardIsLoading;
@@ -203,6 +204,7 @@ export function LinkedEntityPicker({
           tabId: undefined,
         });
       } else {
+        // Unjustified type cast. FIXME
         updateSettings({
           ...clickBehavior,
           targetId,
@@ -221,10 +223,9 @@ export function LinkedEntityPicker({
     });
   }, [clickBehavior, updateSettings]);
 
-  const { data: targetDashboard } = useDashboardQuery({
-    enabled: isDashboard,
-    id: targetId,
-  });
+  const { currentData: targetDashboard } = useGetDashboardQuery(
+    isDashboard && targetId != null ? { id: targetId } : skipToken,
+  );
   const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
@@ -305,6 +306,7 @@ export function LinkedEntityPicker({
       {isPickerOpen && (
         <PickerComponent
           title={getModalTitle()}
+          // Unjustified type cast. FIXME
           value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
           onChange={(newTarget) => {
             handleSelectLinkTargetEntityId(newTarget.id);
@@ -331,7 +333,7 @@ export function LinkedEntityPicker({
             value: String(tab.id),
           }))}
           label={t`Select a dashboard tab`}
-          mt="md"
+          mt="lg"
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />

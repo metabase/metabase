@@ -11,9 +11,7 @@
 (deftest collection-items-table-test
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items"
-      (mt/with-temp [:model/Collection collection                         {}
-                     :model/Card       _                                  {:collection_id (u/the-id collection)
-                                                                           :name          "a-card"}
+      (mt/with-temp [:model/Collection collection                         {:type          "library-data"}
                      :model/Table      {table-id :id :as table}           {:collection_id (u/the-id collection)
                                                                            :is_published  true}
                      :model/Table      {root-table-id :id :as root-table} {:is_published  true}]
@@ -39,22 +37,22 @@
                                             (str "collection/" (u/the-id collection) "/items")
                                             :archived true)]
             (is (empty? (filter #(= "table" (:model %)) (:data items))))))
-        (testing "tables don't appear when pinned_state=is_pinned"
+        (testing "tables don't appear when pinned-state=is_pinned"
           (let [items (mt/user-http-request :crowberto :get 200
                                             (str "collection/" (u/the-id collection) "/items")
-                                            :pinned_state "is_pinned")]
+                                            :pinned-state "is_pinned")]
             (is (empty? (filter #(= "table" (:model %)) (:data items))))))
-        (testing "tables appear when pinned_state=is_not_pinned"
+        (testing "tables appear when pinned-state=is_not_pinned"
           (let [items (mt/user-http-request :crowberto :get 200
                                             (str "collection/" (u/the-id collection) "/items")
-                                            :pinned_state "is_not_pinned")]
+                                            :pinned-state "is_not_pinned")]
             (is (= 1 (count (filter #(= "table" (:model %)) (:data items)))))))))))
 
 (deftest collection-items-table-permissions-test
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items - published tables require view-data plus query access"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Collection collection {}
+        (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      {table-id :id :as table} {:collection_id (u/the-id collection)
                                                                    :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]
@@ -93,7 +91,7 @@
                   "User with both collection and data permissions should see published tables"))))))
     (testing "GET /api/collection/:id/items - without collection read permission, user should NOT see published table"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Collection collection {}
+        (mt/with-temp [:model/Collection collection {:type "library-data"}
                        :model/Table      table {:collection_id (u/the-id collection)
                                                 :is_published  true}
                        :model/PermissionsGroup {group-id :id} {}]

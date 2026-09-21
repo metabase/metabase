@@ -15,7 +15,7 @@ export function ColorSwatchCard({
   onChange,
 }: ColorSwatchCardProps) {
   return (
-    <Popover position="bottom" shadow="md">
+    <Popover position="bottom" shadow="sm">
       <Popover.Target>
         <Card withBorder p="sm" style={{ cursor: "pointer", flex: 1 }}>
           <Flex
@@ -31,7 +31,7 @@ export function ColorSwatchCard({
               style={{
                 borderRadius: "50%",
                 backgroundColor: value || "transparent",
-                border: "1px solid var(--mb-color-border)",
+                border: "1px solid var(--mb-color-border-neutral)",
               }}
             />
             <Text fz={10}>{label}</Text>

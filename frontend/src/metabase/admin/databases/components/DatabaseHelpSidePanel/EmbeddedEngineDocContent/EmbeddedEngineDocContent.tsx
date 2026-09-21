@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useMount } from "react-use";
 
 import { Markdown } from "metabase/common/components/Markdown";
-import { Alert, Box, Loader, Text } from "metabase/ui";
+import { Alert, Box, Loader } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 
 import S from "./EmbeddedEngineDocContent.module.css";
@@ -43,12 +43,12 @@ export const EmbeddedEngineDocContent = ({ engineKey }: Props) => {
   return (
     <Box ref={markdownRef} w="100%">
       {loadingError && (
-        <Alert color="info" variant="outline" mt="xl">
-          <Text>{loadingError}</Text>
+        <Alert size="compact" variant="light" mt="xxl">
+          {loadingError}
         </Alert>
       )}
       {isLoading ? (
-        <Loader mx="auto" mt="xl" display="block" data-testid="loader" />
+        <Loader mx="auto" mt="xxl" display="block" data-testid="loader" />
       ) : (
         <Markdown
           className={S.markdown}

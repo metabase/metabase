@@ -14,6 +14,7 @@ import {
   formatDateRange,
   getInterval,
   getUnitOptions,
+  isOutOfBounds,
   setInterval,
 } from "../utils";
 
@@ -31,6 +32,8 @@ import {
 interface DateOffsetIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
@@ -39,6 +42,8 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -49,6 +54,7 @@ export function DateOffsetIntervalPicker({
   const offsetUnitOptions = getOffsetUnitOptions(value, availableUnits);
   const directionText = getDirectionText(value);
   const dateRangeText = formatDateRange(value);
+  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -82,12 +88,15 @@ export function DateOffsetIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (outOfBounds) {
+      return;
+    }
     onSubmit();
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <Box className={S.PickerGrid} p="md">
+      <Box className={S.PickerGrid} p="lg">
         <Text>{directionText}</Text>
         <NumberInputWithFallbackValue
           value={interval}
@@ -138,12 +147,12 @@ export function DateOffsetIntervalPicker({
         />
       </Box>
       <Divider />
-      <Group px="md" py="sm" gap="sm" justify="space-between">
+      <Group px="lg" py="sm" gap="sm" justify="space-between">
         <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value })}
+        {renderSubmitButton({ value, isDisabled: outOfBounds })}
       </Group>
     </form>
   );

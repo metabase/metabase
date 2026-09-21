@@ -1,7 +1,7 @@
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 type SpinnerProps = {
@@ -43,6 +43,7 @@ export const Loader = ({
         width: "100%",
         height: "100%",
         display: "flex",
+        alignItems: "center",
         justifyContent: "center",
         ...style,
       }}

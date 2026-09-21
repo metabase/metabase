@@ -192,6 +192,11 @@
            :dimension (dimension-ref-or-expression dimension-ref)
            :values    (vec values)})
 
+        ;; Segment filters — passthrough, resolved by the query processor.
+        (= :segment operator)
+        {:node/type :filter/mbql
+         :clause    mbql-clause}
+
         ;; Temporal filters
         (operators/temporal? operator)
         (let [[dimension-ref value unit pos-offset-value pos-offset-unit] args
@@ -426,7 +431,7 @@
 
     :else
     (let [op       (arithmetic-operator expression)
-          children (drop 2 expression)]
+          children (perf/dropv 2 expression)]
       {:node/type :expression/arithmetic
        :operator  op
        :children  (perf/mapv #(build-expression-ast % metadata-provider filters projections) children)})))

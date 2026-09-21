@@ -92,6 +92,20 @@
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :metric))))
 
+(def metadata-provider-with-nfc-path
+  "[[meta/metadata-provider]] with `orders.product-id` overridden to be a JSON-unfolded field (i.e. with
+  `:nfc-path`). Engine is forced to `:postgres` so tests that go through QP preprocessing can rely on the
+  `:native-pivot-tables` driver feature being available. Useful for testing code paths that handle
+  nested-field columns."
+  (providers.mock/mock-metadata-provider
+   meta/metadata-provider
+   {:database (assoc meta/database :engine :postgres)
+    :fields   [(merge (meta/field-metadata :orders :product-id)
+                      {:nfc-path       ["payload" "product_id"]
+                       :base-type      :type/Text
+                       :effective-type :type/Text
+                       :database-type  "text"})]}))
+
 (defn query-with-source-card
   "Returns a query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`.
   Card 'exports' two columns, `USER_ID` and `count`."
@@ -367,9 +381,7 @@
   This is mostly around for historic reasons; consider using [[metabase.lib.core/query]] instead, which is closer to
   real-life usage."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   {mbql-query :dataset-query, metadata :result-metadata} :- [:map
-                                                              [:dataset-query :map]
-                                                              [:result-metadata [:sequential {:min 1} :map]]]]
+   {mbql-query :dataset-query, metadata :result-metadata} :- ::lib.schema.metadata/card]
   (let [mbql-query (cond-> (assoc (lib.convert/->mbql5 mbql-query)
                                   :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata
@@ -382,7 +394,11 @@
            :stages   [{:lib/type :mbql.stage/native
                        :native   "SELECT * FROM VENUES;"}]}
           (query-with-stage-metadata-from-card meta/metadata-provider
-                                               {:dataset-query   {:database (meta/id)
+                                               {:lib/type        :metadata/card
+                                                :id              1
+                                                :name            "Venues"
+                                                :database-id     (meta/id)
+                                                :dataset-query   {:database (meta/id)
                                                                   :type     :native
                                                                   :native   {:query "SELECT * FROM VENUES;"}}
                                                 :result-metadata (get-in (mock-cards) [:venues :result-metadata])}))))

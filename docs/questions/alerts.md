@@ -32,17 +32,17 @@ To create an alert:
 2. Click on the **three dots** in the top-right of the screen.
 3. Select **Create an alert**.
 4. Select what you want to be alerted about (options depend on the question type):
-    - [When a question returns a result](#results-alerts) - for any question.
-    - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
-    - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
-6. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
-7. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
-8. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
-9. Click **Done**.
+   - [When a question returns a result](#results-alerts) - for any question.
+   - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
+   - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
+5. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
+7. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
+8. Click **Done**.
 
 ## Send a one-time alert
 
-When setting up an alert, if you select the option to **Only send the alert once**, Metabase will send that alert once, then delete itself, never to alert anyone ever again. These "disposable" alerts are handy for things like letting you know when you reach a one-time milestone.
+When setting up an alert, if you select the option to **Only send the alert once**, Metabase will send that alert once, then delete the alert, never to alert anyone ever again. These "disposable" alerts are handy for things like letting you know when you reach a one-time milestone.
 
 ## Testing alerts
 
@@ -73,13 +73,13 @@ To create an alert when a time series crosses a goal line:
 3. In the **Display** tab, turn on the **Show goal** setting.
 4. Choose a value for your goal (and optionally a label) and click Done.
 5. Save the question.
-6. Click the **three dots** icon in top and select "Create alert"
+6. Click the **three dots** icon in the top right and select "Create alert"
 
-    You can choose:
+   You can choose:
 
-    - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
-    - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
-    - How often you want Metabase to check to see if the goal line has been crossed.
+   - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
+   - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
+   - How often you want Metabase to check to see if the goal line has been crossed.
 
 7. Select the schedule and recipients for the alert, and click "Done"
 
@@ -93,7 +93,7 @@ If you want to set up an alert when a single number reaches a goal, you can use 
 2. Choose the Progress Bar chart type.
 3. In Visualization settings, select a goal value.
 4. Save your question.
-5. Create an alert by clicking the **three dots** in top right.
+5. Create an alert by clicking the **three dots** in the top right.
 
 You'll see the options for when you want to get alerts about this progress bar:
 
@@ -115,6 +115,8 @@ Admins:
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they didn't create themselves.
 - Admins can bulk manage alerts per person from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
+
+- Admins can bulk manage all alerts in the instance in [Monitor > Alerts management](../monitor/alerts-management.md).
 
 Metabase will email you when:
 
@@ -142,7 +144,7 @@ Alerts will continue to work _even if the person who set up the alert no longer 
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md#alerts-model).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See the [Alerts model](../usage-and-performance-tools/usage-analytics-reference.md#alerts) in the Usage analytics reference.
 
 ## How permissions work with alerts
 
@@ -160,9 +162,14 @@ See [Remove Metabase branding from exports](./exporting-results.md#remove-metaba
 
 Since people viewing embedded questions likely don't have direct access to your Metabase, Metabase omits links to Metabase items in alerts sent from embedded questions. That way people don't get broken links in their email.
 
+## Custom visualizations fall back to the default chart
+
+Nobody's signed in when Metabase renders an alert, so a question that uses a [custom visualization](./visualizations/custom.md) falls back to the default visualization for its results.
+
 ## Further reading
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Custom visualizations](./visualizations/custom.md)

@@ -4,23 +4,28 @@
   (:refer-clojure :exclude [empty? mapv])
   (:require
    [medley.core :as m]
+   [metabase.lib.pivot :as lib.pivot]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [empty? mapv]]))
 
-(def ^:private pivot-column-gropuing-metadata
-  {:name                     "pivot-grouping"
-   :display_name             "pivot-grouping"
-   :lib/desired-column-alias "pivot-grouping"
-   :base_type                :type/Integer
-   :effective_type           :type/Integer})
+(def ^:private pivot-grouping-column-metadata
+  "Result-metadata-shape column entry spliced into `:cols` of pivot query results. Extends
+  [[lib.pivot/pivot-grouping-column-metadata]] with the snake_case mirrors and explicit `:lib/desired-column-alias`
+  the result-metadata layer expects."
+  (merge (dissoc lib.pivot/pivot-grouping-column-metadata :lib/type :base-type)
+         {:display_name             lib.pivot/pivot-grouping-column-name
+          :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
+          :base_type                :type/Integer
+          :effective_type           :type/Integer}))
 
 (defn- add-column-grouping-metadata [cols num-breakouts]
   (vec
    (concat
     (take num-breakouts cols)
-    [pivot-column-gropuing-metadata]
+    [pivot-grouping-column-metadata]
     (drop num-breakouts cols))))
 
 (defn add-pivot-grouping
@@ -44,11 +49,7 @@
             rf            (rff metadata')
             group-bitmask (pivot.common/group-bitmask num-unremapped-breakouts unremapped-breakout-combination)
             xform         (map (fn [row]
-                                 (vec
-                                  (concat
-                                   (take num-remapped-breakouts row)
-                                   [group-bitmask]
-                                   (drop num-remapped-breakouts row)))))]
+                                 (perf/insert row num-remapped-breakouts group-bitmask)))]
         (xform rf)))))
 
 ;; this is mainly for documentation purposes
@@ -69,9 +70,7 @@
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [{num-remapped-cols      :qp.pivot/num-remapped-cols
     num-remapped-breakouts :qp.pivot/num-remapped-breakouts
-    :as                    _subquery} :- [:map
-                                          [:qp.pivot/num-remapped-cols      nat-int?]
-                                          [:qp.pivot/num-remapped-breakouts ::pivot.common/num-breakouts]]
+    :as                    _subquery} :- ::lib.schema/query
    subquery-breakout-combination :- ::pivot.common/breakout-combination]
   ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
   ;; thing that can change between subqueries. The other columns will always be the same, and in the same order.
@@ -118,9 +117,7 @@
   index is selected, we have to shift the indexes before which a mapped index is inserted."
   [{breakout-combination :qp.pivot/remapped-breakout-combination
     remap                :qp.pivot/remapped-indexes
-    :as                  _subquery} :- [:map
-                                        [:qp.pivot/remapped-breakout-combination ::pivot.common/breakout-combination]
-                                        [:qp.pivot/remapped-indexes              ::pivot.common/remapped-indexes]]]
+    :as                  _subquery} :- ::lib.schema/query]
   (if (or (empty? remap)
           (empty? breakout-combination))
     breakout-combination
@@ -142,7 +139,7 @@
                      selected?    (conj spliced-index)
                      mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
 
-(mu/defn- column-mapping [subquery :- :map]
+(mu/defn- column-mapping [subquery :- ::lib.schema/query]
   (let [full-breakout-combination (full-breakout-combination subquery)]
     (column-mapping-for-subquery subquery full-breakout-combination)))
 
@@ -158,7 +155,7 @@
   e.g.
 
     (f [1 2 3]) => [2 nil 3 nil 1]"
-  [subquery]
+  [subquery :- ::lib.schema/query]
   (perf/juxt* (for [mapping (column-mapping subquery)]
                 (if (nat-int? mapping)
                   #(nth % mapping)

@@ -159,40 +159,88 @@ describe("scenarios > admin > settings > user provisioning", () => {
     });
 
     it("should properly handle errors", () => {
-      cy.log("should show error when scim token fails to load");
-      cy.intercept("GET", "/api/ee/scim/api_key", { statusCode: 500 });
-      cy.visit("/admin/settings/authentication/user-provisioning");
-      H.main().within(() => {
-        cy.findByText("Error fetching SCIM token");
-      });
-
-      cy.log(
-        "should show error when scim token fails to generate when scim is enabled",
-      );
-      // enable scim and stop mocking get scim api key request
-      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
-        req.continue();
-      });
-      cy.request("PUT", "api/setting/scim-enabled", { value: true });
-      cy.visit("/admin/settings/authentication/user-provisioning");
-      H.main().within(() => {
-        cy.findByText("Token failed to generate, please regenerate one.");
-      });
-
-      cy.log("should show error when scim token fails to regenerate");
       cy.intercept("POST", "/api/ee/scim/api_key", {
         statusCode: 500,
         body: { message: "An error occurred" },
       });
-      cy.findByRole("button", { name: /Regenerate/ }).click();
 
+      cy.visit("/admin/settings/authentication/user-provisioning");
+
+      // toggling SCIM on triggers the failing token-generation POST
+      scimToggle().click();
+
+      // no modal is opened on failure — error surfaces directly on the form
+      H.modal().should("not.exist");
+
+      H.main().within(() => {
+        cy.findByText("Token failed to generate, Please try again.").should(
+          "exist",
+        );
+        cy.findByRole("button", { name: /Retry/ }).should("exist");
+      });
+    });
+
+    it("should close the regenerate modal and surface an error on the token field when regenerate fails", () => {
+      // generate an initial token via the UI
+      cy.visit("/admin/settings/authentication/user-provisioning");
+      scimToggle().click();
+      H.modal().within(() => {
+        cy.findByRole("button", { name: /Done/ }).click();
+      });
+
+      // now make subsequent regenerate calls fail
+      cy.intercept("POST", "/api/ee/scim/api_key", {
+        statusCode: 500,
+        body: { message: "An error occurred" },
+      });
+
+      cy.findByRole("button", { name: /Regenerate/ }).click();
       H.modal().within(() => {
         cy.findByText("Regenerate token?").should("exist");
         cy.findByRole("button", { name: /Regenerate now/ }).click();
       });
 
+      // the post-confirm modal does not appear; error surfaces on the form
+      H.modal().should("not.exist");
+      H.main().within(() => {
+        cy.findByText("Failed to regenerate token. Please try again.").should(
+          "exist",
+        );
+        cy.findByText("An error occurred").should("not.exist");
+        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
+      });
+    });
+
+    it("should show a warning when SCIM is enabled without a token", () => {
+      // simulate enabling SCIM via config file / env var: enable it server-side, no token generated
+      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
+        req.continue();
+      });
+      cy.request("PUT", "api/setting/scim-enabled", { value: true });
+      cy.visit("/admin/settings/authentication/user-provisioning");
+
+      H.main().within(() => {
+        cy.findByText(
+          "Generate a SCIM token below to complete the setup.",
+        ).should("exist");
+        cy.findByRole("button", { name: /Generate/ }).should("exist");
+        cy.findByText("Token failed to generate, Please try again.").should(
+          "not.exist",
+        );
+      });
+
+      cy.log("warning is removed once a token has been generated");
+      cy.findByRole("button", { name: /Generate/ }).click();
       H.modal().within(() => {
-        cy.findByText("An error occurred");
+        cy.findByText("Here's what you'll need to set SCIM up").should("exist");
+        cy.findByRole("button", { name: /Done/ }).click();
+      });
+
+      H.main().within(() => {
+        cy.findByText(
+          "Generate a SCIM token below to complete the setup.",
+        ).should("not.exist");
+        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
       });
     });
   });

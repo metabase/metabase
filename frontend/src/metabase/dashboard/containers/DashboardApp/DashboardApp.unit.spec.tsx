@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
@@ -17,6 +16,7 @@ import {
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -24,9 +24,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -58,9 +58,10 @@ const TestHome = () => <div />;
 
 interface Options {
   dashboard?: Partial<Dashboard>;
+  slug?: string;
 }
 
-async function setup({ dashboard }: Options = {}) {
+async function setup({ dashboard, slug }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
@@ -97,13 +98,13 @@ async function setup({ dashboard }: Options = {}) {
     );
   };
 
-  const { history } = renderWithProviders(
+  const { router, store } = renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path="/dashboard/:slug" component={DashboardAppContainer} />
+      <Route path="/" element={<TestHome />} />
+      <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
     </>,
     {
-      initialRoute: `/dashboard/${dashboardId}`,
+      initialRoute: `/dashboard/${slug ?? dashboardId}`,
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
@@ -119,7 +120,8 @@ async function setup({ dashboard }: Options = {}) {
 
   return {
     dashboardId,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
+    store,
     mockEventListener,
   };
 }
@@ -146,7 +148,7 @@ describe("DashboardApp", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not have a beforeunload event when the dashboard is unedited", async function () {
@@ -160,16 +162,20 @@ describe("DashboardApp", () => {
     });
 
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
+      });
 
       await waitForLoaderToBeRemoved();
 
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
-      history.goBack();
+      act(() => {
+        router.back();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -177,11 +183,11 @@ describe("DashboardApp", () => {
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
       await waitForLoaderToBeRemoved();
@@ -192,7 +198,7 @@ describe("DashboardApp", () => {
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(
@@ -270,6 +276,13 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {
+    const { store } = await setup({ slug: "thisisinvalid" });
+
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    expect(store.getState().app.errorPage).toMatchObject({ status: 404 });
   });
 
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {

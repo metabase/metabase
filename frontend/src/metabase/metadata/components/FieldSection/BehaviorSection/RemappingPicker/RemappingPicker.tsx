@@ -10,7 +10,7 @@ import {
   useGetTableQueryMetadataQuery,
   useUpdateFieldValuesMutation,
 } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -25,7 +25,8 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import type { Database, Field, FieldId } from "metabase-types/api";
+import { getRemappings } from "metabase-lib/v1/queries/utils/field";
+import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 
 import {
   type ChangeOptions,
@@ -39,11 +40,9 @@ import {
 import { NamingTip } from "./NamingTip";
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 import {
-  getFieldRemappedValues,
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
-  hydrateTableFields,
   is403Error,
 } from "./utils";
 
@@ -86,11 +85,7 @@ export const RemappingPicker = ({
           ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
   );
-  const fkTargetTable = useMemo(
-    () => hydrateTableFields(fkTargetTableData),
-    [fkTargetTableData],
-  );
-  const tables = useMemo(() => [fkTargetTable], [fkTargetTable]);
+  const fkTargetTable = fkTargetTableData;
 
   const value = useMemo(() => getValue(field), [field]);
   const {
@@ -104,7 +99,7 @@ export const RemappingPicker = ({
     return getOptions(field, fieldValues?.values, fkTargetTable);
   }, [field, fieldValues, fkTargetTable]);
   const mapping = useMemo(() => {
-    return getFieldRemappedValues(fieldValues?.values);
+    return new Map(getRemappings({ values: fieldValues?.values }));
   }, [fieldValues?.values]);
 
   const isFkMapping = value === "foreign" || isChoosingInitialFkTarget;
@@ -238,7 +233,11 @@ export const RemappingPicker = ({
           async () => {
             const { error } = await updateFieldValues({
               id,
-              values: Array.from(mapping),
+              values: Array.from(
+                mapping,
+                ([key, label]): FieldValue =>
+                  label == null ? [key] : [key, label],
+              ),
             });
 
             sendUndoToast(error);
@@ -276,14 +275,14 @@ export const RemappingPicker = ({
             <FieldDataSelector
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
-              selectedDatabase={database}
               selectedDatabaseId={database.id}
-              selectedField={fkRemappingField}
               selectedFieldId={fkRemappingField?.id}
-              selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
-              tables={tables}
+              tables={[fkTargetTable]}
+              // The target table is the one this picker fetched, so its fields
+              // come from there rather than from the store.
+              fields={fkTargetTable.fields ?? []}
               triggerElement={
                 <Select
                   data={[
@@ -307,14 +306,14 @@ export const RemappingPicker = ({
             />
           )}
 
-          {hasChanged && hasFkMappingValue && <NamingTip mt="md" />}
+          {hasChanged && hasFkMappingValue && <NamingTip mt="lg" />}
         </>
       )}
 
       {value === "custom" && (
         <>
           {isFieldsAccessRestricted && (
-            <Alert mt="md">
+            <Alert size="compact" variant="light" mt="lg">
               {t`You need unrestricted data access on this table to map custom display values.`}
             </Alert>
           )}
@@ -340,7 +339,7 @@ export const RemappingPicker = ({
                 </Button>
               </Group>
 
-              {hasChanged && <NamingTip mt="md" />}
+              {hasChanged && <NamingTip mt="lg" />}
             </>
           )}
         </>

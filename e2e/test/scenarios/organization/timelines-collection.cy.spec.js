@@ -395,12 +395,13 @@ describe("scenarios > organization > timelines > collection", () => {
         cy.wait("@updateTimeline");
       });
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics events").should("be.visible");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${H.getFullName(admin)}'s Personal Collection`).should(
-        "be.visible",
-      );
+      H.modal().within(() => {
+        cy.findByText("Our analytics events").should("be.visible");
+        cy.button(/close/).click();
+      });
+      H.main()
+        .findByText(`${H.getFullName(admin)}'s Personal Collection`)
+        .should("be.visible");
     });
 
     it("should archive a timeline and undo", () => {

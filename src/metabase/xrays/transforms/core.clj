@@ -3,14 +3,15 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
@@ -30,12 +31,12 @@
 
 (defn- mbql-reference->col-name
   [field-clause]
-  (lib.util.match/match-lite field-clause
+  (match/match-one field-clause
     [:field (field-name :guard string?) _]
     field-name
 
     [:field (id :guard integer?) _]
-    (t2/select-one-fn :name :model/Field :id id)))
+    (xrays.db/field-name id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
@@ -141,8 +142,10 @@
   [:sequential
    [:and
     (ms/InstanceOf :model/Table)
-    [:map
-     [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
+    [:merge
+     :metabase.warehouse-schema.schema/table
+     [:map {:closed true}
+      [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset
@@ -189,7 +192,7 @@
 (mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (-> (t2/select :model/Table :db_id db-id :schema schema)
+  (-> (xrays.db/tables-in-schema db-id schema)
       de/with-domain-entity
       (t2/hydrate :fields)))
 

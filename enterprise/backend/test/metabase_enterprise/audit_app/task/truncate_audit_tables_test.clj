@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
@@ -32,13 +33,18 @@
          ;; 1 year ago
          :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/minus (t/offset-date-time) (t/years 1))})]
-        ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
-          (testing "When the threshold is 0 (representing infinity), no rows are deleted"
-            (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
-              (#'task.truncate-audit-tables/truncate-audit-tables!)
-              (is (= #{qe1-id qe2-id qe3-id}
-                     (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))))))))
+        (if (= :postgres (mdb/db-type))
+          (testing "When on postgres, nothing in query_execution is truncated."
+            (#'task.truncate-audit-tables/truncate-audit-tables!)
+            (is (= #{qe1-id qe2-id qe3-id}
+                   (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
+          ;; Mock a cloud environment so that we can change the setting value via env var
+          (with-redefs [premium-features/is-hosted? (constantly true)]
+            (testing "When the threshold is 0 (representing infinity), no rows are deleted"
+              (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
+                (#'task.truncate-audit-tables/truncate-audit-tables!)
+                (is (= #{qe1-id qe2-id qe3-id}
+                       (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))))))))
 
 (defn- audit-log-defaults
   []

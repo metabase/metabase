@@ -25,8 +25,8 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Stack } from "metabase/ui";
 import {
   createMockCard,
@@ -48,11 +48,17 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useLocaleMock = useLocale as jest.Mock;
+
+type EntityBreadcrumbType = Exclude<SdkBreadcrumbItemType, "all-collections">;
 
 type View =
   | { type: "collection"; id: SdkCollectionId }
-  | { type: Exclude<SdkBreadcrumbItemType, "collection">; id: string | number };
+  | {
+      type: Exclude<EntityBreadcrumbType, "collection">;
+      id: string | number;
+    };
 
 export const BreadcrumbsTestComponent = () => {
   const { currentLocation } = useSdkBreadcrumbs();
@@ -69,10 +75,11 @@ export const BreadcrumbsTestComponent = () => {
       <CollectionBrowser
         collectionId={view.id}
         onClick={(item) => {
-          const type = match<string, SdkBreadcrumbItemType>(item.model)
+          const type = match<string, EntityBreadcrumbType>(item.model)
             .with("card", () => "question")
             .with("dataset", () => "model")
-            .otherwise((model) => model as SdkBreadcrumbItemType);
+            // A collection item is never the virtual "all-collections" root.
+            .otherwise((model) => model as EntityBreadcrumbType);
 
           setView({ type, id: item.id });
         }}
@@ -87,7 +94,7 @@ export const BreadcrumbsTestComponent = () => {
     .exhaustive();
 
   return (
-    <Stack p="md" gap="sm">
+    <Stack p="lg" gap="sm">
       <div data-testid="breadcrumbs-container">
         <SdkBreadcrumbs />
       </div>

@@ -53,7 +53,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
   const viewCount = getNodeViewCount(node);
 
   return (
-    <Stack className={S.item} p="lg" gap="sm" aria-label={label}>
+    <Stack className={S.item} p="xl" gap="sm" aria-label={label}>
       <Group justify="space-between" wrap="nowrap">
         <GraphLink
           label={label}

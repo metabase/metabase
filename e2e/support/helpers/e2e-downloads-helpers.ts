@@ -50,7 +50,9 @@ export const exportFromDashcard = (format: string) => {
     cy.findByTestId("download-results-button").click();
   });
 
-  cy.findByTestId("status-root-container").should("contain", "Downloading");
+  cy.findByTestId("status-root-container")
+    .invoke("text")
+    .should("match", /Downloading|Done/);
 };
 
 /**
@@ -141,7 +143,7 @@ export function downloadAndAssert({
     }
   }
 
-  cy.get("[aria-label='Download results']").click();
+  cy.findByLabelText("Download results").should("be.visible").click();
 
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();

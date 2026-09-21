@@ -101,6 +101,7 @@ describe("NewCollectionDialog", () => {
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
+    // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
     expect(body.name).toBe("My New Collection");
     expect(body.parent_id).toBe(33);
@@ -120,6 +121,7 @@ describe("NewCollectionDialog", () => {
     const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
     const call = apiCalls[0];
+    // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
     expect(body.name).toBe("My New Collection");
     expect(body.parent_id).toBe(null);

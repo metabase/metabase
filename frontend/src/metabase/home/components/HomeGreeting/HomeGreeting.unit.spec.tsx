@@ -1,8 +1,5 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -35,13 +32,13 @@ describe("HomeGreeting", () => {
     expect(screen.getAllByRole("img")).toHaveLength(2);
   });
 
-  it("should render without logo", () => {
+  it("should render nothing when the welcome message is turned off", () => {
     setup({
       currentUser: createMockUser({ first_name: "John" }),
       showLogo: false,
     });
 
-    expect(screen.getByText(/John/)).toBeInTheDocument();
+    expect(screen.queryByText(/John/)).not.toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });

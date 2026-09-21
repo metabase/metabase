@@ -9,10 +9,14 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Mage
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Check mage runs
         run: ./bin/mage -h
       - name: Run mage tests
         run: ./bin/mage -test
+      - name: Lint create-backport scripts
+        run: shellcheck .github/actions/create-backport/{kondo-ratchets,create-backport-test}.sh
+      - name: Run create-backport tests
+        run: ./.github/actions/create-backport/create-backport-test.sh

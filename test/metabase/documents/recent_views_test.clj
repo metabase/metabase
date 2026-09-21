@@ -55,7 +55,6 @@
                                                   :archived false}]
       (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
         (is (= 2 (count results)))
-
         ;; Check first document
         (let [doc1 (first (filter #(= (:id %) doc1-id) results))]
           (is (= "Document 1" (:name doc1)))
@@ -64,7 +63,6 @@
           (is (= coll-id (:collection_id doc1)))
           (is (= "Test Collection" (:collection_name doc1)))
           (is (= "official" (:collection_authority_level doc1))))
-
         ;; Check second document
         (let [doc2 (first (filter #(= (:id %) doc2-id) results))]
           (is (= "Document 2" (:name doc2)))
@@ -101,7 +99,6 @@
                                                   :archived false}]
       (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
         (is (= 2 (count results)))
-
         ;; Document from archived collection should have nil collection info
         (let [doc1 (first (filter #(= (:id %) doc1-id) results))]
           (is (= "Document in Archived Collection" (:name doc1)))
@@ -109,7 +106,6 @@
           (is (nil? (:collection_id doc1)))
           (is (nil? (:collection_name doc1)))
           (is (nil? (:collection_authority_level doc1))))
-
         ;; Document from active collection should have collection info
         (let [doc2 (first (filter #(= (:id %) doc2-id) results))]
           (is (= "Document in Active Collection" (:name doc2)))
@@ -152,20 +148,40 @@
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
         (is (= #{doc1-id doc2-id} (set (map :id results)))))))
-
   (deftest recents-api-with-documents-premium-feature-test
     (testing "/recents API returns documents when :document premium feature is enabled"
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Document {doc-id :id} {:name "Test Document"
                                                    :collection_id coll-id
                                                    :archived false}]
-      ;; Add document to recent views
+        ;; Add document to recent views
         (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
-
-      ;; Call the API
+        ;; Call the API
         (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
           (is (some #(and (= (:model %) "document")
                           (= (:id %) doc-id)
                           (= (:name %) "Test Document"))
                     (:recents response))
               "Document should be present in recents when premium feature is enabled"))))))
+
+(deftest recents-api-excludes-exploration-documents-test
+  (testing "/recents API hides documents attached to an exploration"
+    (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Test Collection"}
+                   :model/Exploration {expl-id :id}   {:name "Expl"
+                                                       :creator_id (mt/user->id :rasta)}
+                   :model/Document    {plain-id :id}  {:name "Plain Document"
+                                                       :collection_id coll-id
+                                                       :archived false}
+                   :model/Document    {expl-doc :id}  {:name "Exploration Document"
+                                                       :collection_id coll-id
+                                                       :exploration_id expl-id
+                                                       :archived false}]
+      ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
+      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
+      (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
+            ids    (set (map :id (filter #(= (:model %) "document") recents)))]
+        (is (contains? ids plain-id)
+            "Plain document should appear in recents")
+        (is (not (contains? ids expl-doc))
+            "Exploration-attached document should be filtered out of recents")))))

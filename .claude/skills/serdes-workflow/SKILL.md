@@ -46,7 +46,7 @@ Validates YAML shapes against Malli schemas. Catches typos, missing required fie
 ```bash
 clojure -M:run:ee --mode checker --checker cards --export /path/to/export-dir
 ```
-Validates that card queries resolve correctly against exported metadata (tables, fields, FKs). Uses MLv2 under the hood.
+Validates that card queries resolve correctly against exported metadata (tables, fields, FKs). Uses Lib under the hood.
 
 Additional cards checker flags:
 - `--lenient` - fabricate metadata on demand (when no database schema files exist)

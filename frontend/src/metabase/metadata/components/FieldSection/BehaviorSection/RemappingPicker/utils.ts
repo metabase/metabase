@@ -1,15 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import * as Lib from "metabase-lib";
+import { is403Error } from "metabase/utils/errors";
 import { getRemappings } from "metabase-lib/v1/queries/utils/field";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId, FieldValue, Table } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import type { RemappingValue } from "./DisplayValuesPicker";
+
+export { is403Error };
 
 export function getFkTargetTableEntityNameOrNull(
   targetTable: Table | undefined,
@@ -67,7 +67,7 @@ function getTableFields(table: Table | undefined): Field[] {
 function hasMappableNumeralValues(
   fieldValues: FieldValue[] | undefined,
 ): boolean {
-  const remapping = getFieldRemappedValues(fieldValues);
+  const remapping = new Map(getRemappings({ values: fieldValues }));
 
   // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
   // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -77,37 +77,4 @@ function hasMappableNumeralValues(
       (key) => typeof key === "number" || key === null,
     )
   );
-}
-
-export function is403Error(error: unknown): boolean {
-  return isObject(error) && error.status === 403;
-}
-
-export function getFieldRemappedValues(
-  fieldValues: FieldValue[] | undefined,
-): Map<number, string> {
-  return new Map(getRemappings({ values: fieldValues }));
-}
-
-/**
- * Adds 3 extra attributes to every Field, so that DataSelector does not break.
- * DataSelector component expects metabase-lib/v1/metadata/Field objects (entity framework),
- * but this modern module uses Field from metabase-types/api/field.ts instead.
- */
-export function hydrateTableFields(
-  table: Table | undefined,
-): Table | undefined {
-  if (!table) {
-    return undefined;
-  }
-
-  return {
-    ...table,
-    fields: table.fields?.map((field) => ({
-      ...field,
-      displayName: () => field.display_name,
-      icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
-      table,
-    })),
-  };
 }

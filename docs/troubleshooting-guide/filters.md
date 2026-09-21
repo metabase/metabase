@@ -32,7 +32,7 @@ If a question filter is giving you no results or the wrong results:
    - asking your database admin.
 3. Ask your Metabase admin to help you check if:
    - Metabase is [up to date](../databases/sync-scan.md) with your database,
-   - the column is [visible](../data-modeling/metadata-editing.md#field-visibility) in Metabase,
+   - the column is [visible](../data-modeling/metadata/metadata-editing.md#field-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
 
 ### Special cases
@@ -62,10 +62,10 @@ To debug dashboard and question filters that involve timestamps, UUIDs, or numer
 
 1. Find the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column that you want to filter on. You can find this info from:
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
-   - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
+   - the [Table Metadata page](../data-modeling/metadata/metadata-editing.md) (admins only), or
    - directly from the database.
 2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md#filter-types). You can:
-   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page, or
+   - [cast strings or numbers to dates](../data-modeling/metadata/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page, or
    - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 
 If you're not a Metabase admin, you might have to ask your admin to help you with some of these steps.
@@ -100,7 +100,7 @@ Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the valu
 - [Troubleshooting linked filters](./linked-filters.md)
 - [Troubleshooting SQL variables and field filters](./sql.md#sql-variables-and-field-filters)
 - [Troubleshooting dates and times](./timezones.md)
-- [Creating dropdown filters](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
+- [Creating dropdown filters](../data-modeling/metadata/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
 - [Creating SQL filters](../questions/native-editor/sql-parameters.md)
 
 ## Are you still stuck?

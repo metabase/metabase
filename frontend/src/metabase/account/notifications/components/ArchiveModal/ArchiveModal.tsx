@@ -1,17 +1,14 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting";
+import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
-
-import type { NotificationType } from "../../types";
-
-import { ModalMessage } from "./ArchiveModal.styled";
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;
@@ -52,22 +49,29 @@ function ArchiveNotificationModal({
         <Button key="cancel" onClick={onClose}>
           {getCancelMessage(hasUnsubscribed)}
         </Button>,
-        <Button key="submit" warning onClick={handleArchiveClick}>
+        <Button
+          key="submit"
+          variant="filled"
+          color="feedback-negative"
+          onClick={handleArchiveClick}
+        >
           {getSubmitMessage(type, hasUnsubscribed)}
         </Button>,
       ]}
       onClose={onClose}
     >
-      {isCreator(item, user) && hasUnsubscribed && (
-        <ModalMessage data-server-date>
-          {getCreatorMessage(type, user)}
-          {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
-        </ModalMessage>
-      )}
-      <ModalMessage>
-        {getDateMessage(item, type)}
-        {getRecipientsMessage(item)}
-      </ModalMessage>
+      <Stack gap="lg">
+        {isCreator(item, user) && hasUnsubscribed && (
+          <Box data-server-date>
+            {getCreatorMessage(type, user)}
+            {t`As the creator you can also choose to delete this if it's no longer relevant to others as well.`}
+          </Box>
+        )}
+        <Box>
+          {getDateMessage(item, type)}
+          {getRecipientsMessage(item)}
+        </Box>
+      </Stack>
     </ModalContent>
   );
 }

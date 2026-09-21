@@ -2,24 +2,22 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.audit-app.core :as audit-app]
-   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.metabot.db :as metabot.db]
+   [metabase.util :as u]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
+   Preserves :status-code and :terminal-error? from ex-data."
   [e]
-  (let [{:keys [agent-error? status-code]} (ex-data e)]
+  (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
     (if agent-error?
       (cond-> {:output (ex-message e)}
-        status-code (assoc :status-code status-code))
+        status-code     (assoc :status-code status-code)
+        terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
 (defn convert-field-type
@@ -44,10 +42,42 @@
                                  (lib/display-name query)
                                  lib/display-name-without-id))))
 
+(defn- column-portable-fk
+  "Build the portable FK path `[db-name, schema-or-null, table-name, field-name …]` for a column
+  that has a real numeric `:id`. Returns nil for expression / aggregation columns that don't
+  correspond to a database field."
+  [query column]
+  (when (and (:id column) (:table-id column))
+    (let [table (lib.metadata/table query (:table-id column))
+          db    (lib.metadata/database query)
+          ;; walk the `:parent-id` chain in case this is a JSON-unfolded nested field
+          chain (loop [acc [(:name column)]
+                       pid (:parent-id column)]
+                  (if pid
+                    (let [parent (lib.metadata/field query pid)]
+                      (recur (cons (:name parent) acc) (:parent-id parent)))
+                    acc))]
+      (when (and (:name db) (:name table))
+        (into [(:name db) (:schema table) (:name table)] chain)))))
+
+(defn- fk-target-portable-fk
+  "If `column` is an FK (has a non-nil `:fk-target-field-id`), return the portable FK path of
+  the target field, walking the parent-id chain for JSON-unfolded targets. Returns nil for
+  non-FK columns or when the target can't be resolved."
+  [query column]
+  (when-let [tgt-id (:fk-target-field-id column)]
+    (when-let [tgt (lib.metadata/field query tgt-id)]
+      (column-portable-fk query tgt))))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
-  expression/aggregation columns that don't have a database field ID."
+  expression/aggregation columns that don't have a database field ID.
+
+  Also includes a `:portable_fk` key with the portable foreign-key path
+  `[db-name, schema, table-name, field-name …]` when the column maps to a real database field.
+  The representations-format notebook query tool expects fields to be referenced by this path
+  rather than by numeric id."
   [query column]
   (let [base-type         (some-> (:base-type column) u/qualified-name)
         effective-type    (some-> (:effective-type column) u/qualified-name)
@@ -55,11 +85,15 @@
         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
         field-id          (or (:id column)
                               (:lib/desired-column-alias column)
-                              (:lib/source-column-alias column))]
+                              (:lib/source-column-alias column))
+        portable-fk       (try (column-portable-fk query column)
+                               (catch Exception _ nil))
+        fk-target-fk      (try (fk-target-portable-fk query column)
+                               (catch Exception _ nil))]
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
+         :display_name (lib/display-name query (dissoc column :table-reference))
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :base_type base-type
@@ -68,6 +102,8 @@
                       :database_type (:database-type column)
                       :coercion_strategy coercion-strategy
                       :field_values (:field-values column)
+                      :portable_fk portable-fk
+                      :fk_target_portable_fk fk-target-fk
                       :table_reference (:table-reference column)))))
 
 (defn find-column-by-field-id
@@ -103,22 +139,33 @@
 (defn get-database
   "Get the `fields` of the database with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Database :id] fields) id)
+  (-> (metabot.db/database-with-columns (into [:model/Database :id] fields) id)
       api/read-check))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields)
-                     :id id
-                     :active true)
+  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
       api/read-check))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
   [id]
-  (-> (t2/select-one :model/Card :id id)
+  (-> (metabot.db/card id)
       api/read-check))
+
+(defn get-card-by-entity-id
+  "Retrieve a readable card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
+  [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]] to look up the
+  database-id of a `source-card:` stage before the metadata provider is built.
+
+  Does NOT go through the serdes `lookup-by-id` machinery because we want `nil` on miss
+  (not a thrown exception) so the caller can surface a tool-specific agent error. If the
+  card exists but the current user cannot read it, `api/read-check` raises a 403 instead of
+  silently letting the representations resolver use an inaccessible card."
+  [entity-id]
+  (some-> (metabot.db/card-by-entity-id entity-id)
+          api/read-check))
 
 (defn card-query
   "Return a query based on the card with ID `card-id`."
@@ -143,56 +190,22 @@
     (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
-(defn metabot-metrics-and-models-query
-  "Return the metric and model cards in metabot scope visible to the current user.
-
-  Takes a metabot-id and returns all metric and model cards in that metabot's collection
-  and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned.
-
-  Ignores analytics content."
-  [metabot-id & {:keys [limit] :as _opts}]
-  (let [metabot (t2/select-one :model/Metabot :id metabot-id)
-        metabot-collection-id (:collection_id metabot)
-        use-verified-content? (:use_verified_content metabot)
-        collection-filter (if metabot-collection-id
-                            (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
-                                  collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
-                              [:in :collection_id collection-ids])
-                            [:and true])
-        base-query {:select [:report_card.*]
-                    :from   [[:report_card]]
-                    :where [:and
-                            [:!= :report_card.database_id audit-app/audit-db-id]
-                            collection-filter
-                            [:in :type [:inline ["metric" "model"]]]
-                            [:= :archived false]
-                            (when api/*current-user-id*
-                              (collection/visible-collection-filter-clause :collection_id))]}]
-    (cond-> base-query
-      ;; Prioritize verified content.
-      (premium-features/has-feature? :content-verification)
-      (assoc
-       :left-join [[:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :report_card.id]
-                                             [:= :mr.moderated_item_type [:inline "card"]]
-                                             [:= :mr.most_recent true]]]
-       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0]
-                    :else [:inline 1]]
-                   :asc]])
-
-      ;; Filter verified items only when that's desired.
-      (and (premium-features/has-feature? :content-verification)
-           use-verified-content?)
-      (update :where conj [:= :mr.status [:inline "verified"]])
-
-      (integer? limit)
-      (assoc :limit limit))))
+(defn- destination-db-ids
+  "Returns the subset of `db-ids` that back a destination (routed) database -- routing internals
+  reachable only through their router database (see
+  [[metabase.metabot.tools.resources/check-resource-database]])."
+  [db-ids]
+  (when (seq db-ids)
+    (metabot.db/destination-database-ids db-ids)))
 
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 
-  Only cards visible to the current user are returned."
-  [metabot-id & {:as opts}]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
-                             (update :order-by (fnil conj []) [:id]))))
+  Only cards visible to the current user are returned, excluding those backed by a destination
+  (routed) database (see [[destination-db-ids]])."
+  [metabot-id & {:keys [limit]}]
+  (let [cards (metabot.db/metabot-metrics-and-models metabot-id limit)
+        destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
+    (if (seq destination-ids)
+      (remove #(contains? destination-ids (:database_id %)) cards)
+      cards)))

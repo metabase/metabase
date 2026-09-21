@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Center, Stack, Text, Title } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 
 function MetricsViewerEmptyStateLayout({
   title,
@@ -43,7 +43,7 @@ export function MetricsViewerEmptyState(): JSX.Element {
   );
 }
 
-export function MetricsViewerNoTabsEmptyState(): JSX.Element {
+export function MetricsViewerNoDimensionBreakoutEmptyState(): JSX.Element {
   return (
     <MetricsViewerEmptyStateLayout
       title={t`Select a dimension to explore`}

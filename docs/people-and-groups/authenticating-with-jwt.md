@@ -22,6 +22,30 @@ Assuming your site is localhost serving on port 3000:
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
+- For full app embeds, use a `GET` request.
+- For modular embeds use a `POST` request with a JSON body (to avoid putting the JWT in the URL). You'll also want to use `POST` requests in contexts that log or cache URLs, such as server-side integrations or testing.
+
+In both cases the login behavior is the same, and you can pass `return_to` as a query parameter in both `GET` and `POST` requests.
+
+An example `POST` request with curl:
+
+```bash
+curl -X POST "http://localhost:3000/auth/sso?return_to=/question/1-superb-question" \
+  -H "Content-Type: application/json" \
+  -d '{"jwt": "TOKEN_GOES_HERE"}'
+```
+
+Or with JavaScript:
+
+```js
+await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ jwt: token }),
+  credentials: "include",
+});
+```
+
 ## Set up JWT authentication
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
@@ -75,7 +99,7 @@ You can use the following environment variables to configure JWT group mappings 
   MB_JWT_GROUP_SYNC=true
   ```
 
-- [`MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings) to configure group mapping. It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:
+- [`MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings) to configure group mapping. It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase group IDs. For example:
 
   ```
   MB_JWT_GROUP_MAPPINGS='{"extHR":[7], "extSales":[3,4]}'
@@ -93,13 +117,13 @@ If you add group mappings manually, Metabase will _not_ try to also match groups
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
 User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via JWT SSO.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 
@@ -115,7 +139,7 @@ If you're running a multi-tenant application, you can use JWT to automatically a
 
 ## Note about Azure
 
-If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
+If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
 
 ## Example code using JWT-based authentication
 

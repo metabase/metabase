@@ -1,11 +1,13 @@
 import { merge } from "icepick";
 
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
+import {
+  type OnBeforeRequestHandlerConfig,
+  PLUGIN_API,
+} from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
-import { refreshSiteSettings } from "metabase/redux/settings";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { refetchSiteSettings } from "metabase/settings";
 import { isJWT } from "metabase/utils/jwt";
 
 import { getOrRefreshGuestSession } from "./auth";
@@ -17,17 +19,29 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
 
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
       // Replaces the request token with the newly refreshed guest embed token.
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
+      PLUGIN_API.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
         async (config: OnBeforeRequestHandlerConfig) => {
           const newToken = await dispatch(
             getOrRefreshGuestSession(authConfig),
           ).unwrap();
 
-          // The URL is templated (e.g. /api/embed/card/:entityIdentifier/params/:paramId/values or /api/embed/card/:token/query)
+          // The URL is templated (e.g. /api/embed/card/:entityIdentifier/params/:paramId/values or /api/embed/card/:token/query).
+          // `entityIdentifier` arrives as a URL param (in `data`); `token`
+          // arrives in the request body for the saved-card query rewrite (and in
+          // `data` for the legacy whole-bag callers). Refresh whichever channel
+          // carries it before the URL `:tag` substitution reads it.
           if (newToken && "entityIdentifier" in config.data) {
             return merge(config, {
               data: {
                 entityIdentifier: newToken,
+              },
+            });
+          }
+
+          if (newToken && config.body && "token" in config.body) {
+            return merge(config, {
+              body: {
+                token: newToken,
               },
             });
           }
@@ -58,6 +72,6 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
         };
     }
 
-    await dispatch(refreshSiteSettings());
+    await dispatch(refetchSiteSettings());
   },
 );

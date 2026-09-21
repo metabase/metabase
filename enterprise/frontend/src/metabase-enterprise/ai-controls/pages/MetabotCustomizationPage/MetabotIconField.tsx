@@ -2,8 +2,9 @@ import cx from "classnames";
 import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -33,6 +34,7 @@ export function MetabotIconField() {
   const [iconError, setIconError] = useState("");
 
   const isDefaultIcon = !metabotIcon || metabotIcon === "metabot";
+  const isIllustrationsSectionVisible = !isDefaultIcon || !showIllustrations;
   const iconPreviewSrc =
     !isDefaultIcon && typeof metabotIcon === "string" ? metabotIcon : null;
 
@@ -50,6 +52,7 @@ export function MetabotIconField() {
     }
     const reader = new FileReader();
     reader.onload = async (readerEvent) => {
+      // Unjustified type cast. FIXME
       const dataUri = readerEvent.target?.result as string;
       if (!(await isFileIntact(dataUri))) {
         setIconError(
@@ -79,44 +82,48 @@ export function MetabotIconField() {
 
   return (
     <Stack gap={0}>
-      <Text lh="lg" fz="md" mb="xs" fw="bold">
-        {t`Metabot's icon`}
+      <Text lh="lg" fz="md" mb="xxs" fw="bold">
+        {t`AI agent's icon`}
       </Text>
       <Text fz="md" c="text-secondary" lh="lg">
-        {t`Upload a custom icon for Metabot. For best results, use an SVG or PNG with a transparent background.`}
+        {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
-        <Text fz="sm" c="error" mt="xs">
+        <Text fz="sm" c="feedback-negative" mt="xxs">
           {iconError}
         </Text>
       )}
       <Flex
         align="center"
         className={cx(CS.bordered, CS.rounded, CS.alignSelfStart)}
-        gap="md"
+        gap="lg"
         my="sm"
         py="sm"
-        px="md"
+        px="lg"
+        maw="100%"
+        wrap="wrap"
       >
-        <Box
+        <Flex
           className={cx(CS.bgLight, CS.bordered, CS.rounded)}
-          p="sm"
-          flex="0 0 2.25rem"
+          align="center"
+          justify="center"
+          w="2.25rem"
+          h="2.25rem"
+          flex="0 0 auto"
         >
           {iconPreviewSrc ? (
-            <img
+            <Box
+              component="img"
               src={iconPreviewSrc}
               alt={t`Metabot icon`}
-              style={{
-                width: "1.5rem",
-                height: "1.5rem",
-                objectFit: "contain",
-              }}
+              w="1.5rem"
+              h="1.5rem"
+              style={{ objectFit: "contain" }}
             />
           ) : (
             <Icon name="metabot" />
           )}
-        </Box>
+        </Flex>
         <input
           ref={fileInputRef}
           hidden
@@ -125,34 +132,59 @@ export function MetabotIconField() {
           multiple={false}
           onChange={handleIconUpload}
         />
-        <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+        <Button
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          flex="0 0 auto"
+        >
           {t`Upload a custom icon`}
         </Button>
-        {iconFileName && (
-          <Text fz="sm" c="text-secondary" truncate="end">
-            {iconFileName}
-          </Text>
-        )}
-        {!isDefaultIcon && (
-          <Tooltip label={t`Remove custom icon`}>
-            <ActionIcon
-              onClick={handleIconRemove}
-              aria-label={t`Remove custom icon`}
-            >
-              <Icon name="close" />
-            </ActionIcon>
-          </Tooltip>
+        {(iconFileName || !isDefaultIcon) && (
+          <Flex align="center" gap="lg" flex="1 1 0" miw="2rem">
+            {iconFileName && (
+              <Text
+                fz="sm"
+                c="text-secondary"
+                truncate="end"
+                miw={0}
+                title={iconFileName}
+                flex="1 1 0"
+              >
+                {iconFileName}
+              </Text>
+            )}
+            {!isDefaultIcon && (
+              <Tooltip label={t`Remove custom icon`}>
+                <ActionIcon
+                  onClick={handleIconRemove}
+                  aria-label={t`Remove custom icon`}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Flex>
         )}
       </Flex>
-      {!isDefaultIcon && (
-        <Stack mt="lg" gap="sm">
+      {isIllustrationsSectionVisible && (
+        <Stack mt="xl" gap="sm">
           <Text fz="md" fw="bold">
             {t`Metabot illustrations`}
           </Text>
-          <Group gap="lg">
-            <Text fz="md" c="text-secondary">
-              {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
-            </Text>
+          <Group gap="xl" align="center" wrap="nowrap">
+            <Flex align="center" gap="sm" flex="1" miw={0}>
+              <Box
+                component="img"
+                src={EmptyDashboardBot}
+                alt={t`Metabot illustration preview`}
+                w="3rem"
+                h="3rem"
+                flex="0 0 auto"
+              />
+              <Text fz="md" c="text-secondary" flex="1">
+                {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
+              </Text>
+            </Flex>
             <Switch
               aria-label={t`Show Metabot illustrations`}
               checked={!!showIllustrations}
@@ -164,7 +196,6 @@ export function MetabotIconField() {
                 })
               }
               disabled={isLoadingIllustrations}
-              size="sm"
             />
           </Group>
         </Stack>

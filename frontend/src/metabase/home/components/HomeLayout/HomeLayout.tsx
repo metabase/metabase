@@ -3,15 +3,17 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Icon, Title, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
+import { SetupGuideHomePage } from "../SetupGuideHomePage";
 
 interface HomeLayoutProps {
   children?: ReactNode;
@@ -31,7 +33,7 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
     user?.is_superuser &&
     isSimpleEmbeddingAvailable
   ) {
-    return <EmbeddingHubHomePage />;
+    return <SetupGuideHomePage />;
   }
 
   return (
@@ -45,8 +47,11 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
         xl: "10rem 15rem 4rem",
       }}
       mih="100%"
-      bg="background-secondary"
+      bg="background_page-secondary"
     >
+      <Title order={1} className={visuallyHidden.visuallyHidden}>
+        {t`Home`}
+      </Title>
       {landingPageIllustration &&
         (landingPageIllustration.isDefault ? (
           <LighthouseIllustration />

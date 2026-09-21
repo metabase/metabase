@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
+import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { GTAPApi } from "metabase/services";
-import { isQuestionDashCard } from "metabase/utils/dashboard";
-import MetabaseSettings from "metabase/utils/settings";
-import Question from "metabase-lib/v1/Question";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
-} from "metabase-lib/v1/parameters/utils/click-behavior";
+} from "metabase/dashboard/utils/click-behavior";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { useDispatch, useSelector } from "metabase/redux";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import MetabaseSettings from "metabase/utils/settings";
+import Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Parameter } from "metabase-types/api";
 
 import type { ClickMappingsOwnProps, TargetItem } from "./types";
@@ -24,7 +23,6 @@ type ClickMappingsData = {
     column: DatasetColumn[];
     parameter: Parameter[];
   };
-  question: Question;
 };
 
 export function useClickMappingsData(
@@ -33,14 +31,11 @@ export function useClickMappingsData(
   const { object, isDashboard, dashcard, clickBehavior } = props;
 
   const parameters = useSelector(getParameters);
-  const metadata = useSelector(getMetadata);
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
 
   return useMemo(() => {
-    const question = new Question(dashcard.card, metadata);
-
     let filteredParameters = parameters;
 
     if (props.excludeParametersSources) {
@@ -84,13 +79,12 @@ export function useClickMappingsData(
       parameter: filteredParameters,
     };
 
-    return { setTargets, unsetTargets, sourceOptions, question };
+    return { setTargets, unsetTargets, sourceOptions };
   }, [
     clickBehavior,
     dashcard,
     dashcardData,
     isDashboard,
-    metadata,
     object,
     parameters,
     props.excludeParametersSources,
@@ -108,26 +102,9 @@ export function useLoadQuestionMetadata(question: Question | null | undefined) {
 }
 
 export function useUserAttributes(): string[] {
-  const [userAttributes, setUserAttributes] = useState<string[]>([]);
+  const { data: userAttributes } = useListUserAttributesQuery(
+    MetabaseSettings.sandboxingEnabled() ? undefined : skipToken,
+  );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadUserAttributes = async () => {
-      if (MetabaseSettings.sandboxingEnabled()) {
-        const attributes = await GTAPApi.attributes();
-        if (isMounted) {
-          setUserAttributes(attributes);
-        }
-      }
-    };
-
-    loadUserAttributes();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return userAttributes;
+  return userAttributes ?? [];
 }

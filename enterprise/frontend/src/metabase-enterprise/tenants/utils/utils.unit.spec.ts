@@ -101,7 +101,7 @@ describe("isTenantCollection", () => {
 
   it("should return false for other namespaces", () => {
     const collection: Partial<Pick<Collection, "namespace">> = {
-      namespace: "snippets" as CollectionNamespace,
+      namespace: "snippets",
     };
     expect(isTenantCollection(collection)).toBe(false);
   });
@@ -213,9 +213,7 @@ describe("getNamespaceDisplayName", () => {
   });
 
   it("should return null for other namespaces", () => {
-    expect(getNamespaceDisplayName("snippets" as CollectionNamespace)).toBe(
-      null,
-    );
+    expect(getNamespaceDisplayName("snippets")).toBe(null);
   });
 
   it("should return null for undefined namespace", () => {

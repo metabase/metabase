@@ -1,21 +1,23 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [environ.core :as env]
-   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.hierarchy :as search.hierarchy]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.search.permissions :as search.permissions]
-   [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -24,8 +26,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (java.time OffsetDateTime)
    (java.util Queue)))
@@ -37,20 +38,14 @@
 (set! *warn-on-reflection* true)
 
 ;; Make sure the legacy cookies still work.
-(derive :search.engine/fulltext :search.engine/appdb)
+(search.hierarchy/derive! :search.engine/fulltext :search.engine/appdb)
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or config/is-dev?
-           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
-           ;;                         Perhaps just an explicit setting for enabling it.
-           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
-           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
-           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
-       (supported-db? (mdb/db-type))))
+  (supported-db? (mdb/db-type)))
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
@@ -71,46 +66,24 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
-(defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to.
-   Also adds any CTEs required for permission filtering."
-  [search-ctx qry]
-  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
-                                                     :mysql :signed
-                                                     :integer)]
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
-    (cond-> qry
-      (seq with) (update :with (fnil into []) with)
-      true       (sql.helpers/where
-                  [:or
-                   [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
-                   [:and
-                    [:= :search_index.model [:inline "table"]]
-                    clause]]))))
+(defn- view-count-percentiles*
+  [p-value]
+  (into {} (for [{:keys [model vcp]} (search.db/view-count-percentile-rows (search.index/active-table) p-value)]
+             [model vcp])))
 
-(defn add-collection-join-and-where-clauses
-  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
-  so we can return its `:name`."
-  [search-ctx qry]
-  (let [collection-id-col :search_index.collection_id
-        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
-        personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
-        ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
-        ;; permissions and published-via-collection access, so we exclude them from collection filtering here.
-        excluded-models   (conj (vec (search.filter/models-without-collection)) "table")
-        or-null           #(vector :or
-                                   [:in :search_index.model excluded-models]
-                                   %)]
-    (cond-> qry
-      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
-      true (sql.helpers/where (or-null permitted-clause))
-      personal-clause (sql.helpers/where (or-null personal-clause)))))
+(def ^{:private true
+       :arglists '([p-value])}
+  view-count-percentiles
+  (if config/is-prod?
+    (memoize/ttl view-count-percentiles*
+                 :ttl/threshold (u/hours->ms 1))
+    view-count-percentiles*))
 
 (defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
@@ -127,7 +100,7 @@
           (future
             (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
-            (log/error e))))
+            (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
@@ -137,7 +110,7 @@
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
+                       :index-metadata     (search.db/index-metadata-for-engine :appdb)}))))
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
@@ -149,20 +122,11 @@
                              :timeout-ms  2000
                              :interval-ms 100})
             (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-
-      (let [weights (search.config/weights search-ctx)
-            scorers (search.scoring/scorers search-ctx)
-            query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
-                         (add-collection-join-and-where-clauses search-ctx)
-                         (add-table-where-clauses search-ctx)
-                         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                                 search-ctx
-                                                 :search_index.model
-                                                 :search_index.source_type)))
-                         (search.scoring/with-scores search-ctx scorers)
-                         (search.filter/with-filters search-ctx))]
-        (->> (t2/query query)
-             (map (partial rehydrate weights (keys scorers)))))
+      (let [weights     (search.config/weights search-ctx)
+            percentiles (view-count-percentiles search.config/view-count-scaling-percentile)
+            scorer-keys (keys (search.scoring/scorers search-ctx percentiles))]
+        (->> (search.db/scored-search-rows (search.index/active-table) search-ctx search-string percentiles)
+             (map (partial rehydrate weights scorer-keys))))
       (catch Exception e
         ;; Rule out the error coming from stale index metadata.
         (#'search.index/sync-tracking-atoms!)
@@ -177,16 +141,57 @@
   ;; We ignore any current models filter
   (let [unfiltered-context (assoc search-ctx :models search.config/all-models)
         applicable-models  (search.filter/search-context->applicable-models unfiltered-context)
-        search-ctx         (assoc search-ctx :models applicable-models)]
-    (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
-         (add-collection-join-and-where-clauses search-ctx)
-         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
-                                 search-ctx
-                                 :search_index.model
-                                 :search_index.source_type)))
-         (search.filter/with-filters search-ctx)
-         t2/query
-         (into #{} (map :model)))))
+        search-ctx         (assoc search-ctx :models (set applicable-models))]
+    (if-let [index-table (search.index/active-table)]
+      (into #{} (map :model) (search.db/distinct-model-rows index-table search-ctx))
+      #{})))
+
+(defn- row-present?
+  [index-table search-ctx search-string model id layer-count]
+  (some? (search.db/search-index-probe-row index-table search-ctx search-string model id layer-count)))
+
+(defn- first-excluding-layer
+  "Apply the structural + permission `metabase.search.appdb.query/filter-layers` cumulatively to the row-restricted,
+  text-free query. Returns the label of the first layer after which the row disappears, or nil if it survives all
+  layers."
+  [index-table search-ctx model id]
+  (->> (appdb.query/filter-layer-labels search-ctx)
+       (map-indexed (fn [i label] [(inc i) label]))
+       (some (fn [[layer-count label]]
+               (when-not (row-present? index-table search-ctx nil model id layer-count)
+                 label)))))
+
+(defn- appdb-diagnose
+  [search-ctx model id]
+  (let [active (search.index/active-table)]
+    (if (nil? active)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (let [index-row (search.db/index-row active model (str id))]
+        (cond
+          (nil? index-row)
+          {:type :missing-from-index :details {:active-table active}}
+
+          ;; Perms-first invariant from `search.engine/diagnose`: an access denial is reported ahead of any query
+          ;; filter. The post-query permission check runs first since it can deny rows the SQL layers admit
+          ;; (archived-write, table query perms, …). For read-checked models, that means a collection/table denial
+          ;; may be reported as the generic `:permissions` instead of the more specific SQL-layer label.
+          ;; Inside `first-excluding-layer` the SQL permission layers (collection/table) likewise precede the
+          ;; structural filter clauses (including `:models`).
+          :else
+          (if-not (search.impl/check-result-permissions search-ctx (rehydrate {} [] index-row))
+            {:type :filtered :details {:excluded-by :permissions}}
+            (if-let [layer (first-excluding-layer active search-ctx model id)]
+              {:type :filtered :details {:excluded-by layer}}
+              (let [search-string (:search-string search-ctx)]
+                (if (and (not (str/blank? search-string))
+                         (not (row-present? active search-ctx search-string model id nil)))
+                  {:type    :not-matching
+                   :details {:search-string search-string :search-native-query (boolean (:search-native-query search-ctx))}}
+                  {:type :candidate :details {:search-string search-string}})))))))))
+
+(defmethod search.engine/diagnose :search.engine/appdb
+  [search-ctx model id]
+  (appdb-diagnose search-ctx model id))
 
 (defn- populate-index! [context]
   (search.index/index-docs! context (search.ingestion/searchable-documents)))
@@ -198,7 +203,6 @@
       (do
         (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
-
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")
@@ -210,19 +214,20 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try
+    (search.index/delete-obsolete-tables!)
     (search.index/ensure-ready!)
     (if in-place?
       (when-let [table (search.index/active-table)]
         ;; keep the current table, just delete its contents
-        (t2/delete! table))
+        (search.db/delete-all-rows! table))
       (search.index/maybe-create-pending!))
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/error e "Error during reindexing")
+      (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
-(derive :event/setting-update ::settings-changed-event)
+(events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]

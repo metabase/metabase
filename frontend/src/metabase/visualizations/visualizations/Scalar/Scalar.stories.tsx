@@ -5,8 +5,8 @@ import { expect, userEvent, within } from "@storybook/test";
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn } from "__support__/visualizations";
 import { Box, SimpleGrid } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,9 +20,9 @@ export default {
   component: Scalar,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Scalar);
 
+// Unjustified type cast. FIXME
 const MOCK_SERIES = [
   {
     card: createMockCard({ name: "Card", display: "scalar" }),
@@ -82,14 +82,17 @@ WithFormattingAndHover.play = async ({
   canvasElement: HTMLCanvasElement;
 }) => {
   const asyncCallback = createAsyncCallback();
-  const canvas = within(canvasElement.parentElement as HTMLElement);
-  const value = (await canvas.findAllByTestId("scalar-value"))[2];
+  try {
+    // Unjustified type cast. FIXME
+    const canvas = within(canvasElement.parentElement as HTMLElement);
+    const value = (await canvas.findAllByTestId("scalar-value"))[2];
 
-  await userEvent.hover(value);
-  value.classList.add("pseudo-hover");
+    await userEvent.hover(value);
+    value.classList.add("pseudo-hover");
 
-  await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
-  expect(value.classList.contains("pseudo-hover")).toBe(true);
-
-  asyncCallback();
+    await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
+    expect(value.classList.contains("pseudo-hover")).toBe(true);
+  } finally {
+    asyncCallback();
+  }
 };

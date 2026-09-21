@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 import type {
   NotebookStepHeaderProps,
@@ -38,7 +38,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     get title() {
       return t`Data`;
     },
-    color: () => "brand",
+    color: () => "core-brand",
     Step: DataStep,
     StepHeader: NotebookStepHeader,
   },
@@ -49,7 +49,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "join_left_outer",
     priority: 1,
     compact: true,
-    color: () => "brand",
+    color: () => "core-brand",
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
   },
@@ -60,7 +60,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "add_data",
     compact: true,
     secondary: true,
-    color: () => "text-tertiary",
+    color: () => "text-disabled",
     Step: ExpressionStep,
     StepHeader: NotebookStepHeader,
   },
@@ -70,7 +70,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "filter",
     priority: 10,
-    color: () => "filter",
+    color: () => "core-filter",
     Step: FilterStep,
     StepHeader: NotebookStepHeader,
   },
@@ -80,7 +80,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "sum",
     priority: 5,
-    color: () => "summarize",
+    color: () => "core-summarize",
     Step: SummarizeStep,
     StepHeader: SummarizeStepHeader,
   },
@@ -90,7 +90,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "sum",
     priority: 5,
-    color: () => "summarize",
+    color: () => "core-summarize",
     Step: AggregateStep,
     StepHeader: NotebookStepHeader,
   },
@@ -111,7 +111,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "sort",
     compact: true,
     secondary: true,
-    color: () => "text-tertiary",
+    color: () => "text-disabled",
     Step: SortStep,
     StepHeader: NotebookStepHeader,
   },
@@ -122,7 +122,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "list",
     compact: true,
     secondary: true,
-    color: () => "text-tertiary",
+    color: () => "text-disabled",
     Step: LimitStep,
     StepHeader: NotebookStepHeader,
   },

@@ -76,3 +76,148 @@
                      :csrf-token   "test-csrf"}))]
         (is (re-find #"http://localhost:3000/app/assets/img/custom\.png" html)
             "relative path should be resolved to absolute URL")))))
+
+(deftest consent-page-subpath-form-action-test
+  (testing "form action is absolute so it survives hosting under a subpath (GIT-10551)"
+    (let [html (mt/with-temporary-setting-values [site-url "https://example.com/metabase"]
+                 (consent-page/render-consent-page
+                  {:client-name  "Test App"
+                   :oauth-params {:response_type "code" :client_id "abc123"}
+                   :nonce        "test-nonce"
+                   :csrf-token   "test-csrf"}))]
+      (is (re-find #"action=\"https://example\.com/metabase/oauth/authorize/decision\"" html))
+      (testing "bundled fonts are also loaded from under the subpath"
+        (is (re-find #"url\('https://example\.com/metabase/app/fonts/" html)))))
+  (testing "at the domain root the action still targets /oauth/authorize/decision"
+    (let [html (render!)]
+      (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))
+
+(defn- render-with-scopes! [scopes]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (consent-page/render-consent-page
+     {:client-name  "Test App"
+      :oauth-params {:response_type "code" :client_id "abc123" :scope "mb:full"}
+      :nonce        "test-nonce"
+      :csrf-token   "test-csrf"
+      :scopes       scopes})))
+
+(deftest consent-page-shows-requested-scopes-test
+  (testing "each requested scope's human description is shown so a broad grant is not approved blindly"
+    (let [html (render-with-scopes! [{:scope "mb:full" :description "Full access to Metabase as your user account"}
+                                     {:scope "agent:query" :description "Construct and execute queries"}])]
+      (is (re-find #"Full access to Metabase as your user account" html))
+      (is (re-find #"Construct and execute queries" html))
+      (testing "the raw scope string is shown alongside the description"
+        (is (re-find #"mb:full" html)))))
+  (testing "a scope with no human description falls back to the raw string and is not duplicated"
+    (let [html (render-with-scopes! [{:scope "weird:unlabeled" :description "weird:unlabeled"}])]
+      (is (re-find #"weird:unlabeled" html))
+      (is (not (re-find #"raw\">weird:unlabeled" html))
+          "should not also render the raw span when description equals the scope")))
+  (testing "no scope list is rendered when none were requested"
+    (is (not (re-find #"class=\"scopes\"" (render-with-scopes! nil))))))
+
+(defn- render-with-redirect-uri! [redirect-uri]
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (consent-page/render-consent-page
+     {:client-name  "Test App"
+      :oauth-params (cond-> {:response_type "code" :client_id "abc123"}
+                      redirect-uri (assoc :redirect_uri redirect-uri))
+      :nonce        "test-nonce"
+      :csrf-token   "test-csrf"})))
+
+(deftest consent-page-redirect-destination-test
+  (testing "the destination host the code will be sent to is shown"
+    (let [html (render-with-redirect-uri! "https://claude.ai/api/mcp/callback")]
+      (is (re-find #"Redirects to" html))
+      (is (re-find #"<strong>claude\.ai</strong>" html))))
+  (testing "only the parsed host is shown as the destination — userinfo can't spoof the bold host"
+    (let [html (render-with-redirect-uri! "https://evil.example@good.example/cb")]
+      (is (re-find #"<strong>good\.example</strong>" html))
+      (is (not (re-find #"<strong>evil\.example" html)))))
+  (testing "no destination row when there is no meaningful host (custom-scheme native redirect)"
+    (let [html (render-with-redirect-uri! "com.example.app:/oauth2redirect")]
+      (is (not (re-find #"Redirects to" html)))))
+  (testing "no destination row when redirect_uri is absent"
+    (is (not (re-find #"Redirects to" (render-with-redirect-uri! nil))))))
+
+(deftest consent-page-full-access-warning-test
+  (testing "a full-access scope shows an explicit warning that it grants complete account access"
+    (let [html (render-with-scopes! [{:scope        "mb:full"
+                                      :description  "Full access to Metabase as your user account"
+                                      :full-access? true}])]
+      (is (re-find #"complete access to your account" html))
+      (is (re-find #"class=\"warning\"" html))))
+  (testing "a narrow scope shows no full-access warning"
+    (let [html (render-with-scopes! [{:scope        "agent:query"
+                                      :description  "Construct and execute queries"
+                                      :full-access? false}])]
+      (is (not (re-find #"class=\"warning\"" html)))
+      (is (not (re-find #"complete access to your account" html))))))
+
+(defn- checkbox-tags
+  "The `<input type=\"checkbox\">` tags in `html`, in document order."
+  [html]
+  (re-seq #"<input[^>]*type=\"checkbox\"[^>]*>" html))
+
+(defn- tag-value [tag]
+  (second (re-find #"value=\"([^\"]*)\"" tag)))
+
+(defn- tag-has-attribute? [tag attribute]
+  (boolean (re-find (re-pattern (str "\\s" attribute "[\\s=/>]")) tag)))
+
+(def ^:private checkbox-scopes
+  [{:scope "agent:content:read" :description "Read content" :locked? true}
+   {:scope "agent:sql:run" :description "Run SQL"}
+   {:scope        "mb:full"
+    :description  "Full access to Metabase as your user account"
+    :full-access? true}])
+
+(deftest consent-page-scope-checkboxes-test
+  (testing "GHY-4555: every offered scope gets a checkbox named `granted_scope` whose value is the raw scope, in the given order"
+    (let [tags (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (is (= ["agent:content:read" "agent:sql:run" "mb:full"] (map tag-value tags)))
+      (is (every? #(re-find #"name=\"granted_scope\"" %) tags))))
+  (testing "the checkboxes are inside the form, so ticking one is what gets submitted"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (< (.indexOf ^String html "<form")
+             (.indexOf ^String html "type=\"checkbox\"")
+             (.indexOf ^String html "</form>"))))))
+
+(deftest consent-page-locked-baseline-checkbox-test
+  (testing "GHY-4555: a locked scope is ticked and disabled, and the page says it is always granted"
+    (let [html        (render-with-scopes! checkbox-scopes)
+          [locked]    (checkbox-tags html)]
+      (is (tag-has-attribute? locked "checked"))
+      (is (tag-has-attribute? locked "disabled"))
+      (is (re-find #"(?s)value=\"agent:content:read\"(?:(?!</li>).)*Always granted" html)
+          "the note sits in the locked scope's row")))
+  (testing "every other scope, including a full-access one, starts unticked and can be ticked"
+    (let [[_ sql full] (checkbox-tags (render-with-scopes! checkbox-scopes))]
+      (doseq [tag [sql full]]
+        (is (not (tag-has-attribute? tag "checked")) tag)
+        (is (not (tag-has-attribute? tag "disabled")) tag))))
+  (testing "no always-granted note when nothing is locked"
+    (is (not (re-find #"Always granted" (render-with-scopes! (rest checkbox-scopes)))))))
+
+(deftest consent-page-full-access-warning-placement-test
+  (testing "GHY-4555: the full-access warning sits in the full-access scope's own row, next to its checkbox"
+    (let [html (render-with-scopes! checkbox-scopes)]
+      (is (re-find #"(?s)value=\"mb:full\"(?:(?!</li>).)*class=\"warning\"" html))
+      (is (not (re-find #"(?s)class=\"warning\".*type=\"checkbox\" value=\"mb:full\"" html))
+          "the warning does not precede the checkbox it is about"))))
+
+(deftest consent-page-script-test
+  (let [html (render-with-scopes! checkbox-scopes)]
+    (testing "GHY-4568: the page's inline script carries the CSP nonce, without which a production CSP blocks it"
+      (is (re-find #"<script nonce=\"test-nonce\">" html)))
+    (testing "GHY-4568: the script debounces the decision and restores the buttons when the page comes back from the bfcache"
+      (let [script (second (re-find #"(?s)<script nonce=\"test-nonce\">(.*?)</script>" html))]
+        (is (re-find #"addEventListener\('submit'" script))
+        (is (re-find #"addEventListener\('pageshow'" script))
+        (testing (str "a disabled button is left out of the submitted form, so the clicked button's `approved` value "
+                      "is copied into a hidden input before the buttons are disabled")
+          (is (re-find #"(?s)name = 'approved'.*disabled = true" script)))))
+    (testing "without the script the buttons still submit their own `approved` value, and Authorize is not disabled"
+      (is (re-find #"<button class=\"deny\" name=\"approved\" type=\"submit\" value=\"false\">" html))
+      (is (re-find #"<button class=\"allow\" name=\"approved\" type=\"submit\" value=\"true\">" html)))))

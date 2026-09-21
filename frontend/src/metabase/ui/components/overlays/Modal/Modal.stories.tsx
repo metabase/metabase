@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
+import { Box, Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
 
 const args = {
   centered: true,
@@ -41,7 +41,7 @@ const SimpleWithTitleTemplate = (args: ModalProps) => {
         opened={isOpen}
         onClose={handleClose}
       >
-        <Flex direction="row" justify="flex-end" mt="md">
+        <Flex direction="row" justify="flex-end" mt="lg">
           <Button type="submit" variant="filled" ml="sm">
             Add
           </Button>
@@ -70,11 +70,16 @@ const ConfirmationTemplate = (args: ModalProps) => {
           This cannot be undone, and questions that rely on this data will no
           longer work.
         </Text>
-        <Flex direction="row" justify="flex-end" mt="md">
+        <Flex direction="row" justify="flex-end" mt="lg">
           <Button type="submit" ml="sm">
             Cancel
           </Button>
-          <Button type="submit" variant="filled" color="error" ml="sm">
+          <Button
+            type="submit"
+            variant="filled"
+            color="feedback-negative"
+            ml="sm"
+          >
             Delete
           </Button>
         </Flex>
@@ -99,7 +104,7 @@ const SingleButtonTemplate = (args: ModalProps) => {
         onClose={handleClose}
       >
         <Text>Sometimes all you need is one option.</Text>
-        <Flex direction="row" justify="flex-end" mt="md">
+        <Flex direction="row" justify="flex-end" mt="lg">
           <Button type="submit" variant="filled" ml="sm">
             Add
           </Button>
@@ -108,6 +113,19 @@ const SingleButtonTemplate = (args: ModalProps) => {
     </Flex>
   );
 };
+
+const OpenedTemplate = (args: ModalProps) => (
+  <Box w="100vw" h="100vh">
+    <Modal {...args} title="Add to dashboard?" opened onClose={() => undefined}>
+      <Text>Choose a dashboard for this question.</Text>
+      <Flex direction="row" justify="flex-end" mt="lg">
+        <Button type="submit" variant="filled">
+          Add
+        </Button>
+      </Flex>
+    </Modal>
+  </Box>
+);
 
 const NoBodyTextTemplate = (args: ModalProps) => {
   const [isOpen, setOpen] = useState(false);
@@ -124,7 +142,7 @@ const NoBodyTextTemplate = (args: ModalProps) => {
         opened={isOpen}
         onClose={handleClose}
       >
-        <Flex direction="row" justify="flex-end" mt="md">
+        <Flex direction="row" justify="flex-end" mt="lg">
           <Button onClick={handleClose}>Not now</Button>
           <Button type="submit" variant="filled" ml="sm">
             Add
@@ -149,6 +167,10 @@ export const SentenceCaseTitles = {
 
 export const Confirmation = {
   render: ConfirmationTemplate,
+};
+
+export const Opened = {
+  render: OpenedTemplate,
 };
 
 export const SingleButton = {

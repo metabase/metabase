@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockDashboard,
@@ -61,7 +61,6 @@ describe("DashboardChartSettings", () => {
         card: createMockCard({ visualization_settings: originalVizSettings }),
       }),
       settings: modifiedSettings,
-      widgets: [],
       onChange,
     });
 

@@ -431,14 +431,6 @@ describe("issue 17160", () => {
     });
   }
 
-  function visitPublicSourceDashboard() {
-    cy.get("@sourceDashboardUUID").then((uuid) => {
-      cy.visit(`/public/dashboard/${uuid}`);
-
-      cy.findByTextEnsureVisible("Enormous Wool Car");
-    });
-  }
-
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -478,37 +470,6 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
   });
-
-  it(
-    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
-    { tags: "@skip" },
-    () => {
-      // FIXME: setup public dashboards
-      setup();
-
-      // 1. Check click behavior connected to a public question
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-question-label").eq(0).click();
-
-      cy.url().should("include", "/public/question");
-
-      assertMultipleValuesFilterState();
-
-      // 2. Check click behavior connected to a publicdashboard
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
-
-      cy.url().should("include", "/public/dashboard");
-      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(TARGET_DASHBOARD_NAME);
-
-      assertMultipleValuesFilterState();
-    },
-  );
 });
 
 describe("issue 18454", () => {
@@ -713,11 +674,11 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 130;
+        const expectedWidth = 100;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
           );
         });
       });
@@ -910,15 +871,19 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        cy.log(
-          "should not truncate value and should not show value tooltip on hover",
-        );
+        cy.log("should not truncate value");
         scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
+
+        cy.log(
+          "should show the title tooltip on hover because the smallest cards hide the inline title",
+        );
         scalarContainer().realHover();
 
-        cy.findByRole("tooltip").should("not.exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.name)
+          .should("exist");
       });
     });
 
@@ -947,7 +912,7 @@ describe("issue 31628", () => {
 
   describe("display: smartscalar", () => {
     const descendantsSelector = [
-      "[data-testid='legend-caption']",
+      "[data-testid='scalar-title']",
       "[data-testid='scalar-container']",
       "[data-testid='scalar-previous-value']",
     ].join(",");
@@ -985,70 +950,40 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        cy.log(
-          "it should not truncate value and should not show value tooltip on hover",
-        );
+        cy.log("it should not truncate value");
         scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
 
         cy.log(
-          "it should not display period because the card height is too small to fit it",
+          "it should show the title tooltip on hover because the smallest cards hide the inline title",
         );
-        cy.findByTestId("scalar-period").should("not.exist");
-
-        cy.log("it should truncate title and show title tooltip on hover");
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
-        cy.log("it should show previous value tooltip on hover");
-        cy.findByTestId("scalar-previous-value").realHover();
+        cy.log("it should not display the period on dashboard cards");
+        cy.findByTestId("scalar-period").should("not.exist");
+
+        cy.log(
+          "it should show the previous value as a percentage only (without truncation)",
+        );
+        previousValue().should("contain", "-34.72%").and("not.contain", "527");
+
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
+
+        cy.log("it should show the full comparison in a panel on hover");
+        previousValue().realHover();
 
         cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
-          cy.contains("vs. previous month: 527").should("exist");
+          cy.contains("vs. previous month").should("exist");
+          cy.contains("527").should("exist");
         });
-
-        cy.log(
-          "it should show previous value as a percentage only (without truncation)",
-        );
-        previousValue()
-          .should("contain", "35%")
-          .and("not.contain", "vs. previous month: 527");
-
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-      });
-
-      it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
-        cy.viewport(1000, 600);
-
-        previousValue()
-          .should("contain", "35%")
-          .and("not.contain", "34.72%")
-          .and("not.contain", "vs. previous month: 527");
-
-        previousValue().then(($element) =>
-          H.assertIsNotEllipsified($element[0]),
-        );
-      });
-
-      it("should truncate previous value (840x600)", () => {
-        cy.viewport(840, 600);
-
-        previousValue()
-          .findByText("35%")
-          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1072,22 +1007,18 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
+        cy.log("it should display the period as part of the comparison");
+        previousValue().should("contain", "Apr 2029");
 
-        cy.log("should truncate title and show title tooltip on hover");
-
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        cy.log("should truncate the inline title and show it on hover");
+        cy.findByTestId("scalar-title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
         cy.log("should show description tooltip on hover");
-        cy.findByTestId("legend-caption").icon("info").realHover();
+        cy.findByTestId("scalar-title").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
@@ -1095,13 +1026,15 @@ describe("issue 31628", () => {
 
         cy.log("should show previous value in full");
         previousValue()
-          .should("contain", "34.72%")
-          .and("contain", "vs. previous month: 527");
+          .should("contain", "-34.72% MoM")
+          .and("contain", "(527)");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
 
-        cy.log("should not show previous value tooltip on hover");
+        cy.log(
+          "should not show a panel for a single fully-displayed comparison",
+        );
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1128,21 +1061,18 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
+        cy.log("it should display the period as part of the comparison");
+        previousValue().should("contain", "Apr 2029");
 
-        cy.log("should truncate title and show title tooltip on hover");
-        cy.findByTestId("legend-caption-title")
-          .as("title")
-          .then(($element) => H.assertIsEllipsified($element[0]));
-        cy.get("@title").realHover();
+        cy.log("should truncate the inline title and show it on hover");
+        cy.findByTestId("scalar-title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
         cy.log("should show description tooltip on hover");
-        cy.findByTestId("legend-caption").icon("info").realHover();
+        cy.findByTestId("scalar-title").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
@@ -1150,13 +1080,15 @@ describe("issue 31628", () => {
 
         cy.log("should show previous value in full");
         previousValue()
-          .should("contain", "34.72%")
-          .and("contain", "vs. previous month: 527");
+          .should("contain", "-34.72% MoM")
+          .and("contain", "(527)");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
 
-        cy.log("should not show previous value tooltip on hover");
+        cy.log(
+          "should not show a panel for a single fully-displayed comparison",
+        );
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1636,20 +1568,20 @@ describe("issue 63416", () => {
         ],
       });
 
+      cy.wrap(dashboard.id).as("dashboardId");
+
       H.visitDashboard(dashboard.id);
     });
   });
 
-  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", function () {
     H.editDashboard();
 
     H.showDashcardVisualizerModalSettings(0, {
       isVisualizerCard: false,
     });
-    H.modal()
-      .findByLabelText("Description")
-      .type("Make this a visualizer card");
 
+    cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
 
     H.saveDashboard();
@@ -1660,8 +1592,42 @@ describe("issue 63416", () => {
       fileType: "csv",
       isDashboard: true,
       downloadMethod: "POST",
-      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
+  });
+});
+
+describe("issue 76056", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("the dashcard actions panel should not have redundant horizontal space (metabase#76056)", () => {
+    H.editDashboard();
+    cy.button("Add action").click();
+    cy.button("Close").click();
+
+    H.showDashboardCardActions();
+
+    cy.findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .then(($panel) => {
+        const panelRect = $panel[0].getBoundingClientRect();
+        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
+          (button) => button.getBoundingClientRect(),
+        );
+        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
+        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
+        const contentWidth = maxRight - minLeft;
+
+        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
+      });
   });
 });

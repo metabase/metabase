@@ -13,7 +13,8 @@
                                  (slurp "resources/data_readers.clj")))
                           'js)]
     (zipmap reader-tags (map (fn [tag]
-                               #_:clj-kondo/ignore
+                               ;; eval builds a quoting reader fn per dynamic tag
+                               #_{:clj-kondo/ignore [:discouraged-var]}
                                (eval `(fn [v] (list (quote ~tag) v))))
                              reader-tags))))
 
@@ -70,10 +71,10 @@
                       ])
            %))
    [1 3 4 5])
-;; => [[1 {:start 1, :end 2}]
-;;     [3 {:start 2, :end 4}]
-;;     [4 {:start 4, :end 7}]
-;;     [5 {:start 4, :end 7}]]
+  ;; => [[1 {:start 1, :end 2}]
+  ;;     [3 {:start 2, :end 4}]
+  ;;     [4 {:start 4, :end 7}]
+  ;;     [5 {:start 4, :end 7}]]
   )
 
 (defn- read-check-problem [reason]
@@ -100,7 +101,8 @@
   [file & [line-number]]
   (let [content (try (slurp file) (catch Exception _ (read-check-problem :missing-file)))]
     (if-not line-number
-      #_:clj-kondo/ignore
+      ;; CLI output; results print to stdout by design
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (let [result (can-read-content? content)]
         (prn result)
         result)
@@ -124,7 +126,6 @@
                                                               corpus)))
                            :starting-at (nth lines (dec start))
                            :ending-at (nth lines (dec (dec end))))]
-               #_:clj-kondo/ignore
                (pprint/pprint result)
                result))
            (catch Exception e
@@ -136,7 +137,8 @@
                 :message (ex-message e)
                 :data data}))))))
 
-#_:clj-kondo/ignore
+;; REPL scratch full of deliberately unreadable tokens and ad-hoc requires
+#_{:clj-kondo/ignore [:duplicate-require]}
 (comment ;; hi self
 
   (check "test/metabase/queries/models/card_test.clj" 20)

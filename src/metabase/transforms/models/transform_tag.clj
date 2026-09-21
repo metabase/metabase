@@ -4,7 +4,9 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.schema]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -29,22 +31,32 @@
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
               (every? mi/can-write? transforms)))))
   ([_model pk]
-   (when-let [tag (t2/select-one :model/TransformTag :id pk)]
+   (when-let [tag (transforms.db/tag pk)]
      (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
   (api/is-data-analyst?))
 
+(defn schedules-for-transforms
+  "Map each id in `transform-ids` to the cron schedules of the active jobs that run it via shared tags.
+  Ids with no such job are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (reduce (fn [m {:keys [transform_id schedule]}]
+              (update m transform_id (fnil conj #{}) schedule))
+            {}
+            (transforms.db/active-job-schedules-for-transforms transform-ids))))
+
 (defn tag-name-exists?
   "Check if a tag with the given name already exists"
   [tag-name]
-  (t2/exists? :model/TransformTag :name tag-name))
+  (transforms.db/tag-name-exists? tag-name))
 
 (defn tag-name-exists-excluding?
   "Check if a tag with the given name exists, excluding the specified ID"
   [tag-name tag-id]
-  (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
+  (transforms.db/tag-name-exists-excluding? tag-name tag-id))
 
 (defn- translate-name [tag]
   (let [values {"hourly"  (i18n/deferred-trs "hourly")
@@ -75,13 +87,12 @@
     tags
     (let [tag-ids (into #{} (map :id) tags)
           ;; Get all transform-tag associations
-          associations (t2/select [:model/TransformTransformTag :tag_id :transform_id]
-                                  :tag_id [:in tag-ids])
+          associations (transforms.db/transform-tag-links-for-tags tag-ids)
           ;; Get unique transform IDs
           transform-ids (into #{} (map :transform_id) associations)
           ;; Fetch transforms and check can-write? for each
           transforms (when (seq transform-ids)
-                       (t2/select :model/Transform :id [:in transform-ids]))
+                       (transforms.db/transforms transform-ids))
           transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
           ;; Build tag-id -> can_run map
           tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
@@ -93,10 +104,6 @@
                                        [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
                                 tag-id->transform-ids)]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
-
-(defmethod serdes/hash-fields :model/TransformTag
-  [_tt]
-  [:name :built_in_type])
 
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]

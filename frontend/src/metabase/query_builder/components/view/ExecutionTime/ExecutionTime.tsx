@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
-
-import { formatDuration } from "./utils";
+import { formatDurationLong } from "metabase/utils/formatting";
 
 /**
  * `time` can most likely never be `null`
@@ -22,13 +21,13 @@ export const ExecutionTime = ({ time }: Props) => {
     <Tooltip label={label}>
       <Flex
         align="center"
-        gap="xs"
+        gap="xxs"
         fw="bold"
         data-testid="execution-time"
         aria-label={label}
       >
         <FixedSizeIcon name="bolt" />
-        {formatDuration(time)}
+        {formatDurationLong(time)}
       </Flex>
     </Tooltip>
   );

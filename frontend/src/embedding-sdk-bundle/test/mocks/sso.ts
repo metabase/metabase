@@ -78,6 +78,7 @@ export const setupMockSamlEndpoints = ({
     return {
       url: providerUri,
       method: "saml",
+      "saml-popup-url": instanceUrl,
     };
   });
 
@@ -117,14 +118,12 @@ export const setupMockSamlEndpoints = ({
  * Returns the mocked popup object so you can verify it was closed, etc.
  */
 export const setupSamlPopup = () => {
-  const popupMock = {
-    closed: false,
-    close: jest.fn(),
-  };
+  const popupMock = { closed: false, close: jest.fn() };
 
-  jest
-    .spyOn(window, "open")
-    .mockImplementation(() => popupMock as unknown as Window);
+  // The mock is used as the browser popup.
+  const popupWindow = popupMock as unknown as Window;
+
+  jest.spyOn(window, "open").mockImplementation(() => popupWindow);
 
   // Wait until the next tick to simulate popup message
   process.nextTick(() => {
@@ -136,6 +135,8 @@ export const setupSamlPopup = () => {
           type: "SAML_AUTH_COMPLETE",
           authData,
         },
+        origin: MOCK_INSTANCE_URL,
+        source: popupWindow,
       }),
     );
   });
@@ -150,7 +151,7 @@ export const setupSamlPopup = () => {
  * The default setup uses TEST_JWT_TOKEN and automatically mocks the validation endpoint for it.
  * If you need a different JWT token, you have two options:
  * 1. Use setupMockJwtEndpoints({ providerResponse: { jwt: "your-token" } }) and manually mock
- *    fetchMock.get("http://localhost/auth/sso?jwt=your-token", { your response })
+ *    fetchMock.post("http://localhost/auth/sso", { your response })
  * 2. Keep the default and use TEST_JWT_TOKEN in your test assertions
  *
  * To test provider failures, return an error from providerResponse:
@@ -207,16 +208,13 @@ export const setupMockJwtEndpoints = ({
     return { status: 400, body: { error: "Invalid request" } };
   });
 
-  const jwtValidationMock = fetchMock.get(
-    `${instanceUrl}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
-    {
-      body: {
-        id: sessionToken,
-        exp,
-        iat,
-      },
+  const jwtValidationMock = fetchMock.post(`${instanceUrl}/auth/sso`, {
+    body: {
+      id: sessionToken,
+      exp,
+      iat,
     },
-  );
+  });
   const failureMock = fetchMock.get(failureUrl, {
     status: 500,
     body: { error: failureError },

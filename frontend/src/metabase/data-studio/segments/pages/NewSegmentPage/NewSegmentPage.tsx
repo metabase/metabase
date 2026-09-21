@@ -1,17 +1,18 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { trackSegmentCreated } from "metabase/data-studio/analytics";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
+import {
+  type MetadataSelectorOpts,
+  useMetadataProvider,
+} from "metabase/metadata-store";
+import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
@@ -21,21 +22,26 @@ import { SegmentEditor } from "../../components/SegmentEditor";
 import { useSegmentQuery } from "../../hooks/use-segment-query";
 import { createInitialQueryForTable } from "../../utils/segment-query";
 
+// Hoisted: the metadata selector memoises on the options object, so a fresh
+// literal each render would defeat it.
+const WITH_HIDDEN_TABLES: MetadataSelectorOpts = { includeHiddenTables: true };
+
 type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
 };
 
 export function NewSegmentPage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewSegmentPageProps) {
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadataWithHiddenTables);
+  const navigate = useNavigate();
+  const metadataProvider = useMetadataProvider(
+    table?.db_id ?? null,
+    WITH_HIDDEN_TABLES,
+  );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");
@@ -48,11 +54,11 @@ export function NewSegmentPage({
   useEffect(() => {
     if (table && !isInitialized.current) {
       isInitialized.current = true;
-      setDefinition(createInitialQueryForTable(table, metadata));
+      setDefinition(createInitialQueryForTable(table, metadataProvider));
     }
-  }, [table, metadata]);
+  }, [table, metadataProvider]);
 
-  const { query, filters } = useSegmentQuery(definition, metadata);
+  const { query, filters } = useSegmentQuery(definition);
 
   const isDirty =
     !savedSegment &&
@@ -73,7 +79,6 @@ export function NewSegmentPage({
     }
     const { data: segment, error } = await createSegment({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });
@@ -99,12 +104,12 @@ export function NewSegmentPage({
 
   useEffect(() => {
     if (savedSegment) {
-      dispatch(push(getSuccessUrl(savedSegment)));
+      navigate(getSuccessUrl(savedSegment));
     }
-  }, [savedSegment, dispatch, getSuccessUrl]);
+  }, [savedSegment, getSuccessUrl, navigate]);
 
   return (
-    <PageContainer data-testid="new-segment-page" gap="xl">
+    <PageContainer data-testid="new-segment-page" gap="xxl">
       <NewSegmentHeader
         previewUrl={previewUrl}
         onNameChange={setName}
@@ -128,7 +133,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

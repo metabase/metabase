@@ -26,3 +26,49 @@ Our themed wrapper around [Mantine Tabs](https://v6.mantine.dev/core/tabs/).
 <Canvas of={TabsStories.VerticalOrientation} />
 
 <Canvas of={TabsStories.VerticalOrientationIcons} />
+
+### Pills
+
+Use the `pills` variant for a compact, toggle-like set of tabs.
+
+<Canvas of={TabsStories.Pills} />
+
+<Canvas of={TabsStories.PillsIcons} />
+
+### Sizes
+
+`size` is `md` by default. `sm` exists only for the `pills` variant — passing it
+with any other variant is a type error.
+
+```tsx
+<Tabs variant="pills" size="sm">
+```
+
+### Closable tabs
+
+`closable` renders a close control on a `Tabs.Tab`; `onClose` receives the
+tab's value. The component doesn't remove anything itself: drop the tab from
+your list, and if it was the selected one, pick a new selection.
+
+The control appears while the tab is hovered, pressed or focused; the tab keeps
+its width and the label slides over to make room.
+
+Keyboard users close the focused tab with `Delete` or `Backspace`.
+
+```tsx
+<Tabs.Tab value="one" closable onClose={handleClose}>
+  One
+</Tabs.Tab>
+```
+
+<Canvas of={TabsStories.Closable} />
+
+<Canvas of={TabsStories.ClosablePills} />
+
+### List border
+
+The `listBorder` prop (default variant only) controls the divider rendered under
+the tab list. Set it to `false` when the divider is drawn elsewhere — e.g. a
+border on a parent container — so the tabs don't draw a second line.
+
+<Canvas of={TabsStories.NoListBorder} />

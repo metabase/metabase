@@ -1,0 +1,122 @@
+import { useEffect, useMemo, useRef } from "react";
+import { useAsyncFn } from "react-use";
+
+import { useLazySelector } from "embedding-sdk-package/hooks/private/use-lazy-selector";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
+import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
+
+import {
+  getEmbeddingSdkBundle,
+  getResolveDatasetQueryFromBundle,
+} from "./bundle";
+import { stableStringifyQuery } from "./stable-query-key";
+import type {
+  DefinedQuery,
+  MetabaseDynamicQuery,
+  MetabaseQueryOptions,
+} from "./types";
+
+export type UseMetabaseQueryObjectResult = {
+  query: MetabaseQueryObject | null;
+  error: unknown;
+  isLoading: boolean;
+};
+
+type QueryObjectState = {
+  query: MetabaseQueryObject;
+  queryKey: string;
+};
+
+/**
+ * Resolves a data app query into a query object that can be passed to SDK question components.
+ */
+export function useMetabaseQueryObject(
+  query: MetabaseQueryOptions<undefined> & DefinedQuery,
+  dynamicQuery?: MetabaseDynamicQuery,
+): UseMetabaseQueryObjectResult {
+  const { loadingState } = useSdkLoadingState();
+
+  const loginStatus = useLazySelector(getEmbeddingSdkBundle()?.getLoginStatus);
+
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
+
+  const isEnabled = query.enabled !== false && dynamicQuery?.enabled !== false;
+
+  const queryKey = useMemo(
+    () => stableStringifyQuery([query, dynamicQuery]),
+    [query, dynamicQuery],
+  );
+  const queryRef = useRef(query);
+  const dynamicQueryRef = useRef(dynamicQuery);
+  const pendingQueryKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    queryRef.current = query;
+    dynamicQueryRef.current = dynamicQuery;
+  }, [query, dynamicQuery]);
+
+  const [{ value, error, loading }, resolveQueryObject] =
+    useAsyncFn(async (): Promise<QueryObjectState | null> => {
+      const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
+
+      if (!reduxStore || !resolveDatasetQuery) {
+        return null;
+      }
+
+      const result = await resolveDatasetQuery(reduxStore)(
+        queryRef.current,
+        dynamicQueryRef.current,
+      );
+
+      return {
+        // The bundle returns the opaque `DatasetQuery`; the public API publishes
+        // the structural `MetabaseQueryObject` instead (see its own docs for why).
+        query: result as MetabaseQueryObject,
+        queryKey,
+      };
+    }, [queryKey, reduxStore]);
+
+  useEffect(() => {
+    if (
+      !isEnabled ||
+      !reduxStore ||
+      !getResolveDatasetQueryFromBundle() ||
+      loginStatus?.status !== "success"
+    ) {
+      return;
+    }
+
+    pendingQueryKeyRef.current = queryKey;
+    resolveQueryObject();
+  }, [
+    isEnabled,
+    loadingState,
+    loginStatus?.status,
+    queryKey,
+    reduxStore,
+    resolveQueryObject,
+  ]);
+
+  if (!isEnabled) {
+    return { query: null, error: null, isLoading: false };
+  }
+
+  if (error && !loading && pendingQueryKeyRef.current === queryKey) {
+    return { query: null, error, isLoading: false };
+  }
+
+  if (loginStatus?.status !== "success" || value?.queryKey !== queryKey) {
+    return { query: null, error: null, isLoading: true };
+  }
+
+  return {
+    query: value.query,
+    error: error ?? null,
+    isLoading: loading,
+  };
+}

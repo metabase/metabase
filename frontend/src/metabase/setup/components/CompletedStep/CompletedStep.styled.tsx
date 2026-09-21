@@ -5,16 +5,16 @@ export const StepRoot = styled.section`
   display: flex;
   flex-direction: column;
   padding: 2.5rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   gap: 32px;
   margin-bottom: 1.75rem;
 `;
 
 export const StepBody = styled.div`
   padding: 24px;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 4px;
 `;
 

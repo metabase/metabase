@@ -1,16 +1,18 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatValue } from "metabase/utils/formatting";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
-import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type {
-  ChartTicksFormatters,
-  ValueFormatter,
-} from "metabase/visualizations/shared/types/format";
-import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+import { formatValue } from "metabase/value-formatting";
+import {
+  type BarData,
+  type CartesianChartColumns,
+  type ChartTicksFormatters,
+  type GroupedDatum,
+  type SeriesInfo,
+  getFormattingOptionsWithoutScaling,
+  getLabelsMetricColumn,
+  getStackOffset,
+} from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,
@@ -67,15 +69,22 @@ export const getFormatters = (
 export const getLabelsFormatter = (
   chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
-): ValueFormatter => {
-  const column = getLabelsMetricColumn(chartColumns).column;
-  const options = getFormattingOptionsWithoutScaling({
-    ...settings.column(column),
-    jsx: false,
-    compact: settings["graph.label_value_formatting"] === "compact",
-  });
+): ((value: any, bar?: BarData<GroupedDatum, SeriesInfo>) => string) => {
+  const fallbackColumn = getLabelsMetricColumn(chartColumns).column;
 
-  const labelsFormatter = (value: any) => String(formatValue(value, options));
+  const labelsFormatter = (
+    value: any,
+    bar?: BarData<GroupedDatum, SeriesInfo>,
+  ) => {
+    const column = bar?.series.seriesInfo?.metricColumn ?? fallbackColumn;
+    const options = getFormattingOptionsWithoutScaling({
+      ...settings.column(column),
+      jsx: false,
+      compact: settings["graph.label_value_formatting"] === "compact",
+    });
+
+    return String(formatValue(value, options));
+  };
 
   return labelsFormatter;
 };
@@ -83,6 +92,6 @@ export const getLabelsFormatter = (
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
     isEmpty(value)
-      ? NULL_DISPLAY_VALUE
+      ? getNullDisplayValue()
       : String(formatValue(value, { column }));
 };

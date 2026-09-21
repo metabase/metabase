@@ -2,6 +2,7 @@
   "JWT authentication provider implementation."
   (:require
    [buddy.sign.jwt :as jwt]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -10,15 +11,14 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
 ;; Register JWT provider
-(derive :provider/jwt :metabase.auth-identity.provider/provider)
-(derive :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
-(derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
 ;; 3 minutes is the time used by Zendesk for their JWT SSO
@@ -108,7 +108,7 @@
           (throw (ex-info (tru "JWT token missing email claim")
                           {:status-code 400
                            :error :missing-email})))
-        (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
+        (log/debug "Successfully authenticated JWT token")
         {:success? true
          :tenant-slug (some-> tenant-slug str)
          :tenant-attributes tenant-attributes
@@ -122,12 +122,12 @@
          :jwt-data jwt-data
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "JWT authentication failed: %s" (.getMessage e))
+        (log/errorf "JWT authentication failed: %s" (.getMessage e))
         {:success? false
          :error (or (:error (ex-data e)) :authentication-failed)
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during JWT authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during JWT authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during authentication"}))))
@@ -161,7 +161,9 @@
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
     (sso-utils/group-names->ids group-names name-mappings)
-    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
+    (let [names (into #{} (sso-utils/group-names->strings group-names))]
+      (when (seq names)
+        (sso.db/group-ids-by-name names)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

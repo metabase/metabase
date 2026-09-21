@@ -3,8 +3,10 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
+  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -12,10 +14,12 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
+import type { Dashboard } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
@@ -29,16 +33,23 @@ export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
   showSimpleEmbedTerms?: boolean;
+  guestEmbeddingEnabled?: boolean;
+  showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
+  metabotEnabled?: boolean;
+  siteUrl?: string;
+  dashboard?: Dashboard;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
   const mockDatabase = createMockDatabase();
-  const mockDashboard = createMockDashboard({
-    enable_embedding: true,
-  });
+  const mockDashboard =
+    options?.dashboard ??
+    createMockDashboard({
+      enable_embedding: true,
+    });
 
   if (enterprisePlugins) {
     enterprisePlugins.forEach((plugin) => {
@@ -53,13 +64,24 @@ export const setup = (options?: {
     "token-features": tokenFeatures,
     "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+    "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
+    "enable-embedding-static": options?.guestEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
+    "embedded-metabot-enabled?": options?.metabotEnabled ?? false,
+    "llm-metabot-configured?": options?.metabotEnabled ?? false,
+    // Default to the jsdom test origin so the embed wizard preview renders
+    // (mismatched origins surface a Site URL configuration error).
+    "site-url": options?.siteUrl ?? window.location.origin,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupSearchEndpoints([]);
+  setupDatabasesEndpoints([mockDatabase]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", name: "Our analytics" })],
+  });
   setupDashboardEndpoints(mockDashboard);
   setupDashboardQueryMetadataEndpoint(
     mockDashboard,
@@ -70,7 +92,7 @@ export const setup = (options?: {
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
   setupNotificationChannelsEndpoints(
-    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+    options?.hasEmailSetup ? { email: { configured: true } } : {},
   );
   fetchMock.get("path:/api/embed-theme", []);
 

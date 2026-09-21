@@ -11,6 +11,7 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
+import { hasRequiredFeature } from "metabase/databases";
 import {
   type HelpText,
   expressionModeSupportsClause,
@@ -18,8 +19,8 @@ import {
   getHelpText,
 } from "metabase/querying/expressions";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
 
 import {
   HighlightExpressionParts,
@@ -45,16 +46,10 @@ export type HelpTextProps = {
       index: number;
     } | null;
   } | null;
-  query: Lib.Query;
-  metadata: Metadata;
+  database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
 };
-
-function getDatabase(query: Lib.Query, metadata: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata.database(databaseId);
-}
 
 const components = {
   code(props: { children: ReactNode }) {
@@ -77,12 +72,10 @@ export function HelpText({
   open = true,
   onToggle,
   enclosingFunction,
-  query,
-  metadata,
+  database,
   reportTimezone,
   expressionMode,
 }: HelpTextProps) {
-  const database = getDatabase(query, metadata);
   const helpText =
     enclosingFunction && database
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
@@ -91,7 +84,8 @@ export function HelpText({
   const clause = helpText && getClauseDefinition(helpText.name);
   const isSupported =
     clause &&
-    database?.hasFeature(clause?.requiresFeature) &&
+    database != null &&
+    hasRequiredFeature(database, clause?.requiresFeature) &&
     expressionModeSupportsClause(expressionMode, clause.name);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(

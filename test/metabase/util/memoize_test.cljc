@@ -57,6 +57,36 @@
 (deftest ^:parallel fast-bounded-never-evicts-if-large-enough-test
   (never-evicts #(memo/fast-bounded % :bounded/threshold 101)))
 
+(deftest ^:parallel fast-interner-test
+  (testing "equal-but-distinct inputs collapse to one identical canonical object,
+            which is the canonicalized form (sorted-map), not the lookup argument"
+    (let [intern (memo/fast-interner #(into (sorted-map) %))
+          in1    {:b 2 :a 1}                        ; hash-map
+          in2    {:a 1 :b 2}]                       ; = in1, distinct object
+      (is (not (identical? in1 in2)))               ; genuinely distinct inputs
+      (is (= in1 (intern in1)))                     ; value equality preserved
+      (is (sorted? (intern in1)))                   ; canonical form returned, not the input hash-map
+      (is (identical? (intern in1) (intern in2))))) ; equal inputs share the one canonical object
+  (testing "the zero-arg arity interns values as-is"
+    (let [intern (memo/fast-interner)]
+      (is (= :kw (intern :kw)))
+      (is (identical? (intern :kw) (intern :kw)))))
+  (testing "nil is returned unchanged without calling the canonicalizer"
+    (let [calls  (atom 0)
+          intern (memo/fast-interner (fn [x]
+                                       (swap! calls inc)
+                                       x))]
+      (is (nil? (intern nil)))
+      (is (zero? @calls))))
+  (testing "a cached false counts as a hit, not a miss"
+    (let [calls  (atom 0)
+          intern (memo/fast-interner (fn [x]
+                                       (swap! calls inc)
+                                       x))]
+      (is (false? (intern false)))
+      (is (false? (intern false)))
+      (is (= 1 @calls)))))
+
 (deftest ^:parallel bounded-evicts-when-keyspace-overflows-test
   (let [keyspace                       (gen-keyspace 100)
         {:keys [f calls misses reset]} (call-count-harness #(memo/bounded % :bounded/threshold 50) str/reverse)]

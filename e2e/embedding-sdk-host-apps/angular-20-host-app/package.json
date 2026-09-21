@@ -1,12 +1,12 @@
 {
   "name": "angular-20-host-app",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "start": "./entrypoint.sh",
     "preview": "ng serve --configuration production --watch false",
     "watch": "ng serve --configuration development --watch true"
   },
-  "private": true,
   "dependencies": {
     "@angular/common": "^20.0.0",
     "@angular/compiler": "^20.0.0",
@@ -26,6 +26,6 @@
     "typescript": "^5.8.3"
   },
   "overrides": {
-    "esbuild": "0.25.0"
+    "esbuild": "0.28.1"
   }
 }

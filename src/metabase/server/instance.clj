@@ -7,7 +7,6 @@
    [metabase.config.core :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.statistics-handler :as statistics-handler]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.adapter.jetty :as ring-jetty]
@@ -52,10 +51,10 @@
                                              (merge (jetty-ssl-config)))))
 
 (defn- log-config [jetty-config]
-  (log/info "Launching Embedded Jetty Webserver with config:\n"
-            (u/pprint-to-str (m/filter-keys
-                              #(not (str/includes? % "password"))
-                              jetty-config))))
+  (log/info "Launching Embedded Jetty Webserver with config:"
+            (pr-str (m/filter-keys
+                     #(not (str/includes? % "password"))
+                     jetty-config))))
 
 (defonce ^:private instance*
   (atom nil))
@@ -79,11 +78,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error e "Unexpected exception in endpoint")
+                                    (log/errorf "Unexpected exception in endpoint: %s" (ex-message e))
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error e "Unexpected exception writing error response")))
+                                        (log/errorf "Unexpected exception writing error response: %s" (ex-message e))))
                                     (.complete context))]
         (try
           (handler
@@ -96,7 +95,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error e "Unexpected Exception in API request handler")
+            (log/errorf "Unexpected Exception in API request handler: %s" (ex-message e))
             (raise e))
           (finally
             (.setHandled base-request true)))))))
@@ -105,7 +104,25 @@
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler :- ::api.macros/handler
-           options :- [:maybe :map]]
+           options :- [:maybe [:map {:closed true}
+                               [:port                 {:optional true} :int]
+                               [:host                 {:optional true} :string]
+                               [:max-threads          {:optional true} :int]
+                               [:min-threads          {:optional true} :int]
+                               [:max-queued           {:optional true} :int]
+                               [:max-idle-time        {:optional true} :int]
+                               [:send-server-version? {:optional true} :boolean]
+                               [:request-header-size  {:optional true} :int]
+                               [:daemon?              {:optional true} :boolean]
+                               [:ssl?                 {:optional true} :boolean]
+                               [:ssl-port             {:optional true} :int]
+                               [:keystore             {:optional true} :string]
+                               [:key-password         {:optional true} :string]
+                               [:truststore           {:optional true} :string]
+                               [:trust-password       {:optional true} :string]
+                               [:client-auth          {:optional true} :keyword]
+                               [:sni-host-check?      {:optional true} :boolean]
+                               [:join?                {:optional true} :boolean]]]]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)

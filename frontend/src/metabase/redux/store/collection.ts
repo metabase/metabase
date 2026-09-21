@@ -1,12 +1,10 @@
-import type { IconName } from "metabase/ui";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId, IconName } from "metabase-types/api";
 
-// see entities/collections/getExpandedCollectionsById.js
-export type ExpandedCollection = Collection & {
-  path: string;
-  parent: ExpandedCollection;
+// the shape metabase/common/collections/getExpandedCollectionsById builds
+export type ExpandedCollection = Omit<Collection, "path" | "children"> & {
+  path: CollectionId[] | null;
+  parent: ExpandedCollection | null;
   children: ExpandedCollection[];
-  is_personal: boolean;
 };
 
 export type CollectionTreeItem = {

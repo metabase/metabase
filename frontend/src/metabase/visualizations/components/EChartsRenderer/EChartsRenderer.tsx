@@ -1,14 +1,14 @@
+import { mergeRefs } from "@mantine/hooks";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
-import mergeRefs from "merge-refs";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import type {
-  EChartsEventHandler,
-  ZREventHandler,
-} from "metabase/visualizations/types/echarts";
+import {
+  type EChartsEventHandler,
+  type ZREventHandler,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import { EChartsRendererRoot } from "./EChartsRenderer.styled";
 
@@ -55,6 +55,26 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
     useUnmount(() => {
       chartRef.current?.dispose();
     });
+
+    useEffect(() => {
+      const printMediaQuery = window.matchMedia("print");
+      const resizeForPrint = () => {
+        const chartElement = chartElemRef.current;
+        if (!chartElement) {
+          return;
+        }
+
+        chartRef.current?.resize({
+          width: chartElement.offsetWidth,
+          height: chartElement.offsetHeight,
+        });
+      };
+
+      printMediaQuery.addEventListener("change", resizeForPrint);
+      return () => {
+        printMediaQuery.removeEventListener("change", resizeForPrint);
+      };
+    }, []);
 
     useUpdateEffect(() => {
       chartRef.current?.setOption(option, notMerge);

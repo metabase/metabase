@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { ColorPillPicker } from "metabase/common/components/ColorPicker";
-import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
+import { useSetting } from "metabase/settings";
 import { Group, Stack, Text } from "metabase/ui";
 import { originalColors, staticVizOverrides } from "metabase/ui/colors";
 
@@ -39,7 +39,7 @@ export const ColorCustomizationSection = ({
   }, [theme?.colors, prevColors]);
 
   return (
-    <Group align="start" gap="xl">
+    <Group align="start" gap="xxl">
       {getConfigurableThemeColors().map(({ key, name, originalColorKey }) => {
         // Use the default from appearance settings. If not set, use the default Metabase color.
         const originalColor =
@@ -49,7 +49,7 @@ export const ColorCustomizationSection = ({
         const previewValue = colorPreviewValues[key] ?? theme?.colors?.[key];
 
         return (
-          <Stack gap="xs" align="start" key={key}>
+          <Stack gap="xxs" align="start" key={key}>
             <Text size="sm" fw="bold">
               {name}
             </Text>

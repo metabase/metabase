@@ -50,7 +50,7 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
       enterprisePlugins: ["audit_app", "caching"],
     });
 
-    await userEvent.click(await screen.findByText("Use default"));
+    await userEvent.click(await screen.findByText("Default"));
 
     expect(await screen.findByText("Caching settings")).toBeInTheDocument();
   });

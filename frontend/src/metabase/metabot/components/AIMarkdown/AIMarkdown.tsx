@@ -1,25 +1,78 @@
-// TODO: consolidate this component w/ AIAnalysisContent
-
 import cx from "classnames";
-import { type ComponentPropsWithoutRef, memo, useMemo } from "react";
-
 import {
-  Markdown,
-  type MarkdownProps,
-} from "metabase/common/components/Markdown";
-import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
+  Children,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  isValidElement,
+  memo,
+  useMemo,
+} from "react";
+import { t } from "ttag";
+
+import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
+import { parseMetabaseProtocolLink } from "metabase/urls";
 
 import S from "./AIMarkdown.module.css";
+import { StreamingMarkdown } from "./StreamingMarkdown";
 import { InternalLink } from "./components/InternalLink";
 import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
-type AIMarkdownProps = MarkdownProps & {
+type AIMarkdownProps = {
+  children: string;
+  className?: string;
+  isStreaming?: boolean;
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
 };
 
 const splitMessageLinesAsParagraphs = (message: string) =>
   message.replaceAll(/\r?\n|\r/g, "\n\n");
+
+const getNodeText = (node: ReactNode): string =>
+  Children.toArray(node)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return getNodeText(child.props.children);
+      }
+
+      return "";
+    })
+    .join("");
+
+const MarkdownCodeBlock = ({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"pre">) => {
+  const code = getNodeText(children);
+
+  return (
+    <div className={S.codeBlock}>
+      <pre {...props}>{children}</pre>
+      <CopyButton value={code}>
+        {({ copied, copy }: { copied: boolean; copy: () => void }) => (
+          <Tooltip
+            label={copied ? t`Copied!` : t`Copy code`}
+            opened={copied || undefined}
+          >
+            <ActionIcon
+              aria-label={t`Copy code`}
+              className={S.copyCodeButton}
+              data-testid="metabot-code-block-copy"
+              size="sm"
+              onClick={copy}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </CopyButton>
+    </div>
+  );
+};
 
 const getComponents = ({
   onInternalLinkClick,
@@ -68,6 +121,7 @@ const getComponents = ({
       </div>
     </div>
   ),
+  pre: MarkdownCodeBlock,
 });
 
 export const AIMarkdown = memo(
@@ -75,30 +129,27 @@ export const AIMarkdown = memo(
     className,
     onInternalLinkClick,
     children,
+    isStreaming = false,
     singleNewlinesAreParagraphs = false,
-    ...props
   }: AIMarkdownProps) => {
     const components = useMemo(
       () => getComponents({ onInternalLinkClick }),
       [onInternalLinkClick],
     );
 
-    const normalizedChildren = useMemo(
-      () =>
-        singleNewlinesAreParagraphs
-          ? splitMessageLinesAsParagraphs(children)
-          : children,
-      [children, singleNewlinesAreParagraphs],
-    );
+    const source = singleNewlinesAreParagraphs
+      ? splitMessageLinesAsParagraphs(children)
+      : children;
 
     return (
-      <Markdown
-        className={cx(S.aiMarkdown, className)}
-        components={components}
-        {...props}
-      >
-        {normalizedChildren}
-      </Markdown>
+      <div className={cx(S.aiMarkdownRoot, className)}>
+        <StreamingMarkdown
+          blockClassName={S.aiMarkdown}
+          components={components}
+          isStreaming={isStreaming}
+          source={source}
+        />
+      </div>
     );
   },
 );

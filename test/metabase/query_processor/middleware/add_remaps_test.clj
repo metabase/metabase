@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -10,6 +11,7 @@
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -84,7 +86,7 @@
     (doseq [category-name-options (lib.tu.macros/$ids venues
                                     [{:source-field %category-id}
                                      {:source-field               %category-id
-                                      ::some-other-namespaced-key true}])]
+                                      :qp/ignore-coercion true}])]
       (testing (format "\ncategories.name field options = %s" (pr-str category-name-options))
         (let [{:keys [remaps query]} (#'qp.add-remaps/add-fk-remaps
                                       (lib/query
@@ -180,21 +182,39 @@
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
 
+(deftest ^:parallel add-remapped-columns-with-previous-stage-test
+  (let [query        (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                         (lib/append-stage)
+                         (lib/with-fields [(meta/field-metadata :venues :category-id)]))
+        dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
+                             [:lib/external-remap :id])]
+    ;; The `lib/append-stage` models the sandbox behaviour where an extra stage is added
+    ;; and the `remap-column-infos` become name based instead of id based
+    (is (=? {:stages [{}
+                      {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                 (meta/id :venues :category-id)]
+                                [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
+                                 (meta/id :categories :name)]]}]}
+            (qp.add-remaps/add-remapped-columns query)))))
+
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (let [rff (qp.add-remaps/remap-results query qp.reducible/default-rff)
+  (let [query (merge (lib/query (qp.store/metadata-provider) (lib.metadata/table (qp.store/metadata-provider) (meta/id :venues)))
+                     query)
+        rff   (qp.add-remaps/remap-results query qp.reducible/default-rff)
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
 (defn venues-column-metadata []
-  (lib.metadata/bulk-metadata-or-throw
-   (qp.store/metadata-provider)
-   :metadata/column
-   [(meta/id :venues :id)
-    (meta/id :venues :name)
-    (meta/id :venues :category-id)
-    (meta/id :venues :price)]))
+  (mapv lib/lib-metadata-column->legacy-metadata-column
+        (lib.metadata/bulk-metadata-or-throw
+         (qp.store/metadata-provider)
+         :metadata/column
+         [(meta/id :venues :id)
+          (meta/id :venues :name)
+          (meta/id :venues :category-id)
+          (meta/id :venues :price)])))
 
 (deftest ^:parallel remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"
@@ -233,7 +253,6 @@
                                       {"apple"  "Appletini"
                                        "banana" "Bananasplit"
                                        "kiwi"   "Kiwi-flavored Thing"})
-
       (is (=? {:status    :completed
                :row_count 3
                :data      {:rows [[1 "apple"   4 3 "Appletini"]
@@ -376,13 +395,16 @@
               metadata     (lib.tu.macros/$ids venues
                              {:cols [{:name         "NAME"
                                       :id           %name
+                                      :base_type    :type/Text
                                       :display_name "Name"}
                                      {:name         "CATEGORY_ID"
                                       :id           %category-id
+                                      :base_type    :type/Integer
                                       :display_name "Category ID"
                                       :options      {::qp.add-remaps/original-field-dimension-id dimension-id}}
                                      {:name         "NAME_2"
                                       :id           %categories.name
+                                      :base_type    :type/Text
                                       :display_name "Category → Name"
                                       :fk_field_id  %category-id
                                       :options      {::qp.add-remaps/new-field-dimension-id dimension-id}}]})]
@@ -457,22 +479,27 @@
         (let [metadata (lib.tu.macros/$ids venues
                          {:cols [{:name         "CATEGORY_ID"
                                   :id           %category-id
+                                  :base_type    :type/Integer
                                   :display_name "Category ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id category-id-dimension-id}}
                                  {:name         "ID"
                                   :id           %id
+                                  :base_type    :type/BigInteger
                                   :display_name "ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id id-dimension-id}}
                                  {:name         "NAME"
                                   :id           %name
+                                  :base_type    :type/Text
                                   :display_name "Name"}
                                  {:name         "NAME_2"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %category-id
                                   :options      {::qp.add-remaps/new-field-dimension-id category-id-dimension-id}}
                                  {:name         "NAME_3"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %id
                                   :options      {::qp.add-remaps/new-field-dimension-id id-dimension-id}}]})]
@@ -832,3 +859,32 @@
         (is (= ["ID"
                 "Orders → ID"]
                (map :display_name (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel self-join-with-remapped-columns-uses-remapping-test
+  (let [mp (mt/metadata-provider)
+        orders (lib.metadata/table mp (mt/id :orders))
+        order-id (lib.metadata/field mp (mt/id :orders :id))
+        user-id (lib.metadata/field mp (mt/id :orders :user_id))
+        user-email (lib.metadata/field mp (mt/id :people :email))
+        rm-mp (lib.tu/remap-metadata-provider mp user-id user-email)
+        query (-> (lib/query rm-mp orders)
+                  (lib/with-fields [order-id user-id])
+                  (lib/join (-> (lib/join-clause orders [(lib/= order-id order-id)])
+                                (lib/with-join-fields [order-id user-id])))
+                  (lib/limit 3))
+        result (qp/process-query query)]
+    (is (= [[1 1 1 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [2 1 2 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [3 1 3 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]]
+           (mt/rows result)))
+    (is (= [{:name "ID"}
+            {:name "USER_ID", :remapped_to "EMAIL"}
+            {:name "ID_2"}
+            {:name "USER_ID_2", :remapped_to "EMAIL_2"}
+            {:name "EMAIL", :remapped_from "USER_ID"}
+            {:name "EMAIL_2", :remapped_from "USER_ID_2"}]
+           (->> result
+                :data
+                :results_metadata
+                :columns
+                (mapv #(select-keys % [:name :remapped_to :remapped_from])))))))

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core";
 
 import { Heading } from "./Heading";
 
@@ -35,7 +35,6 @@ const HeadingViz: VisualizationDefinition = {
       dashboard: false,
     },
     text: {
-      value: "",
       getDefault: () => "",
     },
     "dashcard.background": {

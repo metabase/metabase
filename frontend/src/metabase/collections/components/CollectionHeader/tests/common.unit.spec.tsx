@@ -1,9 +1,15 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
+
+const lastUpdateRequestBody = (collectionId: CollectionId) =>
+  fetchMock.callHistory
+    .lastCall(`update-collection-${collectionId}`)
+    ?.request?.json();
 
 describe("CollectionHeader", () => {
   describe("collection name", () => {
@@ -13,7 +19,7 @@ describe("CollectionHeader", () => {
         can_write: true,
       };
 
-      const { onUpdateCollection, collection: myCollection } = setup({
+      const { collection: myCollection } = setup({
         collection,
       });
 
@@ -21,7 +27,7 @@ describe("CollectionHeader", () => {
       await userEvent.clear(input);
       await userEvent.type(input, `New name{Enter}`);
 
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+      expect(await lastUpdateRequestBody(myCollection.id)).toEqual({
         name: "New name",
       });
     });
@@ -40,6 +46,7 @@ describe("CollectionHeader", () => {
 
     it("should not be able to edit name for the root collection", () => {
       const collection = {
+        // Unjustified type cast. FIXME
         id: "root" as CollectionId,
         name: "Our analytics",
         can_write: true,
@@ -70,7 +77,7 @@ describe("CollectionHeader", () => {
         can_write: true,
       };
 
-      const { onUpdateCollection, collection: myCollection } = setup({
+      const { collection: myCollection } = setup({
         collection,
       });
 
@@ -79,7 +86,7 @@ describe("CollectionHeader", () => {
       const longName = "a".repeat(110);
       await userEvent.type(input, `${longName}{Enter}`);
 
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+      expect(await lastUpdateRequestBody(myCollection.id)).toEqual({
         name: longName.slice(0, 100),
       });
     });
@@ -92,7 +99,7 @@ describe("CollectionHeader", () => {
         can_write: true,
       };
 
-      const { onUpdateCollection, collection: myCollection } = setup({
+      const { collection: myCollection } = setup({
         collection,
       });
 
@@ -105,7 +112,7 @@ describe("CollectionHeader", () => {
       await userEvent.type(input, "New description");
       await userEvent.tab();
 
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+      expect(await lastUpdateRequestBody(myCollection.id)).toEqual({
         description: "New description",
       });
     });
@@ -116,7 +123,7 @@ describe("CollectionHeader", () => {
         can_write: true,
       };
 
-      const { onUpdateCollection, collection: myCollection } = setup({
+      const { collection: myCollection } = setup({
         collection,
       });
 
@@ -124,7 +131,7 @@ describe("CollectionHeader", () => {
       await userEvent.type(input, "New description");
       await userEvent.tab();
 
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+      expect(await lastUpdateRequestBody(myCollection.id)).toEqual({
         description: "New description",
       });
     });
@@ -164,7 +171,7 @@ describe("CollectionHeader", () => {
         can_write: true,
       };
 
-      const { onUpdateCollection, collection: myCollection } = setup({
+      const { collection: myCollection } = setup({
         collection,
       });
 
@@ -178,7 +185,7 @@ describe("CollectionHeader", () => {
       await userEvent.type(input, longDescription);
       await userEvent.tab();
 
-      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+      expect(await lastUpdateRequestBody(myCollection.id)).toEqual({
         description: longDescription.slice(0, 255),
       });
     });

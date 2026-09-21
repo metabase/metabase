@@ -6,7 +6,7 @@ import * as RadioStories from "./Radio.stories";
 
 # Radio
 
-Our themed wrapper around [Mantine Radio](https://v6.mantine.dev/core/radio/).
+Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/).
 
 ## When to use Radio
 
@@ -14,40 +14,37 @@ Radio buttons allow users to select a single option from a list of mutually excl
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
+- [Figma File](https://www.figma.com/design/qYbAmJHUJ2Tkb01WFegUKp/Component-Library?node-id=250-13082)
+- [Mantine Radio Docs](https://mantine.dev/core/radio/)
 
 ## Usage guidelines
 
-- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
+- **Use this component when the options are mutually exclusive and users pick exactly one.** For independent options that toggle on their own, use <a href="/?path=/docs/components-inputs-checkbox--docs" target="_top">Checkbox</a> instead.
+- **Keep the list short.** Past a handful of options a <a href="/?path=/docs/components-inputs-select--docs" target="_top">Select</a> is easier to scan than a long column of radios.
 - For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
-- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
+- In almost all circumstances you'll want to use `<Radio.Group>` (<a href="/?path=/story/components-inputs-radio--groups" target="_top">an example</a>) to provide a set of options and help with defaultValues and state management between them.
 
 ## Examples
 
 <Canvas of={RadioStories.Default} />
 
-### Radio.Group
+### States
 
-<Canvas of={RadioStories.RadioGroup} />
+<Canvas of={RadioStories.Overview} />
 
-### Label
+### Radio.Group and Radio.Card Group
 
-<Canvas of={RadioStories.Label} />
+<Canvas of={RadioStories.Groups} />
 
-#### Left label position
+### Radio.Card
 
-<Canvas of={RadioStories.LabelLeftPosition} />
-
-### Description
-
-<Canvas of={RadioStories.Description} />
-
-#### Left label position
-
-<Canvas of={RadioStories.DescriptionLeftPosition} />
+<Canvas of={RadioStories.Card} />
 
 ## Related components
 
-- Checkbox
-- Select
+- <a href="/?path=/docs/components-inputs-checkbox--docs" target="_top">
+    Checkbox
+  </a>
+- <a href="/?path=/docs/components-inputs-select--docs" target="_top">
+    Select
+  </a>

@@ -2,14 +2,12 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
-import { getEngines } from "metabase/databases/selectors";
 import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Center,
@@ -49,7 +47,7 @@ export const DatabaseEngineList = ({
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
@@ -76,7 +74,7 @@ export const DatabaseEngineList = ({
         aria-label={t`Remove database`}
         fullWidth
         justify="space-between"
-        mb="lg"
+        mb="xl"
         onClick={clearSelectedItem}
         rightSection={<Icon name="close" />}
         variant="filled"
@@ -87,7 +85,7 @@ export const DatabaseEngineList = ({
   }
 
   return (
-    <Stack gap="lg" h="100%">
+    <Stack gap="xl" h="100%">
       <Combobox
         store={combobox}
         classNames={{
@@ -151,11 +149,11 @@ const DatabaseLogo = ({ db }: { db: string }) => {
   const logo = getEngineLogo(db);
 
   return (
-    <Center h="lg" w="lg">
+    <Center h="xl" w="xl">
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
-        <Icon name="database" c="brand" />
+        <Icon name="database" c="core-brand" />
       )}
     </Center>
   );
@@ -170,9 +168,9 @@ const NoDatabaseFound = ({ isSetupStep }: { isSetupStep?: boolean }) => {
 
   return (
     <Stack
-      gap="md"
+      gap="lg"
       align="center"
-      pt="lg"
+      pt="xl"
       maw="22.5rem"
       c="text-secondary"
       m="0 auto"
@@ -225,14 +223,14 @@ const SampleDatabaseIndicator = () => {
     >
       <Flex align="center">
         <LogoIcon height={20} width={24} />
-        <Text ml="sm" mr="xs">
+        <Text ml="sm" mr="xxs">
           {t`Sample Database for testing`}
         </Text>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
-        <Text inline c="text-tertiary">{t`(by Metabase)`}</Text>
+        <Text inline c="text-disabled">{t`(by Metabase)`}</Text>
       </Flex>
-      <Group gap="xs">
-        <Icon name="check_filled" c="success" />
+      <Group gap="xxs">
+        <Icon name="check_filled" c="feedback-positive" />
         {t`Included`}
       </Group>
     </Flex>

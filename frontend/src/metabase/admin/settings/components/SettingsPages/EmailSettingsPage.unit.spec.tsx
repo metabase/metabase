@@ -6,9 +6,9 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -40,6 +40,7 @@ const setup = async (props: {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -56,7 +57,7 @@ const setup = async (props: {
     },
   );
 
-  await screen.findByText(/From Name|SMTP/);
+  await screen.findByText(props.hosted ? /SMTP/ : "From Name");
   await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2); // 2 settings fetches
@@ -66,7 +67,6 @@ const setup = async (props: {
 describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
-
     [
       "From Name",
       "From Address",
@@ -74,7 +74,7 @@ describe("EmailSettingsPage", () => {
       "Add Recipients as CC or BCC",
       "Approved domains for notifications",
       "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach(async (text) => {
+    ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
   });

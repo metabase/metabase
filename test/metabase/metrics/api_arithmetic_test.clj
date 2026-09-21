@@ -1,4 +1,5 @@
 (ns metabase.metrics.api-arithmetic-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-arithmetic-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -38,7 +39,12 @@
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
         ;; Each row should have [dim-value, sum] where sum is a+b for that dimension value
-        (is (every? #(= 2 (count %)) (get-in response [:data :rows])))))))
+        (is (every? #(= 2 (count %)) (get-in response [:data :rows])))
+        (testing "the computed column is QP result metadata: snake_case keys, generic Expression name"
+          (let [agg-col (last (get-in response [:data :cols]))]
+            (is (= "expression" (:name agg-col)))
+            (is (= "Expression" (:display_name agg-col)))
+            (is (not (contains? agg-col :display-name)))))))))
 
 (deftest arithmetic-subtraction-test
   (testing "POST /api/metric/dataset with metric_A - metric_B"
@@ -290,14 +296,14 @@
   (testing "POST /api/metric/dataset with metric + measure arithmetic"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
-          pmbql-def      (-> (lib/query mp table-metadata)
+          mbql5-def      (-> (lib/query mp table-metadata)
                              (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Card    metric  {:name          "Test Metric"
                                              :type          :metric
                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
                      :model/Measure measure {:name       "Test Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-def}]
+                                             :definition mbql5-def}]
         (mt/with-full-data-perms-for-all-users!
           ;; Sync dimensions for both metric and measure
           (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))

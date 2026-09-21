@@ -1,4 +1,3 @@
-import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
@@ -6,6 +5,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import type { AuthProvider } from "metabase/plugins/types";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/redux/auth";
 import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { OidcAuthProvider, User } from "metabase-types/api";
@@ -18,10 +18,28 @@ import {
   LdapUserProvisioning,
 } from "./components/Ldap";
 import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
-import { SettingsJWTForm } from "./components/SettingsJWTForm";
-import { SettingsOIDCForm } from "./components/SettingsOIDCForm";
-import { SettingsSAMLForm } from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
+
+const settingsSAMLForm = () =>
+  import(
+    /* webpackChunkName: "auth-saml" */ "./components/SettingsSAMLForm"
+  ).then(({ SettingsSAMLForm }) => ({
+    Component: SettingsSAMLForm,
+  }));
+
+const settingsJWTForm = () =>
+  import(
+    /* webpackChunkName: "auth-jwt" */ "./components/SettingsJWTForm"
+  ).then(({ SettingsJWTForm }) => ({
+    Component: SettingsJWTForm,
+  }));
+
+const settingsOIDCForm = () =>
+  import(
+    /* webpackChunkName: "auth-oidc" */ "./components/SettingsOIDCForm"
+  ).then(({ SettingsOIDCForm }) => ({
+    Component: SettingsOIDCForm,
+  }));
 
 const SSO_PROVIDER = {
   name: "sso",
@@ -36,15 +54,15 @@ PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
  */
 export function initializePlugin() {
   if (hasPremiumFeature("sso_saml")) {
-    PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm = SettingsSAMLForm;
+    PLUGIN_AUTH_PROVIDERS.settingsSAMLForm = settingsSAMLForm;
   }
 
   if (hasPremiumFeature("sso_jwt")) {
-    PLUGIN_AUTH_PROVIDERS.SettingsJWTForm = SettingsJWTForm;
+    PLUGIN_AUTH_PROVIDERS.settingsJWTForm = settingsJWTForm;
   }
 
   if (hasPremiumFeature("sso_oidc")) {
-    PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm = SettingsOIDCForm;
+    PLUGIN_AUTH_PROVIDERS.settingsOIDCForm = settingsOIDCForm;
   }
 
   // Add provider function that handles SSO and password login

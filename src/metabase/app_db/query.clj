@@ -22,9 +22,9 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -115,10 +115,13 @@
                      (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
                                      {:honey-sql honey-sql}
                                      e))))]
-    (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (app-db.format/format-sql (first sql-args))
-                (pr-str (rest sql-args)))
     sql-args))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
+  for the `settings-last-updated` marker that instances compare against each other."
+  ^String [db-type]
+  (app-db.db/current-timestamp-string db-type))
 
 ;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query
@@ -154,6 +157,8 @@
   `make-reducible-fn` is a 1-arg function called with the transaction `java.sql.Connection`.
   Pass it explicitly to `t2/reducible-select` via `:conn` or to `t2/reducible-query` so the
   query runs on the transaction connection — otherwise PostgreSQL ignores fetch-size.
+
+  WARNING: Because this opens a transaction, do not wrap any long-running logic in this which will hold the transaction open too long.
 
   Example:
     (streaming-reducible
@@ -249,9 +254,11 @@
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
         select-kvs (mapcat identity select-map)
-        pks        (t2/primary-keys model)
-        _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
-        pk-key     (keyword (first pks))
+        pks        (mapv keyword (t2/primary-keys model))
+        ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
+        ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
+        ;; returns and what `t2/update!` accepts for a composite key.
+        pk-of      (fn [row] (if (= 1 (count pks)) ((first pks) row) (mapv #(% row) pks)))
         update-fn  (fn [existing]
                      (let [updated (update-fn existing)]
                        ;; When called with an existing record, returning nil signals "no update needed".
@@ -263,11 +270,11 @@
                          (merge updated select-map))))]
     (with-conflict-retry
       (if-let [existing (apply t2/select-one model select-kvs)]
-        (let [pk (pk-key existing)]
+        (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
             (do (t2/update! model pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
-                (pk-key updated pk))
+                (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.
             pk))
         ;; Wrap INSERT in a savepoint so that a constraint violation inside an existing

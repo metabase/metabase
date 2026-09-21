@@ -1,8 +1,4 @@
 import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type {
   BaseEntityId,
   CardDisplayType,
   ClickBehavior,
@@ -10,12 +6,15 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EmbeddingParameters,
+  EmbeddingType,
   Field,
   FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
+  SingleSeries,
   Table,
   UserId,
   UserInfo,
@@ -137,6 +136,15 @@ export type DashboardCardLayoutAttrs = {
   size_x: number;
   size_y: number;
 };
+
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
 
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
@@ -292,7 +300,19 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
+
+export type DashboardParameterValuesRequest = {
+  dashId?: DashboardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchDashboardParameterValuesRequest =
+  DashboardParameterValuesRequest & {
+    query: string;
+  };
 
 export type CreateDashboardRequest = {
   name: string;
@@ -334,6 +354,19 @@ export type GetDashboardQueryMetadataRequest = {
   dashboard_load_id?: string;
 };
 
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
+  dashboard_load_id?: string;
+};
+
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
 
 export type CopyDashboardRequest = {
@@ -354,9 +387,9 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id?: DashboardId;
-  entityIdentifier?: EntityUuid | EntityToken;
-  parameter_id: ParameterId;
+  dashId?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 
@@ -364,3 +397,32 @@ export type GetValidDashboardFilterFieldsRequest = {
   filtered: FieldId[];
   filtering: FieldId[];
 };
+
+export type DashCardSeriesItem = {
+  card: Card | VirtualCard;
+  isSlow: boolean;
+  isUsuallyFast: boolean;
+} & Partial<Dataset>;
+
+export type DashCardSeries = DashCardSeriesItem[];
+
+export type DashCardDataSeriesItem = SingleSeries<Card> &
+  Dataset & {
+    isSlow: boolean;
+    isUsuallyFast: boolean;
+  };
+
+export type DashCardDataSeries = DashCardDataSeriesItem[];
+
+export type VisualizerSeriesItem = Pick<SingleSeries, "card"> &
+  Partial<Omit<SingleSeries, "card">> & {
+    _isVisualizer: true;
+  };
+
+export type VisualizerSeries = VisualizerSeriesItem[];
+
+export type VisualizerDataSeriesItem = SingleSeries & {
+  _isVisualizer: true;
+};
+
+export type VisualizerDataSeries = VisualizerDataSeriesItem[];

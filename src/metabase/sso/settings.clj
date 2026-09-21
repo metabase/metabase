@@ -4,7 +4,9 @@
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting define-multi-setting define-multi-setting-impl]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.string :as u.str])
@@ -35,6 +37,12 @@
                (assert (#{:none :ssl :starttls} (keyword new-value))))
              (setting/set-value-of-type! :keyword :ldap-security new-value)))
 
+(defsetting ldap-trust-store
+  (deferred-tru "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store.")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :getter)
+
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")
   :encryption :when-encryption-key-set
@@ -48,32 +56,33 @@
 
 (defsetting ldap-user-base
   (deferred-tru "Search base for users. (Will be searched recursively)")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-user-filter
   (deferred-tru "User lookup filter. The placeholder '''{login}''' will be replaced by the user supplied login.")
   :default    "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default    "mail"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email)))
   :audit      :getter)
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default    "givenName"
+  ;; kept in the getter's lower case, so an untouched value reads as the default it is
+  :default    "givenname"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
-  :encryption :no
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    "sn"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname)))
   :audit      :getter)
@@ -87,13 +96,13 @@
 (defsetting ldap-group-base
   (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)")
   :audit      :getter
-  :encryption :no)
+  :encryption :when-encryption-key-set)
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
   :default    {}
@@ -110,7 +119,10 @@
                     (doseq [k (keys new-value)]
                       (when-not (instance? DN k) ; handle DN-encoded keys like we get from the `:getter`
                         (when-not (DN/isValidDN (u/qualified-name k))
-                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k)))))))
+                          (throw (ex-info (tru "{0} is not a valid DN. Example: {1}"
+                                               (u/qualified-name k)
+                                               "cn=people,ou=groups,dc=example,dc=org")
+                                          {:status-code 400})))))
                     (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
@@ -121,22 +133,6 @@
   :getter     (fn [] (boolean (and (ldap-host)
                                    (ldap-user-base))))
   :doc        false)
-
-(defsetting ldap-enabled
-  (deferred-tru "Is LDAP currently enabled?")
-  :type       :boolean
-  :visibility :public
-  :setter     (fn [new-value]
-                (let [new-value (boolean new-value)]
-                  (when new-value
-                    ;; Test the LDAP settings before enabling
-                    (let [result ((requiring-resolve 'metabase.sso.ldap/test-current-ldap-details))]
-                      (when-not (= :SUCCESS (:status result))
-                        (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
-                                        ((requiring-resolve 'metabase.sso.ldap/humanize-error-messages) result))))))
-                  (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
-  :default    false
-  :audit      :getter)
 
 (defsetting ldap-timeout-seconds
   (deferred-tru "Maximum time, in seconds, to wait for LDAP server before falling back to local authentication")
@@ -181,7 +177,7 @@
   :export?    false
   :default    slack-connect-auth-mode-link-only
   :audit      :getter
-  :encryption :no
+  :encryption :when-encryption-key-set
   :setter     (fn [new-value]
                 (when (and new-value
                            (not (contains? #{slack-connect-auth-mode-sso slack-connect-auth-mode-link-only} new-value)))
@@ -274,22 +270,34 @@
 (defsetting oidc-allowed-networks
   (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
   :type :keyword
+  :visibility :internal
   :default :allow-all
   :export? false
-  :setter (fn [new-value]
-            (when (some? new-value)
-              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
-            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+  :setter :none
+  :doc (str "Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to "
+            "allow-all. Other values: external-only and allow-private")
+  :getter (fn []
+            (let [[env-var-name raw-value] (setting/env-var-source :oidc-allowed-networks)]
+              (or (u.http/env-network-policy env-var-name raw-value)
+                  :allow-all))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first login.
+(defmethod startup/def-startup-validation! ::oidc-allowed-networks [_]
+  (oidc-allowed-networks))
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
-    (setting/get :other-sso-enabled?)))
+    (or (setting/get :other-sso-enabled?)
+        (setting/get :oidc-enabled))))
 
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
   []
   (or (google-auth-enabled)
-      (ldap-enabled)
+      ;; read by keyword the way `ee-sso-configured?` above does: `ldap-enabled` is defined in
+      ;; [[metabase.sso.ldap.settings]], which this namespace cannot require
+      (setting/get :ldap-enabled)
       (ee-sso-configured?)))
 
 (defn sso-source-enabled?
@@ -300,7 +308,7 @@
   (boolean
    (case (keyword sso-source)
      :google (google-auth-enabled)
-     :ldap   (ldap-enabled)
+     :ldap   (setting/get :ldap-enabled)
      ;; Enterprise SSO providers: setting/get respects the :feature flag on each
      ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
      ;; after license downgrade), so users aren't locked out of password reset.
@@ -308,7 +316,7 @@
      ;; regardless of license status.
      :saml   (setting/get :saml-enabled)
      :jwt    (setting/get :jwt-enabled)
-     :oidc   (setting/get :oidc-enabled?)
+     :oidc   (setting/get :oidc-enabled)
      :slack  (setting/get :slack-connect-enabled)
      :scim   (setting/get :scim-enabled)
      ;; Unknown sso_source -- treat as disabled to allow password reset
@@ -323,7 +331,7 @@
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
             (when (and domain (str/includes? domain ","))
-                ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
+              ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
               (throw (ex-info (tru "Invalid domain") {:status-code 400})))
             (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 

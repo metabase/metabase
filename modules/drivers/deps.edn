@@ -11,7 +11,6 @@
   metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
   metabase/clickhouse         {:local/root "clickhouse"}
   metabase/databricks         {:local/root "databricks"}
-  metabase/druid              {:local/root "druid"}
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
   metabase/hive-like          {:local/root "hive-like"}
   metabase/mongo              {:local/root "mongo"}
@@ -20,7 +19,6 @@
   metabase/redshift           {:local/root "redshift"}
   metabase/snowflake          {:local/root "snowflake"}
   metabase/sparksql           {:local/root "sparksql"}
-  metabase/sqlite             {:local/root "sqlite"}
   metabase/sqlserver          {:local/root "sqlserver"}
   metabase/starburst          {:local/root "starburst"}
   metabase/vertica            {:local/root "vertica"}}}

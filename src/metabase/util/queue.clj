@@ -113,11 +113,13 @@
    (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
      (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
 
-(mr/def ::listener-options [:map [:success-handler {:optional true} [:=> [:cat :any :double :string] :any]
-                                  :err-handler {:optional true} [:=> [:cat [:fn (ms/InstanceOfClass Throwable) :string]] :any]
-                                  :pool-size {:optional true} number?
-                                  :max-batch-messages {:optional true} number?
-                                  :max-next-ms {:optional true} number?]])
+(mr/def ::listener-options
+  [:map {:closed true}
+   [:success-handler    {:optional true} fn?]
+   [:err-handler        {:optional true} fn?]
+   [:pool-size          {:optional true} number?]
+   [:max-batch-messages {:optional true} number?]
+   [:max-next-ms        {:optional true} number?]])
 
 (defonce
   ^:private
@@ -132,7 +134,7 @@
 
 (mu/defn- listener-thread [listener-name :- :string
                            queue :- (ms/InstanceOfClass BlockingQueue)
-                           handler :- [:=> [:cat [:sequential :any]] :any]
+                           handler :- fn?
                            {:keys [success-handler err-handler max-batch-messages max-next-ms]} :- ::listener-options]
   (log/debugf "Thread for listener %s started" listener-name)
   (while true
@@ -142,7 +144,6 @@
         (if (seq batch)
           (do
             (log/debugf "Listener %s processing batch of %d" listener-name (count batch))
-            (log/tracef "Listener %s processing batch: %s" listener-name batch)
             (let [timer (u/start-timer)
                   output (handler batch)
                   duration (u/since-ms timer)]
@@ -154,7 +155,7 @@
         (throw e))
       (catch Exception e
         (err-handler e listener-name)
-        (log/errorf e "Error in %s while processing batch" listener-name))))
+        (log/errorf "Error in %s while processing batch: %s" listener-name (ex-message e)))))
   (log/infof "Listener %s stopped" listener-name))
 
 (def ^:private ^:const max-restart-backoff-ms 30000)
@@ -172,7 +173,7 @@
         (log/debugf "Listener thread %s stopped" listener-name)
         (throw (InterruptedException.)))
       (catch Throwable e
-        (log/errorf e "Listener thread %s crashed, restarting in %dms" listener-name backoff-ms)))
+        (log/errorf "Listener thread %s crashed, restarting in %dms: %s" listener-name backoff-ms (ex-message e))))
     (Thread/sleep ^long backoff-ms)
     (when-not (.isShutdown ^ExecutorService (get @listeners listener-name))
       (recur (min max-restart-backoff-ms (* 2 backoff-ms))))))
@@ -193,7 +194,7 @@
   - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
   [listener-name :- :string
    queue :- (ms/InstanceOfClass BlockingQueue)
-   handler :- [:=> [:cat [:sequential :any]] :any]
+   handler :- fn?
    {:keys [success-handler
            err-handler
            pool-size
@@ -206,7 +207,6 @@
            max-next-ms        100}} :- ::listener-options]
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
-
     (let [executor (cp/threadpool pool-size {:name (str "queue-" listener-name)})]
       (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
       (dotimes [_ pool-size]
@@ -215,7 +215,6 @@
                                                            :err-handler        err-handler
                                                            :max-batch-messages max-batch-messages
                                                            :max-next-ms        max-next-ms})))
-
       (swap! listeners assoc listener-name executor))))
 
 (mu/defn stop-listening!
@@ -228,7 +227,6 @@
       (cp/shutdown! executor)
       ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
       (.awaitTermination executor 10 TimeUnit/SECONDS)
-
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
     (log/infof "No running listener named %s" listener-name)))
@@ -254,7 +252,7 @@
     (try
       (f k)
       (catch Throwable e
-        (log/errorf e "Error initializing listener %s" k)))))
+        (log/errorf "Error initializing listener %s: %s" k (ex-message e))))))
 
 (defn stop-listeners!
   "Stops all running listeners"

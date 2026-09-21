@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.native-validation
   (:require
    [clojure.string :as str]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
@@ -22,9 +23,10 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (let [with-params (lib/add-parameters-for-template-tags query)
-        compiled    (qp.compile/compile-with-inline-parameters with-params)]
-    (lib/native-query with-params (:query compiled))))
+  (database-routing/with-database-routing-off
+    (let [with-params (lib/add-parameters-for-template-tags query)
+          compiled    (qp.compile/compile-with-inline-parameters with-params)]
+      (lib/native-query with-params (:query compiled)))))
 
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
@@ -61,13 +63,13 @@
   (let [stage     (first (:stages query))
         sql       (:native stage)
         ttags     (:template-tags stage)
-        card-tags  (into {} (filter #(= (:type (val %)) :card)) ttags)
-        table-tags (into {} (filter #(= (:type (val %)) :table)) ttags)]
+        card-tags  (filter #(= (:type %) :card) ttags)
+        table-tags (filter #(= (:type %) :table) ttags)]
     (when-not (or (str/includes? sql card-placeholder-prefix)
                   (str/includes? sql table-placeholder-prefix))
       (let [;; Replace card tags
             sql-after-cards
-            (reduce (fn [s [tag-name tag]]
+            (reduce (fn [s {tag-name :name, :as tag}]
                       (str/replace s
                                    (str "{{" tag-name "}}")
                                    (str card-placeholder-prefix (:card-id tag))))
@@ -76,7 +78,7 @@
 
             ;; Replace table tags
             modified-sql
-            (reduce (fn [s [tag-name tag]]
+            (reduce (fn [s {tag-name :name, :as tag}]
                       (str/replace s
                                    (str "{{" tag-name "}}")
                                    (str table-placeholder-prefix (:table-id tag))))
@@ -84,7 +86,7 @@
                     table-tags)
 
             remaining-tags
-            (into {} (remove #(#{:card :table} (:type (val %)))) ttags)
+            (into [] (remove #(#{:card :table} (:type %))) ttags)
 
             modified-query
             (-> query
@@ -151,6 +153,7 @@
   [driver mp table-spec]
   (:table (sql-tools/find-table-or-transform
            driver
+           (lib.metadata/database mp)
            (lib.metadata/tables mp)
            (lib.metadata/transforms mp)
            table-spec)))

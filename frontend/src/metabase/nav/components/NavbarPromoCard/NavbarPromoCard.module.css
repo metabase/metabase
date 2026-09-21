@@ -1,0 +1,19 @@
+.IconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
+.DismissIconButtonWrapper {
+  color: var(--mb-color-text-disabled);
+}
+
+.DismissIconButtonWrapper:hover {
+  color: var(--mb-color-text-secondary);
+}
+
+.Body {
+  color: var(--mb-color-text-secondary);
+}

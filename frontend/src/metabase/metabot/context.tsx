@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type React from "react";
 import {
   type RefObject,
@@ -12,41 +11,20 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { useStore } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
-import type {
-  MetabotChatContext,
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
-  TaggedTransform,
-} from "metabase-types/api";
+} from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import type { MetabotChatContext } from "metabase-types/api";
 
 export type ChatContextProviderFn = (
   state: State,
 ) => Promise<Partial<MetabotChatContext> | void>;
 
 export type DeregisterChatContextProviderFn = () => void;
-
-export type ApplySuggestionPayload = {
-  editorTransform: MetabotTransformInfo | undefined;
-  suggestedTransform: MetabotSuggestedTransform;
-};
-
-export type ApplySuggestionResult =
-  | { status: "applied" }
-  | { status: "error"; message: string };
-
-export type MetabotSuggestionActions = {
-  openTransform: (transform: TaggedTransform) => void;
-  applySuggestion: (
-    payload: ApplySuggestionPayload,
-  ) => Promise<ApplySuggestionResult>;
-};
 
 // internal type so we can support tiptap editor and textarea as inputs
 export type MetabotPromptInputRef = {
@@ -65,12 +43,6 @@ export type MetabotCtx = {
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;
-
-  // TODO: figure out how to make the enabled types EE only (probably should live in redux imo)
-  // suggestionActions: unknown;
-  // setSuggestionActions: (actions: unknown) => void;
-  suggestionActions: MetabotSuggestionActions | null;
-  setSuggestionActions: (actions: MetabotSuggestionActions | null) => void;
 };
 
 export const defaultContext: MetabotCtx = {
@@ -85,14 +57,9 @@ export const defaultContext: MetabotCtx = {
       capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
-
-  suggestionActions: null,
-  setSuggestionActions: () => {},
 };
 
-export const MetabotContext = createContext<MetabotCtx>(
-  defaultContext as MetabotCtx,
-);
+export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
 export const useMetabotContext = () => {
   const context = useContext(MetabotContext);
@@ -131,17 +98,6 @@ const mergeCtx = (
   };
 };
 
-export const useRegisterMetabotSuggestionActions = (
-  actions: MetabotSuggestionActions | null | undefined,
-) => {
-  const { setSuggestionActions } = useContext(MetabotContext);
-
-  useEffect(() => {
-    setSuggestionActions(actions ?? null);
-    return () => setSuggestionActions(null);
-  }, [actions, setSuggestionActions]);
-};
-
 export const MetabotProvider = ({
   children,
 }: {
@@ -150,8 +106,6 @@ export const MetabotProvider = ({
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
-  const [suggestionActions, setSuggestionActions] =
-    useState<MetabotSuggestionActions | null>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
@@ -161,18 +115,16 @@ export const MetabotProvider = ({
     const state = store.getState();
     const providerFns = [...providerFnsRef.current];
 
-    const isAdmin = getUserIsAdmin(state);
     const hasDataAccess = canUserCreateQueries(state);
     const hasNativeWrite = canUserCreateNativeQueries(state);
 
     let ctx: MetabotChatContext = {
       user_is_viewing: [],
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
+      // Unjustified type cast. FIXME
       capabilities: _.compact([
-        "frontend:navigate_user_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
-        isAdmin && "permission:write_transforms",
       ]) as string[],
     };
 
@@ -206,8 +158,6 @@ export const MetabotProvider = ({
         promptInputRef,
         getChatContext,
         registerChatContextProvider,
-        suggestionActions,
-        setSuggestionActions,
       }}
     >
       {children}

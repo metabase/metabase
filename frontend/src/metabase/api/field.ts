@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
-import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
   Field,
@@ -7,6 +5,8 @@ import type {
   FieldId,
   FieldValue,
   GetFieldRequest,
+  GetFieldTableIdsRequest,
+  GetFieldTableIdsResponse,
   GetFieldValuesResponse,
   GetRemappedFieldValueRequest,
   SearchFieldValuesRequest,
@@ -15,6 +15,7 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { patchCachedTableMetadata, selectCachedTableMetadata } from "./table";
 import {
   idTag,
   invalidateTags,
@@ -24,7 +25,7 @@ import {
   provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
+import { rollbackOnError } from "./utils/rollback-on-error";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -35,10 +36,17 @@ export const fieldApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (field) => (field ? provideFieldTags(field) : []),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, FieldSchema)),
-        ),
+    }),
+    getFieldTableIds: builder.query<
+      GetFieldTableIdsResponse,
+      GetFieldTableIdsRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/field/table-ids",
+        body,
+      }),
+      providesTags: [listTag("field")],
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({
@@ -83,6 +91,28 @@ export const fieldApi = Api.injectEndpoints({
           tag("card"),
           tag("dataset"),
         ]),
+      onQueryStarted: async (
+        { id, ...body },
+        { dispatch, getState, queryFulfilled },
+      ) => {
+        const patches = selectCachedTableMetadata(getState(), [
+          idTag("field", id),
+        ]).map(({ originalArgs }) =>
+          dispatch(
+            patchCachedTableMetadata(originalArgs, (table) => {
+              const field = table.fields?.find(
+                ({ id: fieldId }) => fieldId === id,
+              );
+
+              if (field) {
+                Object.assign(field, body);
+              }
+            }),
+          ),
+        );
+
+        await rollbackOnError(queryFulfilled, patches);
+      },
     }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
       query: ({ id, ...body }) => ({
@@ -153,6 +183,8 @@ export const fieldApi = Api.injectEndpoints({
 
 export const {
   useGetFieldQuery,
+  useLazyGetFieldQuery,
+  useGetFieldTableIdsQuery,
   useGetFieldValuesQuery,
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,

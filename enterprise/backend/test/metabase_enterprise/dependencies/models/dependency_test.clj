@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.models.dependency-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
@@ -44,7 +45,7 @@
                              {:source-table (str "card__" (:id inner-card))})
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-maintenance-test-1-new-card
+(deftest ^:synchronized card-deps-maintenance-test-1-new-card
   (testing "upstream deps of a card are updated correctly"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -56,7 +57,6 @@
               (testing "when creating a new card"
                 (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                         (upstream-of :card (:id card1))))
-
                 (testing "that depends on another card"
                   (let [card2 (card/create-card! (wrap-card card1) user)]
                     (deps.test/synchronously-run-backfill!)
@@ -65,7 +65,6 @@
                     (testing "but that doesn't affect the upstream deps of the inner card"
                       (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                               (upstream-of :card (:id card1))))))))
-
               (testing "when updating an existing card"
                 (testing "to add a new table dep"
                   (card/update-card! {:card-before-update card1
@@ -86,7 +85,7 @@
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))))))))))
 
-(deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
+(deftest ^:synchronized card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -100,7 +99,6 @@
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
                 (is (=? #{(depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
-
               (testing "transitive deps are computed correctly"
                 (testing "for each card"
                   (is (=? {:card #{id2 id3}}
@@ -125,7 +123,7 @@
                                lib/->legacy-MBQL)
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+(deftest ^:synchronized card-deps-graph-test-2-native-card-chain
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -156,7 +154,7 @@
                                        deps.graph/transitive-dependents
                                        :card))))))))))))
 
-(deftest ^:sequential card-deps-graph-metric-test
+(deftest ^:synchronized card-deps-graph-metric-test
   (testing "deps graph is connected properly for a question using a metric"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
@@ -240,21 +238,13 @@
                 (is (= #{[:card id2] [:card id1] [:table (mt/id :orders)]}
                        (set deps)))))
             (testing "with filter excluding card1, omits card1 and its dependencies"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id2 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependencies {:entity-type :card :ids [id2 id3]})
                     deps (graph/transitive graph [[:card id3]])]
                 (is (= #{[:card id2]}
                        (set deps))
                     "Should only include card2, not card1 or table")))
             (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependencies filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependencies {:entity-type :card :ids [id1 id3]})
                     deps (graph/transitive graph [[:card id3]])]
                 (is (= #{}
                        (set deps))
@@ -275,21 +265,13 @@
                 (is (= #{[:card id2] [:card id3]}
                        (set deps)))))
             (testing "with filter excluding card3, omits card3"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id2]]])
-                    graph (deps.graph/filtered-graph-dependents filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependents {:entity-type :card :ids [id1 id2]})
                     deps (graph/transitive graph [[:card id1]])]
                 (is (= #{[:card id2]}
                        (set deps))
                     "Should only include card2, not card3")))
             (testing "with filter excluding card2, breaks the chain"
-              (let [filter-fn (fn [entity-type-field entity-id-field]
-                                [:and
-                                 [:= entity-type-field "card"]
-                                 [:in entity-id-field [id1 id3]]])
-                    graph (deps.graph/filtered-graph-dependents filter-fn)
+              (let [graph (deps.graph/filtered-graph-dependents {:entity-type :card :ids [id1 id3]})
                     deps (graph/transitive graph [[:card id1]])]
                 (is (= #{}
                        (set deps))
@@ -321,7 +303,6 @@
                           :to_entity_type :table
                           :to_entity_id (:id table2))
               "New dependency should exist"))
-
         (testing "swap when new dep already exists - should just delete old"
           ;; Set up: card2 depends on both table1 and table2
           (t2/insert! :model/Dependency [{:from_entity_type :card
@@ -353,3 +334,16 @@
                              :to_entity_type :table
                              :to_entity_id (:id table2)))
               "Should have exactly one dependency to table2"))))))
+
+(deftest replace-dependencies!-rejects-non-integer-ids-test
+  (testing "a non-integer to-entity-id is rejected before it is inserted"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"must be a positive integer"
+         (deps.graph/replace-dependencies! "document" 1 {"card" #{{:raw "x"}}}))))
+  (testing "legitimate integer ids are accepted and inserted"
+    (mt/with-temp [:model/Card card {}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (deps.graph/replace-dependencies! "card" (:id card) {"card" #{(:id card)}})
+        (is (pos? (t2/count :model/Dependency
+                            :from_entity_type "card"
+                            :from_entity_id (:id card))))))))

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -11,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -18,16 +18,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import { Questions as Models } from "metabase/entities/questions";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { modalRoute } from "metabase/common/components/ModalRoute";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -55,12 +50,13 @@ import {
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
+import ActionCreatorModal from "../ActionCreatorModal";
+
 import ModelActions from "./ModelActions";
 
-// eslint-disable-next-line react/display-name
-jest.mock("metabase/actions/containers/ActionCreator", () => () => (
-  <div data-testid="mock-action-editor" />
-));
+jest.mock("metabase/querying/action-creator", () => ({
+  ActionCreator: () => <div data-testid="mock-action-editor" />,
+}));
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 1;
@@ -197,9 +193,12 @@ async function setup({
     checkNotNull(metadata.question(q.id)),
   );
 
-  const modelUpdateSpy = jest.spyOn(Models.actions, "update");
-
   setupDatabasesEndpoints(databases);
+  if (databases.length === 0) {
+    // The page reads the model's source table to decide whether to load its
+    // foreign keys. With no data permissions the server refuses it.
+    fetchMock.get(`path:/api/table/${TEST_TABLE_ID}`, 403);
+  }
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
@@ -222,31 +221,27 @@ async function setup({
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="actions" />
-        <Route path="actions" component={ModelActions}>
-          <ModalRoute
-            path="new"
-            modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
-          />
-          <ModalRoute
-            path=":actionId"
-            modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
-          />
+        <Route index element={redirect("actions")} />
+        <Route path="actions" element={<ModelActions />}>
+          {modalRoute("new", ActionCreatorModal, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
+          {modalRoute(":actionId", ActionCreatorModal, {
+            modalProps: { transitionProps: { duration: 0 } },
+          })}
         </Route>
       </Route>
-      <Route path="/question/:slug" component={() => null} />
+      <Route path="/question/:slug" element={null} />
     </>,
     { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
+  return { model, router, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -263,6 +258,13 @@ async function openActionMenu(action: WritebackAction) {
   const listItem = screen.getByRole("listitem", { name: action.name });
   const menuButton = within(listItem).getByLabelText("ellipsis icon");
   await userEvent.click(menuButton);
+}
+
+async function openHeaderActionsMenu() {
+  const header = screen.getByTestId("model-actions-header");
+  await userEvent.click(
+    within(header).getByRole("button", { name: "Actions" }),
+  );
 }
 
 describe("ModelActions", () => {
@@ -464,7 +466,7 @@ describe("ModelActions", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await openHeaderActionsMenu();
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
@@ -580,16 +582,20 @@ describe("ModelActions", () => {
       await setupActions({ model: modelCard, actions: [action] });
       fetchMock.modifyRoute("action-post", { response: {} });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
       await userEvent.click(await screen.findByText("Create basic actions"));
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -619,13 +625,18 @@ describe("ModelActions", () => {
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/action", { method: "POST" }),
+        ).toHaveLength(3);
+      });
+
       const createActionCalls = fetchMock.callHistory.calls(
         "path:/api/action",
         {
           method: "POST",
         },
       );
-      expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
         name: "Delete",
@@ -653,7 +664,7 @@ describe("ModelActions", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -663,7 +674,7 @@ describe("ModelActions", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText("Disable basic actions"),
@@ -686,19 +697,18 @@ describe("ModelActions", () => {
 
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
-      const { model: question, history } = await setup({
+      const { model: question, router } = await setup({
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getUrl(question),
-      );
+      expect(router?.location.pathname).toBe(Urls.question(question));
     });
 
     it("shows 404 when opening an archived model", async () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
       });
+      // Unjustified type cast. FIXME
       const modelName = model.displayName() as string;
 
       expect(screen.queryByText(modelName)).not.toBeInTheDocument();

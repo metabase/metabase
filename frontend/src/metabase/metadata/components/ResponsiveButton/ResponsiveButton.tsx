@@ -2,15 +2,8 @@ import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect } from "react";
 import _ from "underscore";
 
-import {
-  Button,
-  type ButtonProps,
-  Flex,
-  Icon,
-  type IconName,
-  Tooltip,
-} from "metabase/ui";
-
+import { Button, type ButtonProps, Flex, Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 interface Props extends Omit<ButtonProps, "leftSection"> {
   children: string;
   icon: IconName;
@@ -44,8 +37,8 @@ export const ResponsiveButton = ({
           leftSection={
             showLabel && showIconWithLabel ? <Icon name={icon} /> : undefined
           }
-          px={showLabel ? (showIconWithLabel ? "sm" : "md") : "xs"}
-          py="xs"
+          px={showLabel ? (showIconWithLabel ? "sm" : "lg") : "xxs"}
+          py="xxs"
           size="xs"
           w={showLabel ? undefined : 32}
           {...props}
@@ -71,8 +64,8 @@ export const ResponsiveButton = ({
           h={32}
           hidden
           leftSection={showIconWithLabel ? <Icon name={icon} /> : undefined}
-          px={showIconWithLabel ? "sm" : "md"}
-          py="xs"
+          px={showIconWithLabel ? "sm" : "lg"}
+          py="xxs"
           ref={measureRef}
           size="xs"
           {...props}

@@ -1,6 +1,5 @@
-import type { ReactNode } from "react";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -12,15 +11,8 @@ type PublishedTableSegmentDependenciesPageParams = {
   segmentId: string;
 };
 
-type PublishedTableSegmentDependenciesPageProps = {
-  params: PublishedTableSegmentDependenciesPageParams;
-  children?: ReactNode;
-};
-
-export function PublishedTableSegmentDependenciesPage({
-  params,
-  children,
-}: PublishedTableSegmentDependenciesPageProps) {
+export function PublishedTableSegmentDependenciesPage() {
+  const params = useParams<PublishedTableSegmentDependenciesPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     usePublishedTableSegmentPage(params);
 
@@ -41,7 +33,7 @@ export function PublishedTableSegmentDependenciesPage({
       }
       onRemove={onRemove}
     >
-      {children}
+      <Outlet />
     </SegmentDependenciesPage>
   );
 }

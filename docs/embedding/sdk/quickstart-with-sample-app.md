@@ -15,7 +15,7 @@ This guide sets up the modular embedding SDK with a [sample React app](https://g
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
 - [Metabase version v1.52 or higher](https://github.com/metabase/metabase/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup.)
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup.)
 - (Optional): [Docker](https://www.docker.com/)
 
 ## Clone the sample app repo
@@ -29,7 +29,7 @@ git clone git@github.com:metabase/metabase-nodejs-react-sdk-embedding-sample.git
 2. Check out the branch in the [metabase-nodejs-react-sdk-embedding-sample](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable) repo that corresponds to your Metabase version.
 
 ```bash
-git checkout {{page.version}}-stable
+git checkout {{page.version | remove: "v0."}}-stable
 ```
 
 E.g., if you're running Metabase 1.57 make sure the sample app repo is on the `57-stable` branch. You can find your Metabase version in the Metabase UI by clicking the **grid icon** in the upper right, selecting **Help**, then choosing **About Metabase**.
@@ -99,7 +99,7 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing/).
+You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
 
 Or run it locally. Here's a [docker](../../installation-and-operation/running-metabase-on-docker.md) one-liner:
 
@@ -141,7 +141,7 @@ On the card that says **JWT**, click the **Setup** button.
 
 ### JWT Identity provider URI
 
-In **JWT IDENTITY PROVIDER URI** field, paste
+In the **JWT IDENTITY PROVIDER URI** field, paste
 
 ```txt
 http://localhost:9090/sso/metabase

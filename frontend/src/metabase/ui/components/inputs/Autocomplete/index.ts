@@ -1,3 +1,3 @@
-export { Autocomplete } from "@mantine/core";
-export type { AutocompleteProps } from "@mantine/core";
+export { Autocomplete } from "./Autocomplete";
+export type { AutocompleteProps } from "./Autocomplete";
 export { autocompleteOverrides } from "./Autocomplete.config";

@@ -6,6 +6,7 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
@@ -21,12 +22,32 @@
   {:table (normalize-name driver table)
    :schema (some->> schema (normalize-name driver))})
 
+(mu/defn table-ids-by-name :- [:set pos-int?]
+  "Ids of the active, non-hidden Tables in `database-id` whose name case-insensitively matches one of `table-names`.
+
+  Resolving a name parsed out of native SQL is a lookup, so it goes straight to the appdb; the metadata for the ids is
+  then fetched through the `MetadataProvider` as usual. Case-insensitive because the spelling sync recorded need not
+  match the spelling in a query: `normalize-name` lower-cases while some warehouses (Snowflake) report upper-case.
+
+  This is a prefilter, not the decision — [[find-table-or-transform]] still matches precisely — so it must return a
+  superset of what that accepts. That holds while the appdb's `lower()` agrees with `u/lower-case-en` and a driver's
+  `normalize-unquoted-name` is a pure case fold; both have tests."
+  [database-id :- pos-int?
+   table-names :- [:sequential :string]]
+  (if (seq table-names)
+    ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
+    ;; query naming a table that does not exist.
+    (set (sql-tools.db/active-visible-table-ids-by-name database-id table-names))
+    #{}))
+
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
-   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table raw-schema :schema}]
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found.
+
+   An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
+  [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver))
+                          (sql.normalize/default-schema driver database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -42,10 +63,13 @@
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map
+  [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
+               [:table {:optional true} :string]
+               [:table-alias {:optional true} :string]
+               [:column {:optional true} :string]
+               [:type {:optional true} :keyword]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)
@@ -72,7 +96,10 @@
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
                (find-table-or-transform
-                driver (lib.metadata/tables metadata-provider) (lib.metadata/transforms metadata-provider))
+                driver
+                (lib.metadata/database metadata-provider)
+                (lib.metadata/tables metadata-provider)
+                (lib.metadata/transforms metadata-provider))
                :table
                (lib.metadata/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))

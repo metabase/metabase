@@ -1,7 +1,9 @@
 import cx from "classnames";
 import { getIn } from "icepick";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { isNetworkError, isStreamInterruptedError } from "metabase/api/client";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -9,7 +11,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -22,7 +23,7 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
 import { AdminEmail } from "./components";
-import { adjustPositions, stripRemarks } from "./utils";
+import { adjustPositions, getDatasetErrorMessage, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
   className?: string;
@@ -31,7 +32,7 @@ interface VisualizationErrorProps {
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
-  isResultDirty?: boolean;
+  errorAction?: ReactNode;
 }
 
 export function VisualizationError({
@@ -41,36 +42,61 @@ export function VisualizationError({
   duration,
   error,
   errorType,
-  isResultDirty,
+  errorAction,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
 
-  if (typeof error === "object" && error.status != null) {
-    // Assume if the request took more than 15 seconds it was due to a timeout
-    // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-    if (duration > VISUALIZATION_SLOW_TIMEOUT) {
-      return (
-        <ErrorMessage
-          className={className}
-          type="timeout"
-          title={t`Your question took too long`}
-          message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
-          action={<AdminEmail />}
-        />
-      );
-    } else {
-      return (
-        <ErrorMessage
-          className={className}
-          type="serverError"
-          title={t`We're experiencing server issues`}
-          message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
-          action={<AdminEmail />}
-        />
-      );
-    }
+  // The response committed and then the stream broke partway through — typically
+  // a query that errored after results started streaming, aborting the
+  // connection. We can't recover the reason, but it is NOT necessarily a
+  // connectivity/server-outage problem, so don't show the "server issues"
+  // message that implies the user should wait for the server to recover.
+  if (isStreamInterruptedError(error)) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="serverError"
+        title={t`This question didn't finish loading`}
+        message={t`The results stopped before the query finished. This can happen when a query runs into an error after it starts returning data. Try running it again.`}
+        action={<AdminEmail />}
+      />
+    );
+  }
+
+  const errorMessage = getDatasetErrorMessage(error);
+  // Treat transport-level failures (server dropped connection, offline, etc.)
+  // the same as an HTTP error with a status — the user just needs to know the
+  // server isn't reachable, not see a stack trace.
+  const isTransportError =
+    isNetworkError(error) ||
+    (typeof error === "object" && error.status != null);
+
+  // Assume if the request took more than 15 seconds it was due to a timeout
+  // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
+  if (isTransportError && duration > VISUALIZATION_SLOW_TIMEOUT) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="timeout"
+        title={t`Your question took too long`}
+        message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
+        action={<AdminEmail />}
+      />
+    );
+  }
+
+  if (isTransportError && !errorMessage) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="serverError"
+        title={t`We're experiencing server issues`}
+        message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
+        action={<AdminEmail />}
+      />
+    );
   }
 
   if (errorType === "missing-required-permissions") {
@@ -113,7 +139,7 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = typeof error === "string" ? error : error.data;
+    let processedError = errorMessage;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
     if (typeof origSql === "string" && processedError) {
       processedError = adjustPositions(processedError, origSql);
@@ -125,14 +151,14 @@ export function VisualizationError({
     return (
       <Box className={cx(className, CS.overflowAuto)}>
         <Flex direction="column" justify="center" align="center" mih="100%">
-          <Flex align="center" mb="md">
+          <Flex align="center" mb="lg">
             <Icon className={VisErrorS.QueryErrorIcon} name="warning" />
             <Box
               className={VisErrorS.QueryErrorTitle}
             >{t`An error occurred in your query`}</Box>
           </Flex>
           <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
-          <Flex align="center" my="md" gap="md">
+          <Flex align="center" my="lg" gap="lg">
             {isSql && showMetabaseLinks && (
               <ExternalLink
                 className={VisErrorS.QueryErrorLink}
@@ -143,7 +169,7 @@ export function VisualizationError({
                 {t`Learn how to debug SQL errors`}
               </ExternalLink>
             )}
-            {!isResultDirty && <FixSqlQueryButton />}
+            {errorAction}
           </Flex>
         </Flex>
       </Box>
@@ -173,7 +199,7 @@ export function VisualizationError({
         <p
           className={QueryBuilderS.QueryErrorMessageText}
         >{t`Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query.`}</p>
-        <ErrorDetails className={CS.pt2} details={error} />
+        <ErrorDetails className={CS.pt2} details={errorMessage} />
       </div>
     </div>
   );

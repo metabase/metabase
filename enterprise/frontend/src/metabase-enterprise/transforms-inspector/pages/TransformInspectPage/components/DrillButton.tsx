@@ -14,9 +14,9 @@ export function DrillButton({
         onClick();
       }}
     >
-      <Flex gap="xs" align="center">
-        <Icon name="zoom_in" c="brand" />
-        <Text c="brand">{children}</Text>
+      <Flex gap="xxs" align="center">
+        <Icon name="zoom_in" c="core-brand" />
+        <Text c="core-brand">{children}</Text>
       </Flex>
     </UnstyledButton>
   );

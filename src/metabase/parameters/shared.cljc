@@ -165,6 +165,7 @@
   on the values. The conjunction parameter determines whether to use 'and' or 'or' to join the last two items."
   [values & {:keys [conjunction] :or {conjunction (trs "and")}}]
   (condp = (count values)
+    0 ""
     1 (str (first values))
     2 (trs "{0} {1} {2}" (first values) conjunction (second values))
     (trs "{0}, {1}, {2} {3}"
@@ -206,10 +207,12 @@
 
 (defn param-val-or-default
   "Returns the parameter value, such that:
-    * nil value => nil
+    * nil value or empty collection => nil
     * missing value key => default"
   [parameter]
-  (get parameter :value (:default parameter)))
+  (let [value (get parameter :value (:default parameter))]
+    (cond-> value
+      (coll? value) not-empty)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
@@ -320,7 +323,7 @@
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
            tag->normalized-param (try
-                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (update-vals tag->param #(lib/normalize ::parameters.schema/parameter %))
                                    (catch #?(:clj Throwable :cljs :default) e
                                      (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use

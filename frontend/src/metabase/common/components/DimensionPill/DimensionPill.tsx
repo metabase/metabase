@@ -7,9 +7,9 @@ import {
   type Section,
 } from "metabase/common/components/AccordionList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import type { IconName } from "metabase/ui";
 import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import S from "./DimensionPill.module.css";
 import { groupIntoSections } from "./utils";
@@ -122,17 +122,17 @@ export function DimensionPill({
         <Flex
           className={cx(S.pill, isInteractive && S.interactive)}
           align="center"
-          gap="xs"
+          gap="xxs"
           opacity={disabled || isEmpty ? 0.6 : undefined}
           onClick={isInteractive ? () => setIsOpen(true) : undefined}
         >
           <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
-          <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
+          <Text size="sm" lh={1} c={isEmpty ? "text-disabled" : undefined}>
             {pillLabel}
           </Text>
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown px={0} py="xs" mah={300} className={S.dropdown}>
+      <Popover.Dropdown px={0} py="xxs" mah={300} className={S.dropdown}>
         {hasMultipleOptions && (
           <AccordionList
             className={S.dimensionList}
@@ -148,7 +148,7 @@ export function DimensionPill({
         )}
         {canRemove && (
           <>
-            {hasMultipleOptions && <Divider my="xs" />}
+            {hasMultipleOptions && <Divider my="xxs" />}
             <AccordionList
               className={S.dimensionList}
               sections={REMOVE_SECTIONS}

@@ -9,6 +9,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
 (comment
@@ -108,16 +109,18 @@
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
-      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
-      {:lib/type           :mbql.stage/mbql
-       :some-other-section {:field-ref [:aggregation 0]}}
-      ["Invalid :aggregation reference: [:aggregation 0]"]
+      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message
+      ;; alongside whatever the slot they were left in says about them.
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :fields       [[:aggregation 0]]}
+      {:fields      [["invalid tuple size 2, expected 3"]]
+       :malli/error ["Invalid :aggregation reference: [:aggregation 0]"]}
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql
        :source-table 1
        :joins        [{:lib/type    :mbql/join
-                       :lib/options {:lib/uuid (str (random-uuid))}
                        :alias       "Q1"
                        :fields      :all
                        :conditions  [[:=
@@ -130,7 +133,7 @@
                                       :order-by     [[:asc
                                                       {:lib/uuid (str (random-uuid))}
                                                       [:aggregation {:lib/uuid (str (random-uuid))} good-ref]]]}
-                                     {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                     {:lib/type :mbql.stage/mbql}]}]}
       nil)))
 
 (def ^:private valid-expression
@@ -166,7 +169,6 @@
     {:lib/type     :mbql.stage/mbql
      :source-table 1
      :joins        [{:lib/type    :mbql/join
-                     :lib/options {:lib/uuid (str (random-uuid))}
                      :alias       "Q1"
                      :fields      :all
                      :conditions  [[:=
@@ -179,7 +181,7 @@
                                     :order-by     [[:asc
                                                     {:lib/uuid (str (random-uuid))}
                                                     [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}
-                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+                                   {:lib/type :mbql.stage/mbql}]}]}
     nil))
 
 (defn- valid-join
@@ -193,7 +195,6 @@
 
   ([join-alias condition]
    {:lib/type    :mbql/join
-    :lib/options {:lib/uuid (str (random-uuid))}
     :alias       join-alias
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql
@@ -347,7 +348,7 @@
 (deftest ^:parallel remove-empty-stage-metadata-test
   (is (= {:lib/type :mbql/query
           :database 1493
-          :stages   [{:template-tags {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
+          :stages   [{:template-tags [{:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}]
                       :lib/type      :mbql.stage/native
                       :native        "update users set name = 'foo' where id = {{x}}"}]}
          (lib/normalize
@@ -383,30 +384,27 @@
                  AND CREATED_AT > {{after_date}}
                  AND USER_ID = {{user_id}}
                  AND {{is_active}}"
-     :template-tags {"min_total" {:type :number
-                                  :name "min_total"
-                                  :id "aa000001-0000-0000-0000-000000000001"
-                                  :display-name "Minimum Total"
-                                  :default 50
-                                  :required true
-                                  :sectionid "number"}
-                     "after_date" {:type :date
-                                   :name "after_date"
-                                   :id "aa000002-0000-0000-0000-000000000002"
-                                   :display-name "After Date"
-                                   :default "2024-01-01"
-                                   :sectionid "date"}
-                     "user_id" {:type :text
-                                :name "user_id"
-                                :id "aa000003-0000-0000-0000-000000000003"
-                                :display-name "User ID"
-                                :default "1"}
-                     "is_active" {:type :boolean
-                                  :name "is_active"
-                                  :id "aa000004-0000-0000-0000-000000000004"
-                                  :display-name "Is Active"
-                                  :default true
-                                  :sectionid "boolean"}}}]})
+     :template-tags [{:type :number
+                      :name "min_total"
+                      :id "aa000001-0000-0000-0000-000000000001"
+                      :display-name "Minimum Total"
+                      :default 50
+                      :required true}
+                     {:type :date
+                      :name "after_date"
+                      :id "aa000002-0000-0000-0000-000000000002"
+                      :display-name "After Date"
+                      :default "2024-01-01"}
+                     {:type :text
+                      :name "user_id"
+                      :id "aa000003-0000-0000-0000-000000000003"
+                      :display-name "User ID"
+                      :default "1"}
+                     {:type :boolean
+                      :name "is_active"
+                      :id "aa000004-0000-0000-0000-000000000004"
+                      :display-name "Is Active"
+                      :default true}]}]})
 
 (deftest ^:parallel external-test
   ;; this one is not valid according to the internal schema because it
@@ -418,3 +416,40 @@
                                     basic-external-query))))
   (is (not (me/humanize (mr/explain ::lib.schema/external-query
                                     native-external-query)))))
+
+(deftest ^:parallel normalize-query-drop-limit-in-stage-with-page-test
+  (testing "If a query has `:page` we should drop `:limit` since the two conflict during normalization"
+    (let [stage {:lib/type     :mbql.stage/mbql
+                 :source-table (:id (meta/table-metadata :venues))
+                 :page         {:page 1, :items 15}
+                 :limit        20}]
+      (is (=? {:page  {:page 1, :items 15}
+               :limit (symbol "nil #_\"key is not present.\"")}
+              (lib/normalize ::lib.schema/stage stage))))))
+
+(deftest ^:parallel normalize-template-tags-map-to-vector-test
+  (testing "Template tags should get transformed from a map to a vector; preserve `:name` from map keys"
+    (let [query      {:lib/type :mbql/query
+                      :stages   [{:lib/type :mbql.stage/native
+                                  :template-tags {"parameter_0" {:widget-type  :category
+                                                                 :id           "00000000-0000-0000-0000-000000000000"
+                                                                 :name         "<WRONG NAME>"
+                                                                 :display-name "Parameter 0"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field {} 1]
+                                                                 :default      nil}
+                                                  "parameter_1" {:widget-type  :category
+                                                                 :id           "00000000-0000-0000-0000-000000000001"
+                                                                 ;; (`:name` is missing)
+                                                                 :display-name "Parameter 1"
+                                                                 :type         :dimension
+                                                                 :dimension    [:field {} 1]
+                                                                 :default      nil}}
+                                  :native   "<<NATIVE QUERY>>"}]
+                      :database 2}
+          normalized (lib/normalize ::lib.schema/query query)]
+      (is (=? {:stages   [{:template-tags [{:name "parameter_0"}
+                                           {:name "parameter_1"}]
+                           :lib/type      :mbql.stage/native}]
+               :lib/type :mbql/query}
+              normalized)))))

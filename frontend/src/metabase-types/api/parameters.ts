@@ -73,6 +73,7 @@ export interface ValuesSourceConfig {
   values?: string[] | ParameterValue[];
   card_id?: CardId;
   value_field?: FieldReference;
+  label_field?: FieldReference;
 }
 
 export type VariableTarget = ["template-tag", string];
@@ -149,6 +150,16 @@ export type NormalizedParameter = {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
+};
+
+// The parameter payload attached to query execution requests. `value` is
+// undefined when the parameter should fall back to its default.
+export type NormalizedQueryParameter = {
+  id: ParameterId;
+  type: string;
+  value?: ParameterValueOrArray | null;
+  target?: ParameterTarget;
+  options?: ParameterOptions;
 };
 
 export type GetParameterValuesRequest = {

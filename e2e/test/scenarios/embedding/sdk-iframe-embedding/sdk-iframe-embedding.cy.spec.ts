@@ -234,8 +234,8 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("1. call embed.setAttribute to update the question id");
     frame.window().then((win) => {
-      win
-        .document!.querySelector("metabase-question")!
+      win.document
+        .querySelector("metabase-question")!
         .setAttribute("question-id", ORDERS_COUNT_QUESTION_ID.toString());
     });
 
@@ -318,7 +318,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("2. call setAttribute to show the title");
     frame.window().then((win) => {
-      const element = win.document!.querySelector("metabase-dashboard")!;
+      const element = win.document.querySelector("metabase-dashboard")!;
       element.setAttribute("with-title", "true");
     });
 
@@ -813,6 +813,32 @@ describe("scenarios > embedding > modular embedding", () => {
             ],
           },
         ],
+      });
+    });
+
+    it("should not send SDK tracker events through the analytics proxy", () => {
+      let proxyCallCount = 0;
+      cy.intercept("POST", "/api/analytics-proxy", () => {
+        proxyCallCount++;
+      }).as("analyticsProxy");
+
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+          },
+        ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      }).within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      cy.wrap(null).then(() => {
+        expect(proxyCallCount).to.eq(0);
       });
     });
 

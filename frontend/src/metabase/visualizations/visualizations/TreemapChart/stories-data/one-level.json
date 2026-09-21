@@ -1,0 +1,41 @@
+[
+  {
+    "card": {
+      "id": 2,
+      "name": "Sales by product",
+      "display": "treemap",
+      "visualization_settings": {
+        "treemap.grouping": "PRODUCT",
+        "treemap.value": "sum"
+      }
+    },
+    "data": {
+      "rows": [
+        ["Oat Milk", 7089142.4],
+        ["Soy Milk", 3139411.2],
+        ["Almond Milk", 667935.2],
+        ["Organic Unsweetened Barista Cashew Milk", 476931.2],
+        ["Rice Milk", 250000],
+        ["Hemp Milk", 120000]
+      ],
+      "cols": [
+        {
+          "name": "PRODUCT",
+          "display_name": "Product",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Category",
+          "source": "breakout"
+        },
+        {
+          "name": "sum",
+          "display_name": "Sum of Price",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "source": "aggregation"
+        }
+      ]
+    }
+  }
+]

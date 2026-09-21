@@ -1,0 +1,5 @@
+.embedModalHeader {
+  --modal-header-text-color: var(--mb-color-text-secondary);
+
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}

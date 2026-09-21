@@ -1,8 +1,10 @@
 (ns metabase.query-processor.metadata-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.metadata-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
 (deftest ^:parallel mbql-query-metadata-test
@@ -84,6 +86,7 @@
                {:name          "CREATED_AT"
                 :display_name  "CREATED_AT"
                 :semantic_type :type/CreationTimestamp}]
+              ;; the deprecated legacy path is itself under test
               #_{:clj-kondo/ignore [:deprecated-var]}
               (qp.metadata/legacy-result-metadata query nil))))))
 
@@ -117,3 +120,26 @@
                 :base_type     :type/Integer
                 :database_type "INTEGER"}]
               ((get-method driver/query-result-metadata :default) :h2 query))))))
+
+(deftest ^:parallel combine-metadata-test
+  ;; the deprecated combine-metadata is itself under test
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (are [old-metadata new-metadata expected] (= expected (qp.util/combine-metadata new-metadata old-metadata))
+    ;; columns get the correct display name after columns with the same name are removed
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Products → ID", :lib/desired-column-alias "Products__id"}
+     {:name "id_3", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]
+
+    ;; columns get the correct display name after columns with the same name are added
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Products → ID", :lib/desired-column-alias "Products__id"}
+     {:name "id_3", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]
+    [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
+     {:name "id_2", :display_name "Products → ID", :lib/desired-column-alias "Products__id"}
+     {:name "id_3", :display_name "Reviews → ID",  :lib/desired-column-alias "Reviews__id"}]))

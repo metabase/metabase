@@ -2,6 +2,7 @@ import {
   DOCUMENT_WITH_SUPPORTING_TEXT,
   DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
   DOCUMENT_WITH_TWO_CARDS,
+  DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
 } from "e2e/support/document-initial-data";
 
 const { H } = cy;
@@ -15,7 +16,7 @@ describe("documents supporting text", () => {
   it("should add supporting text to a standalone cardEmbed", () => {
     H.createDocument({
       name: "Supporting Text Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
+      document: DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
       collection_id: null,
       alias: "document",
       idAlias: "documentId",
@@ -23,10 +24,13 @@ describe("documents supporting text", () => {
 
     H.visitDocument("@documentId");
 
+    const ORDERS_BY_YEAR_CARD_TITLE =
+      "Orders, Count, Grouped by Created At (year)";
+
     // Wait for cards to load
-    H.getDocumentCard("Orders")
+    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE)
       .should("be.visible")
-      .findByTestId("table-root")
+      .findByTestId("visualization-root")
       .should("exist");
 
     // Verify no supporting text or flexContainer exists initially
@@ -35,9 +39,16 @@ describe("documents supporting text", () => {
       .should("not.exist");
     H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
 
-    // Open the card menu and click "Add supporting text"
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
+    // Open the card menu and click "Add supporting text". The menu item is
+    // rendered disabled while the node view can't resolve its position, and a
+    // click on the label of a disabled button is dropped without an error, so
+    // click the button itself and wait for it to be enabled.
+    H.openDocumentCardMenu(ORDERS_BY_YEAR_CARD_TITLE);
+    H.popover()
+      .findByText("Add supporting text")
+      .closest("button")
+      .should("be.enabled")
+      .click();
 
     // Verify a flexContainer was created
     H.documentContent().find('[data-type="flexContainer"]').should("exist");
@@ -52,16 +63,20 @@ describe("documents supporting text", () => {
       .findByTestId("document-card-supporting-text")
       .should("contain.text", "Write whatever you'd like to");
 
-    // Verify the flexContainer contains both supporting text and the card
+    // Verify the flexContainer contains both supporting text and the card.
+    // Kept as two re-queried chains: `.within()` freezes its subject, and the
+    // card's node view is recreated when it moves into the new flexContainer.
     H.documentContent()
       .find('[data-type="flexContainer"]')
-      .within(() => {
-        cy.findByTestId("document-card-supporting-text").should("exist");
-        cy.findByTestId("document-card-embed").should("exist");
-      });
+      .findByTestId("document-card-supporting-text")
+      .should("exist");
+    H.documentContent()
+      .find('[data-type="flexContainer"]')
+      .findByTestId("document-card-embed")
+      .should("exist");
 
     // Verify the card is still there
-    H.getDocumentCard("Orders").should("exist");
+    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE).should("exist");
   });
 
   it("should add supporting text to a cardEmbed in a flexContainer", () => {
@@ -323,10 +338,12 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const initialSupportingTextWidth = $supportingText.width() as number;
         cy.wrap(initialSupportingTextWidth).as("initialSupportingTextWidth");
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const initialCardWidth = $card.width() as number;
           cy.wrap(initialCardWidth).as("initialCardWidth");
         });
@@ -345,10 +362,12 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const newSupportingTextWidth = $supportingText.width() as number;
         cy.wrap(newSupportingTextWidth).as("newSupportingTextWidth");
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const newCardWidth = $card.width() as number;
           cy.wrap(newCardWidth).as("newCardWidth");
 
@@ -413,9 +432,11 @@ describe("documents supporting text", () => {
     H.documentContent()
       .findByTestId("document-card-supporting-text")
       .then(($supportingText) => {
+        // Unjustified type cast. FIXME
         const reloadedSupportingTextWidth = $supportingText.width() as number;
 
         H.getDocumentCard("Orders").then(($card) => {
+          // Unjustified type cast. FIXME
           const reloadedCardWidth = $card.width() as number;
 
           cy.get<number>("@newSupportingTextWidth").then((savedWidth) => {

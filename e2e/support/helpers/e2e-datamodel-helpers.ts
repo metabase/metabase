@@ -1,3 +1,4 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   FieldId,
@@ -31,6 +32,8 @@ export const DataModel = {
   },
   TablePicker: {
     get: getTablePicker,
+    expandDatabase: expandTablePickerDatabase,
+    expandSchema: expandTablePickerSchema,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabaseCheckbox,
@@ -59,6 +62,7 @@ export const DataModel = {
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
+    getActionsMenuButton: getTableActionsMenuButton,
     getField: getTableSectionField,
     getFieldNameInput: getTableSectionFieldNameInput,
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
@@ -287,6 +291,72 @@ function getTablePickerDatabase(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+let tablePickerExpandCount = 0;
+
+/**
+ * Expands a database row in the table picker via its toggle, waits for the
+ * schemas request (and, for a lone schema, the dependent tables request) to
+ * resolve, and asserts the children rendered.
+ */
+function expandTablePickerDatabase(name: string) {
+  tablePickerExpandCount += 1;
+  const schemasAlias = `tablePickerSchemas${tablePickerExpandCount}`;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schemas?*").as(schemasAlias);
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerDatabaseToggle(name).click();
+
+  cy.wait(`@${schemasAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+    const schemas = response?.body;
+    if (
+      Array.isArray(schemas) &&
+      (schemas.length === 1 || schemas.includes(UNNAMED_SCHEMA_NAME))
+    ) {
+      cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(
+        ({ response: tablesResponse }) => {
+          expect(tablesResponse?.statusCode).to.eq(200);
+        },
+      );
+    }
+  });
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "true",
+  );
+}
+
+/**
+ * Expands a schema row in the table picker and synchronizes on its tables
+ * being loaded, mirroring expandTablePickerDatabase.
+ */
+function expandTablePickerSchema(name: string) {
+  tablePickerExpandCount += 1;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerSchemaToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerSchemaToggle(name).click();
+
+  cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+  });
+
+  getTablePickerSchemaToggle(name).should("have.attr", "aria-expanded", "true");
+}
+
 function getTablePickerDatabaseToggle(name: string) {
   return getTablePickerDatabase(name).find("[aria-expanded]");
 }
@@ -381,6 +451,10 @@ function getTableSyncOptionsButton() {
   return getTableSection().findByRole("button", { name: /Sync/ });
 }
 
+function getTableActionsMenuButton() {
+  return getTableSection().findByRole("button", { name: "More actions" });
+}
+
 function getTableSectionField(name: string) {
   return getTableSection().findByRole("listitem", { name });
 }
@@ -408,8 +482,15 @@ function getTableSectionFieldDescriptionInput(name: string) {
 }
 
 function clickTableSectionField(name: string) {
-  // clicks the icon specifically to avoid issues with clicking the name or description inputs
-  return getTableSectionField(name).findByRole("img").scrollIntoView().click();
+  // Switching tables triggers an async query_metadata fetch; until it resolves
+  // the list still shows the previous table's fields. Wait for this field to
+  // render (cross-database loads can exceed the default 4s timeout) before
+  // clicking. The icon is clicked specifically to avoid the name/description inputs.
+  return getTableSection()
+    .findByRole("listitem", { name, timeout: 15000 })
+    .findByRole("img")
+    .scrollIntoView()
+    .click();
 }
 
 function getTableSectionCloseButton() {
@@ -577,7 +658,8 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Give it a description");
+  getSegmentEditor().findByLabelText("Give it a description").click();
+  return getSegmentEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getSegmentEditorFilterPlaceholder() {
@@ -669,7 +751,8 @@ function getMeasureEditorNameInput() {
 }
 
 function getMeasureEditorDescriptionInput() {
-  return getMeasureEditor().findByLabelText("Give it a description");
+  getMeasureEditor().findByLabelText("Give it a description").click();
+  return getMeasureEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getMeasureEditorAggregationPlaceholder() {
@@ -793,13 +876,33 @@ function verifyTablePreview({
     });
 
     if (description != null) {
-      cy.findByTestId("header-cell").realHover();
+      hoverHeaderCell();
     }
   });
 
   if (description != null) {
     hovercard().should("contain.text", description);
   }
+}
+
+// Open the preview's column-description hovercard. The hovercard opens on a
+// delayed `openDelay` timer, and a single one-shot `realHover()` can miss it:
+// after `cy.wait("@dataset")` the table re-renders on a microtask (fetch
+// resolution) and Chrome v133+ headless hit-tests CDP mouse events
+// differently, either of which drops the hover and cancels the open timer,
+// leaving the hovercard permanently absent for that attempt. Re-query the cell
+// for each dispatch so the events land on the post-render DOM node, and fire
+// both `mouseover` (bubbles → React 18 synthetic onMouseEnter for any wrapper)
+// and `mouseenter` (for native useEventListener handlers Mantine attaches
+// directly to the cell).
+function hoverHeaderCell() {
+  const headerCell = () =>
+    cy
+      .findByTestId("header-cell")
+      .findByTestId("cell-data")
+      .should("be.visible");
+  headerCell().trigger("mouseenter", { force: true });
+  headerCell().trigger("mouseover", { force: true });
 }
 
 function verifyObjectDetailPreview({
@@ -888,5 +991,5 @@ function getSourceReplacementDependentsTab(count: number) {
 }
 
 function getSourceReplacementFindAndReplaceButton() {
-  return cy.findByRole("button", { name: "Find and replace" });
+  return cy.findByRole("menuitem", { name: /Find and replace/ });
 }

@@ -84,6 +84,18 @@ describe("TenantLimitsTab", () => {
     expect(screen.getByText(/Max total.*messages/)).toBeInTheDocument();
   });
 
+  it("shows 'million' unit beside each input when limitType is tokens", () => {
+    setup({ limitType: "tokens" });
+
+    expect(screen.getAllByText("million").length).toBe(defaultTenants.length);
+  });
+
+  it("shows 'messages' unit beside each input when limitType is messages", () => {
+    setup({ limitType: "messages" });
+
+    expect(screen.getAllByText("messages").length).toBe(defaultTenants.length);
+  });
+
   it("populates inputs from existing tenant limits", () => {
     setup({
       tenantLimits: [
@@ -92,8 +104,8 @@ describe("TenantLimitsTab", () => {
       ],
     });
 
-    expect(screen.getByDisplayValue("1 million")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("10 million")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("10")).toBeInTheDocument();
   });
 
   it("shows 'Unlimited' placeholder when instance limit is null", () => {
@@ -143,7 +155,7 @@ describe("TenantLimitsTab", () => {
     });
     await userEvent.type(acmeInput, "300");
 
-    expect(acmeInput).toHaveValue("300 million");
+    expect(acmeInput).toHaveValue("300");
   });
 
   it("shows error when value exceeds the instance limit", async () => {

@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.test-util.canned
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   #?@(:clj [[metabase.test.util :as tu]]
+       :cljs [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -271,64 +272,47 @@
             (click tc :cell "PRODUCT_ID" :basic :fk)
             (click tc :cell "SUBTOTAL"   :basic :number)
             (click tc :cell "CREATED_AT" :basic :datetime)
-
             (click tc :header "ID"         :basic :pk)
             (click tc :header "PRODUCT_ID" :basic :fk)
             (click tc :header "SUBTOTAL"   :basic :number)
             (click tc :header "CREATED_AT" :basic :datetime)])
-
          ;; Singular aggregation for Orders, just clicking that single cell.
          [(click (test-case metadata-provider :test.query/orders-count) :cell "count" :aggregation :number)]
-
          ;; Breakout-only for Orders by Product ID - click both cell and header.
          (let [tc (test-case metadata-provider :test.query/orders-by-product-id)]
            [(click tc :cell "PRODUCT_ID" :breakout    :fk)
-
             (click tc :header "PRODUCT_ID" :breakout    :fk)])
-
          ;; Count broken out by Product ID - click both count and Product ID, both the cells and headers; also a pivot.
          (let [tc (test-case metadata-provider :test.query/orders-count-by-product-id)]
            [(click tc :cell "count"      :aggregation :number)
             (click tc :cell "PRODUCT_ID" :breakout    :fk)
-
             (click tc :header "count"      :aggregation :number)
             (click tc :header "PRODUCT_ID" :breakout    :fk)
-
             (click tc :pivot  nil          :basic       :number)])
-
          ;; Count broken out by Created At - click both count and Created At, both the cells and headers; also a pivot.
          (let [tc (test-case metadata-provider :test.query/orders-count-by-created-at)]
            [(click tc :cell "count"      :aggregation :number)
             (click tc :cell "CREATED_AT" :breakout    :datetime)
-
             (click tc :header "count"      :aggregation :number)
             (click tc :header "CREATED_AT" :breakout    :datetime)
-
             (click tc :pivot  nil          :basic       :number)])
-
          ;; SUM(Subtotal) broken out by Product ID - same as the count case above.
          (let [tc (test-case metadata-provider :test.query/orders-sum-subtotal-by-product-id)]
            [(click tc :cell "sum"        :aggregation :number)
             (click tc :cell "PRODUCT_ID" :breakout    :fk)
-
             (click tc :header "sum"        :aggregation :number)
             (click tc :header "PRODUCT_ID" :breakout    :fk)
-
             (click tc :pivot  nil          :basic       :number)])
-
          ;; Count broken out by both Created At and Product.CATEGORY
          ;; Click all three cells and headers, also a legend click on a category.
          (let [tc (test-case metadata-provider :test.query/orders-count-by-created-at-and-product-category)]
            [(click tc :cell "count"      :aggregation :number)
             (click tc :cell "CREATED_AT" :breakout    :datetime)
             (click tc :cell "CATEGORY"   :breakout    :string)
-
             (click tc :header "count"      :aggregation :number)
             (click tc :header "CREATED_AT" :breakout    :datetime)
             (click tc :header "CATEGORY"   :breakout    :string)
-
             (click tc :legend  "CATEGORY"  :breakout    :string)])
-
          ;; Simple query against Products.
          (let [tc (test-case metadata-provider :test.query/products)]
            [(click tc :cell "ID"         :basic :pk)
@@ -337,14 +321,12 @@
             (click tc :cell "PRICE"      :basic :number)
             (click tc :cell "RATING"     :basic :number)
             (click tc :cell "CREATED_AT" :basic :datetime)
-
             (click tc :header "ID"         :basic :pk)
             (click tc :header "EAN"        :basic :string)
             (click tc :header "TITLE"      :basic :string)
             (click tc :header "PRICE"      :basic :number)
             (click tc :header "RATING"     :basic :number)
             (click tc :header "CREATED_AT" :basic :datetime)])
-
          ;; Native query against products
          (let [tc (test-case metadata-provider :test.query/products-native)]
            [(click tc :cell "ID"         :basic :pk)
@@ -353,14 +335,12 @@
             (click tc :cell "PRICE"      :basic :number)
             (click tc :cell "RATING"     :basic :number)
             (click tc :cell "CREATED_AT" :basic :datetime)
-
             (click tc :header "ID"         :basic :pk)
             (click tc :header "EAN"        :basic :string)
             (click tc :header "TITLE"      :basic :string)
             (click tc :header "PRICE"      :basic :number)
             (click tc :header "RATING"     :basic :number)
             (click tc :header "CREATED_AT" :basic :datetime)])
-
          ;; Simple query against Reviews.
          ;; This one has a :type/Description column (BODY) which matters for Distribution drills.
          (let [tc (test-case metadata-provider :test.query/reviews)]
@@ -370,14 +350,12 @@
             (click tc :cell "RATING"     :basic :number)
             (click tc :cell "PRODUCT_ID" :basic :fk)
             (click tc :cell "CREATED_AT" :basic :datetime)
-
             (click tc :header "ID"         :basic :pk)
             (click tc :header "REVIEWER"   :basic :string)
             (click tc :header "BODY"       :basic :string)
             (click tc :header "RATING"     :basic :number)
             (click tc :header "PRODUCT_ID" :basic :fk)
             (click tc :header "CREATED_AT" :basic :datetime)])
-
          ;; Simple query against People.
          ;; This one has a :type/Email (EMAIL) for Column Extract drills.
          (let [tc (test-case metadata-provider :test.query/people)]
@@ -394,7 +372,6 @@
             (click tc :cell "SOURCE"     :basic :string)
             (click tc :cell "BIRTH_DATE" :basic :datetime)
             (click tc :cell "CREATED_AT" :basic :datetime)
-
             (click tc :header "ID"         :basic :pk)
             (click tc :header "ADDRESS"    :basic :string)
             (click tc :header "EMAIL"      :basic :string)
@@ -408,7 +385,6 @@
             (click tc :header "SOURCE"     :basic :string)
             (click tc :header "BIRTH_DATE" :basic :datetime)
             (click tc :header "CREATED_AT" :basic :datetime)])
-
          ;; Simple query against Products, but it lies!
          ;; Claims VENDOR is :type/SerializedJSON (derives from :type/Structured).
          (let [tc (-> metadata-provider
@@ -418,7 +394,6 @@
                       (test-case :test.query/products))]
            [(click tc :cell   "VENDOR" :basic :string)
             (click tc :header "VENDOR" :basic :string)])
-
          ;; Simple query against People, but it lies!
          ;; Claims EMAIL is :type/URL (relevant to Column Extract drills).
          (let [tc (-> metadata-provider
@@ -442,10 +417,11 @@
    (doseq [[tc context click-details] clicks
            :let [exp? (pred tc context click-details)]
            :when (not= exp? ::skip)]
-     (testing (str "Should " (when-not exp? "not ") "return " drill " when:"
-                   "\nTest case = \n" (u/pprint-to-str tc)
-                   "\nContext = \n"   (u/pprint-to-str context)
-                   "\nClick = \n"     (u/pprint-to-str click))
+     (testing (#?(:clj tu/deferred-str :cljs do)
+               (str "Should " (when-not exp? "not ") "return " drill " when:"
+                    "\nTest case = \n" (u/pprint-to-str tc)
+                    "\nContext = \n"   (u/pprint-to-str context)
+                    "\nClick = \n"     (u/pprint-to-str click)))
        (is (=? (when exp?
                  {:type drill})
                (returned tc context drill)))))))

@@ -29,7 +29,7 @@
     margin: auto;
     width: 64px;
     height: 64px;
-    background-color: var(--mb-color-background-primary-inverse);
+    background-color: var(--mb-color-background_page-primary-inverse);
     border-radius: 8px;
     color: var(--mb-color-text-primary-inverse);
   }

@@ -1,4 +1,4 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import type { FieldValue } from "metabase-types/api";
 
 import { translateToGerman, translateToJapanese } from "./test-constants";

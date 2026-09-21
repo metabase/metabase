@@ -3,7 +3,7 @@ import type { AsyncThunkAction, SerializedError } from "@reduxjs/toolkit";
 import { createAction } from "@reduxjs/toolkit";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -15,9 +15,19 @@ let refreshGuestSessionPromise: ReturnType<
   AsyncThunkAction<string | null, unknown, any>
 > | null = null;
 
-// Sets the initial guest embed token when a component first loads.
-export const setInitialGuestToken = createAction<string>(
-  "sdk/guest-embed/SET_INITIAL_TOKEN",
+// Sets the initial guest embed token when a component first loads. Keyed by a
+// stable per-mount id so concurrent guest embeds under one
+// MetabaseProvider don't overwrite each other's token.
+export const setInitialGuestToken = createAction<{
+  mountId: string;
+  token: string;
+}>("sdk/guest-embed/SET_INITIAL_TOKEN");
+
+// Drops a mount's guest token when it unmounts, so a remounted embed (the
+// iframe route re-keys its children when the token changes) doesn't leave a
+// stale entry behind for getOrRefreshGuestSession to pick up.
+export const clearGuestToken = createAction<string>(
+  "sdk/guest-embed/CLEAR_TOKEN",
 );
 
 export const setGuestTokenFetchError = createAction<SerializedError | null>(
@@ -37,6 +47,9 @@ export const refreshGuestSession = createAsyncThunk(
   }: {
     authConfig: MetabaseAuthConfig;
     expiredToken: string;
+    // Unused by the fetch itself; carried on the thunk arg so the reducer can
+    // write the refreshed token back to the same guestTokensByMount key.
+    mountId: string;
   }): Promise<string> => {
     if (authConfig.isGuest && !authConfig.guestEmbedProviderUri) {
       throw new Error(
@@ -58,9 +71,20 @@ export const refreshGuestSession = createAsyncThunk(
 export const getOrRefreshGuestSession = createAsyncThunk(
   "sdk/guest-embed/GET_OR_REFRESH_TOKEN",
   async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
+    // Unjustified type cast. FIXME
     const state = getState() as SdkStoreState;
     const tokenState = getSessionTokenState(state);
-    const currentToken = tokenState.rawToken;
+    // This thunk only runs for iframe/modular embeds (see the isEmbeddingEajs
+    // check below), where each embed gets its own iframe and therefore its
+    // own store, and each mount drops its entry on unmount — so there's only
+    // ever one guest token in this map.
+    // Needs rework for EMB-2295 (guestEmbedProviderUri in the plain SDK): there
+    // one store can hold several mounts, and picking an arbitrary key would
+    // hand every request the same token again.
+    const mountId = Object.keys(tokenState.guestTokensByMount)[0];
+    const currentToken = mountId
+      ? tokenState.guestTokensByMount[mountId]
+      : null;
 
     // No token in Redux yet, so we can't check expiration.
     if (!currentToken) {
@@ -100,7 +124,8 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     refreshGuestSessionPromise = dispatch(
       refreshGuestSession({
         authConfig,
-        expiredToken: currentToken!,
+        expiredToken: currentToken,
+        mountId,
       }),
     );
 

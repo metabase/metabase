@@ -14,35 +14,35 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
-    (is (#'table/valid-field-order? (mt/id :venues)
-                                    [(mt/id :venues :name)
-                                     (mt/id :venues :category_id)
-                                     (mt/id :venues :latitude)
-                                     (mt/id :venues :longitude)
-                                     (mt/id :venues :price)
-                                     (mt/id :venues :id)])))
+    (is (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                  [(mt/id :venues :name)
+                                                   (mt/id :venues :category_id)
+                                                   (mt/id :venues :latitude)
+                                                   (mt/id :venues :longitude)
+                                                   (mt/id :venues :price)
+                                                   (mt/id :venues :id)])))
   (testing "Field ordering is invalid if some fields are missing"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :venues :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :venues :id)]))))
   (testing "Field ordering is invalid if some fields are from a differnt table"
-    (is (false? (#'table/valid-field-order? (mt/id :venues)
-                                            [(mt/id :venues :name)
-                                             (mt/id :venues :category_id)
-                                             (mt/id :venues :latitude)
-                                             (mt/id :venues :longitude)
-                                             (mt/id :venues :price)
-                                             (mt/id :checkins :id)]))))
+    (is (false? (#'table-user-settings/valid-field-order? (mt/id :venues)
+                                                          [(mt/id :venues :name)
+                                                           (mt/id :venues :category_id)
+                                                           (mt/id :venues :latitude)
+                                                           (mt/id :venues :longitude)
+                                                           (mt/id :venues :price)
+                                                           (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
@@ -59,13 +59,13 @@
                               "('Chicken', 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)
-                                       (mt/id :birds :example_name)]))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)
+                                                     (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
       (sync/sync-database! (mt/db))
-      (is (#'table/valid-field-order? (mt/id :birds)
-                                      [(mt/id :birds :species)])))))
+      (is (#'table-user-settings/valid-field-order? (mt/id :birds)
+                                                    [(mt/id :birds :species)])))))
 
 (deftest slashes-in-schema-names-test
   (testing "Schema names should allow forward or back slashes (#8693, #12450)"
@@ -78,15 +78,6 @@
         (mt/with-temp [:model/Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
-
-(deftest identity-hash-test
-  (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-      (let [db-hash (serdes/identity-hash db)]
-        (is (= "0395fe49"
-               (serdes/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes/identity-hash table)))))))
 
 (deftest set-new-table-permissions!-test
   (testing "New permissions are set appropriately for a new table, for all groups"
@@ -108,7 +99,6 @@
                   :perms/manage-table-metadata :no
                   :perms/manage-database       :no}}}
                (data-perms.graph/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
-
         ;; A new group starts with the same perms as All Users
         (is (partial=
              {group-id
@@ -119,7 +109,6 @@
                 :perms/manage-table-metadata :no
                 :perms/manage-database       :no}}}
              (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))
-
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
           (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
           (data-perms/set-table-permission! group-id table-id-1 :perms/download-results :no)
@@ -167,12 +156,20 @@
   ;; Manually activate Field values since they are not created during sync (#53387)
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
-
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
           (-> (t2/select-one :model/Table (mt/id :venues))
               (t2/hydrate :field_values)
-              :field_values))))
+              :field_values)))
+  (testing "batched hydration of several tables"
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
+    (is (=? {(mt/id :venues)     {(mt/id :venues :price)    (mt/malli=? [:sequential {:min 1} :any])
+                                  (mt/id :venues :name)     (mt/malli=? [:sequential {:min 1} :any])}
+             (mt/id :categories) {(mt/id :categories :name) (mt/malli=? [:sequential {:min 1} :any])}}
+            (->> (t2/select :model/Table :id [:in [(mt/id :venues) (mt/id :categories)]])
+                 (#(t2/hydrate % :field_values))
+                 (map (juxt :id :field_values))
+                 (into {}))))))
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)
@@ -504,7 +501,6 @@
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
              (t2/update! :model/Table table-id {:data_source nil}))))))
-
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
@@ -517,7 +513,20 @@
         (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
       (testing "can also change it to nil"
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
-        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
+        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
+  (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
+    (testing "can set data_source to metabase-transform on an existing synced table"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
+        (binding [mi/*deserializing?* true]
+          (is (some? (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
+    (testing "reverse direction stays blocked even during deserialization"
+      (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+        (binding [mi/*deserializing?* true]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Cannot change data_source from metabase-transform"
+               (t2/update! :model/Table table-id {:data_source nil}))))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
@@ -734,3 +743,23 @@
               (serdes/load-one! ingested table)
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
+
+(deftest curation-column-defaults-test
+  (testing "a new table gets consistent non-null data_layer and data_authority defaults"
+    (testing "via the model before-insert (the path sync uses)"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}]
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority] :id table-id)))))
+    (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
+      ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (t2/query-one {:insert-into :metabase_table
+                       :values      [{:name       "raw-insert-probe"
+                                      :db_id      db-id
+                                      :active     true
+                                      :created_at :%now
+                                      :updated_at :%now}]})
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority]
+                               :name "raw-insert-probe" :db_id db-id)))))))

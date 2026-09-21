@@ -1,25 +1,27 @@
 import { useCallback, useMemo } from "react";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { extractRemappings } from "metabase/visualizations";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import type {
-  CartesianChartModel,
-  ScatterPlotModel,
-  WaterfallChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
-import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
-import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
-import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
-import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { CardDisplayType } from "metabase-types/api";
+import {
+  type CartesianChartModel,
+  type ScatterPlotModel,
+  type WaterfallChartModel,
+  extractRemappings,
+  getCartesianChartModel,
+  getCartesianChartOption,
+  getChartLayout,
+  getScatterPlotModel,
+  getScatterPlotOption,
+  getTimelineEventsModel,
+  getWaterfallChartModel,
+  getWaterfallChartOption,
+} from "metabase/viz-core";
+import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
+
+const NO_SELECTED_TIMELINE_EVENT_IDS: TimelineEventId[] = [];
 
 export function useModelsAndOption(
   {
@@ -31,9 +33,8 @@ export function useModelsAndOption(
     height,
     hiddenSeries = new Set(),
     timelineEvents,
-    selectedTimelineEventIds,
+    selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    hovered,
     isFullscreen,
     gridSize,
   }: VisualizationProps,
@@ -117,33 +118,15 @@ export function useModelsAndOption(
   );
 
   const timelineEventsModel = useMemo(
-    () =>
-      getTimelineEventsModel(
-        chartModel,
-        chartLayout,
-        timelineEvents ?? [],
-        renderingContext,
-      ),
-    [chartModel, chartLayout, timelineEvents, renderingContext],
+    () => getTimelineEventsModel(chartModel, chartLayout, timelineEvents ?? []),
+    [chartModel, chartLayout, timelineEvents],
   );
-
-  const selectedOrHoveredTimelineEventIds = useMemo(() => {
-    const ids = [];
-
-    if (selectedTimelineEventIds != null) {
-      ids.push(...selectedTimelineEventIds);
-    }
-    if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map((e) => e.id));
-    }
-
-    return ids;
-  }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
   const tooltipOption = useMemo(() => {
     return getTooltipOption(
       chartModel,
       settings,
+      // Unjustified type cast. FIXME
       card.display as CardDisplayType,
       containerRef,
     );
@@ -161,11 +144,13 @@ export function useModelsAndOption(
     switch (card.display) {
       case "waterfall":
         baseOption = getWaterfallChartOption(
+          // Unjustified type cast. FIXME
           chartModel as WaterfallChartModel,
           width,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          selectedTimelineEventIds,
           settings,
           shouldAnimate,
           renderingContext,
@@ -173,10 +158,12 @@ export function useModelsAndOption(
         break;
       case "scatter":
         baseOption = getScatterPlotOption(
+          // Unjustified type cast. FIXME
           chartModel as ScatterPlotModel,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          selectedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -185,10 +172,12 @@ export function useModelsAndOption(
         break;
       default:
         baseOption = getCartesianChartOption(
+          // Unjustified type cast. FIXME
           chartModel as CartesianChartModel,
           chartLayout,
+          hasTimelineEvents,
           timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          selectedTimelineEventIds,
           settings,
           width,
           shouldAnimate,
@@ -207,11 +196,18 @@ export function useModelsAndOption(
     tooltipOption,
     chartModel,
     chartLayout,
+    hasTimelineEvents,
     timelineEventsModel,
-    selectedOrHoveredTimelineEventIds,
+    selectedTimelineEventIds,
     settings,
     renderingContext,
   ]);
 
-  return { chartModel, timelineEventsModel, option, renderingContext };
+  return {
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    option,
+    renderingContext,
+  };
 }

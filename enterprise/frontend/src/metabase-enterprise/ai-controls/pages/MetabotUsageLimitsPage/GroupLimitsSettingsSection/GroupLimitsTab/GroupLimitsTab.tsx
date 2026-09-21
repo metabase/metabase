@@ -4,13 +4,13 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, NumberInput, Stack, Text } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
-import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
+import { Box, Group, NumberInput, Stack, Text } from "metabase/ui";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
 
+import { AllUsersHigherAccessTooltipIcon } from "./AllUsersHigherAccessTooltipIcon";
 import S from "./GroupLimitsTab.module.css";
 import {
   type GroupLimitsMap,
@@ -20,7 +20,7 @@ import {
   getDescription,
   getErrorMessage,
   getGroupLimitAriaLabel,
-  getMaxUsageInputSuffix,
+  getMaxUsageInputUnit,
   sanitizeUsageLimitValue,
 } from "./utils";
 
@@ -47,6 +47,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
           ...map,
           [limitObj.group_id]: limitObj.max_usage,
         }),
+        // Unjustified type cast. FIXME
         {} as GroupLimitsMap,
       ),
     [groupLimits],
@@ -118,7 +119,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
   };
 
   return (
-    <Stack gap="xl" data-testid="group-limits-tab">
+    <Stack gap="xxl" data-testid="group-limits-tab">
       <Text c="text-secondary">{getDescription(variant, limitPeriod)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
@@ -154,37 +155,43 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                     <tr key={group.id} className={S.BodyRow}>
                       <td className={S.BodyCell}>{group.name}</td>
                       <td className={S.BodyCell}>
-                        <div className={S.InputWrapper}>
-                          <NumberInput
-                            placeholder={placeholder}
-                            value={inputValue}
-                            onChange={(value) => handleChange(group, value)}
-                            classNames={{ input: S.LimitInput }}
-                            suffix={getMaxUsageInputSuffix(
-                              limitType,
-                              localLimitsMap?.[group.id],
-                            )}
-                            min={0}
-                            decimalScale={0}
-                            aria-label={getGroupLimitAriaLabel(
-                              limitType,
-                              group.name,
-                            )}
-                            error={
-                              isOverInstanceLimit
-                                ? t`Can't be higher than the instance limit`
-                                : undefined
-                            }
-                            rightSection={
-                              showAllUsersOverrideTooltip ? (
+                        <NumberInput
+                          placeholder={placeholder}
+                          value={inputValue}
+                          onChange={(value) => handleChange(group, value)}
+                          classNames={{
+                            wrapper: S.LimitInputWrapper,
+                            section: S.InputUnitSection,
+                          }}
+                          min={0}
+                          decimalScale={0}
+                          aria-label={getGroupLimitAriaLabel(
+                            limitType,
+                            group.name,
+                          )}
+                          error={
+                            isOverInstanceLimit
+                              ? t`Can't be higher than the instance limit`
+                              : undefined
+                          }
+                          rightSectionWidth="auto"
+                          rightSectionPointerEvents="none"
+                          rightSection={
+                            <Group gap="xxs" wrap="nowrap" align="center">
+                              {showAllUsersOverrideTooltip && (
                                 <AllUsersHigherAccessTooltipIcon
                                   groupName={allUsersGroup.name}
-                                  variant="group-limits"
                                 />
-                              ) : undefined
-                            }
-                          />
-                        </div>
+                              )}
+                              <Text c="text-primary">
+                                {getMaxUsageInputUnit(
+                                  limitType,
+                                  localLimitsMap?.[group.id],
+                                )}
+                              </Text>
+                            </Group>
+                          }
+                        />
                       </td>
                     </tr>
                   );

@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
-import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import {
+  GRAPH_GOAL_SETTINGS,
+  type VisualizationSettingsDefinitions,
+  getDefaultDimensionLabel,
+} from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   "stackable.stack_type": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stacking`;
     },
@@ -41,9 +41,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
   },
   ...GRAPH_GOAL_SETTINGS,
   "graph.x_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -58,9 +56,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
   },
   "graph.y_axis.scale": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Scale`;
     },
@@ -79,9 +75,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.x_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -109,9 +103,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.axis_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show lines and marks`;
     },
@@ -139,9 +131,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.auto_range": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -154,9 +144,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.min": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -170,9 +158,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.y_axis.max": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`X-axis`;
     },
@@ -186,9 +172,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.x_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get group() {
       return t`Y-axis`;
     },
@@ -201,9 +185,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.x_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -220,9 +202,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     }),
   },
   "graph.y_axis.labels_enabled": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Show label`;
     },
@@ -235,9 +215,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => true,
   },
   "graph.y_axis.title_text": {
-    get section() {
-      return t`Axes`;
-    },
+    getSection: () => t`Axes`,
     get title() {
       return t`Label`;
     },
@@ -251,8 +229,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: (series: Series, vizSettings: VisualizationSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
-      const [metric] =
-        (vizSettings["graph.metrics"] as string[] | undefined) ?? [];
+      const [metric] = vizSettings["graph.metrics"] ?? [];
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {
@@ -266,9 +243,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["series", "graph.metrics"],
   },
   "graph.show_values": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Show values on data points`;
     },
@@ -279,9 +254,7 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: () => false,
   },
   "graph.label_value_formatting": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Value labels formatting`;
     },

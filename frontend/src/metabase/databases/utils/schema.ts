@@ -109,6 +109,7 @@ export const getSubmitValues = (
   );
 
   return {
+    // Unjustified type cast. FIXME
     ...(Object.fromEntries(submitValues) as DatabaseData),
     details: Object.fromEntries(entries),
   };

@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [metabase.app-db.core :as mdb]
+   [metabase.cloud-migration.db :as cloud-migration.db]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -90,10 +91,7 @@
   Works by checking how many Quartz nodes there are.
   See https://github.com/quartz-scheduler/quartz/issues/733"
   []
-  (>= (t2/count (if (= (mdb/db-type) :postgres)
-                  "qrtz_scheduler_state"
-                  "QRTZ_SCHEDULER_STATE"))
-      2))
+  (>= (cloud-migration.db/quartz-node-count) 2))
 
 (defn- progress-file-input-stream
   "File input stream that calls on-percent-progress with current read progress as int from 0 to 100."
@@ -125,8 +123,7 @@
   This is the main cluster coordination mechanism for migrations, since any instance
   can cancel the migration, not just the one that initiated it."
   [id state progress]
-  (when (= 0 (t2/update! :model/CloudMigration :id id :state [:not-in terminal-states]
-                         {:state state :progress progress}))
+  (when (= 0 (cloud-migration.db/set-cloud-migration-progress-if-not-in-states! id terminal-states state progress))
     (throw (ex-info "Cannot update migration in terminal state" {:terminal true}))))
 
 (defn abs-progress
@@ -221,8 +218,7 @@
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
-        (t2/update! :model/CloudMigration :id id {:state :init}))
-
+        (cloud-migration.db/set-cloud-migration-state! id :init))
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -231,7 +227,6 @@
         (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
-
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
@@ -239,20 +234,16 @@
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
       (cloud-migration.settings/read-only-mode! false)
-
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
       (upload migration dump-file)
-
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
-
       ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
       ;; after finishing the dump to h2 migration
       (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
-
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e
@@ -260,7 +251,7 @@
         (if (-> e ex-data :terminal)
           (log/info "Migration interrupted due to terminal state")
           (do
-            (t2/update! :model/CloudMigration id {:state :error})
+            (cloud-migration.db/set-cloud-migration-state! id :error)
             (log/info "Migration failed")
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
@@ -296,10 +287,10 @@
   #_(def ^:private part-size 6e6)
 
   ;; add new
-  (t2/insert-returning-instance! :model/CloudMigration (get-store-migration))
+  (cloud-migration.db/insert-cloud-migration! (get-store-migration))
 
   ;; get migration
-  @(def mig (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
+  @(def mig (cloud-migration.db/latest-cloud-migration))
 
   ;; migrate
   (migrate! mig)
@@ -308,4 +299,4 @@
   (migrate! mig :retry? true)
 
   ;; cancel all
-  (t2/update! :model/CloudMigration {:state [:not-in terminal-states]} {:state :cancelled}))
+  (cloud-migration.db/cancel-cloud-migrations-not-in-states! terminal-states))

@@ -37,7 +37,7 @@ export function TemporalUnitPicker({
   return (
     <Box p="sm" miw={MIN_WIDTH}>
       {availableItems.length === 0 && (
-        <Text px="sm" c="text-tertiary">{t`No options`}</Text>
+        <Text px="sm" c="text-disabled">{t`No options`}</Text>
       )}
       {visibleItems.map((item) => (
         <DefaultSelectItem
@@ -52,7 +52,7 @@ export function TemporalUnitPicker({
       {!isExpanded && (
         <DefaultSelectItem
           value={t`More…`}
-          c="brand"
+          c="core-brand"
           onClick={() => setIsExpanded(true)}
           role="option"
         />

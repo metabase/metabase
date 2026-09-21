@@ -47,21 +47,9 @@ export const trackMetricsViewerFilterRemoved = (
   });
 };
 
-export const trackMetricsViewerDimensionTabAdded = () => {
+export const trackMetricsViewerDimensionSelected = () => {
   trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_added",
-  });
-};
-
-export const trackMetricsViewerDimensionTabSwitched = () => {
-  trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_switched",
-  });
-};
-
-export const trackMetricsViewerDimensionTabRemoved = () => {
-  trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_removed",
+    event: "metrics_viewer_dimension_selected",
   });
 };
 

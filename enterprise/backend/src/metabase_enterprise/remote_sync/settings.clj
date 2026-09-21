@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -24,7 +26,7 @@
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
 
@@ -40,10 +42,10 @@
   :can-read-from-env? true)
 
 (defsetting remote-sync-url
-  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
+  (deferred-tru "The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
 
@@ -81,12 +83,20 @@
   :default 5)
 
 (defsetting remote-sync-task-time-limit-ms
-  (deferred-tru "The maximum amount of time a remote sync task will be given to complete")
+  (deferred-tru "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.")
   :type :integer
   :visibility :authenticated
   :export? false
   :encryption :no
   :default (* 1000 60 5))
+
+(defsetting remote-sync-git-timeout-seconds
+  (deferred-tru "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.")
+  :type :integer
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default 60)
 
 (def ^:const transforms-root-id
   "Sentinel value for the virtual Transforms root collection.
@@ -102,35 +112,27 @@
    spurious 'delete' entries when going from default false to explicitly false)."
   [enabled?]
   (let [timestamp (t/offset-date-time)
-        existing-rso (t2/select-one :model/RemoteSyncObject
-                                    :model_type "Collection"
-                                    :model_id transforms-root-id)]
+        existing-rso (remote-sync.db/rso "Collection" transforms-root-id)]
     (cond
       ;; When enabling, always create/update to 'create' status
       enabled?
       (do
         (when existing-rso
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id transforms-root-id))
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "create"
-                     :status_changed_at timestamp}))
+          (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
+        (remote-sync.db/insert-rso! {:model_type        "Collection"
+                                     :model_id          transforms-root-id
+                                     :model_name        "Transforms"
+                                     :status            "create"
+                                     :status_changed_at timestamp}))
       ;; When disabling and there's an existing RSO, update to 'delete' status
       existing-rso
       (do
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "Collection"
-                    :model_id transforms-root-id)
-        (t2/insert! :model/RemoteSyncObject
-                    {:model_type        "Collection"
-                     :model_id          transforms-root-id
-                     :model_name        "Transforms"
-                     :status            "delete"
-                     :status_changed_at timestamp}))
+        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
+        (remote-sync.db/insert-rso! {:model_type        "Collection"
+                                     :model_id          transforms-root-id
+                                     :model_name        "Transforms"
+                                     :status            "delete"
+                                     :status_changed_at timestamp}))
       ;; When disabling and there's no existing RSO, do nothing
       ;; (this avoids creating spurious 'delete' entries when going from default false to explicitly false)
       :else
@@ -180,7 +182,6 @@
                  (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
-
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
@@ -205,6 +206,7 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
+  (guards/ensure-no-active-task!)
   (let [git-related-keys #{:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch}
         updating-git-settings? (some git-related-keys (keys settings))
         env-set-url    (= :env (setting/get-raw-value-source :remote-sync-url))

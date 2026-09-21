@@ -13,7 +13,6 @@
 
 (deftest ^:synchronized metadatas-fetches-metrics-test
   (testing "metadatas should fetch metrics from the database"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Test Metric"
                                        :database_id  (mt/id)
@@ -30,7 +29,6 @@
 
 (deftest ^:synchronized metadatas-fetches-metrics-by-table-id-test
   (testing "metadatas should fetch metrics by table-id"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card metric {:type         :metric
                                        :name         "Table Metric"
                                        :database_id  (mt/id)
@@ -40,13 +38,12 @@
                                                        :query {:source-table (mt/id :orders)
                                                                :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-ids #{(mt/id :orders)}})]
         (is (some #(= (:id metric) (:id %)) metrics))
         (is (every? #(= (mt/id :orders) (:table-id %)) metrics))))))
 
 (deftest ^:synchronized metadatas-excludes-archived-metrics-test
   (testing "metadatas should exclude archived metrics when not filtering by ID"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card active-metric   {:type         :metric
                                                 :name         "Active Metric"
                                                 :archived     false
@@ -66,13 +63,12 @@
                                                                 :query {:source-table (mt/id :orders)
                                                                         :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-ids #{(mt/id :orders)}})]
         (is (some #(= (:id active-metric) (:id %)) metrics))
         (is (not-any? #(= (:id archived-metric) (:id %)) metrics))))))
 
 (deftest ^:synchronized metadatas-includes-archived-when-filtering-by-id-test
   (testing "metadatas should include archived metrics when filtering by ID"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card archived-metric {:type         :metric
                                                 :name         "Archived Metric"
                                                 :archived     true
@@ -90,7 +86,7 @@
 (deftest ^:parallel metadatas-routes-columns-to-database-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
     (let [mp (metric-jvm/metadata-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id (mt/id :orders)})]
+          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-ids #{(mt/id :orders)}})]
       (is (seq columns))
       (is (every? #(= (mt/id :orders) (:table-id %)) columns)))))
 

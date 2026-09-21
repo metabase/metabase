@@ -1,8 +1,8 @@
 (ns metabase.users.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [toucan2.core :as t2]))
+   [metabase.users.db :as users.db]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 ;; NB: Settings are also defined where they're used
 
@@ -19,7 +19,7 @@
   :type :integer
   :getter (fn []
             (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
-              (when (t2/exists? :model/Database :id id) id))))
+              (when (users.db/database-exists? id) id))))
 
 (defsetting dismissed-excel-pivot-exports-banner
   (deferred-tru "Toggle which is true after a user has dismissed the excel pivot exports banner.")
@@ -40,6 +40,15 @@
 
 (defsetting dismissed-browse-models-banner
   (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-research-mode-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about Research Mode")
   :user-local :only
   :export?    false
   :visibility :authenticated
@@ -136,7 +145,7 @@
   :default    [])
 
 (defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  (deferred-tru "Note: Users with row or column security restrictions will never see suggestions.")
   :visibility   :authenticated
   :feature      :email-restrict-recipients
   :type         :keyword

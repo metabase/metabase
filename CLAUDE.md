@@ -35,7 +35,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
 
-**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, TypeScript migration, testing requirements, and available scripts.
+**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, testing requirements, and available scripts.
 
 ## Running Backend Tests
 
@@ -47,7 +47,66 @@ If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not f
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves each module to its test directory through its `:ns-prefix`: `lib.schema` → `test/metabase/lib/schema`, `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo` (see `metabase.test-runner/module-folders`).
+
+```bash
+./bin/test-agent :module enterprise/workspaces
+./bin/test-agent :modules '[sql-parsing query-processor]'
+# Driver tests: --drivers=LIST adds the driver aliases and sets DRIVERS=LIST in one step.
+./bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces
+```
+
 Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
+
+## Module Boundaries
+
+The linter config at `.clj-kondo/config/modules/config.edn` records each module's `:api`, `:uses`,
+`:model-exports`, and `:model-imports`. `metabase.core.modules-test` fails when it drifts from the source.
+
+After **any** backend change that could shift module boundaries, regenerate it:
+
+```bash
+./bin/mage fix-modules-config
+```
+
+Changes that shift boundaries include: adding/removing/renaming a `src` namespace, adding or dropping a
+cross-module `require` or `:model/X` reference, or creating a new module. When unsure, just run it — it is
+a no-op (exits `unchanged`) when nothing drifted.
+
+It piggybacks on a running dev nREPL (~5s) and auto-spawns a JVM if none is running (~15s). It only edits
+the four generated keys; structural changes it can't safely make (a new module needs a human `:team`, or
+modules need reordering) are printed as `WARNING:` lines for you to resolve by hand.
+
+Run all repository-level checks, or one named suite:
+
+```bash
+./bin/mage project-tests
+./bin/mage project-tests <backend|migrations|modules|ratchets>
+```
+
+### Nested modules
+
+Module names form a tree: `lib.schema` is a child of `lib`. When OSS module `search` exists,
+`enterprise/search` is its child. Run `./bin/mage modules-tree` to inspect the hierarchy, or add `--html` for an
+interactive explorer with a dependency graph.
+
+- Namespace ownership uses the most specific matching prefix. Declaring `lib.schema` assigns
+  `metabase.lib.schema.*` to it without moving files. Use `:ns-prefix` when namespaces do not match the
+  module name.
+- Every cross-module dependency still requires `:uses`.
+- A child may use an ancestor's internal namespaces. Parents, siblings, and unrelated modules must use the
+  target's `:api`.
+- Each `:module-exports` entry widens a nested module's visibility by one ancestor. Export every link to
+  make it available everywhere. OSS module `X` exports its `enterprise/X` companion automatically.
+
+## Ratchets
+
+After changing Clojure suppressions or module-boundary escape hatches, run `./bin/mage kondo-ratchets`.
+Fix the underlying issue when possible; suppressions are a last resort and need a nearby explanation.
+
+Explain budget increases in the PR. Do not record reductions in feature PRs: post-merge automation opens
+a `Tighten ratchets` PR for them. Use `./bin/mage kondo-ratchets-shrink --seed :linter` only when adding an
+inline-ignore budget. If either ratchet file conflicts, run `./bin/merge-kondo-ratchets`.
 
 ## Tool Preferences
 

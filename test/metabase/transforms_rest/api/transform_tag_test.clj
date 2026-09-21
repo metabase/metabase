@@ -26,13 +26,11 @@
               ;; Clean up
               (finally
                 (t2/delete! :model/TransformTag :id (:id response))))))
-
         (testing "Returns 400 for duplicate tag name"
           (mt/with-temp [:model/TransformTag tag {}]
             (is (string? (mt/user-http-request :lucky :post 400 "transform-tag"
                                                {:name (:name tag)}))
                 "Should return 400 with error message for duplicate name")))
-
         (testing "Returns validation error for empty name"
           (let [response (mt/user-http-request :lucky :post "transform-tag"
                                                {:name ""})]
@@ -53,13 +51,11 @@
                                                      {:name updated-name})]
               (is (= (:id tag) (:id response)))
               (is (= updated-name (:name response))))))
-
         (testing "Returns 404 for non-existent tag"
           (is (= "Not found."
                  (mt/user-http-request :lucky :put 404
                                        "transform-tag/999999"
                                        {:name "new-name"}))))
-
         (testing "Returns 400 when updating to duplicate name"
           (mt/with-temp [:model/TransformTag existing-tag {}
                          :model/TransformTag tag-to-update {}]
@@ -77,7 +73,6 @@
             (is (t2/exists? :model/TransformTag :id (:id tag)))
             (mt/user-http-request :lucky :delete 204 (str "transform-tag/" (:id tag)))
             (is (not (t2/exists? :model/TransformTag :id (:id tag))))))
-
         (testing "Returns 404 for non-existent tag"
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404
@@ -106,13 +101,10 @@
       (testing "POST /api/transform-tag"
         (is (string? (mt/user-http-request :rasta :post 403 "transform-tag"
                                            {:name "test"}))))
-
       (testing "GET /api/transform-tag"
         (is (string? (mt/user-http-request :rasta :get 403 "transform-tag"))))
-
       (testing "PUT /api/transform-tag/:tag-id"
         (is (string? (mt/user-http-request :rasta :put 403 "transform-tag/1"
                                            {:name "test"}))))
-
       (testing "DELETE /api/transform-tag/:tag-id"
         (is (string? (mt/user-http-request :rasta :delete 403 "transform-tag/1")))))))

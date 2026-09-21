@@ -1,22 +1,29 @@
-(ns metabase.warehouse-schema.models.field-values-test
+(ns ^:mb/driver-tests metabase.warehouse-schema.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in
   the [[metabase.warehouse-schema.models.field-values]] namespace."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.serialization :as serdes]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -171,22 +178,11 @@
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
-    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
-            :has_more_values false}
+    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
            (distinct-field-values (mt/id :products :category)))))
   (testing "Correctly get distinct field values for non-text fields"
-    (is (= {:values [[1] [2] [3] [4] [5]]
-            :has_more_values false}
-           (distinct-field-values (mt/id :reviews :rating)))))
-  (testing "if the values of field exceeds max-char-len, return a subset of it (#2332)"
-    (binding [field-values/*total-max-length* 16]
-      (is (= {:values          [["Doohickey"] ["Gadget"]]
-              :has_more_values true}
-             (distinct-field-values (mt/id :products :category)))))
-    (binding [field-values/*total-max-length* 3]
-      (is (= {:values          [[1] [2] [3]]
-              :has_more_values true}
-             (distinct-field-values (mt/id :reviews :rating)))))))
+    (is (= {:values [[1] [2] [3] [4] [5]]}
+           (distinct-field-values (mt/id :reviews :rating))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [:model/Database    {database-id :id} {}
@@ -217,7 +213,6 @@
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
                    :model/FieldValues _                 {:field_id field-id :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
-
       (testing "When we have multiple FieldValues rows in the database, "
         (is (= 3 (count (t2/select :model/FieldValues :field_id field-id :type :full :hash_key nil))))
         (testing "we always return the most recently updated row"
@@ -257,13 +252,11 @@
                        field-values/get-or-create-full-field-values!
                        :type)))
       (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full)))
-
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)
                                              :type     :sandbox
                                              :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
-
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
         (t2/query-one {:update :metabase_fieldvalues
                        :where [:and
@@ -275,6 +268,164 @@
         (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))
         (is (not= (t/offset-date-time 2001 12)
                   (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+
+(deftest detached-fetch!-shares-in-flight-work-test
+  (testing "callers sharing a cache key wait on the one in-flight run instead of each starting their own,
+            so retrying a slow field values request does not pile up warehouse scans (GHY-2937)"
+    (let [runs    (atom 0)
+          thunk   (fn []
+                    (swap! runs inc)
+                    ;; hold the fetch open long enough that every caller reaches it while it is in flight
+                    (Thread/sleep 1000)
+                    ::values)
+          callers (doall (repeatedly 5 #(future (field-values/detached-fetch! ::shared-key thunk))))]
+      (is (= (repeat 5 ::values)
+             (map #(deref % 30000 ::timed-out) callers)))
+      (is (= 1 @runs)))))
+
+(deftest detached-fetch!-outlives-canceled-caller-test
+  (testing "a fetch runs to completion even after the caller stops waiting, e.g. when the HTTP request
+            that asked for the values is canceled (GHY-2937)"
+    (let [started  (promise)
+          release  (promise)
+          finished (promise)
+          caller   (future (field-values/detached-fetch!
+                            ::canceled-key
+                            (fn []
+                              (deliver started true)
+                              @release
+                              (deliver finished true))))]
+      @started
+      (is (true? (future-cancel caller)))
+      (deliver release true)
+      (is (true? (deref finished 10000 ::timed-out))))))
+
+(deftest detached-fetch!-always-completes-test
+  (testing "nothing may leave a registry entry undelivered — later callers for that key would park
+            on it forever, holding a request thread each (GHY-2937)"
+    ;; `detached-fetch!` pr-strs the cache key to log a failed fetch, so a key that refuses to print
+    ;; makes the logging itself throw. That is the one path that used to escape between dropping the
+    ;; registry entry and delivering the promise.
+    (let [unprintable (reify Object (toString [_] (throw (ex-info "unprintable" {}))))
+          registry    @#'field-values/in-flight-fetches
+          caller      (future (try
+                                (field-values/detached-fetch! unprintable #(throw (ex-info "boom" {})))
+                                (catch Throwable _ ::threw)))]
+      (is (= ::threw (deref caller 10000 ::timed-out)))
+      (is (not (contains? @registry unprintable)))
+      (testing "and the key is usable again afterwards"
+        (is (= ::ok (field-values/detached-fetch! unprintable (constantly ::ok))))))))
+
+(deftest detached-fetch!-sweeps-stalled-fetches-test
+  (testing "a fetch that outlives the max age is canceled and its waiters are failed, so no registry
+            entry can outlive its work (GHY-2937)"
+    (let [registry @#'field-values/in-flight-fetches
+          started  (promise)
+          release  (promise)
+          caller   (future (try
+                             (field-values/detached-fetch! ::stalled (fn []
+                                                                       (deliver started true)
+                                                                       @release))
+                             (catch Throwable _ ::threw)))]
+      @started
+      ;; the registry entry exists before the fetch starts, but its future is stored just after
+      ;; submission, so `started` can fire before :future-ref is populated
+      (let [stalled-future (tu/poll-until 10000 @(:future-ref (get @registry ::stalled)))]
+        ;; backdate the entry's timer so the next call through detached-fetch! sees it as stalled.
+        ;; Backdating this one entry rather than shortening the max age keeps the sweep from
+        ;; touching fetches other tests may have in flight.
+        (swap! registry update ::stalled update :timer - (* 24 60 60 1000 1000000))
+        (testing "the sweep runs on the next fetch, which is unaffected by it"
+          (is (= ::ok (field-values/detached-fetch! ::sweep-trigger (constantly ::ok)))))
+        (is (= ::threw (deref caller 10000 ::timed-out)))
+        (is (future-cancelled? stalled-future))
+        (is (not (contains? @registry ::stalled)))))))
+
+(deftest detached-fetch!-caps-registry-test
+  (testing "past the registry cap the fetch is refused rather than growing the registry, so nothing
+            outside this namespace has to bound it (GHY-2937)"
+    (let [release (promise)
+          started (promise)
+          ran     (atom false)]
+      (try
+        ;; a real in-flight fetch, so the joining case below goes through the public API rather than
+        ;; a hand-built registry entry
+        (let [holder (future (field-values/detached-fetch! ::held (fn []
+                                                                    (deliver started true)
+                                                                    @release)))]
+          @started
+          (binding [field-values/*max-in-flight-fetches* 0]
+            (testing "a new key is refused with a 503, and its work never runs"
+              (is (= 503 (try
+                           (field-values/detached-fetch! ::over-cap (fn [] (reset! ran true)))
+                           nil
+                           (catch clojure.lang.ExceptionInfo e
+                             (:status-code (ex-data e))))))
+              (is (false? @ran)))
+            (testing "but a caller joining a fetch already in flight is still admitted — it adds no
+                      registry entry, so the cap has no reason to turn it away"
+              (let [joining (promise)
+                    joiner  (future
+                              (deliver joining true)
+                              (field-values/detached-fetch! ::held (constantly ::should-not-run)))]
+                @joining
+                ;; the joiner has to reach the registry while ::held is still in flight; releasing the
+                ;; holder first would let it complete, and the joiner would then be a new key the cap
+                ;; refuses. It cannot return while `release` is undelivered, so a timeout here means
+                ;; it parked on the held fetch.
+                (is (= ::parked (deref joiner 1000 ::parked)))
+                (deliver release ::from-held)
+                (is (= ::from-held (deref joiner 10000 ::timed-out))))))
+          (is (= ::from-held (deref holder 10000 ::timed-out))))
+        (finally
+          (deliver release ::done))))))
+
+(deftest detached-fetch!-rethrows-test
+  (testing "an exception thrown by the fetch reaches the caller"
+    (is (thrown-with-msg? Exception #"oops"
+                          (field-values/detached-fetch! ::throwing-key #(throw (ex-info "oops" {})))))))
+
+(deftest get-or-create-full-field-values!-outlives-canceled-caller-test
+  (testing "FieldValues fetched on behalf of a canceled request still get saved to the app DB (GHY-2937)"
+    (mt/dataset test-data
+      (let [field-id             (mt/id :categories :name)
+            started              (promise)
+            release              (promise)
+            real-distinct-values (mt/original-fn #'field-values/distinct-values)]
+        (t2/delete! :model/FieldValues :field_id field-id :type :full)
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [field]
+                                                                   (deliver started true)
+                                                                   @release
+                                                                   (real-distinct-values field))]
+          (let [caller (future (field-values/get-or-create-full-field-values!
+                                (t2/select-one :model/Field :id field-id)))]
+            @started
+            (is (true? (future-cancel caller)))
+            (deliver release true)
+            (is (seq (:values (tu/poll-until 10000
+                                             (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))))))
+
+(deftest create-or-update-full-field-values!-fetch-failure-test
+  (mt/dataset test-data
+    (let [field-id (mt/id :categories :name)
+          field    (t2/select-one :model/Field :id field-id)
+          cached   #(t2/select-one :model/FieldValues :field_id field-id :type :full)]
+      (field-values/get-or-create-full-field-values! field)
+      (let [before (cached)]
+        (is (seq (:values before)))
+        (testing "a failed warehouse scan must not be read as \"this field has no values\" and wipe
+                  the FieldValues we already have cached (GHY-2937)"
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly nil)]
+            (is (= ::field-values/fv-fetch-failed
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (= (:values before) (:values (cached)))))
+        (testing "a scan that genuinely comes back empty still clears the FieldValues"
+          (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values []})]
+            (is (= ::field-values/fv-deleted
+                   (field-values/create-or-update-full-field-values! field))))
+          (is (nil? (cached))))
+        ;; leave the shared test-data dataset as we found it
+        (field-values/get-or-create-full-field-values! field)))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
@@ -319,11 +470,9 @@
                                            :human_readable_values ["-2" "-1" "0" "a" "b" "c"]}]
              (is (= expected-original-values
                     (find-values field-values-id)))
-
              (testing "There should be no changes to human_readable_values when resync'd"
                (is (= expected-original-values
                       (sync-and-find-values! db field-values-id))))
-
              (testing "Add new rows that will have new field values"
                (jdbc/insert-multi! {:connection conn} :foo [{:id 4 :category_id -2 :desc "foo"}
                                                             {:id 5 :category_id -1 :desc "bar"}
@@ -331,11 +480,9 @@
                (testing "Sync to pickup the new field values and rebuild the human_readable_values"
                  (is (= expected-updated-values
                         (sync-and-find-values! db field-values-id)))))
-
              (testing "Resyncing this (with the new field values) should result in the same human_readable_values"
                (is (= expected-updated-values
                       (sync-and-find-values! db field-values-id))))
-
              (testing "Test that field values can be removed and the corresponding human_readable_values are removed as well"
                (jdbc/delete! {:connection conn} :foo ["id in (?,?,?)" 1 2 3])
                (is (= {:values [-2 -1 0] :human_readable_values ["-2" "-1" "0"]}
@@ -421,7 +568,6 @@
         (is (thrown-with-msg? ExceptionInfo
                               #"Can't update field_id, type, or hash_key for a FieldValues."
                               (t2/update! :model/FieldValues id update-map)))))
-
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
@@ -458,16 +604,6 @@
     (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
-(deftest identity-hash-test
-  (testing "Field hashes are composed of the name and the table's identity-hash"
-    (mt/with-temp [:model/Database    db    {:name "field-db" :engine :h2}
-                   :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                   :model/Field       field {:name "sku" :table_id (:id table)}
-                   :model/FieldValues fv    {:field_id (:id field)}]
-      (is (= "cb0ff8ea"
-             (serdes/raw-hash [(serdes/identity-hash field)])
-             (serdes/identity-hash fv))))))
-
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
     (let [field-id (mt/id :venues :id)]
@@ -476,7 +612,6 @@
       (is (thrown-with-msg? ExceptionInfo
                             #"Invalid query - :full FieldValues cannot have a hash_key"
                             (t2/select :model/FieldValues :field_id field-id :type :full :hash_key "12345")))
-
       (t2/select :model/FieldValues :field_id field-id :type :sandbox)
       (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key "12345")
       (is (thrown-with-msg? ExceptionInfo
@@ -490,13 +625,291 @@
     ;; Is there really a use-case for reading all these values?
     ;; Perhaps we should require a type/hash combo - we would need to be careful it doesn't break any existing queries.
     (is (= {:field_id 1} (#'field-values/add-mismatched-hash-filter {:field_id 1}))))
-
   ;; There's an argument to be made that we should only query on these "identity" fields if the field-id is present,
   ;; but perhaps there are use cases that I haven't considered.
   (testing "Queries that fully specify the identity are not mangled"
     (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full, :hash_key nil})))
     (is (= {:type :sandbox, :hash_key "random-hash"} (#'field-values/add-mismatched-hash-filter {:type :sandbox, :hash_key "random-hash"}))))
-
   (testing "Ambiguous queries are upgraded to ensure invalid rows are filtered"
     (is (= {:type :full, :hash_key nil} (#'field-values/add-mismatched-hash-filter {:type :full})))
     (is (= {:type :sandbox, :hash_key [:not= nil]} (#'field-values/add-mismatched-hash-filter {:type :sandbox})))))
+
+;;; ----------------------------------- limit-values ------------------------------------
+
+(deftest ^:parallel limit-values-empty-test
+  (is (= {:values [] :has_more_values false} (field-values/limit-values []))))
+
+(deftest ^:parallel limit-values-keeps-nils-test
+  (testing "nil is a meaningful distinct value (sorts first); only deduplicated, not dropped"
+    (is (= {:values [nil "a" "b"] :has_more_values false}
+           (field-values/limit-values [nil "a" nil "b" nil])))))
+
+(deftest ^:parallel limit-values-dedupes-and-sorts-test
+  (is (= {:values [1 2 3] :has_more_values false}
+         (field-values/limit-values [3 1 2 1 3 2])))
+  (is (= {:values ["a" "b" "c"] :has_more_values false}
+         (field-values/limit-values ["b" "a" "c" "a"]))))
+
+(deftest limit-values-applies-char-cap-test
+  (binding [field-values/*total-max-length* 10]
+    (testing "Values fitting under the cap come through unchanged"
+      (is (= {:values ["ab" "cd" "ef"] :has_more_values false}
+             (field-values/limit-values ["ab" "cd" "ef"]))))
+    (testing "Values exceeding the cap trigger has_more_values=true"
+      (let [{:keys [values has_more_values]} (field-values/limit-values
+                                              ["aaa" "bbb" "ccc" "ddddd" "eeeee" "fffff"])]
+        (is (true? has_more_values))
+        (is (< (transduce (map (comp count str)) + 0 values) 11)
+            "Returned values' total char length stays under the cap")))))
+
+;;; ----------------------------------- persist-field-values! ----------------------------
+
+(deftest persist-field-values!-creates-test
+  (testing "nil existing-fv → ::fv-created and a row is written"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}]
+      (is (= ::field-values/fv-created
+             (field-values/persist-field-values! field nil ["a" "b"])))
+      (let [fv (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (is (= ["a" "b"] (:values fv)))
+        (is (false? (:has_more_values fv)))))))
+
+(deftest persist-field-values!-skips-when-unchanged-test
+  (testing "Values + has_more_values both match → ::fv-skipped, no DB write"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a" "b"], :has_more_values false}]
+      (is (= ::field-values/fv-skipped
+             (field-values/persist-field-values! field fv ["a" "b"]))))))
+
+(deftest persist-field-values!-updates-when-values-differ-test
+  (testing "Different values → ::fv-updated and the row is rewritten"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
+      (is (= ::field-values/fv-updated
+             (field-values/persist-field-values! field fv ["a" "b" "c"])))
+      (is (= ["a" "b" "c"]
+             (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))))))
+
+(deftest persist-field-values!-updates-when-row-cap-hits-test
+  (testing "Raw count hits the warehouse row LIMIT → has_more_values flips to true → ::fv-updated"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["a" "b"], :has_more_values false}]
+      (binding [field-values/*distinct-limit* 2]
+        (is (= ::field-values/fv-updated
+               (field-values/persist-field-values! field fv ["a" "b"])))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
+
+(deftest persist-field-values!-updates-when-char-cap-hits-test
+  (testing "Char-length cap fires inside limit-values → has_more_values flips to true → ::fv-updated"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues fv  {:field_id field-id, :type :full, :values ["aaa"], :has_more_values false}]
+      (binding [field-values/*total-max-length* 4]
+        (is (= ::field-values/fv-updated
+               (field-values/persist-field-values! field fv ["aaa" "bbb" "ccc"])))
+        (is (true? (:has_more_values (t2/select-one :model/FieldValues :field_id field-id :type :full))))))))
+
+(deftest persist-field-values!-deletes-when-empty-test
+  (testing "Empty raw-values → ::fv-deleted and the FieldValues row is removed"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {tbl-id :id} {:db_id db-id, :name "t"}
+                   :model/Field    {field-id :id :as field} {:table_id tbl-id, :name "f"
+                                                             :has_field_values :list}
+                   :model/FieldValues _  {:field_id field-id, :type :full, :values ["a"], :has_more_values false}]
+      (is (= ::field-values/fv-deleted
+             (field-values/persist-field-values! field {:id 1 :values ["a"] :has_more_values false} [])))
+      (is (false? (t2/exists? :model/FieldValues :field_id field-id :type :full))))))
+
+;;; ---------------------------------- UNION DISTINCT primitive ----------------------------------
+
+(defn- sql-test-drivers
+  "Normal drivers that generate SQL. `run-distinct-batch` builds and runs a SQL query, so it
+  only applies to SQL drivers — non-SQL drivers (e.g. Mongo) go through the per-field fallback
+  at the sync layer and aren't exercised by these direct-call tests."
+  []
+  (into #{}
+        (filter #(isa? driver/hierarchy % :sql))
+        (mt/normal-drivers-with-feature :basic-aggregations)))
+
+(deftest decode-value-test
+  (testing "nil passes through"
+    (is (nil? (#'distinct-batch/decode-value :type/Text nil)))
+    (is (nil? (#'distinct-batch/decode-value :type/Integer nil)))
+    (is (nil? (#'distinct-batch/decode-value :type/Float nil))))
+  (testing "Text base-type → string passthrough"
+    (is (= "hello" (#'distinct-batch/decode-value :type/Text "hello")))
+    (is (= "" (#'distinct-batch/decode-value :type/Text ""))))
+  (testing "Integer base-type → Long"
+    (is (= 42 (#'distinct-batch/decode-value :type/Integer "42")))
+    (is (= -1 (#'distinct-batch/decode-value :type/Integer "-1"))))
+  (testing "BigInteger overflow → BigInteger"
+    (is (= 12345678901234567890N
+           (#'distinct-batch/decode-value :type/Integer "12345678901234567890")))
+    (is (= 12345678901234567890N
+           (#'distinct-batch/decode-value :type/BigInteger "12345678901234567890"))))
+  (testing "Boolean accepts true/t/1 (case-insensitive)"
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "true")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "TRUE")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "True")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "t")))
+    (is (true?  (#'distinct-batch/decode-value :type/Boolean "1")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "false")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "FALSE")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "f")))
+    (is (false? (#'distinct-batch/decode-value :type/Boolean "0"))))
+  (testing "Float base-type → Double"
+    (is (= 3.14   (#'distinct-batch/decode-value :type/Float "3.14")))
+    (is (= -0.5   (#'distinct-batch/decode-value :type/Float "-0.5")))
+    (is (= 0.0    (#'distinct-batch/decode-value :type/Float "0")))
+    (is (= 1.0e10 (#'distinct-batch/decode-value :type/Float "1.0E10"))))
+  (testing "Decimal base-type → BigDecimal (Decimal isa Float, so must come first in the cond)"
+    (is (= 3.14M           (#'distinct-batch/decode-value :type/Decimal "3.14")))
+    (is (= 0M              (#'distinct-batch/decode-value :type/Decimal "0")))
+    (is (= 1234567890.123M (#'distinct-batch/decode-value :type/Decimal "1234567890.123"))))
+  (testing "Decimal-derived semantic types (e.g. :type/Currency) → BigDecimal"
+    (is (= 19.99M (#'distinct-batch/decode-value :type/Currency "19.99"))))
+  (testing "Float-derived non-decimal types (e.g. :type/Coordinate) → Double"
+    (is (= 37.5 (#'distinct-batch/decode-value :type/Coordinate "37.5"))))
+  (testing "Malformed numeric input → string passthrough via catch"
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Integer "n/a")))
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Float "n/a")))
+    (is (= "n/a" (#'distinct-batch/decode-value :type/Decimal "n/a"))))
+  (testing "Types we don't decode (already JSON-encoded as strings by mi/transform-json) → string passthrough"
+    (is (= "2024-01-15"          (#'distinct-batch/decode-value :type/Date "2024-01-15")))
+    (is (= "2024-01-15T10:30:00" (#'distinct-batch/decode-value :type/DateTime "2024-01-15T10:30:00")))
+    (is (= "10:30:00"            (#'distinct-batch/decode-value :type/Time "10:30:00")))
+    (is (= "abc-def-1234"        (#'distinct-batch/decode-value :type/UUID "abc-def-1234")))
+    (is (= "192.168.1.1"         (#'distinct-batch/decode-value :type/IPAddress "192.168.1.1"))))
+  (testing "Unknown base-type → string passthrough"
+    (is (= "anything" (#'distinct-batch/decode-value :type/SomeMadeUpType "anything")))))
+
+;;; Column names are harvested verbatim from the warehouse by `describe-table` / `describe-fields`, so they are
+;;; attacker-controlled for anyone who can create a column in a synced schema. They must never reach the generated
+;;; SQL as a string literal -- only as a quoted identifier.
+(def ^:private sql-injection-field-name
+  "a\\' AS `field_name`, (SELECT @@version) AS `value_out` FROM mysql.db LIMIT 1) AS `_arm` -- ")
+
+(deftest ^:parallel build-union-tags-arms-by-ordinal-test
+  (testing "arms are tagged with their ordinal, not with the field name"
+    (let [fields [{:name "state" :base_type :type/Text}
+                  {:name "source" :base_type :type/Text}]]
+      (doseq [[driver q] {:h2 "\"", :postgres "\"", :mysql "`"}]
+        (testing driver
+          (let [sql (first (sql.qp/format-honeysql driver (#'distinct-batch/build-union driver {:name "t"} fields)))]
+            (is (str/includes? sql (str "0 AS " q "field_idx" q)))
+            (is (str/includes? sql (str "1 AS " q "field_idx" q)))
+            (is (not (str/includes? sql "'"))
+                (str "no SQL string literal is generated at all. Got: " sql))))))))
+
+(deftest ^:parallel build-union-field-name-cannot-break-out-of-sql-test
+  (testing "a warehouse column name crafted to break out of a string literal stays inert"
+    ;; On MySQL `\'` is a second way to write a quote inside a literal, so the old `[:inline (:name field)]` tag
+    ;; -- escaped only by doubling `'` -- closed early and the rest of the column name ran as SQL. Post-fix
+    ;; there is no tag literal at all, and the name reaches the query only as a quoted identifier (which is
+    ;; where the column genuinely is), with the identifier quote character doubled.
+    (let [fields      [{:name sql-injection-field-name :base_type :type/Text}]
+          sql         (first (sql.qp/format-honeysql :mysql (#'distinct-batch/build-union :mysql {:name "t"} fields)))
+          quoted-name (str "`" (str/replace sql-injection-field-name "`" "``") "`")]
+      (is (= (str "SELECT * FROM ("
+                  "SELECT 0 AS `field_idx`, CAST(" quoted-name " AS char) AS `value_out` "
+                  "FROM `t` "
+                  "GROUP BY CAST(" quoted-name " AS char) "
+                  "LIMIT 1000) AS `_arm`")
+             sql)))))
+
+(deftest run-distinct-batch-demuxes-by-arm-ordinal-test
+  (testing "rows are mapped back to fields by arm ordinal, not by name"
+    ;; `idx_unique_field` only makes `name` unique per (table, parent) pair, so a table can legitimately hold two
+    ;; fields called `dupe` as long as one of them is nested. Keying the demux by name collapsed both arms onto
+    ;; whichever field won the `by-name` lookup; the ordinal keeps them apart.
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table    {table-id :id :as table} {:db_id db-id :name "t"}
+                   :model/Field    {parent-id :id} {:table_id table-id :name "json_col" :base_type :type/JSON}
+                   :model/Field    {f1-id :id} {:table_id table-id :name "dupe" :base_type :type/Text}
+                   :model/Field    {f2-id :id} {:table_id table-id :name "dupe" :base_type :type/Integer
+                                                :parent_id parent-id}]
+      (let [fields [(t2/select-one :model/Field :id f1-id) (t2/select-one :model/Field :id f2-id)]]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
+          (is (= {f1-id {:values ["a" "b"] :raw-count 2}
+                  f2-id {:values [42] :raw-count 1}}
+                 (distinct-batch/run-distinct-batch table fields))))))))
+
+(deftest ^:mb/driver-tests run-distinct-batch-integration-test
+  (testing "run-distinct-batch returns correct distinct values for each field"
+    (mt/test-drivers (sql-test-drivers)
+      (mt/dataset test-data
+        (let [table   (t2/select-one :model/Table :id (mt/id :people))
+              fields  [(t2/select-one :model/Field :id (mt/id :people :state))
+                       (t2/select-one :model/Field :id (mt/id :people :source))]
+              results (distinct-batch/run-distinct-batch table fields)]
+          (is (map? results) "Returns a map keyed by field-id")
+          (is (= (set (map :id fields)) (set (keys results))))
+          (testing "people.state distinct values"
+            (let [{:keys [values raw-count]} (get results (mt/id :people :state))]
+              (is (pos? raw-count))
+              (is (every? string? values))
+              (is (every? #(= 2 (count %)) values) "US state abbreviations are 2-char")))
+          (testing "people.source distinct values"
+            (let [{:keys [values]} (get results (mt/id :people :source))]
+              (is (seq values))
+              (is (every? string? values)))))))))
+
+(deftest ^:mb/driver-tests run-distinct-batch-matches-per-field-test
+  (testing "run-distinct-batch returns the same value set per column as the per-field DISTINCT path"
+    ;; Cover Text (state), Boolean-shaped low-cardinality (source), and Float (rating). Only fields whose
+    ;; distinct count is below the per-column LIMIT — for columns that hit the cap, both paths return a
+    ;; valid subset but the warehouse is free to pick *which* 1000, and the subsets may differ across
+    ;; paths/engines without either being wrong.
+    (mt/test-drivers (sql-test-drivers)
+      (mt/dataset test-data
+        (let [people-table   (t2/select-one :model/Table :id (mt/id :people))
+              products-table (t2/select-one :model/Table :id (mt/id :products))
+              text-fields    (mapv #(t2/select-one :model/Field :id (mt/id :people %)) [:state :source])
+              float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
+              expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
+              per-field-results (into {} (map (fn [f] [(:id f) (expected-set f)])) (concat text-fields float-fields))
+              people-results    (distinct-batch/run-distinct-batch people-table text-fields)
+              products-results  (distinct-batch/run-distinct-batch products-table float-fields)
+              union-results     (merge people-results products-results)]
+          (doseq [field (concat text-fields float-fields)]
+            (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
+              (let [expected (get per-field-results (:id field))
+                    actual   (set (:values (get union-results (:id field))))]
+                (is (= expected actual)
+                    (format "UNION distinct values differ from per-field DISTINCT for %s on %s"
+                            (:name field) (name driver/*driver*)))))))))))
+
+(deftest ^:mb/driver-tests run-distinct-batch-cross-driver-test
+  (testing "run-distinct-batch produces correct results on every supported SQL driver"
+    (mt/test-drivers (sql-test-drivers)
+      (mt/dataset test-data
+        (let [table        (t2/select-one :model/Table :id (mt/id :people))
+              state-field  (t2/select-one :model/Field :id (mt/id :people :state))
+              source-field (t2/select-one :model/Field :id (mt/id :people :source))
+              results      (distinct-batch/run-distinct-batch table [state-field source-field])]
+          (testing "Result map is keyed by field-id with :values / :raw-count entries"
+            (is (map? results))
+            (is (= #{(:id state-field) (:id source-field)} (set (keys results)))))
+          (testing "Returned values are non-empty Clojure values, not raw JDBC objects"
+            (let [{:keys [values]} (get results (:id state-field))]
+              (is (pos? (count values)))
+              (is (every? string? values)
+                  (str "state-field values should decode to strings, got: " (pr-str (take 3 values))))))
+          (testing "Sources column returns a small distinct set"
+            (let [{:keys [values raw-count]} (get results (:id source-field))]
+              (is (< raw-count field-values/*distinct-limit*)
+                  "source has few enough distinct values to not hit the LIMIT")
+              (is (every? string? values)))))))))

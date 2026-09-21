@@ -14,21 +14,6 @@ inputs:
   staging-mb-all-features-token:
     description: "Staging MB all features token"
     required: true
-  shoppy-iam-role:
-    description: "Shoppy IAM role for AWS credentials"
-    required: true
-  shoppy-metabase-app-db-s3-bucket:
-    description: "S3 bucket for Shoppy app DB dump"
-    required: true
-  shoppy-metabase-app-db-s3-key:
-    description: "S3 key for Shoppy app DB dump"
-    required: true
-  shoppy-metabase-app-db-user:
-    description: "Shoppy Metabase app DB user"
-    required: true
-  shoppy-metabase-app-db-database:
-    description: "Shoppy Metabase app DB database"
-    required: true
   metastore-dev-server-url:
     description: "Metastore dev server URL"
     required: true
@@ -54,7 +39,7 @@ runs:
 
     # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
     - name: Set up Docker Compose
-      uses: docker/setup-compose-action@v1
+      uses: docker/setup-compose-action@8cccb8c14b6500aaffebff1aa49c502c34d2e5e6 # v2.1.0
       with:
         version: latest
 
@@ -67,7 +52,7 @@ runs:
         output-name: "metabase.jar"
 
     - name: Retrieve Embedding SDK dist artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: embedding-sdk-${{ inputs.commit }}
         path: ${{ github.workspace }}/resources/embedding-sdk
@@ -88,24 +73,10 @@ runs:
         REPO_URL="https://github.com/metabase/shoppy.git"
         echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
         if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
-          echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+          echo "sample_app_branch_exists=true" >> "$GITHUB_OUTPUT"
         else
-          echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+          echo "sample_app_branch_exists=false" >> "$GITHUB_OUTPUT"
         fi
-
-    - name: Configure AWS credentials
-      if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ inputs.shoppy-iam-role }}
-        role-session-name: GitHub_to_AWS_via_FederatedOIDC
-        aws-region: us-east-1
-
-    - name: Download Shoppy's App DB PostgreSQL dump from S3
-      if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
-      shell: bash
-      run: |
-        aws s3 cp s3://${{ inputs.shoppy-metabase-app-db-s3-bucket }}/${{ inputs.shoppy-metabase-app-db-s3-key }} ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql
 
     - name: Prepare and launch Shoppy containers
       if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
@@ -115,8 +86,6 @@ runs:
         SAMPLE_APP_ENVIRONMENT: ${{ inputs.sample-app-environment }}
         CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ inputs.staging-mb-all-features-token }}
         METASTORE_DEV_SERVER_URL: ${{ inputs.metastore-dev-server-url }}
-        METABASE_APP_DB_USER: ${{ inputs.shoppy-metabase-app-db-user }}
-        METABASE_APP_DB: ${{ inputs.shoppy-metabase-app-db-database }}
         SHOPPY_DATADOG_APPLICATION_ID: ${{ inputs.shoppy-datadog-application-id }}
         SHOPPY_DATADOG_CLIENT_TOKEN: ${{ inputs.shoppy-datadog-client-token }}
         SHOPPY_DATADOG_SITE: "us5.datadoghq.com"

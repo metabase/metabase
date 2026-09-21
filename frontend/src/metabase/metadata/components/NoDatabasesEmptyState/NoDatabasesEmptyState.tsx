@@ -1,13 +1,13 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { Box, Button, Stack, rem } from "metabase/ui";
 
 export const NoDatabasesEmptyState = () => {
   return (
-    <Stack align="center" gap="lg" h="100%" justify="center">
+    <Stack align="center" gap="xl" h="100%" justify="center">
       <Box maw={rem(268)}>
         <EmptyState
           illustrationElement={<img src={EmptyDashboardBot} />}

@@ -3,12 +3,15 @@ import { useMemo } from "react";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/utils/measure-text";
-import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  type RenderingContext,
+  getVisualizationTheme,
+} from "metabase/viz-core";
 
 interface RenderingOptions {
   fontFamily: string;
@@ -34,7 +37,8 @@ export const useBrowserRenderingContext = (
       getColor: (name) => color(name, palette),
       measureText: measureTextWidth,
       measureTextHeight,
-      fontFamily: `${fontFamily}, Arial, sans-serif`,
+      fontFamily: getFontFamilyValue(fontFamily),
+      colorScheme: theme.other?.colorScheme ?? "light",
       theme: style,
     };
   }, [fontFamily, palette, theme, isDashboard]);

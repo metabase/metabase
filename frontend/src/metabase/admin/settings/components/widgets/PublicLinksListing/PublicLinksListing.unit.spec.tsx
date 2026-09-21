@@ -3,7 +3,7 @@ import { act } from "react-dom/test-utils";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { GetPublicCard } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
@@ -17,7 +17,7 @@ const setup = async (props: {
       <PublicLinksListing<GetPublicCard>
         data={props.publicCardData}
         noLinksMessage={`No questions have been publicly shared yet.`}
-        getUrl={(question) => Urls.question(question)}
+        getUrl={(question) => Urls.card(question)}
         getPublicUrl={({ name }) => {
           return `test-public-url-${name}`;
         }}

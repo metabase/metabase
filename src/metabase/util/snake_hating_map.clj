@@ -23,7 +23,7 @@
                            (pr-str (u/->kebab-case-en k)))
                    {:k k})]
     (if config/is-prod?
-      (log/warn e)
+      (log/warn (ex-message e))
       (throw e))))
 
 (defn- normalize-key [k]
@@ -48,6 +48,8 @@
       (if (identical? m m')
         this
         (->SnakeHatingMap m'))))
+  (containsKey [this k]
+    (contains? m (normalize-key k)))
   (keys [_this]
     (keys m))
   (meta [_this]

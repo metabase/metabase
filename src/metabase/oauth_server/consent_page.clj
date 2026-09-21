@@ -7,6 +7,8 @@
    [metabase.appearance.core :as appearance]
    [metabase.system.core :as system]))
 
+(set! *warn-on-reflection* true)
+
 (defn- absolute-url
   "Resolve a potentially relative path to an absolute URL using site-url."
   [path]
@@ -30,16 +32,17 @@
   [font-name]
   (let [dir-name      (str/replace font-name " " "_")
         file-stem     (str/replace font-name " " "")
-        css-font-name (css-escape-font-name font-name)]
+        css-font-name (css-escape-font-name font-name)
+        fonts-url     (absolute-url "/app/fonts")]
     (if (= font-name "Lato")
       (str "@font-face { font-family: 'Lato'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/Lato/lato-v16-latin-regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: 'Lato'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
+           " src: url('" fonts-url "/Lato/lato-v16-latin-700.woff2') format('woff2'); }\n")
       (str "@font-face { font-family: '" css-font-name "'; font-weight: 400; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Regular.woff2') format('woff2'); }\n"
            "@font-face { font-family: '" css-font-name "'; font-weight: 700; font-style: normal; font-display: swap;"
-           " src: url('/app/fonts/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
+           " src: url('" fonts-url "/" dir-name "/" file-stem "-Bold.woff2') format('woff2'); }\n"))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 
@@ -74,9 +77,116 @@
      :default-logo?  (= logo-url default-logo-url)
      :brand-color    (sanitize-css-color (get colors "brand"))}))
 
+(defn- full-access-warning
+  [client-name]
+  [:div.warning
+   [:span.mark "!"]
+   [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
+    (or client-name "this application") " can do, including reading and changing all data you "
+    "can reach. Only approve it for a tool you trust and control."]])
+
+(defn- render-scope-list
+  "Render the requested OAuth scopes as a hiccup list of checkboxes named `granted_scope`, so the user sees exactly
+   what they're granting and picks which of it to grant. `scopes` is a vector of
+   `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
+   in order.
+
+   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked and can be
+   ticked. A `:full-access?` scope carries the full-access warning in its own row.
+
+   Shows the human description and the raw scope string: the description is readable, the raw string
+   is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
+   When a scope has no registered description (it falls back to the raw string) the raw span is
+   omitted to avoid showing the same value twice."
+  [scopes client-name]
+  (when (seq scopes)
+    [:ul.scopes
+     (for [{:keys [scope description full-access? locked?]} scopes]
+       [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
+        [:label
+         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
+                   locked? (assoc :checked true :disabled true))]
+         [:span.text
+          (if full-access? [:strong description] [:span description])
+          (when (not= description scope)
+            [:span.raw scope])]
+         (when locked?
+           [:span.always "Always granted"])]
+        (when full-access?
+          (full-access-warning client-name))])]))
+
+(def ^:private consent-form-script
+  "Progressive enhancement for the consent form; the server enforces everything it does. Keeps Authorize disabled while
+   no scope checkbox is ticked (a locked, always-granted one counts), and debounces the decision: on submit it shows a
+   spinner on the clicked button and disables both, re-enabling them if the page is restored from the bfcache."
+  "(function () {
+  var form = document.getElementById('consent-form');
+  if (!form) { return; }
+  var buttons = form.querySelectorAll('button[name=\"approved\"]');
+  var allow = form.querySelector('button.allow');
+  var boxes = form.querySelectorAll('input[type=\"checkbox\"]');
+  var submitting = false;
+  var lastClicked = null;
+
+  function syncAllow() {
+    if (submitting || !allow || boxes.length === 0) { return; }
+    var anyTicked = false;
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].checked) { anyTicked = true; }
+    }
+    allow.disabled = !anyTicked;
+  }
+
+  function removeDecisionInput() {
+    var input = form.querySelector('input[type=\"hidden\"][name=\"approved\"]');
+    if (input) { input.parentNode.removeChild(input); }
+  }
+
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', function () { lastClicked = this; });
+  }
+
+  form.addEventListener('change', syncAllow);
+
+  form.addEventListener('submit', function (event) {
+    if (submitting) { event.preventDefault(); return; }
+    var submitter = event.submitter || lastClicked;
+    if (!submitter || submitter.name !== 'approved') { return; }
+    submitting = true;
+    // A disabled button is left out of the submitted form, so carry its decision in a hidden input.
+    removeDecisionInput();
+    var decision = document.createElement('input');
+    decision.type = 'hidden';
+    decision.name = 'approved';
+    decision.value = submitter.value;
+    form.appendChild(decision);
+    submitter.classList.add('loading');
+    submitter.setAttribute('aria-busy', 'true');
+    for (var i = 0; i < buttons.length; i++) { buttons[i].disabled = true; }
+  });
+
+  window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) { return; }
+    submitting = false;
+    removeDecisionInput();
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].disabled = false;
+      buttons[i].classList.remove('loading');
+      buttons[i].removeAttribute('aria-busy');
+    }
+    syncAllow();
+  });
+
+  syncAllow();
+})();")
+
 (defn render-consent-page
-  "Render a server-side HTML consent page for the OAuth authorization flow."
-  [{:keys [client-name client-id oauth-params nonce csrf-token params-sig]}]
+  "Render a server-side HTML consent page for the OAuth authorization flow.
+
+   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
+   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) so a broad
+   grant (e.g. full account access) is never approved blindly."
+  [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -100,18 +210,44 @@
                               padding: 2.5rem; max-width: 440px; width: 100%; margin: 1rem; }
                    .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
                    .logo img { max-height: 32px; max-width: 100%; min-height: 100%; height: auto; }
-                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.25rem; }
-                   .client-id { text-align: center; font-size: 0.75rem; color: #949aab; margin-bottom: 1rem;
-                                font-family: monospace; word-break: break-all; }
+                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.5rem; }
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
+                   .scopes { list-style: none; margin: 0 0 1.5rem; padding: 0;
+                             border: 1px solid #f0f0f0; border-radius: 8px; }
+                   .scopes li { padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
+                   .scopes li + li { border-top: 1px solid #f0f0f0; }
+                   .scopes label { display: flex; align-items: baseline; gap: 0.5rem; cursor: pointer; }
+                   .scopes input { flex: 0 0 auto; margin: 0; accent-color: " brand-color ";
+                                   transform: translateY(2px); cursor: pointer; }
+                   .scopes .text { flex: 1 1 auto; display: flex; flex-wrap: wrap; column-gap: 0.5rem; }
+                   .scopes .raw { font-family: monospace; font-size: 0.75rem; color: #949aab; }
+                   .scopes li.locked label, .scopes li.locked input { cursor: default; }
+                   .scopes .always { flex: 0 0 auto; font-size: 0.75rem; color: #949aab; white-space: nowrap; }
+                   .scopes li.full strong { color: #2e353b; }
+                   .scopes li.full input { accent-color: #e35a4c; }
+                   .scopes li .warning { margin: 0.625rem 0 0; }
+                   .warning { display: flex; gap: 0.5rem; align-items: flex-start;
+                              background: #fdf3f2; border: 1px solid #f7d3cf; border-radius: 8px;
+                              padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+                              font-size: 0.8125rem; line-height: 1.45; color: #883b34; }
+                   .warning .mark { flex: 0 0 auto; font-weight: 700; }
+                   .destination { text-align: center; font-size: 0.8125rem; color: #696e7b; margin-bottom: 1.5rem; }
+                   .destination strong { font-family: monospace; color: #4c5773; }
                    .actions { display: flex; gap: 0.75rem; }
                    button { flex: 1; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 700;
                             font-family: inherit; cursor: pointer;
                             transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
                    .allow { background: " brand-color "; color: #fff; border: 1px solid " brand-color "; }
-                   .allow:hover { filter: brightness(0.9); }
+                   .allow:hover:not(:disabled) { filter: brightness(0.9); }
                    .deny  { background: #fff; color: #4c5773; border: 1px solid #ddd; }
-                   .deny:hover  { background: #f9fbfc; border-color: #ccc; }"))]]
+                   .deny:hover:not(:disabled)  { background: #f9fbfc; border-color: #ccc; }
+                   button:disabled { cursor: default; opacity: 0.55; }
+                   button.loading:disabled { opacity: 1; }
+                   button.loading::before { content: ''; display: inline-block; width: 0.875em; height: 0.875em;
+                                            margin-right: 0.5em; vertical-align: -0.125em; border-radius: 50%;
+                                            border: 2px solid; border-right-color: transparent;
+                                            animation: consent-spin 0.7s linear infinite; }
+                   @keyframes consent-spin { to { transform: rotate(360deg); } }"))]]
        [:body
         [:div.consent
          [:div.logo
@@ -119,10 +255,14 @@
             (h/raw svg)
             [:img {:src logo-url :alt "Logo" :height "32"}])]
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
-         (when client-id [:p.client-id client-id])
-         [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
-          [:strong (appearance/application-name)] " on your behalf."]
-         [:form {:method "POST" :action "/oauth/authorize/decision"}
+         [:p.subtitle (or client-name "This application") " is requesting access to "
+          [:strong (appearance/application-name)] " on your behalf:"]
+         ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
+         ;; under one (site-url like https://example.com/metabase).
+         [:form {:id "consent-form" :method "POST" :action (absolute-url "/oauth/authorize/decision")}
+          (render-scope-list scopes client-name)
+          (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+            [:p.destination "Redirects to " [:strong redirect-host]])
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params
@@ -131,4 +271,5 @@
             [:input {:type "hidden" :name (name k) :value v}])
           [:div.actions
            [:button.deny {:type "submit" :name "approved" :value "false"} "Cancel"]
-           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]]]))))
+           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]
+        [:script {:nonce nonce} (h/raw consent-form-script)]]]))))

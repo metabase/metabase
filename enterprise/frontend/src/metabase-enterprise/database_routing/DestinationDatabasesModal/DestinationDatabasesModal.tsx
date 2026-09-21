@@ -1,24 +1,20 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
+import { useNavigate, useParams } from "metabase/router";
 import { Modal } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import S from "./DestinationDatabasesModal.module.css";
 
-export const DestinationDatabasesModal = ({
-  params,
-}: {
-  params: { databaseId: string };
-}) => {
-  const primaryDbId = parseInt(params.databaseId, 10);
+export const DestinationDatabasesModal = () => {
+  const params = useParams<{ databaseId: string }>();
+  const primaryDbId = parseInt(params.databaseId ?? "", 10);
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const handleCloseModal = () => {
-    dispatch(push(Urls.viewDatabase(primaryDbId)));
+    navigate(Urls.viewDatabase(primaryDbId));
   };
 
   return (
@@ -26,7 +22,7 @@ export const DestinationDatabasesModal = ({
       opened
       title={t`Destination databases`}
       onClose={handleCloseModal}
-      padding="xl"
+      padding="xxl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,

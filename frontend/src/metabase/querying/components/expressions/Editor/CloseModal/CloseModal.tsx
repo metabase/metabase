@@ -20,7 +20,7 @@ export function CloseModal({
       onConfirm={onDiscardChanges}
       onClose={onKeepEditing || _.noop}
       confirmButtonText={t`Discard changes`}
-      confirmButtonProps={{ color: "brand", variant: "filled" }}
+      confirmButtonProps={{ color: "core-brand", variant: "filled" }}
       closeButtonText={t`Keep editing`}
     />
   );

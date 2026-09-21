@@ -1,12 +1,13 @@
 import type React from "react";
 import { useMemo } from "react";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
   type BoxProps,
@@ -19,8 +20,8 @@ import {
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
-import { ItemListLoader } from "../LoadingSpinner";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
+import { ItemListLoader } from "../ItemListLoader";
 
 const PickerColumn = ({
   children,
@@ -48,7 +49,7 @@ export function ItemList({
   isLoading = false,
   error,
   navLinkProps,
-  containerProps = { pb: "xs" },
+  containerProps = { pb: "xxs" },
 }: ItemListProps) {
   const tc = useTranslateContent();
   const {
@@ -67,6 +68,7 @@ export function ItemList({
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
   const isTenantUser = useSelector(getIsTenantUser);
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
     if (!filteredItems || !selectedItem) {
@@ -138,7 +140,7 @@ export function ItemList({
                   </Flex>
                 }
                 active={isSelected}
-                leftSection={<Icon {...icon} />}
+                leftSection={<EntityIcon {...icon} />}
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault(); // prevent form submission
                   e.stopPropagation(); // prevent parent onClick
@@ -156,7 +158,7 @@ export function ItemList({
                     onChange(item);
                   }
                 }}
-                variant={isCurrentLevel ? "default" : "mb-light"}
+                variant={isCurrentLevel ? "primary" : "secondary"}
                 {...navLinkProps?.(isSelected)}
               />
             </Tooltip>

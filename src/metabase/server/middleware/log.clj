@@ -88,11 +88,6 @@
   (when include-stats?
     (stats diag-info-fn)))
 
-(defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
-  (when (and error?
-             (or (string? body) (coll? body)))
-    (str "\n" (u/pprint-to-str body))))
-
 (defn- format-log-context [{:keys [log-context]} _]
   (pr-str log-context))
 
@@ -100,8 +95,7 @@
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
                                (format-threads-info info opts)
-                               (format-log-context info opts)
-                               (format-error-info info opts)])))
+                               (format-log-context info opts)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Logging the Info                                                |
@@ -149,7 +143,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error e "Error logging API request"))))
+      (log/errorf "Error logging API request: %s" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Async Logging                                                  |
@@ -233,9 +227,11 @@
           (let [info           {:request       request
                                 :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn
-                                :log-context   {:metabase-user-id api/*current-user-id*}}
+                                :diag-info-fn  diag-info-fn}
                 response->info (fn [response]
-                                 (assoc info :response response))
+                                 (assoc info
+                                        :response response
+                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                            api/*current-user-id*)}))
                 respond        (comp respond logged-response response->info)]
             (handler request respond raise)))))))

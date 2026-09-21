@@ -4,6 +4,7 @@ import { Center, Popover } from "metabase/ui";
 
 import { SummarizePicker } from "../SummarizePicker";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
@@ -18,7 +19,7 @@ export default {
 export const SummarizePickerStory = {
   render() {
     return (
-      <Center p="lg">
+      <Center p="xl">
         <SdkQuestion questionId={QUESTION_ID}>
           {/* the point of doing this is to test the picker within the portal */}
           {/* so the styles are messed up */}

@@ -19,15 +19,14 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some select-keys mapv empty? #?(:clj for)]]
    [weavejester.dependency :as dep]))
 
@@ -79,13 +78,7 @@
             breakouts    (:breakout stage)]
         (and (= (stage-count query) 1)
              (= (count aggregations) 1)
-             (or (empty? breakouts)
-                 (and (= (count breakouts) 1)
-                      (-> (lib.metadata.calculation/metadata query (first breakouts))
-                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
-                          ;; before doing type checks
-                          (lib.temporal-bucket/with-temporal-bucket nil)
-                          lib.types.isa/date-or-datetime?)))))))
+             (<= (count breakouts) 1)))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
@@ -96,24 +89,23 @@
        (:database query)
        (boolean (can-run-method query card-type))))
 
-(defmulti can-save-method
+(defmulti can-save?-method
   "Returns whether the query can be saved based on first stage :lib/type."
   {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
-(defmethod can-save-method :default
+(defmethod can-save?-method :default
   [_query _card-type]
   true)
 
-;;; TODO FIXME -- boolean functions should end in `?`
-(mu/defn can-save :- :boolean
+(mu/defn can-save? :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query card-type)
-       (boolean (can-save-method query card-type))))
+       (boolean (can-save?-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
@@ -125,16 +117,17 @@
 (mu/defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on MBQL 5 fields.
   `:effective-type` is required for coerced fields to pass schema checks."
-  [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
-  (if-let [field-ids (lib.util.match/match-many x
+  [x                 :- [:or ::lib.schema/query ::lib.schema/stage]
+   metadata-provider :- ::lib.schema.metadata/metadata-provider]
+  (if-let [field-ids (match/match-many x
                        [:field
-                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
-        (lib.util.match/replace-lite x
+        (match/replace x
           [:field
            (options :guard (and (map? options) (not (and (:base-type options)
                                                          (:effective-type options)))))
@@ -142,14 +135,14 @@
           (if (some #{:mbql/stage-metadata} &parents)
             &match
             (update &match 1 merge
-                   ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
-                   ;;       case no change is performed. Find a way how to handle this properly!
+                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+                    ;;       case no change is performed. Find a way how to handle this properly!
                     (when-not (and (some? (:base-type options))
                                    (not= (:base-type options)
                                          (:base-type (lib.metadata/field metadata-provider id))))
-                     ;; Following key is used to track which base-types we added during `query` call. It is used in
-                     ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                     ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
+                      ;; Following key is used to track which base-types we added during `query` call. It is used in
+                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+                      ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
                       (merge (when-not (contains? options :base-type)
                                {:lib/transformation-added-base-type true})
                              (-> (lib.metadata/field metadata-provider id)
@@ -158,12 +151,13 @@
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
-  ([metadata-providerable stages]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    stages                :- [:sequential ::lib.util/query-like]]
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stages]
+    stages                :- [:sequential ::lib.util/query-like]]
    (->> (merge
          {:lib/type     :mbql/query
           :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -176,24 +170,29 @@
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
-  (try
-    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                        (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
-          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-          mbql5-query (add-types-to-fields mbql5-query mp)]
-      (merge
-       mbql5-query
-       (query-with-stages mp (:stages mbql5-query))))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
-                      {:legacy-query legacy-query}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                         (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
+           mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+           converted?  (:lib.convert/converted? mbql5-query)
+           mbql5-query (-> mbql5-query (dissoc :lib.convert/converted?) (add-types-to-fields mp))]
+       (merge
+        (cond-> mbql5-query
+          converted? (assoc :lib.convert/converted? true))
+        (query-with-stages mp (:stages mbql5-query)))))
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                     {:legacy-query legacy-query}
+                     e)))))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
+    (or (when (and (map? x) (some #(contains? x %) [:lib/type :type "lib/type" "type"]))
+          (lib.util/normalized-query-type x))
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
@@ -228,7 +227,7 @@
            (mapv (fn [[stage-number stage]]
                    (-> stage
                        (add-types-to-fields metadata-provider)
-                       (lib.util.match/replace-lite
+                       (match/replace
                          [:expression
                           (opts :guard (and (map? opts) (not (and (:base-type opts)
                                                                   (:effective-type opts)))))
@@ -306,7 +305,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x :- some?]
+   x                     :- ::lib.util/query-like]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
@@ -315,7 +314,7 @@
   Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [x
+  [x                     :- ::lib.util/query-like
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (query metadata-providerable x))
 
@@ -323,15 +322,10 @@
   "Create a MBQL 5 query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
-   inner-query           :- :map]
+   inner-query           :- :metabase.legacy-mbql.schema/SourceQuery]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->mbql5
        (query metadata-providerable)))
-
-(defn ->legacy-MBQL
-  "Convert the MBQL 5 `a-query` into a legacy MBQL query."
-  [a-query]
-  (-> a-query lib.convert/->legacy-MBQL))
 
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.
@@ -438,8 +432,7 @@
              {:query        (query a-query card)
               :stage-number -1}
              (do
-               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
-                                                                                  :card-id card-id})
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:card-id card-id})
                nil)))
       {:query        a-query
        :stage-number stage-number}))
@@ -451,13 +444,16 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-(defn- template-tag-stages
-  [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
-        :when (#{:card :snippet} tag-type)]
-    (case tag-type
-      :card {:source-card card-id}
-      :snippet {:source-snippet-id snippet-id})))
+(mu/defn- template-tag-stages
+  ;; works with either map or sequence of template tags because Native Query Snippets still store them as a map at the
+  ;; time of this writing
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]]
+  (let [template-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags template-tags)]
+    (for [{:keys [card-id snippet-id] tag-type :type} template-tags
+          :when                                       (#{:card :snippet} tag-type)]
+      (case tag-type
+        :card    {:source-card card-id}
+        :snippet {:source-snippet-id snippet-id}))))
 
 (defn- stage-seq* [query-fragment]
   (cond

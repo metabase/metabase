@@ -6,27 +6,37 @@ import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/compo
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
+import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import { useSetting } from "metabase/settings";
 import { Button } from "metabase/ui";
 
 import { trackQueryFixClicked } from "../../analytics";
+import { getMetabotNotConfiguredToastProps } from "../AIProviderConfigurationNotice";
 
 export function FixSqlQueryButton() {
   const dispatch = useDispatch();
-  const { canUseSqlGeneration } = useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const { hasSqlGenerationAccess, canUseSqlGeneration } =
+    useUserMetabotPermissions();
+  const metabotName = useSetting("metabot-name");
   const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
-  if (!canUseSqlGeneration) {
+  if (!hasSqlGenerationAccess) {
     return null;
   }
 
   const handleClick = async () => {
+    if (!canUseSqlGeneration) {
+      sendToast(
+        getMetabotNotConfiguredToastProps({
+          featureName: metabotName,
+        }),
+      );
+      return;
+    }
     trackQueryFixClicked();
     await dispatch(setIsNativeEditorOpen(true));
     // SQL and error message are included in the context.
@@ -38,15 +48,15 @@ export function FixSqlQueryButton() {
       return;
     }
 
-    if (action.payload.errorMessage?.type === "locked") {
+    if (action.payload.error?.type === "locked") {
       sendToast(getMetabotManagedProviderLimitToastProps());
       return;
     }
 
     sendToast({
       icon: "warning",
-      toastColor: "error",
-      message: action.payload.errorMessage?.message ?? METABOT_ERR_MSG.default,
+      toastColor: "feedback-negative",
+      message: action.payload.error?.message ?? METABOT_ERR_MSG.default,
     });
   };
 

@@ -1,30 +1,26 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import type { Location } from "history";
 
 import {
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
+import { useSearchParams } from "metabase/router";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";
 
 type ArchivePulseModalProps = {
   params: { pulseId?: string };
-  location: Location;
   onClose: () => void;
 };
 
-export function ArchivePulseModal({
-  params,
-  location,
-  onClose,
-}: ArchivePulseModalProps) {
+export function ArchivePulseModal({ params, onClose }: ArchivePulseModalProps) {
   const pulseId = getPulseId({ params });
   const user = useSelector(getUser);
+  const [searchParams] = useSearchParams();
 
   const {
     data: pulse,
@@ -50,7 +46,7 @@ export function ArchivePulseModal({
       item={pulse}
       type="pulse"
       user={user}
-      hasUnsubscribed={Boolean(location.query?.unsubscribed)}
+      hasUnsubscribed={Boolean(searchParams.get("unsubscribed"))}
       onArchive={handleArchive}
       onClose={onClose}
     />

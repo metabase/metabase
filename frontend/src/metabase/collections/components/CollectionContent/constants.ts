@@ -1,32 +1,15 @@
 import type { CollectionItemModel } from "metabase-types/api";
 
+export type {
+  CollectionContentTableColumn,
+  CollectionContentTableColumnsMap,
+} from "metabase/common/collections/columns";
+export { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
+
 export const COLLECTION_PAGE_SIZE = 25;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
-const COLLECTION_CONTENT_COLUMNS = [
-  "type",
-  "name",
-  "description",
-  "lastEditedBy",
-  "lastEditedAt",
-  "actionMenu",
-  "archive",
-] as const;
-
-export type CollectionContentTableColumn =
-  (typeof COLLECTION_CONTENT_COLUMNS)[number];
-
-export type CollectionContentTableColumnsMap = {
-  [key in CollectionContentTableColumn]: true;
-};
-
-export const DEFAULT_VISIBLE_COLUMNS_LIST: CollectionContentTableColumn[] = [
-  "type",
-  "name",
-  "lastEditedBy",
-  "lastEditedAt",
-  "actionMenu",
-];
+// Search and type filters appear once a collection has more items than this.
+export const FILTERS_VISIBILITY_THRESHOLD = 10;
 
 export const ALL_MODELS: CollectionItemModel[] = [
   "dashboard",
@@ -37,4 +20,16 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "collection",
   "document",
   "table",
+  "exploration",
 ];
+
+export const TYPE_FILTER_MODELS = [
+  "collection",
+  "dashboard",
+  "dataset",
+  "card",
+  "metric",
+  "document",
+  "exploration",
+  "table",
+] as const satisfies readonly CollectionItemModel[];

@@ -1,0 +1,266 @@
+import cx from "classnames";
+import { useFormik } from "formik";
+import { useState } from "react";
+import { t } from "ttag";
+
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { selectMetadataProvider } from "metabase/metadata-store";
+import { connect } from "metabase/redux";
+import S from "metabase/reference/Reference.module.css";
+import Detail from "metabase/reference/components/Detail";
+import { EditHeader } from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
+import { List } from "metabase/reference/components/List";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import * as actions from "metabase/reference/reference";
+import { updateField } from "metabase/reference/update-actions";
+import type * as Lib from "metabase-lib";
+import type { Field, Table, User } from "metabase-types/api";
+
+import type { ReferenceRouteProps, StateWithReference } from "../selectors";
+import { getIsEditing, getIsFormulaExpanded, getUser } from "../selectors";
+import type {
+  BaseDetailFormFields,
+  FieldFormFieldsValues,
+  ReferenceLoadingProps,
+} from "../types";
+import { getQuestionUrl } from "../utils";
+
+interface SegmentFieldDetailFormFields
+  extends BaseDetailFormFields, FieldFormFieldsValues {
+  revision_message?: string;
+}
+
+const interestingQuestions = (
+  table: Table,
+  field: Field,
+  metadataProvider: Lib.MetadataProvider,
+) => {
+  return [
+    {
+      text: t`Number of ${table && table.display_name} grouped by ${
+        field.display_name
+      }`,
+      icon: "number" as const,
+      link: getQuestionUrl({
+        tableId: table.id,
+        breakoutField: field,
+        getCount: true,
+        metadataProvider: metadataProvider,
+      }),
+    },
+    {
+      text: t`All distinct values of ${field.display_name}`,
+      icon: "table2" as const,
+      link: getQuestionUrl({
+        tableId: table.id,
+        breakoutField: field,
+        metadataProvider: metadataProvider,
+      }),
+    },
+  ];
+};
+
+const mapStateToProps = (
+  state: StateWithReference,
+  props: Pick<SegmentFieldDetailProps, "table">,
+) => {
+  return {
+    user: getUser(state),
+    isEditing: getIsEditing(state),
+    isFormulaExpanded: getIsFormulaExpanded(state),
+    metadataProvider: selectMetadataProvider(state, props.table?.db_id ?? null),
+  };
+};
+
+const mapDispatchToProps = {
+  updateField,
+  ...actions,
+  onSubmit: actions.rUpdateSegmentFieldDetail,
+};
+
+interface SegmentFieldDetailProps {
+  style: React.CSSProperties;
+  field: Field | undefined;
+  table: Table | undefined;
+  user: User;
+  isEditing?: boolean;
+  startEditing: () => void;
+  endEditing: () => void;
+  loading?: boolean;
+  loadingError?: unknown;
+  metadataProvider: Lib.MetadataProvider;
+
+  onSubmit: (fields: SegmentFieldDetailFormFields, props: any) => Promise<void>;
+}
+
+const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
+  const {
+    style,
+    field: entity,
+    table,
+    metadataProvider,
+    loadingError,
+    loading,
+    user,
+    isEditing,
+    startEditing,
+    endEditing,
+    onSubmit,
+  } = props;
+
+  const [saveError, setSaveError] = useState<unknown>(null);
+
+  const {
+    isSubmitting,
+    getFieldProps,
+    getFieldMeta,
+    handleSubmit,
+    handleReset,
+  } = useFormik<SegmentFieldDetailFormFields>({
+    initialValues: {},
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit(fields, { ...props, resetForm: handleReset });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
+    },
+  });
+
+  const getFormField = (name: string) => ({
+    ...getFieldProps(name),
+    ...getFieldMeta(name),
+  });
+
+  return (
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
+      {isEditing && (
+        <EditHeader
+          hasRevisionHistory={false}
+          onSubmit={handleSubmit}
+          endEditing={endEditing}
+          reinitializeForm={() => handleReset(undefined)}
+          submitting={isSubmitting}
+          revisionMessageFormField={getFormField("revision_message")}
+        />
+      )}
+      <EditableReferenceHeader
+        entity={entity}
+        headerIcon="field"
+        name={t`Details`}
+        type="field"
+        user={user}
+        isEditing={isEditing}
+        hasSingleSchema={false}
+        hasDisplayName={true}
+        startEditing={startEditing}
+        displayNameFormField={getFormField("display_name")}
+        nameFormField={getFormField("name")}
+      />
+      <LoadingAndErrorWrapper
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
+      >
+        {() =>
+          entity == null || table == null ? null : (
+            <div className={CS.wrapper}>
+              <div
+                className={cx(CS.pl3, CS.py2, CS.mb4, CS.bgWhite, CS.bordered)}
+              >
+                <List>
+                  <li className={CS.relative}>
+                    <Detail
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={getFormField("description")}
+                    />
+                  </li>
+                  {!isEditing && (
+                    <li className={CS.relative}>
+                      <Detail
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
+                  <li className={CS.relative}>
+                    <Detail
+                      name={t`Why this field is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={getFormField("points_of_interest")}
+                    />
+                  </li>
+                  <li className={CS.relative}>
+                    <Detail
+                      name={t`Things to be aware of about this field`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={getFormField("caveats")}
+                    />
+                  </li>
+
+                  {!isEditing && (
+                    <li className={CS.relative}>
+                      <Detail
+                        name={t`Data type`}
+                        description={entity.database_type}
+                      />
+                    </li>
+                  )}
+                  <li className={CS.relative}>
+                    <FieldTypeDetail
+                      databaseId={table.db_id}
+                      field={entity}
+                      fieldTypeFormField={getFormField("semantic_type")}
+                      foreignKeyFormField={getFormField("fk_target_field_id")}
+                      fieldSettingsFormField={getFormField("settings")}
+                      isEditing={Boolean(isEditing)}
+                    />
+                  </li>
+                  {!isEditing && (
+                    <li className={CS.relative}>
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          table,
+                          entity,
+                          metadataProvider,
+                        )}
+                      />
+                    </li>
+                  )}
+                </List>
+              </div>
+            </div>
+          )
+        }
+      </LoadingAndErrorWrapper>
+    </form>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(
+  // `connect` cannot match its inferred props against this component's own
+  // props, because the `actions` spread in `mapDispatchToProps` is untyped.
+  // The cast restores the props a caller actually passes.
+  SegmentFieldDetail as unknown as React.ComponentType<
+    ReferenceRouteProps &
+      ReferenceLoadingProps &
+      Pick<SegmentFieldDetailProps, "field" | "table">
+  >,
+);

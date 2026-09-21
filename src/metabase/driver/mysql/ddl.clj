@@ -6,6 +6,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -33,7 +34,7 @@
            ;; Our connection may be killed due to timeout, [[kill!]] will throw an appropriate exception
            nil)
          (catch Exception e
-           (log/warn e)
+           (log/warn (ex-message e))
            e))))))
 
 (defn- kill! [conn pid]
@@ -67,35 +68,37 @@
 
 (defmethod ddl.i/refresh! :mysql
   [driver database definition dataset-query]
-  (let [{:keys [query params]} (driver-api/compile dataset-query)
-        db-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+  (let [{:keys [query params]} (driver-api/compile dataset-query)]
+    (driver.conn/with-write-connection
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         {:write? true}
+         (fn [conn]
+           (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table-name definition))])
+           ;; It is possible that this fails and rollback would not restore the table.
+           ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
+           (execute-with-timeout! driver
+                                  conn
+                                  db-spec
+                                  (.toMillis (t/minutes 10))
+                                  (into [(sql.ddl/create-table-sql database definition query)] params))
+           {:state :success}))))))
+
+(defmethod ddl.i/unpersist! :mysql
+  [driver database persisted-info]
+  (driver.conn/with-write-connection
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
      {:write? true}
-     (fn [conn]
-       (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table-name definition))])
-       ;; It is possible that this fails and rollback would not restore the table.
-       ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
-       (execute-with-timeout! driver
-                              conn
-                              db-spec
-                              (.toMillis (t/minutes 10))
-                              (into [(sql.ddl/create-table-sql database definition query)] params))
-       {:state :success}))))
-
-(defmethod ddl.i/unpersist! :mysql
-  [driver database persisted-info]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (try
-       (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table_name persisted-info))])
-       (catch Exception e
-         (log/warn e)
-         (throw e))))))
+     (fn [^java.sql.Connection conn]
+       (try
+         (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table_name persisted-info))])
+         (catch Exception e
+           (log/warn (ex-message e))
+           (throw e)))))))
 
 (defmethod ddl.i/check-can-persist :mysql
   [{driver :engine, :as database}]
@@ -159,13 +162,13 @@
        (loop [[[step stepfn undofn] & remaining] steps
               undo-steps []]
          (let [result (try (stepfn conn)
-                           (log/infof "Step %s was successful for db %s" step (:name database))
+                           (log/infof "Step %s was successful for db %s" step (:id database))
                            ::valid
                            (catch Exception e
-                             (log/warnf e "Error in `%s` while checking for model persistence permissions." step)
+                             (log/warnf "Error in `%s` while checking for model persistence permissions: %s" step (ex-message e))
                              (try
                                (doseq [[undo-step undofn] (reverse undo-steps)]
-                                 (log/warnf "Undoing step `%s` for db %s" undo-step (:name database))
+                                 (log/warnf "Undoing step `%s` for db %s" undo-step (:id database))
                                  (undofn conn))
                                (catch Exception _e
                                  (log/warn "Unable to rollback database check for model persistence")))

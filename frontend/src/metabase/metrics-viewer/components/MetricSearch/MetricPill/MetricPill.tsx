@@ -1,19 +1,22 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { ProjectionClause } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
-
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
-} from "../../../types/viewer-state";
-import { getEntryBreakout } from "../../../utils/definition-entries";
-import { getDimensionsByType } from "../../../utils/tabs";
+} from "metabase/metrics-viewer/types";
+import {
+  getDimensionsByType,
+  getEntryBreakout,
+} from "metabase/metrics-viewer/utils";
+import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { ProjectionClause } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
@@ -25,6 +28,7 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
+  isDisabled?: boolean;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -35,32 +39,13 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
+  isDisabled,
   onSwap,
   onRemove,
   onSetBreakout,
   onOpen,
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
-
-  const { selectedMetricIds, selectedMeasureIds } = useMemo(() => {
-    if (metric.sourceType === "metric") {
-      return {
-        selectedMetricIds: new Set<number>([metric.id]),
-        selectedMeasureIds: new Set<number>(),
-      };
-    }
-    if (metric.sourceType === "measure") {
-      return {
-        selectedMetricIds: new Set<number>(),
-        selectedMeasureIds: new Set<number>([metric.id]),
-      };
-    }
-
-    return {
-      selectedMetricIds: new Set<number>(),
-      selectedMeasureIds: new Set<number>(),
-    };
-  }, [metric.id, metric.sourceType]);
 
   const dimensions = useMemo(
     () =>
@@ -128,17 +113,20 @@ export function MetricPill({
           }
         }}
         position="bottom-start"
-        shadow="md"
+        shadow="sm"
         withinPortal
         trapFocus
+        // these are the defaults, but listing them explicitly
+        // since we're going to add listeners to stop propagation
+        clickOutsideEvents={["mousedown", "touchstart"]}
       >
         <Popover.Target>
           <Pill
             className={S.metricPill}
             c="text-primary"
-            h="2rem"
+            fz="md"
             px="sm"
-            py="xs"
+            py="xxs"
             fw={600}
             withRemoveButton
             onRemove={() => {
@@ -154,37 +142,50 @@ export function MetricPill({
                 ? t`Remove ${metric.name}`
                 : t`Remove metric`,
             }}
-            data-testid="metrics-viewer-search-pill"
+            data-testid="metrics-viewer-pill"
           >
-            <Flex align="center" gap="xs">
+            <Flex align="center" gap="xxs">
               {metric.isLoading ? (
-                <Skeleton mt="xs" w="4.5rem" h="1rem" />
+                <Skeleton mt="xxs" w="4.5rem" h="1rem" />
               ) : (
                 <>
                   <SourceColorIndicator
-                    colors={colors}
+                    colors={
+                      isDisabled ? ["var(--mb-color-icon-secondary)"] : colors
+                    }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"
                     }
                   />
-                  <span>{metric.name}</span>
+                  <span
+                    className={cx(S.metricPillText, isDisabled && S.disabled)}
+                  >
+                    {metric.name}
+                  </span>
                 </>
               )}
             </Flex>
           </Pill>
         </Popover.Target>
-        <Popover.Dropdown p={0} mt="-0.15rem">
-          <MetricSearchDropdown
-            selectedMetricIds={selectedMetricIds}
-            selectedMeasureIds={selectedMeasureIds}
-            onSelect={handleSelect}
-            onClose={handleClose}
-            excludeMetric={{
-              id: metric.id,
-              sourceType: metric.sourceType,
-            }}
-            showSearchInput
-          />
+        <Popover.Dropdown
+          p={0}
+          mt="-0.15rem"
+          bd="none" // the border causes the minipicker to be slightly mispositioned
+        >
+          <div
+            // prevent clicks in mini or entity picker from closing the popover
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <MetricSearchDropdown
+              onSelect={handleSelect}
+              onClose={handleClose}
+              selectedMetric={metric}
+              menuProps={{
+                offset: 0,
+              }}
+            />
+          </div>
         </Popover.Dropdown>
       </Popover>
       <Menu
@@ -219,24 +220,22 @@ export function MetricPill({
                   leftSection={<Icon name="close" />}
                   onClick={handleRemoveBreakout}
                 >
-                  {t`Remove breakout`}
+                  {t`Remove series breakout`}
                 </Menu.Item>
               )}
               <Menu.Item
                 leftSection={<Icon name="arrow_split" />}
                 onClick={handleOpenBreakoutPicker}
               >
-                {breakoutDimension ? t`Change breakout` : t`Break out`}
+                {breakoutDimension
+                  ? t`Change series breakout`
+                  : t`Add a series breakout`}
               </Menu.Item>
             </>
           )}
-          {metric.sourceType === "metric" &&
-            dimensions.size > 0 &&
-            definition && <Menu.Divider role="separator" />}
           {metric.sourceType === "metric" && (
             <Menu.Item
-              leftSection={<Icon name="info" />}
-              rightSection={<Icon name="external" />}
+              leftSection={<Icon name="home" />}
               component={ForwardRefLink}
               to={Urls.metricQuestionUrl({
                 id: metric.id,
@@ -257,7 +256,7 @@ export function MetricPill({
             }
           }}
           position="bottom-start"
-          shadow="md"
+          shadow="sm"
           withinPortal
         >
           <Popover.Target>

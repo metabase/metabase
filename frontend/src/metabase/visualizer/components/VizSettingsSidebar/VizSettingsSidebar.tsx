@@ -1,17 +1,17 @@
-import { forwardRef, useCallback, useMemo, useState } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   getVisualizerTransformedSeries,
 } from "metabase/visualizer/selectors";
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
+import { getSettingsWidgetsForSeries } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 const HIDDEN_SETTING_WIDGETS = ["card.title"];
@@ -22,8 +22,6 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
-  const [error, setError] = useState<Error | null>(null);
-
   const handleChangeSettings = useCallback(
     (settings: VisualizationSettings) => {
       dispatch(updateSettings(settings));
@@ -31,27 +29,28 @@ export function VizSettingsSidebar({ className }: { className?: string }) {
     [dispatch],
   );
 
-  const widgets = useMemo(() => {
+  const { widgets, error } = useMemo(() => {
     if (transformedSeries.length === 0) {
-      return [];
+      return { widgets: [], error: null };
     }
 
     try {
-      setError(null);
       const widgets = getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
         true,
       );
-      return widgets.filter((widget) => {
-        return (
-          typeof widget.id !== "string" ||
-          !HIDDEN_SETTING_WIDGETS.includes(widget.id)
-        );
-      });
+      return {
+        widgets: widgets.filter(
+          (widget) =>
+            typeof widget.id !== "string" ||
+            !HIDDEN_SETTING_WIDGETS.includes(widget.id),
+        ),
+        error: null,
+      };
     } catch (error) {
-      setError(error as Error);
-      return [];
+      // Unjustified type cast. FIXME
+      return { widgets: [], error: error as Error };
     }
   }, [transformedSeries, handleChangeSettings]);
 

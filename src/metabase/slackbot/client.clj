@@ -1,9 +1,13 @@
 (ns metabase.slackbot.client
   "Slack API client functions for Metabot slackbot."
   (:import
-   (java.io InputStream))
+   (java.io InputStream)
+   (java.net URI))
   (:require
    [clj-http.client :as http]
+   [medley.core :as m]
+   [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -18,6 +22,10 @@
 (def ^:private streaming-socket-timeout-ms
   "Socket (read) timeout for streaming API calls (start/append/stop)."
   5000)
+
+(def ^:private download-timeout-ms
+  "Socket and connection timeout for a Slack file download."
+  10000)
 
 (def SlackClient
   "Malli schema for a Slack client."
@@ -156,6 +164,13 @@
                                               :inclusive true}))]
     (first messages)))
 
+(defn get-permalink
+  "Fetch a stable Slack permalink for a message."
+  [client {:keys [channel ts]}]
+  (:body (slack-get client "/chat.getPermalink"
+                    {:channel channel
+                     :message_ts ts})))
+
 (defn delete-message
   "Remove a Slack message"
   [client message]
@@ -186,14 +201,82 @@
   (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
                                                 :view       view})))
 
+(def ^:private slack-file-hosts
+  "The hosts Slack serves file content from. The rest of `slack.com` is deliberately excluded: a remote file could
+  otherwise name a Slack API endpoint, and the response to that token-bearing request is saved as a model."
+  #{"files.slack.com" "files-origin.slack.com"})
+
+(defn- slack-file-url?
+  "Whether `url` is safe to fetch with the bot token attached: it clears the generic SSRF pre-check
+  ([[metabase.util.http/safe-url?]]: https, no userinfo, a real external hostname) and its host is one of
+  [[slack-file-hosts]]."
+  [url]
+  (and (u.http/safe-url? url)
+       (boolean
+        (when-let [host (some-> (u.http/->hostname url) u/lower-case-en)]
+          (contains? slack-file-hosts host)))))
+
+(defn- slack-file-request!
+  "GET `url` with the bot token attached, leaving any redirect for the caller to vet."
+  [client url]
+  (http/get url (m/assoc-some
+                 {:headers            {"Authorization" (str "Bearer " (:token client))}
+                  :as                 :stream
+                  :redirect-strategy  :none
+                  :socket-timeout     download-timeout-ms
+                  :connection-timeout download-timeout-ms
+                  :throw-exceptions   false}
+                 ;; Under a JVM proxy clj-http resolves the proxy, not the target, so the
+                 ;; policy resolver would judge the wrong host; omit it and rely on the
+                 ;; Slack host allowlist above.
+                 :dns-resolver (when-not (u.http/jvm-proxied-url? url)
+                                 (u.http/network-policy-dns-resolver :external-only)))))
+
+(def ^:private redirect-statuses
+  "Statuses whose `Location` is worth following."
+  #{301 302 303 307 308})
+
+(defn- redirect-target
+  "The absolute URL `resp` redirects to, resolved against the `url` that produced it.
+  Nil if `resp` is not a redirect, carries no `Location`, or its `Location` does not resolve to a URL."
+  [url resp]
+  (when (contains? redirect-statuses (:status resp))
+    (when-let [location (or (get-in resp [:headers "location"])
+                            (get-in resp [:headers "Location"]))]
+      ;; The caller reads this with the response body still open, and only its own branches close it.
+      ;; An unresolvable `Location` therefore has to read as no redirect rather than throw.
+      (try
+        (str (.resolve (URI. (str url)) (str location)))
+        (catch Exception e
+          (log/debugf "[slackbot] Ignoring an unresolvable redirect Location: %s" (ex-message e))
+          nil)))))
+
 (defn download-file-stream
   "Download a file from Slack, returning an InputStream instead of buffering in memory.
-   Caller is responsible for closing the stream (e.g. via `with-open`)."
+   Caller is responsible for closing the stream (e.g. via `with-open`).
+
+   Refuses a URL that is not one of Slack's file hosts: `url` arrives on a `file_share` event, and on a Slack
+   remote file it is whatever address the app that registered the file picked. Slack may answer with a redirect
+   to another of its file hosts, so one hop is followed, checked the same way before the token goes out again."
   ^InputStream
   [client url]
-  (-> (http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                     :as      :stream})
-      :body))
+  (loop [url url, hops-left 1]
+    (when-not (slack-file-url? url)
+      (throw (ex-info (tru "Refusing to download a file from a non-Slack host.")
+                      {:status-code 400, :host (u.http/->hostname url)})))
+    (let [resp              (slack-file-request! client url)
+          status            (:status resp)
+          ^InputStream body (:body resp)
+          target            (when (pos? hops-left) (redirect-target url resp))]
+      (cond
+        (<= 200 status 299) body
+
+        target              (do (some-> body .close)
+                                (recur target (dec hops-left)))
+
+        :else               (do (some-> body .close)
+                                (throw (ex-info (tru "Unexpected response downloading file from Slack (status {0})." status)
+                                                {:status-code 502, :upstream-status status})))))))
 
 ;; -------------------- SLACK STREAMING API --------------------
 ;; These functions implement Slack's chat streaming API for progressive AI responses.
@@ -214,11 +297,8 @@
       {:stream_ts (:ts body)
        :channel   (:channel body)
        :thread_ts thread_ts}
-      (do
-        (log/warnf "[slackbot] start-stream failed: %s (channel=%s thread_ts=%s recipient_team_id=%s recipient_user_id=%s)"
-                   (:error body) channel thread_ts team_id user_id)
-        (log/debugf "[slackbot] start-stream failure body=%s payload=%s"
-                    (pr-str body) (pr-str payload))))))
+      (log/warnf "[slackbot] start-stream failed: %s (channel=%s thread_ts=%s recipient_team_id=%s recipient_user_id=%s)"
+                 (:error body) channel thread_ts team_id user_id))))
 
 (defn append-stream
   "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
@@ -254,7 +334,5 @@
                                              :socket-timeout     streaming-socket-timeout-ms))]
      (when-not (:ok body)
        (log/warnf "[slackbot] stop-stream failed: %s (channel=%s stream_ts=%s block_count=%d block_types=%s)"
-                  (:error body) channel stream-ts (count (or blocks [])) (pr-str block-types))
-       (log/debugf "[slackbot] stop-stream failure body=%s payload=%s"
-                   (pr-str body) (pr-str (update payload :blocks #(when % "[redacted-blocks]")))))
+                  (:error body) channel stream-ts (count (or blocks [])) (pr-str block-types)))
      body)))

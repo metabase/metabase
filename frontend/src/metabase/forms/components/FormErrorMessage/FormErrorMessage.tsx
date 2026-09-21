@@ -18,7 +18,13 @@ export const FormErrorMessage = forwardRef(function FormErrorMessage(
   }
 
   return (
-    <Text {...props} role="alert" aria-label={message} ref={ref} c="error">
+    <Text
+      {...props}
+      role="alert"
+      aria-label={message}
+      ref={ref}
+      c="feedback-negative"
+    >
       {message}
     </Text>
   );

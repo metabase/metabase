@@ -2,19 +2,23 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.indexed-entities.db :as indexed-entities.db]
+   [metabase.indexed-entities.schema :as indexed-entities.schema]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -36,10 +40,22 @@
   {:pk_ref    mi/transform-legacy-field-ref
    :value_ref mi/transform-legacy-field-ref})
 
+(defn trigger-key
+  "Quartz trigger key for the job that refreshes the values of model index `model-index-id`."
+  [model-index-id]
+  (triggers/key (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
+
+(defn remove-indexing-job
+  "Remove the indexing job for `model-index`.
+
+  This and [[trigger-key]] live here rather than with the job itself so that deleting a ModelIndex can cancel its
+  trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
+  [model-index]
+  (task/delete-trigger! (trigger-key (:id model-index))))
+
 (t2/define-before-delete :model/ModelIndex
   [model-index]
-  (let [remove-refresh-job (requiring-resolve 'metabase.indexed-entities.task.index-values/remove-indexing-job)]
-    (remove-refresh-job model-index)))
+  (remove-indexing-job model-index))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
@@ -70,33 +86,51 @@
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
-(mr/def ::model-index
-  [:map
-   [:model_id  ::lib.schema.id/card]
-   [:value_ref some?]
-   [:pk_ref    some?]])
-
-(mu/defn ^:private fetch-values
-  [model-index :- ::model-index]
-  (let [model     (t2/select-one :model/Card :id (:model_id model-index))
-        fix       (mu/fn [field-ref :- some?
+(mu/defn- values-query
+  "The query selecting `[pk value]` tuples from `model-index`'s model: every record when `pk` is nil, otherwise just
+  the record with that primary key."
+  [model-index :- ::indexed-entities.schema/model-index
+   pk          :- [:maybe :int]]
+  (let [model     (indexed-entities.db/card (:model_id model-index))
+        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
+                    ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
                     (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
-    (try
-      [nil (->> (qp/process-query
-                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
-                 {:database (:database_id model)
-                  :type     :query
-                  :query    {:source-table (format "card__%d" (:id model))
-                             :breakout     [pk-ref value-ref]
-                             :limit        (inc max-indexed-values)}})
-                :data :rows (filter valid-tuples?))]
-      (catch Exception e
-        (log/warnf e "Error fetching indexed values for model %s" (:id model))
-        [(ex-message e) []]))))
+    ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
+    {:database (:database_id model)
+     :type     :query
+     :query    (cond-> {:source-table (format "card__%d" (:id model))
+                        :breakout     [pk-ref value-ref]
+                        :limit        (inc max-indexed-values)}
+                 pk (assoc :filter [:= pk-ref pk]
+                           :limit  1))}))
+
+(mu/defn ^:private fetch-values
+  [model-index :- ::indexed-entities.schema/model-index]
+  (try
+    [nil (->> (qp/process-query (values-query model-index nil))
+              :data :rows (filter valid-tuples?))]
+    (catch Exception e
+      (log/warnf "Error fetching indexed values for model %s: %s" (:model_id model-index) (ex-message e))
+      [(ex-message e) []])))
+
+(mu/defn value-for-pk :- [:maybe :string]
+  "The indexed value of the record of `model-index`'s model whose primary key is `pk`, as the current user sees it:
+  the model is queried through the QP, so data permissions, sandboxing, impersonation and routing all apply. This
+  deliberately never reads `model_index_value`, which is a lens-free copy shared by every user and reachable only
+  through search. Nil when no record matches or the user may not run the model."
+  [model-index :- ::indexed-entities.schema/model-index
+   pk          :- :int]
+  (try
+    (let [[[_pk value]] (->> (qp/process-query (values-query model-index pk))
+                             :data :rows (filter valid-tuples?))]
+      (some-> value str))
+    (catch Exception e
+      (log/debugf "Could not read indexed value %s of model %s: %s" pk (:model_id model-index) (ex-message e))
+      nil)))
 
 (defn find-changes
   "Find additions and deletions in indexed values. `source-values` are from the db, `indexed-values` are what we
@@ -114,19 +148,13 @@
 
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
-  [model-index :- [:merge
-                   ::model-index
-                   [:map
-                    [:id pos-int?]]]]
+  [model-index :- ::indexed-entities.schema/model-index]
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
-                                              (t2/select :model/ModelIndexValue
-                                                         :model_index_id (:id model-index)))]
+                                              (indexed-entities.db/model-index-values (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
-                                                       :error      error-message
-                                                       :indexed_at :%now})
+      (indexed-entities.db/mark-model-index-error! (:id model-index) error-message)
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -136,32 +164,25 @@
                       :let [search-model-ids (map (fn [[pk]]
                                                     (str (:id model-index) ":" pk))
                                                   deletions-part)]]
-                (t2/delete! :model/ModelIndexValue
-                            :model_index_id (:id model-index)
-                            :model_pk [:in (->> deletions-part (map first))])
+                (indexed-entities.db/delete-model-index-values! (:id model-index) (->> deletions-part (map first)))
                 (search/delete! :model/ModelIndexValue search-model-ids)))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
-                (t2/insert! :model/ModelIndexValue
-                            (map (fn [[id v]]
-                                   {:name           v
-                                    :model_pk       id
-                                    :model_index_id (:id model-index)})
-                                 additions-part)))))
-          (t2/update! :model/ModelIndex (:id model-index)
-                      {:indexed_at :%now
-                       :error      nil
-                       :state      (if (> (count values-to-index) max-indexed-values)
-                                     "overflow"
-                                     "indexed")}))
-        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
+                (indexed-entities.db/insert-model-index-values!
+                 (map (fn [[id v]]
+                        {:name           v
+                         :model_pk       id
+                         :model_index_id (:id model-index)})
+                      additions-part)))))
+          (indexed-entities.db/mark-model-index-indexed! (:id model-index)
+                                                         (if (> (count values-to-index) max-indexed-values)
+                                                           "overflow"
+                                                           "indexed")))
+        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
         (catch Exception e
-          (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
-                      (:id model-index) (:model_id model-index))
-          (t2/update! :model/ModelIndex (:id model-index)
-                      {:state      "error"
-                       :error      (ex-message e)
-                       :indexed_at :%now}))))))
+          (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
+                      (:id model-index) (:model_id model-index) (ex-message e))
+          (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
 
 ;;;; creation
 
@@ -173,14 +194,13 @@
 (defn create
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
-  (t2/insert-returning-instance! :model/ModelIndex
-                                 [{:model_id   model-id
-                                   ;; todo: sanitize these?
-                                   :pk_ref     pk-ref
-                                   :value_ref  value-ref
-                                   :schedule   (default-schedule)
-                                   :state      "initial"
-                                   :creator_id creator-id}]))
+  (indexed-entities.db/insert-model-index! {:model_id   model-id
+                                            ;; todo: sanitize these?
+                                            :pk_ref     pk-ref
+                                            :value_ref  value-ref
+                                            :schedule   (default-schedule)
+                                            :state      "initial"
+                                            :creator_id creator-id}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -205,6 +225,8 @@
    :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+
+(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card)
 
 ;; TODO resolve the toucan2 issue preventing us from using this hook
 (underive :model/ModelIndexValue :hook/search-index)

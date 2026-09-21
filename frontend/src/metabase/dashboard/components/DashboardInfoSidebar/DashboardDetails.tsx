@@ -7,13 +7,13 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
-import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
-import { collection as collectionUrl } from "metabase/utils/urls";
+import { collection as collectionUrl } from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
+import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   const lastEditInfo = dashboard["last-edit-info"];
@@ -65,7 +65,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
             <FixedSizeIcon
               name="folder"
               className={SidebarStyles.IconMargin}
-              c="brand"
+              c="core-brand"
             />
             <div>
               <Text>
@@ -95,7 +95,7 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <FixedSizeIcon name="globe" c="brand" />
+          <FixedSizeIcon name="globe" c="core-brand" />
           <Text>{t`Shared publicly`}</Text>
 
           <DashboardPublicLinkPopover

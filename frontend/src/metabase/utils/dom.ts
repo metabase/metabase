@@ -1,20 +1,7 @@
-import querystring from "querystring";
-
-import type { LocationDescriptor, LocationDescriptorObject } from "history";
-import _ from "underscore";
-
-import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
-import { isObject } from "metabase-types/guards";
 
-import { checkNotNull } from "./types";
-
-// check whether scrollbars are visible to the user,
-// this is off by default on Macs, but can be changed
-// Always on on most other non mobile platforms
-export const getScrollBarSize = _.memoize((): number => {
+function measureScrollBarSize(): number {
   const scrollableElem = document.createElement("div"),
     innerElem = document.createElement("div");
   scrollableElem.style.width = "30px";
@@ -28,7 +15,17 @@ export const getScrollBarSize = _.memoize((): number => {
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
   document.body.removeChild(scrollableElem);
   return diff;
-});
+}
+
+let scrollBarSize: number | undefined;
+
+// check whether scrollbars are visible to the user,
+// this is off by default on Macs, but can be changed
+// Always on on most other non mobile platforms
+export function getScrollBarSize(): number {
+  scrollBarSize ??= measureScrollBarSize();
+  return scrollBarSize;
+}
 
 // check if we have access to localStorage to avoid handling "access denied"
 // exceptions
@@ -65,38 +62,20 @@ export function isObscured(
 }
 
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
-}
+  const siteUrl = MetabaseSettings.get("site-url");
 
-function isMetabaseUrl(url: string): boolean {
-  const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
-
-  if (!isAbsoluteUrl(url)) {
-    return true;
+  if (!siteUrl) {
+    return "/";
   }
 
-  const pathNameWithoutSubPath = getPathnameWithoutSubPath(urlPath);
-  const isPublicLink = pathNameWithoutSubPath.startsWith("/public/");
-  const isEmbedding = pathNameWithoutSubPath.startsWith("/embed/");
-  /**
-   * (metabase#38640) We don't want to use client-side navigation for public links or embedding
-   * because public app, or embed app are built using separate routes.
-   **/
-  if (isPublicLink || isEmbedding) {
-    return false;
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
   }
-
-  return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
 }
 
-function isAbsoluteUrl(url: string): boolean {
-  return ["/", "http:", "https:", "mailto:"].some((prefix) =>
-    url.startsWith(prefix),
-  );
-}
-
-function getWithSiteUrl(url: string): string {
+export function getWithSiteUrl(url: string): string {
   const siteUrl = MetabaseSettings.get("site-url");
   return url.startsWith("/") ? (siteUrl ?? "") + url : url;
 }
@@ -110,79 +89,11 @@ export function forceRedraw(domNode: HTMLElement): void {
   domNode.style.display = "";
 }
 
-// need to keep track of the latest click's state because sometimes
-// `open` is called asynchronously, thus window.event isn't the click event
-let metaKey: boolean = false;
-let ctrlKey: boolean = false;
-window.addEventListener(
-  "mouseup",
-  (e: MouseEvent) => {
-    metaKey = e.metaKey;
-    ctrlKey = e.ctrlKey;
-  },
-  true,
-);
-
-type OpenOptions = {
-  openInSameWindow?: (url: string) => void;
-  openInBlankWindow?: (url: string) => void;
-  openInSameOrigin?: (location: LocationDescriptorObject) => void;
-  ignoreSiteUrl?: boolean;
-} & ShouldOpenInBlankWindowOptions;
-
-/**
- * helper for opening links in same or different window depending on origin and
- * meta key state
- */
-export async function open(
-  url: string,
-  {
-    // custom function for opening in same window
-    openInSameWindow = (url: string) => clickLink(url, false),
-    // custom function for opening in new window
-    openInBlankWindow = (url: string) => clickLink(url, true),
-    // custom function for opening in same app instance
-    openInSameOrigin,
-    ignoreSiteUrl = false,
-    ...options
-  }: OpenOptions = {},
-): Promise<void> {
-  url = ignoreSiteUrl ? url : getWithSiteUrl(url);
-
-  // In the sdk, allow the host app to override how to open links
-  if (isEmbeddingSdk()) {
-    const result = await handleLinkSdkPlugin(url);
-    if (result.handled) {
-      // Plugin handled the link, don't continue with default behavior
-      return;
-    }
-  }
-
-  if (shouldOpenInBlankWindow(url, options)) {
-    openInBlankWindow(url);
-  } else if (isSameOrigin(url)) {
-    if (!isMetabaseUrl(url)) {
-      clickLink(url, false);
-    } else if (openInSameOrigin) {
-      const location = getLocation(url);
-      if (isObject(location) && "pathname" in location) {
-        openInSameOrigin(location);
-      } else {
-        openInSameWindow(url);
-      }
-    } else {
-      openInSameWindow(url);
-    }
-  } else {
-    openInSameWindow(url);
-  }
-}
-
 export function openInBlankWindow(url: string): void {
   clickLink(getWithSiteUrl(url), true);
 }
 
-function clickLink(url: string, blank = false): void {
+export function clickLink(url: string, blank = false): void {
   const a = document.createElement("a");
   a.style.display = "none";
   document.body.appendChild(a);
@@ -198,44 +109,6 @@ function clickLink(url: string, blank = false): void {
   }
 }
 
-type ShouldOpenInBlankWindowOptions = {
-  event?: MouseEvent | null;
-  blank?: boolean;
-  blankOnMetaOrCtrlKey?: boolean;
-  blankOnDifferentOrigin?: boolean;
-};
-
-export function shouldOpenInBlankWindow(
-  url: string,
-  {
-    event = (typeof window !== "undefined" ? window.event : undefined) as
-      | MouseEvent
-      | undefined,
-    // always open in new window
-    blank = false,
-    // open in new window if command-click
-    blankOnMetaOrCtrlKey = true,
-    // open in new window for different origin
-    blankOnDifferentOrigin = true,
-  }: ShouldOpenInBlankWindowOptions = {},
-): boolean {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
-    return true;
-  }
-  const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
-  const isCtrlKey = event && event.ctrlKey != null ? event.ctrlKey : ctrlKey;
-
-  if (blank) {
-    return true;
-  } else if (blankOnMetaOrCtrlKey && (isMetaKey || isCtrlKey)) {
-    return true;
-  } else if (blankOnDifferentOrigin && !isSameOrSiteUrlOrigin(url)) {
-    return true;
-  }
-  return false;
-}
-
 const getOrigin = (url: string): string | null => {
   try {
     return new URL(url, window.location.origin).origin;
@@ -244,29 +117,22 @@ const getOrigin = (url: string): string | null => {
   }
 };
 
-const getLocation = (url: string): LocationDescriptor => {
-  try {
-    const { pathname, search, hash } = new URL(url, window.location.origin);
-    const query = querystring.parse(search.substring(1));
-    return {
-      pathname: getPathnameWithoutSubPath(pathname),
-      search,
-      query,
-      hash,
-    };
-  } catch {
-    return {};
-  }
-};
-
-export function getPathnameWithoutSubPath(pathname: string): string {
+export function getPathnameWithoutSubPath(
+  pathname: string,
+  siteUrl?: string,
+): string {
+  const sitePath =
+    siteUrl === undefined ? getSitePath() : getUrlPathname(siteUrl);
   const pathnameSections = pathname.split("/");
-  const sitePathSections = getSitePath().split("/");
+  const sitePathSections = sitePath.split("/");
 
   return isPathnameContainSitePath(pathnameSections, sitePathSections)
     ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
     : pathname;
 }
+
+const getUrlPathname = (url: string): string =>
+  url ? new URL(url).pathname.toLowerCase() : "";
 
 function isPathnameContainSitePath(
   pathnameSections: string[],
@@ -274,7 +140,7 @@ function isPathnameContainSitePath(
 ): boolean {
   for (let index = 0; index < sitePathSections.length; index++) {
     const sitePathSection = sitePathSections[index].toLowerCase();
-    const pathnameSection = pathnameSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index]?.toLowerCase();
 
     if (sitePathSection !== pathnameSection) {
       return false;
@@ -300,17 +166,6 @@ function isSiteUrlOrigin(url: string): boolean {
 // we want to open it in the same window (https://github.com/metabase/metabase/issues/24451)
 export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
-}
-
-export function getUrlTarget(
-  url: string | undefined,
-): "_self" | "_blank" | undefined {
-  if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + modular embedding)
-    return "_blank";
-  }
-
-  return url == null || isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";
 }
 
 export function initializeIframeResizer(onReady = () => {}): void {
@@ -363,6 +218,13 @@ export const getEventTarget = (
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
+    // This node is the virtual anchor a Mantine Popover attaches to. Position it
+    // as a tiny, click-through box at the cursor (left/top set below from the
+    // event's viewport coords) so the popover opens at the pointer location.
+    target.style.position = "fixed";
+    target.style.width = "6px";
+    target.style.height = "6px";
+    target.style.pointerEvents = "none";
     document.body.appendChild(target);
   }
 
@@ -374,7 +236,9 @@ export const getEventTarget = (
     clientX = event.changedTouches[0].clientX;
     clientY = event.changedTouches[0].clientY;
   } else {
+    // Unjustified type cast. FIXME
     clientX = (event as MouseEvent).clientX;
+    // Unjustified type cast. FIXME
     clientY = (event as MouseEvent).clientY;
   }
 
@@ -400,6 +264,14 @@ export function redirect(url: string): void {
   window.location.href = url;
 }
 
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function replaceLocation(url: string): void {
+  window.location.replace(url);
+}
+
 export function openSaveDialog(fileName: string, fileContent: Blob): void {
   const url = URL.createObjectURL(fileContent);
   const link = document.createElement("a");
@@ -410,4 +282,17 @@ export function openSaveDialog(fileName: string, fileContent: Blob): void {
 
   URL.revokeObjectURL(url);
   link.remove();
+}
+
+// Double rAF is needed here to ensure we actually paint the next frame.
+// First rAF will be called on the next frame BEFORE painting,
+// and the second rAF is scheduled to run AFTER the first frame is painted, but BEFORE the next frame is painted.
+export function waitUntilNextFramePainted() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(async () => {
+      requestAnimationFrame(async () => {
+        resolve();
+      });
+    });
+  });
 }

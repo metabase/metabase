@@ -1,18 +1,17 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import { Tabs } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
 import {
   useGetAIControlsGroupLimitsQuery,
   useGetAIControlsInstanceLimitQuery,
   useGetAIControlsTenantLimitsQuery,
 } from "metabase-enterprise/api";
-import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import { GroupLimitsTab } from "./GroupLimitsTab";
 import { TenantLimitsTab } from "./TenantLimitsTab";
@@ -21,10 +20,8 @@ type GroupLimitsTabValue = "user-groups" | "tenant-groups" | "specific-tenants";
 
 export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
-  const limitPeriod =
-    (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
-  const limitType =
-    (useSetting("metabot-limit-unit") as MetabotLimitType) ?? "tokens";
+  const limitPeriod = useSetting("metabot-limit-reset-rate") ?? "monthly";
+  const limitType = useSetting("metabot-limit-unit") ?? "tokens";
   const [activeTab, setActiveTab] =
     useState<GroupLimitsTabValue>("user-groups");
 
@@ -104,7 +101,7 @@ export function GroupLimitsSettingsSection() {
 
   if (!isUsingTenants) {
     return (
-      <SettingsSection title={t`Group limits`}>
+      <SettingsSection title={t`Group limits`} stackProps={{ gap: 0 }}>
         <GroupLimitsTab
           data-testid="user-group-limits-tab"
           {...commonLimitPeriodProps}
@@ -124,9 +121,9 @@ export function GroupLimitsSettingsSection() {
     <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
-        onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
+        onChange={(value) => value && setActiveTab(value)}
       >
-        <Tabs.List mb="md">
+        <Tabs.List mb="lg">
           <Tabs.Tab value="user-groups">{t`User groups`}</Tabs.Tab>
           <Tabs.Tab value="tenant-groups">{t`Tenant groups`}</Tabs.Tab>
           <Tabs.Tab value="specific-tenants">{t`Specific tenants`}</Tabs.Tab>

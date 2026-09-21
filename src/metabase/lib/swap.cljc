@@ -7,11 +7,11 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]))
 
-(defn- swap-failure-no-match [stage target-clause]
-  (log/warn "No matching clause in swap-clauses" target-clause stage))
+(defn- swap-failure-no-match [_stage _target-clause]
+  (log/warn "No matching clause in swap-clauses"))
 
-(defn- swap-failure-ambiguous [target-clause matches]
-  (log/warn "Ambiguous match for clause in swap-clauses" target-clause matches))
+(defn- swap-failure-ambiguous [_target-clause matches]
+  (log/warnf "Ambiguous match for clause in swap-clauses (%d matches)" (count matches)))
 
 (defn- uuid-match [stage target-clause]
   (let [target-uuid (lib.options/uuid target-clause)

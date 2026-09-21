@@ -1,21 +1,29 @@
-import { getStore } from "__support__/entities-store";
-import { getParameters } from "metabase/dashboard/selectors";
-import { mainReducers } from "metabase/reducers-main";
-import type { State } from "metabase/redux/store";
+import { getMainStore } from "__support__/entities-store";
+import { setupFieldEndpoints } from "__support__/server-mocks";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { getParameters } from "metabase/dashboard/selectors";
+import type { State } from "metabase/redux/store";
+import { performUndo } from "metabase/redux/undo";
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockField,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createMockNormalizedField } from "metabase-types/api/mocks/schema";
 
+import {
+  MATCHING_TARGET,
+  PARAMETER,
+  createAutoWireState,
+  createOrdersDashcard,
+  getAutoConnectToasts,
+} from "./auto-wire-parameters/tests/setup";
 import {
   REMOVE_PARAMETER,
   removeParameter,
@@ -26,7 +34,7 @@ import {
 } from "./parameters";
 
 function setup(initialState: State) {
-  return getStore(mainReducers, initialState);
+  return getMainStore(initialState);
 }
 
 describe("setParameterType", () => {
@@ -218,6 +226,52 @@ describe("removeParameter", () => {
 });
 
 describe("setParameterMapping", () => {
+  it("snapshots the mapping just set so auto-wire undo does not clear it", async () => {
+    const dashcard = createOrdersDashcard({ seriesCardIds: [2] });
+    const store = setup(createAutoWireState([dashcard]));
+    const userMapping = {
+      parameter_id: PARAMETER.id,
+      card_id: dashcard.card.id,
+      target: MATCHING_TARGET,
+    };
+
+    await store.dispatch(
+      setParameterMapping(
+        PARAMETER.id,
+        dashcard.id,
+        dashcard.card.id,
+        MATCHING_TARGET,
+      ),
+    );
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([userMapping]);
+
+    const autoWireToast = getAutoConnectToasts(store.getState())[0];
+    await store.dispatch(performUndo(autoWireToast.id));
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([
+      userMapping,
+      {
+        parameter_id: PARAMETER.id,
+        card_id: 2,
+        target: MATCHING_TARGET,
+      },
+    ]);
+
+    const undoToast = store
+      .getState()
+      .undo.find(({ type }) => type === "filterAutoConnectDone");
+    await store.dispatch(performUndo(undoToast!.id));
+
+    expect(
+      store.getState().dashboard.dashcards[dashcard.id].parameter_mappings,
+    ).toEqual([userMapping]);
+  });
+
   describe("QUE2-326: updates ID parameter type when mapped to a field", () => {
     function setupIdMapping({
       fieldId,
@@ -253,33 +307,14 @@ describe("setParameterMapping", () => {
             }),
           },
         }),
-        entities: {
-          actions: {},
-          collections: {},
-          dashboards: {},
-          databases: {},
-          documents: {},
-          schemas: {},
-          tables: {},
-          fields:
-            fieldId != null
-              ? {
-                  [String(fieldId)]: createMockNormalizedField({
-                    id: fieldId,
-                    uniqueId: String(fieldId),
-                    base_type: fieldBaseType,
-                  }),
-                }
-              : {},
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-          indexedEntities: {},
-          groups: {},
-        },
       });
+
+      if (fieldId != null) {
+        setupFieldEndpoints(
+          createMockField({ id: fieldId, base_type: fieldBaseType }),
+        );
+      }
+
       const store = setup(state);
       return { store };
     }
@@ -373,29 +408,6 @@ describe("setParameterMapping", () => {
             }),
           },
         }),
-        entities: {
-          actions: {},
-          collections: {},
-          dashboards: {},
-          databases: {},
-          documents: {},
-          schemas: {},
-          tables: {},
-          fields: {
-            "42": createMockNormalizedField({
-              id: 42,
-              uniqueId: "42",
-              base_type: "type/Integer",
-            }),
-          },
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-          indexedEntities: {},
-          groups: {},
-        },
       });
       const store = setup(state);
       await store.dispatch(

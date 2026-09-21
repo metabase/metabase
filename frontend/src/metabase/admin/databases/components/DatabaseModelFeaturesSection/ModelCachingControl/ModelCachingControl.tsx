@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { hasFeature } from "metabase/databases";
+import { useSetting } from "metabase/settings";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 import type { Database } from "metabase-types/api";
@@ -50,6 +51,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
         await persistDatabase(databaseId).unwrap();
       }
     } catch (error) {
+      // Unjustified type cast. FIXME
       const response = error as ErrorResponse;
       if (isLackPermissionsError(response)) {
         setError(
@@ -66,7 +68,7 @@ export function ModelCachingControl({ database, disabled }: Props) {
 
   return (
     <div>
-      <Flex align="center" justify="space-between" mb="xs">
+      <Flex align="center" justify="space-between" mb="xxs">
         <Label htmlFor="model-persistence-toggle">{t`Model persistence`}</Label>
         <Box>
           <Switch
@@ -91,10 +93,10 @@ export function ModelCachingControl({ database, disabled }: Props) {
       {disabled && (
         <Box>
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
-            mb="md"
+            mb="lg"
           >
             {t`Model persistence can't be enabled when database routing is enabled.`}
           </Alert>

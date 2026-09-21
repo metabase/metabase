@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.db :as task-history.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -41,6 +42,10 @@
 (defn- assert-task-run-status
   [status]
   (assert (task-run-status (keyword status)) "Invalid task run status"))
+
+(t2/define-before-insert :model/TaskRun
+  [task-run]
+  (merge {:started_at (mi/now), :updated_at (mi/now)} task-run))
 
 (t2/define-after-insert :model/TaskRun
   [task-run]
@@ -81,36 +86,35 @@
 
 (mr/def ::TaskRunInfo
   [:map {:closed true}
-   [:run_type                       (into [:enum] run-types)]
-   [:entity_type                    (into [:enum] entity-types)]
-   [:entity_id                      ms/PositiveInt]
-   [:auto-complete {:optional true} [:maybe :boolean]]])
+   [:run_type                         (into [:enum] run-types)]
+   [:entity_type                      (into [:enum] entity-types)]
+   [:entity_id                        ms/PositiveInt]
+   ;; The notification this run is for, when applicable (alerts / subscriptions). Lets the run be
+   ;; attributed to the exact notification rather than only to its shared card/dashboard entity.
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:auto-complete   {:optional true} [:maybe :boolean]]])
 
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
-  [{:keys [run_type entity_type entity_id]} :- ::TaskRunInfo]
-  (let [now (mi/now)]
-    (t2/insert-returning-pk! :model/TaskRun
-                             {:run_type     run_type
-                              :entity_type  entity_type
-                              :entity_id    entity_id
-                              :status       :started
-                              :started_at   now
-                              :updated_at   now
-                              :process_uuid config/local-process-uuid})))
+  [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
+  (task-history.db/insert-task-run!
+   {:run_type        run_type
+    :entity_type     entity_type
+    :entity_id       entity_id
+    :notification_id notification_id
+    :status          :started
+    :process_uuid    config/local-process-uuid}))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
-  (let [task-statuses (t2/select-fn-set :status :model/TaskHistory :run_id run-id)
+  (let [task-statuses (task-history.db/task-statuses-for-run run-id)
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (t2/update! :model/TaskRun {:id run-id :status :started}
-                {:status   status
-                 :ended_at (t/instant)})))
+    (task-history.db/finish-started-task-run! run-id status (t/instant))))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.

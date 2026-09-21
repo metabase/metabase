@@ -30,10 +30,21 @@ Settings access defines which groups can view and edit the settings under the Ad
 
 ## Monitoring access
 
-Monitoring access sets permissions for the following:
+People in groups with Monitoring access can view:
 
-- [Tools](../usage-and-performance-tools/tools.md)
+- [Monitor](../monitor/start.md), including:
+  - [Erroring questions](../monitor/erroring-questions.md)
+  - [Background tasks](../monitor/background-tasks.md)
+  - [Scheduled jobs](../monitor/scheduled-jobs.md)
+  - [Application logs](../monitor/application-logs.md) (read-only)
+  - [Model persistence log](../monitor/model-persistence-log.md)
+- The **Help** tab in Admin
 - [Troubleshooting](../troubleshooting-guide/index.md)
+
+The following Monitor pages aren't included in Monitoring access:
+
+- [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
+- [Alerts management](../monitor/alerts-management.md): Available to admins only
 
 ## Subscriptions and alerts
 

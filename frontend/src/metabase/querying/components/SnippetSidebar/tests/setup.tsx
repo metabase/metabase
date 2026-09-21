@@ -7,8 +7,8 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -45,6 +45,7 @@ export async function setup({
   });
 
   const state = createMockState({
+    currentUser: createMockUser(user),
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
@@ -54,18 +55,19 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(
+  const utils = renderWithProviders(
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
-      user={createMockUser(user)}
     />,
     {
       storeInitialState: state,
     },
   );
   await waitForLoaderToBeRemoved();
+
+  return utils;
 }

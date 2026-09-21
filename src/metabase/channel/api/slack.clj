@@ -3,7 +3,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.bug-reporting.settings :as bug-reporting.settings]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
@@ -29,7 +32,7 @@
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]
-  (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
+  (let [version-info (get-in diagnostic-info [:bugReportDetails "metabase-info" "version"])
         description (get diagnostic-info :description)
         reporter (get diagnostic-info :reporter)
         file-url (if (string? file-info)
@@ -94,7 +97,7 @@
   [_route-params
    _query-params
    {:keys [slack-app-token slack-bug-report-channel] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
@@ -119,7 +122,6 @@
           (setting/set-many! {:slack-app-token    slack-app-token
                               :slack-token-valid? true})
           (slack/refresh-channels-and-usernames-when-needed!))))
-
     (when (contains? body :slack-bug-report-channel)
       (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
         (when (and processed-bug-channel
@@ -127,7 +129,6 @@
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
-
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))
@@ -220,7 +221,7 @@
                                         :app_id)
                                     (catch Exception e
                                       ;; bots.info requires users:read scope which may not be present
-                                      (log/warn e "Failed to fetch app_id from bots.info (may require users:read scope)")
+                                      (log/warnf "Failed to fetch app_id from bots.info (may require users:read scope): %s" (ex-message e))
                                       nil)))
                 scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
                 actual-scopes   (if (str/blank? scopes-header)
@@ -243,6 +244,39 @@
   (perms/check-has-application-permission :setting)
   (app-info))
 
+(def ^:private LegacyReporter
+  "The `reporter` shape clients before 0.64 send; counted so we know when it can stop being accepted."
+  [:map {:closed true}
+   [:name  :string]
+   [:email :string]])
+
+(def ^:private DiagnosticInfo
+  "What the bug report modal collects. The nested blobs pass through as sent; they are only ever rendered as JSON for
+  a human to read."
+  ;; TODO FIXME -- this should not use `camelCase` keys
+  [:map {:closed true}
+   ;; whether to attribute the report to the current user. LegacyReporter comes before :boolean: with the scalar
+   ;; branch first, a value failing both branches 500s while its error map is built
+   [:reporter            {:optional true} [:maybe [:or LegacyReporter :boolean]]]
+   [:url                 {:optional true} [:maybe :string]]
+   [:description         {:optional true} [:maybe :string]]
+   [:frontendErrors      {:optional true} [:maybe [:sequential :string]]]
+   [:backendErrors       {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:userLogs            {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:logs                {:optional true} [:maybe [:sequential ms/OpaqueJSONObject]]]
+   [:entityName          {:optional true} [:maybe :string]]
+   [:localizedEntityName {:optional true} [:maybe :string]]
+   [:entityInfo          {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:queryResults        {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:bugReportDetails    {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:browserInfo         {:optional true} [:maybe ms/OpaqueJSONObject]]])
+
+(defn- current-user-reporter
+  "Name and email of the user making the request, for attributing a bug report."
+  []
+  (let [{:keys [common_name email]} @api/*current-user*]
+    {:name common_name, :email email}))
+
 ;; Handle bug report submissions to Slack
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -250,14 +284,25 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/bug-report"
-  "Send diagnostic information to the configured Slack channels."
+  "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is
+  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`
+  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored."
   [_route-params
    _query-params
-   {diagnostic-info :diagnosticInfo} :- [:map
-                                         ;; TODO FIXME -- this should not use `camelCase` keys
-                                         [:diagnosticInfo map?]]]
+   {diagnostic-info :diagnosticInfo}
+   :- [:map {:closed true}
+       ;; TODO FIXME -- this should not use `camelCase` keys
+       [:diagnosticInfo DiagnosticInfo]]]
+  (api/check (bug-reporting.settings/bug-reporting-enabled)
+             403
+             (tru "Bug reporting is not enabled."))
+  (when (map? (:reporter diagnostic-info))
+    (analytics/inc! :metabase-bug-report/legacy-reporter))
   (try
-    (let [bug-report-channel (slack/bug-report-channel)
+    (let [diagnostic-info (if (:reporter diagnostic-info)
+                            (assoc diagnostic-info :reporter (current-user-reporter))
+                            (dissoc diagnostic-info :reporter))
+          bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content "diagnostic-info.json")
           blocks (create-slack-message-blocks diagnostic-info file-info)]

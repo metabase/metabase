@@ -1,7 +1,6 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -9,6 +8,7 @@ import type {
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
+import { useSetting } from "metabase/settings";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -139,7 +139,7 @@ export function ExcludeOptionPicker({
           </Button>
         ))}
         {unitOptions.length > 0 && operatorOptions.length > 0 && (
-          <Divider mx="md" my="sm" />
+          <Divider mx="lg" my="sm" />
         )}
         {operatorOptions.map((option, index) => (
           <Button
@@ -219,7 +219,7 @@ function ExcludeValuePicker({
     <Box component="form" miw={MIN_WIDTH} onSubmit={handleSubmit}>
       {!readOnly && <BackButton onClick={onBack}>{option?.label}</BackButton>}
       <Divider />
-      <Stack p="md">
+      <Stack p="lg">
         <Checkbox
           checked={isAll}
           label={<Text c="text-secondary" lh="inherit">{t`Select all`}</Text>}
@@ -255,5 +255,5 @@ function ExcludeValuePicker({
 }
 
 function BackButton(props: PopoverBackButtonProps) {
-  return <PopoverBackButton px="md" py="sm" {...props} />;
+  return <PopoverBackButton px="lg" py="sm" {...props} />;
 }

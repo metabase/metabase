@@ -1,17 +1,15 @@
-import { useState } from "react";
+import { type ComponentType, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet, RowValue } from "metabase-types/api";
 
 import { DataReference } from "../../../../components/DataReference/DataReference";
 import { SnippetSidebar } from "../../../../components/SnippetSidebar";
-import { getSampleDatabaseId } from "../../../../selectors";
+import type { TemplateTagsSidebarProps } from "../../../types";
 
 import S from "./NativeQuerySidebar.module.css";
 
@@ -32,6 +30,8 @@ type NativeQuerySidebarProps = {
   parameterValues: Record<string, RowValue>;
   setParameterValues: (newParameterValues: Record<string, RowValue>) => void;
   parametersAreUserVisible?: boolean;
+  canUseSampleDatabase?: boolean;
+  templateTagsSidebar: ComponentType<TemplateTagsSidebarProps>;
 };
 
 export function NativeQuerySidebar({
@@ -62,7 +62,7 @@ export function NativeQuerySidebar({
           <QueryDataReferenceSidebar {...props} />
         ))
         .with({ isTemplateTagsSidebarOpen: true }, () => (
-          <TemplateTagsSidebar {...props} />
+          <QueryTemplateTagsSidebar {...props} />
         ))
         .otherwise(() => null)}
     </Box>
@@ -100,6 +100,7 @@ function QueryDataReferenceSidebar({
       popDataReferenceStack={popDataReferenceStack}
       pushDataReferenceStack={pushDataReferenceStack}
       onClose={toggleDataReference}
+      databaseId={question.databaseId() ?? undefined}
     />
   );
 }
@@ -121,9 +122,8 @@ function QuerySnippetSidebar({
   );
 }
 
-const VISIBILITY_ALWAYS_ENABLED = () => "enabled" as const;
-
-function TemplateTagsSidebar({
+function QueryTemplateTagsSidebar({
+  templateTagsSidebar: TemplateTagsSidebar,
   question,
   query,
   onToggleTemplateTagsSidebar,
@@ -131,36 +131,18 @@ function TemplateTagsSidebar({
   parameterValues,
   parametersAreUserVisible,
   onChangeQuery,
+  canUseSampleDatabase,
 }: NativeQuerySidebarProps) {
-  const sampleDatabaseId = useSelector(getSampleDatabaseId);
-
   return (
-    <TagEditorSidebar
+    <TemplateTagsSidebar
       question={question}
-      query={question.legacyNativeQuery()!}
-      onClose={onToggleTemplateTagsSidebar}
-      sampleDatabaseId={sampleDatabaseId}
-      setTemplateTag={(tag) => {
-        const templateTags = Lib.templateTags(query);
-        const newQuery = Lib.withTemplateTags(query, {
-          ...templateTags,
-          [tag.name]: tag,
-        });
-
-        onChangeQuery(newQuery);
-      }}
-      setParameterValue={(tagId, value) => {
-        setParameterValues({
-          ...parameterValues,
-          [tagId]: value,
-        });
-      }}
-      setDatasetQuery={(newQuery) => {
-        const newQuestion = question.setDatasetQuery(newQuery);
-        onChangeQuery(newQuestion.query());
-      }}
-      getEmbeddedParameterVisibility={VISIBILITY_ALWAYS_ENABLED}
+      query={query}
+      parameterValues={parameterValues}
       parametersAreUserVisible={parametersAreUserVisible}
+      canUseSampleDatabase={canUseSampleDatabase}
+      onChangeQuery={onChangeQuery}
+      setParameterValues={setParameterValues}
+      onClose={onToggleTemplateTagsSidebar}
     />
   );
 }

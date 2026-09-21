@@ -6,12 +6,12 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
+On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file. The config file should be located at:
 
-- The current directory (the directory where the running Metabase JAR is located).
-- The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
+- A file named `config.yml` or `config.yaml` in the current directory (the directory where the running Metabase JAR is located).
+- The path specified by the [`MB_CONFIG_FILE_PATH`](./environment-variables.md#mb_config_file_path) environment variable.
 
-The settings in the config file work the same as if you'd set the settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts. Let's reiterate that in a blockquote:
+The settings in the config file work the same as if you'd set the settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**), Metabase will update the database entry based on the data in the config file. Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts. Let's reiterate that in a blockquote:
 
 > **Whenever Metabase restarts and loads your config file, the settings in the config file will _overwrite_ any changes to those settings made in the Metabase UI.**
 
@@ -272,11 +272,11 @@ config:
       details: ...
 ```
 
-But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)). You can also browse the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
+But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)). You can also browse the list of [environment variables](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
 
 ## Loading a new Metabase from a config file
 
-Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
+Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the [`MB_PREMIUM_EMBEDDING_TOKEN`](./environment-variables.md#mb_premium_embedding_token) environment variable.
 
 ```sh
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar

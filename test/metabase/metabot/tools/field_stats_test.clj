@@ -1,6 +1,8 @@
 (ns metabase.metabot.tools.field-stats-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.field-stats-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -26,26 +28,48 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot.tools.field-stats/field-values
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
+    (testing "A table field detail surfaces its portable FK so the LLM can reference it directly."
+      (mt/as-admin
+        (is (=? {:structured-output {:portable_fk ["test-data (h2)" "PUBLIC" "PRODUCTS" "CATEGORY"]}}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
+    (testing "A field-id not on the table is an agent error, not a field-metadata result."
+      (mt/as-admin
+        (is (=? {:output #"Field -1 not found"}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5})))))
+    (testing "A field-id that no longer resolves to a table (e.g. dropped column, stale result_metadata)
+              is a graceful agent-facing 404, not an uncaught exception."
+      (mt/as-admin
+        (mt/with-dynamic-fn-redefs [metabot.perms/field-id->table-id (constantly {})]
+          (is (=? {:output #"No field found with ID \d+" :status-code 404}
+                  (metabot.tools.field-stats/field-values
+                   {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5}))))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]
-             (= {:structured-output {:result-type    :field-metadata
-                                     :field_id       field-id
-                                     :value_metadata value-metadata}}
-                (metabot.tools.field-stats/field-values
-                 {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
+             (=? {:structured-output {:result-type    :field-metadata
+                                      :field_id       field-id
+                                      :value_metadata value-metadata}}
+                 (metabot.tools.field-stats/field-values
+                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id   birth-date-id {:statistics
                                      {:distinct-count 2308
                                       :percent-null   0.0
                                       :earliest       "1958-04-26"
-                                      :latest         "2000-04-03"}}
+                                      :latest         "2000-04-03"
+                                      :mode-fraction  0.0012
+                                      :top-3-fraction 0.0032}}
           people-id   state-id      {:statistics   {:distinct-count 49
                                                     :percent-null   0.0
                                                     :percent-json   0.0
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  1.0
-                                                    :average-length 2.0}
+                                                    :average-length 2.0
+                                                    :mode-fraction  0.0776
+                                                    :top-3-fraction 0.1624
+                                                    :percent-blank  0.0}
                                      :field_values ["AK" "AL" "AR" "AZ" "CA"]}
           products-id category-id   {:statistics   {:distinct-count 4
                                                     :percent-null   0.0
@@ -53,7 +77,10 @@
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  0.0
-                                                    :average-length 6.375}
+                                                    :average-length 6.375
+                                                    :mode-fraction  0.27
+                                                    :top-3-fraction 0.79
+                                                    :percent-blank  0.0}
                                      :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
 
 (deftest field-values-model-test
@@ -124,3 +151,11 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
+
+(deftest field-values-unknown-entity-type-test
+  (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
+            production -- returns a graceful agent-facing message instead of throwing"
+    (mt/as-admin
+      (is (=? {:output #"Unknown data source type: bogus"}
+              (metabot.tools.field-stats/field-values
+               {:entity-type "bogus", :entity-id 1, :field-id 1, :limit 5}))))))

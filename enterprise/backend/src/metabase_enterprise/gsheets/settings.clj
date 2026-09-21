@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.gsheets.constants :as gsheets.constants]
+   [metabase-enterprise.gsheets.db :as gsheets.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -9,8 +10,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def :gsheets/response
   [:or
@@ -19,7 +19,15 @@
     [:message ms/NonBlankString]]
    [:multi {:dispatch :status}
     ["not-connected" [:map]]
-
+    ["initializing"
+     [:map
+      [:url ms/NonBlankString]
+      ;; time in seconds from epoch:
+      [:created_at pos-int?]
+      ;; time in seconds from epoch:
+      [:sync_started_at pos-int?]
+      [:created_by_id pos-int?]
+      [:db_id pos-int?]]]
     ["syncing"
      [:map
       [:url ms/NonBlankString]
@@ -29,7 +37,6 @@
       [:sync_started_at pos-int?]
       [:created_by_id pos-int?]
       [:db_id pos-int?]]]
-
     ["active"
      [:map
       [:url ms/NonBlankString]
@@ -86,7 +93,7 @@
                         :folder-upload-time :created-at})
       (dissoc :status)
       (cond->
-       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)))
+       (and (seq (dissoc value :status)) (nil? (:db-id value))) (assoc :db-id (gsheets.db/attached-dwh-database-id)))
       (u/prog1 (when-not (= (set (keys <>)) (set (keys value)))
                  (setting/set-value-of-type! :json :gsheets <>)))))
 
@@ -114,8 +121,8 @@
   :type :json
   :getter (mu/fn :- :gsheets/setting []
             (or
-              ;; This NEEDS to be up to date between instances on a cluster, so:
-              ;; we are going around the settings cache:
-             (some-> (t2/select-one :model/Setting :key "gsheets") :value json/decode+kw migrate-gsheet-value)
+             ;; This NEEDS to be up to date between instances on a cluster, so:
+             ;; we are going around the settings cache:
+             (some-> (gsheets.db/setting "gsheets") :value json/decode+kw migrate-gsheet-value)
              (u/prog1 gsheets.constants/not-connected
                (setting/set-value-of-type! :json :gsheets <>)))))

@@ -11,7 +11,7 @@
   (mt/with-premium-features #{:library}
     (testing "GET /api/table/:id/query_metadata"
       (testing "Published tables in collections should be accessible with collection read permission (no data permissions)"
-        (mt/with-temp [:model/Collection coll     {}
+        (mt/with-temp [:model/Collection coll     {:type "library-data"}
                        :model/Database db         {}
                        :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id (u/the-id coll)}
                        :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
@@ -24,7 +24,6 @@
               (is (some? response))
               (is (= (u/the-id table) (:id response)))
               (is (= 2 (count (:fields response))))))))
-
       (testing "Published tables in root collection should be accessible with root collection read permission"
         (mt/with-temp [:model/Database db         {}
                        :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id nil}
@@ -35,7 +34,6 @@
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table)))]
               (is (some? response))
               (is (= (u/the-id table) (:id response)))))))
-
       (testing "Unpublished tables require data permissions"
         (mt/with-temp [:model/Database db         {}
                        :model/Table    table      {:db_id (u/the-id db) :is_published false}
@@ -48,7 +46,6 @@
               (data-perms/set-database-permission! group-id db :perms/create-queries :no)
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (format "table/%d/query_metadata" (u/the-id table))))))
-
             (testing "Data permissions ARE required for unpublished tables"
               (data-perms/set-database-permission! group-id db :perms/view-data :unrestricted)
               (data-perms/set-database-permission! group-id db :perms/create-queries :query-builder)
@@ -60,7 +57,7 @@
   (mt/with-premium-features #{:library}
     (testing "GET /api/table/card__:id/query_metadata"
       (testing "Should include Field metadata for published tables accessible via collection permissions"
-        (mt/with-temp [:model/Collection table-coll {}
+        (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                        :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
                        :model/Field field {:table_id (u/the-id table) :name "test-field"}
                        :model/Card card {:dataset_query {:database (mt/id)
@@ -78,7 +75,7 @@
 (deftest card-query-metadata-published-table-collection-perms-test
   (testing "GET /api/card/:id/query_metadata should include published tables that are queryable"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection table-coll {}
+      (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
                      :model/Field _field {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
@@ -104,7 +101,7 @@
 (deftest dashboard-query-metadata-published-table-collection-perms-test
   (testing "GET /api/dashboard/:id/query_metadata should include published tables accessible via collection permissions"
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection table-coll {}
+      (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                      :model/Database db {}
                      :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
                      :model/Field _field {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
@@ -133,7 +130,7 @@
   (testing "GET /api/automagic-dashboards/:entity/:entity-id-or-query/query_metadata"
     (testing "Should include published tables accessible via collection permissions"
       (mt/with-premium-features #{:library}
-        (mt/with-temp [:model/Collection table-coll {}
+        (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                        :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
                        :model/PermissionsGroup custom-group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)

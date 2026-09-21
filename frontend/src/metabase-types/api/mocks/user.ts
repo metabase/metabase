@@ -65,6 +65,7 @@ export const createMockUserInfo = (opts?: Partial<UserInfo>): UserInfo => ({
   email: "user@metabase.test",
   is_qbnewb: false,
   is_superuser: false,
+  is_active: true,
   date_joined: new Date().toISOString(),
   last_login: new Date().toISOString(),
   ...opts,

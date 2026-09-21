@@ -1,20 +1,31 @@
 import { useCallback, useMemo, useRef } from "react";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   MetabotChartProps,
   MetabotMessage,
+  MetabotErrorMessage as SdkMetabotErrorMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import {
+  type MetabotGeneratedCardPart,
+  type MetabotMessagePart,
+  getFinalChartMessageIdsPerTurn,
+  getMetabotConversationId,
+  isGeneratedCardPart,
+  isTextPart,
+} from "metabase/metabot/state";
+import { useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 
 /**
  * Public-facing hook for interacting with Metabot in the SDK.
@@ -70,20 +81,42 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
-  const agentResetConversation = agent.resetConversation;
+  const agentCreateNewConversation = agent.createNewConversation;
   const resetConversation = useCallback(() => {
     chartComponentsCache.current.clear();
-    agentResetConversation();
-  }, [agentResetConversation]);
+    agentCreateNewConversation();
+  }, [agentCreateNewConversation]);
 
+  // keep only the last chart per turn — agent may emit several mid-stream
+  const finalChartIds = useSelector((state) =>
+    getFinalChartMessageIdsPerTurn(
+      state,
+      getMetabotConversationId(state, "omnibot"),
+    ),
+  );
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter(isPublicMessage)
-        .map((message) =>
-          mapMessage(message, chartComponentsCache.current, authConfig),
+        .flatMap((message) => message.parts)
+        .filter((part) => isPublicPart(part, finalChartIds))
+        .map((part) =>
+          mapMessage(part, chartComponentsCache.current, authConfig),
         ),
-    [agent.messages, authConfig],
+    [agent.messages, finalChartIds, authConfig],
+  );
+
+  const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
+    () =>
+      agent.messages
+        .filter((m) => m.status.type === "errored")
+        .map(
+          (m) =>
+            (m.status.type === "errored" && m.status.display) || {
+              type: "message",
+              message: t`Something went wrong`,
+            },
+        ),
+    [agent.messages],
   );
 
   return {
@@ -93,8 +126,10 @@ export const useMetabot = (): UseMetabotResult => {
     resetConversation,
 
     messages,
-    errorMessages: agent.errorMessages,
+    errorMessages,
     isProcessing: agent.isDoingScience,
+    contextWindowPercentUsage: agent.contextWindowPercentUsage,
+    isContextWindowFull: agent.isContextWindowFull,
 
     CurrentChart,
   };
@@ -138,18 +173,15 @@ function getCachedChartComponent(
 // These internal variants are intentionally not surfaced in the public SDK —
 // see the comment on `MetabotMessage` in `embedding-sdk-bundle/types/metabot.ts`
 // for the full rationale.
-type PublicChatMessage = Exclude<
-  MetabotChatMessage,
-  { type: "tool_call" | "edit_suggestion" | "action" | "todo_list" }
->;
+type PublicChatMessage =
+  | Extract<MetabotMessagePart, { type: "text" }>
+  | MetabotGeneratedCardPart;
 
-const isPublicMessage = (
-  message: MetabotChatMessage,
-): message is PublicChatMessage =>
-  message.type !== "tool_call" &&
-  message.type !== "edit_suggestion" &&
-  message.type !== "action" &&
-  message.type !== "todo_list";
+const isPublicPart = (
+  part: MetabotMessagePart,
+  finalChartIds: Set<string>,
+): part is PublicChatMessage =>
+  isTextPart(part) || (isGeneratedCardPart(part) && finalChartIds.has(part.id));
 
 const mapMessage = (
   message: PublicChatMessage,
@@ -167,18 +199,26 @@ const mapMessage = (
       ({ id, message }) =>
         ({ id, role: "agent", type: "text", message }) as const,
     )
-    .with({ role: "agent", type: "chart" }, ({ id, navigateTo }) => {
-      const Chart = authConfig
-        ? getCachedChartComponent(navigateTo, cache, authConfig)
-        : FallbackChartComponent;
-      return {
-        id,
+    .with(
+      {
         role: "agent",
-        type: "chart",
-        questionPath: navigateTo,
-        Chart,
-      } as const;
-    })
+        type: "data_part",
+        part: { type: "data-generated_entity", data: { type: "card" } },
+      },
+      ({ id, part }) => {
+        const questionPath = Urls.generatedCard(part.data);
+        const Chart = authConfig
+          ? getCachedChartComponent(questionPath, cache, authConfig)
+          : FallbackChartComponent;
+        return {
+          id,
+          role: "agent",
+          type: "chart",
+          questionPath,
+          Chart,
+        } as const;
+      },
+    )
     .exhaustive();
 
 // Rendered only when `useMetabot` is called outside a `MetabaseProvider`

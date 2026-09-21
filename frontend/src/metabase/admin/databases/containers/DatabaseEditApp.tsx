@@ -1,20 +1,19 @@
 import { type ComponentType, useEffect, useState } from "react";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
 } from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
+import { getUserIsAdmin } from "metabase/current-user";
+import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,
@@ -23,7 +22,8 @@ import {
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { Outlet, useParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
@@ -34,8 +34,6 @@ import { ExistingDatabaseHeader } from "../components/ExistingDatabaseHeader";
 import { deleteDatabase, updateDatabase } from "../database";
 
 interface DatabaseEditAppProps {
-  children: React.ReactNode;
-  params: { databaseId: string };
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
@@ -48,15 +46,14 @@ const mapDispatchToProps = {
 };
 
 function DatabaseEditAppInner({
-  children,
-  params,
   updateDatabase,
   deleteDatabase,
 }: DatabaseEditAppProps) {
+  const params = useParams();
   const isAdmin = useSelector(getUserIsAdmin);
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
-  const databaseId = parseInt(params.databaseId, 10);
+  const databaseId = parseInt(params.databaseId ?? "", 10);
   const fromEmbeddingSetupGuide = new URLSearchParams(
     window.location.search,
   ).has(RETURN_TO_SETUP_GUIDE_PARAM);
@@ -98,6 +95,7 @@ function DatabaseEditAppInner({
 
   return (
     <>
+      {/* Unjustified type cast. FIXME */}
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
         <Box w="100%" maw="64.25rem" mx="auto" px="2rem">
           <Breadcrumbs className={CS.py4} crumbs={crumbs} />
@@ -151,7 +149,7 @@ function DatabaseEditAppInner({
           </LoadingAndErrorWrapper>
         </Box>
       </ErrorBoundary>
-      {children}
+      <Outlet />
       {fromEmbeddingSetupGuide && (
         <ReturnToSetupGuideModal
           opened={showReturnModal}
@@ -164,7 +162,13 @@ function DatabaseEditAppInner({
   );
 }
 
-export const DatabaseEditApp = _.compose(
-  withRouter,
-  connect(undefined, mapDispatchToProps),
-)(DatabaseEditAppInner);
+// Dropping the `withRouter` HOC left a single `connect`, which surfaced a
+// pre-existing prop mismatch the old two-HOC `compose` hid (the dispatch thunks
+// want a full `DatabaseData`, the sections pass a partial). Widen to keep the
+// original loose behavior without introducing `any`.
+const DatabaseEditAppComponent = DatabaseEditAppInner as ComponentType;
+
+export const DatabaseEditApp = connect(
+  undefined,
+  mapDispatchToProps,
+)(DatabaseEditAppComponent);

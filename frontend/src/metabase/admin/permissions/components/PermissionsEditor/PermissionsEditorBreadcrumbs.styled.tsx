@@ -5,7 +5,7 @@ import { lighten } from "metabase/ui/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;
-  color: var(--mb-color-background-tertiary-inverse);
+  color: var(--mb-color-background_page-tertiary-inverse);
   position: relative;
   margin: 0 6px;
   top: 2px;
@@ -13,7 +13,7 @@ export const BreadcrumbsSeparator = styled.div`
 
 export const BreadcrumbsLink = styled.a`
   cursor: pointer;
-  color: var(--mb-color-filter);
+  color: var(--mb-color-core-filter);
   transition: color 200ms;
 
   &:hover {

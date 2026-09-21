@@ -123,17 +123,16 @@
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok)
           (task-history/with-task-history {:task "t2"} :ok))
         (task-history/complete-task-run! run-id)
         (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))))
-
     (testing "complete-task-run! derives :failed when any child failed"
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok)
           (try
             (task-history/with-task-history {:task "t2"}
@@ -148,14 +147,14 @@
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok))
         ;; First completion
         (task-history/complete-task-run! run-id)
         (let [first-ended-at (:ended_at (t2/select-one :model/TaskRun :id run-id))]
           (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))
           ;; Add a failing task and try to complete again
-          (with-redefs [task-run/current-run-id (constantly run-id)]
+          (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
             (try
               (task-history/with-task-history {:task "t2"}
                 (throw (Exception. "fail")))
@@ -207,7 +206,6 @@
             :done))
         (let [th (t2/select-one :model/TaskHistory :task task-name)]
           (is (some? (:run_id th)) "run_id is set"))))
-
     (testing "task history created outside with-task-run has nil run_id"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name}
@@ -224,7 +222,7 @@
     (testing "sync-operation creates a task run with type :sync"
       (let [mock-db    (mi/instance :model/Database {:name "test" :id 999 :engine :h2})
             step-name  (mt/random-name)
-            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :sync-metadata mock-db "Test sync"
           (sync-util/run-sync-operation "test-sync" mock-db sync-steps))
         (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 999)]
@@ -239,7 +237,7 @@
     (testing "analyze operation creates a task run with type :fingerprint"
       (let [mock-db    (mi/instance :model/Database {:name "test" :id 998 :engine :h2})
             step-name  (mt/random-name)
-            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :analyze mock-db "Test analyze"
           (sync-util/run-sync-operation "test-analyze" mock-db sync-steps))
         (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 998)]
@@ -255,12 +253,12 @@
             inner-step  (mt/random-name)
             outer-steps [(sync-util/create-sync-step outer-step
                                                      (fn [_]
-                             ;; Nested sync operation
+                                                       ;; Nested sync operation
                                                        (sync-util/sync-operation :sync mock-db "Inner sync"
                                                          (sync-util/run-sync-operation "inner"
                                                                                        mock-db
-                                                                                       [(sync-util/create-sync-step inner-step (fn [_] {:inner true}))]))
-                                                       {:outer true}))]]
+                                                                                       [(sync-util/create-sync-step inner-step (fn [_] {:total-tables 1}))]))
+                                                       {:total-tables 1}))]]
         (sync-util/sync-operation :sync mock-db "Outer sync"
           (sync-util/run-sync-operation "outer" mock-db outer-steps))
         (is (= 1 (t2/count :model/TaskRun :entity_id 997))
@@ -331,19 +329,21 @@
 
 (deftest notification->task-run-info-test
   (testing "notification->task-run-info extracts correct info"
-    (testing "card notification (alert)"
-      (is (= {:run_type :alert :entity_type :card :entity_id 123}
+    (testing "card notification (alert) is attributed to the notification id"
+      (is (= {:run_type :alert :entity_type :card :entity_id 123 :notification_id 7}
              (notification.send/notification->task-run-info
-              {:payload_type :notification/card
+              {:id           7
+               :payload_type :notification/card
                :payload      {:card_id 123}}))))
     (testing "card notification with nil card_id returns nil"
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/card
                   :payload      {:card_id nil}}))))
-    (testing "dashboard notification (subscription)"
-      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456}
+    (testing "dashboard notification (subscription) is attributed to the notification id"
+      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456 :notification_id 9}
              (notification.send/notification->task-run-info
-              {:payload_type :notification/dashboard
+              {:id           9
+               :payload_type :notification/dashboard
                :payload      {:dashboard_id 456}}))))
     (testing "dashboard notification with nil dashboard_id returns nil"
       (is (nil? (notification.send/notification->task-run-info

@@ -1,5 +1,5 @@
+import type { SearchFilterToggle } from "metabase/common/search/types";
 import { NativeQueryLabel } from "metabase/search/components/filters/NativeQueryFilter/NativeQueryLabel";
-import type { SearchFilterToggle } from "metabase/search/types";
 
 export const NativeQueryFilter: SearchFilterToggle = {
   label: NativeQueryLabel,

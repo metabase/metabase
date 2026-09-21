@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.config.core :as config]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -130,15 +129,21 @@
               semantic-type))
           pattern+base-types+semantic-type)))
 
+(def ^:private MinimalFieldOrColumn
+  "The subset of a Field/column map this classifier actually reads: name, base type, and (when already
+  known) semantic type."
+  [:map {:closed true}
+   [:name          {:optional true} [:maybe :string]]
+   [:base_type     {:optional true} [:maybe ms/FieldType]]
+   [:semantic_type {:optional true} [:maybe ms/FieldSemanticOrRelationType]]])
+
 (def ^:private FieldOrColumn
-  "Schema that allows a `:model/Field` or a column from a query resultset"
-  [:and
-   [:map
-    ;; Some DBs such as MSSQL can return columns with blank name
-    [:name      :string]
-    [:base_type :keyword]
-    [:semantic_type {:optional true} [:maybe :keyword]]]
-   ::analyze.schema/qp-results-cased-map])
+  "Schema that allows a `:model/Field`, a column from a query resultset, or a minimal name/type map (as
+  hand-built test fixtures pass)."
+  [:or
+   ::analyze.schema/Field
+   :metabase.legacy-mbql.schema/legacy-column-metadata
+   MinimalFieldOrColumn])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
   "Classifier that infers the semantic type of a `field` based on its name and base type."
@@ -189,7 +194,4 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (some-> (:db_id table) driver.u/database->driver)
-                                    :druid :entity/EventTable
-                                    nil)
                                   :entity/GenericTable))))

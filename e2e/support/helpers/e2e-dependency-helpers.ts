@@ -16,13 +16,19 @@ export const DependencyGraph = {
 };
 
 export const DependencyDiagnostics = {
-  visitBrokenDependencies: () =>
-    cy.visit("/data-studio/dependency-diagnostics/broken"),
+  visitBrokenDependencies: () => {
+    cy.intercept("GET", "/api/ee/dependencies/graph/breaking*").as(
+      "breakingEntities",
+    );
+    cy.visit("/monitor/dependency-diagnostics/broken");
+    cy.wait("@breakingEntities");
+    DependencyDiagnostics.list().should("be.visible");
+  },
   visitUnreferencedEntities: () => {
     cy.intercept("GET", "/api/ee/dependencies/graph/unreferenced*").as(
       "unreferencedEntities",
     );
-    cy.visit("/data-studio/dependency-diagnostics/unreferenced");
+    cy.visit("/monitor/dependency-diagnostics/unreferenced");
     cy.wait("@unreferencedEntities");
     DependencyDiagnostics.list().should("be.visible");
   },
@@ -123,7 +129,7 @@ export function waitForBreakingDependencies(
   return cy
     .request<ListBreakingGraphNodesResponse>(
       "GET",
-      "/api/ee/dependencies/graph/breaking",
+      "/api/ee/dependencies/graph/breaking?include-personal-collections=true",
     )
     .then((response) => {
       if (filter(response.body.data)) {

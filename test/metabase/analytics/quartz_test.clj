@@ -59,7 +59,6 @@
                            "ERROR"     1}
           actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
-
   (testing "should return only executing count when no triggers exist"
     (let [scheduler (mock-scheduler [] 2) ; No triggers, 2 executing
           expected-states {"EXECUTING" 2
@@ -69,7 +68,6 @@
                            "ERROR"     0}
           actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
-
   (testing "should return empty map when no triggers and no executing jobs"
     (let [scheduler (mock-scheduler [] 0) ; No triggers, 0 executing
           expected-states {"EXECUTING" 0
@@ -79,7 +77,6 @@
                            "ERROR"     0}
           actual-states (into {} (#'analytics.quartz/get-quartz-task-states scheduler))]
       (is (= expected-states actual-states))))
-
   (testing "should handle only triggers without executing jobs"
     (let [scheduler (mock-scheduler [Trigger$TriggerState/NORMAL Trigger$TriggerState/PAUSED] 0)
           expected-states {"EXECUTING" 0
@@ -104,7 +101,6 @@
                 "Counter should increment for successful job with correct tags")
             (is (= 0.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed {:status "failed" :job-name job-name}))
                 "Failed counter should remain 0 for the specific job")))
-
         (testing "Failed execution"
           (let [ctx (mock-job-execution-context job-name run-time)
                 fail-tags {:status "failed" :job-name (str "DEFAULT." job-name)}
@@ -128,7 +124,6 @@
             listener (analytics.quartz/create-trigger-listener scheduler)] ; Pass scheduler to listener
 
         (.triggerComplete listener nil nil nil)
-
         (testing "Verify gauge values match expected counts"
           ;; Note: The get-quartz-task-states function calculates these based on the mock scheduler
           (is (= 1.0 (mt/metric-value system :metabase-tasks/quartz-tasks-states {:state "EXECUTING"})))

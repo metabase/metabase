@@ -16,7 +16,7 @@
                          (mt/normal-drivers))
     (let [dbdef (tx/get-dataset-definition defs/test-data)]
       (testing `tx/dataset-already-loaded?
-      ;; force loading of test-data
+        ;; force loading of test-data
         (mt/db)
         (testing "should return true for test-data"
           (is (tx/dataset-already-loaded? driver/*driver* dbdef)))

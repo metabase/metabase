@@ -11,6 +11,7 @@ interface EditableTextRootProps {
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
   position: relative;
+  margin: 0;
   color: var(--mb-color-text-primary);
   padding: 0.25rem;
   border: 1px solid transparent;
@@ -19,14 +20,15 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
 
   &:hover,
   &:focus-within {
-    border-color: ${(props) => !props.isDisabled && "var(--mb-color-border)"};
+    border-color: ${(props) =>
+      !props.isDisabled && "var(--mb-color-border-neutral)"};
   }
 
   ${(props) =>
     props.isEditing &&
     !props.isDisabled &&
     css`
-      border-color: var(--mb-color-border);
+      border-color: var(--mb-color-border-neutral);
     `}
 
   ${({ isEditingMarkdown }) =>

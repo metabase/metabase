@@ -13,7 +13,6 @@
           expected-hash "f3cfa7bc3021186b2abeceac80c3e75524457203e54d27744672e320c65df51a98674961b38683d84d8b36f4b12b310489235dd08e5a9b8464dc8fec51c3d3f4"]
       (testing "We generate a cryptographic hash to validate unsubscribe URLs"
         (is (= expected-hash (messages/generate-notification-unsubscribe-hash notification-handler-id email))))
-
       (testing "The hash value depends on the notification-id, email, and site-uuid"
         (let [alternate-site-uuid "aa147515-ade9-4298-ac5f-c7e42b69286d"
               alternate-hashes [(messages/generate-notification-unsubscribe-hash 87654321 email)
@@ -50,7 +49,6 @@
         (testing "Invalid hash"
           (is (= "Invalid hash."
                  (api:unsubscribe 400 1 email "fake-hash"))))
-
         (testing "Valid hash but email doesn't exist"
           (notification.tu/with-card-notification
             [notification {:handlers [{:channel_type :channel/email
@@ -58,7 +56,6 @@
             (let [handler-id (-> notification :handlers first :id)]
               (is (= "Email doesn't exist."
                      (api:unsubscribe 400 handler-id email))))))
-
         (testing "Valid hash and email"
           (notification.tu/with-card-notification
             [notification {:handlers [{:channel_type :channel/email
@@ -83,7 +80,6 @@
         (testing "Invalid hash"
           (is (= "Invalid hash."
                  (api:unsubscribe-undo 400 1 email "fake-hash"))))
-
         (testing "Valid hash and email doesn't exist (should succeed and create recipient)"
           (notification.tu/with-card-notification
             [notification {:handlers [{:channel_type :channel/email
@@ -102,7 +98,6 @@
                       :model_id handler-id
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-undo-ex)))))
-
           (testing "Valid hash but email already exists"
             (notification.tu/with-card-notification
               [notification {:handlers [{:channel_type :channel/email

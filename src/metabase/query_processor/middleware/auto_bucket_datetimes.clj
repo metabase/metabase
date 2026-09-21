@@ -10,15 +10,16 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys every? some not-empty get-in]]))
 
 (mr/def ::column-type-info
-  [:map
+  [:map {:closed true}
    [:base-type      [:maybe ::lib.schema.common/base-type]]
    [:effective-type [:maybe ::lib.schema.common/base-type]]
    [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
@@ -36,7 +37,8 @@
 (mu/defn- unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
   for empty `unbucketed-fields`."
-  [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   unbucketed-fields     :- [:maybe [:sequential :mbql.clause/field]]]
   (merge
    ;; build map of field-literal-name -> {:base-type base-type}
    (into {} (for [[_tag opts id-or-name] unbucketed-fields
@@ -54,7 +56,7 @@
                                                                                field-ids)
                                           ;; don't fail if some of the Fields are invalid.
                                           (catch Throwable e
-                                            (log/errorf e "Error fetching Fields: %s" (ex-message e))
+                                            (log/errorf "Error fetching Fields: %s" (ex-message e))
                                             nil))]
                 [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
@@ -69,19 +71,19 @@
 (mu/defn- filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (and (lib/clause? x)
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
                               (catch Throwable e
-                                (log/errorf e "Error calculating expression type: %s" (ex-message e))
+                                (log/errorf "Error calculating expression type: %s" (ex-message e))
                                 nil))]
          (isa? expr-type :type/Boolean))))
 
 (mu/defn- simple-filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (and (filter-clause? query stage-path x)
        (not (lib/clause-of-type? x #{:and :or :not}))))
 
@@ -97,7 +99,7 @@
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
-   x]
+   x          :- ::lib.schema.common/clause-tag-candidate]
   (cond
     ;; do not autobucket clauses in a non-compound filter clause that either:
     (simple-filter-clause? query stage-path x)
@@ -115,7 +117,7 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-lite x
+    (match/match-one x
       [#{:+ :-}
        _
        [#{:expression :field} _ _]
@@ -164,7 +166,7 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace-lite x
+            (match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
               (x :guard (should-not-be-autobucketed? query stage-path x))
               &match
@@ -188,7 +190,7 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-clauses (lib.util.match/match-many (cons filters breakouts)
+  (if-let [unbucketed-clauses (match/match-many (cons filters breakouts)
                                 (clause :guard (should-not-be-autobucketed? query stage-path clause)) nil
                                 [:expression & _]                                                     &match
                                 [:field & _]                                                          &match)]

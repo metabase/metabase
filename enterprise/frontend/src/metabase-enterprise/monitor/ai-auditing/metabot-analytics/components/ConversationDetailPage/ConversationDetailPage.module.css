@@ -1,0 +1,6 @@
+.groupsTarget,
+.groupsTarget:hover,
+.groupsTarget:active,
+.groupsTarget:focus {
+  text-decoration: none;
+}

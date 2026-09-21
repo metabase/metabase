@@ -12,11 +12,11 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .icon {
   margin: 0 0.5rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
