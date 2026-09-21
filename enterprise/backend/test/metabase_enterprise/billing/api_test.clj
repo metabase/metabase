@@ -4,6 +4,18 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
+(deftest fetch-billing-superuser-test
+  (testing "Fetching billing info requires being a superuser"
+    (mt/with-temporary-setting-values [premium-embedding-token nil]
+      (binding [http/request (fn [& _]
+                               {:status 404
+                                :body   "error"})]
+        ;; superusers get through fine
+        (is (= {:content nil}
+               (mt/user-http-request :crowberto :get 200 "/ee/billing")))
+        ;; non-superusers are unauthenticated
+        (mt/user-http-request :rasta :get 401 "/ee/billing")))))
+
 (deftest fetch-billing-status-test
   (testing "Passes through billing status fetched from server"
     (mt/with-temporary-setting-values [premium-embedding-token nil]
@@ -12,7 +24,7 @@
                                 :body   "{\"version\":\"v1\",\"content\":null}"})]
         (is (= {:version "v1"
                 :content nil}
-               (mt/user-http-request :rasta :get 200 "/ee/billing")))))))
+               (mt/user-http-request :crowberto :get 200 "/ee/billing")))))))
 
 (deftest fetch-billing-status-error-test
   (testing "When receiving a non json result consume the error and return an empty content blob"
