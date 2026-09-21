@@ -3025,6 +3025,26 @@
       (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
                           :timeline.selected_timeline_ids))))))
 
+(deftest card-timeline-moved-to-private-collection-test
+  (testing "PUT /api/card/:id after one of the card's timelines moved into a collection the editor cannot read"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline moved {}
+                   :model/Timeline readable {}
+                   :model/TimelineEvent readable-event {:timeline_id (:id readable)}
+                   :model/Card card {:display                :line
+                                     :dataset_query          (mt/mbql-query venues)
+                                     :visualization_settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
+                                                              :timeline.excluded_timeline_event_ids []}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (t2/update! :model/Timeline (:id moved) {:collection_id (:id restricted)})
+      (testing "an event of the timeline the editor can still read can be hidden"
+        (let [settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
+                        :timeline.excluded_timeline_event_ids [(:id readable-event)]}]
+          (is (= [(:id readable-event)]
+                 (get-in (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
+                                               {:visualization_settings settings})
+                         [:visualization_settings :timeline.excluded_timeline_event_ids]))))))))
+
 (deftest copy-card-keeps-inaccessible-timeline-selection-test
   (testing "POST /api/card/:id/copy keeps a timeline selection the user cannot read"
     (mt/with-temp [:model/Collection collection {}
@@ -3042,8 +3062,12 @@
     (mt/with-temp [:model/Collection collection {}
                    :model/Timeline timeline {:collection_id (:id collection)}
                    :model/Timeline timeline-2 {:collection_id (:id collection)}
+                   :model/TimelineEvent hidden-event {:timeline_id (:id timeline)}
+                   :model/TimelineEvent other-event {:timeline_id (:id timeline)}
                    :model/Card source-card {:dataset_query          (mt/mbql-query venues)
-                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+                                            :display                :line
+                                            :visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                                     :timeline.excluded_timeline_event_ids [(:id hidden-event)]}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
       (mt/with-model-cleanup [:model/Card]
         (testing "an identical selection is preserved without a fresh read check"
@@ -3060,6 +3084,26 @@
                                               :source_card_id (:id source-card)
                                               :visualization_settings {:timeline.selected_timeline_ids
                                                                        [(:id timeline) (:id timeline-2)]})))))
+        (testing "un-hiding an event of the inaccessible timeline is still permission-checked"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :display "line"
+                                              :source_card_id (:id source-card)
+                                              :visualization_settings
+                                              (assoc (:visualization_settings source-card)
+                                                     :timeline.excluded_timeline_event_ids []))))))
+        (testing "hiding one more event keeps the inherited selection"
+          (is (= [(:id hidden-event) (:id other-event)]
+                 (get-in (mt/user-http-request :rasta :post 200 "card"
+                                               (assoc (card-with-name-and-query)
+                                                      :display "line"
+                                                      :source_card_id (:id source-card)
+                                                      :visualization_settings
+                                                      (assoc (:visualization_settings source-card)
+                                                             :timeline.excluded_timeline_event_ids
+                                                             [(:id hidden-event) (:id other-event)])))
+                         [:visualization_settings :timeline.excluded_timeline_event_ids]))))
         (testing "source_card_id must itself be readable"
           (mt/with-temp [:model/Collection unreadable-collection {}
                          :model/Card unreadable-card {:collection_id (:id unreadable-collection)}]

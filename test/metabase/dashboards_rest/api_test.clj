@@ -1324,6 +1324,29 @@
                          (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
                                                                          {:dashcards [(assoc dashcard :row 1)] :tabs []}))))))))))))))
 
+(deftest add-series-with-restricted-timeline-to-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id allows a series whose card selects an unreadable timeline, since a dashcard only shows its own card's events"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {series-id :id} {:display                :line
+                                                  :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Card {card-id :id} {:display :line}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id series-id]
+            (is (= [card-id]
+                   (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
+                                                                   {:dashcards [{:id -1 :card_id card-id
+                                                                                 :row 0 :col 0 :size_x 4 :size_y 4
+                                                                                 :series [{:id series-id}]}]
+                                                                    :tabs []})))))
+            (is (= [series-id]
+                   (map :card_id (t2/select :model/DashboardCardSeries
+                                            :dashboardcard_id (t2/select-one-pk :model/DashboardCard
+                                                                                :dashboard_id public-id)))))))))))
+
 (deftest point-dashcard-at-archived-restricted-timeline-card-test
   (testing "PUT /api/dashboard/:id cannot point a dashcard at an archived card whose selected timeline the user cannot read"
     (mt/with-temporary-setting-values [enable-public-sharing true]

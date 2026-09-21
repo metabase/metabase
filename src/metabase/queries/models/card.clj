@@ -774,25 +774,54 @@
   ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
   (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
 
+(defn- events-enabled? [visibility]
+  (not (false? (:timeline_events.enabled visibility))))
+
+(defn- excluded-event-ids
+  "The event ids `visibility` hides. Settings saved before this was validated can hold anything, so a malformed value
+  counts as nothing hidden rather than throwing."
+  [visibility]
+  (let [ids (:timeline.excluded_timeline_event_ids visibility)]
+    (if (sequential? ids) (filter pos-int? ids) [])))
+
+(defn- newly-revealed-timeline-ids
+  "The ids of the selected timelines whose events `visibility` shows but `previous-visibility` did not. A timeline the
+  card already showed stays visible whatever the user saves, so only the difference needs a read check."
+  [visibility previous-visibility reveals-all?]
+  (let [selected-ids (set (:timeline.selected_timeline_ids visibility))]
+    (if reveals-all?
+      selected-ids
+      (let [added-ids    (set/difference selected-ids (set (:timeline.selected_timeline_ids previous-visibility)))
+            hidden-ids   (set (excluded-event-ids visibility))
+            unhidden-ids (into #{} (remove hidden-ids) (excluded-event-ids previous-visibility))]
+        (into added-ids
+              (filter selected-ids)
+              (queries.db/timeline-ids-of-events unhidden-ids))))))
+
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
   ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
   (when api/*current-user-id*
-    (let [visibility-keys         [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
-                                   :timeline_events.enabled]
-          visibility              (select-keys (:visualization_settings card) visibility-keys)
-          previous-visibility     (select-keys (:visualization_settings previous-card) visibility-keys)
-          display-reveals-events? (and (not (false? (:timeline_events.enabled visibility)))
-                                       (timeline-events-supported-display? (:display card))
-                                       (not (timeline-events-supported-display? (:display previous-card))))]
-      ;; Any change to timeline visibility settings, even one hiding more events, needs read access to the timelines.
-      (when (or display-reveals-events? (not= visibility previous-visibility))
+    (let [visibility-keys     [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
+                               :timeline_events.enabled]
+          visibility          (select-keys (:visualization_settings card) visibility-keys)
+          previous-visibility (select-keys (:visualization_settings previous-card) visibility-keys)
+          ;; Turning events back on, or switching to a display that draws them, reveals the whole selection at once.
+          reveals-all?        (and (events-enabled? visibility)
+                                   (or (not (events-enabled? previous-visibility))
+                                       (and (timeline-events-supported-display? (:display card))
+                                            (not (timeline-events-supported-display? (:display previous-card))))))]
+      (when (or reveals-all? (not= visibility previous-visibility))
+        (when-some [excluded-ids (:timeline.excluded_timeline_event_ids visibility)]
+          (api/check-400 (and (sequential? excluded-ids) (every? pos-int? excluded-ids))
+                         (tru "Excluded timeline event IDs must be a sequence of positive integers.")))
         (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
           (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
                          (tru "Selected timeline IDs must be a sequence of positive integers."))
           ;; Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (doseq [timeline (queries.db/timelines (set timeline-ids))]
-            (api/read-check timeline)))))))
+          (when-let [revealed-ids (not-empty (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+            (doseq [timeline (queries.db/timelines revealed-ids)]
+              (api/read-check timeline))))))))
 
 (defn- dashboard-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows when it is on a dashboard."

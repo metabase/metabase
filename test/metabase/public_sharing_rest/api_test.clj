@@ -2553,6 +2553,25 @@
                       {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})
           (is (= {(:id dashcard) []} (dashboard-event-ids (public-dashboard dashboard)))))))))
 
+(deftest public-dashboard-series-card-events-test
+  (testing "a dashcard shows the events its own card selects, not the ones its series select"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Timeline card-timeline {}
+                     :model/TimelineEvent card-event {:timeline_id (:id card-timeline)}
+                     :model/Timeline series-timeline {}
+                     :model/TimelineEvent _series-event {:timeline_id (:id series-timeline)}
+                     :model/Dashboard dashboard (public-dashboard-properties)
+                     :model/Card card {:display                "line"
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id card-timeline)]}}
+                     :model/Card series-card {:display                "line"
+                                              :visualization_settings {:timeline.selected_timeline_ids [(:id series-timeline)]}}
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}
+                     :model/DashboardCardSeries _ {:dashboardcard_id (:id dashcard)
+                                                   :card_id          (:id series-card)
+                                                   :position         0}]
+        (is (= {(:id dashcard) [(:id card-event)]}
+               (dashboard-event-ids (public-dashboard dashboard))))))))
+
 (deftest public-dashboard-cardless-dashcard-events-test
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp [:model/Dashboard dashboard (public-dashboard-properties)

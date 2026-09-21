@@ -1837,6 +1837,53 @@
                                   (t2/update! :model/Card (:id card) {:visualization_settings after}))))
           (is (= before (t2/select-one-fn :visualization_settings :model/Card (:id card)))))))))
 
+(deftest partially-readable-card-timeline-selection-test
+  (testing "on a card that also selects a timeline the user cannot read"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline private-timeline {:collection_id (:id restricted)}
+                   :model/TimelineEvent private-event {:timeline_id (:id private-timeline)}
+                   :model/Timeline readable-timeline {}
+                   :model/TimelineEvent readable-event {:timeline_id (:id readable-timeline)}
+                   :model/Card card {:display :line
+                                     :visualization_settings
+                                     {:timeline.selected_timeline_ids       [(:id readable-timeline) (:id private-timeline)]
+                                      :timeline.excluded_timeline_event_ids []}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (let [settings         (fn [& {:as overrides}]
+                               (merge {:timeline.selected_timeline_ids       [(:id readable-timeline) (:id private-timeline)]
+                                       :timeline.excluded_timeline_event_ids []}
+                                      overrides))
+            ;; no bound user, so this restores the starting point without a permission check
+            reset!           #(t2/update! :model/Card (:id card) {:visualization_settings (settings)})
+            update-settings! (fn [settings]
+                               (mt/with-test-user :rasta
+                                 (t2/update! :model/Card (:id card) {:visualization_settings settings}))
+                               (t2/select-one-fn :visualization_settings :model/Card (:id card)))]
+        (testing "an event of the readable timeline can be hidden and shown again"
+          (reset!)
+          (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id readable-event)])]
+            (is (= hidden (update-settings! hidden)))
+            (is (= (settings) (update-settings! (settings))))))
+        (testing "an event of the unreadable timeline can be hidden but not shown again"
+          (reset!)
+          (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id private-event)])]
+            (is (= hidden (update-settings! hidden)))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (update-settings! (settings))))
+            (is (= hidden (t2/select-one-fn :visualization_settings :model/Card (:id card))))))
+        (testing "the readable timeline can be deselected and selected again"
+          (reset!)
+          (let [deselected (settings :timeline.selected_timeline_ids [(:id private-timeline)])]
+            (is (= deselected (update-settings! deselected)))
+            (is (= (settings) (update-settings! (settings))))))
+        (testing "another unreadable timeline cannot be selected"
+          (reset!)
+          (mt/with-temp [:model/Timeline other-private {:collection_id (:id restricted)}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                  (update-settings!
+                                   (settings :timeline.selected_timeline_ids
+                                             [(:id readable-timeline) (:id private-timeline) (:id other-private)]))))))))))
+
 (deftest unchanged-or-cleared-card-timeline-selection-test
   (mt/with-temp [:model/Collection collection {}
                  :model/Timeline timeline {:collection_id (:id collection)}
@@ -1859,7 +1906,23 @@
         (testing (pr-str invalid-ids)
           (let [settings {:timeline.selected_timeline_ids invalid-ids}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Selected timeline IDs must be"
+                                  (t2/update! :model/Card (:id card) {:visualization_settings settings}))))
+          (let [settings {:timeline.excluded_timeline_event_ids invalid-ids}]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Excluded timeline event IDs must be"
                                   (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))))
+
+(deftest card-timeline-malformed-saved-exclusions-test
+  (testing "a malformed excluded-event list saved before it was validated does not block later edits"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:display :line
+                                     :visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                              :timeline.excluded_timeline_event_ids 5}}]
+      (mt/with-test-user :rasta
+        (t2/update! :model/Card (:id card)
+                    {:visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                              :timeline.excluded_timeline_event_ids []}})
+        (is (= [] (get-in (t2/select-one :model/Card (:id card))
+                          [:visualization_settings :timeline.excluded_timeline_event_ids])))))))
 
 (deftest card-timeline-selection-deleted-timeline-test
   (testing "a selection pointing at a deleted timeline still saves, so the card is not stuck"

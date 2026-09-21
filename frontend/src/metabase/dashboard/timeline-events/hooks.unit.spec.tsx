@@ -41,8 +41,10 @@ import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-ev
 import { registerVisualizations } from "metabase/visualizations/register";
 import { getComputedSettingsForSeries } from "metabase/viz-core";
 import type {
+  CardId,
   DashboardCard,
   DashboardTabId,
+  Dataset,
   QuestionDashboardCard,
   Timeline,
   TimelineEvent,
@@ -111,17 +113,30 @@ const EVENTS_RECORDED: VisualizationSettings = {
   "timeline.excluded_timeline_event_ids": [],
 };
 
-const DATASET = createMockDataset({
-  data: createMockDatasetData({
-    cols: [
-      createMockDatetimeColumn({ name: "CREATED_AT", unit: "month" }),
-      createMockNumericColumn({ name: "count" }),
-    ],
-    rows: [
-      ["2024-01-01", 1],
-      ["2024-03-01", 2],
-    ],
-  }),
+const createDataset = (rows: [string, number][]) =>
+  createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockDatetimeColumn({ name: "CREATED_AT", unit: "month" }),
+        createMockNumericColumn({ name: "count" }),
+      ],
+      rows,
+    }),
+  });
+
+const DATASET = createDataset([
+  ["2024-01-01", 1],
+  ["2024-03-01", 2],
+]);
+const LATER_DATASET = createDataset([
+  ["2024-05-01", 1],
+  ["2024-07-01", 2],
+]);
+const LATER_EVENT = createMockTimelineEvent({
+  ...EVENT,
+  id: 105,
+  name: "Later launch",
+  timestamp: "2024-06-15T00:00:00Z",
 });
 
 const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
@@ -137,6 +152,7 @@ function setup({
   dashcardTabId = null,
   withSidebar = false,
   dashcards,
+  datasets = {},
   timelines = [TIMELINE],
   seedTimelines = true,
 }: {
@@ -146,6 +162,7 @@ function setup({
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
   dashcards?: QuestionDashboardCard[];
+  datasets?: Record<CardId, Dataset>;
   timelines?: Timeline[];
   seedTimelines?: boolean;
 } = {}) {
@@ -196,7 +213,12 @@ function setup({
           dashcardData: Object.fromEntries(
             allDashcards.map((dashcard) => [
               dashcard.id,
-              { [dashcard.card.id]: DATASET },
+              Object.fromEntries(
+                [dashcard.card, ...(dashcard.series ?? [])].map((card) => [
+                  card.id,
+                  datasets[card.id] ?? DATASET,
+                ]),
+              ),
             ]),
           ),
         }),
@@ -349,6 +371,49 @@ describe("dashboard timeline events", () => {
       getDashCardVisibleTimelineEventIds(store.getState(), DASHCARD_ID),
     ).toEqual([SAME_RANGE_EVENT.id]);
   });
+
+  it("lists an event that only the chart's added series reaches", async () => {
+    const seriesCard = createMockCard({ id: 42, display: "line" });
+    const dashcards = [
+      createMockDashboardCard({
+        id: DASHCARD_ID,
+        dashboard_id: DASHBOARD_ID,
+        card: createMockCard({
+          display: "line",
+          visualization_settings: EVENTS_RECORDED,
+        }),
+        series: [seriesCard],
+      }),
+    ];
+    setup({
+      dashcards,
+      datasets: { [seriesCard.id]: LATER_DATASET },
+      timelines: [createMockTimeline({ ...TIMELINE, events: [LATER_EVENT] })],
+      withSidebar: true,
+    });
+
+    expect(await screen.findByText(LATER_EVENT.name)).toBeInTheDocument();
+  });
+
+  it.each(["metric", "model"] as const)(
+    "lists the events of a %s",
+    async (type) => {
+      const dashcards = [
+        createMockDashboardCard({
+          id: DASHCARD_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: createMockCard({
+            type,
+            display: "line",
+            visualization_settings: EVENTS_RECORDED,
+          }),
+        }),
+      ];
+      setup({ dashcards, withSidebar: true });
+
+      expect(await screen.findByText(EVENT.name)).toBeInTheDocument();
+    },
+  );
 
   it("ignores a chart that is too small to show events", async () => {
     const question = createMockCard({
