@@ -15,21 +15,20 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
-  # A profiling dispatch (test.profile-backend.yml) picks its own leg and always runs; only CI runs are gated.
-  #
   # A CI run is a smoke run -- Postgres Latest alone, to keep PRs cheap -- unless the whole suite is
   # forced to run or the PR carries `ci:run-semantic-search-tests`. Each job repeats that rule
   # because a job `if` cannot read a shared value.
   gate:
-    if: ${{ github.event.inputs.suite == '' }}
     uses: ./.github/workflows/test-gate.yml
     with:
-      filters: backend_all
+      # A profiling dispatch (test.profile-backend.yml) picks its own leg and always runs, so it asks
+      # for no filters: the gate then only checks for a force-cancel.
+      filters: ${{ github.event.inputs.suite == '' && 'backend_all' || '' }}
 
   semantic-search-tests-h2:
     needs: gate
     if: >-
-      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      ${{ needs.gate.outputs.run == 'true'
       && (github.event.inputs.db == '' || github.event.inputs.db == 'h2')
       && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
       || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
@@ -78,7 +77,7 @@ jobs:
   semantic-search-tests-mariadb:
     needs: gate
     if: >-
-      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      ${{ needs.gate.outputs.run == 'true'
       && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb')
       && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
       || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
@@ -148,7 +147,7 @@ jobs:
   semantic-search-tests-mysql:
     needs: gate
     if: >-
-      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      ${{ needs.gate.outputs.run == 'true'
       && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql')
       && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
       || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
@@ -225,7 +224,7 @@ jobs:
   semantic-search-tests-postgres:
     needs: gate
     if: >-
-      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      ${{ needs.gate.outputs.run == 'true'
       && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
@@ -300,7 +299,7 @@ jobs:
   semantic-search-tests-appdb-mode:
     needs: gate
     if: >-
-      ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false'
+      ${{ needs.gate.outputs.run == 'true'
       && (github.event.inputs.db == '' || github.event.inputs.db == 'appdb-mode')
       && (github.event.inputs.suite != '' || needs.gate.outputs.force-run == 'true'
       || contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')) }}
