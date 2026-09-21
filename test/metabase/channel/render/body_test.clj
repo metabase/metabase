@@ -403,7 +403,7 @@
   (testing "a numeric string is colored by its number, like in the app"
     (is (str/includes? (scalar-style (scalar-results [{:min 0 :max 100 :color segment-color}] "42")) segment-color))
     (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :max 10 :color segment-color}] "42")) segment-color))))
-  (testing "a non-numeric value is never colored"
+  (testing "a non-numeric value is never colored (#82820)"
     (are [value] (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] value)) segment-color))
       "foo"
       "42%"

@@ -75,17 +75,23 @@ const getSegmentBounds = ({ min, max }: ResolvedOpenEndedGoalSegment) => ({
   max: max ?? Infinity,
 });
 
-const formatSegmentRange = ({ min, max }: ResolvedOpenEndedGoalSegment) => {
+const formatSegmentRange = (
+  { min, max }: ResolvedOpenEndedGoalSegment,
+  formatOptions: ColumnSettings,
+) => {
+  const format = (bound: number) =>
+    formatValue(bound, { ...formatOptions, jsx: false, compact: false });
+
   if (min != null && max != null) {
-    return `${min} - ${max}`;
+    return `${format(min)} - ${format(max)}`;
   }
 
   if (min != null) {
-    return `≥ ${min}`;
+    return `≥ ${format(min)}`;
   }
 
   if (max != null) {
-    return `≤ ${max}`;
+    return `≤ ${format(max)}`;
   }
 
   return "";
@@ -124,7 +130,10 @@ export function getColor(
   return segment.color;
 }
 
-export function getTooltipContent(segments?: ResolvedOpenEndedGoalSegment[]) {
+export function getTooltipContent(
+  segments?: ResolvedOpenEndedGoalSegment[],
+  formatOptions: ColumnSettings = {},
+) {
   if (!segments || segments.length === 0) {
     return null;
   }
@@ -139,7 +148,7 @@ export function getTooltipContent(segments?: ResolvedOpenEndedGoalSegment[]) {
             </td>
             <td>
               <Text c="inherit" lh="md">
-                {formatSegmentRange(segment)}
+                {formatSegmentRange(segment, formatOptions)}
               </Text>
             </td>
             <td>
