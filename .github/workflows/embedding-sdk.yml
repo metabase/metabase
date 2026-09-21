@@ -121,7 +121,7 @@ jobs:
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:

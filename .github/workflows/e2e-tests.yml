@@ -63,10 +63,9 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-    if: |
-      !cancelled() &&
-      needs.e2e-matrix-builder.result == 'success' &&
-      needs.e2e-matrix-builder.outputs.hasTests == 'true'
+    # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
+    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
+    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -86,7 +85,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -151,7 +150,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
       MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}

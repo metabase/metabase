@@ -113,7 +113,7 @@ jobs:
   loki-tests-result:
     name: visual-test
     needs: [gate, story-selection, visual-test]
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
