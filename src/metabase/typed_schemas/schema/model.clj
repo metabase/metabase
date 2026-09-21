@@ -110,17 +110,11 @@
               :else               nil)))))))
 
 (defn- query-action-template-tag-types
-  "Returns template-tag types for query action parameters."
+  "Returns template-tag types for query action parameters, or nil when the action has no usable query."
   [{:keys [type dataset_query]}]
-  (when (and (= (lib.schema.common/normalize-keyword type) :query) dataset_query)
-    (let [tags (lib/template-tags dataset_query)]
-      (into {}
-            (for [{tag-name :name tag-type :type} tags]
-              [(cond
-                 (string? tag-name)  tag-name
-                 (keyword? tag-name) (clojure.core/name tag-name)
-                 :else               nil)
-               tag-type])))))
+  (when (= (lib.schema.common/normalize-keyword type) :query)
+    ;; a stored query that failed to deserialize comes back as {}, which Lib rejects
+    (some-> dataset_query not-empty lib/all-template-tags-map (update-vals :type))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."

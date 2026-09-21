@@ -29,12 +29,32 @@
                       {action-id :action-id} {:name          "Update bird"
                                               :database_id   (mt/id)
                                               :dataset_query action-query
-                                              :parameters    [{:id "name", :name "Name", :type :text}]}]
+                                              ;; :category has no JS type of its own, so the result depends on the
+                                              ;; persisted template tag's type
+                                              :parameters    [{:id     "name"
+                                                               :name   "Name"
+                                                               :type   :category
+                                                               :target [:variable [:template-tag "name"]]}]}]
       (let [action (actions/select-action :id action-id)]
         (is (sequential? (get-in action [:dataset_query :stages 0 :template-tags])))
         (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
                 (get-in (schema.model/model-schema model)
                         [:actions "updateBird" :parameters])))))))
+
+(deftest model-schema-tolerates-empty-action-query-test
+  (testing "an action whose stored query degraded to {} still builds instead of failing the whole model"
+    (mt/with-actions [model {:name          "Bird model"
+                             :type          :model
+                             :dataset_query (let [mp (mt/metadata-provider)]
+                                              (lib/query mp (lib.metadata/table mp (mt/id :categories))))}
+                      {action-id :action-id} {:name          "Update bird"
+                                              :database_id   (mt/id)
+                                              :dataset_query {}
+                                              :parameters    [{:id "name", :name "Name", :type :text}]}]
+      (is (= {} (:dataset_query (actions/select-action :id action-id))))
+      (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
+              (get-in (schema.model/model-schema model)
+                      [:actions "updateBird" :parameters]))))))
 
 (deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
