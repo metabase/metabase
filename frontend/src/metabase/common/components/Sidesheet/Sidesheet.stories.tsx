@@ -9,7 +9,6 @@ import { SidesheetCard } from "./SidesheetCard";
 import { SidesheetCardSection } from "./SidesheetCardSection";
 
 const args = {
-  size: "md",
   title: "My Awesome Sidesheet",
   onClose: () => {},
   isOpen: true,
@@ -25,6 +24,10 @@ const argTypes = {
   },
   isOpen: {
     control: { type: "boolean" },
+  },
+  offset: {
+    options: [undefined, 16],
+    control: { type: "inline-radio" },
   },
 };
 
@@ -91,6 +94,13 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+};
+
+export const Offset = {
+  render: DefaultTemplate,
+  args: {
+    offset: 16,
+  },
 };
 
 export const WithCards = {

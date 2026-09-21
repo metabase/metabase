@@ -22,7 +22,10 @@ interface SidesheetProps {
   withOverlay?: boolean;
   overlayProps?: ModalOverlayProps;
   closeOnEscape?: boolean;
+  offset?: 16;
 }
+
+const DEFAULT_WIDTH = "29rem";
 
 const sizes: Record<SidesheetSize, string> = {
   xs: "20rem",
@@ -37,12 +40,13 @@ export function Sidesheet({
   title,
   isOpen,
   onClose,
-  size = "sm",
+  size,
   children,
   removeBodyPadding,
   withOverlay = true,
   overlayProps,
   closeOnEscape = true,
+  offset,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
   return (
@@ -51,6 +55,7 @@ export function Sidesheet({
       opened={isOpen}
       onClose={onClose}
       closeOnEscape={closeOnEscape}
+      shadow="xs_outline"
       h="100dvh"
     >
       {withOverlay && (
@@ -59,21 +64,25 @@ export function Sidesheet({
       <Modal.Content
         transitionProps={{ duration: 0 }}
         px={0}
-        w={sizes[size]}
-        bg="background_page-secondary"
+        w={size ? sizes[size] : DEFAULT_WIDTH}
+        bg="background_surface-primary"
         data-testid="sidesheet"
+        data-offset={offset}
         classNames={{
           content: cx(Styles.SidesheetContent, Animation.slideLeft),
         }}
         aria-labelledby={titleId}
       >
-        <Modal.Header bg="background_page-secondary" px="xxl">
+        <Modal.Header bg="background_surface-primary" px="xl" pt="xl" pb="lg">
           {title && (
-            <Modal.Title py="lg" pr="sm" id={titleId}>
+            <Modal.Title pr="sm" id={titleId} className={Styles.SidesheetTitle}>
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton aria-label={t`Close`} />
+          <Modal.CloseButton
+            aria-label={t`Close`}
+            className={Styles.SidesheetCloseButton}
+          />
         </Modal.Header>
         <Modal.Body
           p={0}
@@ -86,8 +95,8 @@ export function Sidesheet({
         >
           <Stack
             gap="xl"
-            px={removeBodyPadding ? 0 : "xxl"}
-            pb={removeBodyPadding ? 0 : "xxl"}
+            px={removeBodyPadding ? 0 : "xl"}
+            pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? 0 : "lg"}
             h="100%"
             className={Styles.OverflowAuto}

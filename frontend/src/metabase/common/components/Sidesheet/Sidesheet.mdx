@@ -1,48 +1,49 @@
-import { Canvas, Story, Meta } from "@storybook/blocks";
-import { Box, Flex } from "metabase/ui";
+import { Meta } from "@storybook/blocks";
 import * as SidesheetStories from "./Sidesheet.stories";
-
-import { Sidesheet } from "./Sidesheet";
-import { SidesheetCard } from "./SidesheetCard";
-import { SidesheetCardSection } from "./SidesheetCardSection";
-import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
-
-import { TestTabbedSidesheet, TestPagedSidesheet } from "./Sidesheet.samples";
 
 <Meta of={SidesheetStories} />
 
 # Sidesheet
 
+A panel anchored to the right edge of the screen, used to show details or
+settings for the thing the user is currently looking at.
+
+Each story in the sidebar renders a real Sidesheet. They are not embedded on this
+page: a Sidesheet is a fixed-position overlay, so several of them on one page
+stack on top of each other and none of them can be read.
+
 ## When to use a Sidesheet
 
-## Docs
+- Supporting information about the current object — info, history, relationships.
+- Settings that apply to the current object and can be changed without leaving it.
+
+Use a modal instead when the user must finish or cancel the task before doing
+anything else. Use a popover for a short, single-purpose interaction.
+
+## Sizes
+
+The default width is 464px, which fits the common info/settings content. The
+named `size` values (`xs`, `sm`, `md`, `lg`, `xl`, `auto`) are there for content
+that genuinely needs more room — tabbed panels, for example, use `md`.
+
+## Offset
+
+`offset={16}` insets the Sidesheet from the edges of the viewport and rounds its
+corners, so it reads as floating above the page rather than attached to it.
+`16` is the only supported value.
+
+## Composition
+
+- `SidesheetCard` groups related content; `SidesheetCardSection` subdivides a
+  card.
+- `SidesheetSubPage` renders a nested page with a back chevron, for settings that
+  need a second level.
+- `SidesheetTabPanelContainer` plus the `removeBodyPadding` prop keeps tab panels
+  scrolling internally so the tabs stay visible.
 
 ## Caveats
 
-## Usage guidelines
-
-## Examples
-
-// TODO: figure out how to get CSS modules working with storybook 🔥
-
-<Canvas of={SidesheetStories.Default} />
-
-### With cards
-
-<Canvas of={SidesheetStories.WithCards} />
-
-### With sectioned cards
-
-<Canvas of={SidesheetStories.WithSectionedCards} />
-
-### With pages
-
-<Canvas of={SidesheetStories.WithSubPages} />
-
-### With tabs
-
-<Canvas of={SidesheetStories.WithTabs} />
-
-### Sidesheet Buttons
-
-<Canvas of={SidesheetStories.SidesheetButtons} />
+- Cards sit on the same surface colour as the Sidesheet and are separated by
+  their border, so avoid nesting bordered containers inside a card.
+- Pass `closeOnEscape={false}` while a modal is open on top of the Sidesheet,
+  otherwise one Escape press closes both.
