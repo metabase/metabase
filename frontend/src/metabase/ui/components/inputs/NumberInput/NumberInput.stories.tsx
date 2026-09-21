@@ -38,20 +38,20 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   size: {
-    options: ["xs", "md"],
+    options: ["sm", "md", "lg"],
     control: { type: "inline-radio" },
   },
   label: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   description: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   placeholder: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   error: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -84,22 +84,30 @@ export default {
 
 export const Default = {};
 
-// `xs` and `md` are the only sizes the shared Input styles theme today; `sm`
-// and `lg` fall through to Mantine's defaults. GDGT-2477 asks for sm/md/lg.
-const SIZES = ["xs", "sm", "md", "lg"] as const;
+const SIZES = ["sm", "md", "lg"] as const;
 
-const STATES = [
+const STATES: {
+  id: string;
+  label: string;
+  props: NumberInputProps;
+}[] = [
   { id: "default", label: "Default", props: {} },
+  { id: "empty", label: "Empty", props: { defaultValue: "" } },
   { id: "hover", label: "Hover", props: {} },
-  { id: "focus", label: "Focus", props: {} },
-  { id: "filled", label: "Filled", props: { defaultValue: sampleArgs.value } },
+  { id: "focus", label: "Focused", props: {} },
   { id: "error", label: "Error", props: { error: sampleArgs.error } },
+  {
+    id: "error-focus",
+    label: "Error (focused)",
+    props: { error: sampleArgs.error },
+  },
   { id: "disabled", label: "Disabled", props: { disabled: true } },
   {
-    id: "read-only",
-    label: "Read only",
-    props: { defaultValue: sampleArgs.value, readOnly: true },
+    id: "empty-disabled",
+    label: "Empty, disabled",
+    props: { defaultValue: "", disabled: true },
   },
+  { id: "read-only", label: "Read only", props: { readOnly: true } },
 ];
 
 /*
@@ -142,17 +150,17 @@ const LABEL_EXAMPLES: {
   {
     id: "error",
     jsx: '<NumberInput error="…" />',
-    props: { error: sampleArgs.error },
+    props: { error: "Enter a number above 0" },
   },
 ];
 
-const INPUT_WIDTH = "7rem";
-const LABEL_WIDTH = "5.5rem";
+const INPUT_WIDTH = "11rem";
+const LABEL_WIDTH = "9rem";
 
 const gridStyle = (columns: number) => ({
   display: "grid",
   gridTemplateColumns: `${LABEL_WIDTH} repeat(${columns}, max-content)`,
-  columnGap: "1.5rem",
+  columnGap: "2.5rem",
   rowGap: "1rem",
   alignItems: "center",
 });
@@ -163,9 +171,17 @@ const RowLabel = ({ children }: { children: string }) => (
   </Text>
 );
 
-const OverviewTemplate: StoryFn<NumberInputProps> = () => (
+type OverviewArgs = NumberInputProps & {
+  filled?: boolean;
+  withControls?: boolean;
+};
+
+const OverviewTemplate: StoryFn<OverviewArgs> = ({ filled, withControls }) => (
   <StoryShowcase title="NumberInput">
-    <StorySection title="Sizes and states" description="Default size is md.">
+    <StorySection
+      title="Sizes and states"
+      description="Default size is md. The controls are hidden by default in the app; `withControls` shows them, and a disabled or read-only field drops them either way."
+    >
       <Box style={gridStyle(SIZES.length)}>
         <div />
         {SIZES.map((size) => (
@@ -180,7 +196,9 @@ const OverviewTemplate: StoryFn<NumberInputProps> = () => (
                 data-state-row={state.id}
                 size={size}
                 placeholder={sampleArgs.placeholder}
+                hideControls={!withControls}
                 w={INPUT_WIDTH}
+                {...(filled ? { defaultValue: sampleArgs.value } : {})}
                 {...state.props}
               />
             ))}
@@ -209,6 +227,7 @@ const OverviewTemplate: StoryFn<NumberInputProps> = () => (
             key={id}
             label={sampleArgs.label}
             placeholder={sampleArgs.placeholder}
+            defaultValue={sampleArgs.value}
             w={width ?? INPUT_WIDTH}
             styles={labelSlotRows(props.description != null)}
             {...props}
@@ -224,6 +243,7 @@ const OverviewTemplate: StoryFn<NumberInputProps> = () => (
           <NumberInput
             leftSection={<Icon name="int" />}
             placeholder={sampleArgs.placeholder}
+            defaultValue={sampleArgs.value}
             w={INPUT_WIDTH}
           />
         </Stack>
@@ -246,14 +266,22 @@ const OverviewTemplate: StoryFn<NumberInputProps> = () => (
 
 export const Overview = {
   render: OverviewTemplate,
+  args: { filled: true, withControls: true },
+  argTypes: {
+    filled: { control: { type: "boolean" } },
+    withControls: { control: { type: "boolean" } },
+  },
   parameters: {
     pseudo: {
       // Mantine forwards rest props to the input element, so the hook sits on
-      // the same element the :hover / :focus rules do.
+      // the same element the :hover / :focus-within rules do.
       hover: 'input[data-state-row="hover"]',
-      focus: 'input[data-state-row="focus"]',
+      focusWithin: [
+        'input[data-state-row="focus"]',
+        'input[data-state-row="error-focus"]',
+      ],
     },
-    controls: { include: ["theme"] },
+    controls: { include: ["filled", "withControls", "theme"] },
   },
 };
 
