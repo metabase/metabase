@@ -28,6 +28,24 @@
                        [:creator_id ::lib.schema.id/user]]]]
   (t2/insert-returning-instance! :model/TransformTest transform-test))
 
+(mu/defn insert-transform-test-run! :- ::transform-testing.schema/transform-test-run
+  "Insert a started TransformTestRun for `transform-test-id` and return it."
+  [transform-test-id :- ms/PositiveInt
+   initiated-by      :- [:maybe ::lib.schema.id/user]]
+  (t2/insert-returning-instance! :model/TransformTestRun
+                                 {:transform_test_id transform-test-id
+                                  :initiated_by      initiated-by
+                                  :status            :started}))
+
+(mu/defn finish-started-transform-test-run!
+  "Set `status` and the end time of TransformTestRun `run-id` if it is still started."
+  [run-id :- ms/PositiveInt
+   status :- ::transform-testing.schema/run-status]
+  (t2/update! :model/TransformTestRun
+              :id run-id
+              :status "started"
+              {:status status :end_time :%now}))
+
 (mu/defn update-transform-test!
   "Apply `updates` to the TransformTest with `id`."
   [id :- ms/PositiveInt
