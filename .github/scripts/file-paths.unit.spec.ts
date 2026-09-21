@@ -90,6 +90,19 @@ describe("file-paths.yaml", () => {
     expect(matches("ci_scripts", path)).toBe(true);
   });
 
+  // Every suite's gate calls the same workflow, so a change to it has to reach every suite.
+  it.each([
+    "backend_all",
+    "frontend_all",
+    "frontend_loki_all",
+    "e2e_all",
+    "embedding_sdk_components",
+    "embedding_sdk_host_sample_apps",
+    "ci_scripts",
+  ])("runs %s when the test gate changes", (filter) => {
+    expect(matches(filter, ".github/workflows/test-gate.yml")).toBe(true);
+  });
+
   // The build filters replace what used to be an inline condition in run-tests.yml, so what they
   // leave out is the whole point: a diff that changes nothing an artifact ships gets no build.
   it.each([

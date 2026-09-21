@@ -23,6 +23,8 @@ shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/run-tests.yml"
+  # Every suite's gate calls it, so a change here can turn any suite off.
+  - ".github/workflows/test-gate.yml"
 
 shared_e2e: &shared_e2e
   - "e2e/runner/**"
