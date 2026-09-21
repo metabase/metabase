@@ -798,6 +798,85 @@ describe("scenarios > question > filter", () => {
     H.popover().findByText("Created At").should("be.visible");
   });
 
+  it("should place the date picker beside the pill when there is no vertical room (UXW-4024)", () => {
+    cy.viewport(1280, 500);
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    cy.log("The column list itself keeps a vertical placement");
+    H.clauseStepPopover()
+      .should("have.attr", "data-position")
+      .and("match", /^(bottom|top)/);
+
+    H.clauseStepPopover().findByText("Created At").click();
+    H.clauseStepPopover().findByText("Fixed date range…").click();
+
+    cy.log("The tall date picker falls back to a side placement");
+    H.clauseStepPopover()
+      .should("have.attr", "data-position")
+      .and("match", /^right/);
+    H.clauseStepPopover().button("Add filter").should("be.visible");
+  });
+
+  it("should place the header cell date picker beside the column when there is no vertical room (UXW-4024)", () => {
+    cy.viewport(1280, 500);
+    H.openOrdersTable();
+    H.tableHeaderClick("Created At");
+    H.popover().findByText("Filter by this column").click();
+    H.popover().findByText("Fixed date range…").click();
+
+    cy.findByTestId("click-actions-popover")
+      .should("have.attr", "data-position")
+      .and("match", /^(right|left)/);
+    cy.findByTestId("click-actions-popover")
+      .button("Add filter")
+      .should("be.visible");
+  });
+
+  it("should keep the timeseries footer date picker footer reachable when there is no vertical room (UXW-4024)", () => {
+    cy.viewport(1280, 500);
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      display: "line",
+    });
+
+    cy.findByTestId("timeseries-filter-button").click();
+    cy.findByTestId("date-filter-picker")
+      .findByDisplayValue("All time")
+      .click();
+    cy.findByRole("listbox").findByRole("option", { name: "Between" }).click();
+
+    // At this viewport the picker is taller than the whole screen even when
+    // side-placed, so the footer is reachable by scrolling within the popover
+    cy.findByTestId("timeseries-filter-popover")
+      .button("Apply")
+      .scrollIntoView()
+      .should("be.visible");
+  });
+
+  it("should keep the date picker below the pill when there is vertical room (UXW-4024)", () => {
+    cy.viewport(1280, 1000);
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.clauseStepPopover().findByText("Created At").click();
+    H.clauseStepPopover().findByText("Fixed date range…").click();
+
+    H.clauseStepPopover()
+      .should("have.attr", "data-position")
+      .and("match", /^bottom/);
+    H.clauseStepPopover().button("Add filter").should("be.visible");
+  });
+
   it("should allow picking custom expressions in filter picker", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });

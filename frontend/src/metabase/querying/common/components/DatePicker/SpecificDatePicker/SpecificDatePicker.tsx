@@ -7,6 +7,7 @@ import type {
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
+import { useRequestPopoverSideFallback } from "metabase/ui/components/utils/PopoverSideFallback";
 
 import type { DatePickerSubmitButtonProps } from "../types";
 import { renderDefaultSubmitButton } from "../utils";
@@ -54,6 +55,8 @@ export function SpecificDatePicker({
 }: SpecificDatePickerProps) {
   const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
+
+  useRequestPopoverSideFallback();
   const hasTimeToggle = canSetTime(value, availableUnits);
   const coercedValue = coerceValue(value);
 

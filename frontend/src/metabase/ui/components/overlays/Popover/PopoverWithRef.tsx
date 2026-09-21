@@ -15,11 +15,13 @@ export const PopoverWithRef = ({
   anchorEl,
   children,
   popoverContentTestId,
+  dropdownRef,
   ...popoverProps
 }: PropsWithChildren &
   PopoverProps & {
     anchorEl: Element | null;
     popoverContentTestId?: string;
+    dropdownRef?: Ref<HTMLDivElement>;
   }) => {
   const Target = useMemo(() => {
     return forwardRef(function Target(
@@ -47,7 +49,7 @@ export const PopoverWithRef = ({
       <Popover.Target>
         <Target anchorEl={anchorEl} />
       </Popover.Target>
-      <Popover.Dropdown data-testid={popoverContentTestId}>
+      <Popover.Dropdown ref={dropdownRef} data-testid={popoverContentTestId}>
         {children}
       </Popover.Dropdown>
     </Popover>

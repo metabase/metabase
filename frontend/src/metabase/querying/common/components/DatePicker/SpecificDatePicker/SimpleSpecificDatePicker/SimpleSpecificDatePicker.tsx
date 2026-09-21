@@ -1,4 +1,5 @@
 import type { SpecificDatePickerValue } from "metabase/querying/common/types";
+import { useRequestPopoverSideFallback } from "metabase/ui/components/utils/PopoverSideFallback";
 
 import type { DateRangePickerValue } from "../DateRangePicker";
 import { SimpleDateRangePicker } from "../DateRangePicker/SimpleDateRangePicker";
@@ -15,6 +16,8 @@ export function SimpleSpecificDatePicker({
   value,
   onChange,
 }: SimpleSpecificDatePickerProps) {
+  useRequestPopoverSideFallback();
+
   const handleDateChange = ({ date, hasTime }: SingleDatePickerValue) => {
     onChange(setDateTime(value, date, hasTime));
   };
