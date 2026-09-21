@@ -1,8 +1,10 @@
 import type {
   SdkIframeDashboardEmbedSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-  SdkIframeQuestionEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
 export const isQuestionOrDashboardSettings = (

@@ -9,7 +9,7 @@ import {
   getIsDataStudioApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
