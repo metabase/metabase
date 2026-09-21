@@ -244,14 +244,14 @@ embedding_sdk_ci: &embedding_sdk_ci
   - ".github/actions/prepare-cypress/**"
   - ".github/workflows/embedding-sdk*.yml"
 
-embedding_sdk_components:
+embedding_sdk_components: &embedding_sdk_components
   - *default
   - *embedding_sdk_ci
   - *sources
   - *shared_e2e
   - "e2e/test-component/**/*.cy.*.{js,jsx,ts,tsx}"
 
-embedding_sdk_host_sample_apps:
+embedding_sdk_host_sample_apps: &embedding_sdk_host_sample_apps
   - *default
   - *embedding_sdk_ci
   - *frontend_sources
@@ -266,7 +266,7 @@ snowplow: &snowplow
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
 
-e2e_all:
+e2e_all: &e2e_all
   - *default
   - *e2e_ci
   - *sources
@@ -281,9 +281,27 @@ documentation:
 docs:
   - "docs/**"
 
-embedding_documentation:
+embedding_documentation: &embedding_documentation
   - ".typedoc/**"
   - "docs/embedding/**"
+
+# Everything the SDK package build feeds, so the build itself follows the union of its consumers.
+build_embedding_sdk_package:
+  - *embedding_sdk_ci
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
+  - *embedding_documentation
+  - *frontend_sources
+
+# The uberjar only exists to feed e2e, the SDK suites that boot a Metabase instance, bundle-size and
+# containerize, so it is worth building exactly when one of them might run. The SDK's type checks run
+# against the package artifact alone, so embedding docs do not belong here.
+build_uberjar:
+  - *backend_all
+  - *frontend_all
+  - *e2e_all
+  - *embedding_sdk_components
+  - *embedding_sdk_host_sample_apps
 
 yaml:
   - "**/*.yml"

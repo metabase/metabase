@@ -2,14 +2,6 @@ name: App DB Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -23,8 +15,16 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
+  # A profiling dispatch (test.profile-backend.yml) picks its own leg and always runs; only CI runs are gated.
+  gate:
+    if: ${{ github.event.inputs.suite == '' }}
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: backend_all
+
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ !cancelled() && needs.gate.result != 'failure' && needs.gate.outputs.run != 'false' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -38,7 +38,7 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ inputs.force-run }}
+          RUN_ALL: ${{ needs.gate.outputs.force-run }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -130,7 +130,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb') }}
+    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'mariadb' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -191,7 +191,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql') }}
+    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'mysql' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -250,7 +250,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
+    if: ${{ github.event.inputs.db == '' || github.event.inputs.db == 'postgres' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -292,6 +292,7 @@ jobs:
 
   app-db-tests-result:
     needs:
+      - gate
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
