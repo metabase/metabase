@@ -1,14 +1,12 @@
 import { t } from "ttag";
 
-import { useNavigate } from "metabase/router";
 import { Box, SegmentedControl } from "metabase/ui";
 
 import type { NavSection } from "../types";
 import { useNavSection } from "../use-nav-section";
 
 export function NavSectionSwitcher() {
-  const { section, setSection, hrefFor } = useNavSection();
-  const navigate = useNavigate();
+  const { section, setSection } = useNavSection();
 
   return (
     <Box px="md" pt="sm" pb="xs" data-testid="nav-section-switcher">
@@ -20,10 +18,7 @@ export function NavSectionSwitcher() {
         ]}
         value={section}
         fullWidth
-        onChange={(next) => {
-          setSection(next);
-          navigate(hrefFor(next));
-        }}
+        onChange={setSection}
       />
     </Box>
   );
