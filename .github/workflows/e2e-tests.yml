@@ -149,6 +149,7 @@ jobs:
   e2e-tests-result:
     needs:
       - gate
+      - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -161,6 +162,11 @@ jobs:
         if: ${{ needs.gate.result == 'failure' }}
         run: |
           echo "The test gate failed, so the suite never ran"
+          exit 1
+      - name: Check the matrix builder
+        if: ${{ needs.e2e-matrix-builder.result == 'failure' }}
+        run: |
+          echo "The matrix builder failed, so the suite never ran"
           exit 1
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}

@@ -184,12 +184,14 @@ jobs:
     secrets: inherit
 
   sdk-tests:
-    needs: [uberjar, embedding-sdk-package]
+    needs: [gate, uberjar, embedding-sdk-package]
     # Same rule as e2e-tests: a `skipped` artifact build still enters the suite, whose own gate then
     # skips every job and reports the required result check. A genuine failure keeps this job out, so
-    # the check stays pending instead of being buried under missing-artifact errors.
+    # the check stays pending instead of being buried under missing-artifact errors. A failed gate
+    # skips both builds for a reason the suite's own gate cannot see, so it has to keep this out too.
     if: |
       !cancelled() &&
+      needs.gate.result == 'success' &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled' &&
       needs.embedding-sdk-package.result != 'failure' &&
