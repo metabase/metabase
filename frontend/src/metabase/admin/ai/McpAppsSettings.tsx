@@ -88,7 +88,7 @@ export const McpAppsSettings = ({ id }: { id?: string }) => {
           <AdminSettingInput
             name="oauth-server-codex-refresh-token-reuse-enabled"
             title={t`Allow Codex refresh-token reuse`}
-            description={t`Prevent repeated authorization when Codex fails to save replacement tokens. Applies to clients registered as Codex. Refresh tokens remain reusable until expiry or revocation.`}
+            description={t`Try this if Codex repeatedly asks you to sign in. Warning: Enabling this setting makes your connection less secure.`}
             inputType="boolean"
             switchLabel={t`Allow Codex refresh-token reuse`}
           />
