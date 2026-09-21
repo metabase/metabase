@@ -1,6 +1,24 @@
-import { findPageBreakCandidates, getPageBreaks } from "./save-dashboard-pdf";
+import {
+  findPageBreakCandidates,
+  getPageBreaks,
+  saveDashboardPdf,
+} from "./save-dashboard-pdf";
 
 describe("save-dashboard-pdf", () => {
+  describe("saveDashboardPdf", () => {
+    it("rejects instead of silently no-oping when the selector matches no dashboard content (metabase#79301)", async () => {
+      await expect(
+        saveDashboardPdf({
+          fileName: "dashboard.pdf",
+          selector: "#does-not-exist",
+          parametersNodeSelector: "#also-does-not-exist",
+          dashboardName: "Empty dashboard",
+          includeBranding: false,
+        }),
+      ).rejects.toThrow("This dashboard has no content to export");
+    });
+  });
+
   describe("findPageBreakCandidates", () => {
     it("should find a potential page break between two cards", () => {
       const cards = [
