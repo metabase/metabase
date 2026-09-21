@@ -25,8 +25,9 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)
 - [Public sharing](../embedding/public-links.md)
-- [Embedding in other applications](../embedding/start.md)
 - [Caching](../configuring-metabase/caching.md)
+
+Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
 
 ## Monitoring access
 
