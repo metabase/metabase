@@ -128,6 +128,7 @@ export function MainNavbarView({
     card: cardItem,
     collection: collectionItem,
     dashboard: dashboardItem,
+    table: tableItem,
     "non-entity": nonEntityItem,
   } = _.indexBy(selectedItems, (item) => item.type);
 
@@ -139,9 +140,10 @@ export function MainNavbarView({
 
   // The Official rail renders items alongside collections, keyed by search model, so the open
   // entity outranks its containing collection for highlighting.
+  const officialEntityItem = cardItem ?? tableItem;
   const officialSelectedId =
-    cardItem?.model && cardItem.id != null
-      ? `${cardItem.model}-${cardItem.id}`
+    officialEntityItem?.model && officialEntityItem.id != null
+      ? `${officialEntityItem.model}-${officialEntityItem.id}`
       : dashboardItem?.id != null
         ? `dashboard-${dashboardItem.id}`
         : collectionItem?.id;

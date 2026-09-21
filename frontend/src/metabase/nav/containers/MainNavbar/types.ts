@@ -22,10 +22,10 @@ export type MainNavbarProps = MainNavbarOwnProps;
 export type NavSection = "official" | "unofficial";
 
 export interface SelectedItem {
-  type: "card" | "collection" | "dashboard" | "non-entity";
+  type: "card" | "collection" | "dashboard" | "table" | "non-entity";
   id?: number | string;
   url?: string;
-  /** For `card`, the search model it is indexed under: `card`, `dataset` or `metric`. */
+  /** For `card` and `table`, the search model the Official rail keys its rows by. */
   model?: SearchModel;
 }
 
