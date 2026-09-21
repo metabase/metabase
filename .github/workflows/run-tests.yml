@@ -53,10 +53,7 @@ jobs:
   upload-affected-tests-stats:
     needs: create-test-plan
     # Only land rows for PRs from the upstream repo so forks don't pollute the table.
-    if: |
-      !cancelled() &&
-      needs.create-test-plan.result == 'success' &&
-      github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+    if: ${{ github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -85,12 +82,9 @@ jobs:
   containerize:
     needs: [uberjar]
     if: >-
-      !cancelled() &&
-      needs.uberjar.result == 'success' &&
-      (
-        (github.event_name == 'push' && github.ref_name == 'master') ||
-        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
-      )
+      ${{ (github.event_name == 'push' && github.ref_name == 'master')
+      || (github.event_name == 'pull_request'
+      && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')) }}
     name: containerize (${{ matrix.edition }})
     strategy:
       matrix:
@@ -187,7 +181,7 @@ jobs:
     # this whole job is skipped, the inner required checks never report, and
     # branch protection blocks the merge as pending.
     if: |
-      always() && !cancelled() &&
+      !cancelled() &&
       needs.gate.result == 'success' &&
       needs.gate.outputs.verdict != 'force-skip' &&
       needs.uberjar.result != 'failure' &&
@@ -207,7 +201,7 @@ jobs:
     # skips every job and reports the required result check. A genuine failure keeps this job out, so
     # the check stays pending instead of being buried under missing-artifact errors.
     if: |
-      always() && !cancelled() &&
+      !cancelled() &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled' &&
       needs.embedding-sdk-package.result != 'failure' &&
@@ -223,6 +217,5 @@ jobs:
 
   bundle-size:
     needs: uberjar
-    if: ${{ !cancelled() && needs.uberjar.result == 'success' }}
     uses: ./.github/workflows/bundle-size.yml
     secrets: inherit

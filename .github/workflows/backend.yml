@@ -86,7 +86,7 @@ jobs:
   project-tests:
     name: Project tests
     needs: project-checks
-    if: ${{ always() && !cancelled() }}
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -511,7 +511,7 @@ jobs:
       - be-cljfmt
       - be-check
       - be-tests
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
