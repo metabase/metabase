@@ -1232,6 +1232,14 @@ Use SSL, TLS or plain text.
 
 Should we sync user attributes when someone logs in via LDAP?
 
+### `MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`
+
+- Type: csv
+- Default: ``
+- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-allowlist`
+
+Comma-separated list of user attributes to sync for LDAP users. Only these attributes are synced; leave blank to sync none.
+
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
 - Type: csv
@@ -1247,6 +1255,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 - [Configuration file name](./config-file.md): `ldap-timeout-seconds`
 
 Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
+### `MB_LDAP_TRUST_STORE`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `ldap-trust-store`
+
+Path to a JKS trust store of CA certificates used to validate the LDAP server's TLS certificate. Leave blank to use the JVM default trust store.
 
 ### `MB_LDAP_USER_BASE`
 
@@ -2426,6 +2442,10 @@ This URL is used for things like creating links in emails, auth redirects, and i
 This URL is critical for things like SSO authentication, email links, embedding and more.
         Even difference with `http://` vs `https://` can cause problems.
         Make sure that the address defined is how Metabase is being accessed.
+        If left unset, Metabase learns this value from the request headers of the first authenticated
+        admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
+        that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
+        `MB_SITE_URL` explicitly.
 
 ### `MB_SLACK_APP_TOKEN`
 
@@ -2975,6 +2995,13 @@ Type: string<br>
 Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
+
+### `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION`
+
+Type: boolean<br>
+Default: `false`
+
+By default, when [MB_ENCRYPTION_SECRET_KEY](#mb_encryption_secret_key) is set, Metabase encrypts on startup any values that an older version of Metabase stored unencrypted, and logs a warning for each column it had to encrypt. When `true`, Metabase will refuse to start instead of encrypting such values, including settings saved by an older version.
 
 ### `MB_DISABLE_SCHEDULER`
 

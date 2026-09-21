@@ -6,7 +6,7 @@ const embeddingSdkComponentTestConfig = {
   baseUrl: undefined, // baseUrl should not be set for component tests,
   defaultCommandTimeout: 10000,
   requestTimeout: 10000,
-  video: false,
+  video: process.env["CYPRESS_VIDEO"] !== "false",
   experimentalMemoryManagement: true,
   numTestsKeptInMemory: 1,
   specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",

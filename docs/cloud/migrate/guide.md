@@ -32,21 +32,16 @@ You'll kick off the migration process in your self-hosted Metabase, and finish u
 
 ### Initiate your migration
 
-In your Metabase, go to **Admin** > **Settings** > **Cloud**.
+1. In your Metabase, go to **Admin** > **Settings**.
+2. In the left sidebar, click **Cloud** and then **Try for free**.
+3. Metabase will prompt you with a modal to let you know that your Metabase will be read-only while it automates the migration. Click **Migrate now**.   
+4. Metabase will take a snapshot of your application database (all your questions, models, dashboards, etc.). While it's snapshotting, it'll display a banner to let people know that they won't be able to create anything new. People will still be able to view questions and dashboards during this time.
 
-In the **Migrate to Metabase Cloud** section, click on the **Get started** button.
+  ![Read-only banner](../images/read-only-banner.png)
 
-![Migrate to Metabase Cloud button](../images/migrate-button.png)
+  Once the snapshot upload completes:
 
-Metabase will prompt you with a modal to let you know that your Metabase will be read-only while it automates the migration. Click **Migrate now**.
-
-Metabase will take a snapshot of your application database (all your questions, models, dashboards, etc.). While it's snapshotting, it'll display a banner to let people know that they won't be able to create anything new. People will still be able to view questions and dashboards during this time.
-
-![Read-only banner](../images/read-only-banner.png)
-
-Once the snapshot upload completes:
-
-![Snapshot uploaded](../images/snapshot-uploaded.png)
+  ![Snapshot uploaded](../images/snapshot-uploaded.png)
 
 ### Set up your account and choose your plan and deployment
 

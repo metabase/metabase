@@ -2,6 +2,24 @@ import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+// jsdom has no layout, so popover positioning computes nothing useful while
+// costing getComputedStyle calls and an extra re-render per position update.
+jest.mock("@floating-ui/dom", () => ({
+  ...jest.requireActual("@floating-ui/dom"),
+  computePosition: (_reference, _floating, options = {}) =>
+    Promise.resolve({
+      x: 0,
+      y: 0,
+      placement: options.placement ?? "bottom",
+      strategy: options.strategy ?? "absolute",
+      middlewareData: {},
+    }),
+  autoUpdate: (_reference, _floating, update) => {
+    update();
+    return () => {};
+  },
+}));
+
 // Mock clipboard API for tests
 Object.assign(navigator, {
   clipboard: {

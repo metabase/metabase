@@ -353,6 +353,24 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest e2e-uncoerceable-attribute-fails-closed-test
+  (mt/test-drivers (e2e-test-drivers)
+    (testing "uncoerceable user attribute does not silently drop the sandbox filter (#81821)"
+      (testing "integer column"
+        (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query)))))
+      (testing "float column"
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)
+                                           :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
+                          :attributes {"cat" "a"}}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (run-venues-count-query))))))))
+
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
     (testing "Another basic test, this one uses a stringified float for the login attribute"
@@ -1967,7 +1985,18 @@
                (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
       (testing "text field → :string/="
         (is (= :string/=
-               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]]))))))))
+               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]])))))
+      (testing "uncoerceable attribute against numeric field throws instead of dropping the filter (#81821)"
+        (testing "integer column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :price) nil]]]))))
+        (testing "float column"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"User attribute `cat` value `a` cannot be coerced"
+               (attr-remapping->parameter mp {"cat" "a"} ["cat" [:variable [:field (mt/id :venues :latitude) nil]]]))))))))
 
 (deftest unix-timestamp-coercion-with-mbql-sandbox-test
   (testing "UNIX timestamp coercion should be applied when querying through an MBQL sandbox (#69867)"

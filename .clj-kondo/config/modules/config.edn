@@ -104,6 +104,7 @@
            model-persistence
            models
            parameters
+           permissions
            public-sharing
            queries
            query-processor
@@ -119,6 +120,7 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
+                    :model/QueryExecution
                     :model/Table
                     :model/User}}
 
@@ -510,6 +512,7 @@
            request
            settings
            slackbot
+           startup
            system
            task
            tiles
@@ -868,6 +871,7 @@
            query-processor
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -1054,6 +1058,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -2209,6 +2214,7 @@
               request
               server
               settings
+              startup
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
@@ -2764,6 +2770,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            legacy-mbql
            lib
            lib-be
@@ -2783,7 +2790,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment

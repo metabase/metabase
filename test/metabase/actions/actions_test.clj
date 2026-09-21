@@ -854,3 +854,25 @@
               (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+
+(deftest implicit-action-audit-trail-test
+  (testing "an implicit action records one QueryExecution row holding an action descriptor, not SQL"
+    (with-actions-test-data-and-actions-permissively-enabled!
+      (let [since (mt/latest-query-execution-id)
+            _     (actions/perform-action! :model.row/create
+                                           (assoc (mt/mbql-query categories)
+                                                  :create-row {(format-field-name :name) "audited_row"}))
+            rows  (mt/action-executions since)]
+        (is (= 1 (count rows)))
+        (is (=? {:context     :action-execute
+                 :native      false
+                 :action_id   nil
+                 :result_rows 1
+                 :error       nil
+                 :database_id (mt/id)}
+                (first rows)))
+        (testing "the query row holds the internal descriptor"
+          (is (=? {:type     "internal"
+                   :action   "model.row/create"
+                   :database (mt/id)}
+                  (t2/select-one-fn :query :model/Query :query_hash (:hash (first rows))))))))))

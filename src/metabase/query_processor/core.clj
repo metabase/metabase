@@ -14,6 +14,7 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.limit :as qp.limit]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -50,6 +51,9 @@
  ;; Limit — metabase.query-processor.middleware.limit
  [qp.limit
   disable-max-results]
+ ;; Userland query — metabase.query-processor.middleware.process-userland-query
+ [qp.process-userland-query
+  do-with-captured-execution-context]
  ;; Pivot — metabase.query-processor.pivot
  [qp.pivot
   run-pivot-query]
