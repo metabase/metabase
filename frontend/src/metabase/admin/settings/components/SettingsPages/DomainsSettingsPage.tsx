@@ -42,11 +42,11 @@ export function DomainsSettingsPage() {
       "csp-img-allowed-hosts",
     ]);
 
-  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
-    anchor: "allowed-domains-for-iframes-in-dashboards",
+  const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/domains", {
+    anchor: "allow-iframes-from-a-site-in-dashboards",
   });
-  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/settings", {
-    anchor: "allowed-domains-for-images",
+  const { url: imgDocsUrl } = useDocsUrl("configuring-metabase/domains", {
+    anchor: "restrict-where-images-can-load-from",
   });
 
   const customVizAvailable = useHasTokenFeature("custom-viz-available");
