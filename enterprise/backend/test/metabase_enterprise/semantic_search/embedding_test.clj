@@ -75,6 +75,10 @@
         (mt/with-temporary-setting-values [ee-embedding-provider "embeddings"]
           (is (= "openai" (:provider (embedding/get-configured-model))))
           (is (true? (embedding/embedding-supported? (embedding/get-configured-model)))))
+        (testing "a connection keyed after a registered embedder does not replace it"
+          (llm.tu/with-connections [{:key "ai-service" :type "openai" :name "Shadow" :config {:api-key "sk-shadow"}}]
+            (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"]
+              (is (= "ai-service" (:provider (embedding/get-configured-model)))))))
         (testing "a connection that no longer exists embeds through nothing, rather than falling back"
           (mt/with-temporary-setting-values [ee-embedding-provider "missing"]
             (is (false? (embedding/embedding-supported? (embedding/get-configured-model))))))))))
