@@ -110,15 +110,6 @@ const STATES: {
   { id: "read-only", label: "Read only", props: { readOnly: true } },
 ];
 
-/*
- * Each example stacks its slots normally, exactly as it will in the app — the
- * subgrid only shifts whole stacks against each other so every field lands on
- * one line. Slots keep their own margins; the grid adds no row gaps.
- *
- * A column with no description lets its label span both header rows and sit at
- * the bottom, so the label stays its natural distance above the field instead
- * of being stranded at the top of the band.
- */
 const labelSlotRows = (hasDescription: boolean) => ({
   root: { display: "grid", gridTemplateRows: "subgrid", gridRow: "span 4" },
   label: hasDescription
