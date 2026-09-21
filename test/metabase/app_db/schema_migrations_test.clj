@@ -3082,25 +3082,6 @@
         (is (= "librarylibrarylibrary"
                (collection-entity-id library-id)))))))
 
-(deftest backfill-null-collection-entity-ids-test
-  (testing "GHY-4257: v64.2026-07-23 gives each legacy collection with a NULL entity_id its own entity_id.
-           Serdes and Remote Sync key collections by entity_id, so two same-named collections that both
-           had NULL entity_ids exported to the same file path and the push failed."
-    (impl/test-migrations ["v64.2026-07-23T12:00:00" "v64.2026-07-23T12:00:04"] [migrate!]
-      (let [genes-1 (insert-legacy-library-collection! {:name "Genes" :slug "genes" :entity_id nil})
-            genes-2 (insert-legacy-library-collection! {:name "Genes" :slug "genes" :entity_id nil})]
-        (migrate!)
-        (let [eid-1 (collection-entity-id genes-1)
-              eid-2 (collection-entity-id genes-2)]
-          (testing "each collection receives a 21-character entity_id"
-            (is (= 21 (count eid-1)))
-            (is (= 21 (count eid-2))))
-          (testing "the entity_ids are distinct"
-            (is (not= eid-1 eid-2)))
-          (testing "collection.entity_id is NOT NULL"
-            (is (thrown? Exception
-                         (insert-legacy-library-collection! {:entity_id nil})))))))))
-
 (deftest heal-effective-type-drift-without-coercion-test
   (testing "GHY-3388: heal metabase_field rows where coercion_strategy is NULL and effective_type
            drifted away from base_type. The migration must repair such rows in both metabase_field
@@ -3348,6 +3329,25 @@
             "conversations without a blob are untouched")
         (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
             "metabot_conversation.state is gone")))))
+
+(deftest backfill-null-collection-entity-ids-test
+  (testing "GHY-4257: v64.2026-07-23 gives each legacy collection with a NULL entity_id its own entity_id.
+           Serdes and Remote Sync key collections by entity_id, so two same-named collections that both
+           had NULL entity_ids exported to the same file path and the push failed."
+    (impl/test-migrations ["v64.2026-07-23T12:00:00" "v64.2026-07-23T12:00:04"] [migrate!]
+      (let [genes-1 (insert-legacy-library-collection! {:name "Genes" :slug "genes" :entity_id nil})
+            genes-2 (insert-legacy-library-collection! {:name "Genes" :slug "genes" :entity_id nil})]
+        (migrate!)
+        (let [eid-1 (collection-entity-id genes-1)
+              eid-2 (collection-entity-id genes-2)]
+          (testing "each collection receives a 21-character entity_id"
+            (is (= 21 (count eid-1)))
+            (is (= 21 (count eid-2))))
+          (testing "the entity_ids are distinct"
+            (is (not= eid-1 eid-2)))
+          (testing "collection.entity_id is NOT NULL"
+            (is (thrown? Exception
+                         (insert-legacy-library-collection! {:entity_id nil})))))))))
 
 (deftest add-field-data-sensitivity-test
   (testing "v64.2026-09-01: data_sensitivity is added to metabase_field and metabase_field_user_settings as nullable columns"
