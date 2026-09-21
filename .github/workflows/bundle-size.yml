@@ -13,8 +13,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: frontend_sources
+
   bundle-size-check:
     name: "Bundle size check"
+    needs: gate
+    # There is no base uberjar to compare against outside a pull request.
+    if: >-
+      ${{ github.event_name == 'pull_request'
+      && contains(fromJSON(needs.gate.outputs.matched), 'frontend_sources') }}
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
