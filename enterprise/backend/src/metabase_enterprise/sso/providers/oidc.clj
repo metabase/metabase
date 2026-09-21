@@ -83,10 +83,19 @@
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/login! :provider/custom-oidc
-  [provider {:keys [user] :as request}]
-  (when-not user
-    (sso-utils/check-user-provisioning :oidc))
-  (next-method provider request))
+  "Handle OIDC login, aborting if user provisioning is not enabled and no (active) user was found.
+
+   Unlike SAML/JWT, doesn't need to check :success?/:redirect here -- OIDC's authenticate method
+   above already returns its own failure maps directly, and there's no OIDC-equivalent redirect
+   step at this point in the flow (that happens earlier, in sso-initiate)."
+  [provider request]
+  (let [provisioning-enabled? (sso-settings/oidc-user-provisioning-enabled?)]
+    (when-not (and (:user request) (get-in request [:user :is_active]))
+      (sso-utils/check-user-provisioning :oidc))
+    ;; If the user was deactivated but user provisioning is allowed, reactivate the user (metabase#79412)
+    (next-method provider (-> request
+                              (assoc-in [:user-data :is_active] true)
+                              (assoc :user-provisioning-enabled? provisioning-enabled?)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/custom-oidc
   [_provider result]
