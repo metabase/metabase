@@ -67,7 +67,7 @@ jobs:
     secrets: inherit
 
   containerize:
-    needs: [uberjar]
+    needs: uberjar
     if: >-
       ${{ (github.event_name == 'push' && github.ref_name == 'master')
       || (github.event_name == 'pull_request'
@@ -75,7 +75,7 @@ jobs:
     name: containerize (${{ matrix.edition }})
     strategy:
       matrix:
-        edition: ['ee', 'oss']
+        edition: ["ee", "oss"]
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
@@ -84,6 +84,11 @@ jobs:
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
       edition: ${{ matrix.edition }}
       release: false
+
+  bundle-size:
+    needs: uberjar
+    uses: ./.github/workflows/bundle-size.yml
+    secrets: inherit
 
   # Compile CLJS in parallel with the uberjar and pass it to each e2e group.
   # The compile is doesn't depend on MB_EDITION
@@ -196,9 +201,4 @@ jobs:
     needs: gate
     if: ${{ needs.gate.outputs.verdict != 'force-skip' }}
     uses: ./.github/workflows/build-scripts.yml
-    secrets: inherit
-
-  bundle-size:
-    needs: uberjar
-    uses: ./.github/workflows/bundle-size.yml
     secrets: inherit
