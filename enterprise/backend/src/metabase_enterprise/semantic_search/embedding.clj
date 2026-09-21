@@ -625,13 +625,19 @@
 
 ;;;; OpenAI provider
 
+(defn- named-connection-key
+  []
+  (let [provider (semantic-settings/ee-embedding-provider)]
+    (when-not (embeddings.provider/registered? provider)
+      provider)))
+
 (defn- openai-connection-config
   []
   (some (fn [conn-key]
           (let [{:keys [type config]} (llm.provider/connection conn-key)]
             (when (= "openai" type)
               (llm.provider/with-field-defaults type config))))
-        [(semantic-settings/ee-embedding-provider) "openai"]))
+        [(named-connection-key) "openai"]))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
@@ -727,10 +733,12 @@
 
 (defn get-configured-model
   "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
-  A provider that names an AI provider connection embeds through it, and the connection's type is the provider."
+  A registered embedder's name always means that embedder. Any other value that names an AI provider connection
+  embeds through it, and the connection's type is the provider."
   []
   {:provider (let [provider (semantic-settings/ee-embedding-provider)]
-               (or (:type (llm.provider/connection provider)) provider))
+               (or (:type (llm.provider/connection (named-connection-key)))
+                   provider))
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
