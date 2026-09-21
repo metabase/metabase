@@ -398,7 +398,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

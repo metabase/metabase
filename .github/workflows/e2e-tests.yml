@@ -68,7 +68,9 @@ jobs:
     needs:
       - gate
       - e2e-matrix-builder
-    if: ${{ !cancelled() && needs.gate.outputs.run == 'true' }}
+    # No status function, so a failed matrix builder keeps this out: the strategy below cannot
+    # parse a matrix it never produced.
+    if: ${{ needs.gate.outputs.run == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -87,7 +89,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -151,7 +153,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
     steps:

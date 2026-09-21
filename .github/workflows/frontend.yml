@@ -219,7 +219,7 @@ jobs:
       - fe-tests-timezones
       - fe-tests-ci-scripts
       - fe-custom-viz
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
