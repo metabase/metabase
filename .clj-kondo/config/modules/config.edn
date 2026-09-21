@@ -413,6 +413,7 @@
            premium-features
            query-processor
            settings
+           startup
            system
            task
            timeline
@@ -807,6 +808,7 @@
            premium-features
            query-processor
            settings
+           startup
            system
            util
            warehouse-schema

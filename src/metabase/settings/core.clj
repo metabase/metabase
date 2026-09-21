@@ -93,6 +93,7 @@
   custom-disabled-reasons!
   defsetting
   disabled-for-db-reasons
+  env-var-source
   env-var-value
   export?
   get
