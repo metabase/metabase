@@ -28,6 +28,8 @@ export function getEditingCellTemplate({
           size: "sm",
         }}
         classNames={{
+          root: S.inlineEditingInputWrapper,
+          wrapper: S.inlineEditingInputWrapper,
           textInputElement: S.inlineEditingTextInput,
           numberInputElement: S.inlineEditingTextInput,
           selectTextInputElement: S.inlineEditingTextInput,

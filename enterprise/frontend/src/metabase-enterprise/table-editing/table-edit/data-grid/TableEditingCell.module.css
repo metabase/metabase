@@ -1,5 +1,10 @@
+.inlineEditingInputWrapper {
+  height: 100%;
+}
+
 .inlineEditingTextInput {
   transition: none;
+  height: 100%;
   outline: 2px solid var(--mb-color-background_surface-selected);
   outline-offset: -2px;
   border-color: transparent;
