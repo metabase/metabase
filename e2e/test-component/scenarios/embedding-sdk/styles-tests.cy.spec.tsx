@@ -320,9 +320,11 @@ describe("scenarios > embedding-sdk > styles", () => {
     it("should work with 'Custom' fontFamily, using the font files linked in the instance", () => {
       cy.signInAsAdmin();
 
+      // `application-font-files` links fonts the customer hosts, so the URL is the test's to
+      // choose. It stays same-origin to satisfy the instance's `font-src` policy, and the
+      // instance's own bundled fonts are no longer reachable at a predictable path.
       const fontUrl =
-        Cypress.config().baseUrl +
-        "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
+        Cypress.config().baseUrl + "/e2e-custom-font/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
       H.updateSetting("application-font-files", [
         {
@@ -334,7 +336,11 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.signOut();
 
-      cy.intercept("GET", fontUrl).as("fontFile");
+      cy.intercept("GET", fontUrl, {
+        statusCode: 200,
+        headers: { "content-type": "font/woff2" },
+        body: "",
+      }).as("fontFile");
 
       cy.intercept("GET", "/api/user/current").as("getUser");
 
