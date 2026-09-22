@@ -48,3 +48,20 @@
       (system/site-url! "https://different.example.com")
       (is (true?
            (server.settings/redirect-all-requests-to-https))))))
+
+(deftest allowed-ip-addresses-test
+  (testing "valid IP patterns can be set"
+    (mt/with-temporary-setting-values [allowed-ip-addresses nil]
+      (server.settings/allowed-ip-addresses! "127.0.0.1,192.168.0.0/16,10.0.0.1-10.0.0.255")
+      (is (= "127.0.0.1,192.168.0.0/16,10.0.0.1-10.0.0.255"
+             (server.settings/allowed-ip-addresses)))))
+  (testing "invalid IP patterns are rejected"
+    (mt/with-temporary-setting-values [allowed-ip-addresses nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid IP address pattern"
+           (server.settings/allowed-ip-addresses! "not-an-ip")))))
+  (testing "allowlist can be cleared"
+    (mt/with-temporary-setting-values [allowed-ip-addresses "127.0.0.1"]
+      (server.settings/allowed-ip-addresses! nil)
+      (is (nil? (server.settings/allowed-ip-addresses))))))
