@@ -372,6 +372,25 @@ describe("TimelineEventChip", () => {
     await waitFor(() => expect(chip).toHaveFocus());
   });
 
+  it("leaves focus where the user clicked when keyboard-opened details are dismissed", async () => {
+    setup({ withCallbacks: false });
+    const chip = screen.getByTestId("timeline-event-chip");
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(chip).not.toHaveFocus());
+
+    await userEvent.click(document.body);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("timeline-event-popover"),
+      ).not.toBeInTheDocument();
+    });
+    await act(() => delay(50));
+    expect(chip).not.toHaveFocus();
+  });
+
   it("closes hover-opened details when focus leaves the chip", async () => {
     setup({ withCallbacks: false });
 
