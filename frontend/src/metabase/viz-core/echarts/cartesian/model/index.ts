@@ -1,6 +1,7 @@
 import { isNotNull } from "metabase/utils/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
 import {
   getCartesianChartColumns,
   getReferencedColumns,
@@ -98,19 +99,18 @@ export const getCardsReferencedColumns = (
   });
 };
 
-export const getCartesianChartModel = (
+/**
+ * The series a chart actually draws, which is not simply one per metric: the
+ * list is sorted, capped, and its tail may be folded into a single "Other"
+ * series. Anything deciding what the chart shows has to start from this list,
+ * not from the raw series, or it will disagree with what gets rendered.
+ */
+export const getChartSeriesModels = (
   rawSeries: RawSeries,
-  settings: ComputedVisualizationSettings,
+  cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
-  renderingContext: RenderingContext,
-  showWarning?: ShowWarning,
-  gridSize?: VisualizationGridSize,
-): CartesianChartModel => {
-  // rawSeries has more than one element when two or more cards are combined on a dashboard
-  const hasMultipleCards = rawSeries.length > 1;
-  const cardsColumns = getCardsColumns(rawSeries, settings);
-  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  settings: ComputedVisualizationSettings,
+) => {
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
@@ -122,22 +122,11 @@ export const getCartesianChartModel = (
   // We display an error message if there are more than 100 series models anyway.
   unsortedSeriesModels.splice(101);
 
-  const unsortedDataset = getJoinedCardsDataset(
-    rawSeries,
-    cardsColumns,
-    showWarning,
-  );
-  const dataset = sortDataset(
-    unsortedDataset,
-    settings["graph.x_axis.scale"],
-    showWarning,
-  );
-
+  // rawSeries has more than one element when two or more cards are combined on a dashboard
+  const hasMultipleCards = rawSeries.length > 1;
   const sortedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
     : getSortedSeriesModels(unsortedSeriesModels, settings);
-
-  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
     groupSeriesIntoOther(sortedSeriesModels, settings);
@@ -153,6 +142,36 @@ export const getCartesianChartModel = (
       ),
     );
   }
+
+  return { sortedSeriesModels, seriesModels, groupedSeriesModels };
+};
+
+export const getCartesianChartModel = (
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
+  renderingContext: RenderingContext,
+  showWarning?: ShowWarning,
+  gridSize?: VisualizationGridSize,
+): CartesianChartModel => {
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const { sortedSeriesModels, seriesModels, groupedSeriesModels } =
+    getChartSeriesModels(rawSeries, cardsColumns, hiddenSeries, settings);
+
+  const unsortedDataset = getJoinedCardsDataset(
+    rawSeries,
+    cardsColumns,
+    showWarning,
+  );
+  const dataset = sortDataset(
+    unsortedDataset,
+    settings["graph.x_axis.scale"],
+    showWarning,
+  );
+
+  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
