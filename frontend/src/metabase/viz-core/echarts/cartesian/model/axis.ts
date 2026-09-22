@@ -649,7 +649,9 @@ export function getYAxesModels(
       gridSize,
       // A right axis with nothing on the left is the chart's only axis, and
       // the only axis takes the one label field the sidebar shows for it.
-      isSplitRightAxis: leftAxisSeriesKeys.length > 0,
+      // Read the split, not the visible keys, so hiding every left series in
+      // the legend does not swap the right axis over to the left label.
+      isSplitRightAxis: leftAxisSeriesKeysSet.size > 0,
     },
   );
 

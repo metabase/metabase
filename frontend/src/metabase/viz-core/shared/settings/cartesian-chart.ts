@@ -18,6 +18,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { getBoxPlotModel } from "../../echarts/boxplot/model";
 import {
   getCardsColumns,
   getCardsReferencedColumns,
@@ -285,17 +286,10 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 
 export const getDefaultIsAutoSplitEnabled = () => true;
 
-// These build their single y-axis through `getYAxisModel` directly and never
-// reach `getYAxesModels`, so they only ever have a left axis.
-const SINGLE_Y_AXIS_DISPLAYS = new Set<VisualizationDisplay>([
-  "waterfall",
-  "boxplot",
-]);
-
 /**
- * Which sides the chart puts a y-axis on. `getYAxesModels` builds an axis model
- * per side and returns null for a side with no series, so this answers the same
- * question the renderer answers, through the same `getYAxisSplit`.
+ * Which sides the chart splits its series onto. The renderer labels its axes
+ * from this split, not from which series the legend shows, so the sidebar can
+ * answer it without knowing the hidden series.
  */
 export function getYAxisSides(
   rawSeries: RawSeries,
@@ -307,14 +301,25 @@ export function getYAxisSides(
     return { left: false, right: false };
   }
 
-  if (SINGLE_Y_AXIS_DISPLAYS.has(display)) {
+  // A waterfall builds its one y-axis through `getYAxisModel` directly.
+  if (display === "waterfall") {
     return { left: true, right: false };
   }
 
+  // A box plot splits its series through its own `getYAxisSplit`, over
+  // extents taken from the computed boxes.
+  if (display === "boxplot") {
+    const { leftAxisSeriesKeys, rightAxisSeriesKeys } = getBoxPlotModel(
+      rawSeries,
+      settings,
+    );
+    return {
+      left: leftAxisSeriesKeys.size > 0,
+      right: rightAxisSeriesKeys.size > 0,
+    };
+  }
+
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  // The sidebar cannot know which series the legend has hidden, so it asks for
-  // the split as if none were. A side the legend has emptied keeps its label
-  // setting, which is the harmless direction to be wrong in.
   const { seriesModels } = getChartSeriesModels(
     rawSeries,
     cardsColumns,

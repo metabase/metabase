@@ -11,8 +11,10 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
+import { getBoxPlotModel } from "../../echarts/boxplot/model";
 import { getCartesianChartModel } from "../../echarts/cartesian/model";
 import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import { getScatterPlotModel } from "../../echarts/cartesian/scatter/model";
 import type { RenderingContext } from "../../types";
 import { DEFAULT_VISUALIZATION_THEME } from "../utils/theme";
 
@@ -490,15 +492,81 @@ describe("getYAxisSides", () => {
     expect(getYAxisSides([], {})).toEqual({ left: false, right: false });
   });
 
-  it.each(["waterfall", "boxplot"] as const)(
-    "reports a left axis only for %s, which never builds a right one",
-    (display) => {
-      expect(
-        getYAxisSides(createTwoMetricSeries(divergentRows, display), {
-          ...twoMetricSettings,
-          "graph.metrics": [REVENUE],
-        }),
-      ).toEqual({ left: true, right: false });
+  it("reports a left axis only for a waterfall, which never builds a right one", () => {
+    expect(
+      getYAxisSides(createTwoMetricSeries(divergentRows, "waterfall"), {
+        ...twoMetricSettings,
+        "graph.metrics": [REVENUE],
+      }),
+    ).toEqual({ left: true, right: false });
+  });
+
+  it.each([
+    {
+      name: "two metrics on ranges far apart",
+      sides: { left: true, right: true },
+      settings: twoMetricSettings,
+    },
+    {
+      name: "the automatic split turned off",
+      sides: { left: true, right: false },
+      settings: { ...twoMetricSettings, "graph.y_axis.auto_split": false },
+    },
+    {
+      name: "every series pinned to the right axis",
+      sides: { left: false, right: true },
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: pinnedRight(REVENUE, ORDERS),
+      },
+    },
+  ])(
+    "agrees with the axes the box plot model builds for $name",
+    ({ settings, sides }) => {
+      const rawSeries = createTwoMetricSeries(divergentRows, "boxplot");
+      const chartModel = getBoxPlotModel(rawSeries, settings);
+
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
+    },
+  );
+
+  it.each([
+    {
+      name: "two metrics on ranges far apart, which never split on their own",
+      sides: { left: true, right: false },
+      settings: twoMetricSettings,
+    },
+    {
+      name: "one series pinned to the right axis",
+      sides: { left: true, right: true },
+      settings: { ...twoMetricSettings, series: pinnedRight(ORDERS) },
+    },
+    {
+      name: "every series pinned to the right axis",
+      sides: { left: false, right: true },
+      settings: { ...twoMetricSettings, series: pinnedRight(REVENUE, ORDERS) },
+    },
+  ])(
+    "agrees with the axes the scatter plot model builds for $name",
+    ({ settings, sides }) => {
+      const rawSeries = createTwoMetricSeries(divergentRows, "scatter");
+      const chartModel = getScatterPlotModel(
+        rawSeries,
+        settings,
+        [],
+        renderingContext,
+      );
+
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
     },
   );
 });
