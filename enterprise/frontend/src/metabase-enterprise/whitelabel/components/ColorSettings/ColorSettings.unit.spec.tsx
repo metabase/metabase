@@ -44,6 +44,25 @@ describe("ColorSettings", () => {
     });
   });
 
+  it("should drop the key when a brand color is cleared", async () => {
+    const onChange = jest.fn();
+    const customBrand = "#123456";
+
+    render(
+      <ColorSettings
+        initialColors={{ brand: customBrand, accent1: textMediumHex }}
+        themeColors={colors}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.clear(screen.getByDisplayValue(customBrand));
+
+    // Clearing the field must remove the key rather than persist the default,
+    // so the instance reads as un-whitelabelled again
+    expect(onChange).toHaveBeenLastCalledWith({ accent1: textMediumHex });
+  });
+
   it("should update chart colors", async () => {
     const onChange = jest.fn();
 

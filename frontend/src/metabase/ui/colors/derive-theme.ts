@@ -4,6 +4,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
+import { resolveBrandRampToOcean } from "./constants/brand-ramp";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type {
@@ -39,9 +40,25 @@ export function deriveFullMetabaseTheme({
     ...PROTECTED_COLORS,
   );
 
+  const embeddingColors = embeddingThemeOverride?.colors;
+
+  // When instance doesn't have custom brand color configured, we replace brand
+  // ramp (which is generated dynamically using color-mix to work with custom colors)
+  // with a hand-picked `ocean` ramp
+  const brandOverride =
+    embeddingColors?.["core-brand"] ??
+    embeddingColors?.brand ??
+    whitelabelColors?.brand;
+
   // Unjustified type cast. FIXME
   const colors = {
-    ...baseTheme.colors,
+    ...(brandOverride
+      ? baseTheme.colors
+      : // baseTheme is created on module init, before we have an opportunity to check
+        // if instance has custom brand color set. Because of this we replace value of
+        // every semantic token matching one of default brand ramp stops with matching
+        // stop from ocean ramp (as opposed to modifying baseColors.brand directly)
+        resolveBrandRampToOcean(baseTheme.colors)),
     ...mapChartColorsToAccents(baseTheme.chartColors),
     ...deriveAllAccentColors(whitelabelColors ?? {}),
     ...filteredEmbeddingColors,

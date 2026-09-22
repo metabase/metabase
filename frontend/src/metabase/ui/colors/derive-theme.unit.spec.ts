@@ -1,7 +1,17 @@
 import { deriveChartShadeColor, deriveChartTintColor } from "./accents";
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
+import { BRAND_RAMP_TO_OCEAN } from "./constants/brand-ramp";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
+import { METABASE_DARK_THEME } from "./constants/themes/dark";
 import { METABASE_LIGHT_THEME } from "./constants/themes/light";
 import { deriveFullMetabaseTheme } from "./derive-theme";
+
+const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+const dynamicBrandRampColors = (colors: Record<string, string>) =>
+  Object.entries(colors)
+    .filter(([, value]) => value in BRAND_RAMP_TO_OCEAN)
+    .map(([key]) => key);
 
 describe("deriveFullMetabaseTheme", () => {
   it("applies whitelabel colors over the base theme", () => {
@@ -128,5 +138,62 @@ describe("deriveFullMetabaseTheme", () => {
     expect(derived.colors["accent3"]).toBe(base);
     expect(derived.colors["accent3-light"]).toBe("#4B9CD3");
     expect(derived.colors["accent3-dark"]).toBe(deriveChartShadeColor(base));
+  });
+
+  describe("brand ramp", () => {
+    it.each([
+      ["light", METABASE_LIGHT_THEME],
+      ["dark", METABASE_DARK_THEME],
+    ])(
+      "resolves the %s brand ramp to Ocean when the brand color is not customized",
+      (colorScheme, theme) => {
+        const derived = deriveFullMetabaseTheme({
+          colorScheme: colorScheme === "dark" ? "dark" : "light",
+        });
+
+        // Every color the theme defined off the ramp must now be a literal Ocean stop
+        expect(dynamicBrandRampColors(derived.colors)).toEqual([]);
+        expect(dynamicBrandRampColors(theme.colors).length).toBeGreaterThan(0);
+      },
+    );
+
+    it("resolves brand ramp stops to their matching Ocean stops", () => {
+      const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
+
+      // METABASE_LIGHT_THEME defines these off brand[50], brand[60] and brand[10]
+      expect(derived.colors["text-brand"]).toBe(baseColors.ocean[50]);
+      expect(derived.colors["switch-checked"]).toBe(baseColors.ocean[60]);
+      expect(derived.colors["background-brand"]).toBe(baseColors.ocean[10]);
+    });
+
+    it("keeps the dynamic brand ramp when whitelabel sets a brand color", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        whitelabelColors: { brand: "#ff0000" },
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        METABASE_LIGHT_THEME.colors["text-brand"],
+      );
+    });
+
+    it("keeps the dynamic brand ramp when an embedding theme sets a brand color", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        embeddingThemeOverride: { version: 2, colors: { brand: "#00ff00" } },
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        METABASE_LIGHT_THEME.colors["text-brand"],
+      );
+    });
+
+    it("leaves whitelabel filter and summarize ramps alone", () => {
+      const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
+
+      expect(derived.colors["text-filter"]).toBe(
+        METABASE_LIGHT_THEME.colors["text-filter"],
+      );
+    });
   });
 });
