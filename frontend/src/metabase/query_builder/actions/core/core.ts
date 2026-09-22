@@ -28,7 +28,9 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
+import { getRecordedTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
 import {
+  canDisplayTimelineEvents,
   getCardAfterVisualizationClick,
   getRegisteredDefaultSize,
 } from "metabase/viz-core";
@@ -66,6 +68,7 @@ import {
   getParameters,
   getQuestion,
   getSubmittableQuestion,
+  getTimelineEventsVisibility,
   isBasedOnExistingQuestion,
 } from "../../store/selectors";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
@@ -241,6 +244,18 @@ export const apiCreateQuestion = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // A new time series shows its collection's timelines before it is saved, so record that selection — otherwise
+    // the saved question shows no events on a dashboard. Questions that recorded one, and charts that draw no
+    // events, keep their settings untouched.
+    if (
+      getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
+        null &&
+      canDisplayTimelineEvents(submittableQuestion.display())
+    ) {
+      submittableQuestion = submittableQuestion.updateSettings(
+        getTimelineEventsVisibility(getState()),
+      );
+    }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
     if (

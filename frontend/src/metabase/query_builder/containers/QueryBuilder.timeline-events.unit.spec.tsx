@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupCardCreateEndpoint } from "__support__/server-mocks";
 import { getTimelineEventCheckbox } from "__support__/timelines";
-import { act, waitFor } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import {
@@ -15,6 +16,7 @@ import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/typ
 import type { Card, TimelineEventsVisibility } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUnsavedCard,
@@ -37,6 +39,7 @@ import {
   saveQuestion,
   setup,
   triggerVisualizationQueryChange,
+  waitForSaveToBeEnabled,
 } from "./test-utils";
 
 registerVisualizations();
@@ -143,6 +146,44 @@ describe("QueryBuilder > timeline events", () => {
     expect(
       checkNotNull(getQuestion(store.getState())).settings(),
     ).not.toHaveProperty("timeline.selected_timeline_ids");
+  });
+
+  it("records the collection's events when saving a brand new question", async () => {
+    setupCardCreateEndpoint();
+    // the app navigates to the created card once saved
+    fetchMock.get(
+      /\/api\/card\/\d+\/query_metadata/,
+      createMockCardQueryMetadata(),
+    );
+    await setup({
+      card: createMockUnsavedCard({
+        dataset_query: CARD.dataset_query,
+        display: "line",
+      }),
+      timelines: [TIMELINE],
+    });
+
+    await waitForSaveToBeEnabled();
+    await userEvent.click(screen.getByText("Save"));
+    await userEvent.click(
+      within(screen.getByTestId("save-question-modal")).getByText("Save"),
+    );
+
+    // the created card's own endpoints are not mocked here, so assert on the request rather than
+    // waiting for the app to navigate to it
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" }),
+      ).toBeTruthy(),
+    );
+    const body = checkNotNull(
+      fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
+        ?.options.body,
+    );
+    const created: Card = JSON.parse(body.toString());
+    expect(created.visualization_settings).toMatchObject({
+      "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
   });
 
   it("shows only the events a saved question recorded", async () => {
