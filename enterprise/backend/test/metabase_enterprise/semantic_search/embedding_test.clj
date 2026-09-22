@@ -140,11 +140,11 @@
           (llm.tu/with-connections connections
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"does not name an OpenAI connection with an API key"
+                 #"not an OpenAI connection with an API key"
                  (embedding/get-embedding embedding-model "test text")))
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"does not name an OpenAI connection with an API key"
+                 #"not an OpenAI connection with an API key"
                  (embedding/get-embeddings-batch embedding-model ["test text"])))))))))
 
 (deftest test-token-counting
@@ -729,7 +729,14 @@
       (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})
                                 {:key "embeddings" :type "openai" :name "Embeddings" :config {:api-key nil}}]
         (mt/with-temporary-setting-values [ee-embedding-provider "embeddings"]
-          (is (false? (embedding/embedding-supported? {:provider "openai"})))))))
+          (is (false? (embedding/embedding-supported? {:provider "openai"}))))))
+    (testing "a named connection that has been removed is not replaced by the one keyed openai"
+      (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})]
+        (mt/with-temporary-setting-values [ee-embedding-provider "embeddings"]
+          (is (false? (embedding/embedding-supported? {:provider "openai"})))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"embeddings\" connection is not an OpenAI connection"
+                                (embedding/get-embedding {:provider "openai" :model-name "m" :vector-dimensions 4}
+                                                         "text")))))))
   (testing "ollama is always supported; an unrecognized provider is not (:default)"
     (is (true?  (embedding/embedding-supported? {:provider "ollama"})))
     (is (false? (embedding/embedding-supported? {:provider "no-embedder"}))))

@@ -631,22 +631,24 @@
     (when-not (embeddings.provider/registered? provider)
       provider)))
 
+(defn- openai-connection-key
+  []
+  (or (named-connection-key) "openai"))
+
 (defn- openai-connection-config
   []
-  (some (fn [conn-key]
-          (let [{:keys [type config]} (llm.provider/connection conn-key)]
-            (when (= "openai" type)
-              (llm.provider/with-field-defaults type config))))
-        (remove nil? [(named-connection-key) "openai"])))
+  (let [{:keys [type config]} (llm.provider/connection (openai-connection-key))]
+    (when (= "openai" type)
+      (llm.provider/with-field-defaults type config))))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
   []
-  (let [{:keys [api-key base-url]} (openai-connection-config)]
+  (let [conn-key                   (openai-connection-key)
+        {:keys [api-key base-url]} (openai-connection-config)]
     (when-not (not-empty api-key)
-      (throw (ex-info (str "ee-embedding-provider " (pr-str (semantic-settings/ee-embedding-provider))
-                           " does not name an OpenAI connection with an API key")
-                      {:setting "ee-embedding-provider"})))
+      (throw (ex-info (str "The " (pr-str conn-key) " connection is not an OpenAI connection with an API key")
+                      {:setting "ee-embedding-provider" :connection conn-key})))
     [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod embedder-circuit-endpoint "openai" [_]
