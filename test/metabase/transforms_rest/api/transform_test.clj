@@ -1413,38 +1413,39 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "POST /api/transform with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (with-transform-db-perms!
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
-              (testing "Can create transform with tags"
-                ;; Create tags via API since we're testing transform creation with existing tags
-                (let [tag1 (mt/user-http-request :lucky :post 200 "transform-tag"
-                                                 {:name (str "test-tag-1-" (random-uuid))})
-                      tag2 (mt/user-http-request :lucky :post 200 "transform-tag"
-                                                 {:name (str "test-tag-2-" (random-uuid))})]
-                  (try
-                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                       {:tag_ids [(:id tag1) (:id tag2)]})
-                                                (assoc-in [:target :schema] schema))
-                          transform-response (mt/user-http-request :lucky :post 200 "transform"
-                                                                   transform-request)]
-                      (try
-                        (is (= (:name transform-request) (:name transform-response)))
-                        (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
-                        (finally
-                          (t2/delete! :model/Transform :id (:id transform-response)))))
-                    (finally
-                      (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
-              (testing "Can create transform without tags"
-                (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
-                                                  [:target :schema] schema)
-                      transform-response (mt/user-http-request :lucky :post 200 "transform"
-                                                               transform-request)]
-                  (try
-                    (is (= (:name transform-request) (:name transform-response)))
-                    (is (= [] (:tag_ids transform-response)))
-                    (finally
-                      (t2/delete! :model/Transform :id (:id transform-response)))))))))))))
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (let [schema (get-test-schema)]
+                (testing "Can create transform with tags"
+                  ;; Create tags via API since we're testing transform creation with existing tags
+                  (let [tag1 (mt/user-http-request :lucky :post 200 "transform-tag"
+                                                   {:name (str "test-tag-1-" (random-uuid))})
+                        tag2 (mt/user-http-request :lucky :post 200 "transform-tag"
+                                                   {:name (str "test-tag-2-" (random-uuid))})]
+                    (try
+                      (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                         {:tag_ids [(:id tag1) (:id tag2)]})
+                                                  (assoc-in [:target :schema] schema))
+                            transform-response (mt/user-http-request :lucky :post 200 "transform"
+                                                                     transform-request)]
+                        (try
+                          (is (= (:name transform-request) (:name transform-response)))
+                          (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
+                          (finally
+                            (t2/delete! :model/Transform :id (:id transform-response)))))
+                      (finally
+                        (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
+                (testing "Can create transform without tags"
+                  (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
+                                                    [:target :schema] schema)
+                        transform-response (mt/user-http-request :lucky :post 200 "transform"
+                                                                 transform-request)]
+                    (try
+                      (is (= (:name transform-request) (:name transform-response)))
+                      (is (= [] (:tag_ids transform-response)))
+                      (finally
+                        (t2/delete! :model/Transform :id (:id transform-response))))))))))))))
 
 (deftest update-transform-tags-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -1572,45 +1573,46 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Tag order is preserved when adding/updating transform tags"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (with-transform-db-perms!
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
-                           :model/TransformTag tag2 {:name "order-tag-2"}
-                           :model/TransformTag tag3 {:name "order-tag-3"}]
-              (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
-                (testing "Creating transform with specific tag order preserves that order"
-                  (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                     {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
-                                              (assoc-in [:target :schema] schema))
-                        transform (mt/user-http-request :lucky :post 200 "transform"
-                                                        transform-request)]
-                    (try
-                      ;; Should preserve the exact order: tag3, tag1, tag2
-                      (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
-                      ;; Verify order is preserved when fetching
-                      (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
-                        (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
-                      ;; Update with different order
-                      (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
-                                                          {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
-                        ;; Should now have the new order: tag2, tag3, tag1
-                        (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
-                      ;; Verify new order persists
-                      (let [fetched-again (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
-                        (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
-                      (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))
-                (testing "Duplicate tag IDs are handled correctly"
-                  (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                     {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
-                                              (assoc-in [:target :schema] schema))
-                        transform (mt/user-http-request :lucky :post 200 "transform"
-                                                        transform-request)]
-                    (try
-                      ;; Should only have each tag once, but preserve relative order
-                      (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
-                      (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))))))))))
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
+                             :model/TransformTag tag2 {:name "order-tag-2"}
+                             :model/TransformTag tag3 {:name "order-tag-3"}]
+                (let [schema (get-test-schema)]
+                  (testing "Creating transform with specific tag order preserves that order"
+                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                       {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
+                                                (assoc-in [:target :schema] schema))
+                          transform (mt/user-http-request :lucky :post 200 "transform"
+                                                          transform-request)]
+                      (try
+                        ;; Should preserve the exact order: tag3, tag1, tag2
+                        (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
+                        ;; Verify order is preserved when fetching
+                        (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
+                          (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
+                        ;; Update with different order
+                        (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
+                                                            {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
+                          ;; Should now have the new order: tag2, tag3, tag1
+                          (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
+                        ;; Verify new order persists
+                        (let [fetched-again (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
+                          (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
+                        (finally
+                          (t2/delete! :model/Transform :id (:id transform))))))
+                  (testing "Duplicate tag IDs are handled correctly"
+                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                       {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
+                                                (assoc-in [:target :schema] schema))
+                          transform (mt/user-http-request :lucky :post 200 "transform"
+                                                          transform-request)]
+                      (try
+                        ;; Should only have each tag once, but preserve relative order
+                        (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
+                        (finally
+                          (t2/delete! :model/Transform :id (:id transform)))))))))))))))
 
 (deftest root-collection-items-include-transforms-test
   (mt/with-premium-features #{:transforms-basic :hosting}

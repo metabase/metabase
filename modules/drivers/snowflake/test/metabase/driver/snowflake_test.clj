@@ -14,6 +14,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.snowflake :as driver.snowflake]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -62,6 +63,17 @@
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :snowflake
+    (testing "details naming no schema fall back to PUBLIC, which is how Metabase has always read them"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :snowflake (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [details (assoc (:details (mt/db)) :additional-options "schema=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :snowflake database))))))))
 
 (deftest ^:parallel connection-hosts-test
   (are [details expected] (= expected (driver/connection-hosts :snowflake details))
@@ -202,6 +214,12 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "additional options wins over top-level schema"
+      ;; https://github.com/metabase/metabase/issues/65493
+      (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
+            spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        (is (nil? (:schema spec)))
+        (is (re-find #"schema=GOOD" (:subname spec)))))
     (testing "Application parameter is set to identify Metabase connections"
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
@@ -295,7 +313,7 @@
   (testing "the simple-select-probe-query used by have-select-privilege? should be qualified with the Database name. Ignore blank keys."
     (mt/test-driver :snowflake
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        {:database (assoc (mt/db)
+                                        {:database (assoc (lib.metadata/database (mt/metadata-provider))
                                                           :details {:db     " "
                                                                     :dbname "dbname"})})
         (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
@@ -443,7 +461,6 @@
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
     (let [{{db-name :db, :as details} :details} (mt/db)]
-      (tx/track-dataset :snowflake data.impl/*dbdef-used-to-create-db*)
       ;; TARGET_LAG = DOWNSTREAM instead of a time interval: nothing reads this table, so it never actually
       ;; needs to refresh. With a time-based lag, a test DB that leaks (e.g. a cancelled CI job skips
       ;; [[metabase.test.data.snowflake/after-run]]) keeps refreshing on that schedule forever.

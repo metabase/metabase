@@ -1,3 +1,4 @@
+import { color } from "metabase/ui/colors";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
@@ -178,5 +179,131 @@ describe("getPieChartModel", () => {
       ["1950", 5],
       ["\x00___OTHER___", 6],
     ]);
+  });
+
+  it("should use the palette color a slice records over its stored color", () => {
+    // only pie.rows differs from the settings object above
+    const settingsWithColorName = {
+      ...settings,
+      "pie.rows": settings["pie.rows"]?.map((row) =>
+        row.key === "2000"
+          ? {
+              ...row,
+              color: "#123456",
+              defaultColor: false,
+              color_name: "accent3",
+            }
+          : row,
+      ),
+    } as VisualizationSettings;
+
+    const chartModel = getPieChartModel(
+      rawSeries,
+      settingsWithColorName,
+      [],
+      renderingContext,
+    );
+
+    expect(chartModel.sliceTree.get("2000")?.color).toBe(color("accent3"));
+  });
+
+  it("should keep the stored color of a slice that records no palette color", () => {
+    // only pie.rows differs from the settings object above
+    const settingsWithStoredColor = {
+      ...settings,
+      "pie.rows": settings["pie.rows"]?.map((row) =>
+        row.key === "2000"
+          ? { ...row, color: "#123456", defaultColor: false }
+          : row,
+      ),
+    } as VisualizationSettings;
+
+    const chartModel = getPieChartModel(
+      rawSeries,
+      settingsWithStoredColor,
+      [],
+      renderingContext,
+    );
+
+    expect(chartModel.sliceTree.get("2000")?.color).toBe("#123456");
+  });
+
+  describe("multiple rings", () => {
+    const ringColumns = [
+      createMockColumn({
+        name: "birth_year",
+        display_name: "Birth Year",
+        base_type: "type/Number",
+        semantic_type: "type/Number",
+      }),
+      createMockColumn({
+        name: "region",
+        display_name: "Region",
+        base_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        base_type: "type/Number",
+        semantic_type: "type/Number",
+      }),
+    ];
+
+    const ringRawSeries = [
+      {
+        card: createMockCard({ name: "Two ring pie", display: "pie" }),
+        data: createMockDatasetData({
+          rows: [
+            [2000, "North", 50],
+            [2000, "South", 50],
+          ],
+          cols: ringColumns,
+        }),
+      },
+    ];
+
+    // pie.rows carries the hand-picked color under test
+    const ringSettings = {
+      "pie.metric": "count",
+      "pie.dimension": ["birth_year", "region"],
+      column_settings: {},
+      column: () => ({}),
+      "pie.slice_threshold": 0,
+      "pie.rows": [
+        {
+          key: "2000",
+          name: "2000",
+          originalName: "2000",
+          color: "#123456",
+          color_name: "accent3",
+          defaultColor: false,
+          enabled: true,
+          hidden: false,
+          isOther: false,
+        },
+      ],
+      series_settings: {},
+    } as VisualizationSettings;
+
+    // Aliases must resolve for ring shades to differ
+    const ringRenderingContext: RenderingContext = {
+      ...renderingContext,
+      getColor: (name: string) => color(name),
+    };
+
+    it("derives ring shades from the recorded palette color, not the stored one", () => {
+      const chartModel = getPieChartModel(
+        ringRawSeries,
+        ringSettings,
+        [],
+        ringRenderingContext,
+      );
+
+      const slice = chartModel.sliceTree.get("2000");
+
+      expect(slice?.color).toBe(color("accent3-dark"));
+      expect(slice?.color).not.toBe("#123456");
+    });
   });
 });

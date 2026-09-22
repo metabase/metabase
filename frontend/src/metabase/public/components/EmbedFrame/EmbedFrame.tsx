@@ -19,9 +19,9 @@ import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/E
 import EmbedThemeS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
+import { useSyncUrlParameters } from "metabase/parameters/components/use-sync-url-parameters";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
-import { useSyncUrlParameters } from "metabase/querying/components/use-sync-url-parameters";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";

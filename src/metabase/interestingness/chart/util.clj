@@ -118,7 +118,13 @@
 
 (mu/defn make-chart-result :- ::stats.types/chart-stats
   "Build the standard chart stats result map."
-  [chart-type series-data series-stats correlations]
+  [chart-type    :- [:enum :time-series :categorical :scatter :histogram :unknown]
+   series-data   :- [:map-of :string ::stats.types/series-config]
+   series-stats  :- [:map-of :string [:or ::stats.types/time-series-series-stats
+                                      ::stats.types/categorical-series-stats
+                                      ::stats.types/scatter-series-stats
+                                      ::stats.types/histogram-series-stats]]
+   correlations  :- [:maybe [:sequential ::stats.types/correlation]]]
   (cond-> {:chart-type   chart-type
            :series-count (count series-data)
            :series       series-stats}

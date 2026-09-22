@@ -14,10 +14,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export type ClickActionModeGetter = (data: {
-  question: Question;
-}) => QueryClickActionsMode | ClickActionsMode;
-
 export type {
   BrushClickObject,
   BrushRange,
@@ -211,37 +207,22 @@ export type Drill<
   applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
 }) => ClickAction[];
 
+export type ClickActionModeContext = {
+  question?: Question;
+  settings?: VisualizationSettings;
+};
+
 export interface ClickActionsMode {
   actionsForClick(
     clicked: ClickObject,
-    settings?: Record<string, any>,
-    extraData?: Record<string, any>,
+    context?: ClickActionModeContext,
   ): ClickAction[];
-}
 
-export function isClickActionsMode(value: unknown): value is ClickActionsMode {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "actionsForClick" in value &&
-    // Unjustified type cast. FIXME
-    typeof (value as any).actionsForClick === "function"
-  );
+  /**
+   * Leaving this undefined hides the add-column shortcut.
+   */
+  hasColumnShortcutActions?(props: ClickActionProps): boolean;
 }
-
-export type QueryClickActionsMode = {
-  name: string;
-  clickActions: LegacyDrill[];
-  fallback?: LegacyDrill;
-} & (
-  | {
-      hasDrills: false;
-    }
-  | {
-      hasDrills: true;
-      availableOnlyDrills?: Lib.DrillThruType[];
-    }
-);
 
 export const isCustomClickAction = (
   clickAction: ClickAction,

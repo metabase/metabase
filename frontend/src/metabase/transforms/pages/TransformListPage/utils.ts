@@ -2,16 +2,15 @@ import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
-import { getMetadata } from "metabase/metadata-store";
+import { useMetadataProviderFactory } from "metabase/metadata-store";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import { getLibQuery } from "metabase/transforms/utils";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
   CollectionId,
+  DatabaseId,
   RemoteSyncEntity,
   RemoteSyncEntityModel,
   RemoteSyncEntityStatus,
@@ -27,7 +26,7 @@ import {
 
 export function getIncrementalWarning(
   transform: Transform,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ): string | undefined {
   const isIncremental = transform.target.type === "table-incremental";
   if (!isIncremental) {
@@ -36,7 +35,7 @@ export function getIncrementalWarning(
 
   const isNative = transform.source_type === "native";
   if (isNative) {
-    const libQuery = getLibQuery(transform.source, metadata);
+    const libQuery = getLibQuery(transform.source, getMetadataProvider);
     const hasTableTag = libQuery
       ? Object.values(Lib.templateTags(libQuery)).some(
           (tag) => tag.type === "table" && tag["table-id"] != null,
@@ -75,17 +74,17 @@ function areTransformWarningsEqual(
 }
 
 export function useGetTransformWarnings(transforms: Transform[] | undefined) {
-  const metadata = useSelector(getMetadata);
+  const getMetadataProvider = useMetadataProviderFactory();
   const computedWarningsByTransformId = useMemo(() => {
     const warnings = new Map<number, string>();
     for (const transform of transforms ?? []) {
-      const warning = getIncrementalWarning(transform, metadata);
+      const warning = getIncrementalWarning(transform, getMetadataProvider);
       if (warning) {
         warnings.set(transform.id, warning);
       }
     }
     return warnings;
-  }, [transforms, metadata]);
+  }, [transforms, getMetadataProvider]);
 
   // Reuse the previous Map reference when the content is unchanged so that
   // `columnDefs` (and therefore the TanStack TreeTable's column model) stays

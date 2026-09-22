@@ -7,8 +7,8 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -249,8 +249,14 @@ describe("MonitorLayout", () => {
     },
   ] as const;
 
-  it.each(AI_AUDITING_SECTION_CASES)(
-    "marks $label as the current page for its route",
+  it.each([
+    ...AI_AUDITING_SECTION_CASES,
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversationDetail("convo-0"),
+    },
+  ])(
+    "marks $label as the current page for $route",
     async ({ label, route }) => {
       setup({
         initialRoute: route,

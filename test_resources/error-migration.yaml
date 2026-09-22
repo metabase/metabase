@@ -20,6 +20,9 @@ databaseChangeLog:
               - column:
                   name: value
                   type: text
+              - column:
+                  name: value_with_aad
+                  type: text
 
   - changeSet:
       id: '1'

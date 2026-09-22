@@ -9,15 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private min-temp-data-hours
-  "Floor on `:temp-data-hours`. Must stay above the longest driver job (90 min, in `drivers-stress-test.yml`) or we
-  delete a live run's data."
-  2)
-
-(def ^:private min-fixture-hours
-  "Floor on `:fixture-hours`. Runs share these datasets; collecting them hourly would make every run rebuild its data."
-  24)
-
 (def ^:private default-drivers
   "Drivers implementing [[tx/gc-orphans!]]. Athena and Databricks are excluded: their datasets are preloaded, not
   created by tests."
@@ -76,15 +67,16 @@
     (let [results   (try
                       (vec (tx/gc-orphans! driver options))
                       (catch Exception e
+                        (def ee e)
                         [{:name nil, :status :failed, :error (ex-message e)}]))
           remaining (census! driver)
-          {deleted :deleted, failed :failed} (group-by :status results)]
+          {:keys [deleted failed]} (group-by :status results)]
       (tx/print-progress! driver "%d deleted, %d failed" (count deleted) (count failed))
       (doseq [{dataset-name :name, :keys [error]} failed]
-        (tx/print-progress! driver "FAILED %s: %s" (or dataset-name "<server unreachable>") error))
+        (tx/print-progress! driver "FAILED %s: %s" (or dataset-name "<unknown>") error))
       {:driver    (name driver)
-       :deleted   (vec deleted)
-       :failed    (vec failed)
+       :deleted   deleted
+       :failed    failed
        :counts    {:deleted (count deleted), :failed (count failed)}
        :before    before
        :remaining remaining})))
@@ -134,9 +126,9 @@
        (render-names "Failed" failed render-object)))
 
 (defn- render-markdown [{:keys [generated-at options totals drivers]}]
-  (str (format "## DWH test data sweep\n\n**%d deleted, %d failed** — temp-data-hours %s, fixture-hours %s, %s\n\n"
+  (str (format "## DWH test data sweep\n\n**%d deleted, %d failed** — hours %s, %s\n\n"
                (:deleted totals) (:failed totals)
-               (:temp-data-hours options) (:fixture-hours options) generated-at)
+               (:hours options) generated-at)
        (str/join (map render-driver drivers))))
 
 (defn- write-report!
@@ -156,23 +148,17 @@
 
   `:drivers` is a comma-separated string, defaulting to [[default-drivers]].
 
-  `:temp-data-hours` (default 2) is the TTL for per-run garbage, `:fixture-hours` (default 72) for datasets runs
-  share. Floored at [[min-temp-data-hours]] and [[min-fixture-hours]].
+  `:hours` is how old a dataset needs to be before it's considered orphaned. Defaults to 12.
 
-  `:report-dir` (default [[default-report-dir]]) receives `report.json` and `report.md`.
+  `:tracked?` (default: nil) whether or not to also GC the legacy tracked datasets.
+              off by default to avoid disrupting backport branches but easy to run manually.
+
+  `:report-dir` (default: target/gc-report) receives `report.json` and `report.md`.
 
   Failures don't stop the sweep. They are reported per object, written to the report, and fail the job at the end."
-  [{:keys [drivers temp-data-hours fixture-hours report-dir]}]
-  (let [options {:temp-data-hours (or temp-data-hours min-temp-data-hours)
-                 :fixture-hours   (or fixture-hours 72)}]
-    (doseq [[k floor] {:temp-data-hours min-temp-data-hours, :fixture-hours min-fixture-hours}
-            :let      [v (get options k)]]
-      ;; whole hours, not merely numeric: the drivers interpolate these with `%d`, and a dispatch box lets someone
-      ;; hand us 2.5
-      (when-not (and (int? v) (>= v floor))
-        (throw (ex-info (format "%s must be a whole number of hours >= %d; refusing to sweep with %s"
-                                k floor (pr-str v))
-                        {:option k, :value v}))))
+  [{:keys [drivers hours dry-run? tracked? report-dir]}]
+  (let [options {:hours (or hours 12) :dry-run? dry-run? :tracked? tracked?}]
+    (when (< (:hours options) 4) (throw (Exception. "Must specify at least 4 hours.")))
     (let [swept  (let [ds (parse-drivers drivers)]
                    ;; drivers share nothing, so the job costs the slowest one rather than the sum of all three
                    (cp/with-shutdown! [pool (cp/threadpool (count ds))]

@@ -314,7 +314,6 @@ const ParameterItem = ({
         </Button>
         {isCompatible && (
           <Switch
-            size="sm"
             role="switch"
             checked={isFiltered}
             onChange={(event) =>

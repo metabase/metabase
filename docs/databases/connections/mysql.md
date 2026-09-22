@@ -12,7 +12,7 @@ To add a database connection, click the **grid** icon in the top right, and navi
 
 ## Supported versions
 
-Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.software/applications/databases/mysql).
+Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.date/mysql).
 
 ## Edit connection details
 
@@ -64,7 +64,7 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 For MySQL databases, Metabase can unfold JSON columns into component fields to yield a table where each JSON key becomes a column. JSON unfolding is on by default, but you can turn off JSON unfolding if performance is slow.
 
-If you turn on JSON unfolding, you can also toggle the unfolding for individual columns in [table metadata](../../data-modeling/metadata-editing.md#unfold-json).
+If you turn on JSON unfolding, you can also toggle the unfolding for individual columns in [table metadata](../../data-modeling/metadata/metadata-editing.md#unfold-json).
 
 ### Additional JDBC connection string options
 
@@ -74,7 +74,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -98,7 +98,7 @@ mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_
 
 ### Unable to log in with correct credentials
 
-**How to detect this:** Metabase fails to connect to your MySQL server with the error message "Looks like the username or password is incorrect", but you're sure that the username and password is correct. You may have created the MySQL user with an allowed host other than the host you're connecting from.
+**How to detect this:** Metabase fails to connect to your MySQL server with the error message "Looks like the username or password is incorrect", but you're sure that the username and password are correct. You may have created the MySQL user with an allowed host other than the host you're connecting from.
 
 For example, if the MySQL server is running in a Docker container, and your `metabase` user was created with `CREATE USER 'metabase'@'localhost' IDENTIFIED BY 'thepassword';`, the `localhost` will be resolved to the Docker container, and not the host machine, causing access to be denied.
 
@@ -193,15 +193,15 @@ Set up an additional connection used for write operations. See [Writable connect
 
 ## Model features
 
-Choose whether to enable features related to [Metabase models](../../data-modeling/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
+Choose whether to enable features related to [Metabase models](../../data-modeling/models/models.md). These features will often require that the database user account, the one you use to connect to your database, has both read and write privileges.
 
 ### Model actions
 
-Turn this setting on to allow [actions](../../actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
+Turn this setting on to allow [actions](../../data-modeling/models/actions/introduction.md) from models created from this data to be run. Actions can read, write, and delete data. Your database user will need write permissions.
 
 ### Model persistence
 
-We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
+We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/models/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
 
 ## Editable table data
 
@@ -225,6 +225,6 @@ See [Danger zone](../danger-zone.md).
 
 - [MariaDB](./mariadb.md)
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

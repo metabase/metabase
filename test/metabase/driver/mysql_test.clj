@@ -17,6 +17,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -45,9 +46,17 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)
+   (java.util Properties)
+   (org.mariadb.jdbc UrlParser)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :mysql
+    (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -373,7 +382,7 @@
 
 (deftest ^:parallel connection-spec-test-3
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"}
+    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true&allowLocalInfile=false"}
             (sql-jdbc.conn/connection-details->spec :mysql
                                                     (assoc sample-connection-details
                                                            :ssl false
@@ -382,13 +391,70 @@
 (deftest ^:parallel connection-spec-test-4
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
-      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs)
+      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs "&allowLocalInfile=false")
                :useSSL false
                ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
                :connectionAttributes (symbol "nil #_\"key is not present.\"")}
               (sql-jdbc.conn/connection-details->spec
                :mysql
                (assoc sample-connection-details :additional-options conn-attrs)))))))
+
+(defn- spec->allow-local-infile?
+  "Whether the MariaDB JDBC driver would let a server ask `spec`'s connection to read a file off the Metabase host.
+  Asks the driver's own URL parser rather than eyeballing the connection string, because URL parameters and connection
+  `Properties` do not carry equal weight and the last duplicate URL parameter wins."
+  [{:keys [subprotocol subname] :as spec}]
+  (let [props (Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)]
+      (.setProperty props (name k) (str v)))
+    (.-allowLocalInfile (.getOptions (UrlParser/parse (str "jdbc:" subprotocol ":" subname) props)))))
+
+(deftest ^:parallel local-infile-always-disabled-test
+  (testing "connections never honor `LOAD DATA LOCAL INFILE`"
+    (are [additional-options] (false? (spec->allow-local-infile?
+                                       (sql-jdbc.conn/connection-details->spec
+                                        :mysql
+                                        (cond-> sample-connection-details
+                                          additional-options (assoc :additional-options additional-options)))))
+      nil
+      "allowLocalInfile=true"
+      "useSSL=true&allowLocalInfile=true"
+      ;; the driver lets a later duplicate win, so ours has to be appended after whatever the user wrote
+      "allowLocalInfile=false&allowLocalInfile=true")))
+
+(deftest ^:synchronized local-infile-blocked-for-write-queries-test
+  (mt/test-driver :mysql
+    (testing "a write query cannot make the driver read a file off the Metabase host"
+      ;; Write queries — query actions, transforms — reach the database without the `-- Metabase::` remark that native
+      ;; queries carry, and that remark was the only thing keeping the driver from treating user SQL as a local-infile
+      ;; request. The connection now refuses local infile outright, so the remark no longer matters.
+      (let [spec      (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+            temp-file (File/createTempFile "local-infile" ".txt")]
+        (try
+          (spit temp-file "secret-from-the-metabase-host\n")
+          (jdbc/execute! spec "DROP TABLE IF EXISTS local_infile_loot")
+          (jdbc/execute! spec "CREATE TABLE local_infile_loot (line TEXT)")
+          (qp.store/with-metadata-provider (mt/id)
+            (is (thrown? clojure.lang.ExceptionInfo
+                         (driver/execute-write-query!
+                          driver/*driver*
+                          {:type   :native
+                           :native {:query (format "LOAD DATA LOCAL INFILE '%s' INTO TABLE local_infile_loot"
+                                                   (.getAbsolutePath temp-file))}}))))
+          (is (= [] (jdbc/query spec "SELECT * FROM local_infile_loot"))
+              "nothing from the Metabase host made it into the warehouse")
+          (finally
+            (jdbc/execute! spec "DROP TABLE IF EXISTS local_infile_loot")
+            (.delete temp-file)))))))
+
+(deftest ^:parallel local-infile-enabled-for-uploads-test
+  (testing "the dedicated connection uploads bulk-load through is the one exception"
+    (is (true? (spec->allow-local-infile?
+                (#'mysql/set-local-infile
+                 (sql-jdbc.conn/connection-details->spec
+                  :mysql
+                  (assoc sample-connection-details :additional-options "allowLocalInfile=false"))
+                 true))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql
@@ -687,7 +753,8 @@
             (let [field    (t2/select-one :model/Field :table_id (u/id table) :name "json_bit → 1234")]
               (mt/with-metadata-provider (mt/id)
                 (let [field-clause [:field
-                                    {:binning
+                                    {:lib/uuid (str (random-uuid))
+                                     :binning
                                      {:strategy :num-bins,
                                       :num-bins 100,
                                       :min-value 0.75,
@@ -1091,6 +1158,7 @@
                                                   (driver/can-connect? :mysql details))))
           "allowLoadLocalInfile=true"
           "allowLoadLocalInfileInPath=1"
+          "allowLocalInfile=true"
           "allowUrlInLocalInfile=1"
           "autoDeserialize=1"
           "serverRSAPublicKeyFile=/path/to/file"))

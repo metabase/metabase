@@ -17,20 +17,23 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.model-persistence.core :as model-persistence]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.sync.core :as sync]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.settings :as upload.settings]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
@@ -123,7 +126,7 @@
 (defn- table-id->auto-pk-column [driver table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name driver (:name field)) auto-pk-column-name))
-                 (t2/select :model/Field :table_id table-id :active true))))
+                 (upload.db/active-fields-for-table table-id))))
 
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
@@ -186,7 +189,7 @@
          (t/format time-format (strictly-monotonic-now)))))
 
 (mu/defn- database-type
-  [driver
+  [driver      :- :keyword
    column-type :- (into [:enum] upload-types/column-types)]
   (let [external-type (keyword "metabase.upload" (name column-type))]
     (driver/upload-type->database-type driver external-type)))
@@ -203,9 +206,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:map
-       [:schema {:optional true} [:maybe :string]]
-       [:name :string]]]
+   :- [:or :metabase.warehouse-schema.schema/table :metabase.warehouse-schema.schema/table.update]]
   (if (str/blank? schema)
     name
     (str schema "." name)))
@@ -219,12 +220,13 @@
       (for [[value parser] (u/map-all vector row parsers)]
         (do
           (when-not parser
-            (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
-                                    (count rows)
-                                    (count parsers))
-                            {:settings settings
-                             :col-upload-types rows
-                             :row row})))
+            (throw (ex-info (tru "Column count in data ({0}) exceeds the number of columns in the header ({1})"
+                                 (count row)
+                                 (count parsers))
+                            {:status-code      422
+                             :settings         settings
+                             :col-upload-types col-upload-types
+                             :row              row})))
           (when-not (str/blank? value)
             (parser value)))))))
 
@@ -318,7 +320,7 @@
         (InputStreamReader. charset))))
 
 (defn- assert-separator-chosen [s]
-  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+  (or s (throw (ex-info (tru "Unable to determine separator") {:status-code 422}))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
@@ -339,6 +341,18 @@
          ffirst
          assert-separator-chosen)))
 
+(defn- tag-csv-errors
+  "Rethrows the plain exceptions data.csv uses for malformed input as upload errors, so their message reaches the user."
+  [rows]
+  (lazy-seq
+   (try
+     (when-let [s (seq rows)]
+       (cons (first s) (tag-csv-errors (rest s))))
+     (catch Exception e
+       (if (str/starts-with? (str (ex-message e)) "CSV error")
+         (throw (ex-info (ex-message e) {:status-code 422}))
+         (throw e))))))
+
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
   [filename ^File file]
@@ -346,7 +360,7 @@
             \tab
             (infer-separator file))]
     (fn [stream]
-      (csv/read-csv stream :separator s))))
+      (tag-csv-errors (csv/read-csv stream :separator s)))))
 
 (defn- columns-with-auto-pk [columns]
   (merge (ordered-map/ordered-map auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk) columns))
@@ -368,7 +382,7 @@
   (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
-            (humanization/name->human-readable-name
+            (warehouse-schema.humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
@@ -438,7 +452,9 @@
                      :size-mb           (file-size-mb csv-file)}}
           (catch Throwable e
             (driver/drop-table! driver (:id db) table-name)
-            (throw (ex-info (ex-message e) {:status-code 400} e))))))))
+            (throw (if (:status-code (ex-data e))
+                     e
+                     (ex-info (ex-message e) {:status-code 400} e)))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload
@@ -459,25 +475,8 @@
 
 (defn- set-display-names!
   [table-id field->display-name]
-  (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))
-        case-statement      (into [:case]
-                                  (mapcat identity)
-                                  (for [[n display-name] field->display-name]
-                                    [[:= [:lower :name] n]
-                                     [:case
-                                      ;; Only update the display name if it still matches the automatic humanization.
-                                      [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                      ;; Otherwise, it could have been set manually, so leave it as is.
-                                      true                                                          :display_name]]))]
-    ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
-    ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
-    ;;                                        ^^^^^
-    ;; ERROR: argument of AND must be type boolean, not type integer
-    (t2/query {:update (t2/table-name :model/Field)
-               :set    {:display_name case-statement}
-               :where  [:and
-                        [:= :table_id table-id]
-                        [:in [:lower :name] (keys field->display-name)]]})))
+  (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))]
+    (upload.db/set-field-display-names! table-id field->display-name)))
 
 (defn- uploads-enabled? []
   (some? (:db_id (upload.settings/uploads-settings))))
@@ -570,17 +569,14 @@
           table                   (sync/create-table! db {:name         table-name
                                                           :schema       (not-empty schema)
                                                           :display_name display-name})
-          _set_is_upload          (t2/update! :model/Table (:id table) {:is_upload      true
-                                                                        :data_authority :authoritative
-                                                                        :data_source    :upload
-                                                                        :is_writable    true})
+          _set_is_upload          (upload.db/mark-table-upload! (:id table))
           _sync                   (scan-and-sync-table! db table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
           _                       (when (auto-pk-column? driver db)
                                     (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                                      (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
+                                      (upload.db/set-field-display-name! (:id auto-pk-field) (:name auto-pk-field))))]
       {:table table
        :stats stats})))
 
@@ -621,14 +617,14 @@
   - `schema-name`: the name of the schema to create the table in (optional).
   - `table-prefix`: the prefix to use for the table name (optional)."
   [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
-   :- [:map
+   :- [:map {:closed true}
        [:collection-id [:maybe ms/PositiveInt]]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (t2/select-one :model/Database :id db-id)
+  (let [database (or (upload.db/database db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
@@ -638,7 +634,7 @@
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
-            humanized-name    (humanization/name->human-readable-name filename-prefix)
+            humanized-name    (warehouse-schema.humanization/name->human-readable-name filename-prefix)
             display-name      (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Table :display_name))
             card-name         (u/truncate-string-to-byte-count humanized-name (max-bytes :model/Card :name))
             driver            (driver.u/database->driver database)
@@ -782,24 +778,21 @@
 (defn- invalidate-cached-models!
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
-  ;; NOTE: It is important that this logic is kept in sync with `model-hydrate-based-on-upload`
-  (when-let [model-ids (->> (t2/select [:model/Card :id :dataset_query :card_schema]
-                                       :table_id (:id table)
-                                       :type     :model
-                                       :archived false)
+  ;; NOTE: It is important that this logic is kept in sync with `models-based-on-upload`
+  (when-let [model-ids (->> (upload.db/unarchived-models-for-table (:id table))
                             (filter (comp #{(:id table)} only-table-id))
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
-    (model-persistence/invalidate! {:card_id [:in model-ids]})
+    (model-persistence/invalidate! model-ids)
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
-      (let [card     (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] id)
+      (let [card     (upload.db/card-query-and-metadata id)
             ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
             ;; the initial upload.
-            fix-name #(update % :display_name humanization/name->human-readable-name)
+            fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (t2/update! :model/Card id {:result_metadata metadata})))))
+        (upload.db/set-card-result-metadata! id metadata)))))
 
 (defn- translate-type-keywords [m]
   (walk/postwalk
@@ -820,7 +813,7 @@
                 [header & rows]    (cond-> (parse reader)
                                      auto-pk?
                                      without-auto-pk-columns)
-                name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
+                name->field        (m/index-by :name (upload.db/active-fields-for-table (:id table)))
                 ;; Match colliding columns to existing fields by display name so reordering them between
                 ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
                 column-names       (match-column-names driver header name->field)
@@ -871,7 +864,7 @@
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+                (upload.db/set-field-display-name! (:id auto-pk-field) (:name auto-pk-field))))
             (invalidate-cached-models! table)
             (events/publish-event! (if replace-rows?
                                      :event/upload-replace
@@ -956,7 +949,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (t2/update! :model/Table :id (:id table) {:active false})
+    (upload.db/deactivate-table! (:id table))
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
@@ -970,9 +963,7 @@
     ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
-      (t2/update-returning-pks! :model/Card
-                                {:table_id (:id table) :archived false}
-                                {:archived true}))
+      (upload.db/archive-cards-for-table! (:id table)))
     :done))
 
 (def update-action-schema
@@ -984,12 +975,12 @@
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
   [{:keys [filename ^File file table-id action]}
-   :- [:map
+   :- [:map {:closed true}
        [:table-id ms/PositiveInt]
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
-  (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
+  (let [table    (api/check-404 (upload.db/table table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
     (check-can-update database table)
@@ -1004,20 +995,30 @@
   "Returns the subset of table ids where the user can upload to the table."
   [table-ids]
   (set (when (seq table-ids)
-         (->> (t2/hydrate (t2/select :model/Table :id [:in table-ids]) :db)
+         (->> (t2/hydrate (upload.db/tables table-ids) :db)
               (filter #(can-upload-to-table? (:db %) %))
               (map :id)))))
 
-(mu/defn model-hydrate-based-on-upload
-  "Batch hydrates `:based_on_upload` for each item of `models`. Assumes each item of `model` represents a model."
-  [models :- [:sequential [:map
-                           ;; query_type and dataset_query can be null in tests, so we make them nullable here.
-                           ;; they should never be null in production
-                           [:dataset_query [:maybe ms/Map]]
-                           [:query_type    [:maybe [:or :string :keyword]]]
-                           [:table_id      [:maybe ms/PositiveInt]]
-                           ;; is_upload can be provided for an optional optimization
-                           [:is_upload {:optional true} [:maybe :any]]]]]
+(mr/def ::based-on-upload-input
+  "The columns of a model Card that decide its `:based_on_upload`."
+  [:map {:closed true}
+   [:id            ms/PositiveInt]
+   ;; query_type and dataset_query can be null in tests, so we make them nullable here.
+   ;; they should never be null in production
+   [:dataset_query [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:query_type    [:maybe [:or :string :keyword]]]
+   [:table_id      [:maybe ms/PositiveInt]]
+   ;; is_upload can be provided for an optional optimization
+   [:is_upload {:optional true} [:maybe :boolean]]])
+
+(def based-on-upload-input-keys
+  "The keys of a model that [[models-based-on-upload]] reads."
+  [:id :dataset_query :query_type :table_id :is_upload])
+
+(mu/defn models-based-on-upload
+  "The `:based_on_upload` table id of each of `models` that has one, keyed by model id. Assumes each item of `models`
+  represents a model."
+  [models :- [:sequential ::based-on-upload-input]]
   (let [table-ids             (->> models
                                    ;; as an optimization when listing collection items (GET /api/collection/items),
                                    ;; we might already know that the table is not an upload if is_upload=false. We
@@ -1026,11 +1027,14 @@
                                    (keep :table_id)
                                    set)
         has-uploadable-table? (comp (uploadable-table-ids table-ids) :table_id)]
-    (for [model models]
-      ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
-      ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
-      (m/assoc-some model :based_on_upload (when (has-uploadable-table? model)
-                                             (only-table-id model))))))
+    (into {}
+          (keep (fn [model]
+                  ;; NOTE: It is important that this logic is kept in sync with `invalidate-cached-models!`
+                  ;; If not, it will mean that the user could modify the table via a given model's page without seeing it update.
+                  (when-let [table-id (when (has-uploadable-table? model)
+                                        (only-table-id model))]
+                    [(:id model) table-id])))
+          models)))
 
 (mi/define-batched-hydration-method based-on-upload
   :based_on_upload
@@ -1045,6 +1049,8 @@
   Excluding checking the users write permissions for the card, `:based_on_upload` reflects the user's
   ability to upload to the underlying table through the card."
   [cards]
-  (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
-        card->maybe-model (comp id->model :id)]
-    (map #(or (card->maybe-model %) %) cards)))
+  (let [id->table-id (models-based-on-upload (into []
+                                                   (comp (filter #(= (:type %) :model))
+                                                         (map #(select-keys % based-on-upload-input-keys)))
+                                                   cards))]
+    (map #(m/assoc-some % :based_on_upload (id->table-id (:id %))) cards)))

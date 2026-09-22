@@ -41,7 +41,7 @@ Supported models:
 
 Credentials:
 
-- **API key** (required). [Where do I find this?](https://console.anthropic.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
+- **API key** (required). [Where do I find this?](https://platform.claude.com/settings/keys) You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_KEY`.
 - **API base URL** (advanced). Defaults to `https://api.anthropic.com`. You can also set it with the environment variable `MB_LLM_ANTHROPIC_API_BASE_URL`.
 
 ## OpenAI
@@ -62,6 +62,7 @@ Supported models:
 | GPT-5.6 Luna  | `gpt-5.6-luna`  | 922,000                 |
 | GPT-5.6 Sol   | `gpt-5.6-sol`   | 922,000                 |
 | GPT-5.6 Terra | `gpt-5.6-terra` | 922,000                 |
+| GPT-6 Astra   | `gpt-6-astra`   | 922,000                 |
 
 Credentials:
 
@@ -104,6 +105,7 @@ Supported models:
 | GPT-5.6 Terra          | `openai/gpt-5.6-terra`            | 922,000                 |
 | Qwen3.8 Max            | `qwen/qwen3.8-max`                | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
+| GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
 
 Credentials:
 
@@ -138,6 +140,7 @@ Supported models:
 | Model   | Model ID  | Context window (tokens) |
 | ------- | --------- | ----------------------- |
 | GLM-5.2 | `glm-5.2` | 1,048,576               |
+| GLM-5.3 | `glm-5.3` | 1,048,576               |
 
 Credentials:
 
@@ -245,13 +248,46 @@ Supported models:
 | GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`  | 272,000                 |
 | GPT-5.5              | `openai.gpt-5.5`             | 272,000                 |
 | GPT-5.5 (2026-04-23) | `openai.gpt-5.5-2026-04-23`  | 272,000                 |
+| GPT-6 Astra          | `openai.gpt-6-astra`         | 922,000                 |
 
 Credentials:
 
-- **Access key ID** (required). [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
-- **Secret access key** (required). You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
+- **Access key ID**. Only together with **Secret access key**. Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile). On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
+- **Secret access key**. Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
 - **Region**. Pick one from the dropdown in **Admin > AI**. Defaults to `us-east-1`. You can also set it with the environment variable `MB_LLM_BEDROCK_REGION`.
-- **Session token** (advanced). Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
+- **Session token** (advanced). Only together with **Access key ID** and **Secret access key**. Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
+
+### IAM permissions for Bedrock
+
+Metabase talks to Bedrock through the mantle endpoint, `https://bedrock-mantle.{region}.api.aws`, not through `bedrock-runtime`. Mantle is a separate IAM namespace with its own actions, so a policy written against the `bedrock` prefix won't grant access. Metabase lists models and runs conversations, so it needs `bedrock-mantle:ListModels` and `bedrock-mantle:CreateInference`.
+
+Here's a least-privilege policy that grants both:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock-mantle:ListModels", "bedrock-mantle:CreateInference"],
+      "Resource": "arn:aws:bedrock-mantle:*:*:project/*"
+    }
+  ]
+}
+```
+
+The AWS managed policy [AmazonBedrockMantleInferenceAccess](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonBedrockMantleInferenceAccess.html) also covers both actions (along with permissions Metabase doesn't use).
+
+If Metabase reports "AWS Bedrock credentials lack permission for this model or action", check that your policy uses the `bedrock-mantle` prefix.
+
+### The Bedrock models you can pick depend on the region
+
+The table above lists the models Metabase can use. The **Models** card only offers the ones Bedrock serves in the connection's region, so what you can pick depends on the region. The mantle catalog has no cross-region inference profiles, so a model that isn't served in your region can't be reached from that region at all.
+
+If the model list is empty or shorter than you expect after connecting:
+
+- **Check the region**: the **Region** dropdown lists every AWS region, including regions where Bedrock serves none of these models. The [AWS model cards](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) show where each model is available. For example, the GPT models are only served in US regions.
+- **Check your account's data retention setting**: Bedrock marks a model unavailable when your account's data retention mode doesn't meet what that model requires. For example, [Claude Fable 5](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5.html) requires the `aws_review` data retention mode.
 
 ## vLLM
 
@@ -263,7 +299,7 @@ Metabase lists whichever models your vLLM server is serving, so what you can pic
 
 Credentials:
 
-- **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
+- **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
 
 ## Metabase AI service

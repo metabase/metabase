@@ -192,7 +192,7 @@ bun run test-unit-watch # Watch for file changes
 
 ## Backend development
 
-Clojure REPL is the main development tool for the backend. There are some directions below on how to setup your REPL for easier development.
+Clojure REPL is the main development tool for the backend. There are some directions below on how to set up your REPL for easier development.
 
 And of course your Jetty development server is available via
 
@@ -271,7 +271,7 @@ This approach requires creating a `.lein-env` file within your project directory
 
 Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only.
 
-Only use this for development, it is not supported for production use. There is already entry in `.gitignore` to prevent you accidentally committing this file.
+Only use this for development, it is not supported for production use. There is already an entry in `.gitignore` to prevent you accidentally committing this file.
 
 ### Building drivers
 
@@ -406,7 +406,7 @@ If running tests from the REPL, you can call something like:
 (mt/set-test-drivers! #{:postgres :mysql :h2})
 ```
 
-Most drivers need to be able to load some data (a few use static datasets) and all drivers need to be able to connect to an instance of that database. You can find out what is needed in each's drivers test data namespace which follows that pattern `metabase.test.data.<driver>`.
+Most drivers need to be able to load some data (a few use static datasets) and all drivers need to be able to connect to an instance of that database. You can find out what is needed in each driver's test data namespace, which follows the pattern `metabase.test.data.<driver>`.
 
 There should be an implementation of a multimethod tx/dbdef->connection-details which must produce a way to connect to a database. You can see what is required.
 

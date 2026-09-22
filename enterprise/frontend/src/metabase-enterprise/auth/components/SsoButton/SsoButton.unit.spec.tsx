@@ -1,8 +1,5 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, waitFor } from "__support__/ui";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import * as domUtils from "metabase/utils/dom";
 import * as iframeUtils from "metabase/utils/iframe";
 

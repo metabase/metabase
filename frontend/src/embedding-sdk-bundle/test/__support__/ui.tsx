@@ -2,6 +2,8 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
+import { seedApiQueryCache } from "__support__/state";
+import { type StoreSeedState, createMockState } from "__support__/state";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -10,11 +12,6 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { seedApiQueryCache } from "metabase/redux/store/mocks";
-import {
-  type StoreSeedState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 

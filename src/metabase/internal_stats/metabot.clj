@@ -2,16 +2,12 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [toucan2.core :as t2]))
+   [metabase.internal-stats.db :as internal-stats.db]))
 
 (defn- usage-by-model
   "Aggregate combined tokens by provider:model for a given UTC date."
   [date-utc]
-  (let [rows (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
-                        {:where    [:and
-                                    :ai_proxied
-                                    [:= [:cast :created_at :date] [:cast date-utc :date]]]
-                         :group-by [:model]})]
+  (let [rows (internal-stats.db/proxied-ai-usage-tokens-by-model date-utc)]
     (->> (for [{:keys [model tokens]} rows
                :let [k (-> model
                            (str/replace-first "metabase/" "")
@@ -27,36 +23,18 @@
   []
   (let [today-utc     (t/offset-date-time (t/zone-offset "+00"))
         yesterday-utc (t/minus today-utc (t/days 1))
-        user-id-expr  [:coalesce :m.user_id :c.user_id]
-        tokens        (or (t2/select-one-fn :sum
-                                            [:model/AiUsageLog [:%sum.total_tokens :sum]]
-                                            {:where [:and
-                                                     :ai_proxied
-                                                     [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
-                          0)
+        tokens        (or (internal-stats.db/proxied-ai-usage-tokens-on yesterday-utc) 0)
         rolling-usage (usage-by-model today-utc)]
     (when (or (pos? tokens) (seq rolling-usage))
       (cond-> {}
         (pos? tokens)
         (merge {:metabot-tokens     (long tokens)
                 :metabot-usage      (usage-by-model yesterday-utc)
-                :metabot-queries    (t2/select-one-fn :cnt
-                                                      [:model/MetabotMessage [:%count.id :cnt]]
-                                                      :role "user"
-                                                      :forked_from_message_id nil
-                                                      {:where [:and
-                                                               :ai_proxied
-                                                               [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
+                :metabot-queries    (internal-stats.db/proxied-metabot-user-message-count-on yesterday-utc)
                 ;; New rows stamp `metabot_message.user_id`; legacy rows fall back
                 ;; to `metabot_conversation.user_id` so historical usage doesn't
                 ;; disappear until old messages are backfilled.
-                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct user-id-expr]] :cnt]]
-                                                         :from   [[:metabot_message :m]]
-                                                         :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
-                                                         :where  [:and
-                                                                  :ai_proxied
-                                                                  [:= :m.forked_from_message_id nil]
-                                                                  [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
+                :metabot-users      (:cnt (internal-stats.db/proxied-metabot-user-count-on yesterday-utc))
                 :metabot-usage-date (str (t/local-date yesterday-utc))})
         (seq rolling-usage)
         (merge {:metabot-rolling-usage      rolling-usage

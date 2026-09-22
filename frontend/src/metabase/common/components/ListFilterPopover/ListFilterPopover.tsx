@@ -71,7 +71,7 @@ export const ListFilterPopover = ({
           </Button>
         </Indicator>
       </Popover.Target>
-      <Popover.Dropdown p="xl">
+      <Popover.Dropdown p="md">
         <Stack gap="xxl" w={300}>
           {children}
           <Group gap="lg" grow>

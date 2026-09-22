@@ -531,10 +531,17 @@
                    venues-pk-field-id]}]
       ~@body)))
 
-(defn extract-one [model-name where]
-  (let [where (cond
-                (nil? where)    true
-                (number? where) [:= :id where]
-                (string? where) [:= :entity_id where]
-                :else           where)]
-    (u/rfirst (serdes/extract-all model-name {:where where}))))
+(defn extract-one
+  "Extract the first serialized `model-name` entity matching `where`: its primary key, its entity id, a Honey SQL
+  clause, or nil for the first entity of the model. `extract-all` filters by primary key, so a clause is resolved to
+  primary keys here first."
+  [model-name where]
+  (let [model (keyword "model" model-name)
+        pk    (first (t2/primary-keys model))
+        ids   (cond
+                (nil? where)    nil
+                (number? where) [where]
+                (string? where) (t2/select-fn-vec pk [model pk] :entity_id where)
+                :else           (t2/select-fn-vec pk [model pk] {:where where}))]
+    (u/rfirst (serdes/extract-all model-name (cond-> {}
+                                               ids (assoc :filter-column pk :filter-ids ids))))))

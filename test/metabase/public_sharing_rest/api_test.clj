@@ -42,6 +42,38 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
+(defn- field-effective-type
+  "A Field's `:effective_type` as the API returns it. It varies with the driver,
+  so a `:param_fields` expectation reads it rather than naming a value."
+  [field-id]
+  (u/qualified-name (t2/select-one-fn :effective_type :model/Field :id field-id)))
+
+(defn- categories-id-target
+  "The `:target` a `:param_fields` entry for `venues.category_id` carries: the
+  Categories primary key in public columns, with the `:name_field` that labels its
+  values. A public parameter widget cannot remap an FK's values without it."
+  []
+  {:id                 (mt/id :categories :id)
+   :table_id           (mt/id :categories)
+   :display_name       "ID"
+   :base_type          "type/BigInteger"
+   :effective_type     (field-effective-type (mt/id :categories :id))
+   :settings           nil
+   :name               "ID"
+   :semantic_type      "type/PK"
+   :has_field_values   "none"
+   :fk_target_field_id nil
+   :name_field         {:id                 (mt/id :categories :name)
+                        :table_id           (mt/id :categories)
+                        :display_name       "Name"
+                        :base_type          "type/Text"
+                        :effective_type     (field-effective-type (mt/id :categories :name))
+                        :settings           nil
+                        :name               "NAME"
+                        :semantic_type      "type/Name"
+                        :has_field_values   "list"
+                        :fk_target_field_id nil}})
+
 (defn- shared-obj []
   {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
@@ -361,9 +393,9 @@
                                                  :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
                                                  :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
                                                  :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
-   :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
-                      {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
-                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+   :parameters       [{:type "date", :name "a", :id "a" :default "A param"}
+                      {:type "date", :name "b", :id "b" :default "B param"}
+                      {:type "date", :name "c", :id "c" :default "C param"
                        :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
    :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
 
@@ -377,7 +409,6 @@
       (mt/with-temp [:model/Card card (assoc (card-with-embedded-params) :public_uuid (str (random-uuid)))]
         (is (= [{:type         "date/single",
                  :name         "a",
-                 :display_name "a",
                  :id           "a",
                  :default      "A TAG",
                  :target       ["variable" ["template-tag" "a"]],
@@ -385,7 +416,6 @@
                  :required     false}
                 {:type         "date/single",
                  :name         "b",
-                 :display_name "b",
                  :id           "b",
                  :default      "B TAG",
                  :target       ["variable" ["template-tag" "b"]],
@@ -395,7 +425,6 @@
                 ;; merge of both places
                 {:type                 "date/single",
                  :name                 "c",
-                 :display_name         "c",
                  :slug                 "c",
                  ;; order importance: the default from template-tag is in the final result
                  :default              "C TAG",
@@ -1493,6 +1522,54 @@
                                (param-values-url :card field-filter-uuid
                                                  (:field-values param-keys) "bar"))))))))))))
 
+(deftest param-values-input-box-test
+  (testing "A filter set to Input box (values_query_type = none) offers no values, even anonymously (SEC-1211)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [name-param-id     "_NAME_"
+            contains-param-id "_NAME_CONTAINS_"
+            category-param-id "_CATEGORY_"
+            parameters        [{:id                name-param-id
+                                :name              "Name"
+                                :slug              "name"
+                                :type              :string/=
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :name) nil]]}
+                               ;; the frontend defaults a `contains` filter to an Input box without saving
+                               ;; `values_query_type`
+                               {:id     contains-param-id
+                                :name   "Name contains"
+                                :slug   "name_contains"
+                                :type   :string/contains
+                                :target [:dimension [:field (mt/id :venues :name) nil]]}
+                               {:id                category-param-id
+                                :name              "Category"
+                                :slug              "category"
+                                :type              :id
+                                :values_query_type "none"
+                                :target            [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+        (mt/with-temp [:model/Card {card-id :id, card-uuid :public_uuid} {:public_uuid   (str (random-uuid))
+                                                                          :dataset_query (mt/mbql-query venues {:filter [:= $price 1]})
+                                                                          :parameters    parameters}
+                       :model/Dashboard {dash-uuid :public_uuid, dashboard-id :id} {:public_uuid (str (random-uuid))
+                                                                                    :parameters  (mapv #(dissoc % :target) parameters)}
+                       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                                               :card_id            card-id
+                                               :parameter_mappings (for [{:keys [id target]} parameters]
+                                                                     {:parameter_id id, :card_id card-id, :target target})}]
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]
+                  param-id     [name-param-id contains-param-id]]
+            (testing (format "GET /api/public/%s/:uuid/params/%s/values" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id)))))
+            (testing (format "GET /api/public/%s/:uuid/params/%s/search/:query" (name model) param-id)
+              (is (= {:values [], :has_more_values false}
+                     (client/client :get 200 (param-values-url model uuid param-id "red"))))))
+          (doseq [[model uuid] [[:card card-uuid] [:dashboard dash-uuid]]]
+            (testing (format "GET /api/public/%s/:uuid/params/:param-key/remapping still labels a chosen value" (name model))
+              (is (= [2 "American"]
+                     (client/client :get 200 (format "public/%s/%s/params/%s/remapping?value=2"
+                                                     (name model) uuid category-param-id)))))))))))
+
 (deftest card-param-fields-public-columns-test
   (testing "GET /api/public/card/:uuid :param_fields only carry the public Field columns"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -1511,12 +1588,28 @@
                                 :table_id           (mt/id :venues)
                                 :display_name       "Category ID"
                                 :base_type          "type/Integer"
+                                :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                :settings           nil
                                 :name               "CATEGORY_ID"
                                 :semantic_type      "type/FK"
                                 :has_field_values   "none"
                                 :fk_target_field_id (mt/id :categories :id)
+                                :target             (categories-id-target)
                                 :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card)))))))))))
+
+(deftest dashboard-param-fields-anonymous-fk-target-test
+  (testing "GET /api/public/dashboard/:uuid :param_fields carry an FK's target without a session"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-sharing-enabled-and-temp-dashcard-referencing! :orders :user_id [dashboard]
+        (testing "the target labels the FK's values, so a public widget cannot remap them without it"
+          (is (=? {:id       (mt/id :people :id)
+                   :name_field {:id (mt/id :people :name)}}
+                  (-> (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))
+                      :param_fields
+                      vals
+                      ffirst
+                      :target))))))))
 
 (deftest dashboard-param-fields-public-columns-test
   (testing "GET /api/public/dashboard/:uuid :param_fields only carry the public Field columns"
@@ -1537,10 +1630,13 @@
                                    :table_id           (mt/id :venues)
                                    :display_name       "Category ID"
                                    :base_type          "type/Integer"
+                                   :effective_type     (field-effective-type (mt/id :venues :category_id))
+                                   :settings           nil
                                    :name               "CATEGORY_ID"
                                    :semantic_type      "type/FK"
                                    :has_field_values   "none"
                                    :fk_target_field_id (mt/id :categories :id)
+                                   :target             (categories-id-target)
                                    :dimensions         []}]}
                  (:param_fields (client/client :get 200 (str "public/dashboard/" (:public_uuid dashboard)))))))))))
 
@@ -1552,6 +1648,8 @@
                              :table_id           (mt/id :venues)
                              :display_name       "ID"
                              :base_type          "type/BigInteger"
+                             :effective_type     (field-effective-type (mt/id :venues :id))
+                             :settings           nil
                              :name               "ID"
                              :semantic_type      "type/PK"
                              :has_field_values   "none"
@@ -1560,6 +1658,8 @@
                              :table_id           (mt/id :venues)
                              :display_name       "Name"
                              :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :venues :name))
+                             :settings           nil
                              :name               "NAME"
                              :semantic_type      "type/Name"
                              :has_field_values   "list"
@@ -1568,14 +1668,19 @@
                              :table_id           (mt/id :venues)
                              :display_name       "Category ID"
                              :base_type          "type/Integer"
+                             :effective_type     (field-effective-type (mt/id :venues :category_id))
+                             :settings           nil
                              :name               "CATEGORY_ID"
                              :semantic_type      "type/FK"
                              :has_field_values   "none"
-                             :fk_target_field_id (mt/id :categories :id)}
+                             :fk_target_field_id (mt/id :categories :id)
+                             :target             (categories-id-target)}
             categories-name {:id                 (mt/id :categories :name)
                              :table_id           (mt/id :categories)
                              :display_name       "Name"
                              :base_type          "type/Text"
+                             :effective_type     (field-effective-type (mt/id :categories :name))
+                             :settings           nil
                              :name               "NAME"
                              :semantic_type      "type/Name"
                              :has_field_values   "list"

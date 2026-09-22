@@ -498,7 +498,7 @@ describe("useExplorationSelection", () => {
           Api.util.upsertQueryEntries(
             // RTK validates endpointName/value at runtime against the injected
             // endpoint registry; TS can't pick the right union branch here (same
-            // cast as `seedApiQueryCache` in metabase/redux/store/mocks/api.ts).
+            // cast as `seedApiQueryCache` in __support__/state/api.ts).
             entries as unknown as Parameters<
               typeof Api.util.upsertQueryEntries
             >[0],

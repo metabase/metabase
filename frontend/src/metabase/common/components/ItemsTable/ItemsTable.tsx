@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import CS from "metabase/css/core/index.css";
@@ -5,6 +7,7 @@ import type { CollectionItem } from "metabase-types/api";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
+import S from "./ItemsTable.module.css";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
 const Item = ({
@@ -39,7 +42,7 @@ export const ItemsTable = ({
   }
 
   return (
-    <div className={CS.relative}>
+    <div className={cx(CS.relative, S.container)}>
       <PinDropZone variant="unpin" />
       <BaseItemsTable items={items} {...props} ItemComponent={ItemComponent} />
     </div>

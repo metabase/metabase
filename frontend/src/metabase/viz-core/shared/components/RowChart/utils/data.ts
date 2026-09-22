@@ -1,9 +1,9 @@
 import type { Series as D3Series } from "d3";
 import * as d3 from "d3";
 import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3";
-import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
+import { memoize } from "metabase/utils/memoize";
 
 import type { SeriesInfo } from "../../../types/data";
 import type { ContinuousScaleType } from "../../../types/scale";
@@ -94,11 +94,10 @@ export const calculateStackedBars = <TDatum>(
     patchD3StackDataForLogScale(stackedSeries);
   }
 
-  const getDatumExtent = _.memoize(
+  const getDatumExtent = memoize(
     (stackedSeries: D3Series<TDatum, string>[], datumIndex: number) => {
       return d3.extent(stackedSeries.flatMap((series) => series[datumIndex]));
     },
-    (_series, datumIndex) => datumIndex,
   );
 
   const seriesData: SeriesData<TDatum, SeriesInfo>[] = multipleSeries.map(

@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { setupListDatabaseSchemasEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { modelIconMap } from "metabase/common/utils/icon";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { modelIconMap } from "metabase/common/utils/icon";
 import { Route } from "metabase/router";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";

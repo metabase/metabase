@@ -5,7 +5,7 @@ import { getUserId } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import type { FieldDiff, Revision, TableId } from "metabase-types/api";
+import type { FieldDiff, Revision } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
@@ -13,7 +13,6 @@ import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
 type RevisionItemProps = {
   revision: Revision;
-  tableId: TableId;
   userColor?: string;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
@@ -22,7 +21,6 @@ type RevisionItemProps = {
 
 export function RevisionItem({
   revision,
-  tableId,
   userColor,
   getActionDescription,
   definitionLabel,
@@ -71,7 +69,6 @@ export function RevisionItem({
                 key={key}
                 property={key}
                 diff={getDiffForKey(revision.diff, key)}
-                tableId={tableId}
                 definitionLabel={definitionLabel}
                 definitionType={definitionType}
               />

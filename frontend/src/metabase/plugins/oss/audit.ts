@@ -1,9 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import type { SlashCommand } from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { Dispatch, GetState } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -12,12 +10,7 @@ import type {
   IconName,
 } from "metabase-types/api";
 
-export type MetabotSlashCommandHandler = (args: {
-  command: SlashCommand;
-  conversationId: string;
-  dispatch: Dispatch;
-  getState: GetState;
-}) => boolean;
+import { definePluginSlot } from "../slot";
 
 export type InsightsLinkProps = (
   | {
@@ -38,24 +31,26 @@ export interface InsightsMenuItemProps {
   withDivider?: boolean;
 }
 
-const getDefaultPluginAudit = () => ({
+type AuditPlugin = {
+  isEnabled: boolean;
+  isAuditDb: (db: DatabaseType) => boolean;
+  InsightsLink: ComponentType<InsightsLinkProps>;
+  InsightsMenuItem: ComponentType<InsightsMenuItemProps>;
+  AnalyticsExportStatus: ComponentType;
+  CollectionExportAnalytics: ComponentType;
+  isAiAuditingEnabled: boolean;
+  getAiAuditingRoutes: () => ReactNode;
+};
+
+const getDefaultPluginAudit = (): AuditPlugin => ({
   isEnabled: false,
-  isAuditDb: (_db: DatabaseType) => false,
-  // Unjustified type cast. FIXME
-  InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
-  // Unjustified type cast. FIXME
-  InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
+  isAuditDb: (_db) => false,
+  InsightsLink: PluginPlaceholder,
+  InsightsMenuItem: PluginPlaceholder,
+  AnalyticsExportStatus: PluginPlaceholder,
+  CollectionExportAnalytics: PluginPlaceholder,
   isAiAuditingEnabled: false,
-  getAiAuditingRoutes: (): ReactNode => null,
-  // Unjustified type cast. FIXME
-  handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
+  getAiAuditingRoutes: () => null,
 });
 
-export const PLUGIN_AUDIT = getDefaultPluginAudit();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_AUDIT, getDefaultPluginAudit());
-}
+export const PLUGIN_AUDIT = definePluginSlot(getDefaultPluginAudit);

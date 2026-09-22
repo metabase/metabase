@@ -33,6 +33,7 @@ import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/not
 import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkStaticMode";
+import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
 import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -41,11 +42,12 @@ import type {
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
 import { Box, Group, Stack } from "metabase/ui";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { staticQuestionSchema } from "./StaticQuestion.schema";
+
+const staticClickActionMode = getEmbeddingMode({
+  queryMode: EmbeddingSdkStaticMode,
+});
 
 type StaticQuestionBaseProps = PropsWithChildren<
   Pick<
@@ -164,26 +166,12 @@ const StaticQuestionInner = (
 
   const { ref: containerRef, isMobile } = useMobileLayout();
 
-  const getClickActionMode: ClickActionModeGetter = ({
-    question,
-  }: {
-    question: Question;
-  }) => {
-    return (
-      question &&
-      getEmbeddingMode({
-        question,
-        queryMode: EmbeddingSdkStaticMode,
-      })
-    );
-  };
-
   return (
     <SdkQuestion
       questionId={questionId}
       token={token}
       deserializedCard={deserializedCard}
-      getClickActionMode={getClickActionMode}
+      clickActionMode={staticClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
       sqlParameters={sqlParameters}

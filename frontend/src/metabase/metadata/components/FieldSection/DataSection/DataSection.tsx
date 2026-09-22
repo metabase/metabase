@@ -140,7 +140,6 @@ const DataSectionBase = ({
                     flex="1"
                     label={t`Cast to a specific data type`}
                     mt="lg"
-                    size="xs"
                     onChange={handleCastingChange}
                   />
                   {isCasting && (

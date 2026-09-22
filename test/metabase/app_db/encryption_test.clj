@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.notification.core :as notification]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -30,7 +31,11 @@
                      :set    {:details "{\"pattern\":\"plain\"}"}
                      :where  [:!= :details nil]})
           (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
-          (mdb/encrypt-plaintext-columns!)
+          (mt/with-log-messages-for-level [messages :warn]
+            (mdb/encrypt-plaintext-columns!)
+            (is (=? [{:level :warn, :message #"Encrypting legacy values in notification_recipient\.details that a previous version of Metabase stored unencrypted\."}]
+                    (filter #(re-find #"notification_recipient" (:message %)) (messages)))
+                "the heal warns about the column it had to encrypt"))
           (let [healed (recipient-details)]
             (is (every? encryption/decryptable-string? healed))
             (is (= "{\"pattern\":\"plain\"}" (encryption/decrypt (first healed))))))
@@ -39,7 +44,21 @@
         (testing "idempotent: a second run leaves every value byte-identical"
           (let [snapshot (recipient-details)]
             (mdb/encrypt-plaintext-columns!)
-            (is (= snapshot (recipient-details))))))))
+            (is (= snapshot (recipient-details)))))
+        (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION the heal refuses instead, leaving the rows as they are"
+          (t2/query {:update :notification_recipient
+                     :set    {:details "{\"pattern\":\"plain\"}"}
+                     :where  [:!= :details nil]})
+          (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+            (is (mdb.encryption/legacy-startup-encryption-disabled?))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Found legacy values in notification_recipient\.details .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
+                                  (mdb/encrypt-plaintext-columns!)))
+            (is (not-any? encryption/decryptable-string? (recipient-details)) "nothing was encrypted"))
+          (testing "unset again, the heal runs"
+            (is (not (mdb.encryption/legacy-startup-encryption-disabled?)))
+            (mdb/encrypt-plaintext-columns!)
+            (is (every? encryption/decryptable-string? (recipient-details))))))))
   (testing "without an encryption key nothing happens"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)

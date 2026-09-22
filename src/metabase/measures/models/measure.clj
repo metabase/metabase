@@ -9,6 +9,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
+   [metabase.measures.db :as measures.db]
+   [metabase.measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -32,7 +34,8 @@
   Throws an exception with 'Invalid measure definition' if the definition is not valid MBQL5."
   [definition]
   (when (seq definition)
-    (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
+    (when-not (= :mbql-version/mbql5 (when (map? definition)
+                                       (u/ignore-exceptions (lib/normalized-mbql-version definition))))
       (throw (ex-info (tru "Invalid measure definition: expected MBQL5 format")
                       {:definition definition})))
     (mu/validate-throw ::lib.schema.measure/definition definition)))
@@ -56,17 +59,17 @@
 (defmethod mi/can-read? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (mi/can-read? table)))
-  ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-read? (measures.db/measure pk))))
 
 ;; Measures can be written by superusers or data analysts with unrestricted view data permissions,
 ;; but only if the parent table is editable (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-write? :model/Measure
   ([instance]
    (let [table (or (:table instance)
-                   (t2/select-one :model/Table :id (:table_id instance)))]
+                   (measures.db/table (:table_id instance)))]
      (and (or api/*is-superuser?*
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
@@ -76,15 +79,15 @@
                     (:db_id table)
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
-  ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+  ([_model pk]
+   (mi/can-write? (measures.db/measure pk))))
 
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Measure
   [_model instance]
   (let [table (or (:table instance)
-                  (t2/select-one :model/Table :id (:table_id instance)))]
+                  (measures.db/table (:table_id instance)))]
     (and (or api/*is-superuser?*
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
@@ -109,7 +112,7 @@
         collection-synced-map (if (seq collection-ids)
                                 (into {}
                                       (map (juxt :id :is_remote_synced))
-                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                      (measures.db/collections collection-ids))
                                 {})
         ;; Associate collection info with each measure's table
         measures-with-collection (for [measure measures-with-tables
@@ -151,7 +154,7 @@
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
   (let [table (or (:table measure)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id measure))))]
+                  (measures.db/table-perms-columns (u/the-id (:table_id measure))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- normalize-definition-from-db
@@ -239,6 +242,4 @@
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (t2/update! :model/Measure measure-id
-                {:dimensions         dimensions
-                 :dimension_mappings dimension-mappings})))
+    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))

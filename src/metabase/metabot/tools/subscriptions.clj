@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
@@ -24,7 +25,7 @@
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
   [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
+  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
                           api/read-check
                           (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)
@@ -32,7 +33,10 @@
                 (-> card
                     api/read-check
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
+                    (assoc :dashboard_card_id id
+                           :dashboard_id      dashboard-id
+                           :include_csv       false
+                           :include_xls       false)))
         channel-name (some->> slack-channel
                               channel.settings/find-cached-slack-channel-or-username
                               ;; match existing code which stores display names like "#some-channel"
@@ -81,7 +85,7 @@
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
    [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule [:map
+   [:schedule [:map {:closed true}
                [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
                [:hour {:optional true} [:maybe :int]]
                [:day_of_week {:optional true} [:maybe :string]]

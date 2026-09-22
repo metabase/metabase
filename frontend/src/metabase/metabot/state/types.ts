@@ -8,8 +8,6 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotSuggestedTransform,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 export type MetabotDataPart = Exclude<
@@ -27,8 +25,6 @@ export type MetabotSearchResults = {
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
-  editorTransform?: MetabotTransformInfo;
-  suggestionId?: string;
 };
 
 export type MetabotAgentTurnError = {
@@ -42,7 +38,6 @@ export type MetabotUserTextChatMessage = {
   role: "user";
   type: "text";
   message: string;
-  externalId?: string;
 };
 
 export type MetabotAgentTextChatMessage = {
@@ -50,7 +45,6 @@ export type MetabotAgentTextChatMessage = {
   role: "agent";
   type: "text";
   message: string;
-  externalId?: string;
 };
 
 export type MetabotAgentDataPartMessage = {
@@ -59,7 +53,10 @@ export type MetabotAgentDataPartMessage = {
   type: "data_part";
   part: MetabotDataPart;
   metadata?: MetabotDataPartMetadata;
-  externalId?: string;
+};
+
+export type MetabotGeneratedCardPart = MetabotAgentDataPartMessage & {
+  part: { type: "data-generated_entity"; data: { type: "card" } };
 };
 
 export type MetabotDebugToolCallMessage = {
@@ -73,41 +70,9 @@ export type MetabotDebugToolCallMessage = {
   is_error?: boolean;
 };
 
-export type MetabotAgentTurnAbortedMessage = {
-  id: string;
-  role: "agent";
-  type: "turn_aborted";
-  externalId?: string;
-};
-
-export type MetabotAgentTurnIncompleteMessage = {
-  id: string;
-  role: "agent";
-  type: "turn_incomplete";
-  finishReason: Exclude<FinishReason, "stop" | "error">;
-  contextWindowFull?: boolean;
-  externalId?: string;
-};
-
 export type MetabotAgentTurnDisplayError = {
   type: "alert" | "locked" | "message";
   message: string;
-};
-
-export type MetabotAgentTurnErroredMessage = {
-  id: string;
-  role: "agent";
-  type: "turn_errored";
-  error: MetabotAgentTurnError;
-  display?: MetabotAgentTurnDisplayError;
-  externalId?: string;
-};
-
-export type MetabotAgentTurnInProgressMessage = {
-  id: string;
-  role: "agent";
-  type: "turn_in_progress";
-  externalId?: string;
 };
 
 export type MetabotAgentChainOfThoughtMessage = {
@@ -115,28 +80,55 @@ export type MetabotAgentChainOfThoughtMessage = {
   role: "agent";
   type: "chain_of_thought";
   steps: MetabotChainStep[];
+  finished: boolean;
   startedAtMs?: number;
   endedAtMs?: number;
 };
 
-export type MetabotAgentChatMessage =
+export type MetabotUserChatMessage = MetabotUserTextChatMessage;
+
+export type MetabotIncompleteFinishReason = Exclude<
+  FinishReason,
+  "stop" | "error"
+>;
+
+export type MetabotMessageStatus =
+  | { type: "streaming" }
+  | { type: "in_progress" }
+  | { type: "done" }
+  | { type: "aborted" }
+  | {
+      type: "incomplete";
+      finishReason: MetabotIncompleteFinishReason;
+      contextWindowFull?: boolean;
+    }
+  | {
+      type: "errored";
+      error: MetabotAgentTurnError;
+      display?: MetabotAgentTurnDisplayError;
+      serverStarted?: boolean;
+    };
+
+export type MetabotMessagePart =
+  | MetabotUserTextChatMessage
   | MetabotAgentTextChatMessage
   | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage
-  | MetabotAgentChainOfThoughtMessage
-  | MetabotAgentTurnAbortedMessage
-  | MetabotAgentTurnIncompleteMessage
-  | MetabotAgentTurnErroredMessage
-  | MetabotAgentTurnInProgressMessage;
+  | MetabotAgentChainOfThoughtMessage;
 
-export type MetabotUserChatMessage = MetabotUserTextChatMessage;
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
 
-export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
-
-export type MetabotChatMessage =
-  | MetabotUserChatMessage
-  | MetabotAgentChatMessage
-  | MetabotDebugChatMessage;
+export type MetabotMessage = {
+  id: string;
+  externalId?: string;
+  role: "user" | "agent";
+  parts: MetabotMessagePart[];
+  status: MetabotMessageStatus;
+  contextTokens?: number;
+};
 
 export type MetabotToolCall = {
   id: string;
@@ -162,12 +154,6 @@ export type MetabotReactionsState = {
   suggestedCodeEdits: Partial<
     Record<MetabotCodeEdit["buffer_id"], MetabotCodeEdit>
   >;
-  suggestedTransforms: MetabotSuggestedTransform[];
-};
-
-export type MetabotContextUsage = {
-  contextTokens: number;
-  contextWindowTokens: number;
 };
 
 export interface MetabotConversationState {
@@ -176,14 +162,12 @@ export interface MetabotConversationState {
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   hasMessagedInSession: boolean;
-  messages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
-  activeChainId: string | undefined;
-  lastTokenUsage?: MetabotContextUsage;
+  contextWindowTokens?: number;
   profileOverride: MetabotProfileId | undefined;
-  pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;

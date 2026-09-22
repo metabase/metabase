@@ -148,7 +148,10 @@ areas.forEach((area) => {
 
         verifyAndCloseToast("Failed to discard values");
         if (area === "admin") {
-          cy.realPress("Escape");
+          // synthetic escape: realPress depends on real browser focus, which
+          // the app may not hold in CI, so the keystroke can miss the modal
+          cy.get("body").type("{esc}");
+          H.modal().should("not.exist");
         }
 
         if (area === "data studio") {

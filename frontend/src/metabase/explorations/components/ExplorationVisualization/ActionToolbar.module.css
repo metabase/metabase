@@ -27,10 +27,6 @@
   }
 }
 
-.commentDropdown {
-  box-shadow: var(--mantine-shadow-xs_outline);
-}
-
 .timelineMenuTarget {
   cursor: pointer;
   background-color: var(--mb-color-background-secondary);

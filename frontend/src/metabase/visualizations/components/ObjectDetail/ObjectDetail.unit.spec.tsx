@@ -1,4 +1,9 @@
+import { createMockMetadataFromState } from "__support__/metadata";
 import { setupTableEndpoints } from "__support__/server-mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import {
@@ -6,11 +11,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
@@ -49,7 +49,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
     }),
     qb: createMockQueryBuilderState({ card: MOCK_CARD }),
   });
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
 
   const question = checkNotNull(metadata.question(MOCK_CARD.id));
   const table = checkNotNull(metadata.table(MOCK_TABLE.id));

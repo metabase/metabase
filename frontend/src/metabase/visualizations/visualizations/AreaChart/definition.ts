@@ -15,8 +15,9 @@ const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     getUiName: () => t`Area`,
     identifier: "area",
     iconName: "area",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`area chart`,
+    get noun() {
+      return t`area chart`;
+    },
     minSize: getMinSize("area"),
     defaultSize: getDefaultSize("area"),
     settings: {

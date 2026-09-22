@@ -479,6 +479,43 @@
 
 (driver/register! ::mock-no-deps-driver, :abstract? true)
 
+(defn- select-all-on-connection [conn table max-rows]
+  (driver/query-on-connection driver/*driver* conn [(str "SELECT * FROM " table) []] {:max-rows max-rows}))
+
+(deftest transform-testing-temp-table-lifecycle-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [table (driver/temp-table-name driver/*driver*)]
+      (driver/do-with-test-connection
+       driver/*driver*
+       (mt/db)
+       (fn [conn]
+         (driver/execute-on-connection! driver/*driver* conn
+                                        (driver/compile-create-temp-table
+                                         driver/*driver*
+                                         {:table table
+                                          :query {:query "SELECT id FROM (SELECT 1 AS id UNION ALL SELECT 2 AS id) AS t" :params []}}))
+         (testing "the temp table is readable on the connection that created it"
+           (is (= 2 (count (:rows (select-all-on-connection conn table 10))))))
+         (testing "max-rows caps the rows returned"
+           (is (= 1 (count (:rows (select-all-on-connection conn table 1))))))
+         (testing "the answer names its columns, each with the warehouse's own type"
+           ;; Engines differ on how they fold an unquoted identifier, so compare the name case-aside.
+           (let [columns (:columns (select-all-on-connection conn table 10))]
+             (is (= ["id"] (mapv (comp u/lower-case-en :name) columns)))
+             (is (every? (comp seq :database_type) columns) (pr-str columns))))
+         (testing "the columns are reported even when no row comes back"
+           (let [{:keys [rows columns]} (driver/query-on-connection
+                                         driver/*driver* conn
+                                         [(str "SELECT * FROM " table " WHERE 1 = 0") []] {:max-rows 1})]
+             (is (= [] rows))
+             (is (= ["id"] (mapv (comp u/lower-case-en :name) columns)))))
+         (driver/execute-on-connection! driver/*driver* conn (driver/compile-drop-temp-table driver/*driver* table))
+         (testing "dropping a temp table that no longer exists succeeds"
+           (is (some? (driver/execute-on-connection! driver/*driver* conn
+                                                     (driver/compile-drop-temp-table driver/*driver* table)))))
+         (testing "the dropped temp table is gone"
+           (is (thrown? Exception (select-all-on-connection conn table 10)))))))))
+
 (deftest ^:parallel deps-ignores-invalid-drivers-test
   (is (= #{}
          (driver/native-query-deps ::mock-no-deps-driver nil nil))))

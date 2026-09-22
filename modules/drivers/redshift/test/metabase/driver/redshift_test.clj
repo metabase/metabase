@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -37,6 +38,18 @@
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :redshift
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :redshift (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [schema  (redshift.tx/unique-session-schema)
+            details (assoc (:details (mt/db)) :additional-options (str "currentSchema=" schema))]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
+          (is (= schema
+                 (driver.sql/default-schema :redshift database))))))))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -322,7 +335,9 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
-                               :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
+                               ;; temp_* matches test session schemas, which [[unique-prefix]] names
+                               ;; `temp_<utc-date>_<hour>_<site-uuid>_schema`
+                               :schema-filters-patterns "metabase_cache*,temp_*,pg_*")]
             (mt/with-temp [:model/Card _      {:name          "model"
                                                :type          :model
                                                :dataset_query (mt/mbql-query users)
@@ -332,7 +347,10 @@
                 (persist-models!)
                 (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
-                    (is (some #(re-matches #"20(.*)" %) synced-schemas)))
+                    ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
+                    ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
+                    ;; renaming those schemas fails here instead of silently emptying the result
+                    (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
                   (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
@@ -694,7 +712,7 @@
                      :base-type {:native "VARBYTE"}
                      :effective-type :type/Text}
                     {:field-name "multi_driver"
-                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :base-type {:natives {"redshift" "SUPER" "postgres" "JSONB"}}
                      :effective-type :type/JSON}]}]}
           rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
           fields (:field-rows (first rows))]
@@ -822,12 +840,12 @@
     ;; The other half of the guard above: moving the privilege calls into the select list means an unreadable
     ;; relation now reaches Clojure, and this is the one place that drops it.
     (mt/with-temp [:model/Database db {:engine :redshift, :details {}}]
-      (with-redefs [sql-jdbc.execute/reducible-query
-                    (fn [_database _sql]
-                      (for [[nm selectable] [["readable" true]
-                                             ["unreadable" false]
-                                             ["missing" nil]
-                                             ["stringly" "false"]]]
-                        {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/reducible-query
+                                  (fn [_database _sql]
+                                    (for [[nm selectable] [["readable" true]
+                                                           ["unreadable" false]
+                                                           ["missing" nil]
+                                                           ["stringly" "false"]]]
+                                      {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
                (into [] (#'redshift/describe-database-tables db))))))))

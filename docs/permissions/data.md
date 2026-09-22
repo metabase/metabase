@@ -41,7 +41,7 @@ If you need to change the target database based on who is logged in, check out [
 
 Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
 
-In the **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
+In **Admin** > **Permissions** > **Data**, block the All Users group's access to the database.
 
 From there, you can selectively grant privileges to different groups.
 
@@ -158,7 +158,7 @@ Downloads of native queries are only allowed if a group has download permissions
 
 {% include plans-blockquote.html feature="Data model permissions" is_plural=true  %}
 
-You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../data-modeling/metadata/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
@@ -190,7 +190,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 {% include plans-blockquote.html feature="Transform permissions" is_plural=true %}
 
-Transform permissions control who can manage and run [transforms](../data-studio/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
+Transform permissions control who can manage and run [transforms](../data-modeling/transforms/transforms-overview.md) on a database. Transform permissions can only be set on a database level, not on a table level.
 
 A group can only have transform permissions for a database if they also have "View data" and "Query builder and native" permissions for _all_ the tables in a database.
 

@@ -1,4 +1,3 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -30,12 +29,12 @@ interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
 }
 
-const progressMessage: Record<InProgressStates, string> = {
+const getProgressMessages = (): Record<InProgressStates, string> => ({
   init: t`Talking to Metabase Cloud...`,
   setup: t`Talking to Metabase Cloud...`,
   dump: t`Taking a snapshot of this instance...`,
   upload: t`Uploading the snapshot to the cloud...`,
-};
+});
 
 export const MigrationInProgress = ({
   storeUrl,
@@ -90,7 +89,7 @@ export const MigrationInProgress = ({
 
             <Box mt="xl" mb="lg">
               <Text size="md" c="text-secondary">
-                {progressMessage[migration.state]}
+                {getProgressMessages()[migration.state]}
               </Text>
               <Progress value={migration.progress} mt=".25rem" />
             </Box>

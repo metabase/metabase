@@ -296,11 +296,19 @@ describe("scenarios > explorations > new research > metabot flow", () => {
         {
           toolCallId: "groups-1",
           toolName: "add_research_groups",
-          result: {
-            metrics: [firstMetric],
-            dimension_groups: [interestingGroup],
-            groups: [{ metric_id: firstMetric.id }],
-          },
+          // The tool result is only the LLM's summary of the edit; the picker
+          // hydration rides a `research_plan_update` data part.
+          result: `Added 1 group(s) to the research plan:\n- ${firstMetric.name}, by the automatically-selected dimensions`,
+          dataParts: [
+            {
+              dataType: "research_plan_update",
+              data: {
+                metrics: [firstMetric],
+                dimension_groups: [interestingGroup],
+                groups: [{ metric_id: firstMetric.id }],
+              },
+            },
+          ],
         },
         {
           toolCallId: "name-1",

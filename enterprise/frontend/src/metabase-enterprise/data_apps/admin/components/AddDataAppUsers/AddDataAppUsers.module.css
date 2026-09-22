@@ -1,0 +1,14 @@
+.row {
+  border: 1px solid var(--mb-color-border);
+}
+
+.row:focus-within {
+  border-color: var(--mb-color-core-brand);
+}
+
+.row[data-has-current-users="true"]:focus-within {
+  box-shadow:
+    inset 1px 0 0 var(--mb-color-core-brand),
+    inset -1px 0 0 var(--mb-color-core-brand),
+    inset 0 1px 0 var(--mb-color-core-brand);
+}

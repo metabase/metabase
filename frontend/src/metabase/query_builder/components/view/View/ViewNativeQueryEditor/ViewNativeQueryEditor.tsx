@@ -1,5 +1,12 @@
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
-import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import { MetabotPromptButton } from "metabase/metabot/components/MetabotPromptButton";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { NativeQueryParametersList } from "metabase/parameters/components/NativeQueryParametersList";
+import {
+  NATIVE_EDITOR_ICON_SIZE,
+  NativeQueryEditor,
+} from "metabase/querying/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
@@ -79,6 +86,10 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   );
 
   const inlineSQLPrompt = useInlineSQLPrompt(question, "qb");
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -99,17 +110,26 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         query={legacyNativeQuery}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
+        canAutoOpenDataReference={!isMetabotSidebarOpen}
         onSetDatabaseId={onSetDatabaseId}
         extensions={inlineSQLPrompt?.extensions}
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}
         onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
         onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
-        isPromptInputOpen={inlineSQLPrompt?.isPromptOpen}
-        onTogglePromptInput={inlineSQLPrompt?.togglePrompt}
+        hasSqlGenerationAccess={hasSqlGenerationAccess}
       >
-        <NativeQueryEditor.TopBar>
-          <NativeQueryEditor.ParametersList />
-          <NativeQueryEditor.Sidebar />
+        <NativeQueryEditor.TopBar leftContent={<NativeQueryParametersList />}>
+          <NativeQueryEditor.Sidebar
+            promptButton={
+              inlineSQLPrompt && (
+                <MetabotPromptButton
+                  size={NATIVE_EDITOR_ICON_SIZE}
+                  isPromptInputOpen={inlineSQLPrompt.isPromptOpen}
+                  onClick={inlineSQLPrompt.togglePrompt}
+                />
+              )
+            }
+          />
           <NativeQueryEditor.VisibilityToggler />
         </NativeQueryEditor.TopBar>
         <NativeQueryEditor.RunButton />

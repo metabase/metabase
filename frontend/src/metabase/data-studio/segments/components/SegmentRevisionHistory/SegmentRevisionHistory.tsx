@@ -15,7 +15,6 @@ export function SegmentRevisionHistory({
     <RevisionHistoryTimeline
       entityType="segment"
       entityId={segment.id}
-      tableId={segment.table_id}
       getActionDescription={getSegmentActionDescription}
       definitionLabel={t`Filter`}
       definitionType="filters"

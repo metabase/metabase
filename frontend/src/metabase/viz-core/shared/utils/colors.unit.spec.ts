@@ -1,3 +1,4 @@
+import { color } from "metabase/ui/colors";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -127,6 +128,40 @@ describe("getSeriesColors", () => {
       ["Series 1", "Series 2"],
       {
         "Series 1": "#FF0000",
+        "Series 2": "#00FF00",
+      },
+    );
+  });
+
+  it("should use the palette color a series records over its stored color", () => {
+    const settings = {
+      series_settings: {
+        "Series 1": { color: "#FF0000", color_name: "accent3" },
+        "Series 2": { color: "#00FF00" },
+      },
+    };
+
+    const series = [
+      {
+        seriesKey: "Series 1",
+        seriesName: "Series 1",
+        xAccessor: (d: any) => d.x,
+        yAccessor: (d: any) => d.y,
+      },
+      {
+        seriesKey: "Series 2",
+        seriesName: "Series 2",
+        xAccessor: (d: any) => d.x,
+        yAccessor: (d: any) => d.y,
+      },
+    ];
+
+    getSeriesColors(settings, series);
+
+    expect(mockGetColorsForValues).toHaveBeenCalledWith(
+      ["Series 1", "Series 2"],
+      {
+        "Series 1": color("accent3"),
         "Series 2": "#00FF00",
       },
     );

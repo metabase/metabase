@@ -6,6 +6,7 @@ const {
 } = require("./measure-bundle-sizes");
 
 const RUNTIME = "embedding-sdk-chunk-runtime.deadbeef.js";
+const LOCALE = "chunks/locale-fr-json.deadbeef.js";
 
 const stats = entrypoints => ({ entrypoints });
 
@@ -30,6 +31,13 @@ describe("selectAppAssets", () => {
   it("throws when the app-main entrypoint is missing", () => {
     expect(() => selectAppAssets(stats({}))).toThrow("app-main");
   });
+
+  it("leaves the locale catalogues out of the reachable total", () => {
+    const s = stats({
+      "app-main": { assets: ["main.js"], reachableAssets: ["main.js", "locale-fr-json.abc.js"] },
+    });
+    expect(selectAppAssets(s).reachableAssets).toEqual(["main.js"]);
+  });
 });
 
 describe("selectChunkedSdkAssets", () => {
@@ -48,6 +56,15 @@ describe("selectChunkedSdkAssets", () => {
   it("collapses total to initial when async chunks are not loadable", () => {
     const result = selectChunkedSdkAssets(stats(base), { sdkAsyncChunksLoadable: false });
     expect(result.includesAsyncChunks).toBe(false);
+  });
+
+  it("leaves the locale catalogues out of the reachable total", () => {
+    const withLocale = {
+      ...base,
+      "embedding-sdk-chunked": { assets: ["a.js", RUNTIME], reachableAssets: ["a.js", "b.js", LOCALE, RUNTIME] },
+    };
+    const result = selectChunkedSdkAssets(stats(withLocale), { sdkAsyncChunksLoadable: true });
+    expect(result.reachableNames).toEqual(["boot.js", "a.js", "b.js"]);
   });
 
   it("collapses total to initial when the stats carry no reachable graph", () => {

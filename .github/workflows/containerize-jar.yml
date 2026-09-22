@@ -1,5 +1,5 @@
 name: Containerize Uberjar
-run-name: Containerize ${{ inputs.tag }} Uberjar
+run-name: Containerize ${{ inputs.edition }} ${{ inputs.tag }} Uberjar
 
 on:
   workflow_call:
@@ -8,10 +8,15 @@ on:
         description: Metabase edition (ee or oss)
         type: string
         required: true
+      registry:
+        description: Registry the image is pushed to, either "docker" or "ecr".
+        type: string
+        default: docker
       repo:
-        description: owner and repo like "metabase/metabase"
+        description: Repository name the image is pushed to, e.g. "metabase-enterprise".
         type: string
       tag:
+        description:  Image tag, e.g. v1.87.2.
         type: string
       commit:
         type: string
@@ -20,6 +25,10 @@ on:
         default: false
       build-args:
         type: string
+      platforms:
+        description: Platforms the image is built for.
+        type: string
+        default: linux/amd64,linux/arm64
   workflow_dispatch:
     inputs:
       edition:
@@ -29,11 +38,18 @@ on:
           - ee
           - oss
         required: true
+      registry:
+        description: Registry the image is pushed to
+        type: choice
+        options:
+          - docker
+          - ecr
+        default: docker
       repo:
-        description: docker owner and repo like "metabase/metabase"
+        description: Repository name the image is pushed to, e.g. "metabase-enterprise".
         type: string
       tag:
-        description: usually a version like v1.87.2
+        description: Image tag, e.g. v1.87.2.
         type: string
       commit:
         description: the full commit hash
@@ -42,82 +58,115 @@ on:
         description: Whether this is a release artifact (uses metabase-release- prefix)
         type: boolean
         default: false
+      platforms:
+        description: Platforms the image is built for.
+        type: string
+        default: linux/amd64,linux/arm64
 
 jobs:
   containerize:
+    name: containerize (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     outputs:
-      platforms: ${{ steps.platforms.outputs.result }}
+      full_image: ${{ steps.image.outputs.full_image }}
+    env:
+      AWS_REGION: us-east-1
     steps:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 1
+
       # we want the dockerfile from the commit we're building
     - run: |
         git fetch --depth=1 origin ${{ inputs.commit }}
         git checkout ${{ inputs.commit }} -- bin/docker
+
     - name: Retrieve uberjar artifact
       uses: ./.github/actions/fetch-artifact
       with:
         commit: ${{ inputs.commit }}
         edition: ${{ inputs.edition }}
         release: ${{ inputs.release }}
-    - name: Prepare release scripts
-      uses: ./.github/actions/prepare-release-scripts
-    - name: Get platforms
-      id: platforms
-      uses: actions/github-script@v9
-      with:
-        result-encoding: string
-        script: | # js
-          const { getBuildRequirements, isValidVersionString} = require('${{ github.workspace }}/release/dist/index.cjs');
-          const version = "${{ inputs.tag }}".split('-')[0];
+        extract-path: bin/docker
 
-          if (!isValidVersionString(version)) {
-            return "linux/amd64,linux/arm64";
-          }
-          // versions before 53 need to be handled differently
-          const buildInfo = getBuildRequirements(version);
-          return buildInfo.platforms;
-    - name: Move the Uberjar to the context dir
-      run: mv ./metabase.jar bin/docker/.
+    - name: Resolve image repo and tag
+      id: image
+      uses: ./.github/actions/get-docker-info
+      with:
+        registry: ${{ inputs.registry }}
+        repo: ${{ inputs.repo }}
+        tag: ${{ inputs.tag }}
+        edition: ${{ inputs.edition }}
+        aws-account-id: ${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}
+        aws-region: ${{ env.AWS_REGION }}
+        dockerhub-owner: ${{ vars.DOCKERHUB_OWNER }}
+
+    - name: Configure AWS credentials
+      if: ${{ inputs.registry == 'ecr' }}
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+      with:
+        role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      if: ${{ inputs.registry == 'ecr' }}
+      uses: aws-actions/amazon-ecr-login@183a1442edf41672e66566b7fc560e297a290896 # v2
+      with:
+        registries: "${{ secrets.PR_ENV_AWS_ACCOUNT_ID }}"
+
     - name: Login to Docker Hub
+      if: ${{ inputs.registry != 'ecr' }}
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+
     - name: Set up QEMU
-      if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+
     - name: Set up Docker Buildx
-      if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-    - name: Build multi-arch container
-      if: contains(steps.platforms.outputs.result, 'arm')
+
+    - name: Build and Push Images
       uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         context: bin/docker/.
-        platforms: ${{ steps.platforms.outputs.result }}
+        platforms: ${{ inputs.platforms }}
         network: host
-        tags: ${{ inputs.repo }}:${{ inputs.tag }}
+        tags: ${{ steps.image.outputs.full_image }}
         no-cache: true
         push: true
         build-args: ${{ inputs.build-args }}
 
-    # we need to do this to get the nice fallback behavior of the legacy manifest file
-    - name: Build container (x86 only)
-      if: contains(steps.platforms.outputs.result, 'arm') == false
-      run: | # bash
-        docker build \
-          -t ${{ inputs.repo }}:${{ inputs.tag }} \
-          --network=host \
-          --push \
-          bin/docker/.
+    - name: Post link to image on DockerHub
+      if: ${{ inputs.registry != 'ecr' && github.event_name == 'pull_request' }}
+      uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      with:
+        header: docker-build-status-${{ inputs.edition }}
+        message: |
+          ✅ Docker build completed for commit ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
 
-  verify-docker-pull:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+          The uberjar has been built and containerized successfully.
+
+          **Branch:** `${{ github.head_ref || github.ref_name }}`
+          **Docker Image:** `${{ steps.image.outputs.full_image }}`
+          **Docker Hub:** [View on Docker Hub](https://hub.docker.com/r/${{ steps.image.outputs.repo }}/tags?name=${{ steps.image.outputs.tag }})
+          **Triggered by:** @${{ github.actor }}
+
+          Pull the image:
+          ```bash
+          docker pull ${{ steps.image.outputs.full_image }}
+          ```
+
+  verify-docker-pull-amd64:
     needs: containerize
+    if: >-
+      inputs.release &&
+      inputs.registry != 'ecr'
+    name: verify-docker-pull-amd64 (${{ inputs.edition }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
     - name: Login to Docker Hub
@@ -126,18 +175,22 @@ jobs:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
-      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 5
 
   verify-docker-pull-arm:
-    runs-on: arm-ubuntu-24-2core
     needs: containerize
-    if: contains(needs.containerize.outputs.platforms, 'linux/arm64')
+    if: >-
+      inputs.release &&
+      inputs.registry != 'ecr' &&
+      contains(inputs.platforms, 'linux/arm64')
+    name: verify-docker-pull-arm (${{ inputs.edition }})
+    runs-on: arm-ubuntu-24-2core
     timeout-minutes: 15
     steps:
     - name: Login to Docker Hub
@@ -146,9 +199,9 @@ jobs:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
-      run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker pull ${{ needs.containerize.outputs.full_image }}
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ inputs.repo }}:${{ inputs.tag }}
+      run: docker run --rm -dp 3000:3000 ${{ needs.containerize.outputs.full_image }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done

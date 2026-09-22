@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import _ from "underscore";
 
 import { dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
@@ -871,7 +871,7 @@ export function getXAxisModel(
 
   const formatter = (value: RowValue) => {
     if (value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return String(

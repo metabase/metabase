@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getMetadata } from "metabase/metadata-store";
+import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -58,10 +58,9 @@ export const CreateStructuredQuestionModal = ({
       await dispatch(
         host.actions.loadMetadataForDocumentCard(newQuestion.card()),
       );
-      const freshMetadata = getMetadata(store.getState());
-      const questionWithFreshMetadata = new Question(
+      const questionWithFreshMetadata = selectQuestionFromCard(
+        store.getState(),
         newQuestion.card(),
-        freshMetadata,
       );
       setModifiedQuestion(questionWithFreshMetadata);
     } else {

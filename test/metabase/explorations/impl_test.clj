@@ -77,7 +77,7 @@
     (testing "resolver computes breakoutable-columns once per (db,table) and reuses it"
       (let [calls    (atom 0)
             resolve* (make-resolver)]
-        (with-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
+        (mt/with-dynamic-fn-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
           (resolve* m q)                                  ; orders: miss
           (resolve* m q)                                  ; orders: hit
           (resolve* (assoc m :table_id (mt/id :products)) q)) ; products: miss
@@ -139,7 +139,8 @@
 
 (defmacro ^:private with-synthetic-metrics [& body]
   `(mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics synthetic-hydrated
-                               explorations.impl/index-metrics    synthetic-hydrated]
+                               explorations.impl/index-metrics    synthetic-hydrated
+                               explorations.impl/catalog-metrics  synthetic-hydrated]
      ~@body))
 
 (deftest research-metric-index-test
@@ -361,7 +362,18 @@
     (testing "replace_default_dimensions with no dimension_ids"
       (is (thrown-with-msg? Exception #"replace_default_dimensions requires"
                             (explorations.impl/research-groups
-                             {:groups [{:metric_id 1 :replace_default_dimensions true}]}))))))
+                             {:groups [{:metric_id 1 :replace_default_dimensions true}]}))))
+    (testing "dimension the catalog still lists but query resolution drops"
+      ;; `plan-1` survives the cheap catalog but its target no longer resolves against the
+      ;; metric's query, so it must be rejected rather than silently dropped from the payload.
+      (mt/with-dynamic-fn-redefs [explorations.impl/resolve-metric-queries
+                                  (fn [metrics]
+                                    (mapv #(update % :dimensions
+                                                   (fn [ds] (filterv (comp #{"region-1"} :id) ds)))
+                                          metrics))]
+        (is (thrown-with-msg? Exception #"not a candidate of metric"
+                              (explorations.impl/research-groups
+                               {:groups [{:metric_id 1 :dimension_ids ["plan-1"]}]})))))))
 
 ;;; ------------------------------------------ exploration-data ------------------------------------------
 

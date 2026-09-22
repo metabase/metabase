@@ -13,9 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util.yaml :as yaml]
-   [methodical.core :as methodical])
-  (:import
-   (java.io File)))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,13 +68,18 @@
                                             (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
+(defn storage-context
+  "The serdes storage context for git sync: a Table's user settings file stands in for the Table's own."
+  []
+  (assoc (serdes/storage-base-context) :inline-user-settings true))
+
 (defn entity->path
   "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
-    (str/join File/separator (concat dirnames [basename]))))
+    (str/join "/" (concat dirnames [basename]))))
 
 (defn entity->content
   "The serialized YAML string for an extracted `entity`."
@@ -86,7 +89,7 @@
 
 (defn entity->file-spec
   "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
-  `opts` (from `serdes/storage-base-context`)."
+  `opts` (from [[storage-context]])."
   [opts entity]
   {:path    (entity->path opts entity)
    :content (entity->content entity)})
@@ -96,30 +99,44 @@
   [^String content]
   (codecs/bytes->hex (buddy-hash/sha256 content)))
 
+(defn row->file-info
+  "The repo `:path` and the SHA-256 (hex) `:content-hash` of the serialized YAML for the entity named by `row`
+  ({:model_type :model_id}), or nil if it can't be extracted."
+  [row]
+  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+    (let [{:keys [path content]} (entity->file-spec (storage-context) entity)]
+      {:path path, :content-hash (content-hash content)})))
+
 (defn row->content-hash
   "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
   can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
   [row]
-  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-    (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))
+  (:content-hash (row->file-info row)))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress
   via `task-id` as specs are produced; pass nil for `task-id` to serialize without progress reporting
   (e.g. for a dry-run merge preview).
 
+  `stream` is traversed exactly once. Progress needs a denominator: pass `:total` (see
+  [[metabase-enterprise.remote-sync.spec/exportable-entity-count]]) to keep an uncounted stream such as the
+  extraction eduction streaming; without it an uncounted stream is realized first.
+
   Throws Exception if any entity in the stream is an Exception instance."
-  [stream task-id]
-  (let [opts (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)]
+  [stream task-id & {:keys [total]}]
+  (let [opts   (storage-context)
+        stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
+        total  (or total (when task-id (count stream)))
+        report (if (and task-id (pos? total))
+                 (fn [n]
+                   (remote-sync.task/update-progress! task-id (-> n (/ total) (min 1) (* 0.65) (+ 0.3))))
+                 (constantly nil))]
     (into []
           (map-indexed (fn [idx entity]
                          (when (instance? Exception entity)
                            (throw entity))
                          (let [spec (entity->file-spec opts entity)]
-                           (when task-id
-                             (remote-sync.task/update-progress!
-                              task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))
+                           (report (inc idx))
                            spec)))
           stream)))
 
@@ -140,19 +157,19 @@
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
   `:force-push-casualties` (remote content a force push would discard; see
-  [[remote-sync.merge/force-push-casualties]]):
+  [[remote-sync.merge/force-push-casualties]]), via [[remote-sync.merge/merge-with-casualties]]:
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
 
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
-  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]."
-  [stream snapshot base-snapshot task-id]
-  (let [ours   (serialize-specs stream task-id)
+  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
+  through to [[serialize-specs]]."
+  [stream snapshot base-snapshot task-id & {:keys [total]}]
+  (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (assoc (remote-sync.merge/three-way-merge base ours theirs)
-           :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))))
+    (remote-sync.merge/merge-with-casualties base ours theirs)))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged

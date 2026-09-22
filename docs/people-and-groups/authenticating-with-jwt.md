@@ -99,7 +99,7 @@ You can use the following environment variables to configure JWT group mappings 
   MB_JWT_GROUP_SYNC=true
   ```
 
-- [`MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings) to configure group mapping. It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:
+- [`MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings) to configure group mapping. It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase group IDs. For example:
 
   ```
   MB_JWT_GROUP_MAPPINGS='{"extHR":[7], "extSales":[3,4]}'
@@ -139,7 +139,7 @@ If you're running a multi-tenant application, you can use JWT to automatically a
 
 ## Note about Azure
 
-If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
+If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://learn.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
 
 ## Example code using JWT-based authentication
 

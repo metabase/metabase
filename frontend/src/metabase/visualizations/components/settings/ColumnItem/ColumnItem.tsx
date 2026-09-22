@@ -29,7 +29,7 @@ export interface ColumnItemProps {
   onRemove?: (target: HTMLElement) => void;
   onEdit?: (target: HTMLElement) => void;
   onEnable?: (target: HTMLElement) => void;
-  onColorChange?: (newColor: string) => void;
+  onColorChange?: (hexValue: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
   onDragStart?: FlexProps["onDragStart"];
 }
@@ -87,6 +87,7 @@ export const ColumnItem = ({
       {onColorChange && color && (
         <ChartSettingColorPicker
           value={color}
+          forwardColorName
           onChange={onColorChange}
           pillSize="small"
           accentColorOptions={accentColorOptions}

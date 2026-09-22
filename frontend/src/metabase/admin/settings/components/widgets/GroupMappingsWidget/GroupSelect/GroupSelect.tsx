@@ -85,6 +85,8 @@ export const GroupSelect = ({
   return (
     <Combobox
       store={combobox}
+      // a closed dropdown stays unmounted, or a page with many rows carries every group per row
+      keepMounted={false}
       position="bottom-start"
       width={rem(240)}
       classNames={{ groupLabel: S.groupLabel }}

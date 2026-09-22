@@ -9,6 +9,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -17,6 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
+   [ring.util.codec :as codec]
    [ring.util.response :as response]
    [stencil.core :as stencil])
   (:import
@@ -89,7 +91,7 @@
      :assetOnErrorJS         (load-inline-js "asset_loading_error")
      :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
      :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
-     :nonceJSON              (escape-script (json/encode nonce))
+     :nonce                  (hiccup.util/escape-html nonce)
      :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
      :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
      :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
@@ -127,4 +129,30 @@
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
-(def data-app   "/embed/apps/:name iframe entrypoint." (partial entrypoint "data-app"   :embeddable))
+(def ^:private data-app-shell
+  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  (partial entrypoint "data-app" :embeddable))
+
+(defn- login-redirect
+  "302 to the login page, returning the user to the top-level `/apps/...` page for the
+   `/embed/apps/...` iframe document they asked for (the bare iframe shell is not a page
+   a person would want to land on). `site-url` is nil until a superuser's first request
+   sets it, and this is reached by signed-out visitors: `str` drops the nil, so the
+   redirect is then relative."
+  [{:keys [uri query-string]}]
+  (let [target (cond-> (str/replace-first uri #"^/embed/" "/")
+                 (seq query-string) (str "?" query-string))]
+    (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
+
+(defn data-app
+  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
+   enabled; without it, responds nil so routing falls through to the generic embed handler — the
+   instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
+   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
+   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
+   users may see."
+  [request respond raise]
+  (cond
+    (not (premium-features/enable-data-apps?)) (respond nil)
+    (nil? (:metabase-user-id request))         (respond (login-redirect request))
+    :else                                      (data-app-shell request respond raise)))

@@ -3,17 +3,13 @@ import { createDraft } from "immer";
 
 import {
   type MetabotState,
-  activateSuggestedTransform,
-  addSuggestedTransform,
-  deactivateSuggestedTransform,
   metabotActions,
   metabotReducer,
 } from "metabase/metabot/state";
 import { LOCATION_CHANGE } from "metabase/router";
-import type { MetabotSuggestedTransform } from "metabase-types/api";
-import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
+import { sendAgentRequest } from "../state/actions";
 import {
   createConversation,
   getMetabotInitialState,
@@ -24,17 +20,9 @@ import {
   conversationIdForAgent,
   convoForAgent,
   createTestMetabotState,
+  startRequestlessAgentTurn,
   testConversationId,
 } from "./utils";
-
-const createMockSuggestedTransform = (
-  overrides: Partial<MetabotSuggestedTransform>,
-): MetabotSuggestedTransform => ({
-  ...createMockTransform(),
-  active: false,
-  suggestionId: "suggestion-123",
-  ...overrides,
-});
 
 const createTestStore = (initialState?: Partial<MetabotState>) =>
   configureStore({
@@ -50,205 +38,15 @@ const requestAction = (arg: Partial<{ conversation_id: string }> = {}) => ({
   meta: { arg: { conversation_id: "matching-id", ...arg } },
 });
 
+// tool-call and chain-of-thought events only ever arrive inside a message the
+// stream has already opened
+const createStreamingStore = () => {
+  const store = createTestStore();
+  startRequestlessAgentTurn(store, testConversationId("omnibot"));
+  return store;
+};
+
 describe("metabot reducer", () => {
-  describe("transforms", () => {
-    describe("addSuggestedTransform", () => {
-      it("should add a new suggested transform to the state", () => {
-        const store = createTestStore();
-        const transform = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-        });
-
-        store.dispatch(addSuggestedTransform(transform));
-
-        const state = store.getState().metabot;
-        expect(state.reactions.suggestedTransforms).toHaveLength(1);
-        expect(state.reactions.suggestedTransforms).toContain(transform);
-      });
-
-      it("should mark existing transforms with same ID as inactive when adding new one", () => {
-        const existingTransform = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-          suggestionId: "old-suggestion",
-        });
-        const store = createTestStore({
-          reactions: {
-            navigateToPath: null,
-            suggestedCodeEdits: {},
-            suggestedTransforms: [existingTransform],
-          },
-        });
-
-        const newTransform = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-          suggestionId: "new-suggestion",
-        });
-
-        store.dispatch(addSuggestedTransform(newTransform));
-        const state = store.getState().metabot;
-
-        expect(state.reactions.suggestedTransforms).toEqual([
-          expect.objectContaining({
-            suggestionId: "old-suggestion",
-            active: false,
-          }),
-          expect.objectContaining({
-            suggestionId: "new-suggestion",
-            active: true,
-          }),
-        ]);
-      });
-    });
-
-    describe("activateSuggestedTransform", () => {
-      it("should activate only the transform with matching suggestionId and deactivate others with same ID", () => {
-        const transform1 = createMockSuggestedTransform({
-          id: 1,
-          active: false,
-          suggestionId: "suggestion-1",
-        });
-        const transform2 = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-          suggestionId: "suggestion-2",
-        });
-        const transform3 = createMockSuggestedTransform({
-          id: 2,
-          active: true,
-          suggestionId: "suggestion-3",
-        });
-        const store = createTestStore({
-          reactions: {
-            navigateToPath: null,
-            suggestedCodeEdits: {},
-            suggestedTransforms: [transform1, transform2, transform3],
-          },
-        });
-
-        store.dispatch(
-          activateSuggestedTransform({
-            id: 1,
-            suggestionId: "suggestion-1",
-          }),
-        );
-        expect(store.getState().metabot.reactions.suggestedTransforms).toEqual([
-          expect.objectContaining({
-            suggestionId: "suggestion-1",
-            active: true,
-          }),
-          expect.objectContaining({
-            suggestionId: "suggestion-2",
-            active: false,
-          }),
-          expect.objectContaining({
-            suggestionId: "suggestion-3",
-            active: true,
-          }),
-        ]);
-      });
-
-      it("should handle new transforms gracefully", () => {
-        const newTransform = createMockSuggestedTransform({
-          id: undefined,
-          active: false,
-          suggestionId: "new-suggestion",
-        });
-        const store = createTestStore({
-          reactions: {
-            navigateToPath: null,
-            suggestedCodeEdits: {},
-            suggestedTransforms: [newTransform],
-          },
-        });
-
-        store.dispatch(
-          activateSuggestedTransform({
-            id: undefined,
-            suggestionId: "new-suggestion",
-          }),
-        );
-        expect(store.getState().metabot.reactions.suggestedTransforms).toEqual([
-          expect.objectContaining({
-            suggestionId: "new-suggestion",
-            active: true,
-          }),
-        ]);
-      });
-    });
-
-    describe("deactivateSuggestedTransform", () => {
-      it("should deactivate all transforms with matching ID without affecting others", () => {
-        const transform1 = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-          suggestionId: "suggestion-1",
-        });
-        const transform2 = createMockSuggestedTransform({
-          id: 1,
-          active: true,
-          suggestionId: "suggestion-2",
-        });
-        const transform3 = createMockSuggestedTransform({
-          id: 2,
-          active: true,
-          suggestionId: "suggestion-3",
-        });
-        const store = createTestStore({
-          reactions: {
-            navigateToPath: null,
-            suggestedCodeEdits: {},
-            suggestedTransforms: [transform1, transform2, transform3],
-          },
-        });
-
-        store.dispatch(deactivateSuggestedTransform(1));
-        const state = store.getState().metabot;
-
-        expect(state.reactions.suggestedTransforms).toEqual([
-          expect.objectContaining({
-            suggestionId: "suggestion-1",
-            active: false,
-          }),
-          expect.objectContaining({
-            suggestionId: "suggestion-2",
-            active: false,
-          }),
-          expect.objectContaining({
-            suggestionId: "suggestion-3",
-            active: true,
-          }),
-        ]);
-      });
-
-      it("should handle new transforms gracefully", () => {
-        const newTransform = createMockSuggestedTransform({
-          id: undefined,
-          active: true,
-          suggestionId: "new-suggestion",
-        });
-        const store = createTestStore({
-          reactions: {
-            navigateToPath: null,
-            suggestedCodeEdits: {},
-            suggestedTransforms: [newTransform],
-          },
-        });
-
-        store.dispatch(deactivateSuggestedTransform(undefined));
-
-        expect(store.getState().metabot.reactions.suggestedTransforms).toEqual([
-          expect.objectContaining({
-            suggestionId: "new-suggestion",
-            active: false,
-          }),
-        ]);
-      });
-    });
-  });
-
   describe("agents and conversations", () => {
     it("seeds each agent with its own conversation record", () => {
       const state = getMetabotInitialState();
@@ -434,15 +232,34 @@ describe("metabot reducer", () => {
     });
   });
 
+  it("settles an aborted rejection that carries no payload", () => {
+    const conversationId = testConversationId("omnibot");
+    const store = createTestStore();
+    startRequestlessAgentTurn(store, conversationId);
+
+    store.dispatch({
+      type: sendAgentRequest.rejected.type,
+      error: { message: "Aborted" },
+      meta: {
+        aborted: true,
+        arg: { conversation_id: conversationId },
+      },
+    });
+
+    expect(convoForAgent(store, "omnibot").messages.at(-1)?.status).toEqual({
+      type: "aborted",
+    });
+  });
+
   describe("tool calls", () => {
     const conversationId = testConversationId("omnibot");
     const getToolCallMessages = (store: ReturnType<typeof createTestStore>) =>
-      convoForAgent(store, "omnibot").messages.filter(
-        (m) => m.type === "tool_call",
-      );
+      convoForAgent(store, "omnibot")
+        .messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "tool_call");
 
     it("toolCallStart is idempotent for the same toolCallId", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -464,7 +281,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs updates the existing tool-call message when toolCallStart preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -494,7 +311,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs creates a tool-call message when no tool-input-start preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallArgs({
           conversationId,
@@ -517,7 +334,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallEnd marks the tool-call message as errored", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -555,10 +372,12 @@ describe("metabot reducer", () => {
     const getConvo = (store: ReturnType<typeof createTestStore>) =>
       convoForAgent(store, "omnibot");
     const getChain = (store: ReturnType<typeof createTestStore>) =>
-      getConvo(store).messages.find((m) => m.type === "chain_of_thought");
+      getConvo(store)
+        .messages.flatMap((t) => t.parts)
+        .find((p) => p.type === "chain_of_thought");
 
     it("accumulates reasoning deltas into one chain step", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "Think" }),
@@ -571,11 +390,11 @@ describe("metabot reducer", () => {
       expect(chain?.type === "chain_of_thought" && chain.steps).toEqual([
         { kind: "reasoning", text: "Thinking" },
       ]);
-      expect(getConvo(store)?.activeChainId).toBe(chain?.id);
+      expect(chain?.finished).toBe(false);
     });
 
     it("interleaves tool calls between reasoning blocks in order", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "look" }),
@@ -601,7 +420,7 @@ describe("metabot reducer", () => {
     });
 
     it("marks a tool step ended when its result arrives", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -624,7 +443,7 @@ describe("metabot reducer", () => {
     });
 
     it("persists the chain but closes it when the answer text starts", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "hmm" }),
@@ -635,18 +454,18 @@ describe("metabot reducer", () => {
 
       // the chain message stays in history, and its id is released
       expect(getChain(store)).toBeDefined();
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
+      expect(getChain(store)?.finished).toBe(true);
 
       // later reasoning starts a fresh chain after the answer text
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
-      const chains = getConvo(store)?.messages.filter(
-        (m) => m.type === "chain_of_thought",
-      );
+      const chains = getConvo(store)
+        ?.messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "chain_of_thought");
       expect(chains).toHaveLength(2);
     });
 
     it("attaches search results to their tool step, even after the chain closed", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -673,7 +492,7 @@ describe("metabot reducer", () => {
     });
 
     it("stamps a save_entity step title from its saved-entity data part", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -704,7 +523,7 @@ describe("metabot reducer", () => {
     });
 
     it("backfills a title arriving on tool-input-available", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -728,16 +547,14 @@ describe("metabot reducer", () => {
       ]);
     });
 
-    it("releases the active chain id and context usage when a snapshot replaces the conversation", () => {
+    it("drops the streamed messages when a snapshot replaces the conversation", () => {
       const store = createTestStore({
         conversations: {
           ...createTestMetabotState().conversations,
-          [conversationId]: createConversation({
-            conversationId,
-            lastTokenUsage: { contextTokens: 950, contextWindowTokens: 1000 },
-          }),
+          [conversationId]: createConversation({ conversationId }),
         },
       });
+      startRequestlessAgentTurn(store, conversationId);
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.setConversationSnapshot({
@@ -746,8 +563,7 @@ describe("metabot reducer", () => {
         }),
       );
 
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
-      expect(getConvo(store)?.lastTokenUsage).toBeUndefined();
+      expect(getConvo(store)?.messages).toEqual([]);
     });
   });
 });

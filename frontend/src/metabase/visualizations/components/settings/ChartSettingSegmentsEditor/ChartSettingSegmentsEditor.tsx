@@ -130,13 +130,12 @@ export const ChartSettingSegmentsEditor = ({
   );
 };
 
-function getColorPalette() {
+export function getColorPalette() {
   return [
     ...getAccentColors(),
     Color(color("feedback-negative")).hex(),
     Color(color("feedback-warning")).hex(),
     Color(color("feedback-positive")).hex(),
-    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

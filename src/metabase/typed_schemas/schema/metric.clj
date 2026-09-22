@@ -2,15 +2,16 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.typed-schemas.common :as common]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.table :as schema.table]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -89,7 +90,7 @@
     (when (seq field-ids)
       (into {}
             (map (juxt :id :table_id))
-            (t2/select [:model/Field :id :table_id] :id [:in field-ids])))))
+            (typed-schemas.db/field-ids-and-table-ids field-ids)))))
 
 (defn- dimension-schema
   "Returns the schema for a metric dimension."
@@ -144,7 +145,7 @@
   "Syncs and returns persisted metric dimensions with mapping metadata."
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
-  (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card :dimensions :dimension_mappings] :id id)]
+  (let [{:keys [dimensions dimension_mappings]} (typed-schemas.db/card-dimensions id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
 (defn- readable-table-source-rows
@@ -152,7 +153,7 @@
   [table-ids]
   (when (seq table-ids)
     (perms/prime-table-perms-cache {:table-ids (set table-ids)})
-    (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
+    (->> (typed-schemas.db/table-names table-ids)
          (filter mi/can-read?))))
 
 (defn- table-key-disambiguators
@@ -271,10 +272,27 @@
      :mappedTableIds (not-empty mapped-table-ids)
      :dimensions (not-empty (common/keyed-map dimension-schemas)))))
 
+(defn- references-saved-card?
+  "Whether `metric`'s query depends on a saved card anywhere, not only as its stage-0 source.
+
+   `all-source-card-ids` throws on anything that is not an MBQL 5 query, and a `dataset_query` the app
+   DB fails to deserialize arrives as `{}`; report no references for those and leave them to
+   `metric-details`, which is what decides whether a metric it cannot read is emitted."
+  [metric]
+  (let [query (:dataset_query metric)]
+    (and (= (:lib/type query) :mbql/query)
+         (boolean (seq (lib/all-source-card-ids query))))))
+
 (defn metric-schemas
   "Returns metric schemas, with optional database and collection scopes."
   [database-ids collection-ids]
-  (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
-        :let [details (metric-details card)]
+  (for [metric (remove source-card-id
+                       (schema.common/select-schema-cards :metric database-ids collection-ids))
+        ;; Sync only supports metrics that resolve entirely from tables, and the CLI aborts
+        ;; `sync-resources` on one that does not. `source-card-id` sees only stage 0, so a
+        ;; table-sourced metric joining a saved question reached the CLI and failed there;
+        ;; check the whole query for saved-card dependencies to match what sync accepts.
+        :when (not (references-saved-card? metric))
+        :let [details (metric-details metric)]
         :when details]
-    (metric-schema details card)))
+    (metric-schema details metric)))

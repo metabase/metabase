@@ -4,8 +4,12 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
+import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import { getMetadata } from "metabase/metadata-store";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
+import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
@@ -17,7 +21,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
 import { createRawSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
@@ -35,7 +39,6 @@ const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
   variables: false,
   snippets: false,
-  promptInput: false,
   formatQuery: false,
 } as const;
 
@@ -59,9 +62,10 @@ const getErrorMessage = (
   queryError: unknown,
 ): string => {
   if (failedDataset?.error) {
-    return typeof failedDataset.error === "string"
-      ? failedDataset.error
-      : failedDataset.error?.data || t`Query execution failed`;
+    return getResponseErrorMessage(
+      failedDataset.error,
+      t`Query execution failed`,
+    );
   }
   if (typeof queryError === "object" && queryError && "message" in queryError) {
     return String(queryError.message);
@@ -107,7 +111,7 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const metadata = useSelector(getMetadata);
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -116,6 +120,10 @@ export const NativeQueryModal = ({
   const [isShowingTemplateTagsEditor, setIsShowingTemplateTagsEditor] =
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const [dataReferenceStack, setDataReferenceStack] = useState<
     DataReferenceItem[]
   >([]);
@@ -146,16 +154,16 @@ export const NativeQueryModal = ({
   }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
-    if (!card || !metadata || !isOpen) {
+    if (!card || !isOpen) {
       return null;
     }
 
-    const baseQuestion = new Question(card, metadata);
+    const baseQuestion = buildQuestion(card);
     if (!modifiedQuestion) {
       setModifiedQuestion(baseQuestion);
     }
     return baseQuestion;
-  }, [card, metadata, isOpen, modifiedQuestion]);
+  }, [card, buildQuestion, isOpen, modifiedQuestion]);
 
   const canSave =
     modifiedQuestion &&
@@ -336,6 +344,8 @@ export const NativeQueryModal = ({
                   query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
+                  canAutoOpenDataReference={!isMetabotSidebarOpen}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
@@ -415,7 +425,7 @@ export const NativeQueryModal = ({
                 <Box flex={1} mih="300px">
                   <Visualization
                     rawSeries={rawSeries}
-                    metadata={metadata}
+                    mode={defaultClickActionMode}
                     onChangeCardAndRun={() => {}}
                     getExtraDataForClick={() => ({})}
                     isEditing={false}

@@ -1,16 +1,12 @@
 /* istanbul ignore file */
 
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { dayjs } from "metabase/dayjs";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import {
-  DEFAULT_TEST_QUERY,
-  columnFinder,
-  createMetadataProvider,
-} from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, columnFinder } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
@@ -124,8 +120,7 @@ export const storeInitialState = createMockState({
   }),
 });
 
-export const metadata = getMetadata(storeInitialState);
-const provider = createMetadataProvider({ metadata });
+const provider = selectMetadataProvider(storeInitialState, database.id);
 
 export function createQuery() {
   return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);

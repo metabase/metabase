@@ -6,7 +6,8 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
-   [honey.sql.helpers :as sql.helpers]
+   [malli.core :as mc]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -19,9 +20,11 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -45,14 +48,99 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
+(mr/def ::metadata-column-row
+  "A Field row as the `:metadata/column` select returns it, with the columns of its Dimension and FieldValues."
+  [:merge
+   :metabase.warehouse-schema.schema/field
+   [:map {:closed true}
+    [:dimension/human_readable_field_id [:maybe ::lib.schema.id/field]]
+    [:dimension/id                      [:maybe pos-int?]]
+    [:dimension/name                    [:maybe :string]]
+    [:dimension/type                    [:maybe :string]]
+    [:values/human_readable_values      [:maybe :string]]
+    [:values/values                     [:maybe :string]]]])
+
+(mr/def ::model-field
+  "A `:model/Field` instance: a Field row, or a Card result metadata column X-Rays tags as a Field."
+  [:or
+   :metabase.warehouse-schema.schema/field
+   :metabase.legacy-mbql.schema/legacy-column-metadata])
+
+(mr/def ::instance
+  "A Toucan 2 instance [[instance->metadata]] converts, by its model, or a legacy result metadata column."
+  [:multi {:dispatch (fn [instance] (or (t2/model instance)
+                                        (when (= (:lib/type instance) :metadata/column) ::lib-column)
+                                        ::legacy-column))
+           :lazy-refs true}
+   [::legacy-column                :metabase.legacy-mbql.schema/legacy-column-metadata]
+   [::lib-column                   ::lib.schema.metadata/column]
+   [:metadata/database             :metabase.warehouses.schema/database]
+   [:metadata/table                :metabase.warehouse-schema.schema/table]
+   [:metadata/native-query-snippet :metabase.native-query-snippets.schema/native-query-snippet]
+   [:metadata/transform            :metabase.transforms.schema/transform]
+   [:metadata/column               ::metadata-column-row]
+   [:metadata/card                 :metabase.queries.schema/card]
+   [:metadata/metric               :metabase.queries.schema/card]
+   [:metadata/segment              :metabase.segments.schema/segment]
+   [:metadata/measure              :metabase.measures.schema/measure]
+   [:model/Database                :metabase.warehouses.schema/database]
+   [:model/Table                   :metabase.warehouse-schema.schema/table]
+   [:model/Field                   ::model-field]
+   [:model/Card                    :metabase.queries.schema/card]
+   [:model/Segment                 :metabase.segments.schema/segment]
+   [:model/Measure                 :metabase.measures.schema/measure]
+   [:model/NativeQuerySnippet      :metabase.native-query-snippets.schema/native-query-snippet]
+   [:model/Transform               :metabase.transforms.schema/transform]])
+
 (def ^:private metadata-type->schema
   {:metadata/card   ::lib.schema.metadata/card
    :metadata/column ::lib.schema.metadata/column})
 
+(def ^:private metadata-type->lib-schema
+  {:metadata/card                 ::lib.schema.metadata/card
+   :metadata/database             ::lib.schema.metadata/database
+   :metadata/measure              ::lib.schema.metadata/measure
+   :metadata/metric               ::lib.schema.metadata/metric
+   :metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet
+   :metadata/segment              ::lib.schema.metadata/segment
+   :metadata/table                ::lib.schema.metadata/table
+   :metadata/transform            ::lib.schema.metadata/transform})
+
+(defn- schema-keys
+  [schema]
+  (let [schema (mc/deref-all (mr/resolve-schema schema))]
+    (case (mc/type schema)
+      :map (into #{} (map first) (mc/children schema))
+      :and (perf/some schema-keys (mc/children schema))
+      nil)))
+
+(def ^:private metadata-type->keys
+  "The keys the Lib metadata schema of a metadata type declares, by metadata type."
+  (u.memo/fast-memo (fn [metadata-type]
+                      (some-> (metadata-type->lib-schema metadata-type) schema-keys))))
+
+(defn- drop-undeclared-columns
+  "`instance` without the unqualified keys the Lib metadata schema of `metadata-type` doesn't declare."
+  [instance metadata-type]
+  (if-let [declared (metadata-type->keys metadata-type)]
+    (reduce-kv (fn [m k _v]
+                 (if (or (qualified-keyword? k) (contains? declared k))
+                   m
+                   (dissoc m k)))
+               instance
+               instance)
+    instance))
+
+;; TODO (Cam 2026-08-27) Consider whether we should just have this be the normal behavior for normalizing
+;; application-database-style metadata to Lib-style metadata, e.g. why can't we just use
+;;
+;;    (metabase.lib.core/normalize :metabase.lib.schema.metadata/table table-metadata)
+;;
+;; to do this? Seems like these rules can be rolled into the schemas themselves
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance      :- :map
+  [instance      :- ::instance
    metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
@@ -61,6 +149,7 @@
     (-> instance
         (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
+        (drop-undeclared-columns metadata-type)
         normalize
         u.snake-hating-map/snake-hating-map
         (vary-meta assoc :metabase/toucan-instance instance))))
@@ -81,7 +170,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details
+                   :admin_details :timezone :default_schema :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -107,7 +197,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]
+          :from   [(warehouse-schema-overlay/table-query)]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -153,6 +244,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/data_sensitivity
                 :field/database_partitioned
                 :field/database_type
                 :field/description
@@ -175,7 +267,7 @@
                 :dimension/type
                 :values/human_readable_values
                 :values/values]
-    :from      [[(t2/table-name :model/Field) :field]]
+    :from      [(warehouse-schema-overlay/field-query {:alias :field})]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
                 [(t2/table-name :model/Dimension) :dimension]
@@ -429,120 +521,26 @@
                             `lib.metadata.protocols/database
                             `UncachedApplicationDatabaseMetadataProvider)
                     {})))
-  (t2/select-one :metadata/database database-id))
-
-(defn- db-id-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :db_id
-    :metadata/column               :table/db_id
-    :metadata/card                 :card/database_id
-    :metadata/metric               :database_id
-    :metadata/segment              :table/db_id
-    :metadata/measure              :table/db_id
-    :metadata/native-query-snippet nil
-    :metadata/transform            nil))
-
-(defn- id-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :id
-    :metadata/column               :field/id
-    :metadata/card                 :card/id
-    :metadata/metric               :id
-    :metadata/segment              :segment/id
-    :metadata/measure              :measure/id
-    :metadata/native-query-snippet :id
-    :metadata/transform            :id))
-
-(defn- name-key [metadata-type]
-  (case metadata-type
-    :metadata/table                :name
-    :metadata/column               :field/name
-    :metadata/card                 :card/name
-    :metadata/metric               :name
-    :metadata/segment              :segment/name
-    :metadata/measure              :measure/name
-    :metadata/native-query-snippet :name
-    :metadata/transform            :name))
-
-(defn- table-id-key [metadata-type]
-  ;; types not in the case statement do not support Table ID
-  (case metadata-type
-    :metadata/column  :field/table_id
-    :metadata/metric  :table_id
-    :metadata/segment :segment/table_id
-    :metadata/measure :measure/table_id))
-
-(defn- card-id-key [metadata-type]
-  ;; types not in the case statement do not support Card ID
-  (case metadata-type
-    :metadata/metric :source_card_id))
-
-(defn- active-only-honeysql-filter [metadata-type {:keys [include-sensitive?]}]
-  (case metadata-type
-    :metadata/table
-    [:and
-     [:= :active true]
-     [:or
-      [:= :visibility_type nil]
-      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]
-
-    :metadata/column
-    (let [excluded-visibility-types (cond-> ["retired"]
-                                      (not include-sensitive?) (conj "sensitive"))]
-      [:and
-       [:= :field/active true]
-       [:or
-        [:= :field/visibility_type nil]
-        [:not-in :field/visibility_type excluded-visibility-types]]])
-
-    :metadata/card
-    [:= :card/archived false]
-
-    :metadata/metric
-    [:= :archived false]
-
-    :metadata/segment
-    [:= :segment/archived false]
-
-    :metadata/measure
-    [:= :measure/archived false]
-
-    #_else
-    nil))
-
-(mu/defn- metadata-spec->honey-sql :- [:map
-                                       {:closed true}
-                                       [:where {:optional true} vector?]]
-  "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                             :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (let [database-id-key (db-id-key metadata-type)
-        active-only?    (not (or id-set name-set))
-        metric?         (= metadata-type :metadata/metric)
-        where-clauses   (cond-> []
-                          database-id-key         (conj [:= database-id-key database-id])
-                          id-set                  (conj [:in (id-key metadata-type) id-set])
-                          name-set                (conj [:in (name-key metadata-type) name-set])
-                          table-ids               (conj [:in (table-id-key metadata-type) table-ids])
-                          card-ids                (conj [:in (card-id-key metadata-type) card-ids])
-                          active-only?            (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
-                          metric?                 (conj [:= :type "metric"])
-                          (and metric? table-ids) (conj [:= :source_card_id nil]))]
-    (reduce
-     sql.helpers/where
-     {}
-     where-clauses)))
+  (lib-be.db/database database-id))
 
 (mu/defn- metadatas
   [database-id                                  :- ::lib.schema.id/database
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
-  (let [query (metadata-spec->honey-sql database-id metadata-spec)]
-    (lib.util/recover
-     (fn [] (t2/select metadata-type query))
-     (fn [e]
-       (throw (ex-info "Error fetching metadata with spec"
-                       {:metadata-spec metadata-spec, :query query}
-                       e))))))
+  (lib.util/recover
+   (fn []
+     (case metadata-type
+       :metadata/table                (lib-be.db/tables database-id metadata-spec)
+       :metadata/column               (lib-be.db/columns database-id metadata-spec)
+       :metadata/card                 (lib-be.db/cards database-id metadata-spec)
+       :metadata/metric               (lib-be.db/metrics database-id metadata-spec)
+       :metadata/segment              (lib-be.db/segments database-id metadata-spec)
+       :metadata/measure              (lib-be.db/measures database-id metadata-spec)
+       :metadata/native-query-snippet (lib-be.db/native-query-snippets database-id metadata-spec)
+       :metadata/transform            (lib-be.db/transforms database-id metadata-spec)))
+   (fn [e]
+     (throw (ex-info "Error fetching metadata with spec"
+                     {:metadata-spec metadata-spec}
+                     e)))))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider

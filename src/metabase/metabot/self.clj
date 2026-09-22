@@ -118,6 +118,7 @@
                                  (pr-str (llm.provider/model-ref->connection-key s)))
                             {:status-code 400
                              :api-error   true
+                             :error-code  :llm-not-configured
                              :model-ref   s})))]
     {:provider    type
      :stream-fn   (resolve-adapter type)
@@ -157,7 +158,7 @@
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
-  AWS key material and region (see [[bedrock/list-models]])."
+  optional AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
@@ -260,6 +261,11 @@
          backoff-ms)
        jitter)))
 
+(defn- provider-label
+  "The `:provider` label on an LLM call's metrics: the type of the connection serving it, so `metabase` when proxied."
+  [{:keys [provider ai-proxy?]}]
+  (if ai-proxy? "metabase" provider))
+
 (defn- report-aisdk-errors-xf
   "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
@@ -275,23 +281,33 @@
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
+                            :provider   (provider-label tracking-opts)
                             :error-type "llm-sse-error"}))
          part)))
 
 (defn- report-token-usage-xf
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
-  Prometheus + Snowplow:
-    - `:profile-id` — the profile id (e.g. `:internal`)
-    - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4.5`)
-    - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+  Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`.
 
-   Snowplow only:
-    - `:request-id` — UUID string for this request
-    - `:session-id` — conversation UUID string
-    - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                      Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
+  Prometheus + Snowplow:
+    - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
+    - `:tag`        - the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+
+  Prometheus only:
+    - `:provider`   - the provider type serving it (e.g. `openrouter`)
+    - `:ai-proxy?`  - whether the call went through the managed AI proxy
+
+  Snowplow only:
+    - `:profile-id` - the profile id (e.g. `:internal`)
+    - `:request-id` - UUID string for this request
+    - `:session-id` - conversation UUID string
+    - `:source`     - the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                      Indicates which API endpoint or workflow initiated the LLM call.
+
+  Neither:
+    - `:model-name` - the model as the provider names it (e.g. `anthropic/claude-haiku-4.5`)"
+  [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -307,6 +323,7 @@
                  :snowplow              (some? request-id)
                  :profile               (some-> profile-id name)
                  :model-id              model
+                 :provider              (provider-label tracking-opts)
                  :prompt-tokens         prompt
                  :completion-tokens     completion
                  :cache-creation-tokens cache-creation
@@ -322,6 +339,8 @@
                (usage/log-ai-usage!
                 {:source                (or source tag "unknown")
                  :model                 model
+                 :provider              provider
+                 :model-name            model-name
                  :prompt-tokens         prompt
                  :completion-tokens     completion
                  :cache-creation-tokens cache-creation
@@ -357,7 +376,7 @@
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
-  Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels.
+  Records prometheus metrics with `:model` and `:tag` from `tracking-opts`, and its [[provider-label]], as labels.
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
@@ -365,7 +384,9 @@
   ([tracking-opts thunk]
    (with-retries tracking-opts thunk (constantly true)))
   ([tracking-opts thunk retry?]
-   (let [labels {:model (:model tracking-opts) :source (:tag tracking-opts)}]
+   (let [labels {:model    (:model tracking-opts)
+                 :source   (:tag tracking-opts)
+                 :provider (provider-label tracking-opts)}]
      (loop [attempt 1]
        (analytics/inc! :metabase-metabot/llm-requests labels)
        (let [timer  (u/start-timer)
@@ -503,7 +524,8 @@
        (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
-         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :provider provider
+                                     :model-name model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
                                        :fast?       (metabot.settings/llm-fast-mode)}
@@ -575,7 +597,8 @@
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
                            (dissoc :required-permission)
-                           (assoc :model provider-and-model :ai-proxy? ai-proxy?))
+                           (assoc :model provider-and-model :provider provider :model-name model
+                                  :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
                                 :input       input
                                 :schema      json-schema

@@ -38,6 +38,11 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest default-schema-test
+  (mt/test-driver :sqlserver
+    (is (= "dbo"
+           (driver.sql/default-schema :sqlserver (mt/db))))))
+
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
                 "fields referenced by name from a source query, #75193) should use TIMEFROMPARTS and "
@@ -344,6 +349,29 @@
                                  :order-by     [[:asc $id]]
                                  :limit        5}
                   :limit        3}))))))))
+
+(deftest ^:parallel page-adds-order-by-when-none-present-test
+  (testing "Regression for #81988."
+    (testing "no existing ORDER BY -> synthetic ORDER BY (SELECT NULL) added"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 0]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 1 :items 200}}))))
+    (testing "existing ORDER BY preserved"
+      (let [existing-order-by [[[:field "id" nil] :asc]]]
+        (is (= {:order-by existing-order-by
+                :offset   [:inline 0]
+                :fetch    [:inline 200]}
+               (sql.qp/apply-top-level-clause :sqlserver :page
+                                              {:order-by existing-order-by}
+                                              {:page {:page 1 :items 200}})))))
+    (testing "later pages compute OFFSET from (page - 1) * items"
+      (is (= {:order-by [[{:select [nil]}]]
+              :offset   [:inline 400]
+              :fetch    [:inline 200]}
+             (sql.qp/apply-top-level-clause :sqlserver :page {}
+                                            {:page {:page 3 :items 200}}))))))
 
 (deftest ^:parallel locale-bucketing-test
   (mt/test-driver :sqlserver
@@ -923,7 +951,7 @@
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
                                                    [:= {}
-                                                    [:field {} (mt/id :attempts :datetime)]
+                                                    [:field {:lib/uuid (str (random-uuid))} (mt/id :attempts :datetime)]
                                                     (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
@@ -944,18 +972,22 @@
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil when no role is configured"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "returns nil even when user is 'sa'"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
     (testing "ignores user field and only uses role field"
       (let [database {:lib/type :metadata/database
+                      :id       1
                       :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 
@@ -1229,3 +1261,62 @@
           hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
       (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
       (is (not (contains? (hosts details) "10.0.0.1"))))))
+
+(deftest cancelation-poisons-connection-test
+  (testing "discarding the Connection a query canceled on leaves the pool able to serve later queries (#39018)"
+    (mt/test-driver :sqlserver
+      (is (true? (sql-jdbc.execute/cancelation-poisons-connection? :sqlserver))
+          "SQL Server does not recover from a cancelation on its own, so the Connection must not be recycled")
+      (letfn [(rows [table n]
+                (let [mp (mt/metadata-provider)]
+                  (cond-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                    n    (lib/limit n)
+                    true (-> qp/process-query mt/rows))))]
+        ;; stopping at the limit leaves the statement producing, which is what triggers the cancel-and-discard
+        (is (= 4 (count (rows :venues 4))))
+        (testing "and a later query reading every row still succeeds"
+          (is (= 1000 (count (rows :checkins nil)))))))))
+
+(defn- temp-table-rows [conn table]
+  (driver/query-on-connection :sqlserver conn [(str "SELECT * FROM " table) []] {:max-rows 10}))
+
+(defn- create-temp-table! [conn table sql params]
+  (driver/execute-on-connection! :sqlserver conn
+                                 (driver/compile-create-temp-table :sqlserver {:table table
+                                                                               :query {:query sql :params params}})))
+
+(deftest transform-testing-temp-tables-are-session-local-test
+  (mt/test-driver :sqlserver
+    (testing "a transform test's temp table is visible to its own session only"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [conn]
+           (create-temp-table! conn table "SELECT 1 AS id" [])
+           (is (= [[1]] (:rows (temp-table-rows conn table))))
+           (driver/do-with-test-connection
+            :sqlserver (mt/db)
+            (fn [other-conn]
+              (is (thrown-with-msg? Exception #"Invalid object name"
+                                    (temp-table-rows other-conn table)))))))))))
+
+(deftest transform-testing-temp-table-from-parameterized-query-test
+  (mt/test-driver :sqlserver
+    (testing "a temp table created by a query with bound parameters outlives the statement that created it"
+      (let [table (driver/temp-table-name :sqlserver)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [conn]
+           (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
+                               ["abc" 1.5M])
+           (is (=? {:rows [["abc" 1.50M]]} (temp-table-rows conn table)))))))
+    (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
+      (let [physical (atom nil)]
+        (driver/do-with-test-connection
+         :sqlserver (mt/db)
+         (fn [^java.sql.Connection conn]
+           (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
+             (reset! physical sqlserver-conn)
+             (is (= "scopeTempTablesToConnection"
+                    (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection sqlserver-conn))))))
+        (is (= "prepexec" (.getPrepareMethod ^com.microsoft.sqlserver.jdbc.ISQLServerConnection @physical)))))))

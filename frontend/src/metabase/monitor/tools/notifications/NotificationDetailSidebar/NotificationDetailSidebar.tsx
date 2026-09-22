@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   skipToken,
@@ -6,12 +6,11 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getMetadata } from "metabase/metadata-store";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { Flex, Stack } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
 
 import { trackAlertsManagementEditClicked } from "../analytics";
 
@@ -43,7 +42,6 @@ export const NotificationDetailSidebar = ({
   }, [notificationId]);
 
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
   const cardId = notification?.payload?.card_id;
   const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
     cardId != null ? { id: cardId } : skipToken,
@@ -55,10 +53,7 @@ export const NotificationDetailSidebar = ({
     }
   }, [card, dispatch]);
 
-  const question = useMemo(
-    () => (card ? new Question(card, metadata) : undefined),
-    [card, metadata],
-  );
+  const question = useQuestionFromCard(card);
 
   return (
     <>

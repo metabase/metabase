@@ -1,10 +1,11 @@
 (ns metabase.cmd.core-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.cmd.core :as cmd]))
+   [metabase.cmd.core :as cmd]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (defn- do-with-captured-call-enterprise-calls! [thunk]
-  (with-redefs [cmd/call-enterprise list]
+  (dynamic-redefs/with-dynamic-fn-redefs [cmd/call-enterprise list]
     (thunk)))
 
 (deftest ^:parallel error-message-test
