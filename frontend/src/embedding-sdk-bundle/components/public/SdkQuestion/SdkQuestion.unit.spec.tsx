@@ -37,7 +37,7 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
-import type { BaseEntityId, CardId, UnsavedCard } from "metabase-types/api";
+import type { BaseEntityId, Card, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -48,7 +48,6 @@ import {
   createMockDatasetData,
   createMockParameter,
   createMockTable,
-  createMockUnsavedCard,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
@@ -138,7 +137,7 @@ const setup = async ({
       isValidCard?: boolean;
       withCustomLayout?: boolean;
       cardId: BaseEntityId | CardId | null;
-      deserializedCard?: UnsavedCard;
+      deserializedCard?: Card;
       preventWaitForLoader?: boolean;
       mockNavigation?: SdkInternalNavigationContextValue;
     }
@@ -411,7 +410,7 @@ describe("InteractiveQuestion", () => {
       const mockNavigation = makeMockNavigation();
       await setup({
         cardId: null,
-        deserializedCard: createMockUnsavedCard(),
+        deserializedCard: createMockCard(),
         mockNavigation,
       });
 
