@@ -25,8 +25,8 @@
 
 (defmacro without-scope
   "Run `body` without the worktree restriction: the queries inside see every worktree's rows and the main app's.
-  For code that runs outside any worktree's world and has to see the table whole -- a custom migration, which may
-  even predate the column."
+  For reads of content that is the instance's rather than a branch's -- the Trash, a user's personal collection --
+  and for code that has to see a table whole, such as a custom migration, which may even predate the column."
   {:style/indent 0}
   [& body]
   `(binding [*scope?* false]
@@ -45,8 +45,13 @@
   (into #{} (keep #(when (keyword? %) (t2/table-name %))) (descendants :hook/worktree-id)))
 
 (defn- scope-condition
+  "The restriction on one table, with the worktree id inlined rather than parameterized: the condition is added to
+  queries that are already built, and on H2 a CTE's parameters bind by position, so adding one shifts the rest."
   [source]
-  [:= (u/qualified-key source :worktree_id) (current-worktree-id)])
+  (let [column (u/qualified-key source :worktree_id)]
+    (if-let [worktree-id (current-worktree-id)]
+      [:= column [:inline worktree-id]]
+      [:= column nil])))
 
 (defn- table+alias
   "The table a `:from` entry or join target names, and the name its columns are qualified by. Nil for a subquery."
@@ -64,11 +69,18 @@
   [existing condition]
   (if existing [:and existing condition] condition))
 
+(defn- clause-targets
+  "The targets a clause names, as a sequence: honey SQL takes either one target or a sequence of them."
+  [clause]
+  (if (sequential? clause) clause [clause]))
+
 (defn- query-target
   "What the query reads from or writes to: the `:from` of a select, the `:update` of an update, the `:delete-from`
   of a delete."
   [query]
-  (some-> (or (first (:from query)) (:update query) (first (:delete-from query)) (:delete-from query))
+  (some-> (or (first (clause-targets (:from query)))
+              (:update query)
+              (first (clause-targets (:delete-from query))))
           table+alias))
 
 (defn- scope-target
@@ -98,7 +110,7 @@
   the restriction, and letting one through would read every worktree's rows. Rewrite it as a join with an ON
   clause, or read the table separately."
   [query scoped]
-  (doseq [target (:cross-join query)
+  (doseq [target (clause-targets (:cross-join query))
           :let   [[table _] (table+alias target)]
           :when  (and table (contains? scoped table))]
     (throw (ex-info "Cannot cross join a worktree-scoped table: it has no ON clause to restrict it to the caller's worktree."
@@ -122,9 +134,9 @@
   (and (map? x)
        (or (:from x) (:update x) (:delete-from x) (:cross-join x) (some x join-clauses))))
 
-(defn- scope-all
-  "Restrict every select down the query tree: `exists?` wraps the real query in `[:exists {...}]`, and a subquery
-  or CTE reads a table just as directly as the query around it."
+(defn scope-all
+  "Restrict every select down the query tree of `query`: `exists?` wraps the real query in `[:exists {...}]`, and a
+  subquery or CTE reads a table just as directly as the query around it."
   [query]
   (if-not *scope?*
     query

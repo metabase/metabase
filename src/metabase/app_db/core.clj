@@ -24,12 +24,14 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.app-db.value-guard]
+   [metabase.app-db.worktree]
    [metabase.config.core :as config]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
+         metabase.app-db.worktree/keep-me
          metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me

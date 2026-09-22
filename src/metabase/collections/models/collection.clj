@@ -86,6 +86,15 @@
   "The value of the `:type` field for root collections that belong to a single tenant"
   "tenant-specific-root-collection")
 
+(def instance-analytics-collection-type
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
+  "instance-analytics")
+
+(def ^:private instance-collection-types
+  "The `:type` values of collections that belong to the instance rather than to any one branch."
+  #{tenant-specific-root-collection-type
+    instance-analytics-collection-type})
+
 (def transforms-ns
   "Namespace for transforms"
   :transforms)
@@ -94,18 +103,30 @@
   "Namespace for snippets"
   :snippets)
 
-(defn- trash-collection* []
+(defn- trash-collection* [_worktree-id]
   (collections.db/collection-of-type trash-collection-type))
 
 (let [get-trash (mdb/memoize-for-application-db
-                 (fn []
-                   (u/prog1 (trash-collection*)
+                 (fn [worktree-id]
+                   (u/prog1 (trash-collection* worktree-id)
                      (when-not <>
-                       (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
+                       (throw (ex-info "Fatal error: Trash collection is missing" {:worktree-id worktree-id}))))))]
   (defn trash-collection
-    "Get the (memoized) trash collection"
+    "Get the (memoized) trash collection of the caller's world. A worktree has a Trash of its own -- archiving is a
+    move into it, so a shared one would hold content from every branch at once -- and the `worktree-id` argument is
+    what keeps the memoized lookups apart."
     []
-    (assoc (get-trash) :name (deferred-tru "Trash"))))
+    (assoc (get-trash (mi/current-worktree-id)) :name (deferred-tru "Trash"))))
+
+(defn create-trash-collection!
+  "Create the Trash collection of the world `worktree-id` names. A worktree gets one when it is created: archiving
+  moves content into the Trash, so sharing the main app's would put every branch's archived content in one place.
+  Unlike the main app's Trash it is granted to no group -- only superusers work inside a worktree."
+  [worktree-id]
+  (collections.db/insert-collection! {:name        "Trash"
+                                      :slug        "trash"
+                                      :type        trash-collection-type
+                                      :worktree_id worktree-id}))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
@@ -242,6 +263,16 @@
     library-data-entity-id
     library-metrics-entity-id})
 
+(defn- library-copy-entity-id
+  "The `entity_id` to create one of the Library's collections under. A worktree has a Library of its own, and an
+  `entity_id` names one row instance-wide, so the copy gets a fresh id remapped to the canonical one the branch
+  knows it by."
+  [canonical]
+  (if (mi/current-worktree-id)
+    (u/prog1 (u/generate-nano-id)
+      (serdes/ensure-remapping! "Collection" <> canonical))
+    canonical))
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
@@ -250,16 +281,16 @@
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"
-                                                          :entity_id library-entity-id})
+                                                          :entity_id (library-copy-entity-id library-entity-id)})
         base-location (str "/" (:id library) "/")
         data          (collections.db/insert-collection! {:name      "Data"
                                                           :type      library-data-collection-type
                                                           :location  base-location
-                                                          :entity_id library-data-entity-id})
+                                                          :entity_id (library-copy-entity-id library-data-entity-id)})
         metrics       (collections.db/insert-collection! {:name      "Metrics"
                                                           :type      library-metrics-collection-type
                                                           :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
+                                                          :entity_id (library-copy-entity-id library-metrics-entity-id)})]
     (doseq [col [library data metrics]]
       (collections.db/delete-permissions-for-collection! (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
@@ -278,9 +309,10 @@
 
 (defn library-root-collection?
   "Is this one of the immutable system-created Library collections (root, data, or metrics)?
-  Returns false for user-created subcollections that inherit a library type."
+  Returns false for user-created subcollections that inherit a library type. A worktree's copy is recognized by
+  the id the branch knows it by, which is what its own generated `entity_id` is remapped to."
   [collection]
-  (library-entity-id? (:entity_id collection)))
+  (library-entity-id? (serdes/source-entity-id "Collection" (:entity_id collection))))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
@@ -723,10 +755,12 @@
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
-  Personal collection should be created on user creation, but creates if missing for backwards compatibility"
+  Personal collection should be created on user creation, but creates if missing for backwards compatibility.
+  A worktree holds no personal collections, so inside one there is nothing to find and nothing to create."
   [user-or-id :- UserOrId]
   ;; API key users do not get personal collections
-  (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
+  (when-not (or (api-key/is-api-key-user? (u/the-id user-or-id))
+                (mi/current-worktree-id))
     (or (user->existing-personal-collection user-or-id)
         (try
           (collections.db/insert-collection! {:name              (user->personal-collection-name user-or-id :site)
@@ -744,7 +778,7 @@
   save a DB call for *every* API call."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[user-id]]
-                         [(mdb/unique-identifier) user-id])}
+                         [(mdb/unique-identifier) (mi/current-worktree-id) user-id])}
    (fn user->personal-collection-id*
      [user-id]
      (some-> user-id user->personal-collection u/the-id))
@@ -1819,10 +1853,21 @@
       (when (= :api-key (collections.db/user-type user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn- assert-not-instance-collection-in-worktree
+  "Refuse a personal collection, a tenant's root collection or an instance-analytics collection inside a worktree:
+  they belong to the instance, and one created in a branch would be hidden from the main app that needs it."
+  [collection]
+  (when (and (or (:personal_owner_id collection)
+                 (contains? instance-collection-types (:type collection)))
+             (or (mi/current-worktree-id) (:worktree_id collection)))
+    (throw (ex-info "Can't create an instance-level collection inside a worktree"
+                    {:type (:type collection) :user-id (:personal_owner_id collection)}))))
+
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
+  (assert-not-instance-collection-in-worktree collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (u/prog1 (-> collection
@@ -2095,10 +2140,6 @@
       #{(case read-or-write
           :read  (perms/collection-read-path (u/the-id collection-or-id))
           :write (perms/collection-readwrite-path (u/the-id collection-or-id)))})))
-
-(def instance-analytics-collection-type
-  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
-  "instance-analytics")
 
 (defmethod mi/exclude-internal-content-hsql :model/Collection
   [_model & {:keys [table-alias]}]

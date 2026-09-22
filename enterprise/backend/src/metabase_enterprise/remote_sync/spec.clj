@@ -972,6 +972,17 @@
   [_ _ _]
   nil)
 
+(defn- localize-entity-ids
+  "Translate the entity_ids a load saw -- the ids the branch knows the content by -- into the ids of the local rows
+  the load wrote. Inside a worktree those differ: a checked-out entity is a copy of its own, so the reconcile and
+  the RemoteSyncObject ledger that run off these ids must look local rows up by the local id. Identity outside a
+  worktree, and for an id this worktree has no copy of."
+  [by-entity-id]
+  (into {}
+        (map (fn [[model-type entity-ids]]
+               [model-type (serdes/local-entity-ids model-type entity-ids)]))
+        by-entity-id))
+
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
    Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
@@ -982,26 +993,28 @@
   ([seen-paths]
    (extract-imported-entities seen-paths nil))
   ([seen-paths ingest-one]
-   (reduce
-    (fn [acc path]
-      (let [model-type (-> path last :model)]
-        (if-let [spec (spec-for-model-type model-type)]
-          (let [identity-type (:identity spec)
-                identity-data (extract-identity-from-serdes-path spec path ingest-one)]
-            (if identity-data
-              (case identity-type
-                (:entity-id :hybrid)
-                (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
+   (update
+    (reduce
+     (fn [acc path]
+       (let [model-type (-> path last :model)]
+         (if-let [spec (spec-for-model-type model-type)]
+           (let [identity-type (:identity spec)
+                 identity-data (extract-identity-from-serdes-path spec path ingest-one)]
+             (if identity-data
+               (case identity-type
+                 (:entity-id :hybrid)
+                 (update-in acc [:by-entity-id model-type] (fnil conj #{}) identity-data)
 
-                :path
-                (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
+                 :path
+                 (update-in acc [:by-path (:model-key spec)] (fnil conj []) identity-data)
 
-                acc)
-              acc))
-          acc)))
-    {:by-entity-id {}
-     :by-path {}}
-    seen-paths)))
+                 acc)
+               acc))
+           acc)))
+     {:by-entity-id {}
+      :by-path {}}
+     seen-paths)
+    :by-entity-id localize-entity-ids)))
 
 ;;; -------------------------------------------- Event Helper Functions ------------------------------------------------
 

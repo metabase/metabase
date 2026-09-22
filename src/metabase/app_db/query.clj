@@ -24,6 +24,7 @@
    [honey.sql :as sql]
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.worktree :as app-db.worktree]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -105,7 +106,8 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
-  (let [sql-args (try
+  (let [honey-sql (app-db.worktree/scope-all honey-sql)
+        sql-args (try
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running

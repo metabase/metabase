@@ -823,14 +823,17 @@
                                      all-ids    (concat parent-ids [(str id)])
                                      path-maps  (mapv (fn [cid]
                                                         (let [c (id->coll cid)]
-                                                          {:label (:name c) :key (:entity_id c)}))
+                                                          {:label (:name c)
+                                                           :key   (source-entity-id "Collection" (:entity_id c))}))
                                                       all-ids)]]
-                           [entity_id path-maps]))
+                           [(source-entity-id "Collection" entity_id) path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
+                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)
+                               :let [entity_id (source-entity-id "Dashboard" entity_id)]]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
+                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)
+                               :let [entity_id (source-entity-id "Document" entity_id)]]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards

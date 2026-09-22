@@ -7,6 +7,7 @@
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -19,6 +20,11 @@
 (doto :model/Worktree
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(t2/define-after-insert :model/Worktree
+  [worktree]
+  (collections/create-trash-collection! (:id worktree))
+  worktree)
 
 (defmethod mi/can-read? :model/Worktree
   ([_instance] api/*is-superuser?*)
