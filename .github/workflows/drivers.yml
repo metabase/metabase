@@ -1297,6 +1297,8 @@ jobs:
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
+      # Vertica cannot start without it, so a failed login skips the job it feeds.
+      - login-to-ecr
       - be-tests-vertica-ee
       # - be-tests-starburst-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -1312,11 +1314,8 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            // Drop the plan bookkeeping job; the rest -- the gate and the driver jobs --
-            // gate this check.
-            const jobs = Object.entries(needs)
-              .filter(([jobName]) => jobName !== 'plan')
-              .map(([jobName, jobValues]) => ({
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
                 name: jobName,
                 result: jobValues.result
               }));
