@@ -26,12 +26,14 @@ export const usePushChangesAction = () => {
         force: boolean,
         closeModal: VoidFunction,
         message?: string,
+        worktreeId?: number,
       ) => {
         try {
           await exportChanges({
             branch,
             force,
             message,
+            worktree_id: worktreeId,
           }).unwrap();
 
           trackPushChanges({
@@ -66,10 +68,16 @@ export const useMergeChangesAction = () => {
 
   return {
     mergeChanges: useCallback(
-      async (branch: string, closeModal: VoidFunction, message?: string) => {
+      async (
+        branch: string,
+        closeModal: VoidFunction,
+        message?: string,
+        worktreeId?: number,
+      ) => {
         try {
           await exportChanges({
             branch,
+            worktree_id: worktreeId,
             merge: true,
             message,
           }).unwrap();
@@ -107,12 +115,13 @@ export const useMergeImportAction = () => {
 
   return {
     mergeImport: useCallback(
-      async (branch: string, closeModal: VoidFunction) => {
+      async (branch: string, closeModal: VoidFunction, worktreeId?: number) => {
         try {
           // Pull merge: the operational branch is the current branch, so it doubles as the
           // expected_branch assertion.
           await importChanges({
             branch,
+            worktree_id: worktreeId,
             merge: true,
             expected_branch: branch,
           }).unwrap();
@@ -210,6 +219,7 @@ export const useDiscardChangesAndImportAction = () => {
         targetBranch: string,
         expectedBranch: string,
         closeModal: VoidFunction,
+        worktreeId?: number,
       ) => {
         try {
           // targetBranch is what we import (may be a switch target); expectedBranch is the branch
@@ -218,6 +228,7 @@ export const useDiscardChangesAndImportAction = () => {
             branch: targetBranch,
             force: true,
             expected_branch: expectedBranch,
+            worktree_id: worktreeId,
           }).unwrap();
           closeModal();
         } catch (error) {

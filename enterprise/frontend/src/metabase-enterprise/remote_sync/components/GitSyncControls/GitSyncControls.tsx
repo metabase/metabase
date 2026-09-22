@@ -292,22 +292,22 @@ export const GitSyncControls = () => {
         />
       </Combobox>
 
-      {showPushModal && (
-        <PushChangesModal
-          currentBranch={currentBranch}
-          onClose={togglePushModal}
-        />
-      )}
+      <PushChangesModal
+        opened={showPushModal}
+        currentBranch={currentBranch}
+        onClose={togglePushModal}
+      />
 
       {conflictVariant && (
         <SyncConflictModal
+          opened
           currentBranch={currentBranch}
-          onClose={handleCloseSyncConflictModal}
           variant={conflictVariant}
           canMerge={conflictPreflight?.clean}
           conflicts={conflictPreflight?.conflicts}
           forcePushCasualties={conflictPreflight?.force_push_casualties}
           historyRewritten={conflictPreflight?.reason === "history-rewritten"}
+          onClose={handleCloseSyncConflictModal}
         />
       )}
 

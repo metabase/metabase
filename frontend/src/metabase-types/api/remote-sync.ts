@@ -51,6 +51,10 @@ export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
 };
 
+export type HasRemoteChangesRequest = {
+  "worktree-id"?: number;
+};
+
 export type HasRemoteChangesResponse = {
   has_changes: boolean;
 };
@@ -85,6 +89,11 @@ export type ForcePushCasualties = {
 };
 
 /** Dry-run preview of what pushing the current state would do, given the live remote branch. */
+export type ExportPreflightRequest = {
+  branch: string;
+  "worktree-id"?: number;
+};
+
 export type ExportPreflightResponse = {
   /** Whether the remote branch has advanced beyond the last synced version. */
   has_changes: boolean;

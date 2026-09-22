@@ -312,7 +312,9 @@ export function MainNavbarView({
           )}
 
           {PLUGIN_REMOTE_SYNC.isEnabled && (
-            <PLUGIN_REMOTE_SYNC.WorktreeNav onItemSelect={onItemSelect} />
+            <PLUGIN_REMOTE_SYNC.WorktreeSidebarSection
+              onItemSelect={onItemSelect}
+            />
           )}
 
           <SidebarSection>

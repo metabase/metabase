@@ -2,8 +2,10 @@ import type {
   CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
+  ExportPreflightRequest,
   ExportPreflightResponse,
   GetBranchesResponse,
+  HasRemoteChangesRequest,
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
@@ -45,12 +47,12 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
     }),
     getExportPreflight: builder.query<
       ExportPreflightResponse,
-      { branch: string }
+      ExportPreflightRequest
     >({
-      query: ({ branch }) => ({
+      query: (params) => ({
         url: `/api/ee/remote-sync/export-preflight`,
         method: "GET",
-        params: { branch },
+        params,
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),
@@ -104,10 +106,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
-      query: () => ({
+    getHasRemoteChanges: builder.query<
+      HasRemoteChangesResponse,
+      HasRemoteChangesRequest | void
+    >({
+      query: (params) => ({
         url: `/api/ee/remote-sync/has-remote-changes`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),

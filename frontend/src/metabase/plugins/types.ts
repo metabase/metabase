@@ -62,7 +62,7 @@ export type SyncedCollectionsSidebarSectionProps = {
   syncedCollections: CollectionTreeItem[];
 };
 
-export type WorktreeNavProps = {
+export type WorktreeSidebarSectionProps = {
   onItemSelect: () => void;
 };
 

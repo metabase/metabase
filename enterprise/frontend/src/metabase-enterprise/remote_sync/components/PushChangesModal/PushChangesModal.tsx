@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -20,7 +20,9 @@ import { ChangesLists } from "../ChangesLists";
 import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
+  opened: boolean;
   currentBranch: string;
+  worktreeId?: number;
   onClose: () => void;
 }
 
@@ -30,15 +32,35 @@ interface PushChangesModalProps {
  * SyncConflictModal (push variant) directly instead of this modal.
  */
 export const PushChangesModal = ({
+  opened,
+  currentBranch,
+  worktreeId,
+  onClose,
+}: PushChangesModalProps) => (
+  <Modal
+    opened={opened}
+    title={t`Push to Git`}
+    onClose={onClose}
+    size="lg"
+    padding="xxl"
+  >
+    <PushChangesForm
+      currentBranch={currentBranch}
+      worktreeId={worktreeId}
+      onClose={onClose}
+    />
+  </Modal>
+);
+
+const PushChangesForm = ({
   onClose,
   currentBranch,
-}: PushChangesModalProps) => {
+  worktreeId,
+}: Omit<PushChangesModalProps, "opened">) => {
   const [commitMessage, setCommitMessage] = useState("");
 
-  const [
-    exportChanges,
-    { isLoading: isPushing, error: exportError, isSuccess },
-  ] = useExportChangesMutation();
+  const [exportChanges, { isLoading: isPushing, error: exportError }] =
+    useExportChangesMutation();
 
   const { errorMessage } = useMemo(
     // Unjustified type cast. FIXME
@@ -46,36 +68,30 @@ export const PushChangesModal = ({
     [exportError],
   );
 
-  useEffect(() => {
-    if (isSuccess) {
-      onClose();
-    }
-  }, [isSuccess, onClose]);
-
-  const handlePush = useCallback(() => {
+  const handlePush = useCallback(async () => {
     if (!currentBranch) {
       throw new Error("Current branch is not set");
     }
 
-    exportChanges({
+    const { error } = await exportChanges({
       message: commitMessage.trim() || undefined,
       branch: currentBranch,
+      worktree_id: worktreeId,
     });
+
+    if (error) {
+      return;
+    }
 
     trackPushChanges({
       triggeredFrom: "app-bar",
       force: false,
     });
-  }, [commitMessage, exportChanges, currentBranch]);
+    onClose();
+  }, [commitMessage, exportChanges, currentBranch, worktreeId, onClose]);
 
   return (
-    <Modal
-      opened
-      title={t`Push to Git`}
-      onClose={onClose}
-      size="lg"
-      padding="xxl"
-    >
+    <>
       <Box pt="lg">
         {errorMessage && (
           <Alert
@@ -117,6 +133,6 @@ export const PushChangesModal = ({
           </Button>
         </Group>
       </Box>
-    </Modal>
+    </>
   );
 };

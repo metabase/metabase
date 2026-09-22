@@ -189,6 +189,7 @@ export const BranchSwitcher = ({
 
       {pendingBranch && (
         <SyncConflictModal
+          opened
           variant="switch-branch"
           currentBranch={currentBranch}
           nextBranch={pendingBranch}

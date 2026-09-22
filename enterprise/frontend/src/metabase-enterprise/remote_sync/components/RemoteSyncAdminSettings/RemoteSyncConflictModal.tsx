@@ -16,6 +16,7 @@ export const RemoteSyncConflictModal = () => {
 
   return (
     <SyncConflictModal
+      opened
       currentBranch={currentBranch}
       onClose={() => {
         dispatch(syncConflictVariantUpdated(null));

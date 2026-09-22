@@ -11,7 +11,7 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import type { WorktreeNavProps } from "metabase/plugins/types";
+import type { WorktreeSidebarSectionProps } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
 import { Group } from "metabase/ui";
 import {
@@ -20,8 +20,8 @@ import {
 } from "metabase-enterprise/api";
 import type { Worktree } from "metabase-types/api";
 
-import { WorktreeMenu } from "./WorktreeMenu";
-import { CollectionSyncStatusBadge } from "./components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { CollectionSyncStatusBadge } from "../SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
+import { WorktreeMenu } from "../WorktreeMenu";
 
 type WorktreeBranchProps = {
   worktree: Worktree;
@@ -73,7 +73,9 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
   );
 }
 
-export function WorktreeNav({ onItemSelect }: WorktreeNavProps) {
+export function WorktreeSidebarSection({
+  onItemSelect,
+}: WorktreeSidebarSectionProps) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { data: worktrees = [] } = useListWorktreesQuery(undefined, {
     skip: !isAdmin,

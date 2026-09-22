@@ -44,11 +44,11 @@ import {
 } from "./utils";
 
 interface UnsyncedWarningModalProps {
+  opened: boolean;
   currentBranch: string;
+  variant: RemoteSyncConflictVariant;
   /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
-  onClose: VoidFunction;
-  variant: RemoteSyncConflictVariant;
   /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
   canMerge?: boolean;
   /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
@@ -57,18 +57,55 @@ interface UnsyncedWarningModalProps {
   forcePushCasualties?: ForcePushCasualties;
   /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
   historyRewritten?: boolean;
+  worktreeId?: number;
+  onClose: VoidFunction;
 }
 
-export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
+export const SyncConflictModal = ({
+  opened,
+  currentBranch,
+  variant,
+  nextBranch,
+  canMerge,
+  conflicts,
+  forcePushCasualties,
+  historyRewritten,
+  worktreeId,
+  onClose,
+}: UnsyncedWarningModalProps) => (
+  <Modal
+    onClose={onClose}
+    opened={opened}
+    padding="xxl"
+    styles={{ title: { lineHeight: "2rem" } }}
+    title={getModalTitle(variant, canMerge)}
+    withCloseButton={false}
+  >
+    <SyncConflictForm
+      currentBranch={currentBranch}
+      variant={variant}
+      nextBranch={nextBranch}
+      canMerge={canMerge}
+      conflicts={conflicts}
+      forcePushCasualties={forcePushCasualties}
+      historyRewritten={historyRewritten}
+      worktreeId={worktreeId}
+      onClose={onClose}
+    />
+  </Modal>
+);
+
+const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
   const {
-    onClose,
     currentBranch,
-    nextBranch,
     variant,
+    nextBranch,
     canMerge,
     conflicts,
     forcePushCasualties,
     historyRewritten,
+    worktreeId,
+    onClose,
   } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
@@ -138,15 +175,16 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         optionValue === "force-push",
         onClose,
         message,
+        worktreeId,
       );
     }
 
     if (optionValue === "merge") {
       // Pull merges into local only; push merges and pushes the result.
       if (variant === "pull") {
-        await mergeImport(currentBranch, onClose);
+        await mergeImport(currentBranch, onClose, worktreeId);
       } else {
-        await mergeChanges(currentBranch, onClose, message);
+        await mergeChanges(currentBranch, onClose, message, worktreeId);
       }
     }
 
@@ -166,6 +204,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         nextBranch || currentBranch,
         currentBranch,
         onClose,
+        worktreeId,
       );
     }
   };
@@ -188,14 +227,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   }, [existingBranches, isProcessing, newBranchName, optionValue]);
 
   return (
-    <Modal
-      onClose={onClose}
-      opened
-      padding="xxl"
-      styles={{ title: { lineHeight: "2rem" } }}
-      title={getModalTitle(variant, canMerge)}
-      withCloseButton={false}
-    >
+    <>
       <Box pt="lg">
         {variant === "setup" ? (
           <SetupConflictInfo />
@@ -265,6 +297,6 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           </Button>
         </Group>
       </Box>
-    </Modal>
+    </>
   );
 };

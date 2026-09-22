@@ -109,8 +109,11 @@
    - remote_version: current Git SHA on remote branch
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
+  {:worktree :worktree/query}
   [_route-params
-   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh]} :- [:map {:closed true}
+                               [:force-refresh {:optional true} :boolean]
+                               [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
@@ -187,8 +190,11 @@
   - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
 
   Requires superuser permissions."
+  {:worktree :worktree/query}
   [_route
-   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map {:closed true}
+                        [:branch ms/NonBlankString]
+                        [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
@@ -210,7 +216,9 @@
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
-  []
+  {:worktree :worktree/query}
+  [_route-params
+   {:keys [_worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (when-let [task (some-> (remote-sync.task/most-recent-task) present-task)]
     (if (= :timed-out (:status task))
