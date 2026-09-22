@@ -1,5 +1,5 @@
 import type { QueryModalType } from "metabase/querying/constants";
-import type { Widget } from "metabase/visualizations/types";
+import type { Widget } from "metabase/viz-core";
 import type {
   Card,
   CollectionItemModel,

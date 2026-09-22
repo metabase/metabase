@@ -69,30 +69,30 @@ export const CustomMappingModal = ({
       <Modal.Overlay />
 
       <Modal.Content mah="75vh">
-        <Modal.Header pb="md" pt="lg" px="xl">
+        <Modal.Header pb="lg" pt="xl" px="xxl">
           <Modal.Title>{t`Custom mapping`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
 
         <Modal.Body p={0}>
-          <Box px="xl">
+          <Box px="xxl">
             <Text component="span" fw="bold">{t`Tip: `}</Text>
             <Text component="span">{t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}</Text>
           </Box>
 
           <form onSubmit={handleSubmit}>
-            <Box className={S.table} component="table" mt="md" w="100%">
+            <Box className={S.table} component="table" mt="lg" w="100%">
               <thead>
                 <tr>
-                  <Box className={S.headerCell} component="td" p="md" pl="xl">
+                  <Box className={S.headerCell} component="td" p="lg" pl="xxl">
                     <Text fw="bold">{t`Original value`}</Text>
                   </Box>
 
                   <Box
                     className={S.headerCell}
                     component="td"
-                    p="md"
-                    pr="xl"
+                    p="lg"
+                    pr="xxl"
                     w="30%"
                   >
                     <Text fw="bold">{t`Mapped value`}</Text>
@@ -107,11 +107,11 @@ export const CustomMappingModal = ({
                     component="tr"
                     key={index}
                   >
-                    <Box component="td" p="sm" pl="xl">
+                    <Box component="td" p="sm" pl="xxl">
                       {String(original)}
                     </Box>
 
-                    <Box component="td" p="sm" pr="xl">
+                    <Box component="td" p="sm" pr="xxl">
                       <TextInput
                         placeholder={t`Enter value`}
                         value={mapped}
@@ -134,10 +134,10 @@ export const CustomMappingModal = ({
               bg="background_page-primary"
               bottom={0}
               className={S.footer}
-              gap="md"
+              gap="lg"
               justify="flex-end"
-              px="xl"
-              py="lg"
+              px="xxl"
+              py="xl"
               pos="sticky"
             >
               <Button onClick={handleClose}>{t`Cancel`}</Button>

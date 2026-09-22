@@ -2,7 +2,7 @@ import {
   type TextWidthMeasurer,
   measureTextWidth as measureDynamic,
 } from "metabase/utils/measure-text";
-import { truncateText } from "metabase/visualizations/lib/text";
+import { truncateText } from "metabase/viz-core";
 
 import { measureTextWidth as measureStatic } from "./text";
 

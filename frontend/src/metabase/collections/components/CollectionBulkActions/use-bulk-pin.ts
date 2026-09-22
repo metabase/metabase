@@ -3,8 +3,12 @@ import { t } from "ttag";
 
 import { setCollectionItemPinnedAndTrack } from "metabase/common/collections/analytics";
 import { isItemPinned } from "metabase/common/collections/utils";
-import { canPinItem, isPinnable, useSetPinned } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  canPinItem,
+  isPinnable,
+  useMetadataToasts,
+  useSetPinned,
+} from "metabase/common/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkPin = (

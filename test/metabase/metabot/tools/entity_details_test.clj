@@ -408,10 +408,11 @@
       (is (= raw-values
              (#'entity-details/get-field-values {field-id {:values raw-values}} field-id))))
     (testing "cache misses return the same raw-value shape"
-      (with-redefs [params.field-values/current-user-can-fetch-field-values?        (constantly true)
-                    params.field-values/get-or-create-field-values!                 (constantly {:values raw-values})
-                    params.field-values/get-or-create-field-values-for-current-user!
-                    (constantly {:values (mapv vector raw-values)})]
+      (mt/with-dynamic-fn-redefs
+        [params.field-values/current-user-can-fetch-field-values? (constantly true)
+         params.field-values/get-or-create-field-values!          (constantly {:values raw-values})
+         params.field-values/get-or-create-field-values-for-current-user!
+         (constantly {:values (mapv vector raw-values)})]
         (is (= raw-values
                (#'entity-details/get-field-values {} field-id)))))))
 
@@ -457,9 +458,10 @@
                                                   :type          :metric}]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-current-user (mt/user->id :rasta)
-            (with-redefs [params.field-values/field-id->field-values-for-current-user
-                          (fn [_]
-                            (throw (ex-info "field values must not be fetched" {})))]
+            (mt/with-dynamic-fn-redefs
+              [params.field-values/field-id->field-values-for-current-user
+               (fn [_]
+                 (throw (ex-info "field values must not be fetched" {})))]
               (let [output (:structured-output
                             (entity-details/get-metric-details {:metric-id     metric-id
                                                                 :with-segments? true}))]
@@ -672,6 +674,21 @@
                 (is (=? {:id card-id :type :question} output))
                 (is (not (contains? output :metrics)))
                 (is (= 0 @calls))))))))))
+
+(deftest answer-sources-omits-models-with-no-visible-fields-test
+  (testing "a model built on a table the user has no view-data permission on is omitted entirely from
+            list_available_data_sources, rather than listed with :fields []"
+    (mt/with-temp [:model/Card    {model-id :id} {:dataset_query (mt/mbql-query orders)
+                                                  :type          :model
+                                                  :collection_id nil}
+                   :model/Metabot metabot {:name          "root metabot"
+                                           :collection_id nil
+                                           :use_verified_content false}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [structured-output]} (entity-details/answer-sources
+                                             {:metabot-id (:entity_id metabot)})]
+            (is (not (contains? (set (map :id (:models structured-output))) model-id)))))))))
 
 (deftest related-tables-with-fields-capped-test
   (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "

@@ -84,7 +84,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
 
   return (
     <Stack h="100%" bg="background-primary" align="center" p="2rem">
-      <Stack w="100%" maw="42rem" align="flex-start" gap="lg" mih={0}>
+      <Stack w="100%" maw="42rem" align="flex-start" gap="xl" mih={0}>
         {hasNlqAccess && (
           <Button
             component={ForwardRefLink}
@@ -207,12 +207,12 @@ function Banner() {
     <Flex
       justify="space-between"
       align="center"
-      gap="lg"
+      gap="xl"
       bg="background-brand"
-      px="lg"
-      py="md"
+      px="xl"
+      py="lg"
       bd="1px solid border"
-      bdrs="md"
+      bdrs="sm"
       data-testid="research-mode-banner"
     >
       <Text>
@@ -248,9 +248,9 @@ function ExplorationList({ explorations }: ExplorationListProps) {
               component={ForwardRefLink}
               to={Urls.exploration(id)}
               key={id}
-              px="md"
+              px="lg"
               py="sm"
-              bdrs="md"
+              bdrs="sm"
               className={S.explorationLink}
               style={{
                 animationDelay: `${index * 75}ms`,

@@ -36,6 +36,10 @@ To pass a theme, use `defineMetabaseTheme`. See [Reuse a saved theme in the SDK]
 
 The SDK can render [custom visualizations](../../questions/visualizations/custom.md) that you allowlist with the `allowedCustomVisualizations` prop on `MetabaseProvider`. See [Custom visualizations in embeds](../custom-visualizations.md).
 
+## Loading and error components
+
+The `loaderComponent` and `errorComponent` props swap the SDK's default loading and error screens for your own React components. See [Customize loading, error, and empty states](./loading-and-errors.md).
+
 ## Global event handlers
 
 You can listen for events by defining the `eventHandlers` prop for `MetabaseProvider`.

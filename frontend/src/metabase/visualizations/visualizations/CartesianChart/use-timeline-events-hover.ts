@@ -3,15 +3,15 @@ import type { EChartsOption } from "echarts";
 import type { EChartsType } from "echarts/core";
 import { useEffect, useRef } from "react";
 
-import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { getTimelineSelectionSeries } from "metabase/visualizations/echarts/cartesian/option";
-import { EMPTY_TIMELINE_SELECTION_SERIES } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type {
-  TimelineEventGroup,
-  TimelineEventsModel,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  type BaseCartesianChartModel,
+  type ChartLayout,
+  EMPTY_TIMELINE_SELECTION_SERIES,
+  type RenderingContext,
+  type TimelineEventGroup,
+  type TimelineEventsModel,
+  getTimelineSelectionSeries,
+} from "metabase/viz-core";
 import type { TimelineEventId } from "metabase-types/api";
 
 import { getClosestDatumIndex, getDataSeriesEChartsIndices } from "./utils";

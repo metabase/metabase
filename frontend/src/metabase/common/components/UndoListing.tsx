@@ -23,43 +23,38 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Ellipsified,
+  Flex,
+  Icon,
+  Portal,
+  Progress,
+  Stack,
+} from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
-import CS from "./UndoListing.module.css";
-import {
-  CardContent,
-  CardContentSide,
-  CardIcon,
-  ControlsCardContent,
-  DefaultText,
-  DismissIcon,
-  UndoButton,
-  UndoList,
-} from "./UndoListing.styled";
+import S from "./UndoListing.module.css";
 
 const TOAST_TRANSITION_DURATION = 300;
 const MARGIN = 8;
 const TOAST_MESSAGE_MAX_LINES = 4;
 
-function DefaultMessage({
-  undo: { verb = t`modified`, count = 1, subject = t`item` },
-}: {
-  undo: Undo;
-}) {
-  return (
-    <DefaultText>
-      {count > 1
-        ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
-        : `${capitalize(verb)} ${subject}`}
-    </DefaultText>
-  );
+function defaultMessage({
+  verb = t`modified`,
+  count = 1,
+  subject = t`item`,
+}: Pick<Undo, "verb" | "count" | "subject">) {
+  return count > 1
+    ? `${capitalize(verb)} ${count} ${inflect(subject, count)}`
+    : `${capitalize(verb)} ${subject}`;
 }
 
 function renderMessage(undo: Undo) {
   const { message } = undo;
   if (!message) {
-    return <DefaultMessage undo={undo || {}} />;
+    return defaultMessage(undo);
   }
   return typeof message === "function" ? message(undo) : message;
 }
@@ -98,16 +93,16 @@ function UndoToast({
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
-      className={CS.toast}
+      className={S.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
-      radius="md"
-      p="md"
+      radius="sm"
+      p="lg"
       mt="sm"
-      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      maw="calc(100vw - 2 * var(--mantine-spacing-lg))"
       style={{
         overflowX: noBorder ? "hidden" : undefined,
         ...style,
@@ -126,19 +121,22 @@ function UndoToast({
           top={0}
           left={0}
           w="100%"
-          className={CS.progress}
+          className={S.progress}
           /* override animation duration based on timeout */
           style={{
             animationDuration: `${undo.initialTimeout}ms`,
           }}
         />
       )}
-      <CardContent>
-        <CardContentSide maw="75ch">
+      <Flex align="flex-start" justify="space-between">
+        <Flex className={S.message} align="flex-start" maw="75ch">
           {undo.icon && (
-            <CardIcon
+            <Icon
+              className={S.messageIcon}
               name={undo.icon}
               c={undo.iconColor ?? "text-secondary-inverse"}
+              mr="sm"
+              flex="0 0 auto"
             />
           )}
           {undo.renderChildren ? (
@@ -148,36 +146,46 @@ function UndoToast({
               {renderMessage(undo)}
             </Ellipsified>
           )}
-        </CardContentSide>
-        <ControlsCardContent>
+        </Flex>
+        <Flex className={S.controls} align="center" flex="0 0 auto">
           {undo.actions && undo.actions.length > 0 && (
-            <UndoButton role="button" onClick={onUndo} to="">
+            <Button
+              className={S.actionButton}
+              variant="transparent"
+              color="text-secondary-inverse"
+              size="compact-md"
+              onClick={onUndo}
+            >
               {undo.actionLabel ?? t`Undo`}
-            </UndoButton>
+            </Button>
           )}
           {undo.extraAction && (
-            <UndoButton
-              role="button"
+            <Button
+              className={S.actionButton}
+              variant="transparent"
+              color="text-secondary-inverse"
+              size="compact-md"
               onClick={() => {
                 undo.extraAction?.action();
                 if (undo.canDismiss) {
                   onDismiss();
                 }
               }}
-              to=""
             >
               {undo.extraAction.label}
-            </UndoButton>
+            </Button>
           )}
           {undo.canDismiss && (
-            <DismissIcon
+            <Icon
+              className={S.dismissIcon}
               color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
+              ml="lg"
             />
           )}
-        </ControlsCardContent>
-      </CardContent>
+        </Flex>
+      </Flex>
     </Card>
   );
 }
@@ -229,7 +237,6 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
-  const ref = useRef<HTMLUListElement>(null);
   const prevUndos = useRef<Undo[]>([]);
 
   const [heights, setHeights] = useState<number[]>([]);
@@ -291,11 +298,17 @@ export function UndoListOverlay({
 
   return (
     <Portal target={target}>
-      <UndoList
-        ref={ref}
+      <Stack
+        component="ul"
         data-testid="undo-list"
         aria-label="undo-list"
         className={ZIndex.Overlay}
+        pos="fixed"
+        left={0}
+        bottom={0}
+        m="lg"
+        gap={0}
+        align="flex-start"
       >
         <Group appear enter exit component={null}>
           {undos.map(
@@ -324,7 +337,7 @@ export function UndoListOverlay({
               ),
           )}
         </Group>
-      </UndoList>
+      </Stack>
     </Portal>
   );
 }

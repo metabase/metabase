@@ -1,11 +1,13 @@
 import _ from "underscore";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -13,8 +15,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import {
@@ -71,7 +71,7 @@ const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
   const query = checkNotNull(question.legacyNativeQuery());
   const onSetDatabaseId = jest.fn();

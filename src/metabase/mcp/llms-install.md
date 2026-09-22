@@ -122,9 +122,7 @@ Metabase, so the user should log in with the account whose access they want the 
 
 ## Step 5 — Verify the connection
 
-Once configured, the client should be able to list MCP tools provided by Metabase. The tools include `search`,
-`get_table`, `get_metric`, `construct_query`, `execute_query`, and `query`. If those appear in the client's tool
-list, the connection is working.
+Once configured, the client should be able to list MCP tools provided by Metabase. The tools include `search`, `browse_data`, `get_content`, `execute_query`, and `learn`. If those appear in the client's tool list, the connection is working. Clients that can render MCP Apps also see `visualize_query`; its absence elsewhere is expected and not a sign of a broken connection.
 
 If the tool list is empty or the client reports an authentication error, re-check that:
 

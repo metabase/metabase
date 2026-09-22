@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
-import { SegmentFilterEditor } from "metabase/querying/segments";
+import { SegmentFilterEditor } from "metabase/segments";
 import { Card, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -24,8 +24,8 @@ export function SegmentEditor({
   onDescriptionChange,
 }: SegmentEditorProps) {
   return (
-    <Card withBorder p="xl">
-      <Stack flex={1} gap="xl" p={0} className={S.scrollable}>
+    <Card withBorder p="xxl">
+      <Stack flex={1} gap="xxl" p={0} className={S.scrollable}>
         {query && (
           <SegmentFilterEditor
             query={query}

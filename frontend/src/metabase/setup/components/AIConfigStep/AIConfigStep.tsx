@@ -58,12 +58,12 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
 
   return (
     <ActiveStep title={t`Connect to an AI provider`} label={stepLabel}>
-      <Text mb="lg" c="text-secondary">
+      <Text mb="xl" c="text-secondary">
         {t`Select your AI provider to use AI explorations, SQL generation and Metabot.`}
       </Text>
       <AIProviderSetup onDone={handleDone} />
       {!isLoading && connectedProvider == null && (
-        <Flex justify="end" mt="md">
+        <Flex justify="end" mt="lg">
           <Button variant="subtle" onClick={handleSkip}>
             {t`I'll set this up later`}
           </Button>

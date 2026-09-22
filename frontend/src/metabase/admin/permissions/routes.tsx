@@ -45,9 +45,12 @@ const collectionPermissions = () =>
 // (`database(/:databaseId)(/schema/:schemaName)`), which v7's matcher cannot
 // parse, so each depth is spelled out as its own route. One route matches per
 // URL, exactly as the optional groups did.
-const DATABASES_PERMISSIONS_PATHS = [
+export const DATABASES_PERMISSIONS_PATHS = [
   "database",
   "database/:databaseId",
+  // Databases with no schemas, such as MySQL or MongoDB, drill straight from
+  // the database to the table.
+  "database/:databaseId/table/:tableId",
   "database/:databaseId/schema/:schemaName",
   "database/:databaseId/schema/:schemaName/table/:tableId",
 ];

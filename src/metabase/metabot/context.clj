@@ -1,25 +1,27 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -63,66 +65,211 @@
   (into item-types-qc
         #{"document"
           "dashboard"
-          "transform"
           "code_editor"}))
 
 (def ^:private item-type-schema
   "Schema for the `:type` key of `:user_is_viewing` item."
   (into [:enum] item-types))
 
+(def ^:private DraftLegacyInnerQuery
+  "The `:query` (inner MBQL 4 query) of a legacy dataset-query whose outer map has no `:database` yet -- a brand-new
+  structured query, e.g. `STRUCTURED_QUERY_TEMPLATE` on the frontend."
+  [:map {:closed true}
+   [:source-table {:optional true} [:maybe [:or :int :string]]]])
+
+(def ^:private DraftNativeQuery
+  "The `:native` map of a legacy dataset-query whose outer map has no `:database` yet -- a brand-new native query,
+  e.g. `NATIVE_QUERY_TEMPLATE` on the frontend."
+  [:map {:closed true}
+   [:query {:optional true} [:maybe :string]]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]
+   [:collection {:optional true} [:maybe :string]]])
+
+(def ^:private DraftQuerySchema
+  "A viewing-context/transform-source query with no `:database` yet: a brand-new adhoc question or transform
+  before the user picked a data source. `::lib-be.schema/maybe-legacy-query` requires `:database`, so this covers
+  the gap (`STRUCTURED_QUERY_TEMPLATE`/`NATIVE_QUERY_TEMPLATE` on the frontend, or an in-progress MBQL 5 draft)."
+  [:map {:closed true}
+   [:database {:optional true} nil?]
+   [:type {:optional true} [:maybe [:or :string :keyword]]]
+   [:native {:optional true} [:maybe DraftNativeQuery]]
+   [:query {:optional true} [:maybe DraftLegacyInnerQuery]]
+   [:lib/type {:optional true} [:maybe [:or :string :keyword]]]
+   [:stages {:optional true} [:maybe [:sequential [:schema [:ref ::lib.schema/stage]]]]]
+   [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]])
+
 (def ^:private ItemQuerySchema
   "Schema for the `:query` of a viewing context item: whatever query the client currently has open, in any MBQL
-  version.
+  version, or a databaseless draft (see [[DraftQuerySchema]]).
 
-  Open ([[ms/Map]]) rather than `[:or ::lib.schema/query ::mbql.s/Query]`. Request decoding strips keys a map schema
-  doesn't declare, and both of those schemas would have gutted the query on its way in — a legacy query arrived as
-  `{:database 1}`, which then failed validation and 400'd the request. The real shape is checked downstream anyway:
-  every consumer routes the query through `lib-be/normalize-query` / `lib/query`, which normalize and validate it."
-  ms/Map)
+  Decoding converts a legacy query to MBQL 5 and validates it, so every consumer gets the shape `lib/query` expects."
+  [:multi {:dispatch (fn [q] (boolean (and (map? q) (some? (:database q)))))}
+   [true ::lib-be.schema/maybe-legacy-query]
+   [false DraftQuerySchema]])
+
+(def ^:private MetabotColumnTypeSchema
+  "Schema for `MetabotColumnInfo`'s `:type`."
+  (into [:enum] #{"number" "string" "date" "datetime" "time" "boolean" "null"}))
+
+(def ^:private ColumnInfoSchema
+  "A chart column's name and inferred type, as sent for chart analysis."
+  [:map {:closed true}
+   [:name :string]
+   [:type {:optional true} [:maybe MetabotColumnTypeSchema]]])
+
+(def ^:private RowValueSchema
+  "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
+  code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
+  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+
+(def ^:private SeriesConfigSchema
+  "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
+  [:map {:closed true}
+   [:x ColumnInfoSchema]
+   [:y {:optional true} [:maybe ColumnInfoSchema]]
+   [:x_values {:optional true} [:maybe [:sequential RowValueSchema]]]
+   [:y_values {:optional true} [:maybe [:sequential RowValueSchema]]]
+   [:display_name :string]
+   [:chart_type [:or :string :keyword]]
+   [:stacked {:optional true} [:maybe :boolean]]])
+
+(def ^:private ChartTimelineEventSchema
+  "One timeline event overlaid on a chart, pre-materialized by the frontend."
+  [:map {:closed true}
+   [:name :string]
+   [:description {:optional true} [:maybe :string]]
+   [:timestamp :string]])
+
+(def ^:private ChartDataSchema
+  "One pre-materialized table of raw chart data (columns + rows)."
+  [:map {:closed true}
+   [:columns [:sequential ColumnInfoSchema]]
+   [:rows [:sequential [:sequential [:or :string number?]]]]])
+
+(def ^:private ChartConfigSchema
+  "A `chart_configs` entry: a chart's title, pre-materialized series data, and the query that produced it."
+  [:map {:closed true}
+   [:title {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:data {:optional true} [:maybe [:sequential ChartDataSchema]]]
+   [:series {:optional true} [:maybe (ms/string-keyed-map SeriesConfigSchema)]]
+   [:timeline_events {:optional true} [:maybe [:sequential ChartTimelineEventSchema]]]
+   [:query {:optional true} ItemQuerySchema]
+   [:display_type {:optional true} [:maybe [:or :string :keyword]]]])
+
+(def ^:private CodeEditorBufferSourceSchema
+  "The `:source` of a code-editor buffer: the editor's language and the database it targets."
+  [:map {:closed true}
+   [:language [:= "sql"]]
+   [:database_id [:maybe :int]]])
+
+(def ^:private CodeEditorCursorSchema
+  [:map {:closed true}
+   [:line :int]
+   [:column :int]])
+
+(def ^:private CodeEditorBufferSelectionSchema
+  [:map {:closed true}
+   [:text :string]
+   [:start CodeEditorCursorSchema]
+   [:end CodeEditorCursorSchema]])
+
+(def ^:private CodeEditorBufferSchema
+  "One open buffer in the code editor viewing context."
+  [:map {:closed true}
+   [:id :string]
+   [:source CodeEditorBufferSourceSchema]
+   [:cursor CodeEditorCursorSchema]
+   [:selection {:optional true} [:maybe CodeEditorBufferSelectionSchema]]])
+
+(def ^:private CodeEditorContextSchema
+  "The top-level `:code_editor` key of [[::context]] (as distinct from a `type: code_editor` viewing-context item)."
+  [:map {:closed true}
+   [:type [:= "code_editor"]]
+   [:buffers [:sequential CodeEditorBufferSchema]]])
+
+(def ^:private item-entries
+  "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
+  `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document) or `MetabotCodeEditorContext`, so
+  everything the frontend can send is named here rather than forwarded opaquely."
+  [[:id              {:optional true} [:maybe [:or :int :string]]]
+   [:name            {:optional true} [:maybe :string]]
+   [:description     {:optional true} [:maybe :string]]
+   [:database_schema {:optional true} [:maybe :string]]
+   [:sql_engine      {:optional true} [:maybe :string]]
+   [:error           {:optional true} [:maybe :string]]
+   [:used_tables     {:optional true} [:maybe [:sequential [:map {:closed true}
+                                                            [:id              {:optional true} [:maybe :int]]
+                                                            [:type            {:optional true} [:maybe [:or :keyword :string]]]
+                                                            [:name            {:optional true} [:maybe :string]]
+                                                            [:database_schema {:optional true} [:maybe :string]]
+                                                            [:description     {:optional true} [:maybe :string]]]]]]
+   [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
+   [:query           {:optional true} ItemQuerySchema]
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
-  [:map
-   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
-   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
-   ;; dropping one degrades Metabot silently rather than erroring.
-   [::mc/default :any]
-   [:type item-type-schema]
-   [:query {:optional true} ItemQuerySchema]])
+  (into [:map {:closed true} [:type item-type-schema]] item-entries))
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
-  [:map
-   [::mc/default :any]
-   [:type (into [:enum] item-types-qc)]
-   [:query {:optional true} ItemQuerySchema]
-   [:chart_configs
-    {:optional true}
-    [:vector
-     [:map
-      [::mc/default :any]
-      [:query {:optional true} ItemQuerySchema]]]]])
+  (into [:map {:closed true}
+         [:type (into [:enum] item-types-qc)]]
+        item-entries))
 
 (def ViewingItemSchema
   "Schema of user is viewing item."
   [:or QcItemSchema DefaultItemSchema])
 
+(mr/def ::recently-viewed-item
+  "One of the user's recent views, trimmed to what the model gets told about it."
+  [:map {:closed true}
+   [:id          {:optional true} [:maybe [:or :int :string]]]
+   [:name        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:type        {:optional true} [:maybe :string]]])
+
+(mr/def ::research-plan-ref
+  "A named reference to a research-plan metric/dimension/timeline: what the frontend echoes back in
+  `ResearchPlanContext`."
+  [:map {:closed true}
+   [:id [:or :int :string]]
+   [:name :string]])
+
+(mr/def ::research-plan-group
+  [:map {:closed true}
+   [:block_id :string]
+   [:metric ::research-plan-ref]
+   [:dimensions [:sequential ::research-plan-ref]]])
+
+(mr/def ::research-plan
+  "The in-progress Research plan the frontend serializes into `:research_plan` each turn (`ResearchPlanContext`)."
+  [:map {:closed true}
+   [:name :string]
+   [:groups [:sequential ::research-plan-group]]
+   [:timelines [:sequential ::research-plan-ref]]])
+
 (mr/def ::context
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    [::mc/default :any]
-    [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
+  "The context a Metabot request carries. Besides what the client sends, [[create-context]] adds the user's recent
+  views, the current time and the caller's capabilities before the agent reads it."
+  [:map {:closed true}
+   [:user_is_viewing            {:optional true} [:vector ViewingItemSchema]]
+   [:user_recently_viewed       {:optional true} [:maybe [:sequential ::recently-viewed-item]]]
+   [:current_time_with_timezone {:optional true} [:maybe :string]]
+   [:current_user_time          {:optional true} [:maybe :string]]
+   [:first_day_of_week          {:optional true} [:maybe :string]]
+   [:capabilities               {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]
+   [:slack_channel_id           {:optional true} [:maybe :string]]
+   [:default_database_id        {:optional true} [:maybe :int]]
+   [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
+   [:research_plan              {:optional true} [:maybe ::research-plan]]
+   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
 
 (defn- query-for-sql-parsing
-  "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
-  from it, otherwise nil."
+  "Return the native query in a viewing-context item, or nil."
   [item]
-  (when-let [query (case (:type item)
-                     "transform" (-> item :source :query)
-                     "adhoc" (-> item :query)
-                     (-> item :query))]
-    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+  (when-let [query (:query item)]
     (when (:database query)
       (when-let [normalized-query (lib-be/normalize-query query)]
         (when (lib/native-only-query? normalized-query)
@@ -157,26 +304,6 @@
       (log/errorf "Error getting database tables for context: %s" (ex-message e))
       [])))
 
-(defn- python-transform-db-and-table-ids
-  "Returns a map with :database-id and :table-ids, or nil if not a Python transform."
-  [item]
-  (when (and (= (:type item) "transform")
-             (= (get-in item [:source :type]) "python"))
-    (when-let [source-database (get-in item [:source :source-database])]
-      (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
-        {:database-id source-database
-         :table-ids (map :table_id source-tables)}))))
-
-(defn- python-transform-tables-for-context
-  "Get tables for Python transform formatted for metabot context."
-  [{:keys [database-id table-ids]}]
-  (try
-    (when (and database-id (seq table-ids))
-      (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
-    (catch Exception e
-      (log/errorf "Error getting Python transform tables for context: %s" (ex-message e))
-      [])))
-
 (defn- mbql-source-table-ids
   "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has source-table references, or
   nil otherwise. Handles both MBQL 4 (legacy) and MBQL 5 formats."
@@ -202,11 +329,7 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables    (t2/select [:model/Table :id :name :schema :description]
-                                   :db_id database-id
-                                   :id [:in table-ids]
-                                   :active true
-                                   :visibility_type nil)
+    (let [raw-tables    (metabot.db/visible-table-summaries database-id table-ids)
           queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]
       (into []
             (comp (filter (comp queryable-ids :id))
@@ -218,13 +341,13 @@
       nil)))
 
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries, MBQL queries, SQL transforms, and Python transforms."
+  "Enhance context by adding table schema information for native and MBQL queries."
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
                   (or
-                   ;; Handle native queries and SQL transforms
+                   ;; Handle native queries
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
                        (assoc item :used_tables tables)))
@@ -232,44 +355,19 @@
                    (when-let [db-and-table-ids (mbql-source-table-ids item)]
                      (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-                   ;; Handle Python transforms
-                   (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
-                     (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
-                       (assoc item :used_tables tables)))
                    ;; Unknown item: return unchanged
                    item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
     context))
 
-(defn- annotate-transform-source-types
-  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
-  [context]
-  (if-let [user-viewing (get context :user_is_viewing)]
-    (let [annotated-viewing
-          (mapv (fn [item]
-                  (try
-                    (if (and (= (:type item) "transform")
-                             (not (:source_type item)))
-                      (let [transform (transforms-base.u/normalize-transform item)]
-                        (assoc transform
-                               :source_type (transforms-base.u/transform-source-type (:source transform))))
-                      item)
-                    (catch Exception e
-                      (log/errorf "Error annotating transform source type for metabot context: %s" (ex-message e))
-                      item)))
-                user-viewing)]
-      (assoc context :user_is_viewing annotated-viewing))
-    context))
-
 (defn- get-metabot
   "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
   [metabot-id]
   (when metabot-id
-    (t2/select-one :model/Metabot
-                   :entity_id (get-in metabot.config/metabot-config
-                                      [metabot-id :entity-id]
-                                      metabot-id))))
+    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config
+                                             [metabot-id :entity-id]
+                                             metabot-id))))
 
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
@@ -340,10 +438,12 @@
   ([context :- ::context]
    (create-context context nil))
   ([context :- ::context
-    opts    :- [:maybe [:map-of :keyword :any]]]
+    opts    :- [:maybe [:map {:closed true}
+                        [:metabot-id  {:optional true} [:maybe :string]]
+                        [:profile-id  {:optional true} [:maybe :keyword]]
+                        [:date-format {:optional true} [:maybe (ms/InstanceOfClass DateTimeFormatter)]]]]]
    (metabot.perms/with-cache
      (-> context
          enhance-context-with-schema
-         annotate-transform-source-types
          (add-recent-views (or opts {}))
          (set-user-time opts)))))

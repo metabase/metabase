@@ -124,8 +124,12 @@ const GOOGLE_TYPE = createMockLlmProviderType({
   label: "Google Gemini Enterprise",
   default_model: "google/gemini-3.5-flash",
   models: [
-    { id: "google/gemini-3.5-flash", display_name: "gemini-3.5-flash" },
-    { id: "google/gemini-3.6-flash", display_name: "gemini-3.6-flash" },
+    { id: "google/gemini-3.5-flash", display_name: "Gemini 3.5 Flash" },
+    { id: "google/gemini-3.6-flash", display_name: "Gemini 3.6 Flash" },
+    {
+      id: "anthropic/claude-sonnet-4-6",
+      display_name: "Claude Sonnet 4.6",
+    },
   ],
   required_any: [["service-account-key"], ["oauth-access-token", "project-id"]],
   fields: [
@@ -312,7 +316,7 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
     await pickGoogle();
     await userEvent.click(screen.getByLabelText("Model"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "gemini-3.6-flash" }),
+      await screen.findByRole("option", { name: "Gemini 3.6 Flash" }),
     );
     await userEvent.upload(
       screen.getByLabelText("Service account key file file input"),
@@ -353,7 +357,67 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
     );
 
     expect(await screen.findByLabelText("Model")).toHaveValue(
-      "gemini-3.6-flash",
+      "Gemini 3.6 Flash",
+    );
+  });
+
+  it("starts the model picker on the probed model when Metabot points at another connection", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "probed-model": "anthropic/claude-sonnet-4-6",
+        },
+      }),
+      { modelRef: "anthropic/claude-sonnet-4-6" },
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Claude Sonnet 4.6",
+    );
+  });
+
+  it("starts the model picker on the type default when there is no probed model", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+        },
+      }),
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Gemini 3.5 Flash",
+    );
+  });
+
+  it("starts the model picker on the type default when the probed model left the catalog", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "probed-model": "google/gemini-2.0-flash",
+        },
+      }),
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "Gemini 3.5 Flash",
     );
   });
 

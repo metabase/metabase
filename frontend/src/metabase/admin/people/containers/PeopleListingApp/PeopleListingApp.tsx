@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -10,6 +9,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -100,7 +100,7 @@ export function PeopleListingApp({
 
   return (
     <div>
-      <Group justify="space-between" w="100%" mb="lg">
+      <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{pageTitle}</Title>
 
         {!external && (
@@ -112,7 +112,7 @@ export function PeopleListingApp({
         <Tabs
           value={status}
           onChange={handleTabChange}
-          pl="md"
+          pl="lg"
           listBorder={false}
         >
           <Tabs.List>
@@ -130,7 +130,7 @@ export function PeopleListingApp({
           loading={isLoading || !currentUser}
         >
           <div data-testid="admin-panel">
-            <Group w="100%" justify="space-between" mb="lg" gap="md">
+            <Group w="100%" justify="space-between" mb="xl" gap="lg">
               <Flex flex="1">
                 <SearchFilter
                   value={searchInputValue}

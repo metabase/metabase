@@ -31,7 +31,7 @@
 
 .accordion .control {
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   color: var(--mb-color-text-primary);
   height: 3rem;
   padding-inline-start: 0;
@@ -87,7 +87,7 @@
 .support {
   align-items: center;
   background-color: var(--mb-color-background_surface-hover);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
@@ -100,7 +100,7 @@
 .video {
   aspect-ratio: 16 / 9;
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   width: 100%;
 }
 
@@ -139,7 +139,7 @@
   aspect-ratio: 560 / 316;
   background-color: var(--mb-color-illustration-secondary-brand);
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   container-type: inline-size;
   overflow: hidden;
   position: relative;

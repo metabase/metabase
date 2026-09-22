@@ -99,6 +99,7 @@
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -537,7 +538,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr]
+   expr :- ::h2x/expr]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -609,7 +610,7 @@
 
 (mu/defn- enum-cast
   [database-type :- driver-api/schema.common.non-blank-string
-   raw-value]
+   raw-value      :- ::h2x/expr]
   (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
       (h2x/with-database-type-info database-type)))
 
@@ -625,6 +626,12 @@
                          (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        ;; `TIMEZONE(zone, date)` implicitly promotes a `DATE` to `TIMESTAMPTZ` using the session (report) time zone
+        ;; before converting. Cast dates to a plain `TIMESTAMP` first so the source timezone gets applied (#27186).
+        expr (cond-> expr
+               (or (instance? java.time.LocalDate expr)
+                   (h2x/is-of-type? expr "date"))
+               h2x/->timestamp)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
                                                   expr)]]
@@ -1521,7 +1528,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
-
-(defmethod driver/validate-impersonated-query :postgres
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))

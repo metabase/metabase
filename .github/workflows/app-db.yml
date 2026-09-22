@@ -64,8 +64,9 @@ jobs:
       mariadb: ${{ steps.versions.outputs.mariadb }}
       mysql: ${{ steps.versions.outputs.mysql }}
       postgres: ${{ steps.versions.outputs.postgres }}
+      shards: ${{ steps.versions.outputs.shards }}
     steps:
-      - name: Select versions to test
+      - name: Select versions and shards to test
         id: versions
         uses: actions/github-script@v9
         env:
@@ -93,9 +94,9 @@ jobs:
               ],
               mysql: [
                 {
-                  name: 'MySQL 8.0',
-                  image: 'mysql:8.0',
-                  'junit-name': 'be-tests-mysql-8-0-ee',
+                  name: 'MySQL 8',
+                  image: 'mysql:8.4',
+                  'junit-name': 'be-tests-mysql-8-ee',
                   env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
                   latest: false
                 },
@@ -133,6 +134,32 @@ jobs:
               core.setOutput(db, JSON.stringify(selected));
             }
 
+            const commonExcludes = ":mb/driver-tests :mb/transforms-python-test :mb/old-migrations-test";
+
+            const shards = [
+              {
+                name: 'Enterprise Tests',
+                'build-static-viz': false,
+                'test-args': `:only '"enterprise/backend/test"' :exclude-tags '[${commonExcludes}]'`,
+              },
+              {
+                name: 'EE App DB Tests (Part 1)', // migrations shard
+                'build-static-viz': true,
+                'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
+              },
+              {
+                name: 'EE App DB Tests (Part 2)',
+                'build-static-viz': true,
+                'test-args': `:only '"test"' :partition/total 2 :partition/index 0 :exclude-tags '[${commonExcludes} :mb/app-db-migrations-test]'`,
+              },
+              {
+                name: 'EE App DB Tests (Part 3)',
+                'build-static-viz': true,
+                'test-args': `:only '"test"' :partition/total 2 :partition/index 1 :exclude-tags '[${commonExcludes} :mb/app-db-migrations-test]'`,
+              },
+            ];
+            core.setOutput('shards', JSON.stringify(shards));
+
   be-tests-mariadb:
     needs: app-db-matrix
     if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
@@ -142,26 +169,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
-        job:
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
 
     services:
       mysql:
@@ -175,10 +183,6 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
-      # GDGT-3126: re-enable and properly fix old migrations tests
-      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
-      # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
       MB_DB_TYPE: mysql
@@ -205,7 +209,8 @@ jobs:
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
     # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
-    steps:
+    # Shared by every app DB job below via `*app-db-test-steps`.
+    steps: &app-db-test-steps
       - uses: actions/checkout@v6
       - name: Test ${{ matrix.version.name }}
         id: test-driver
@@ -214,10 +219,7 @@ jobs:
           build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
-          test-args: >-
-            ${{ matrix.job.test-args }}
-            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+          test-args: ${{ matrix.job.test-args }}
 
   be-tests-mysql:
     needs: app-db-matrix
@@ -228,26 +230,7 @@ jobs:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(needs.app-db-matrix.outputs.mysql) }}
-        job:
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
 
     services:
       mysql:
@@ -261,10 +244,6 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
-      # GDGT-3126: re-enable and properly fix old migrations tests
-      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
-      # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
       MB_DB_TYPE: mysql
@@ -299,19 +278,7 @@ jobs:
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
     # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test ${{ matrix.version.name }}
-        id: test-driver
-        uses: ./.github/actions/test-driver
-        with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: ${{ matrix.version.junit-name }}
-          artifact-suffix: ${{ matrix.job.name }}
-          test-args: >-
-            ${{ matrix.job.test-args }}
-            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+    steps: *app-db-test-steps
 
   be-tests-postgres:
     needs: app-db-matrix
@@ -322,33 +289,9 @@ jobs:
       fail-fast: false
       matrix:
         version: ${{ fromJSON(needs.app-db-matrix.outputs.postgres) }}
-        job:
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :exclude-tags [:mb/driver-tests]
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
+        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
-      # GDGT-3126: re-enable and properly fix old migrations tests
-      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
-      # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres
       MB_DB_TYPE: postgres
@@ -377,19 +320,7 @@ jobs:
           POSTGRES_USER: mb_test
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
-        id: test-driver
-        uses: ./.github/actions/test-driver
-        with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: ${{ matrix.version.junit-name }}
-          artifact-suffix: ${{ matrix.job.name }}
-          test-args: >-
-            ${{ matrix.job.test-args }}
-            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
-          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+    steps: *app-db-test-steps
 
   app-db-tests-result:
     needs:

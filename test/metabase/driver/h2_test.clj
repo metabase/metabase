@@ -13,6 +13,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -26,6 +27,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :h2
+    (testing "default"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :h2 (mt/db)))))
+    (testing "schema configured in the JDBC URL"
+      (let [details (update (:details (mt/db)) :db str ";SCHEMA=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :h2 database))))))))
 
 (deftest ^:parallel connection-hosts-test
   (testing "local H2 databases have no network host"
@@ -485,3 +497,16 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-check-constraint nil :model.row/create
             "Check constraint violation: \"users_email_check\"")))))
+
+;;; Metabase never reads Java objects out of H2 query results. Requiring the h2 driver registers a
+;;; JavaObjectSerializer that refuses to reconstruct them, so reading a JAVA_OBJECT value fails rather
+;;; than deserializing arbitrary classes. This verifies that refusal at the serializer itself.
+
+(deftest ^:parallel java-object-deserialization-is-refused-test
+  (testing "the registered H2 serializer refuses to reconstruct a Java object"
+    (let [^org.h2.api.JavaObjectSerializer serializer @#'h2/java-object-serializer]
+      (is (thrown-with-msg? Exception #"(?i)not supported"
+                            (.deserialize serializer (byte-array 0))))))
+  (testing "ordinary values still read normally"
+    (let [spec (mdb/spec :h2 {:db "mem:h2_read_test"})]
+      (is (= [{:x 1}] (jdbc/query spec ["SELECT 1 AS x"]))))))

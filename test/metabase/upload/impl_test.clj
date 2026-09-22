@@ -35,9 +35,18 @@
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream File FileOutputStream)))
+
+(use-fixtures :once (fn [f]
+                      (mt/dataset (mt/dataset-definition
+                                   "upload_impl" [["venues"
+                                                   [{:field-name "name"
+                                                     :base-type :type/Text}]
+                                                   [["something"]]]])
+                        (f))))
 
 (set! *warn-on-reflection* true)
 
@@ -322,7 +331,18 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+   :- [:map {:closed true}
+       [:table-prefix          {:optional true} [:maybe :string]]
+       [:collection-id         {:optional true} [:maybe ::lib.schema.id/collection]]
+       [:grant-permission?     {:optional true} [:maybe :boolean]]
+       [:uploads-enabled       {:optional true} [:maybe :boolean]]
+       [:user-id               {:optional true} [:maybe ::lib.schema.id/user]]
+       [:db-id                 {:optional true} [:maybe ::lib.schema.id/database]]
+       [:auxiliary-sync-steps  {:optional true} [:maybe [:enum :asynchronous :synchronous :never]]]
+       [:csv-file-prefix       {:optional true} [:maybe :string]]
+       [:file                  {:optional true} [:maybe [:fn #(instance? File %)]]]
+       [:schema-name           {:optional true} [:maybe :string]]]
+   f :- fn?]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
@@ -1351,6 +1371,26 @@
   (first (filter (fn [conn-prop]
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
+
+(deftest create-csv-upload!-malformed-csv-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [[description options message]
+            [["a row wider than the header"
+              {:file (csv-file-with ["a,b" "1,2,3"])}
+              #"^Column count in data \(3\) exceeds the number of columns in the header \(2\)$"]
+             ["no separator that parses the first lines"
+              {:file (csv-file-with ["\"a" "1"])}
+              #"^Unable to determine separator"]
+             ["a syntax error past the lines used to pick the separator"
+              {:file (csv-file-with (concat ["a,b"] (repeat 10 "1,2") ["\"3,4"]))}
+              #"^CSV error"]
+             ["a syntax error in a TSV, which skips separator inference"
+              {:file (doto (tmp-file "test" ".tsv") (spit "a\tb\n\"1\t2")), :csv-file-prefix "data.tsv"}
+              #"^CSV error"]]]
+      (testing (str "Upload fails with a 422 and the message the user can act on, given " description)
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                      (do-with-uploaded-example-csv! options identity)))]
+          (is (= 422 (:status-code (ex-data e)))))))))
 
 (deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
@@ -2520,8 +2560,9 @@
               (is (= (header-with-auto-pk ["A"])
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
-              (t2/update! :model/Field {:name "a" :table_id (:id table)}
-                          {:display_name bespoke-name})
+              (field-user-settings/upsert-user-settings
+               {:id (t2/select-one-pk :model/Field :name "a" :table_id (:id table))}
+               {:display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])
                      (column-display-names-for-table table))))
             (let [file (csv-file-with data (mt/random-name))]

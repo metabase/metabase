@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
@@ -17,11 +17,11 @@ import {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   ClickBehavior,
@@ -145,10 +145,7 @@ function TargetClickMappings({
       ? { id: clickBehavior.targetId }
       : skipToken,
   );
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return card ? new Question(card, metadata) : undefined;
-  }, [card, metadata]);
+  const question = useQuestionFromCard(card);
 
   const object = isDashboard ? dashboard : question;
   const isLoading = isDashboard ? dashboardIsLoading : cardIsLoading;
@@ -336,7 +333,7 @@ export function LinkedEntityPicker({
             value: String(tab.id),
           }))}
           label={t`Select a dashboard tab`}
-          mt="md"
+          mt="lg"
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />

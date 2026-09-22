@@ -43,7 +43,7 @@ export function ValuesSourceSettings({
           onChangeQueryType(newValue as ValuesQueryType)
         }
       >
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}

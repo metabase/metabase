@@ -34,7 +34,7 @@ const Wrapper = ({
   theme: MetabaseTheme;
 }) => (
   <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
-    <Box p="xl" bg="background_page-primary">
+    <Box p="xxl" bg="background_page-primary">
       {children}
     </Box>
   </ComponentProvider>

@@ -29,7 +29,7 @@ interface FormRadioProps extends FormRadioGroupProps {
 const VerticalRadio = (props: FormRadioProps) => {
   return (
     <FormRadioGroup name={props.name} label={props.title}>
-      <Stack gap="sm" mt="xs">
+      <Stack gap="sm" mt="xxs">
         {props.options.map((r) => (
           // The value that comes from the `FormRadioGroup` wrapper is a string.
           // It is crucial to match it properly or otherwise a radio button will

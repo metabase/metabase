@@ -15,7 +15,7 @@ export function ColorSwatchCard({
   onChange,
 }: ColorSwatchCardProps) {
   return (
-    <Popover position="bottom" shadow="md">
+    <Popover position="bottom" shadow="sm">
       <Popover.Target>
         <Card withBorder p="sm" style={{ cursor: "pointer", flex: 1 }}>
           <Flex

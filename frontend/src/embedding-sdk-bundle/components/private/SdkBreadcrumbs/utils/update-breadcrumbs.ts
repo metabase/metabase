@@ -16,7 +16,7 @@ export function updateBreadcrumbsWithItem(
     return breadcrumbs;
   }
 
-  if (nextItem.type === "collection") {
+  if (nextItem.type === "collection" || nextItem.type === "all-collections") {
     return (
       removeBreadcrumbsAfterItem(breadcrumbs, nextItem) ?? [
         ...breadcrumbs,

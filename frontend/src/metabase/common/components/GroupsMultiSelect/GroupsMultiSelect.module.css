@@ -1,7 +1,7 @@
 /* White, outlined pill (same approach as DimensionPill / ReorderableTagsInput).
    Color, background and weight are set via Pill props. */
 .pill {
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
   padding: rem(2px) rem(6px) rem(2px) var(--mantine-spacing-sm);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;

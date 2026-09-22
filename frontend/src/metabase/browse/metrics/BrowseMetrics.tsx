@@ -68,7 +68,7 @@ export function BrowseMetrics() {
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
       aria-labelledby={titleId}
     >
       <Flex
@@ -85,13 +85,13 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-primary" id={titleId}>
+            <Title order={1} c="text-primary" id={titleId}>
               <Group gap="sm">
                 <Icon size={24} c="icon-brand" name="metric" />
                 {t`Metrics`}
               </Group>
             </Title>
-            <Group gap="xs">
+            <Group gap="xxs">
               {canCreateMetric && (
                 <Tooltip label={t`Create a new metric`} position="bottom">
                   <ActionIcon
@@ -121,7 +121,7 @@ export function BrowseMetrics() {
       </Flex>
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%">
-          <Stack mb="lg" gap="md" w="100%">
+          <Stack mb="xl" gap="lg" w="100%">
             {isEmpty ? (
               <MetricsEmptyState
                 canCreateMetric={canCreateMetric}
@@ -162,10 +162,10 @@ function MetricsEmptyState({
           title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
             <Box>
-              <Text mt="sm" maw="25rem">
+              <Text lh="1.25rem" mt="sm" maw="25rem">
                 {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
               </Text>
-              <Flex pt="md" align="center" justify="center" gap="md">
+              <Flex pt="lg" align="center" justify="center" gap="lg">
                 {showMetabaseLinks && (
                   <Link
                     target="_blank"

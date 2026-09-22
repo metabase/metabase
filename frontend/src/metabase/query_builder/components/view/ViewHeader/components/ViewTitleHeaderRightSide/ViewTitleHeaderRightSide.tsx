@@ -240,7 +240,7 @@ export function ViewTitleHeaderRightSide({
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
-            px="md"
+            px="lg"
             py="sm"
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}

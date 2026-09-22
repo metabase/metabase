@@ -4,7 +4,7 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: 24px;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 
   [data-mantine-color-scheme] &:hover {
     background-color: var(--mb-color-background_surface-hover);
@@ -33,13 +33,13 @@
   }
 
   &[data-first-in-range] {
-    border-start-start-radius: var(--mantine-radius-xs);
-    border-end-start-radius: var(--mantine-radius-xs);
+    border-start-start-radius: var(--mantine-radius-xxs);
+    border-end-start-radius: var(--mantine-radius-xxs);
   }
 
   &[data-last-in-range] {
-    border-start-end-radius: var(--mantine-radius-xs);
-    border-end-end-radius: var(--mantine-radius-xs);
+    border-start-end-radius: var(--mantine-radius-xxs);
+    border-end-end-radius: var(--mantine-radius-xxs);
   }
 
   &[data-selected] {
@@ -69,7 +69,7 @@
   line-height: var(--mantine-line-height-lg);
   width: 5rem;
   height: 2rem;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
 
   &:hover {
     color: var(--mb-color-text-brand-hover);
@@ -136,7 +136,7 @@
 .monthsList,
 .yearsList {
   --horizontal-padding: var(--mantine-spacing-sm);
-  --vertical-padding: var(--mantine-spacing-xs);
+  --vertical-padding: var(--mantine-spacing-xxs);
 
   .cell {
     &:where([data-with-spacing]) {
@@ -189,7 +189,7 @@
 .calendarHeaderControl {
   width: 2rem;
   height: 2rem;
-  border-radius: var(--mantine-radius-xs);
+  border-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-text-primary);
 
   &[data-selected] {
@@ -205,7 +205,7 @@
 }
 
 .popoverWrapper {
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
 }
 
 .input {

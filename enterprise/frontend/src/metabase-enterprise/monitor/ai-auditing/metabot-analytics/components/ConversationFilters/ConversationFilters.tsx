@@ -172,7 +172,7 @@ function ConversationDateFilter({
           onOptionSubmit={handleSelect}
           onDropdownOpen={() => setActiveDropdown("default")}
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           allowDeselect={false}
           leftSection={<Icon name="calendar" />}
           title={displayLabel}
@@ -237,7 +237,7 @@ export function ConversationFilters({
           onChange={(val) => onTenantChange(val === "" ? null : val)}
           searchable
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           data-testid="conversation-filters-tenant-select"
         />
       )}
@@ -250,7 +250,7 @@ export function ConversationFilters({
         }
         searchable
         w={FILTER_WIDTH}
-        bdrs="sm"
+        bdrs="xs"
         data-testid="conversation-filters-group-select"
       />
       <Select
@@ -259,7 +259,7 @@ export function ConversationFilters({
         onChange={(val) => onUserChange(val === "" ? null : val)}
         searchable
         w={FILTER_WIDTH}
-        bdrs="sm"
+        bdrs="xs"
         data-testid="conversation-filters-user-select"
       />
       <ConversationDateFilter value={date} onChange={onDateChange} />

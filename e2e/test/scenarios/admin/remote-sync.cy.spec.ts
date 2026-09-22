@@ -1,6 +1,11 @@
+import yaml from "js-yaml";
+
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type {
   Collection,
   RemoteSyncDependencyErrorResponse,
@@ -20,23 +25,33 @@ const SOURCE_COLLECTION_NAME = "Dependency Source";
 const SOURCE_QUESTION_NAME = "Dependency Source Question";
 const DEPENDENT_QUESTION_NAME = "Dependent Question";
 const SECOND_DEPENDENT_QUESTION_NAME = "Second Dependent Question";
+const OTHER_SOURCE_QUESTION_NAME = "Other Source Question";
+const WEEKLY_DEPENDENT_NAME = "Weekly Summary";
+const MONTHLY_DEPENDENT_NAME = "Monthly Summary";
+const SNIPPET_NAME = "active_users";
+const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
+const PERSONAL_QUESTION_NAME = "Personal Source Question";
+
+const setup = (snapshot = "default") => {
+  H.restore(snapshot);
+  H.resetSnowplow();
+  cy.signInAsAdmin();
+  H.activateToken("pro-self-hosted");
+  H.setupGitSync();
+  H.interceptTask();
+};
 
 describe("Remote Sync", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.setupGitSync();
-    H.interceptTask();
-  });
-
   afterEach(() => {
     H.expectNoBadSnowplowEvents();
   });
 
   describe("read-write Mode", () => {
+    beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+    });
+
     it("can push and pull changes", () => {
       H.configureGitWithNewSyncedCollection("read-write").as(
         "syncedCollection",
@@ -464,10 +479,7 @@ describe("Remote Sync", () => {
 
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
-      H.restore();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      cy.signInAsAdmin();
+      setup();
     });
 
     it("can set up read-write mode", () => {
@@ -618,7 +630,7 @@ describe("Remote Sync", () => {
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
 
-      it("reports every blocked collection, re-opens after a dismissal, syncs them all, and stays hidden for unrelated errors", () => {
+      it("reports every blocked collection and allows to sync from dependency modal", () => {
         createDependencyFixture().then(({ source, blocked, alsoBlocked }) => {
           cy.visit("/admin/settings/remote-sync");
 
@@ -632,33 +644,43 @@ describe("Remote Sync", () => {
           });
 
           cy.log("Both collections are refused in a single pass");
-          saveAndExpectRefusal().then((interception) => {
-            const body: RemoteSyncDependencyErrorResponse =
-              interception.response?.body;
-            expect(
-              body.errors.collections.map((failure) => failure.collection.name),
-            ).to.have.members([
-              BLOCKED_COLLECTION_NAME,
-              SECOND_BLOCKED_COLLECTION_NAME,
-            ]);
-          });
-
-          H.modal().within(() => {
-            // Every remedy here is a collection we can switch on, so the modal asks rather than refuses.
-            cy.findByText("Sync collections with dependencies?").should(
-              "be.visible",
-            );
-            // Both failures resolve to the same remedy, so it is offered once.
-            cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
-            cy.button("Cancel").click();
-          });
-          H.modal().should("not.exist");
-
-          cy.log("Saving the same selection again brings it back");
           saveAndExpectRefusal();
 
           H.modal().within(() => {
-            cy.button("Sync required collections").click();
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
+
+            cy.log(
+              "Expanding the row lists every blocking item and what uses it",
+            );
+            cy.findByText(SOURCE_COLLECTION_NAME).click();
+            cy.findByText("Item").should("be.visible");
+            cy.findByText("Used By").should("be.visible");
+
+            cy.log("One row per dependency, both under the same remedy");
+            cy.findByText(SOURCE_QUESTION_NAME).should("be.visible");
+            cy.findByText(OTHER_SOURCE_QUESTION_NAME).should("be.visible");
+
+            // Each dependent reaches the source from a different selected collection, so the cell
+            // names both — one per selection, pooled rather than reported from whichever came first.
+            cy.findByText(
+              new RegExp(
+                `^(${DEPENDENT_QUESTION_NAME}, ${SECOND_DEPENDENT_QUESTION_NAME}|${SECOND_DEPENDENT_QUESTION_NAME}, ${DEPENDENT_QUESTION_NAME})$`,
+              ),
+            ).should("be.visible");
+
+            cy.findByText(
+              new RegExp(
+                `^(${WEEKLY_DEPENDENT_NAME}, ${MONTHLY_DEPENDENT_NAME}|${MONTHLY_DEPENDENT_NAME}, ${WEEKLY_DEPENDENT_NAME})$`,
+              ),
+            ).should("be.visible");
+
+            cy.findByLabelText(`Sync ${SOURCE_COLLECTION_NAME}`)
+              .should("be.enabled")
+              .click({ force: true });
+            cy.button("Save changes").click();
           });
 
           cy.wait("@saveSettings").then(({ request, response }) => {
@@ -693,29 +715,99 @@ describe("Remote Sync", () => {
           H.modal().should("not.exist");
         });
       });
+
+      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+        createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal().then((interception) => {
+            const body: RemoteSyncDependencyErrorResponse =
+              interception.response?.body;
+            const [required] = body.errors.required;
+
+            expect(required.blocks.map((collection) => collection.id)).to.eql([
+              blocked.id,
+            ]);
+            // With no Library there is no collection to name, so the remedy carries only its type.
+            expect(required.remedy).to.deep.equal({ type: "library" });
+            expect(required.syncable).to.be.false;
+            expect(required.dependencies).to.have.length(1);
+            expect(required.dependencies[0].model).to.eq("snippet");
+            expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
+          });
+
+          H.modal().within(() => {
+            cy.findByText("Couldn’t sync selected collection").should(
+              "be.visible",
+            );
+            cy.findByText(/sync with the Library/).should("be.visible");
+            cy.findByRole("switch").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
+
+      it("lists only the personal collection when a syncable one is blocked behind it", () => {
+        createPersonalDependencyFixture().then(({ personal }) => {
+          cy.visit("/admin/settings/remote-sync");
+
+          cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
+            force: true,
+          });
+
+          saveAndExpectRefusal();
+
+          H.modal().within(() => {
+            cy.findByText(/saved in a personal collection/).should(
+              "be.visible",
+            );
+            cy.findByText(personal.name).should("be.visible");
+            cy.findByText("Can't be synced").should("be.visible");
+            // The person icon is how the row shows this is someone's personal collection.
+            cy.findByRole("img", { name: "person icon" }).should("be.visible");
+
+            cy.log("The syncable collection is hidden — no save can succeed");
+            cy.findByText(SOURCE_COLLECTION_NAME).should("not.exist");
+            cy.findByRole("switch").should("not.exist");
+            cy.button("Save changes").should("not.exist");
+
+            cy.button("Back").click();
+          });
+
+          H.modal().should("not.exist");
+        });
+      });
     });
   });
 
   describe("read-only mode", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
+      setup();
     });
 
-    it("can change branches", () => {
+    it("can change branches", { requestTimeout: 15000 }, () => {
       const UPDATED_REMOTE_QUESTION_NAME = "New Name";
 
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGit("read-only");
+      H.configureGitAndPullChanges("read-only");
 
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "mainBranchItems",
+      );
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@mainBranchItems", "@mainBranchItems"]);
       H.collectionTable().findByText(REMOTE_QUESTION_NAME);
 
       // Make a change, and commit it to the branch
@@ -725,8 +817,23 @@ describe("Remote Sync", () => {
         return doc;
       });
 
+      cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+      cy.intercept("GET", "/api/setting").as("settingDetails");
+      cy.intercept("GET", "/api/collection/root/items?*").as("rootItems");
+      cy.intercept("GET", "/api/ee/library").as("libraryCollection");
       cy.visit("/admin/settings/remote-sync");
-      cy.findByLabelText("Sync branch").scrollIntoView().clear().type("test");
+      cy.wait([
+        "@sessionProperties",
+        "@settingDetails",
+        "@rootItems",
+        "@libraryCollection",
+      ]);
+
+      cy.findByLabelText("Sync branch")
+        .scrollIntoView()
+        .clear()
+        .type("test")
+        .should("have.value", "test");
       cy.findByTestId("remote-sync-submit-button").click();
 
       cy.findByTestId("admin-layout-content")
@@ -741,11 +848,17 @@ describe("Remote Sync", () => {
 
       cy.findByTestId("remote-sync-submit-button").should("be.disabled");
 
+      H.pollForTask({ taskName: "import" });
+
+      cy.intercept("GET", /\/api\/collection\/\d+\/items/).as(
+        "testBranchItems",
+      );
       cy.visit("/");
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Synced Collection/ })
         .click();
+      cy.wait(["@testBranchItems", "@testBranchItems"]);
       H.collectionTable().findByText(UPDATED_REMOTE_QUESTION_NAME);
     });
 
@@ -772,11 +885,7 @@ describe("Remote Sync", () => {
 
   describe("shared tenant collections", () => {
     beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.setupGitSync();
-      H.interceptTask();
+      setup();
 
       // Enable tenants feature
       H.enableTenants();
@@ -1006,6 +1115,9 @@ describe("Remote Sync", () => {
 
   describe("initial pull conflict handling", () => {
     beforeEach(() => {
+      setup("postgres-writable");
+      H.updateSetting("transforms-enabled", true);
+
       // Create a local transform that could be overwritten by the remote
       H.createSqlTransform({
         sourceQuery: "SELECT 1",
@@ -1117,6 +1229,129 @@ describe("Remote Sync", () => {
       });
     });
   });
+
+  describe("glossary", () => {
+    const GLOSSARY_TERM = "ARR";
+    const GLOSSARY_DEFINITION = "Annual recurring revenue";
+
+    const visitDataStudioGlossary = () => {
+      H.DataModel.visitDataStudio();
+      glossaryTab().click();
+      cy.findByRole("heading", { name: "Glossary" }).should("be.visible");
+    };
+
+    const glossaryTab = () => H.DataStudio.nav().findByLabelText("Glossary");
+
+    describe("read-write mode", () => {
+      beforeEach(() => {
+        setup();
+      });
+
+      it("flags a new term on the Glossary tab and pushes it to the repository", () => {
+        // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
+        H.createLibrary().then(({ body: library }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        });
+
+        visitDataStudioGlossary();
+        cy.findByRole("button", { name: /new term/i }).click();
+        cy.findByPlaceholderText(/boat/i).type(GLOSSARY_TERM);
+        cy.findByPlaceholderText(/a small vessel.*/i).type(GLOSSARY_DEFINITION);
+        cy.findByLabelText("Save").click();
+        cy.get("table").findByText(GLOSSARY_TERM).should("be.visible");
+
+        cy.log("The Glossary tab shows unsynced changes");
+        glossaryTab().findByTestId("remote-sync-status").should("be.visible");
+
+        H.clickPushOption();
+        H.modal()
+          .button(/Push changes/)
+          .click();
+        H.waitForTask({ taskName: "export" });
+
+        cy.log("The badge clears once the term is pushed");
+        glossaryTab().findByTestId("remote-sync-status").should("not.exist");
+
+        cy.log("The term is serialized under glossary/ in the repository");
+        H.wrapSyncedCollectionFiles();
+        cy.get("@syncedCollectionFiles").then((files) => {
+          // Unjustified type cast. FIXME
+          const glossaryFile = (files as unknown as string[]).find((file) =>
+            file.includes("glossary/"),
+          );
+          expect(glossaryFile).to.match(/glossary\/arr\.yaml$/);
+
+          cy.readFile(`${H.LOCAL_GIT_PATH}/${glossaryFile}`).then((str) => {
+            // Unjustified type cast. FIXME
+            const doc = yaml.load(str) as Record<string, unknown>;
+            expect(doc.term).to.equal(GLOSSARY_TERM);
+            expect(doc.definition).to.equal(GLOSSARY_DEFINITION);
+            expect(doc.entity_id).to.be.a("string").with.lengthOf(21);
+          });
+        });
+      });
+    });
+
+    describe("read-only mode", () => {
+      beforeEach(() => {
+        setup();
+        // The fixture carries the Library (matching the ids createLibrary assigns) with is_remote_synced set,
+        // so the pull both loads the term and locks the glossary.
+        H.createLibrary();
+        H.copySyncedLibraryFixture();
+        H.commitToRepo();
+        H.configureGitAndPullChanges("read-only");
+      });
+
+      it("lists pulled terms and locks editing", () => {
+        visitDataStudioGlossary();
+
+        cy.get("table").within(() => {
+          cy.findByText(GLOSSARY_TERM).should("be.visible");
+          cy.findByText(GLOSSARY_DEFINITION).should("be.visible");
+          cy.findByLabelText("Delete").should("not.exist");
+        });
+        cy.findByRole("button", { name: /new term/i }).should("not.exist");
+
+        cy.log("Clicking a term does not open the inline editor");
+        cy.get("table").findByText(GLOSSARY_TERM).click();
+        cy.findByPlaceholderText(/boat/i).should("not.exist");
+
+        cy.log(
+          "The API reports the glossary as not writable and rejects writes",
+        );
+        cy.request("GET", "/api/glossary").then(({ body }) => {
+          expect(body.can_write).to.equal(false);
+          const [entry] = body.data;
+          expect(entry.term).to.equal(GLOSSARY_TERM);
+
+          cy.request({
+            method: "POST",
+            url: "/api/glossary",
+            body: { term: "MRR", definition: "Monthly recurring revenue" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "PUT",
+            url: `/api/glossary/${entry.id}`,
+            body: { term: GLOSSARY_TERM, definition: "changed" },
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+          cy.request({
+            method: "DELETE",
+            url: `/api/glossary/${entry.id}`,
+            failOnStatusCode: false,
+          })
+            .its("status")
+            .should("eq", 403);
+        });
+      });
+    });
+  });
 });
 
 const ensureSyncedCollectionIsVisible = () => {
@@ -1132,9 +1367,7 @@ const createCollection = (name: string) =>
 
 // Saves, clears the toast  and yields the refusal for inspection.
 const saveAndExpectRefusal = () => {
-  cy.findByRole("button", { name: "Save changes", timeout: 6000 })
-    .should("be.enabled")
-    .click(); // action button text
+  cy.findByTestId("remote-sync-submit-button").should("be.enabled").click();
   return cy.wait("@saveSettings").then((interception) => {
     expect(interception.response?.statusCode).to.eq(400);
     H.undoToast()
@@ -1156,7 +1389,69 @@ const createDependentQuestion = (
     collection_id: collectionId,
   });
 
+const createSnippetDependencyFixture = () =>
+  H.createSnippet({ name: SNIPPET_NAME, content: "1 = 1" }).then(
+    ({ body: snippet }) =>
+      createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+        H.createNativeQuestion({
+          name: SNIPPET_QUESTION_NAME,
+          collection_id: blocked.id,
+          native: {
+            query: `select 1 where {{snippet: ${SNIPPET_NAME}}}`,
+            "template-tags": {
+              [`snippet: ${SNIPPET_NAME}`]: {
+                id: "6c1b2f34-5d6e-4a7b-8c9d-0e1f2a3b4c5d",
+                type: "snippet",
+                name: `snippet: ${SNIPPET_NAME}`,
+                "display-name": `Snippet: ${SNIPPET_NAME}`,
+                "snippet-id": snippet.id,
+                "snippet-name": SNIPPET_NAME,
+              },
+            },
+          },
+        }).then(() => ({ snippet, blocked })),
+      ),
+  );
+
+const createPersonalDependencyFixture = () =>
+  createCollection(SOURCE_COLLECTION_NAME).then((source) =>
+    createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
+      H.createQuestion({
+        name: SOURCE_QUESTION_NAME,
+        query: { "source-table": PRODUCTS_ID },
+        collection_id: source.id,
+      }).then(({ body: sourceQuestion }) =>
+        H.createQuestion({
+          name: PERSONAL_QUESTION_NAME,
+          query: { "source-table": PRODUCTS_ID },
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        }).then(({ body: personalQuestion }) =>
+          createDependentQuestion(
+            DEPENDENT_QUESTION_NAME,
+            sourceQuestion.id,
+            blocked.id,
+          ).then(() =>
+            createDependentQuestion(
+              SECOND_DEPENDENT_QUESTION_NAME,
+              personalQuestion.id,
+              blocked.id,
+            ).then(() =>
+              cy
+                .request<Collection>(
+                  "GET",
+                  `/api/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
+                )
+                .then(({ body: personal }) => ({ source, blocked, personal })),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
 // Two collections that each depend on a question in a third, so syncing either alone is refused.
+// A second source question, used twice from the same blocked collection, gives the modal a second
+// dependency row and a Used By cell that names more than one thing.
 const createDependencyFixture = () =>
   createCollection(SOURCE_COLLECTION_NAME).then((source) =>
     createCollection(BLOCKED_COLLECTION_NAME).then((blocked) =>
@@ -1176,6 +1471,25 @@ const createDependencyFixture = () =>
                 SECOND_DEPENDENT_QUESTION_NAME,
                 sourceQuestion.id,
                 alsoBlocked.id,
+              ),
+            ),
+          )
+          .then(() =>
+            H.createQuestion({
+              name: OTHER_SOURCE_QUESTION_NAME,
+              query: { "source-table": PRODUCTS_ID },
+              collection_id: source.id,
+            }).then(({ body: otherSource }) =>
+              createDependentQuestion(
+                WEEKLY_DEPENDENT_NAME,
+                otherSource.id,
+                blocked.id,
+              ).then(() =>
+                createDependentQuestion(
+                  MONTHLY_DEPENDENT_NAME,
+                  otherSource.id,
+                  blocked.id,
+                ),
               ),
             ),
           )

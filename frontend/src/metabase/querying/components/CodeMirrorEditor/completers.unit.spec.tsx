@@ -6,9 +6,9 @@ import { EditorState } from "@codemirror/state";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, waitFor } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { isNotNull } from "metabase/utils/types";
 import type {
   AutocompleteMatchStyle,

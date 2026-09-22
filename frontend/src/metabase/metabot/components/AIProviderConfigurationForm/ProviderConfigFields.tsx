@@ -41,7 +41,7 @@ export function ProviderConfigFields({
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       {visibleFields.map((field, index) => (
         <ProviderConfigField
           key={field.key}
@@ -71,19 +71,26 @@ function ProviderConfigField({
 }) {
   const focusProps = autoFocus ? { autoFocus, "data-autofocus": true } : {};
   const externalDocsUrl = field.docs_url;
-  const description = externalDocsUrl ? (
-    <ExternalLink href={externalDocsUrl}>
-      {t`Where do I find this?`}
-    </ExternalLink>
-  ) : (
-    field.help && <Text size="sm">{field.help}</Text>
+  const description = (field.help || externalDocsUrl) && (
+    <>
+      {field.help && (
+        <Text component="span" display="block" size="sm">
+          {field.help}
+        </Text>
+      )}
+      {externalDocsUrl && (
+        <ExternalLink href={externalDocsUrl}>
+          {t`Where do I find this?`}
+        </ExternalLink>
+      )}
+    </>
   );
 
   if (field.type === "segmented") {
     return (
       <Input.Wrapper label={field.label} description={description}>
         <SegmentedControl
-          mt="xs"
+          mt="xxs"
           data={field.options ?? []}
           value={value || field.default || ""}
           onChange={onChange}

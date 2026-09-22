@@ -491,15 +491,20 @@
             (is (= 2 (:message_count response)))
             (is (= [] (:feedback response)))
             (is (= 2 (count (:messages response)))
-                "one user prompt + one assistant reply, as flat single-level chat messages")
+                "one user prompt + one assistant reply, as row-level messages")
             (let [[user-msg asst-msg] (:messages response)]
-              (is (= ["user" "text" "hello"] [(:role user-msg) (:type user-msg) (:message user-msg)]))
+              (is (= ["user" "text" "hello" {:type "done"}]
+                     [(:role user-msg)
+                      (-> user-msg :parts first :type)
+                      (-> user-msg :parts first :message)
+                      (:status user-msg)]))
               (is (nil? (:parent_message_id user-msg)) "the root prompt has no parent")
               (is (not (contains? asst-msg :kept))
                   "no :kept on the wire; the client derives the current path from sibling order")
-              (is (= ["agent" "text"] [(:role asst-msg) (:type asst-msg)]))
+              (is (= ["agent" "text" {:type "done"}]
+                     [(:role asst-msg) (-> asst-msg :parts first :type) (:status asst-msg)]))
               (is (= (:id user-msg) (:parent_message_id asst-msg))
-                  "the reply points at its prompt's message id")
+                  "the reply points at its prompt's row message id")
               (is (string? (:externalId asst-msg)) "the agent message keeps its feedback external id")))
           (finally
             (delete-conversations! [conversation-id])))))))
@@ -521,7 +526,10 @@
 
 (defn- message-by-text
   [messages text]
-  (or (some #(when (= text (:message %)) %) messages)
+  (or (some (fn [message]
+              (when (some #(= text (:message %)) (:parts message))
+                message))
+            messages)
       (throw (ex-info (str "Message not found: " text) {:text text}))))
 
 (deftest get-conversation-detail-attempts-test
@@ -538,7 +546,8 @@
                   :data [{:type "text" :text "kept answer"}]})
         (let [{:keys [messages total_tokens message_count]} (fetch)
               [prompt & attempts] messages]
-          (is (= ["first try" "second try" "kept answer"] (map :message attempts)))
+          (is (= ["first try" "second try" "kept answer"]
+                 (map #(-> % :parts first :message) attempts)))
           (is (every? #(= (:id prompt) (:parent_message_id %)) attempts))
           (is (= [62 4] [total_tokens message_count])))))))
 
@@ -590,7 +599,8 @@
         (insert! {:role "assistant" :profile-id "internal" :total-tokens 0 :data [] :finished nil})
         (let [{:keys [messages message_count]} (fetch)]
           (is (= ["user" "agent"] (map :role messages)))
-          (is (= "turn_in_progress" (:type (second messages))))
+          (is (= {:type "in_progress"} (:status (second messages))))
+          (is (= [] (:parts (second messages))))
           (is (= 2 message_count)))))))
 
 (deftest get-conversation-detail-feedback-on-discarded-attempt-test

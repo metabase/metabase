@@ -55,7 +55,7 @@
   "Eligibility for the `time-facet` variant on this (metric, dim) pair:
    1. Dim is non-temporal (temporal dims belong to the `temporal-pattern-*`
       variants, not stacked-by-category line series).
-   2. Metric Card carries a temporal breakout in its dataset_query
+   2. Metric Card's curated default dimension is temporal with a date component
       (`metric :default-temporal-breakout-summary` set by `metric-and-dim-context`).
    3. The dim's *effective* cardinality — bin count for auto-binned numerics,
       raw distinct-count otherwise — is known and ≤ `time-facet-max-cardinality`.

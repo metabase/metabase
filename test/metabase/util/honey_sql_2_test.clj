@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as app-db]
+   [metabase.app-db.honeysql-guard :as honeysql-guard]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -152,6 +153,10 @@
   (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
     (is (= ["SELECT CAST(? AS date)" "toucan"]
            (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+  (testing "a type name carrying a quoted argument is emitted raw, which is the only form ClickHouse accepts"
+    (is (= ["SELECT CAST(? AS Nullable(DateTime64(3, 'GMT0')))" "toucan"]
+           (sql/format {:select [[(h2x/cast "Nullable(DateTime64(3, 'GMT0'))" "toucan")]]}
+                       {:quoted true, :dialect :ansi}))))
   (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
     (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
            (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
@@ -167,7 +172,69 @@
     false "integer); select 1 --"
     false "\"quoted\""
     false "schema.type"
-    false "decimal(10, 2); --"))
+    false "decimal(10, 2); --")
+  (testing "a type whose argument is itself a type, as ClickHouse writes them"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "Nullable(String)"
+      "LowCardinality(Nullable(String))"
+      "Map(String, Nullable(Int32))"
+      "Variant(Decimal(38, 19), Float64)"
+      "Array(Nullable(Tuple(String, Int32)))"))
+  (testing "a quoted argument, which is how ClickHouse writes the timezone of a timestamp column"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "DateTime64(3, 'GMT0')"
+      "Nullable(DateTime64(9, 'UTC'))"
+      "DateTime('Europe/Amsterdam')"
+      "Nullable('a')"
+      "T('(')"))
+  (testing "an argument list nested deeper than the rule goes is quoted rather than spliced"
+    (is (h2x/raw-type-name? "A(B(C(D(String))))"))
+    (is (not (h2x/raw-type-name? "A(B(C(D(E(String)))))"))))
+  (testing "an array suffix, and a type name that continues after its precision"
+    (are [sql-type] (h2x/raw-type-name? sql-type)
+      "int[]"
+      "varchar(50)[]"
+      "TIMESTAMP(6) WITH TIME ZONE"))
+  (testing "nothing that could end the expression the type is spliced into"
+    (are [sql-type] (not (h2x/raw-type-name? sql-type))
+      ;; Postgres splices `(…)::«type»` into a select list, where a top-level comma would add a column
+      "text, (SELECT secret FROM users)"
+      ;; a parenthesis this name did not open
+      "int) UNION SELECT 1 --"
+      "(int)"
+      "Nullable(String"
+      "date' AND 1 = 1"
+      "T('a') 'b'"
+      "DateTime64(3, 'GMT0)"
+      "DateTime64(3, 'GM\\'T0')"
+      "T('(')) , (SELECT secret FROM users"
+      "T('((')) , 1"
+      ;; comment markers stay out whatever the parentheses do
+      "int/*x*/"
+      "int-1"
+      ;; `[]` is an array suffix, not a subscript
+      "int[1]"
+      "int]"
+      ""
+      "1int")))
+
+(deftest ^:parallel cast-contains-a-hostile-type-name-test
+  (testing "a name made only of type-name characters cannot reach past the CAST it sits in"
+    ;; Type names are words, so words are all a type name can be made of: `bigint` and
+    ;; `UNION SELECT` are the same shape. What keeps that inert is the parentheses it is spliced
+    ;; inside — it can add no parenthesis of its own that closes one it did not open.
+    (are [sql-type] (= [(str "SELECT CAST(\"x\" AS " sql-type ")")]
+                       (sql/format {:select [[(h2x/cast sql-type :x)]]} {:quoted true, :dialect :ansi}))
+      "bigint UNION SELECT secret FROM users"
+      "Map(String, Nullable(Int32))"
+      "T('(') UNION ALL SELECT password FROM users"
+      "Nullable(DateTime64(3, 'GMT0'))"
+      "int[]"))
+  (testing "a type name that would close the CAST early is quoted as an identifier instead"
+    (are [sql-type] (= [(str "SELECT CAST(\"x\" AS \"" sql-type "\")")]
+                       (sql/format {:select [[(h2x/cast sql-type :x)]]} {:quoted true, :dialect :ansi}))
+      "T('(')) , (SELECT secret FROM users"
+      "date' AND 1 = 1")))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
@@ -297,3 +364,27 @@
   (is (=  ["count"]
           (h2x/identifier->components
            (h2x/identifier :field-alias :count)))))
+
+(deftest ^:parallel like-pattern-test
+  (are [s expected] (= expected (second (h2x/like-pattern s)))
+    "plain"   "plain"
+    "a%b_c"   "a!%b!_c"
+    "a!b"     "a!!b"
+    "%%%%"    "!%!%!%!%")
+  (testing "no unescaped LIKE metacharacter survives from the input"
+    (doseq [input ["a%b%c%d" "a_b_c_d" "%%%%%%%%" "!%!_" "plain"]]
+      (is (empty? (re-seq #"(?<!!)[%_]" (second (h2x/like-pattern input)))) (pr-str input))))
+  (testing "wrap is applied to the escaped string and the ESCAPE character is named explicitly"
+    (is (= ["SELECT * FROM t WHERE name LIKE ? ESCAPE '!'" "a!%b%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like :name (h2x/like-pattern "a%b" #(str % "%"))]}))))
+  (testing "like-substring lowercases, escapes and wraps in %"
+    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "%a!%b!_c%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like [:lower :name] (h2x/like-substring "A%b_C")]}))))
+  (testing "like-prefix"
+    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "a!%b%"]
+           (sql/format {:select [:*] :from [:t]
+                        :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
+  (testing "passes the app-DB HoneySQL guard"
+    (is (honeysql-guard/safe-syntax? {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]}))))

@@ -3,7 +3,7 @@
    [[metabase.server.middleware.security]]. Kept separate from the HTTP API so
    the core security middleware's lookup doesn't pull in route code."
   (:require
-   [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise data-app-connect-src-hosts
@@ -12,5 +12,5 @@
    CSP `connect-src` so the sandboxed bundle can fetch/XHR those origins."
   :feature :data-apps-preview
   [slug]
-  (or (:allowed_hosts (data-app/select-one-non-blob :name slug :enabled true))
+  (or (:allowed_hosts (data-apps.db/enabled-non-blob-data-app-by-slug slug))
       []))

@@ -12,12 +12,10 @@ import {
   getDataFromClicked,
   renderLinkURLForClick,
 } from "metabase/value-formatting";
-import type {
-  ClickObject,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { ClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
@@ -151,10 +149,7 @@ export function getDashboardDrillQuestionUrl(
     linkType === "question" ? targetId : undefined,
   );
   const targetCard = checkNotNull(extraData?.questions?.[targetCardId]);
-  const baseQuestion = new Question(
-    targetCard,
-    question.metadata(),
-  ).lockDisplay();
+  const baseQuestion = question.setCard(targetCard).lockDisplay();
   const targetQuestion =
     // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
     baseQuestion.display() === "pivot"

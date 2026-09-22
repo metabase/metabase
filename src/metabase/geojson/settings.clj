@@ -133,7 +133,7 @@
 
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :type       :json
   :getter     (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
   :setter     (fn [new-value]

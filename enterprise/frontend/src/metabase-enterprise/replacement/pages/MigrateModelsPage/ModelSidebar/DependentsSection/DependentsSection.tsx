@@ -60,7 +60,7 @@ export function DependentsSection({ cardId }: DependentsSectionProps) {
           <Title order={5}>{label}</Title>
         </Group>
         {allDependents.length > DEPENDENTS_SEARCH_THRESHOLD && (
-          <Group gap={0} my="-xs" wrap="nowrap">
+          <Group gap={0} my="-xxs" wrap="nowrap">
             <SortOptionsPicker
               sortOptions={sortOptions}
               availableSortColumns={DEPENDENTS_SORT_COLUMNS}

@@ -165,7 +165,7 @@ config:
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
     hide-stacktraces: false
-    http-channel-host-strategy: external-only
+    http-channel-allowed-networks: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
@@ -188,7 +188,7 @@ config:
     landing-page-illustration: default
     landing-page-illustration-custom: null
     ldap-attribute-email: mail
-    ldap-attribute-firstname: givenName
+    ldap-attribute-firstname: givenname
     ldap-attribute-lastname: sn
     ldap-bind-dn: null
     ldap-enabled: false
@@ -201,8 +201,10 @@ config:
     ldap-port: 389
     ldap-security: none
     ldap-sync-user-attributes: true
+    ldap-sync-user-attributes-allowlist: ''
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
     ldap-timeout-seconds: 15.0
+    ldap-trust-store: null
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
@@ -221,6 +223,7 @@ config:
     llm-connection-timeout-ms: 10000
     llm-deepseek-api-base-url: https://api.deepseek.com
     llm-deepseek-api-key: null
+    llm-fast-mode: false
     llm-google-api-base-url: https://aiplatform.googleapis.com
     llm-google-location: null
     llm-google-oauth-access-token: null
@@ -250,6 +253,7 @@ config:
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
+    map-tile-server-allowed-networks: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
@@ -268,6 +272,7 @@ config:
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
+    mfa-requirement-deadline: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -377,6 +382,7 @@ config:
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
+    use-tenants: false
     user-visibility: all
     warehouse-allowed-networks: null
 ```

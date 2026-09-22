@@ -1,9 +1,6 @@
 import type { QueryBuilderUIControls } from "metabase/redux/store";
 import type { StackProps } from "metabase/ui";
-import type {
-  ComputedVisualizationSettings,
-  Widget,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings, Widget } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 
 import type { UseChartSettingsStateReturned } from "../hooks";

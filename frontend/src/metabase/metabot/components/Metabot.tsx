@@ -3,8 +3,8 @@ import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { idTag } from "metabase/api/tags";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { getUser } from "metabase/current-user";
 import {
   useIsFullPageMetabot,
@@ -37,7 +37,7 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
     <Sidebar isOpen side="right" width="30rem">
       <Flex
         h="100%"
-        gap="md"
+        gap="lg"
         direction="column"
         align="center"
         justify="center"
@@ -106,11 +106,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
   );
 };
 
-// TODO: add test coverage for these
 export interface MetabotChatConfig {
-  emptyText?: string;
-  hideSuggestedPrompts?: boolean;
-  preventRetryMessage?: boolean;
   suggestionModels: SuggestionModel[];
 }
 

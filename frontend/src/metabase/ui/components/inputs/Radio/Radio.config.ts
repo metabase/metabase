@@ -8,7 +8,7 @@ const ICON_SIZE = rem(6);
 export const radioOverrides = {
   Radio: Radio.extend({
     defaultProps: {
-      radius: "md",
+      radius: "sm",
     },
     classNames: {
       root: RadioStyles.root,
@@ -39,7 +39,7 @@ export const radioOverrides = {
   }),
   RadioIndicator: RadioIndicator.extend({
     defaultProps: {
-      radius: "md",
+      radius: "sm",
     },
     classNames: {
       indicator: RadioStyles.cardIndicator,

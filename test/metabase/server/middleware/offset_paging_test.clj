@@ -4,11 +4,14 @@
    [clojure.test :refer :all]
    [metabase.request.core :as request]
    [metabase.server.handler :as handler]
+   [metabase.tiles.settings]
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
    (java.io PipedInputStream)))
+
+(comment metabase.tiles.settings/keep-me)
 
 (defn- handler [request]
   (let [handler  (fn [request respond _]

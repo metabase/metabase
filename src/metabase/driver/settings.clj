@@ -5,15 +5,17 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.http :as u.http]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
 (defsetting warehouse-allowed-networks
   (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
                      "Options:\n"
-                     "- external-only (only globally routable public addresses)\n"
+                     "- external-only (only globally reachable public addresses)\n"
                      "- allow-private (external + private networks but NOT loopback or link-local)\n"
                      "- allow-all (no restrictions).\n"
                      "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
@@ -21,21 +23,30 @@
   :type       :keyword
   :visibility :internal
   :export?    false
+  ;; Environment only. This policy defends the host Metabase runs on against the people who administer Metabase --
+  ;; on Cloud, an admin loosening it would be reaching for our own infrastructure -- so it is never settable through
+  ;; the API or a config file, and a value that reached the application database some other way is ignored.
+  :setter     :none
+  :doc        (str "Set this when Metabase must reach a warehouse on a private network (allow-private) or on this "
+                   "machine (allow-all). There is no admin UI for it, and a value stored in the application "
+                   "database is ignored. Defaults to external-only on Metabase Cloud and allow-all when "
+                   "self-hosted. Metabase refuses to start if this is set to anything but one of the three "
+                   "policies, rather than run on a policy nobody chose.")
   ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
   ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
   ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
   ;; stricter would break working instances on upgrade.
   :getter     (fn []
-                (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
-                    (if (premium-features/is-hosted?)
-                      :external-only
-                      :allow-all)))
-  :setter     (fn [new-value]
-                (when (some? new-value)
-                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
-                          (tru (str "Invalid warehouse-allowed-networks! Only values of `external-only`, "
-                                    "`allow-private`,` and `allow-all` are allowed."))))
-                (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
+                (let [[env-var-name raw-value] (setting/env-var-source :warehouse-allowed-networks)]
+                  (or (u.http/env-network-policy env-var-name raw-value)
+                      (if (premium-features/is-hosted?)
+                        :external-only
+                        :allow-all)))))
+
+;; Reading it throws when the environment names a policy that does not exist: a typo stops the boot rather than
+;; surfacing at the first query against a warehouse.
+(defmethod startup/def-startup-validation! ::warehouse-allowed-networks [_]
+  (warehouse-allowed-networks))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
@@ -50,7 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -70,6 +81,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -86,6 +98,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
+  :encryption :no
   :visibility :public
   :export?    true
   :setter     :none
@@ -258,14 +271,6 @@
   :export?    true
   :type       :integer
   :default    50000)
-
-(defsetting engines
-  "Available database engines"
-  :visibility :public
-  :setter     :none
-  :getter     (fn []
-                ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
-  :doc        false)
 
 (defsetting sync-leaf-fields-limit
   (deferred-tru

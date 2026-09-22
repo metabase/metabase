@@ -3,11 +3,9 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
-} from "metabase/visualizations/echarts/cartesian/constants/style";
-import type {
-  TimelineEventCluster,
-  TimelineEventGroup,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+  type TimelineEventCluster,
+  type TimelineEventGroup,
+} from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { POPOVER_CLOSE_DELAY_MS, TimelineEventChip } from "./TimelineEventChip";

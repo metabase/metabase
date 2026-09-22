@@ -82,7 +82,7 @@ const EventCard = ({
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside onClick={handleAsideClick}>
-          <Menu position="bottom-end" shadow="md">
+          <Menu position="bottom-end" shadow="sm">
             <Menu.Target>
               <ActionIcon variant="subtle" aria-label={t`Event menu`}>
                 <Icon name="ellipsis" />

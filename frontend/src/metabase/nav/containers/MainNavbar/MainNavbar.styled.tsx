@@ -68,9 +68,9 @@ export const SidebarContentRoot = styled.div`
 // Unjustified type cast. FIXME
 export const SidebarSection = styled(Box)<BoxProps>`
   margin-top: var(--mantine-spacing-sm);
-  margin-bottom: var(--mantine-spacing-md);
-  padding-inline-start: var(--mantine-spacing-md);
-  padding-inline-end: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-lg);
+  padding-inline-start: var(--mantine-spacing-lg);
+  padding-inline-end: var(--mantine-spacing-lg);
 ` as unknown as typeof Box;
 
 // Unjustified type cast. FIXME
@@ -86,7 +86,7 @@ export const SidebarHeading = styled.h4`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
-  padding-inline-start: var(--mantine-spacing-md);
+  padding-inline-start: var(--mantine-spacing-lg);
 `;
 
 export const LoadingAndErrorContainer = styled.div`

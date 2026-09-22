@@ -8,7 +8,7 @@ import {
   getItemBookmarkType,
   isItemBookmarked,
 } from "metabase/common/collections/utils";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { Bookmark, CollectionItem } from "metabase-types/api";
 
 export const useBulkBookmark = (

@@ -30,7 +30,7 @@ export const NotificationRunSummaryLog = ({
   const renderRuns = () => {
     if (isLoading) {
       return (
-        <Flex align="center" justify="center" py="lg">
+        <Flex align="center" justify="center" py="xl">
           <Loader size="sm" data-testid="run-summary-loader" />
         </Flex>
       );
@@ -53,7 +53,7 @@ export const NotificationRunSummaryLog = ({
           key={index}
           align="center"
           justify="space-between"
-          px="md"
+          px="lg"
           py="sm"
           gap="sm"
         >

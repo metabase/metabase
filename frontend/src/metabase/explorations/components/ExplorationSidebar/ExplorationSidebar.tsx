@@ -263,7 +263,7 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Group pl="0.5rem" gap="md" wrap="nowrap" align="center">
+      <Group pl="0.5rem" gap="lg" wrap="nowrap" align="center">
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth

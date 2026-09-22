@@ -2,23 +2,23 @@ import { useCallback, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { extractRemappings } from "metabase/visualizations";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import type {
-  CartesianChartModel,
-  ScatterPlotModel,
-  WaterfallChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
-import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
-import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
-import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
-import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import {
+  type CartesianChartModel,
+  type ScatterPlotModel,
+  type WaterfallChartModel,
+  extractRemappings,
+  getCartesianChartModel,
+  getCartesianChartOption,
+  getChartLayout,
+  getScatterPlotModel,
+  getScatterPlotOption,
+  getTimelineEventsModel,
+  getWaterfallChartModel,
+  getWaterfallChartOption,
+} from "metabase/viz-core";
 import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
 
 const NO_SELECTED_TIMELINE_EVENT_IDS: TimelineEventId[] = [];

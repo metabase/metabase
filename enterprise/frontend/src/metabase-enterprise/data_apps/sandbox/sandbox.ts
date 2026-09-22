@@ -1,6 +1,6 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
-import { setChartExportIframeGrant } from "metabase/visualizations/lib/chart-export-iframe-grant";
+import { setChartExportIframeGrant } from "metabase/viz-core";
 
 import { blockHostRealmXhr } from "./allowed-hosts";
 import { makeDistortionCallback } from "./distortions";

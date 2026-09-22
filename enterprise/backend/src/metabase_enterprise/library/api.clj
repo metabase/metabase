@@ -1,5 +1,6 @@
 (ns metabase-enterprise.library.api
   (:require
+   [metabase-enterprise.library.db :as library.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -27,8 +28,8 @@
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        below-card-types (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])
-        below-tables? (t2/exists? :model/Table :is_published true :collection_id [:in descendent-ids])]
+        below-card-types (library.db/card-types-in-collections descendent-ids)
+        below-tables? (library.db/published-table-in-collections? descendent-ids)]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
@@ -46,27 +47,10 @@
    _body]
   (if-let [library (collections/library-collection)]
     (-> (api/read-check library)
-        (t2/hydrate
-         :can_write
-         :effective_children)
+        (t2/hydrate :can_write :effective_children)
         (add-here-and-below)
         (assoc :model "collection"))
     {:data nil}))
-
-(defn- select-collections
-  []
-  (t2/select :model/Collection
-             {:where    [:and
-                         [:in :type [collection/library-collection-type
-                                     collection/library-data-collection-type
-                                     collection/library-metrics-collection-type]]
-                         (collection/visible-collection-filter-clause
-                          :id
-                          {:include-archived-items    :exclude
-                           :include-trash-collection? false
-                           :permission-level          :read
-                           :archive-operation-id      nil})]
-              :order-by [[:%lower.name :asc]]}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -76,7 +60,7 @@
   "This matches /api/collection/tree but only returns the library collection."
   [_route-params
    _query]
-  (let [collections              (-> (select-collections)
+  (let [collections              (-> (library.db/library-collections)
                                      (t2/hydrate :can_write))
         collection-type-ids      (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                                            (update acc (case (keyword card-type)
@@ -86,9 +70,7 @@
                                          {:dataset #{}
                                           :metric  #{}
                                           :card    #{}}
-                                         (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                              :from            [:report_card]
-                                                              :where           [:= :archived false]}))]
+                                         (library.db/unarchived-card-collection-types-reducible))]
     (collection/collections->tree collection-type-ids collections)))
 
 (def ^{:arglists '([request respond raise])} routes

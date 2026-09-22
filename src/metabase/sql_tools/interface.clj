@@ -46,7 +46,7 @@
 
 (defmulti referenced-tables-raw-impl
   "Parser specific implementation of [[metabase.sql-tools.core/referenced-tables-raw]]. Do not use directly."
-  {:arglists '([parser driver sql-str])}
+  {:arglists '([parser driver sql-str opts])}
   parser-driver-dispatch)
 
 (defmulti simple-query?-impl

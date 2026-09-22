@@ -1,5 +1,6 @@
 (ns metabase.lib-be.metadata.bootstrap
   (:require
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -8,14 +9,17 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.performance :as perf]))
+
+(def ^:private Query
+  :metabase.lib.util/query-like)
 
 (mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
+  [query :- Query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- :map]
+  [query :- Query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]
@@ -28,14 +32,12 @@
 (defn- bootstrap-metadatas [{metadata-type :lib/type, id-set :id, :as _metadata-spec}]
   (when (and (seq id-set)
              (= metadata-type :metadata/card))
-    (t2/select-fn-vec
-     (fn [card]
-       {:lib/type    :metadata/card
-        :id          (:id card)
-        :name        (format "Card #%d" (:id card))
-        :database-id (:database_id card)})
-     [:model/Card :id :database_id :card_schema]
-     :id [:in (set id-set)])))
+    (perf/mapv (fn [card]
+                 {:lib/type    :metadata/card
+                  :id          (:id card)
+                  :name        (format "Card #%d" (:id card))
+                  :database-id (:database_id card)})
+               (lib-be.db/card-database-ids (set id-set)))))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider
@@ -69,7 +71,7 @@
     (:database-id card)))
 
 (mu/defn- source-card-id :- ::lib.schema.id/card
-  [query :- :map]
+  [query :- Query]
   (case (lib/normalized-query-type query)
     :mbql/query
     (source-card-id-for-mbql5-query query)
@@ -83,7 +85,7 @@
 
 (mu/defn- resolved-database-id :- [:maybe ::lib.schema.id/database]
   [metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
-   query             :- :map]
+   query             :- Query]
   (let [database-id (:database query)]
     (cond
       (pos-int? database-id)
@@ -111,15 +113,11 @@
                                 [:database ::lib.schema.id/database]]]]
   "If query has `:database` `-1337` (the legacy database ID for queries using a source Card that had an unknown
   database), resolve the correct database ID and assoc it into the query."
-  ([query]
+  ([query :- [:maybe [:or ::empty-map Query]]]
    (resolve-database nil query))
 
   ([metadata-provider :- [:maybe ::lib.metadata.protocols/metadata-provider]
-    query             :- [:maybe
-                          [:or
-                           ::empty-map
-                           [:map
-                            [:database ::maybe-unresolved-database-id]]]]]
+    query             :- [:maybe [:or ::empty-map Query]]]
    (when (seq query)
      (if (pos-int? (:database query))
        query

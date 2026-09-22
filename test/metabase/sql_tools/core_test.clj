@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sql-tools.test-util :as sql-tools.tu]
@@ -114,6 +115,16 @@
    (testing "Includes schema when present"
      (is (= [{:schema "public" :table "orders"}]
             (sql-tools/referenced-tables-raw :postgres "SELECT * FROM public.orders"))))))
+
+(deftest ^:parallel referenced-tables-raw-strict-parse-error-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "ordinary callers retain the fail-soft behavior"
+      (is (= [] (sql-tools/referenced-tables-raw :postgres "SELECT !!!"))))
+    (testing "Guard A can distinguish a parse failure from a query with no table reads"
+      (let [e (try
+                (sql-tools/referenced-tables-raw :postgres "SELECT !!!" {:fail-on-parse-error? true})
+                (catch Exception e e))]
+        (is (sql-parsing/parse-error? e))))))
 
 ;;; -------------------------------------------- transpile-sql ---------------------------------------------
 ;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
@@ -233,6 +244,33 @@
         "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
         "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
+
+(defn- placeholder-count
+  [sql]
+  (count (re-seq #"\?" sql)))
+
+(deftest ^:parallel is-single-stmt-of-type-placeholder-cast-test
+  (testing "queries with `?::` are parsed correctly"
+    (doseq [sql ["SELECT ?::date"
+                 "SELECT (?::date - x::date)"
+                 "SELECT ?::text, ?::integer, ?::boolean FROM t WHERE x = ?"
+                 "SELECT (?::date - CURRENT_DATE) AS diff"]]
+      (let [{out-sql :sql :as result} (sql-tools/is-single-stmt-of-type? :postgres sql "read")]
+        (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?} result))
+        (is (= (placeholder-count sql) (placeholder-count out-sql))))))
+  (testing "a query with `?::` inside string literals are left untouched"
+    (is (= {:is-single-stmt? true :allowed-stmt-type? true :sql "SELECT '?::date'"}
+           (sql-tools/is-single-stmt-of-type? :postgres "select '?::date'" "read"))))
+  (testing "multi-statement queries with placeholder casts are still rejected"
+    (are [sql] (=? {:is-single-stmt? false :allowed-stmt-type? false}
+                   (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+      "SELECT ?::date; DROP TABLE t"
+      "SET ROLE NONE; SELECT ?::date")))
+
+(deftest ^:parallel is-single-stmt-of-type-qdcolon-dialects-test
+  (testing "databricks' native `expr?::type` try-cast operator is not split apart"
+    (is (=? {:is-single-stmt? true :allowed-stmt-type? true :sql #"(?i).*TRY_CAST\(x AS DATE\).*"}
+            (sql-tools/is-single-stmt-of-type? :databricks "SELECT x?::date FROM t" "read")))))
 
 (deftest ^:parallel is-single-stmt-of-type-not-stripped-test
   (testing "we don't remove value clauses when validating impersonated queries (#74284)"

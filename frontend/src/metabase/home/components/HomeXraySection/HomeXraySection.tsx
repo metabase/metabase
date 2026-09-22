@@ -96,7 +96,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           <DatabaseInfo database={database} />
         </HomeCaption>
       ) : null}
-      <Flex gap="lg" wrap="wrap">
+      <Flex gap="xl" wrap="wrap">
         {candidate?.tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
@@ -154,7 +154,7 @@ const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
           >
             {schema}
           </Text>
-          <Icon name="chevrondown" c="core-brand" size={10} ml="xs" />
+          <Icon name="chevrondown" c="core-brand" size={10} ml="xxs" />
         </Flex>
       </Combobox.Target>
       <Combobox.Dropdown>
@@ -193,8 +193,8 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
       <Icon
         name="database"
         c="input-focus"
-        size="var(--mantine-spacing-md)"
-        mr="xs"
+        size="var(--mantine-spacing-lg)"
+        mr="xxs"
       />
       <Text component="span" c="core-brand" fw="bold">
         {database.name}

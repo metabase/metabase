@@ -26,7 +26,7 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { getCardKey } from "metabase/visualizations/lib/utils";
+import { getCardKey } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,

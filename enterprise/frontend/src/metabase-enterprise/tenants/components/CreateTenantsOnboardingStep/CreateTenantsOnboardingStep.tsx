@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
+import { createEmptyTenantDraft } from "metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,
@@ -123,11 +123,11 @@ export const CreateTenantsOnboardingStep = ({
   );
 
   return (
-    <Stack gap="md">
-      <Stack gap="md">
+    <Stack gap="lg">
+      <Stack gap="lg">
         {tenants.map((tenant, index) => (
-          <Paper key={index} withBorder p="md" radius="md">
-            <Stack gap="md">
+          <Paper key={index} withBorder p="lg" radius="sm">
+            <Stack gap="lg">
               <Group justify="space-between" align="flex-start">
                 <TextInput
                   value={tenant.name}
@@ -226,7 +226,7 @@ const TenantFormField = ({
   onChange: (value: string) => void;
   placeholder: string;
 }) => (
-  <Stack gap="xs">
+  <Stack gap="xxs">
     <Text fw="bold" size="sm">
       {label}
     </Text>

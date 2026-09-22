@@ -11,7 +11,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { visualizations } from "metabase/visualizations";
+import { visualizations } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import ChartTypeOptionS from "./ChartTypeOption.module.css";
@@ -40,7 +40,7 @@ export const ChartTypeOption = ({
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
-        gap="xs"
+        gap="xxs"
         role="option"
         aria-selected={isSelected}
         data-testid={`${displayName}-container`}
@@ -48,7 +48,7 @@ export const ChartTypeOption = ({
         <ActionIcon
           w="3.125rem"
           h="3.125rem"
-          radius="xl"
+          radius="50%"
           onClick={() => {
             if (isSelected) {
               onOpenSettings?.();

@@ -81,6 +81,7 @@
                               :test/time-type                   false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/testing               true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          true}]
@@ -134,6 +135,23 @@
   (->> (str/split (or s "") #"[\s,]+")
        (remove str/blank?)
        first))
+
+(defmethod driver.sql/default-schema :clickhouse
+  [driver database]
+  ;; ClickHouse opens a database where other engines have a default schema, so an unqualified reference resolves to
+  ;; the one this connection opened rather than to anything the driver could name on its own. `:db` is the older
+  ;; spelling of `:dbname`, and only `:dbname` reaches the JDBC URL, so details naming a database answer for
+  ;; themselves; details naming none connect anyway, and the server reports where they landed.
+  (let [details (:details database)]
+    (or (first-db-name (:dbname details))
+        (first-db-name (:db details))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver database nil
+         (fn [^java.sql.Connection conn]
+           (with-open [stmt (.createStatement conn)
+                       rset (.executeQuery stmt "SELECT currentDatabase()")]
+             (when (.next rset)
+               (.getString rset 1))))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -473,19 +491,21 @@
   [_driver _conn role]
   ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
   ;; `quote_ident()` function or similar, escape/quote the identifier client-side. The whole value is quoted
-  ;; as one identifier, so a role name containing a comma stays a single role. Backslashes are escaped so a
-  ;; trailing backslash cannot close the quoted identifier, and interior double-quotes are doubled.
-  (let [default-role    (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed (fn [role]
-                          (if (or (and (str/starts-with? role "\"")
-                                       (str/ends-with? role "\""))
-                                  (= role default-role))
+  ;; as one identifier, so a role name containing a comma stays a single role. ClickHouse honors backslash
+  ;; escapes inside a quoted identifier, so `:ansi+backslashes` is the style that applies -- a trailing `\`
+  ;; must not be able to escape the closing quote. HoneySQL's ANSI quoting only doubles the quote character,
+  ;; which is why this goes through [[sql.u/quote-identifier]] rather than [[sql.u/quote-name]].
+  (let [default-role (driver.sql/default-database-role :clickhouse nil)
+        ;; a value the caller already quoted is unwrapped first, so its contents are escaped like any other.
+        ;; It takes two characters to be a wrapped value -- a lone `"` is a one-character role name.
+        unwrapped    (if (and (>= (count role) 2)
+                              (str/starts-with? role "\"")
+                              (str/ends-with? role "\""))
+                       (subs role 1 (dec (count role)))
+                       role)]
+    (format "SET ROLE %s" (if (= role default-role)
                             role
-                            (str \" role \")))
-        escape-ident    #(-> %
-                             (str/replace "\\" "\\\\")
-                             (str/replace #"(?!^)\"(?<!$)" "\"\""))]
-    (format "SET ROLE %s" (-> role quote-if-needed escape-ident))))
+                            (sql.u/quote-identifier unwrapped :ansi+backslashes)))))
 
 (defmethod driver/set-role! :clickhouse
   [driver ^Connection conn role]
@@ -522,6 +542,33 @@
                  :always  (conj ["AS"] [sql-query sql-params]))
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
+
+(defmethod driver/do-with-test-connection :clickhouse
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^java.sql.Connection conn]
+     (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+           ^QuerySettings query-settings                     (.getDefaultQuerySettings clickhouse-conn)]
+       (.setDefaultQuerySettings clickhouse-conn (doto (QuerySettings. (.getAllSettings query-settings))
+                                                   (.serverSetting "session_id" (str (random-uuid)))))
+       (try
+         (f conn)
+         (finally
+           (.setDefaultQuerySettings clickhouse-conn query-settings)))))))
+
+(defmethod driver/compile-create-temp-table :clickhouse
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)]
+                                                  " ENGINE = Memory AS " sql-query]]))
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :clickhouse
+  [driver table]
+  [(first (sql.qp/format-honeysql driver [:raw ["DROP TEMPORARY TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/compile-insert :clickhouse
   [driver {:keys [query output-table]}]

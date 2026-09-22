@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Textarea } from "metabase/ui";
 import { useAdminSettingWithBlurInput } from "metabase-enterprise/ai-controls/hooks";
 
@@ -65,7 +65,7 @@ export function MetabotChatPromptPage() {
   return (
     <SystemPromptPage
       title={t`AI chat prompt instructions`}
-      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName}. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
+      description={t`Add instructions here for the sidebar AI chat experience in ${applicationName} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that.`}
       settingKey="metabot-chat-system-prompt"
     />
   );

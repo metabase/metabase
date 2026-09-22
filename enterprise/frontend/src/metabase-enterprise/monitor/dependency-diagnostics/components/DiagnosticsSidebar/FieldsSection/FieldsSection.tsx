@@ -59,8 +59,8 @@ function FieldListItem({ field }: FieldListItemProps) {
   const fieldIcon = getColumnIcon(fieldInfo);
 
   return (
-    <Stack className={S.item} p="md" gap="xs">
-      <Group gap="xs" wrap="nowrap">
+    <Stack className={S.item} p="lg" gap="xxs">
+      <Group gap="xxs" wrap="nowrap">
         <FixedSizeIcon name={fieldIcon} c="core-brand" />
         <Box className={CS.textWrap} lh="1rem">
           {field.display_name}
@@ -69,8 +69,8 @@ function FieldListItem({ field }: FieldListItemProps) {
       <Box
         className={cx(CS.textWrap, CS.textMonospace)}
         c="text-secondary"
-        ml="md"
-        pl="xs"
+        ml="lg"
+        pl="xxs"
         fz="sm"
         lh="1rem"
       >

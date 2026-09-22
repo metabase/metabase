@@ -72,12 +72,19 @@
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
+  :metabase/t2-query-namespace                               {:level :warning}
+  :metabase/table-or-field-query                             {:level :warning}
+  ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
+  ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
+  ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
+  :metabase/unsafe-app-db-query                              {:level :off}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
   :metabase/validate-logging                                 {:level :warning}
+  :metabase/validate-mb-app-db-migrations-test               {:level :warning}
   :metabase/validate-mb-driver-tests                         {:level :warning}
   :metabase/validate-mb-once                                 {:level :warning}
 
@@ -180,10 +187,19 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
-     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     ;; writes the ratchet files from a :once fixture that finishes before the parallel tests
      dev.kondo-ratchet/fix!
+     ;; builds Babashka's classpath cache from a :once fixture, before the parallel tests start, so that
+     ;; they don't each race to create it; the side effect is process-external and idempotent
+     metabase.core.modules-consistency-test/warm-babashka-classpath!
      metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
+     ;; MCP v2 tool tests: call-tool! dispatches a tool with no shared mutable state across tests
+     metabase.mcp.v2.tools.alert-test/call-tool!
+     metabase.mcp.v2.tools.definitions-test/call-tool!
+     metabase.mcp.v2.tools.metric-test/call-tool!
+     ;; the `!` is for the throw (a teaching error), not a mutation; no shared mutable state
+     metabase.mcp.v2.tools.browse/validate-args-for-action!
      metabase.channel.core/send!
      metabase.channel.render.pdf/draw-too-large!
      metabase.channel.render.pdf/draw-no-results!
@@ -217,7 +233,9 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; pure validator: parses a keyword and throws on a bad one, touches no state
+     metabase.mcp.v2.tools.question/check-semantic-type!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -280,10 +298,6 @@
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
-    (metabase.util.match/match-one)
-    (metabase.util.match/match-many)
-    (metabase.util.match/replace-in)
-    (metabase.util.match/replace)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -306,6 +320,12 @@
   {metabase-enterprise.entity-retrieval.core/search-unfiltered {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.core/search-unfiltered            {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.entity-retrieval.mirror/search-unfiltered          {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase-enterprise.transform-testing.expectations.equals/->EqualsRows    {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/map->EqualsRows {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/->EqualsSql     {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.equals/map->EqualsSql  {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.empty/->Empty          {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
+   metabase-enterprise.transform-testing.expectations.empty/map->Empty       {:message "Build an expectation with metabase-enterprise.transform-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
    clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
@@ -469,6 +489,7 @@
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+  metabase-enterprise.tenants.pulse-api-test/with-tenant-pulse-fixture!                 clojure.core/fn
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
@@ -493,11 +514,13 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.oauth-server.test-util/with-oauth-client                                     clojure.core/fn
   metabase.osi.ai-context.api-test/with-test-entry                                      clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
@@ -579,6 +602,7 @@
    clojure.core/defprotocol                                                                                                  hooks.clojure.core.def/lint-def
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
+   clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
@@ -594,14 +618,13 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
-   metabase-enterprise.metabot.tools.dependencies-test/with-dependent-transforms!                                            hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
-   metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
+   metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations!
    metabase.channel.render.js.pool/with-static-viz-context                                                                   hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
@@ -631,10 +654,59 @@
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
    methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
+   metabase.app-db.core/query                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/streaming-reducible-query                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/select-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/update-or-insert!                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.core/current-timestamp-string                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/query                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/streaming-reducible-query                                                                           hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/select-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/update-or-insert!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   metabase.app-db.query/current-timestamp-string                                                                            hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/count                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/delete!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/exists?                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instance!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instances!                                                                                  hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pk!                                                                                         hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query-one                                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-query                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-select                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/save!                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select                                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-reducible                                                                                          hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-set                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-vec                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one                                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pk->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-set                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.mcp.transport/jsonrpc-error                                                                                      hooks.metabase.agent-message/lint-jsonrpc-error
+   metabase.mcp.v2.common/ellipsize                                                                                          hooks.metabase.agent-message/lint-ellipsize
+   metabase.mcp.v2.common/error-content                                                                                      hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.common/list-content                                                                                       hooks.metabase.agent-message/lint-list-content
+   metabase.mcp.v2.common/success-content                                                                                    hooks.metabase.agent-message/lint-success-content
+   metabase.mcp.v2.common/throw-teaching-error                                                                               hooks.metabase.agent-message/lint-teaching-exit
+   metabase.mcp.v2.dashboard-ops/op-error!                                                                                   hooks.metabase.agent-message/lint-op-error
+   metabase.mcp.v2.message/msg                                                                                               hooks.metabase.agent-message/lint-msg
+   metabase.mcp.v2.tools.browse/paged-list-content                                                                           hooks.metabase.agent-message/lint-list-content
+   metabase.mcp.v2.tools.parameters-test/with-fixtures                                                                       hooks.common/with-one-binding
    metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
@@ -734,6 +806,7 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
    metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
    metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
@@ -781,7 +854,13 @@
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
    metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
-   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world
+   potemkin/import-def                                                                          macros.potemkin.namespaces/import-def
+   potemkin/import-fn                                                                           macros.potemkin.namespaces/import-fn
+   potemkin/import-macro                                                                        macros.potemkin.namespaces/import-macro
+   potemkin.namespaces/import-def                                                               macros.potemkin.namespaces/import-def
+   potemkin.namespaces/import-fn                                                                macros.potemkin.namespaces/import-fn
+   potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -802,7 +881,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
@@ -839,16 +918,40 @@
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; the app-db module is the application database layer itself (connections, migrations, encryption), so it gets to
+  ;; run Toucan 2 queries anywhere.
+  ;;
+  {:pattern "^metabase\\.app-db\\..*"
+   :name    app-db-namespaces}
+  ;;
+  ;; MCP source namespaces, OSS and enterprise, whose prose reaches an LLM agent, excluding test namespaces.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\..*"
+   :name    agent-message-namespaces}
+  ;;
+  ;; MCP source namespaces whose caller-facing errors are MCP exits: `metabase.mcp.transport` and `metabase.mcp.v2.*`,
+  ;; and their enterprise counterparts. Other MCP namespaces' 4xx `ex-info`s are admin API and middleware errors, not
+  ;; MCP exits.
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)metabase(?:-enterprise)?\\.mcp\\.(?:transport$|v2\\..*)"
+   :name    agent-exit-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {metabase.app-db.custom-migrations
+  {:linters
+   ;; a migration reads the rows as they were when it ran; applying today's user settings would make it drift
+   {:metabase/table-or-field-query {:level :off}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
+    :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
@@ -856,11 +959,27 @@
      metabase.lib.convert/->legacy-MBQL {:level :off}
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
+  app-db-namespaces
+  {:linters {:metabase/t2-query-namespace {:level :off}}}
+
+  agent-message-namespaces
+  {:linters {:metabase/agent-message-lines {:level :warning}}}
+
+  agent-exit-namespaces
+  {:linters {:metabase/agent-message-exit {:level :warning}}}
+
+  ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
+  ;; `metabase.app-db.value-guard`.
+  metabase.content-translation.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
   metabase.lib.aggregation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  metabase.lib.metadata.calculation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
   ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating

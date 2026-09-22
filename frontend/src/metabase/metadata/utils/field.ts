@@ -1,6 +1,6 @@
 import { is_coerceable } from "cljs/metabase.types.core";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getNullDisplayValue } from "metabase/utils/constants";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -82,7 +82,7 @@ export function getFieldDisplayName(
     field.dimensions?.[0]?.name ||
     field.display_name ||
     getFieldRawName(field) ||
-    NULL_DISPLAY_VALUE;
+    getNullDisplayValue();
 
   if (table) {
     if (schema) {

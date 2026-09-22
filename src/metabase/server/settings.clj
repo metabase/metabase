@@ -34,8 +34,8 @@ twitter.com,
 x.com")
 
 (defsetting allowed-iframe-hosts
-  (deferred-tru "Allowed iframe hosts")
-  :encryption :no
+  (deferred-tru "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list.")
+  :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public
@@ -43,10 +43,10 @@ x.com")
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    ""
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :export?    true)
 
 (defsetting csp-img-enabled
@@ -117,6 +117,15 @@ x.com")
 (def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
   "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
   (thread-interrupt-escalation-timeout-ms))
+
+(defsetting max-unauthenticated-request-body-bytes
+  (deferred-tru "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.")
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    (* 4 1024 1024)
+  :doc "Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.")
 
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")

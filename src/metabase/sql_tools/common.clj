@@ -6,11 +6,10 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.db :as sql-tools.db]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn normalize-name
   "Normalize a name by per driver rules."
@@ -35,29 +34,20 @@
   `normalize-unquoted-name` is a pure case fold; both have tests."
   [database-id :- pos-int?
    table-names :- [:sequential :string]]
-  (if-let [names (not-empty (into #{} (map u/lower-case-en) table-names))]
+  (if (seq table-names)
     ;; `set` because `select-pks-set` answers `nil`, not `#{}`, when nothing matches — which is the common case of a
     ;; query naming a table that does not exist.
-    (set (t2/select-pks-set :model/Table
-                            {:where [:and
-                                     [:= :db_id database-id]
-                                     ;; `lower()` cannot use an index on the name column, but it still beats fetching every
-                                     ;; row for the Database.
-                                     [:in [:lower :name] names]
-                                     ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
-                                     ;; `:id` lookup does not apply it, so it has to happen here.
-                                     [:= :active true]
-                                     [:or
-                                      [:= :visibility_type nil]
-                                      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]}))
+    (set (sql-tools.db/active-visible-table-ids-by-name database-id table-names))
     #{}))
 
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
-   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {search-table :table raw-schema :schema}]
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found.
+
+   An unqualified reference resolves to `database`'s default schema, so the database it was parsed against decides."
+  [driver database tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (sql.normalize/default-schema driver))
+                          (:default-schema database))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -73,10 +63,13 @@
 
 (mu/defn table-name :- [:maybe :string]
   "Computes a table name from a table reference"
-  [raw-col :- [:map
+  [raw-col :- [:map {:closed true}
                [:database {:optional true} :string]
                [:schema {:optional true} :string]
-               [:table {:optional true} :string]]]
+               [:table {:optional true} :string]
+               [:table-alias {:optional true} :string]
+               [:column {:optional true} :string]
+               [:type {:optional true} :keyword]]]
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)
@@ -103,7 +96,10 @@
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
                (find-table-or-transform
-                driver (lib.metadata/tables metadata-provider) (lib.metadata/transforms metadata-provider))
+                driver
+                (lib.metadata/database metadata-provider)
+                (lib.metadata/tables metadata-provider)
+                (lib.metadata/transforms metadata-provider))
                :table
                (lib.metadata/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))

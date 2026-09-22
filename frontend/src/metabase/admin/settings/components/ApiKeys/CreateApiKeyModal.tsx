@@ -16,7 +16,7 @@ import { useCreateApiKeyMutation } from "../../api/api-key";
 
 import S from "./CreateApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
-import { API_KEY_VALIDATION_SCHEMA } from "./utils";
+import { getApiKeyValidationSchema } from "./utils";
 
 export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const [createApiKey, response] = useCreateApiKeyMutation();
@@ -40,18 +40,18 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
     return (
       <Modal
         size="40rem"
-        padding="xl"
+        padding="xxl"
         opened
         onClose={onClose}
         title={t`Create a new API key`}
       >
         <FormProvider
           initialValues={{ name: "", group_id: null }}
-          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          validationSchema={getApiKeyValidationSchema()}
           onSubmit={handleSubmit}
         >
           <Form data-testid="create-api-key-modal">
-            <Stack gap="xl">
+            <Stack gap="xxl">
               <FormTextInput
                 name="name"
                 label={t`Key name`}
@@ -69,8 +69,8 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
               {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
               <Paper
                 bg="background_page-secondary"
-                radius="md"
-                px="md"
+                radius="sm"
+                px="lg"
                 py="sm"
                 shadow="none"
               >

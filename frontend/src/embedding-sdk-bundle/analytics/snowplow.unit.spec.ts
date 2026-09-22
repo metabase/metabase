@@ -1,6 +1,6 @@
+import { seedApiQueryCache } from "__support__/state";
+import { createMockState } from "__support__/state/state";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
-import { seedApiQueryCache } from "metabase/redux/store/mocks";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockSettings,

@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.test :as qp]
@@ -1228,6 +1229,14 @@
           (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
           (is (re-find #"single select statement" (ex-message thrown))))))))
 
+(deftest ^:parallel impersonated-query-placeholder-cast-test
+  (let [sql "SELECT (?::date - bill_date::date) AS diff FROM some_table"
+        query (lib/native-query meta/metadata-provider sql)
+        out-sql (-> (driver/validate-impersonated-query :postgres query)
+                    (get-in [:stages 0 :native]))]
+    (is (string? out-sql))
+    (is (re-find #"\?" out-sql) "the placeholder must survive into the re-emitted SQL")))
+
 (deftest ^:parallel validate-impersonated-query-keys-on-allow-write-flag-test
   (testing "validate-impersonated-query* derives read-vs-write from *impersonation-allow-write?*"
     (let [query   (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})
@@ -1245,3 +1254,16 @@
         (binding [driver.settings/*impersonation-allow-write?* true]
           (is (= :ok       (outcome (query write))))
           (is (= :rejected (outcome (query select)))))))))
+
+(deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
+  (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (let [query (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})]
+        (testing "a multi-statement native query is rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"single select statement"
+               (driver/validate-impersonated-query driver/*driver* (query "SELECT 1; SELECT 2")))))
+        (testing "a single select statement is still allowed"
+          (let [result (driver/validate-impersonated-query :mysql (query "SELECT 1"))]
+            (is (map? result))
+            (is (string? (get-in result [:stages 0 :native])))))))))

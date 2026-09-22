@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box } from "metabase/ui";
-import type { EditWidgetData } from "metabase/visualizations/types";
+import type { EditWidgetData } from "metabase/viz-core";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,

@@ -121,7 +121,7 @@ function VariantMatrix({ variant, title }: VariantMatrixProps) {
 }
 
 const OverviewTemplate: StoryFn<NavLinkProps> = () => (
-  <Stack gap="xl" align="flex-start">
+  <Stack gap="xxl" align="flex-start">
     {VARIANTS.map(({ variant, title }) => (
       <VariantMatrix key={variant} variant={variant} title={title} />
     ))}

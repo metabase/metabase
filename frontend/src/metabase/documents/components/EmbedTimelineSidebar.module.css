@@ -16,7 +16,7 @@
   justify-content: center;
   flex: 1;
   flex-direction: column;
-  gap: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-lg);
 }
 
 .errorContainer {

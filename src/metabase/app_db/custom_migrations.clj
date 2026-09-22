@@ -28,8 +28,9 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
+   [metabase.app-db.quartz]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
-   [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -45,8 +46,7 @@
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)
-   (org.mindrot.jbcrypt BCrypt)))
+   (liquibase.util BooleanUtil)))
 
 (set! *warn-on-reflection* true)
 
@@ -130,9 +130,13 @@
         s))
     s))
 
-(def ^:private encrypted-json-in
-  "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+(defn- encrypted-json-in
+  "Serialize `v` to replace `stored`, the encrypted-json column value it was derived from, keeping the column as it
+  was: encrypted when `stored` decrypts with the current key, plaintext otherwise. A migration that rewrites a row
+  never changes whether it is encrypted at rest; the startup sweep does that, with a warning."
+  [stored v]
+  (cond-> (json-in v)
+    (encryption/decryptable-string? stored) encryption/encrypt))
 
 (defn- encrypted-json-out
   "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
@@ -724,9 +728,10 @@
 
 (define-reversible-migration MigrateDatabaseOptionsToSettings
   (let [update-one! (fn [{:keys [id settings options]}]
-                      (let [settings     (encrypted-json-out settings)
+                      (let [stored       settings
+                            settings     (encrypted-json-out settings)
                             options      (json-out options true)
-                            new-settings (encrypted-json-in (merge settings options))]
+                            new-settings (encrypted-json-in stored (merge settings options))]
                         (t2/query {:update :metabase_database
                                    :set    {:settings new-settings}
                                    :where  [:= :id id]})))]
@@ -737,12 +742,13 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                        (let [settings (encrypted-json-out settings)
+                        (let [stored   settings
+                              settings (encrypted-json-out settings)
                               options  (json-out options true)]
                           (when (some? (:persist-models-enabled settings))
                             (t2/query {:update :metabase_database
                                        :set    {:options (json/encode (select-keys settings [:persist-models-enabled]))
-                                                :settings (encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                                :settings (encrypted-json-in stored (dissoc settings :persist-models-enabled))}
                                        :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
@@ -1115,44 +1121,36 @@
       ;; use the table, not model/Database because we don't want to trigger the hooks
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
-(defn- hash-bcrypt
-  "Hashes a given plaintext password using bcrypt.  Should be used to hash
-   passwords included in stored user credentials that are to be later verified
-   using `bcrypt-credential-fn`."
-  [password]
-  (BCrypt/hashpw password (BCrypt/gensalt)))
-
 (defn- internal-user-exists? []
   (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
-  ;; exists already.
+  ;; exists already. It has no password: it is inactive and can never log in, and a password would be copied into
+  ;; `auth_identity` bare by the v58 SQL changesets.
   (when (not (internal-user-exists?))
-    (let [salt     (str (random-uuid))
-          password (hash-bcrypt (str salt (random-uuid)))
-          user     {;; we insert the internal user ID directly because it's
-                    ;; deliberately high enough to not conflict with any other
-                    :id               config/internal-mb-user-id
-                    :password_salt    salt
-                    :password         password
-                    :email            "internal@metabase.com"
-                    :first_name       "Metabase"
-                    :locale           nil
-                    :last_login       nil
-                    :is_active        false
-                    :settings         nil
-                    :type             "internal"
-                    :is_qbnewb        true
-                    :updated_at       nil
-                    :reset_triggered  nil
-                    :is_superuser     false
-                    :login_attributes nil
-                    :reset_token      nil
-                    :last_name        "Internal"
-                    :date_joined      :%now
-                    :sso_source       nil
-                    :is_datasetnewb   true}]
+    (let [user {;; we insert the internal user ID directly because it's
+                ;; deliberately high enough to not conflict with any other
+                :id               config/internal-mb-user-id
+                :password_salt    nil
+                :password         nil
+                :email            "internal@metabase.com"
+                :first_name       "Metabase"
+                :locale           nil
+                :last_login       nil
+                :is_active        false
+                :settings         nil
+                :type             "internal"
+                :is_qbnewb        true
+                :updated_at       nil
+                :reset_triggered  nil
+                :is_superuser     false
+                :login_attributes nil
+                :reset_token      nil
+                :last_name        "Internal"
+                :date_joined      :%now
+                :sso_source       nil
+                :is_datasetnewb   true}]
       (t2/query {:insert-into :core_user :values [user]}))
     (let [all-users-id (first (vals (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]})))
           perms-group  {:user_id config/internal-mb-user-id :group_id all-users-id}]
@@ -1210,7 +1208,8 @@
             example-dashboard-id  1
             example-collection-id 2 ;; trash collection is 1
             expected-sample-db-id 1
-            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
+            dbs                   (map #(update % :details encryption/maybe-encrypt)
+                                       (table-name->rows table-name->raw-rows :metabase_database))
             _                     (t2/query {:insert-into :metabase_database :values dbs})
             db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
         ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
@@ -1240,9 +1239,10 @@
                                           :perm_type     "perms/collection-access"
                                           :perm_value    "read-and-write"
                                           :collection_id example-collection-id}]}))
+              ;; `example-dashboard-id` is encrypted at rest (`:setter :none` defaults to `:when-encryption-key-set`)
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
-                                        :value (str example-dashboard-id)}]})))))))
+                                        :value (encryption/maybe-encrypt (str example-dashboard-id))}]})))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
@@ -1760,13 +1760,14 @@
 ;; on migrate up:
 ;; - migrate alerts from pulse table to notification table
 ;; - And then on startup new send notification triggers are created by running
-;; [[metabase.notification.task.send/init-send-notification-triggers!]]
+;; [[metabase.notification.task.send-trigger/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
 
 (define-reversible-migration MigrateClickHouseDetailsToMultiDB
   (let [update-one! (fn [{:keys [id details]}]
-                      (let [decrypted-details (encrypted-json-out details)
+                      (let [stored details
+                            decrypted-details (encrypted-json-out details)
                             scan-all-databases? (boolean (:scan-all-databases decrypted-details))
                             db-filters-type (if scan-all-databases? "all" "inclusion")
                             dbname (:dbname decrypted-details)
@@ -1778,7 +1779,7 @@
                                                {:db-filters-type db-filters-type}
                                                (when-not scan-all-databases?
                                                  {:db-filters-patterns db-filters-patterns}))
-                            encrypted-details (encrypted-json-in new-details)]
+                            encrypted-details (encrypted-json-in stored new-details)]
                         (t2/query {:update :metabase_database
                                    :set    {:details encrypted-details}
                                    :where  [:= :id id]})))]
@@ -1786,12 +1787,13 @@
                                            :from   [:metabase_database]
                                            :where  [:= :engine "clickhouse"]})))
   (let [rollback-one! (fn [{:keys [id details]}]
-                        (let [decrypted-details (encrypted-json-out details)
+                        (let [stored details
+                              decrypted-details (encrypted-json-out details)
                               new-details (dissoc decrypted-details
                                                   :enable-multiple-db
                                                   :db-filters-type
                                                   :db-filters-patterns)
-                              encrypted-details (encrypted-json-in new-details)]
+                              encrypted-details (encrypted-json-in stored new-details)]
                           (t2/query {:update :metabase_database
                                      :set    {:details encrypted-details}
                                      :where  [:= :id id]})))]
@@ -2244,62 +2246,92 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
-(define-migration EncryptAuthIdentityCredentials
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id credentials]}]
-            (when (and (string? credentials)
-                       (not (str/blank? credentials))
-                       (not (encryption/possibly-encrypted-string? credentials)))
-              (t2/query {:update :auth_identity
-                         :set    {:credentials (encryption/maybe-encrypt credentials)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :credentials]
-                               :from   [:auth_identity]}))))
+(define-migration BackfillExampleDashboardIdValueWithAad
+  ;; `CreateSampleContentV2` runs before `setting.value_with_aad` exists, so it writes the setting's legacy `value` only.
+  ;; Integer settings are `:encryption :no`, and versions before 0.58 wrote this row as the plaintext dashboard ID even
+  ;; with a key set, so a numeric `value` is taken as-is; anything else must be the encrypted form newer versions write.
+  (when-let [value (:value (t2/query-one {:select [:value]
+                                          :from   [:setting]
+                                          :where  [:and [:= :key "example-dashboard-id"] [:= :value_with_aad nil]]}))]
+    (let [plain (if (re-matches #"\d+" value)
+                  value
+                  (encryption/maybe-decrypt value))]
+      (t2/query {:update :setting
+                 :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
+                 :where  [:= :key "example-dashboard-id"]}))))
 
-(define-reversible-migration EncryptApiKeys
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id] k :key}]
-            (when (and (string? k)
-                       (not (str/blank? k))
-                       (not (encryption/possibly-encrypted-string? k)))
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/maybe-encrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]})))
-  (when (encryption/default-encryption-enabled?)
-    (run! (fn [{:keys [id] k :key}]
-            (when (and (string? k)
-                       (not (str/blank? k))
-                       (encryption/possibly-encrypted-string? k))
-              (t2/query {:update :api_key
-                         :set    {:key (encryption/maybe-decrypt k)}
-                         :where  [:= :id id]})))
-          (t2/reducible-query {:select [:id :key]
-                               :from   [:api_key]}))))
+;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
+;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the
+;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` (which,
+;;; when this migration was written, filtered by scope) filtered the whole surface away: HTTP 200, an
+;;; empty tools list, nothing logged. It does not self-heal — the refresh grant copies the original scope
+;;; forward and can only narrow — so a refreshing client stays in the zero-tools state indefinitely.
+;;;
+;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
+;;; migration's behaviour must be frozen against later edits to that vector.
 
-(define-reversible-migration EncryptPublicUuids
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (run! (fn [{:keys [id public_uuid]}]
-              (when (and (string? public_uuid)
-                         (not (str/blank? public_uuid))
-                         (not (encryption/possibly-encrypted-string? public_uuid)))
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/maybe-encrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]}))))
-  (when (encryption/default-encryption-enabled?)
-    (doseq [table [:report_card :report_dashboard :action :document]]
-      (run! (fn [{:keys [id public_uuid]}]
-              (when (and (string? public_uuid)
-                         (not (str/blank? public_uuid))
-                         (encryption/possibly-encrypted-string? public_uuid))
-                (t2/query {:update table
-                           :set    {:public_uuid (encryption/maybe-decrypt public_uuid)}
-                           :where  [:= :id id]})))
-            (t2/reducible-query {:select [:id :public_uuid]
-                                 :from   [table]
-                                 :where  [:!= :public_uuid nil]})))))
+(def ^:private ^:no-doc mcp-v2-scopes
+  ["agent:content:read"
+   "agent:content:write"
+   "agent:query:run"
+   "agent:sql:run"
+   "agent:delivery:write"
+   "agent:resource:read"])
+
+;; `agent:resource:read` is excluded: it gates only a resource, so a token holding it alone still
+;; resolves zero *tools*, which is the state this migration exists to end.
+(def ^:private ^:no-doc mcp-v2-tool-scopes
+  (set (remove #{"agent:resource:read"} mcp-v2-scopes)))
+
+(defn- legacy-mcp-scopes?
+  "True when `scopes` looks like a token minted against the pre-v2 scope set: it satisfies no v2 tool
+   and carries at least one scope outside the six. The second half is what keeps this off tokens that
+   are already v2-shaped (or empty), so re-running the migration revokes nothing new."
+  [scopes]
+  (let [scopes (set (filter string? scopes))]
+    (and (not (some mcp-v2-tool-scopes scopes))
+         (boolean (some (complement (set mcp-v2-scopes)) scopes)))))
+
+(defn- json-array-out
+  "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
+   for anything that isn't an array — including unparseable JSON — so a malformed row is skipped
+   rather than rewritten."
+  [v]
+  (let [parsed (cond
+                 (string? v) (try (json/decode v) (catch Exception _ nil))
+                 (coll? v)   v)]
+    (when (sequential? parsed)
+      (vec parsed))))
+
+(define-migration WidenDynamicOAuthClientScopesForMcpV2
+  ;; Step 1 of 2 — raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
+  ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
+  ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
+  ;; grants nothing on its own: consent still happens per-authorization.
+  (run! (fn [{:keys [id scopes]}]
+          (when-let [existing (json-array-out scopes)]
+            (let [widened (into existing (remove (set existing)) mcp-v2-scopes)]
+              (when-not (= widened existing)
+                (t2/query {:update :oauth_client
+                           :set    {:scopes (json/encode widened)}
+                           :where  [:= :id id]})))))
+        (t2/reducible-query {:select [:id :scopes]
+                             :from   [:oauth_client]
+                             :where  [:= :registration_type "dynamic"]})))
+
+(define-migration RevokeLegacyMcpOAuthTokens
+  ;; Step 2 of 2 — force one re-authentication. Both tables must be stamped: leaving the refresh token
+  ;; alive means the client silently refreshes into another legacy-scoped access token instead of
+  ;; re-authenticating. Once both are revoked the next request gets the existing `invalid_token` 401
+  ;; with the discovery challenge — the RFC 6750 path every MCP client already handles.
+  (doseq [table [:oauth_access_token :oauth_refresh_token]]
+    (run! (fn [{:keys [id scope]}]
+            (when (some-> (json-array-out scope) legacy-mcp-scopes?)
+              (t2/query {:update table
+                         :set    {:revoked_at :%now}
+                         :where  [:= :id id]})))
+          ;; Already-revoked rows are skipped, which is also what makes this safe to re-run.
+          (t2/reducible-query {:select [:id :scope]
+                               :from   [table]
+                               :where  [:= :revoked_at nil]}))))

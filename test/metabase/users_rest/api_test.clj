@@ -12,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
+   [metabase.session.models.session :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -22,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as string]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -619,6 +621,16 @@
                    :common_name "Rasta Toucan"}
                   resp)))))))
 
+(deftest ^:parallel get-user-non-personal-users-test
+  (testing "GET /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, even for admins (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "user/" api-key-user-id))))))
+    (testing "returns 404 for the internal user"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 (str "user/" config/internal-mb-user-id)))))))
+
 (deftest get-user-structured-attributes-test
   (testing "GET /api/user/:id"
     (testing "includes structured_attributes that tracks attribute provenance"
@@ -723,6 +735,19 @@
               (is (= {:role {:source "user" :frozen false :value "user"}}
                      (:structured_attributes get-response))))))))))
 
+(deftest ^:parallel update-api-key-user-test
+  (testing "PUT /api/user/:id"
+    (testing "returns 404 for API-key pseudo-users, so login_attributes etc. cannot be set on them (UXW-4240)"
+      (mt/with-temp [:model/User {api-key-user-id :id} {:type :api-key}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 (str "user/" api-key-user-id)
+                                     {:login_attributes {"cat" 50}
+                                      :first_name       "Updated"})))
+        (testing "nothing was updated"
+          (is (=? {:login_attributes nil
+                   :first_name       (comp not #{"Updated"})}
+                  (t2/select-one [:model/User :login_attributes :first_name] :id api-key-user-id))))))))
+
 (deftest combine-function-test
   (testing "combine function merges attributes correctly"
     (testing "basic merging"
@@ -778,6 +803,22 @@
                            (dissoc :user_group_memberships))))
                 (is (= [{:id (:id (perms-group/all-users))}]
                        (:user_group_memberships resp)))))))))))
+
+(deftest create-user-creates-personal-collection-test
+  (testing "POST /api/user"
+    (testing "creates the new User's Personal Collection as part of the request (#78430)"
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (mt/with-fake-inbox
+          (let [user-id (u/the-id (mt/user-http-request :crowberto :post 200 "user"
+                                                        {:first_name "Personal"
+                                                         :last_name  "Collection"
+                                                         :email      (mt/random-email)}))]
+            (testing "the Collection row exists without anything having hydrated :personal_collection_id"
+              (is (some? (t2/select-one :model/Collection :personal_owner_id user-id))))
+            (testing "so it is immediately visible to GET /api/collection?personal-only=true"
+              (is (contains? (into #{} (map :personal_owner_id)
+                                   (mt/user-http-request :crowberto :get 200 "collection" :personal-only true))
+                             user-id)))))))))
 
 (deftest ^:parallel create-user-non-superuser-test
   (testing "POST /api/user"
@@ -1621,6 +1662,24 @@
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
 
+(deftest reset-password-old-password-check-is-throttled-test
+  (testing "PUT /api/user/:id/password - repeated wrong old_password attempts are throttled"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "correct-horse-1!")
+      (let [creds     {:username (:email user) :password "correct-horse-1!"}
+            wrong     (fn [] (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                        {:password "abc123!!DEF" :old_password "wrong"}))
+            throttler (throttle/make-throttler :user-id :attempts-threshold 3)]
+        (with-redefs [api.user/password-change-throttler throttler]
+          (testing "attempts up to the threshold return the normal Invalid password error"
+            (dotimes [_ 3]
+              (is (=? {:errors {:old_password "Invalid password"}} (wrong)))))
+          (testing "the next attempt is throttled, not a fresh password check"
+            (is (re-find #"^Too many attempts!"
+                         (get-in (mt/client creds :put 400 (format "user/%d/password" (:id user))
+                                            {:password "abc123!!DEF" :old_password "wrong"})
+                                 [:errors :user-id] "")))))))))
+
 (deftest reset-password-verifies-old-password-against-auth-identity-test
   (testing "PUT /api/user/:id/password"
     (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
@@ -1651,6 +1710,59 @@
         (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
+
+(defn- generate-session!
+  [user-id auth-identity-id & {:keys [mfa_auth_identity_id]}]
+  (let [session-id (session/generate-session-id)
+        session-key (str (random-uuid))
+        session-key-hashed (session/hash-session-key session-key)]
+    (t2/insert! :model/Session {:id session-id
+                                :key_hashed session-key-hashed
+                                :user_id user-id
+                                :auth_identity_id auth-identity-id
+                                :mfa_auth_identity_id mfa_auth_identity_id})
+    session-key))
+
+(deftest reset-password-propagates-mfa-test
+  (testing "PUT /api/user/:id/password"
+    (testing "Test that the session returned has the same MFA method as the initial session"
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:multi-factor-auth}
+         (mt/with-temp [:model/User user {:is_superuser false}]
+           (auth-identity/set-password! (:id user) "def")
+           (let [user-id               (:id user)
+                 auth-identity         (t2/select-one :model/AuthIdentity :user_id user-id)
+                 totp-auth-identity-id (t2/insert-returning-pk! :model/AuthIdentity {:user_id  user-id
+                                                                                     :provider "totp"})
+                 original-session-key  (generate-session! user-id
+                                                          (:id auth-identity)
+                                                          :mfa_auth_identity_id totp-auth-identity-id)
+                 original-session      (t2/select-one
+                                        :model/Session
+                                        :key_hashed (session/hash-session-key original-session-key))
+                 resp                  (mt/client original-session-key
+                                                  :put 200 (format "user/%d/password" user-id)
+                                                  {:password "abc123!!DEF"
+                                                   :old_password "def"})]
+             (is (=? {:session_id string/valid-uuid?
+                      :success true}
+                     resp))
+             ;; Original session should be gone
+             (is (not (t2/exists?
+                       :model/Session
+                       :key_hashed (session/hash-session-key original-session-key))))
+             (let [new-session-key  (:session_id resp)
+                   new-session      (t2/select-one
+                                     :model/Session
+                                     :key_hashed (session/hash-session-key new-session-key))]
+               ;; Both the new and the old session should have an mfa id
+               (is (some? (:mfa_auth_identity_id original-session)))
+               (is (some? (:mfa_auth_identity_id new-session)))
+               ;; Which is the same
+               (is (= (:mfa_auth_identity_id original-session)
+                      (:mfa_auth_identity_id new-session)))
+               ;; But they should be distinct sessions
+               (is (not= (:id original-session) (:id new-session)))))))))))
 
 (deftest reset-password-invalidates-existing-sessions-test
   (testing "PUT /api/user/:id/password invalidates the user's existing sessions"

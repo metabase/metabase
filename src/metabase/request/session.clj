@@ -2,20 +2,17 @@
   (:require
    [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
+   [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
-
-(def ^:private current-user-fields
-  (into [:model/User] user/admin-or-self-visible-columns))
+   [metabase.util.malli :as mu]))
 
 (defn- find-user [user-id]
   (when user-id
-    (-> (t2/select-one current-user-fields, :id user-id)
-        user/add-attributes)))
+    (some-> (request.db/current-user user-id)
+            user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
@@ -29,14 +26,14 @@
   ::none)
 
 (mu/defn- current-user-info->permissions-set :- [:maybe [:set :string]]
-  [{:keys [permissions-set metabase-user-id]} :- ::request.schema/current-user-info]
+  [{:keys [permissions-set metabase-user-id]} :- [:or ::request.schema/current-user-info ::request.schema/request]]
   (or permissions-set
       (some-> metabase-user-id perms/user-permissions-set)))
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
-   thunk]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
+   thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
@@ -49,8 +46,9 @@
     (letfn [(do-with-user-local-values [thunk]
               (if (= *user-local-values-user-id* metabase-user-id)
                 (thunk)
-                (setting/with-user-local-values (delay (atom (or settings
-                                                                 (user/user-local-settings metabase-user-id))))
+                (setting/with-user-local-values (delay (atom (if settings
+                                                               (user/settings-map settings)
+                                                               (user/user-local-settings metabase-user-id))))
                   (binding [*user-local-values-user-id* metabase-user-id]
                     (thunk)))))]
       (do-with-user-local-values
@@ -62,13 +60,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (t2/select-one [:model/User
-                    [:id :metabase-user-id]
-                    [:is_superuser :is-superuser?]
-                    [:is_data_analyst :is-data-analyst?]
-                    [:locale :user-locale]
-                    :settings]
-                   :id current-user-id)))
+    (request.db/current-user-for-id current-user-id)))
 
 (defn do-as-admin
   "Execute `thunk` with admin perms."

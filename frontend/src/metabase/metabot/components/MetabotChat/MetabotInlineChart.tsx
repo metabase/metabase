@@ -1,4 +1,4 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -33,10 +33,7 @@ import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
-import {
-  getDatasetError,
-  getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+import { getDatasetError, getGenericErrorMessage } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 
@@ -47,7 +44,8 @@ import S from "./MetabotInlineChart.module.css";
 /**
  * Renders a Metabot-generated `card` entity as a live, read-only chart inline in
  * the conversation: it runs the card's embedded query ad-hoc and renders the
- * result; the title bar links out to the full question.
+ * result, in readonly mode only once Run query is clicked; the title bar links
+ * out to the full question.
  */
 export function MetabotInlineChart({
   value,
@@ -112,7 +110,11 @@ export function MetabotInlineChart({
     [question, savedCardId, value],
   );
 
-  const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);
+  const [isRunRequested, { open: requestRun }] = useDisclosure(false);
+  const shouldRunQuery = !readonly || isRunRequested;
+  const { data: dataset, error } = useGetAdhocQueryQuery(
+    shouldRunQuery ? datasetQuery : skipToken,
+  );
 
   const rawSeries = useMemo(
     () => (dataset ? [{ card, data: dataset.data }] : null),
@@ -158,8 +160,18 @@ export function MetabotInlineChart({
         />
       </Flex>
       <Box className={S.viz}>
-        {chartError ? (
-          <Center h="100%" p="md">
+        {!shouldRunQuery ? (
+          <Center h="100%" p="lg">
+            <Button
+              variant="filled"
+              leftSection={<Icon name="play_outlined" aria-hidden />}
+              onClick={requestRun}
+            >
+              {t`Run query`}
+            </Button>
+          </Center>
+        ) : chartError ? (
+          <Center h="100%" p="lg">
             <ErrorView error={chartError.message} icon={chartError.icon} />
           </Center>
         ) : !rawSeries ? (

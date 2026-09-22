@@ -151,7 +151,7 @@ export const _SdkQuestion = ({
   withAlerts = false,
   targetDashboardId,
   backToDashboard,
-  getClickActionMode,
+  clickActionMode,
   navigateToNewCard,
   onDrillThrough,
 
@@ -214,7 +214,7 @@ export const _SdkQuestion = ({
         withAlerts={withAlerts}
         targetDashboardId={targetDashboardId}
         backToDashboard={backToDashboard}
-        getClickActionMode={getClickActionMode}
+        clickActionMode={clickActionMode}
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}

@@ -4,7 +4,7 @@
   justify-content: center;
   border: none;
   font-weight: bold;
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   transition: background 300ms;
   color: var(--notebook-action-button-color);
   background-color: color-mix(

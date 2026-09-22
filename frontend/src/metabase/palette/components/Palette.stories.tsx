@@ -8,16 +8,16 @@ import { HttpResponse, http } from "msw";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Center } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualization } from "metabase/viz-core";
 
 import { PaletteContainer } from "./Palette";
 import { recents, search } from "./test_data.json";

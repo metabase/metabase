@@ -48,7 +48,7 @@ export const EntityInfoIcon = () => {
         <Icon tabIndex={0} name="info" className={Styles.InfoIcon} />
       </Popover.Target>
       <Popover.Dropdown>
-        <Paper p="md" maw="13rem">
+        <Paper p="lg" maw="13rem">
           <Text fz="sm">
             {t`When using serialization, replace the sequential ID with this global entity ID to have stable URLs across environments. Also useful when troubleshooting serialization.`}{" "}
             {showMetabaseLinks && (

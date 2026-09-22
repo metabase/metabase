@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
@@ -21,7 +23,9 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -77,6 +81,34 @@
                                {:ts "1709567890.000003" :text "real" :bot_id "B123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :assistant :content "real"}] result))))))
+
+(deftest thread->history-blank-user-messages-test
+  (testing "User messages with no text beyond the bot mention name their attachments, or are excluded"
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "" :user "U123"
+                                :files [{:name "data.csv"} {:name "more.tsv"}]}
+                               {:ts "1709567890.000002" :text "<@UBOT123>" :user "U123"}
+                               {:ts "1709567890.000003" :text "<@UBOT123> " :user "U123"
+                                :files [{:name "notes.csv"}]}
+                               {:ts "1709567890.000004" :text "" :user "U123" :files [{:id "F1"}]}
+                               {:ts "1709567890.000005" :text "chart it" :user "U123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :user :content "Attached files: data.csv, more.tsv"}
+                {:role :user :content "Attached files: notes.csv"}
+                {:role :user :content "chart it"}]
+               result))))))
+
+(deftest thread->history-messages-without-text-test
+  (testing "A message with no text key still names its attachments, and is otherwise excluded"
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :user "U123" :files [{:name "data.csv"}]}
+                               {:ts "1709567890.000002" :user "U123"}
+                               {:ts "1709567890.000003" :bot_id "B123"}
+                               {:ts "1709567890.000004" :text "chart it" :user "U123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :user :content "Attached files: data.csv"}
+                {:role :user :content "chart it"}]
+               result))))))
 
 (deftest thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
@@ -271,7 +303,7 @@
                     :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest streaming-response-includes-feedback-blocks-test
+(deftest ^:synchronized streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -312,7 +344,109 @@
                 :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
                @posted-message))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+(defn- dm-error-part-appended-text!
+  "Run a DM turn whose agent loop emits `error-part` instead of text, returning
+   everything appended to the Slack stream."
+  [error-part]
+  (tu/with-slackbot-setup
+    (let [event-body tu/base-dm-event]
+      (tu/with-slackbot-mocks
+        {}
+        (fn [{:keys [append-text-calls stop-stream-calls]}]
+          (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                      (fn [_opts]
+                                        (reify clojure.lang.IReduceInit
+                                          (reduce [_ rf init]
+                                            (rf init error-part))))
+                                      metabot.persistence/start-turn!
+                                      (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                      metabot.persistence/finalize-assistant-turn!
+                                      (fn [& _] nil)]
+            (mt/client :post 200 "metabot/slack/events"
+                       (tu/slack-request-options event-body)
+                       event-body)
+            (u/poll {:thunk      #(pos? (count @stop-stream-calls))
+                     :done?      true?
+                     :timeout-ms 5000})
+            (str/join "\n" @append-text-calls)))))))
+
+(deftest ^:synchronized slackbot-streamed-error-part-uses-known-error-copy-test
+  (testing "a permission_denied error part becomes access copy, not the raw permission keyword"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message    "Permission denied: :permission/metabot-nlq required"
+                                      :error-code "permission_denied"}})]
+      (is (str/includes? text "You do not have permission to use the AI assistant."))
+      (is (not (str/includes? text ":permission/")))))
+  (testing "a permission throw the agent loop caught mid-stream also becomes access copy"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message "Permission denied"
+                                      :type    "clojure.lang.ExceptionInfo"
+                                      :data    {:type                :metabot/permission-denied
+                                                :required-permission :permission/metabot-nlq}}})]
+      (is (str/includes? text "You do not have permission to use the AI assistant."))))
+  (testing "a provider config error the agent loop caught becomes check-your-settings copy"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message "No LLM provider connection named \"anthropic\" is configured."
+                                      :type    "clojure.lang.ExceptionInfo"
+                                      :data    {:status-code 400 :api-error true :error-code :llm-not-configured}}})]
+      (is (str/includes? text "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."))))
+  (testing "an unrecognized error keeps the generic copy and leaks nothing from the provider"
+    (let [text (dm-error-part-appended-text!
+                {:type :error :error {:message "upstream rejected key sk-ant-oops"}})]
+      (is (str/includes? text "Something went wrong. Please try again."))
+      (is (not (str/includes? text "sk-ant-oops"))))))
+
+(deftest ^:synchronized slackbot-dm-posts-permission-copy-when-metabot-access-denied-test
+  (testing "the 403 the agent loop's access check throws reaches the DM as access copy"
+    (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)]
+      (tu/with-slackbot-setup
+        (let [event-body tu/base-dm-event]
+          (tu/with-slackbot-mocks
+            {}
+            (fn [{:keys [append-text-calls stop-stream-calls]}]
+              (mt/with-dynamic-fn-redefs [agent/run-agent-loop run-agent-loop
+                                          metabot.scope/resolve-user-permissions
+                                          (constantly {:permission/metabot :no})
+                                          metabot.persistence/start-turn!
+                                          (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                          metabot.persistence/finalize-assistant-turn!
+                                          (fn [& _] nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(pos? (count @stop-stream-calls))
+                         :done?      true?
+                         :timeout-ms 5000})
+                (let [text (str/join "\n" @append-text-calls)]
+                  (is (str/includes? text "You do not have permission to use the AI assistant."))
+                  (is (not (str/includes? text "Something went wrong"))))))))))))
+
+(deftest ^:synchronized slackbot-channel-posts-permission-copy-when-metabot-access-denied-test
+  (testing "the visible channel reply flow posts access copy for the 403, not the generic line"
+    (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)]
+      (tu/with-slackbot-setup
+        (let [event-body tu/base-mention-event]
+          (tu/with-slackbot-mocks
+            {}
+            (fn [{:keys [post-calls]}]
+              (mt/with-dynamic-fn-redefs [agent/run-agent-loop run-agent-loop
+                                          metabot.scope/resolve-user-permissions
+                                          (constantly {:permission/metabot :no})
+                                          metabot.persistence/start-turn!
+                                          (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                          metabot.persistence/finalize-assistant-turn!
+                                          (fn [& _] nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(pos? (count @post-calls))
+                         :done?      true?
+                         :timeout-ms 5000})
+                (let [texts (keep :text @post-calls)]
+                  (is (some #{"You do not have permission to use the AI assistant."} texts))
+                  (is (not-any? #(str/includes? % "Something went wrong") texts)))))))))))
+
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-on-messages-test
   (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
             for metabase/ prefixed provider"
     (tu/with-slackbot-setup
@@ -339,7 +473,7 @@
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
-(deftest slackbot-streaming-seeds-state-from-db-test
+(deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
   (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -374,10 +508,10 @@
                 (send!)
                 (wait! 2)
                 (testing "the next turn in the same thread picks it up instead of {}"
-                  (is (= {:queries {:q1 {:database 1}}}
+                  (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
 
-(deftest slackbot-streaming-records-streamed-error-test
+(deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
             so conversation-state does not later replay a failed turn's partial state (BOT-522)"
     (tu/with-slackbot-setup
@@ -402,7 +536,7 @@
                 (is (not= ::timeout opts))
                 (is (= {:message "boom"} (:error opts)))))))))))
 
-(deftest slackbot-streaming-persists-failed-conversations-test
+(deftest ^:synchronized slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,
             start-turn! inserts user + placeholder atomically before any setup runs."
     (tu/with-slackbot-setup
@@ -426,7 +560,7 @@
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
 
-(deftest slackbot-streaming-never-writes-pii-columns-test
+(deftest ^:synchronized slackbot-streaming-never-writes-pii-columns-test
   (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"
     (mt/with-premium-features #{:audit-app}
       (tu/with-slackbot-setup
@@ -455,7 +589,7 @@
                         (is (not (contains? opts :hostname)))
                         (is (not (contains? opts :pii-info)))))))))))))))
 
-(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+(deftest ^:synchronized slackbot-streaming-sets-ai-proxied-false-for-byok-test
   (testing "start-turn! receives ai-proxy? = false (and writes it to both user and assistant rows)
             for direct BYOK provider"
     (tu/with-slackbot-setup

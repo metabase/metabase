@@ -1055,8 +1055,8 @@ describe("issue 8490", () => {
     cy.findByTestId("embed-frame").within(() => {
       cy.log("assert the trend chart");
       H.getDashboardCard(2).within(() => {
-        // N/A
-        cy.findByText("해당 없음").should("be.visible");
+        // N/A (the comparison row combines it with the comparison description)
+        cy.findByText(/해당 없음/).should("be.visible");
         // (No data)
         cy.findByText("(데이터 없음)").should("be.visible");
       });

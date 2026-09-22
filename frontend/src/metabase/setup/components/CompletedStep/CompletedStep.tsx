@@ -46,7 +46,7 @@ export const CompletedStep = (): JSX.Element | null => {
       <Title order={2}>{t`You're all set up!`}</Title>
       {shouldOfferAiConfig && (
         <StepBody>
-          <Flex align="center" justify="space-between" gap="lg">
+          <Flex align="center" justify="space-between" gap="xl">
             <Box>
               <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
               <Text c="text-secondary">

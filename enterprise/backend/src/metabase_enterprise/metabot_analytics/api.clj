@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]))
@@ -58,7 +59,7 @@
 
 (def ^:private ListConversationsQueryParams
   "Query-param schema for `GET /conversations`."
-  [:map
+  [:map {:closed true}
    [:sort_by   {:optional true} [:maybe SortColumn]]
    [:sort_dir  {:optional true} [:maybe SortDirection]]
    [:user_id   {:optional true} [:maybe ms/PositiveInt]]
@@ -100,11 +101,11 @@
    [:updated_at        ms/TemporalInstant]])
 
 (def ^:private ConversationMessage
-  [:map
-   [:id                :string]
-   [:parent_message_id [:maybe :string]]
-   [:role              [:enum "user" "agent"]]
-   [:type              :string]])
+  "A client message plus the parent pointer that threads the conversation — with
+  regenerated replies as siblings — into the tree the detail page walks."
+  [:merge
+   ::metabot.schema/client-message
+   [:map [:parent_message_id [:maybe :string]]]])
 
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
@@ -140,7 +141,7 @@
 
 (def ^:private ConversationIdParams
   "Route-param schema for endpoints addressing a single conversation by id."
-  [:map [:id ms/UUIDString]])
+  [:map {:closed true} [:id ms/UUIDString]])
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 

@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.settings :as notification.settings]
@@ -151,13 +152,19 @@
         ;; notifications pass through :payload instead and have no :payload_id.
         (when-let [payload-id (when (= :notification/card payload_type)
                                 (:payload_id notification-info))]
-          (when-not (t2/exists? :model/NotificationCard payload-id)
+          (when-not (notification.db/notification-card-exists? payload-id)
             (log/warnf "Payload for notification %d no longer exists, deleting" id)
-            (t2/delete! :model/Notification id)
+            (notification.db/delete-notification! id)
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
+          (try
+            (models.notification/validate-email-handlers! handlers)
+            (catch clojure.lang.ExceptionInfo _e
+              (throw (ex-info "A subscription recipient is not permitted by subscription-allowed-domains"
+                              {:status-code     403
+                               :notification-id id}))))
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
@@ -446,7 +453,7 @@
   nil)
 
 (def ^:private Options
-  [:map
+  [:map {:closed true}
    [:notification/sync? :boolean]])
 
 (def ^:dynamic *default-options*
@@ -463,7 +470,7 @@
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
-                                                            (t2/select-one-fn :card_id :model/NotificationCard :id)))]
+                                                            notification.db/notification-card-card-id))]
                               {:run_type        :alert
                                :entity_type     :card
                                :entity_id       card-id
@@ -477,7 +484,8 @@
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification & {:keys [] :as options} :- [:maybe Options]]
+  [notification :- ::notification.payload/Notification
+   & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]
     ;; with-task-run is a no-op if already nested (e.g., from scheduler)

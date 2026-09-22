@@ -12,7 +12,6 @@ describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();
-    cy.intercept("GET", "/app/locales/*").as("getTranslations");
   });
 
   locales.forEach((locale) => {
@@ -356,6 +355,10 @@ describe("scenarios > setup", () => {
 
     cy.log("Switching language before user creation should not update setting");
     selectLanguage("Dutch");
+    // A real translation, so a catalogue that never loads fails the test. The
+    // `[zz]` assertions below cannot cover this: they run after a second switch
+    // and would still pass if this first one had loaded nothing.
+    cy.findByTestId("setup-forms").button("Volgende").should("exist");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
     selectLanguage("English (ZZ)");
     cy.get("@updateSiteLocale.all").should("have.length", 0);
@@ -1058,7 +1061,10 @@ const selectLanguage = (targetLanguage: string) => {
     .should("be.visible")
     .click();
 
-  if (targetLanguage !== "English") {
-    cy.wait("@getTranslations");
-  }
+  // Wait on the selection landing rather than on the catalogue request. The
+  // catalogue is a hashed chunk now, so a repeat of a language already loaded
+  // in this browser is served from cache and makes no request at all. Every
+  // caller that needs the catalogue to have been applied asserts a `[zz]`
+  // string right after.
+  cy.findByTestId("language-selector").should("have.value", targetLanguage);
 };

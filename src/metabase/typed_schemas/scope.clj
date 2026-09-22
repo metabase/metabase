@@ -28,8 +28,9 @@
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,11 +52,11 @@
   (when database-ref
     (let [{:keys [id name]} database-ref]
       (if id
-        (let [database (t2/select-one :model/Database :id id)]
+        (let [database (typed-schemas.db/database id)]
           (if (and database (mi/can-read? database))
             #{id}
             #{}))
-        (->> (t2/select :model/Database :name name)
+        (->> (typed-schemas.db/databases-named name)
              (filter mi/can-read?)
              (map :id)
              set)))))
@@ -83,12 +84,12 @@
                           (mi/can-read? collection)))
         by-id      (when (seq ids)
                      (into {} (map (juxt :id identity))
-                           (t2/select :model/Collection :id [:in ids])))
+                           (typed-schemas.db/collections ids)))
         ;; entity_id is a fixed-width char column; some app dbs return it
         ;; space-padded, so key the lookup by the trimmed value.
         by-eid     (when (seq entity-ids)
                      (into {} (map (juxt (comp str/trimr :entity_id) identity))
-                           (t2/select :model/Collection :entity_id [:in entity-ids])))
+                           (typed-schemas.db/collections-by-entity-ids entity-ids)))
         resolved   (for [{:keys [id entity-id] :as collection-ref} collection-refs]
                      [collection-ref
                       (let [collection (if id (get by-id id) (get by-eid entity-id))]
@@ -120,6 +121,19 @@
   [collection]
   (contains? collection/library-collection-types (:type collection)))
 
+(def ^:private LibraryCollectionRef
+  "References a collection by numeric or entity id."
+  [:or
+   [:map {:closed true} [:id :int]]
+   [:map {:closed true} [:entity-id ms/NonBlankString]]])
+
+(def LibraryScopeOptions
+  "Options accepted by [[library-scope]]."
+  [:map {:closed true}
+   [:library-collection-refs {:optional true} [:maybe [:sequential LibraryCollectionRef]]]
+   [:include-data-library? {:optional true} [:maybe :boolean]]
+   [:include-metric-library? {:optional true} [:maybe :boolean]]])
+
 (defn- library-refs
   "Returns collection references for explicit library refs plus any included
   well-known library roots."
@@ -133,7 +147,7 @@
 (mu/defn library-scope :- [:maybe LibraryScope]
   "Resolves library collection refs and include flags into a [[LibraryScope]],
   or nil when no library scope is requested."
-  [scope-options]
+  [scope-options :- LibraryScopeOptions]
   (when-let [refs (seq (library-refs scope-options))]
     (let [roots       (resolve-collection-refs! refs library-collection?)
           collections (concat roots (collection/descendants-flat-for roots))

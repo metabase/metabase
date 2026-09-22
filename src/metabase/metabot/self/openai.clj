@@ -250,10 +250,11 @@
       500 (tru "OpenAI API is not working but not saying why")
       (tru "OpenAI API error (HTTP {0})" status))))
 
-(def ^:private supported-models
+(def supported-models
   "OpenAI chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}
+  {"gpt-6-astra"   {:display-name "GPT-6 Astra"   :context-window 922000}
+   "gpt-5.6-sol"   {:display-name "GPT-5.6 Sol"   :context-window 922000}
    "gpt-5.6-terra" {:display-name "GPT-5.6 Terra" :context-window 922000}
    "gpt-5.6-luna"  {:display-name "GPT-5.6 Luna"  :context-window 922000}
    "gpt-5.5"       {:display-name "GPT-5.5"       :context-window 922000}
@@ -305,18 +306,25 @@
                  (mapv (fn [{:keys [id]}]
                          {:id id :display_name (get-in supported-models [id :display-name])})))}))
 
+(defn- strip-vendor-prefix
+  "`model` lowercased and without an optional vendor prefix (e.g. Bedrock's `openai.`).
+
+  Lowercasing lets the model-derived predicates hold for Azure's admin-cased deployment names."
+  [model]
+  (str/replace-first (u/lower-case-en (str model)) #"^openai\." ""))
+
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
-  The GPT-5 family and the o-series reasoning models only support the default temperature."
+  The GPT-5 and GPT-6 families and the o-series reasoning models only support the default temperature."
   [model]
-  (let [model (str/replace-first (str model) #"^openai\." "")]
-    (not (or (str/starts-with? model "gpt-5")
+  (let [model (strip-vendor-prefix model)]
+    (not (or (re-find #"^gpt-[56]" model)
              (re-find #"^o\d" model)))))
 
 (defn reasoning-model?
   "Whether `model` is a reasoning model that can emit reasoning summaries — the
-  same GPT-5 / o-series set that rejects an explicit temperature."
+  same GPT-5 / GPT-6 / o-series set that rejects an explicit temperature."
   [model]
   (not (model-supports-temperature? model)))
 

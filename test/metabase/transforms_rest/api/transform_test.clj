@@ -69,12 +69,24 @@
       :filter-fn     lib/=
       :filter-values [category]})))
 
+(defmacro with-transform-db-perms!
+  "Run `body` with the database permissions required by transform API tests.
+
+  The All Users group receives transform access and database-wide native-query
+  editing. Granting both explicitly prevents stale table-level `create-queries`
+  rows from reducing the effective permission to `:query-builder`. The previous
+  permissions are restored afterward."
+  [& body]
+  `(mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                 :perms/create-queries :query-builder-and-native}
+     ~@body))
+
 (deftest create-transform-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [query        (make-query "Gadget")
                     schema       (get-test-schema)
@@ -136,7 +148,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-db-perms!
               (with-transform-cleanup! [table-name "no_schema_products"]
                 (let [query   (make-query "Gadget")
                       request (fn [schema]
@@ -159,7 +171,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Can create a transform with a param"
                 (let [query        (lib/native-query (mt/metadata-provider) "select * from foo [[where {{id}} = id]]")
@@ -179,7 +191,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
@@ -205,7 +217,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a param that is necessary but not marked as required"
                 (let [query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
@@ -392,7 +404,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-db-perms!
               (testing "MBQL query transforms are detected as :mbql"
                 (with-transform-cleanup! [table-name "mbql_transform"]
                   (let [mbql-query (mt/mbql-query transforms_products)
@@ -423,7 +435,7 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-db-perms!
               (with-transform-cleanup! [table-name "type_update_transform"]
                 (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
                       mbql-query (mt/mbql-query transforms_products)
@@ -450,7 +462,7 @@
         (testing "Creating a query transform succeeds when not hosted"
           (mt/dataset transforms-dataset/transforms-test
             (mt/with-data-analyst-role! (mt/user->id :lucky)
-              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-db-perms!
                 (with-transform-cleanup! [table-name "test_transform"]
                   (let [query  (make-query "Gadget")
                         schema (get-test-schema)
@@ -468,7 +480,7 @@
     (mt/with-premium-features #{}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (testing "Updating a query transform works when not hosted"
                 (with-transform-cleanup! [table-name "test_update"]
@@ -493,7 +505,7 @@
         (testing "Running a query transform works when not hosted"
           (mt/dataset transforms-dataset/transforms-test
             (mt/with-data-analyst-role! (mt/user->id :lucky)
-              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-db-perms!
                 (with-transform-cleanup! [table-name "test_run"]
                   (let [query  (make-query "Gadget")
                         schema (get-test-schema)
@@ -560,11 +572,11 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Can list without query parameters"
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/user-http-request :lucky :get 200 "transform")))
         (testing "Can list with query parameters"
           (mt/dataset transforms-dataset/transforms-test
-            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (with-transform-db-perms!
               (with-transform-cleanup! [table-name "gadget_products"]
                 (let [body         {:name        "Gadget Products"
                                     :description "Desc"
@@ -620,7 +632,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-data-analyst-role! (mt/user->id :lucky)
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [body         {:name        "Gadget Products"
                                   :description "Desc"
@@ -646,7 +658,7 @@
         (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
           (mt/dataset transforms-dataset/transforms-test
             (mt/with-data-analyst-role! (mt/user->id :lucky)
-              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (with-transform-db-perms!
                 (with-transform-cleanup! [table-name "reqidx_products"]
                   (let [body     {:name   "Reqidx Products"
                                   :source {:type "query" :query (make-query "Gadget")}
@@ -680,7 +692,7 @@
                                       :name   table-name}}]
               (testing "Users with transforms permission can see source_readable field"
                 (mt/with-data-analyst-role! (mt/user->id :lucky)
-                  (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                  (with-transform-db-perms!
                     (let [created (mt/user-http-request :lucky :post 200 "transform" body)]
                       (testing "in POST /transform response"
                         (is (contains? created :source_readable))
@@ -733,7 +745,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [query2       (make-query "None")
@@ -764,7 +776,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table1-name "dookey_products"
                                       table2-name "doohickey_products"]
@@ -794,7 +806,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [resp (mt/user-http-request :lucky :post 200 "transform"
@@ -811,7 +823,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [resp (mt/user-http-request :lucky :post 200 "transform"
@@ -825,7 +837,7 @@
 
 (defn- test-run!
   [transform-id]
-  (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+  (with-transform-db-perms!
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (let [resp      (mt/user-http-request :lucky :post 202 (format "transform/%s/run" transform-id))
             timeout-s transform-run-timeout-seconds
@@ -885,7 +897,7 @@
     (testing "transform execution with :transforms/table target"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
                 (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
@@ -1401,44 +1413,45 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "POST /api/transform with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
-              (testing "Can create transform with tags"
-                ;; Create tags via API since we're testing transform creation with existing tags
-                (let [tag1 (mt/user-http-request :lucky :post 200 "transform-tag"
-                                                 {:name (str "test-tag-1-" (random-uuid))})
-                      tag2 (mt/user-http-request :lucky :post 200 "transform-tag"
-                                                 {:name (str "test-tag-2-" (random-uuid))})]
-                  (try
-                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                       {:tag_ids [(:id tag1) (:id tag2)]})
-                                                (assoc-in [:target :schema] schema))
-                          transform-response (mt/user-http-request :lucky :post 200 "transform"
-                                                                   transform-request)]
-                      (try
-                        (is (= (:name transform-request) (:name transform-response)))
-                        (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
-                        (finally
-                          (t2/delete! :model/Transform :id (:id transform-response)))))
-                    (finally
-                      (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
-              (testing "Can create transform without tags"
-                (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
-                                                  [:target :schema] schema)
-                      transform-response (mt/user-http-request :lucky :post 200 "transform"
-                                                               transform-request)]
-                  (try
-                    (is (= (:name transform-request) (:name transform-response)))
-                    (is (= [] (:tag_ids transform-response)))
-                    (finally
-                      (t2/delete! :model/Transform :id (:id transform-response)))))))))))))
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (let [schema (get-test-schema)]
+                (testing "Can create transform with tags"
+                  ;; Create tags via API since we're testing transform creation with existing tags
+                  (let [tag1 (mt/user-http-request :lucky :post 200 "transform-tag"
+                                                   {:name (str "test-tag-1-" (random-uuid))})
+                        tag2 (mt/user-http-request :lucky :post 200 "transform-tag"
+                                                   {:name (str "test-tag-2-" (random-uuid))})]
+                    (try
+                      (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                         {:tag_ids [(:id tag1) (:id tag2)]})
+                                                  (assoc-in [:target :schema] schema))
+                            transform-response (mt/user-http-request :lucky :post 200 "transform"
+                                                                     transform-request)]
+                        (try
+                          (is (= (:name transform-request) (:name transform-response)))
+                          (is (= (:tag_ids transform-request) (sort (:tag_ids transform-response))))
+                          (finally
+                            (t2/delete! :model/Transform :id (:id transform-response)))))
+                      (finally
+                        (t2/delete! :model/TransformTag :id [:in [(:id tag1) (:id tag2)]])))))
+                (testing "Can create transform without tags"
+                  (let [transform-request (assoc-in (mt/with-temp-defaults :model/Transform)
+                                                    [:target :schema] schema)
+                        transform-response (mt/user-http-request :lucky :post 200 "transform"
+                                                                 transform-request)]
+                    (try
+                      (is (= (:name transform-request) (:name transform-response)))
+                      (is (= [] (:tag_ids transform-response)))
+                      (finally
+                        (t2/delete! :model/Transform :id (:id transform-response))))))))))))))
 
 (deftest update-transform-tags-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "PUT /api/transform/:id with tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                        :source {:type "query"
@@ -1467,7 +1480,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "GET /api/transform/:id returns tag_ids"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name "Transform With Tags"
                                                        :source {:type "query"
@@ -1529,7 +1542,7 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Deleting a tag removes it from all transforms"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+        (with-transform-db-perms!
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/with-temp [:model/Transform transform {:name   "Transform for Delete Test"
                                                        :source {:type  "query"
@@ -1560,45 +1573,46 @@
   (mt/with-premium-features #{:transforms-basic :hosting}
     (testing "Tag order is preserved when adding/updating transform tags"
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
-                           :model/TransformTag tag2 {:name "order-tag-2"}
-                           :model/TransformTag tag3 {:name "order-tag-3"}]
-              (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
-                (testing "Creating transform with specific tag order preserves that order"
-                  (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                     {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
-                                              (assoc-in [:target :schema] schema))
-                        transform (mt/user-http-request :lucky :post 200 "transform"
-                                                        transform-request)]
-                    (try
-                      ;; Should preserve the exact order: tag3, tag1, tag2
-                      (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
-                      ;; Verify order is preserved when fetching
-                      (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
-                        (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
-                      ;; Update with different order
-                      (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
-                                                          {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
-                        ;; Should now have the new order: tag2, tag3, tag1
-                        (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
-                      ;; Verify new order persists
-                      (let [fetched-again (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
-                        (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
-                      (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))
-                (testing "Duplicate tag IDs are handled correctly"
-                  (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
-                                                     {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
-                                              (assoc-in [:target :schema] schema))
-                        transform (mt/user-http-request :lucky :post 200 "transform"
-                                                        transform-request)]
-                    (try
-                      ;; Should only have each tag once, but preserve relative order
-                      (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
-                      (finally
-                        (t2/delete! :model/Transform :id (:id transform))))))))))))))
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-db-perms!
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
+                             :model/TransformTag tag2 {:name "order-tag-2"}
+                             :model/TransformTag tag3 {:name "order-tag-3"}]
+                (let [schema (get-test-schema)]
+                  (testing "Creating transform with specific tag order preserves that order"
+                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                       {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
+                                                (assoc-in [:target :schema] schema))
+                          transform (mt/user-http-request :lucky :post 200 "transform"
+                                                          transform-request)]
+                      (try
+                        ;; Should preserve the exact order: tag3, tag1, tag2
+                        (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids transform)))
+                        ;; Verify order is preserved when fetching
+                        (let [fetched (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
+                          (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids fetched))))
+                        ;; Update with different order
+                        (let [updated (mt/user-http-request :lucky :put 200 (str "transform/" (:id transform))
+                                                            {:tag_ids [(:id tag2) (:id tag3) (:id tag1)]})]
+                          ;; Should now have the new order: tag2, tag3, tag1
+                          (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids updated))))
+                        ;; Verify new order persists
+                        (let [fetched-again (mt/user-http-request :lucky :get 200 (str "transform/" (:id transform)))]
+                          (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids fetched-again))))
+                        (finally
+                          (t2/delete! :model/Transform :id (:id transform))))))
+                  (testing "Duplicate tag IDs are handled correctly"
+                    (let [transform-request (-> (merge (mt/with-temp-defaults :model/Transform)
+                                                       {:tag_ids [(:id tag1) (:id tag2) (:id tag1)]})
+                                                (assoc-in [:target :schema] schema))
+                          transform (mt/user-http-request :lucky :post 200 "transform"
+                                                          transform-request)]
+                      (try
+                        ;; Should only have each tag once, but preserve relative order
+                        (is (= [(:id tag1) (:id tag2)] (:tag_ids transform)))
+                        (finally
+                          (t2/delete! :model/Transform :id (:id transform)))))))))))))))
 
 (deftest root-collection-items-include-transforms-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -2103,7 +2117,7 @@
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (with-transform-cleanup! [table-name "field_filter_default_output"]
                 (let [mp                                  (mt/metadata-provider)
@@ -2136,7 +2150,7 @@
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (with-transform-cleanup! [table-name "table_tag_output"]
                 (let [source-table-id (mt/id :transforms_products)
@@ -2160,7 +2174,7 @@
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
-          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (with-transform-db-perms!
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (let [schema               (get-test-schema)
                     existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))

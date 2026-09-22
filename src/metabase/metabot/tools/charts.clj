@@ -22,9 +22,7 @@
          "<instructions>\n" (instructions/chart-created-instructions chart-id) "\n</instructions>")))
 
 (def ^:private chart-type-enum
-  [:enum "table" "bar" "line" "pie" "sunburst" "treemap" "area" "combo"
-   "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
-   "smartscalar" "gauge" "progress" "funnel" "object" "map"])
+  (into [:enum] shared/chart-types))
 
 (def ^:private create-chart-schema
   [:map {:closed true}
@@ -94,7 +92,8 @@
           (edit-chart-tools/edit-chart
            {:chart-id chart_id
             :new-chart-type new-viz
-            :charts-state (shared/current-charts-state)})
+            :charts-state (shared/current-charts-state)
+            :query query})
 
           structured (assoc result :result-type :chart)]
       ;; Add the new chart to memory so it can be referenced in the conversation going forward.

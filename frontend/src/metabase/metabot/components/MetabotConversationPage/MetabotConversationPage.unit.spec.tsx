@@ -4,14 +4,16 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
   setupDatabaseListEndpoint,
   setupGetMetabotConversationEndpoint,
   setupListMetabotConversationsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -59,9 +61,7 @@ const stateWithConversation = ({
     ["conversations", conversationId],
     createConversation({
       conversationId,
-      messages: message
-        ? [{ id: "seed-message", role: "user", type: "text", message }]
-        : [],
+      messages: message ? [createMockMetabotTextMessage("user", message)] : [],
     }),
   );
 
@@ -110,8 +110,11 @@ const inProgressDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m2", role: "agent", type: "turn_in_progress" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotMessage({
+        role: "agent",
+        status: { type: "in_progress" },
+      }),
     ],
   });
 
@@ -119,8 +122,8 @@ const finishedDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m3", role: "agent", type: "text", message: "Here is the answer" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotTextMessage("agent", "Here is the answer"),
     ],
   });
 
@@ -133,14 +136,7 @@ describe("MetabotConversationPage", () => {
     mockConversationDetail(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
-        messages: [
-          {
-            id: "m1",
-            role: "user",
-            type: "text",
-            message: "Loaded question",
-          },
-        ],
+        messages: [createMockMetabotTextMessage("user", "Loaded question")],
       }),
       150,
     );
@@ -214,6 +210,9 @@ describe("MetabotConversationPage", () => {
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(await screen.findByText("Thinking")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-response-loader"),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),

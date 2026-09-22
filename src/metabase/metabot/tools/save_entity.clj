@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
@@ -87,7 +88,7 @@
   [collection-id]
   (if (nil? collection-id)
     (:name (collection/root-collection-with-ui-details nil))
-    (t2/select-one-fn :name :model/Collection :id collection-id)))
+    (metabot.db/collection-name collection-id)))
 
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
@@ -128,7 +129,7 @@
                 :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
-       :destination-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+       :destination-name (metabot.db/dashboard-name dashboard-id)
        :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (defn- save-to-document!
@@ -171,11 +172,12 @@
     `read_resource` on `metabase://collections?tree=true`. Omit `collection_id`
     to use the user's personal collection; pass `null` for the root collection.
   - To add it to a dashboard, set `target_type` to `dashboard` and pass a
-    `dashboard_id`. Find dashboards with `search`, restricting `entity_types` to
-    the `dashboard` type. Only offer or use results with `can_write=true`; results
+    `dashboard_id`. Find dashboards with your search/discovery tool — if that tool is
+    `search`, restrict `entity_types` to the `dashboard` type. Only offer or use results
+    with `can_write=true`; results
     with `can_write=false` are visible but read-only and cannot be save destinations.
   - To embed it in a document, set `target_type` to `document` and pass a
-    `document_id`. Find documents with `search`, restricting `entity_types` to
+    `document_id`. Find documents the same way — with `search`, restrict `entity_types` to
     the `document` type, just as you would use the `dashboard` type to find dashboards. Search
     using any name or topic the user provided. Before calling `save_entity`, you MUST call
     `read_resource` on `metabase://document/{id}` for the selected result and inspect its
@@ -187,6 +189,10 @@
     very top). Omit `position` to append the chart at the end. To pick a
     meaningful position, first inspect the document's blocks with
     `read_resource` on `metabase://document/{id}`.
+
+  If your only discovery tool returns library data entities (tables, models, metrics) rather
+  than saved content, dashboards and documents aren't discoverable that way — save to a
+  collection instead, or ask the user for the dashboard or document they mean.
 
   After saving, tell the user where it went and share the returned link."
   [{:keys [chart_id destination description] question-name :name} :- save-entity-schema]
@@ -210,9 +216,7 @@
                           "dashboard"  (save-to-dashboard! args)
                           "document"   (save-to-document! args))]
               (when-let [conversation-id (shared/current-conversation-id)]
-                (t2/update! (t2/table-name :model/Card) (:id (:card saved))
-                            {:metabot_conversation_id conversation-id
-                             :metabot_chart_id        chart_id}))
+                (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
               saved))
           _ (events/publish-event! :event/card-create
                                    {:object card :user-id api/*current-user-id*})

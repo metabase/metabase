@@ -65,7 +65,7 @@ String (accept `{"case-sensitive": false}` in opts):
 - `["does-not-contain", {}, <str>, <substring>]`
 
 Temporal:
-- `["time-interval", {}, <temporal>, <n-or-:current/:last/:next>, "<unit>"]` — relative window. Opts may set `{"include-current": true}`.
+- `["time-interval", {}, <temporal>, <n>, "<unit>"]` — relative window. `<n>` is either an integer (negative = past) or one of the strings `"current"`, `"last"`, `"next"`. Opts may set `{"include-current": true}`.
 - `["during", {}, <temporal>, "<iso-date-or-datetime>", "<unit>"]` — value falls within the bucket containing the literal.
 - `["relative-time-interval", {}, <temporal>, <value>, "<bucket>", <offset-value>, "<offset-bucket>"]` — window offset from now.
 
@@ -106,14 +106,17 @@ Temporal:
 - `["get-year", {}, <temporal>]` / `["get-month", {}, <temporal>]` / `["get-day", {}, <temporal>]` / `["get-quarter", {}, <temporal>]`
 - `["get-hour", {}, <temporal>]` / `["get-minute", {}, <temporal>]` / `["get-second", {}, <temporal>]`
 - `["get-week", {}, <temporal>]` / `["get-day-of-week", {}, <temporal>]` — both accept optional 4th-slot mode `"iso"`, `"us"`, `"instance"`.
-- `["temporal-extract", {}, <temporal>, "<unit>"]` — extract one of the date/time extraction units listed below.
+- `["temporal-extract", {}, <temporal>, "<unit>"]` — `<unit>` comes from its **own** enum, *not* the temporal-bucketing list below: `year-of-era`, `quarter-of-year`, `month-of-year`, `week-of-year-iso`, `week-of-year-us`, `week-of-year-instance`, `day-of-month`, `day-of-week`, `day-of-week-iso`, `hour-of-day`, `minute-of-hour`, `second-of-minute`. There is no `year`, `week-of-year`, or `day-of-year` here — use `["get-year", {}, <temporal>]` for the year. Optional 5th slot is a week mode: `"iso"`, `"us"`, `"instance"`.
 - `["convert-timezone", {}, <temporal>, "<target-tz>"]` — optional 4th slot is source tz.
 - `["relative-datetime", {}, <n>, "<unit>"]` (or `["relative-datetime", {}, "current"]`)
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
-- `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
+- `["date", {}, <expr>]` / `["datetime", {}, <expr>]`
+- `["time", {}, "<time-str>", "<unit>"]` — the unit is **required**: `"default"`, `"millisecond"`, `"second"`, `"minute"`, or `"hour"`.
 - `["now", {}]` / `["today", {}]`
 
-## Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
+## Temporal bucketing units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
+
+> These are the *bucketing* units. `temporal-extract` has a different enum — see its entry above.
 
 - Date truncation: `day`, `week`, `month`, `quarter`, `year`
 - Date extraction (integer-returning): `day-of-week`, `day-of-month`, `day-of-year`, `week-of-year`, `month-of-year`, `quarter-of-year`, `year`, `year-of-era`

@@ -1,8 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";

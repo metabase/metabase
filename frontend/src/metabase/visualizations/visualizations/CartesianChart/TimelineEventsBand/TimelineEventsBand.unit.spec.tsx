@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { TimelineEventsModel } from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";

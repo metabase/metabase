@@ -6,60 +6,62 @@ import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmpty
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { dayjs } from "metabase/dayjs";
+import { selectMetadataProvider } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import { visualizations } from "metabase/visualizations";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card } from "metabase-types/api";
+import { visualizations } from "metabase/viz-core";
+import type * as Lib from "metabase-lib";
+import type { Card, Table } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import { getTable, getTableQuestions } from "../selectors";
-import type { ReferenceLoadingProps, StubbedTable } from "../types";
+import type { StateWithReference } from "../selectors";
+import type { ReferenceLoadingProps } from "../types";
 import { getQuestionUrl } from "../utils";
 
-const emptyStateData = (table: StubbedTable, metadata: Metadata) => {
+const emptyStateData = (
+  table: Table,
+  metadataProvider: Lib.MetadataProvider,
+) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "folder" as const,
     action: t`Ask a question`,
     link: getQuestionUrl({
-      dbId: table.db_id!,
       tableId: table.id,
-      metadata,
+      metadataProvider: metadataProvider,
     }),
   };
 };
 
 const mapStateToProps = (
   state: StateWithReference,
-  props: ReferenceRouteProps,
+  props: Pick<TableQuestionsProps, "table">,
 ) => ({
-  table: getTable(state, props),
-  entities: getTableQuestions(state, props),
-  metadata: getMetadata(state),
+  metadataProvider: selectMetadataProvider(state, props.table?.db_id ?? null),
 });
 
 interface TableQuestionsProps {
-  table: StubbedTable;
-  metadata: Metadata;
-  entities: Card[];
+  table: Table | undefined;
+  metadataProvider: Lib.MetadataProvider;
+  cards: Card[];
   loading?: boolean;
   loadingError?: unknown;
 }
 
 class TableQuestions extends Component<TableQuestionsProps> {
   render() {
-    const { entities, loadingError, loading, table, metadata } = this.props;
+    const { cards, loadingError, loading, table, metadataProvider } =
+      this.props;
+
+    const questions = cards.filter((card) => card.table_id === table?.id);
 
     return (
       <div>
         <ReferenceHeader
-          name={t`Questions about ${this.props.table.display_name}`}
+          name={t`Questions about ${table?.display_name}`}
           headerIcon="table2"
         />
         <LoadingAndErrorWrapper
@@ -67,30 +69,29 @@ class TableQuestions extends Component<TableQuestionsProps> {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            questions.length > 0 ? (
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
-                  {Object.values(entities).map(
-                    (entity) =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <ListItem
-                          key={entity.id}
-                          name={entity.name}
-                          description={t`Created ${dayjs(
-                            entity.created_at,
-                          ).fromNow()} by ${entity.creator?.common_name ?? ""}`}
-                          url={Urls.card(entity)}
-                          icon={visualizations.get(entity.display)?.iconName}
-                        />
-                      ),
-                  )}
+                  {questions.map((question) => (
+                    <ListItem
+                      key={question.id}
+                      name={question.name}
+                      description={t`Created ${dayjs(
+                        question.created_at,
+                      ).fromNow()} by ${question.creator?.common_name ?? ""}`}
+                      url={Urls.card(question)}
+                      icon={visualizations.get(question.display)?.iconName}
+                    />
+                  ))}
                 </List>
               </div>
             ) : (
               <div className={S.empty}>
-                <AdminAwareEmptyState {...emptyStateData(table, metadata)} />
+                {table && (
+                  <AdminAwareEmptyState
+                    {...emptyStateData(table, metadataProvider)}
+                  />
+                )}
               </div>
             )
           }
@@ -109,6 +110,6 @@ export default connect(
   // props, because the `actions` spread in `mapDispatchToProps` is untyped.
   // The cast restores the props a caller actually passes.
   TableQuestions as unknown as React.ComponentType<
-    ReferenceRouteProps & ReferenceLoadingProps
+    ReferenceLoadingProps & Pick<TableQuestionsProps, "table" | "cards">
   >,
 );

@@ -136,7 +136,7 @@ function CopyDashboardForm({
             mt="1rem"
             name="is_shallow_copy"
             label={
-              <Group align="center" gap="xs">
+              <Group align="center" gap="xxs">
                 {t`Only duplicate the dashboard`}
 
                 <Tooltip

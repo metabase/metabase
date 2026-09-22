@@ -1,3 +1,4 @@
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 
 import type { VisualizationProps } from "../../types";
@@ -8,7 +9,7 @@ function AreaChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
 
-export const AreaChart = Object.assign(
+export const AreaChart = assignLazily(
   AreaChartComponent,
   AREA_CHART_DEFINITION,
 );

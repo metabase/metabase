@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import { Box, Flex } from "metabase/ui";
 
 import { rootId } from "../constants/simple";
@@ -73,7 +73,7 @@ const RootCachingStrategyEditor = () => {
         h="calc(100vh - 9rem)"
       >
         {confirmationModal}
-        <Flex gap="xl" className={S.scrollableLayout}>
+        <Flex gap="xxl" className={S.scrollableLayout}>
           <Box
             w="100%"
             maw="30rem"

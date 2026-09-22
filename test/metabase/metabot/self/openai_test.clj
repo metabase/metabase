@@ -370,6 +370,7 @@
     (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input []}))]
       (is (= {:summary "auto"} (reasoning "gpt-5.4")))
       (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
+      (is (= {:summary "auto"} (reasoning "gpt-6-astra")))
       (is (= {:summary "auto"} (reasoning "o3")))
       (testing "bedrock/azure vendor prefix is stripped"
         (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
@@ -396,7 +397,7 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
+    (doseq [id ["gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
       (is (true? (#'openai/supported-model? {:id id})) id)))
   (testing "non-white-listed models are not supported"
     (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
@@ -407,7 +408,8 @@
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-5.6-sol"            :created 40}
+                                    :body   {:data [{:id "gpt-6-astra"            :created 41}
+                                                    {:id "gpt-5.6-sol"            :created 40}
                                                     {:id "gpt-5.6-luna"           :created 39}
                                                     {:id "gpt-5-mini"             :created 30}
                                                     {:id "gpt-5"                  :created 28}
@@ -420,7 +422,8 @@
                                                     {:id "whisper-1"              :created 7}]}})]
         (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
-                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
+                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}
+                {:id "gpt-6-astra" :display_name "GPT-6 Astra"}]
                (:models (openai/list-models {:credentials byok-credentials}))))))))
 
 (deftest openai-raw-explicit-credentials-test
@@ -483,8 +486,8 @@
     (doseq [model ["gpt-4.1-mini" "gpt-4.1" "gpt-4o" "gpt-3.5-turbo"]]
       (is (true? (#'openai/model-supports-temperature? model))
           model)))
-  (testing "GPT-5 family and o-series reasoning models do not"
-    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol"
+  (testing "GPT-5 and GPT-6 families and o-series reasoning models do not"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol" "gpt-6-astra"
                    "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
           model))))
@@ -511,6 +514,8 @@
       (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
     (testing "temperature is omitted for a GPT-5 model"
       (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+    (testing "temperature is omitted for a GPT-6 model"
+      (is (not (contains? (request-body {:model "gpt-6-astra"}) :temperature))))
     (testing "temperature is omitted for an o-series model"
       (is (not (contains? (request-body {:model "o3-mini"}) :temperature))))))
 

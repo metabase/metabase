@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -249,6 +250,13 @@
       (testing "But will not exceed the max depth"
         (is (nil? (#'chain-filter/traverse-graph graph :start :end 2)))))))
 
+(deftest ^:parallel traverse-graph-nil-target-node-test
+  (testing "A nil target node doesn't abort the traversal (#80557)"
+    ;; array-map fixes iteration order so `nil` is peeked before `:end`.
+    (let [graph {:start (array-map nil [:start->nil] :end [:start->end])}]
+      (is (= [:start->end]
+             (#'chain-filter/traverse-graph graph :start :end 5))))))
+
 (deftest ^:parallel find-joins-test
   (mt/dataset airports
     (mt/$ids nil
@@ -493,6 +501,19 @@
 (deftest ^:parallel fk-field-to-pk-field-to-name-field-remapped-field-id-test
   (is (= (mt/id :people :name)
          (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
+
+(deftest fk-field-to-pk-field-to-name-field-remapped-field-id-user-override-test
+  (testing "Implicit FK->PK->Name remapping honors a user-set FK target that differs from the sync value"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:semantic_type nil, :fk_target_field_id nil}
+      (testing "sanity check: with the sync FK cleared, there's no remapping"
+        (is (nil? (#'chain-filter/remapped-field-id (mt/id :orders :user_id)))))
+      (mt/with-temp [:model/FieldUserSettings _ {:field_id               (mt/id :orders :user_id)
+                                                 :semantic_type          :type/FK
+                                                 :semantic_type_set      true
+                                                 :fk_target_field_id     (mt/id :people :id)
+                                                 :fk_target_field_id_set true}]
+        (is (= (mt/id :people :name)
+               (#'chain-filter/remapped-field-id (mt/id :orders :user_id))))))))
 
 (deftest ^:parallel field-to-field-remapped-chain-filter-test
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
@@ -1048,6 +1069,53 @@
           (t2/update! :model/Field {:id %users.id} {:active false})
           (testing "there are no connections when PK is inactive"
             (is (nil? (#'chain-filter/find-joins (mt/id) $$messages $$users)))))))))
+
+(deftest chain-filter-inactive-sibling-fk-target-test
+  (testing "An inactive PK on one FK target must not poison unrelated FKs from the same source table (#80557)"
+    (mt/with-temp-test-data [["users"
+                              [{:field-name "name" :base-type :type/Text}]
+                              []]
+                             ["companies"
+                              [{:field-name "name" :base-type :type/Text}]
+                              []]
+                             ["messages"
+                              [{:field-name "user_id"    :base-type :type/Integer :fk :users}
+                               {:field-name "company_id" :base-type :type/Integer :fk :companies}]
+                              []]]
+      (mt/$ids nil
+        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                    chain-filter/find-joins                (fn
+                                                                             ([a b c]
+                                                                              (#'chain-filter/find-joins* a b c false))
+                                                                             ([a b c d]
+                                                                              (#'chain-filter/find-joins* a b c d)))]
+          (try
+            ;; Direct SQL bypasses the :model/Field before-update hook that would otherwise null
+            ;; dependent fk_target_field_id values — reproducing the customer state where an FK
+            ;; still points to a since-deactivated PK.
+            (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
+            (is (= [{:lhs {:table $$messages, :field %messages.company_id}
+                     :rhs {:table $$companies, :field %companies.id}}]
+                   (#'chain-filter/find-joins (mt/id) $$messages $$companies)))
+            (finally
+              (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]}))))))))
+
+(deftest ^:parallel database-fk-relationships-drops-inactive-target-rows-test
+  (testing "FKs pointing to an inactive target don't leak nil-endpoint edges into the graph (#80557)"
+    (mt/with-temp-test-data [["users"
+                              [{:field-name "name" :base-type :type/Text}]
+                              []]
+                             ["messages"
+                              [{:field-name "user_id" :base-type :type/Integer :fk :users}]
+                              []]]
+      (mt/$ids nil
+        (try
+          (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
+          (let [graph (@#'chain-filter/database-fk-relationships* (mt/id) true)]
+            (is (not (contains? graph nil)))
+            (is (not-any? #(contains? % nil) (vals graph))))
+          (finally
+            (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]})))))))
 
 ;;; --------------------- chain-filter-mbql-query metadata app-DB call counts (no metadata N+1) ---------------------
 ;;;

@@ -1,13 +1,15 @@
-import { createMockMetadata } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import {
   setupFieldEndpoints,
   setupFieldValuesEndpoint,
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
@@ -90,7 +92,10 @@ const setup = ({ columnName, fingerprint, timezone }: SetupOpts) => {
     entities: createMockEntitiesState({ databases: [database] }),
   });
 
-  const provider = Lib.metadataProvider(SAMPLE_DB_ID, getMetadata(state));
+  const provider = Lib.metadataProvider(
+    SAMPLE_DB_ID,
+    createMockMetadataFromState(state),
+  );
   const tableMetadata = Lib.tableOrCardMetadata(provider, PRODUCTS_ID);
   const query = Lib.queryFromTableOrCardMetadata(
     provider,

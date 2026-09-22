@@ -10,6 +10,12 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  createMockAppState,
+  createMockEmbedOptions,
+  createMockEmbedState,
+  createMockState,
+} from "__support__/state";
+import {
   act,
   renderWithProviders,
   screen,
@@ -22,12 +28,6 @@ import {
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
-import {
-  createMockAppState,
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";

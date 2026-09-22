@@ -96,6 +96,7 @@
   defsetting
   disabled-for-db-reasons
   env-var-name
+  env-var-source
   env-var-value
   export?
   get
@@ -104,7 +105,6 @@
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
-  migrate-encrypted-settings!
   obfuscate-value
   obfuscated-value?
   read-setting
@@ -116,6 +116,7 @@
   set-value-of-type!
   setting-env-map-name
   string->boolean
+  unreadable-user-settings-key
   user-facing-value
   user-readable-values-map
   uuid-nonce-base
@@ -125,7 +126,8 @@
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms
   cache-last-updated-at
-  restore-cache!]
+  restore-cache!
+  restore-cache-if-needed!]
  [metabase.settings.models.setting.multi-setting
   define-multi-setting
   define-multi-setting-impl]

@@ -42,11 +42,12 @@
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
         (is (= stub-query (get-in result [:structured-output :query])))))))
 
-(deftest create-chart-treemap-test
-  (testing "the tool schema accepts treemap as a chart type"
-    (let [result (run-create-chart "treemap")]
-      (is (= :treemap (get-in result [:structured-output :chart-type])))
-      (is (= "treemap" (get-in result [:data-parts 0 :data :display]))))))
+(deftest create-chart-new-chart-types-test
+  (testing "the tool schema accepts newly added chart types"
+    (doseq [chart-type ["treemap" "boxplot"]]
+      (let [result (run-create-chart chart-type)]
+        (is (= (keyword chart-type) (get-in result [:structured-output :chart-type])))
+        (is (= chart-type (get-in result [:data-parts 0 :data :display])))))))
 
 (deftest edit-chart-query-fallback-test
   (testing "edit_chart resolves the query from queries-state when chart memory has no query"
@@ -66,4 +67,11 @@
       (is (= 1 (count parts)))
       (is (= "generated_entity" (:data-type (first parts))))
       (is (= stub-query (get-in entity [:query :query])))
-      (is (= "pie" (:display entity))))))
+      (is (= "pie" (:display entity)))
+      (testing "structured-output also carries the resolved query, not just data-parts"
+        ;; Regression: edit-chart-tool's :query var (used for data-parts above) came
+        ;; from queries-state, but edit-chart's :result — which becomes
+        ;; structured-output and is what extract-charts stores into :charts state —
+        ;; only looked at the chart's own (here empty) :queries, landing on nil.
+        (is (= {:query-id "q-1" :query stub-query}
+               (select-keys (:structured-output result) [:query-id :query])))))))

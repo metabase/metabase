@@ -51,16 +51,16 @@ export const ConfirmModal = ({
 
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
-      <Flex direction="column" gap="lg" mt="md">
+      <Flex direction="column" gap="xl" mt="lg">
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
-        <Flex align="center" justify="space-between" gap="md">
+        <Flex align="center" justify="space-between" gap="lg">
           {errorMessage ? (
             <Text c="feedback-negative">{errorMessage} </Text>
           ) : (
             <div />
           )}
-          <Flex align="center" justify="flex-end" gap="md">
+          <Flex align="center" justify="flex-end" gap="lg">
             {closeButtonText && (
               <Button {...closeButtonProps} onClick={onClose}>
                 {closeButtonText}

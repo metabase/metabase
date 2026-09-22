@@ -156,6 +156,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.log :as log]
@@ -171,6 +172,7 @@
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
@@ -197,8 +199,8 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment :- [:map [:definition ::segments.schema/definition]]]
-  (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
+  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]]
+  (let [table (->> segment :table_id xrays.db/table)]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name                 (:display_name table)
@@ -211,7 +213,7 @@
 
 (mu/defmethod ->root :xrays/Metric :- ::ads/root
   [{:keys [table-id], :as metric} :- ::ads/metric]
-  (let [table (some->> table-id (t2/select-one :model/Table :id))]
+  (let [table (some->> table-id xrays.db/table)]
     {:entity                     metric
      :full-name                  (if (:id metric)
                                    (trun "{0} metric" "{0} metrics" (:name metric))
@@ -238,31 +240,26 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(mu/defn- source-card-id [card-or-question :- [:map
-                                               [:dataset_query ::ads/query]]]
+(mu/defn- source-card-id [card-or-question :- ::ads/card-or-question]
   (lib/primary-source-card-id (:dataset_query card-or-question)))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
+  [card-or-question :- ::ads/card-or-question]
   (some? (source-card-id card-or-question)))
 
 (mu/defn- native-query?
   "Is this card or question native (SQL)?"
-  [{query :dataset_query, :as _card-or-question} :- [:map
-                                                     [:dataset_query ::ads/query]]]
+  [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
   (lib/native-only-query? query))
 
 (mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
+  [card-or-question :- ::ads/card-or-question]
   (when-let [source-card-id (source-card-id card-or-question)]
-    (t2/select-one :model/Card :id source-card-id)))
+    (xrays.db/card source-card-id)))
 
 (mu/defn- table-like?
-  [{query :dataset_query, :as _card-or-question} :- [:map
-                                                     [:dataset_query ::ads/query]]]
+  [{query :dataset_query, :as _card-or-question} :- ::ads/card-or-question]
   (and
    (empty? (lib/aggregations query))
    (empty? (lib/breakouts query))))
@@ -277,8 +274,7 @@
   ((some-fn :table-id :table_id) card-or-question))
 
 (mu/defn- source
-  [card :- [:map
-            [:dataset_query ::ads/query]]]
+  [card :- ::ads/card-or-question]
   (cond
     ;; This is a model
     (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
@@ -288,11 +284,10 @@
                                 source-question
                                 (assoc :entity_type :entity/GenericTable))
     (native-query? card)    (-> card (assoc :entity_type :entity/GenericTable))
-    :else                   (->> card table-id (t2/select-one :model/Table :id))))
+    :else                   (->> card table-id xrays.db/table)))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card :- [:map
-            [:dataset_query ::ads/query]]]
+  [card :- ::ads/card-or-question]
   (let [source (source card)]
     {:entity                     card
      :source                     source
@@ -396,7 +391,7 @@
     (->> dashboard-templates
          (filter (fn [{:keys [applies_to]}]
                    (let [[entity-type field-type] applies_to]
-                     (and (isa? table-type entity-type)
+                     (and (isa? types/entity-hierarchy table-type entity-type)
                           (or (nil? field-type)
                               (magic.util/field-isa? entity field-type))))))
          (sort-by :specificity >))))
@@ -407,10 +402,7 @@
    be returned."
   [table]
   (let [fields (field/with-targets
-                 (t2/select :model/Field
-                            :table_id           (u/the-id table)
-                            :fk_target_field_id [:not= nil]
-                            :active             true))]
+                 (xrays.db/active-fk-fields-for-table (u/the-id table)))]
     (perms/prime-table-perms-cache {:table-ids (into #{} (keep (comp :table_id :target)) fields)})
     (for [{:keys [id target]} fields
           :when (some-> target mi/can-read?)]
@@ -420,18 +412,14 @@
   (let [db-id (or ((some-fn :db_id :database_id) source)
                   (throw (ex-info "Source is missing Database ID"
                                   {:source source})))]
-    (t2/select-one :model/Database :id db-id)))
+    (xrays.db/database db-id)))
 
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
-      (comp (->> (-> (t2/select :model/Field
-                                :table_id [:in (map u/the-id tables)]
-                                :visibility_type "normal"
-                                :preview_display true
-                                :active true)
+      (comp (->> (-> (xrays.db/visible-fields-for-tables (map u/the-id tables))
                      (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
                  field/with-targets
                  (map #(assoc % :db db))
@@ -446,7 +434,7 @@
                                           (update field :semantic_type keyword)
                                           (mi/instance :model/Field field)
                                           (analyze/run-classifiers field {})
-                                          (assoc field :db db)))))]
+                                          (assoc field :db db :xrays/database-id (u/the-id db))))))]
           (constantly source-fields))
         (constantly [])))))
 
@@ -484,7 +472,7 @@
   [{root :root :as base-context} :- ::ads/context
    {template-cards      :cards
     :keys               [dashboard_filters]
-    :as                 dashboard-template}
+    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate
    {grounded-dimensions :dimensions
     grounded-metrics    :metrics
     grounded-filters    :filters} :- ::ads/grounded-values]
@@ -530,7 +518,7 @@
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (mu/defn- indepth
-  [{:keys [dashboard-templates-prefix url] :as root}
+  [{:keys [dashboard-templates-prefix url] :as root} :- ::ads/root
    {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
@@ -566,8 +554,7 @@
          (hash-map :drilldown-fields))))
 
 (mu/defn- comparisons
-  [root :- [:map
-            [:database ::lib.schema.id/database]]]
+  [root :- ::ads/root]
   {:compare (concat
              (for [segment (->> root :entity related/related :segments (map ->root))]
                {:url         (str (:url root) "/compare/segment/" (-> segment :entity u/the-id))
@@ -676,9 +663,9 @@
 (mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
-  [root
-   available-dimensions
-   dashboard-template :- [:maybe dashboard-templates/DashboardTemplate]]
+  [root                 :- ::ads/root
+   available-dimensions :- ::ads/dim-name->matching-fields
+   dashboard-template   :- [:maybe dashboard-templates/DashboardTemplate]]
   (->> (merge (indepth root dashboard-template)
               (drilldown-fields root available-dimensions)
               (related-entities root)
@@ -688,7 +675,7 @@
 (mu/defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
   [{{:keys [show url query-filter] :as root} :root :as base-context} :- ::ads/context
-   {:as dashboard-template}
+   {:as dashboard-template} :- dashboard-templates/DashboardTemplate
    {grounded-dimensions :dimensions :as grounded-values} :- ::ads/grounded-values]
   (let [show      (or show max-cards)
         dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
@@ -761,7 +748,7 @@
   - Additional options such as how many cards to show, a cell query (a drill through), etc."
   [entity opts]
   (automagic-analysis-method
-   (lib/normalize ::ads/root.entity entity)
+   (m/assoc-some (lib/normalize ::ads/root.entity entity) :xrays/database-id (:xrays/database-id entity))
    (lib/normalize ::automagic-analysis.opts opts)))
 
 (defmethod automagic-analysis-method :model/Table
@@ -769,7 +756,7 @@
   (automagic-dashboard (merge (->root table) opts)))
 
 (mu/defmethod automagic-analysis-method :model/Segment
-  [segment :- [:map [:definition ::segments.schema/definition]]
+  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]
    opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
@@ -782,8 +769,7 @@
                                                    (ms/InstanceOf :xrays/Metric)
                                                    ::ads/metric]]]
   [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (map (mu/fn [aggregation-clause :- ::lib.schema.aggregation/aggregation]
          (if (lib/clause-of-type? aggregation-clause :metric)
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
@@ -797,8 +783,7 @@
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (for [breakout     (lib/breakouts (:dataset_query question))
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
@@ -808,9 +793,8 @@
 
 (mu/defn- decompose-question
   [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]
-   opts]
+   question :- ::ads/card-or-question
+   opts     :- ::automagic-analysis.opts]
   (letfn [(analyze [x]
             (try
               (automagic-analysis
@@ -830,10 +814,10 @@
 
 (mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
-  [dashboard
-   entity
-   getter-fn
-   setter-fn]
+  [dashboard :- ::ads/dashboard
+   entity    :- ::ads/card-or-question
+   getter-fn :- ifn?
+   setter-fn :- ifn?]
   ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
   ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
   ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
@@ -933,29 +917,9 @@
   - list-like?: Is this field 'list like'
 
   Filters out tables that are link-tables"
-  [clauses]
+  [database-id schema]
   (->>
-   (t2/select [:model/Table :id :schema :display_name :entity_type :db_id
-               [:ts.count :num-fields]
-               [[:and
-                 [:>= :ts.count 2]
-                 [:= :ts.count_non_pks 1]] :list-like?]]
-              {:inner-join [[^:allow-subquery {:select   [:f.table_id
-                                                          [:%count.* "count"]
-                                                          [[:count [:case [:or [:not= :semantic_type "type/PK"]
-                                                                           [:= :f.semantic_type nil]]
-                                                                    [:inline 1] :else [:inline nil]]]
-                                                           :count_non_pks]
-                                                          [[:count [:case [:in :f.semantic_type ["type/PK" "type/FK"]]
-                                                                    [:inline 1] :else [:inline nil]]]
-                                                           :count_pks_and_fks]]
-                                               :from     [[:metabase_field :f]]
-                                               :where    [:= :f.active true]
-                                               :group-by [:f.table_id]} :ts]
-                            [:and [:= :ts.table_id :id]
-                             [:> :ts.count 0]
-                             [:!= :ts.count :ts.count_pks_and_fks]]]
-               :where (into [:and] clauses)})
+   (xrays.db/candidate-tables-with-field-stats database-id schema)
    (map #(update % :list-like? (fn [val] (if (int? val) (= val 1) val)))))) ;; handle mysql returning the predicate value as an int
 
 (def ^:private ^:const ^Long max-candidate-tables
@@ -975,11 +939,7 @@
   ([database] (candidate-tables database nil))
   ([database schema]
    (let [dashboard-templates (dashboard-templates/get-dashboard-templates ["table"])
-         tables              (load-tables-with-enhanced-table-stats
-                              (cond-> [[:= :db_id (u/the-id database)]
-                                       [:= :visibility_type nil]
-                                       [:= :active true]]
-                                schema (conj [:= :schema schema])))]
+         tables              (load-tables-with-enhanced-table-stats (u/the-id database) schema)]
      ;; the readable check below runs once per table, so load their permissions in one go
      (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                      :table-ids (into #{} (map :id) tables)})

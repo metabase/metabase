@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { createSeriesCard } from "metabase/common/utils/series";
 import { dayjs } from "metabase/dayjs";
 import {
   CARTESIAN_SERIES_COL_NAME,
@@ -13,22 +12,25 @@ import {
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { isCartesianChart } from "metabase/visualizations";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   BrushClickObject,
   BrushRange,
   ClickObject,
-  ComputedVisualizationSettings,
-  HighlightedObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
+import {
+  type ComputedVisualizationSettings,
+  type HighlightedObject,
+  getSeriesVizSettingsKey,
+  isCartesianChart,
+} from "metabase/viz-core";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
@@ -43,13 +45,13 @@ import type {
   Dataset,
   DatasetColumn,
   DateTimeAbsoluteUnit,
-  ExplorationBlockNodeType,
   ExplorationExploreFilter,
   ExplorationQuery,
   ExplorationQueryId,
   ExplorationQueryType,
   RowValue,
   RowValues,
+  SeriesCard,
   SeriesSettings,
   SingleSeries,
   VisualizationDisplay,
@@ -142,13 +144,13 @@ export function buildSeriesGroup({
         cardVizSettings["map.colors"] = getColorplethColorScale(color);
       }
     }
-    const card = createSeriesCard(
-      query.id,
-      query.name ?? null,
+    const card: SeriesCard = {
+      id: query.id,
+      name: query.name ?? undefined,
       display,
-      cardVizSettings,
-      query.dataset_query ?? undefined,
-    );
+      visualization_settings: cardVizSettings,
+      dataset_query: query.dataset_query ?? STRUCTURED_QUERY_TEMPLATE,
+    };
     return { card, data: dataset.data };
   });
 
@@ -458,7 +460,7 @@ export function formatColumnValue(
   columnSettings?: ColumnSettings,
 ): string {
   const settings = columnSettings ?? { column };
-  return String(formatValue(value ?? NULL_DISPLAY_VALUE, settings));
+  return String(formatValue(value ?? getNullDisplayValue(), settings));
 }
 
 function getClickedColumnSettings(
@@ -617,15 +619,9 @@ export function getExploreFurtherFilters(
 
 export function canExploreFurther(
   clicked: ClickObject,
-  blockType?: ExplorationBlockNodeType,
   queryType?: ExplorationQueryType,
 ): boolean {
-  if (blockType == null || queryType == null) {
-    return false;
-  }
-  // disable for dimension blocks - every query in a dimension block is cut by the same dimension
-  // so filtering on a single dimension value doesn't provide a new view of the data
-  if (blockType === "dimension") {
+  if (queryType == null) {
     return false;
   }
 

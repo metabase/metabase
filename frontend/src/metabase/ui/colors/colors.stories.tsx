@@ -11,7 +11,7 @@ const COLOR_NAMES = Object.keys(colors);
 
 export function Default() {
   return (
-    <Flex gap="md" wrap="wrap" pb="lg">
+    <Flex gap="lg" wrap="wrap" pb="xl">
       {COLOR_NAMES.map((colorName) => {
         return (
           <Card

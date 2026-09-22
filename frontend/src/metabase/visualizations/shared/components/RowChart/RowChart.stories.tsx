@@ -5,9 +5,11 @@ import { Box } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-
-import { RowChart, type RowChartProps } from "./RowChart";
-import { getStaticChartTheme } from "./theme";
+import {
+  RowChart,
+  type RowChartProps,
+  getStaticChartTheme,
+} from "metabase/viz-core";
 
 export default {
   title: "Viz/Shared/RowChart",

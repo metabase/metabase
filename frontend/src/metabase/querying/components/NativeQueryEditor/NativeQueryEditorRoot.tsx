@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useDebouncedCallback, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
@@ -11,12 +11,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import {
   CodeMirrorEditor,
   type CodeMirrorEditorProps,
@@ -30,7 +30,6 @@ import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -70,12 +69,15 @@ export type NativeQueryEditorCoreProps = Omit<
   "query"
 > & {
   availableHeight?: number;
+  canAutoOpenDataReference?: boolean;
   canChangeDatabase?: boolean;
   cancelQuery?: () => void;
   className?: string;
   closeSnippetModal?: () => void;
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
   editorContext?: "question" | "action";
   handleResize?: () => void;
   highlightedLineNumbers?: number[];
@@ -85,7 +87,6 @@ export type NativeQueryEditorCoreProps = Omit<
   isResultDirty?: boolean;
   isRunnable?: boolean;
   isRunning?: boolean;
-  isPromptInputOpen?: boolean;
   isShowingDataReference?: boolean;
   isShowingSnippetSidebar?: boolean;
   isShowingTemplateTagsEditor?: boolean;
@@ -99,7 +100,6 @@ export type NativeQueryEditorCoreProps = Omit<
   onOpenModal?: (modalType: QueryModalType) => void;
   onRejectProposed?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
-  onTogglePromptInput?: () => void;
   openDataReferenceAtQuestion?: (id: CardId) => void;
   openSnippetModalWithSelectedText?: () => void;
   placeholder?: string;
@@ -132,6 +132,8 @@ export const NativeQueryEditorRoot = forwardRef<
   const {
     children,
     availableHeight = Infinity,
+    canAutoOpenDataReference = true,
+    hasSqlGenerationAccess,
     canChangeDatabase = true,
     cancelQuery,
     className,
@@ -145,7 +147,6 @@ export const NativeQueryEditorRoot = forwardRef<
     insertSnippet,
     isNativeEditorOpen,
     isInitiallyOpen,
-    isPromptInputOpen = false,
     isResultDirty = false,
     isRunnable = false,
     isRunning = false,
@@ -159,7 +160,6 @@ export const NativeQueryEditorRoot = forwardRef<
     onOpenModal,
     onRejectProposed,
     onSetDatabaseId,
-    onTogglePromptInput,
     openDataReferenceAtQuestion,
     openSnippetModalWithSelectedText,
     placeholder,
@@ -201,11 +201,8 @@ export const NativeQueryEditorRoot = forwardRef<
 
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
-  const isMetabotSidebarOpen = useSelector((state) =>
-    getMetabotVisible(state, "omnibot"),
-  );
   const shouldOpenDataReference =
-    screenSize !== "small" && !isMetabotSidebarOpen;
+    screenSize !== "small" && canAutoOpenDataReference;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
@@ -223,15 +220,41 @@ export const NativeQueryEditorRoot = forwardRef<
     }
   }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
-  const handleChange = useCallback(
+  // The editor reconfigures itself whenever the identity of its callbacks
+  // changes, so they must not depend on the query, which changes on every
+  // keystroke.
+  const queryRef = useLatest(query);
+  const questionRef = useLatest(question);
+
+  const applyQueryText = useCallback(
     (queryText: string) => {
-      if (query.queryText() !== queryText) {
-        const updatedQuery = query.setQueryText(queryText);
-        setDatasetQuery(updatedQuery);
+      const currentQuery = queryRef.current;
+      if (currentQuery.queryText() !== queryText) {
+        setDatasetQuery(currentQuery.setQueryText(queryText));
       }
     },
-    [query, setDatasetQuery],
+    [queryRef, setDatasetQuery],
   );
+
+  // Putting the edit in the store rerenders the query builder, which is far
+  // more work than the keystroke that caused it. A zero delay runs it in the
+  // next task, so the editor paints the character first. That is what keeps
+  // typing responsive on large queries (DEV-3545).
+  const handleChange = useDebouncedCallback(applyQueryText, {
+    delay: 0,
+    flushOnUnmount: true,
+  });
+
+  // Anything that reads the query from the store needs the pending edit first.
+  const handleRunQuery = useCallback(() => {
+    handleChange.flush();
+    runQuery?.();
+  }, [handleChange, runQuery]);
+
+  const handleBlur = useCallback(() => {
+    handleChange.flush();
+    onBlur?.();
+  }, [handleChange, onBlur]);
 
   const handleSnippetUpdate = useCallback(
     (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
@@ -258,7 +281,7 @@ export const NativeQueryEditorRoot = forwardRef<
   }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
   const handleFormatQuery = useCallback(async () => {
-    const query = question.query();
+    const query = questionRef.current.query();
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
     const canFormatQuery = engine != null && canFormatForEngine(engine);
@@ -273,8 +296,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
     const formattedQuery = await formatQuery(queryText, engine);
     handleChange(formattedQuery);
+    handleChange.flush();
     focusEditor();
-  }, [question, focusEditor, handleChange]);
+  }, [questionRef, focusEditor, handleChange]);
 
   const handleResize = useCallback(
     (height: number) => {
@@ -309,13 +333,11 @@ export const NativeQueryEditorRoot = forwardRef<
     isRunnable,
     isRunning,
     isResultDirty,
-    runQuery,
+    runQuery: handleRunQuery,
     cancelQuery,
     nativeEditorSelectedText,
     snippets,
     snippetCollections,
-    isPromptInputOpen,
-    onTogglePromptInput,
     isShowingDataReference,
     isShowingSnippetSidebar,
     isShowingTemplateTagsEditor,
@@ -366,11 +388,12 @@ export const NativeQueryEditorRoot = forwardRef<
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
                   placeholder={placeholder}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}
-                  onBlur={onBlur}
+                  onBlur={handleBlur}
                   onChange={handleChange}
-                  onRunQuery={runQuery}
+                  onRunQuery={handleRunQuery}
                   onSelectionChange={setNativeEditorSelectedRange}
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
@@ -379,9 +402,9 @@ export const NativeQueryEditorRoot = forwardRef<
 
                 <Stack
                   display={readOnly ? "none" : undefined}
-                  gap="md"
+                  gap="lg"
                   justify="flex-end"
-                  p="md"
+                  p="lg"
                 >
                   {proposedQuestion && onRejectProposed && onAcceptProposed && (
                     <>
@@ -400,6 +423,7 @@ export const NativeQueryEditorRoot = forwardRef<
                               proposedQuestion.legacyNativeQuery();
                             if (proposedQuery) {
                               handleChange(proposedQuery.queryText());
+                              handleChange.flush();
                               onAcceptProposed(proposedQuery.datasetQuery());
                             }
                           }}

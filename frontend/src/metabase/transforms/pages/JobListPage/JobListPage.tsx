@@ -119,14 +119,14 @@ export const JobListPage = () => {
 
   return (
     <PageContainer data-testid="transforms-job-list" gap={0}>
-      <TransformsHeader showMetabotButton />
+      <TransformsHeader />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}
             leftSection={<Icon name="search" />}
-            bdrs="md"
+            bdrs="sm"
             flex="1"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

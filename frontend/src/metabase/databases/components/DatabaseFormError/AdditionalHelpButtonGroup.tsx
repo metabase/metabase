@@ -20,7 +20,7 @@ export const AdditionalHelpButtonGroup = () => {
     <>
       {showMetabaseLinks && (
         <>
-          <Divider variant="dashed" mb="lg" />
+          <Divider variant="dashed" mb="xl" />
           <Button
             className={CS.link}
             component={Link}

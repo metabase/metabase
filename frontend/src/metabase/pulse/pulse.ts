@@ -180,7 +180,6 @@ export function createChannel(
     recipients: [],
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
-    schedule_hour: 8,
     schedule_frame: "first",
     ...opts,
   };

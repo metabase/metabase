@@ -29,7 +29,7 @@ export function UpdateTagModal({
     <Modal
       title={t`Rename the ${tag.name} tag`}
       opened
-      padding="xl"
+      padding="xxl"
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
@@ -73,7 +73,7 @@ function UpdateTagForm({ tag, onUpdate, onClose }: UpdateTagFormProps) {
     >
       {({ dirty }) => (
         <Form>
-          <Stack gap="lg">
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Name`}

@@ -37,7 +37,7 @@ function getColumns({
           return null;
         }
         return (
-          <Menu shadow="md" position="bottom-end">
+          <Menu shadow="sm" position="bottom-end">
             <Menu.Target>
               <ActionIcon
                 variant="subtle"

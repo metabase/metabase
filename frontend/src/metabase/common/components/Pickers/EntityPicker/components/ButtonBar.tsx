@@ -64,23 +64,23 @@ export const ButtonBar = ({
     <Flex
       justify="space-between"
       align="center"
-      p="md"
+      p="lg"
       miw={0}
       style={{
         borderTop: "1px solid var(--mb-color-border-neutral)",
         overflowX: "auto",
       }}
     >
-      <Flex gap="md" mr="md">
+      <Flex gap="lg" mr="lg">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>
       {error && (
-        <Text c="feedback-negative" px="md" lh="1rem">
+        <Text c="feedback-negative" px="lg" lh="1rem">
           {error}
         </Text>
       )}
-      <Flex gap="md">
+      <Flex gap="lg">
         <Button onClick={onCancel} type="button">
           {cancelButtonText ?? t`Cancel`}
         </Button>

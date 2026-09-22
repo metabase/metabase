@@ -6,7 +6,7 @@ import TransformIndexesEmpty from "./assets/transform-indexes-empty.svg?componen
 
 export function NoIndexes() {
   return (
-    <Flex gap="md" direction="column" justify="center" align="center" mih={360}>
+    <Flex gap="lg" direction="column" justify="center" align="center" mih={360}>
       <TransformIndexesEmpty aria-hidden />
       <Text
         c="text-secondary"

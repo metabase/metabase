@@ -117,14 +117,14 @@ export const DeleteDatabaseModal = ({
       opened={opened}
       title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
-      padding="xl"
+      padding="xxl"
       {...props}
     >
       <LoadingAndErrorWrapper loading={loading}>
         <Stack
           component="form"
-          mt="md"
-          gap="md"
+          mt="lg"
+          gap="lg"
           onSubmit={canDelete ? handleSubmit : undefined}
         >
           {hasContent && (
@@ -184,7 +184,7 @@ export const DeleteDatabaseModal = ({
           </DeleteDatabaseModalSection>
           <Flex gap="sm" justify="flex-end" align="center">
             {errorMessage && (
-              <Box c="feedback-negative" px="md">
+              <Box c="feedback-negative" px="lg">
                 {errorMessage}
               </Box>
             )}
@@ -212,7 +212,7 @@ export const DeleteDatabaseModalSection = ({
     <Box
       h={isHidden ? 0 : "unset"}
       opacity={isHidden ? 0 : 1}
-      p="xs"
+      p="xxs"
       style={{
         transition: "all 350ms, opacity 200ms",
         overflow: "hidden",

@@ -73,6 +73,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest default-schema-test
+  (mt/test-driver :postgres
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :postgres (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [details (assoc (:details (mt/db)) :additional-options "currentSchema=information_schema")]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (is (= "information_schema"
+                 (driver.sql/default-schema :postgres database))))))))
+
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
                       ;;    can debug it. This is much less confusing when trying to fix broken tests.
@@ -472,7 +483,8 @@
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
         (let [field-clause [:field
-                            {:binning
+                            {:lib/uuid (str (random-uuid))
+                             :binning
                              {:strategy  :num-bins
                               :num-bins  100
                               :min-value 0.75
@@ -2550,6 +2562,7 @@
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"
+                                         :default_schema "public"
                                          :initial_sync_status "complete"}
                      :model/Table t {:name "final"
                                      :schema "public"

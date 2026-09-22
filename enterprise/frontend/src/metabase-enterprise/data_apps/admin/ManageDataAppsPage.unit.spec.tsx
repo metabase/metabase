@@ -108,6 +108,21 @@ describe("ManageDataAppsPage", () => {
       expect(screen.getByText("Disabled")).toBeInTheDocument();
     });
 
+    it("shows an outdated app as plain text with an Outdated badge", async () => {
+      setup({
+        apps: [
+          createMockDataApp({ name: "sales", version: 1, outdated: true }),
+        ],
+      });
+
+      expect(await screen.findByText("Sales")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Sales" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Outdated")).toBeInTheDocument();
+      expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
+    });
+
     it("gives every app its own actions menu", async () => {
       setup({
         apps: [
@@ -223,8 +238,8 @@ describe("ManageDataAppsPage", () => {
     });
 
     it("removes an app once the repository is unlinked", async () => {
-      // A sync never deletes, so an app synced while a repo was connected stays
-      // listed after unlinking — with a Remove action to clear it out.
+      // Unlinked, there's no sync to prune it, so an app synced while a repo was
+      // connected stays listed — with a Remove action to clear it out.
       setup({
         configured: false,
         apps: [createMockDataApp({ name: "sales" })],

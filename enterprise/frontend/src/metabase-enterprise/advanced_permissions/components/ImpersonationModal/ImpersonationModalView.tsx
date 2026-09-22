@@ -85,7 +85,7 @@ export const ImpersonationModalView = ({
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
-    <Stack gap="sm" p="xl">
+    <Stack gap="sm" p="xxl">
       <h2>{modalTitle}</h2>
       <Text my="sm" lh="lg">
         {modalMessage}{" "}

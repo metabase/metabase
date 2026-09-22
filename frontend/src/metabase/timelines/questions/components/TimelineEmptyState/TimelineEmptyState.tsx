@@ -32,7 +32,7 @@ const TimelineEmptyState = ({
     //
     // If we refactor the `TimelineSidebar` in the future, and decouple it from the
     // `SidebarContent`, this empty state should be properly aligned vertically.
-    <Stack align="center" ta="center" gap="lg" mt="10rem">
+    <Stack align="center" ta="center" gap="xl" mt="10rem">
       <img src={EmptyEvent} alt={t`Collection event illustration`} />
       <Box maw="25rem">
         <Title

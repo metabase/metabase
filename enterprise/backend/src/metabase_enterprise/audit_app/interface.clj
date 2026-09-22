@@ -10,9 +10,12 @@
    {:min 1}
    [:tuple
     ms/KeywordOrString
-    [:map
-     [:base_type    ms/FieldType]
-     [:display_name ms/NonBlankString]]]])
+    [:map {:closed true}
+     [:base_type      ms/FieldType]
+     [:display_name   ms/NonBlankString]
+     [:remapped_to    {:optional true} :keyword]
+     [:remapped_from  {:optional true} :keyword]
+     [:code           {:optional true} :boolean]]]])
 
 (defmulti internal-query
   "Define a new internal query type. Conventionally `query-type` should be a namespaced keyword with the namespace in
@@ -39,5 +42,7 @@
   (let [query-type (keyword query-type)
         ns-str     (namespace query-type)]
     (when (contains? loadable-namespaces ns-str)
+      ;; The namespace comes from the fixed allowlist above.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require (symbol ns-str)))
     (apply internal-query query-type args)))

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.support-access-grants.schema
   "Malli schemas for support access grant API request and response bodies."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -18,7 +19,7 @@
 
 (mr/def ::create-grant-request
   "Schema for POST /api/ee/support-access-grants request body."
-  [:map
+  [:map {:closed true}
    [:grant_duration_minutes [:int {:min 1 :max max-grant-duration-minutes}]]
    [:ticket_number {:optional true} [:maybe [:string {:min 1 :max 100}]]]
    [:notes {:optional true} [:maybe [:string {:min 1 :max 255}]]]])
@@ -27,7 +28,7 @@
 
 (mr/def ::grant-response
   "Schema for a support access grant object in API responses."
-  [:map
+  [:map {:closed true}
    [:id ms/PositiveInt]
    [:user_id ms/PositiveInt]
    [:user_name [:maybe :string]]
@@ -53,3 +54,23 @@
 (mr/def ::current-grant-response
   "Schema for GET /api/ee/support-access-grants/current response."
   [:maybe ::grant-response])
+
+(mr/def ::support-access-grant-log
+  "A SupportAccessGrantLog as selected from the app DB: every column of `:support_access_grant_log`."
+  [:merge
+   ::support-access-grant-log.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
+
+(mr/def ::support-access-grant-log.update
+  "What an update (or insert) of a SupportAccessGrantLog accepts: every column of `:support_access_grant_log` except `id`, all optional."
+  [:map {:closed true}
+   [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
+   [:ticket_number         {:optional true} [:maybe :string]]
+   [:notes                 {:optional true} [:maybe :string]]
+   [:grant_start_timestamp {:optional true} [:maybe ms/TemporalInstant]]
+   [:grant_end_timestamp   {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_by_user_id    {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])

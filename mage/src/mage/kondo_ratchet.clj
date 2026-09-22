@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [dev.kondo-ratchet :as kondo-ratchet]
+   [mage.kondo :as kondo]
    [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
@@ -335,6 +336,8 @@
   pre-removal baseline, so files with pre-existing findings are excluded from the sweep and reported.
   An `--audit` removal that sticks takes its stale marker comment with it."
   [parsed]
+  ;; Without this, hooks reading the analysis cache report nothing and their ignores all look redundant.
+  (kondo/warm-cache! lint-roots)
   (println "Running kondo with :redundant-ignore enabled (full lint, takes a minute or two)...")
   (let [audit?     (get-in parsed [:options :audit])
         findings   (kondo-findings! :redundant-ignore lint-roots)
@@ -416,7 +419,8 @@
                                               (count covered)
                                               (str/join ", " (sort (distinct (map :type covered))))
                                               keep-marker)))
-                           (println "Now run `./bin/mage fix-kondo-ratchets` to update the budgets, and `./bin/mage kondo` for the final word.")
+                           (println (str "Now run `./bin/mage kondo-ratchets` to check the suppressions, "
+                                         "then `./bin/mage kondo` to run the final lint."))
                            (when (or (seq exposed) (seq mismatched))
                              (throw (ex-info "the removals left warnings in the tree; fix or re-ignore them by hand and re-run"
                                              {:exit-code 1}))))
@@ -473,6 +477,8 @@
   [[linter-arg & paths]]
   (when (str/blank? (str linter-arg))
     (throw (ex-info "Usage: ./bin/mage kondo-insert-ignores LINTER [PATHS...]" {:exit-code 1})))
+  ;; Without this, a cache-reading hook linter finds no sites at all.
+  (kondo/warm-cache! lint-roots)
   (let [linter   (keyword (str/replace-first linter-arg #"^:" ""))
         roots    (or (seq paths) lint-roots)
         _        (println (format "Running kondo with %s enabled over %s..." linter (str/join " " roots)))
@@ -484,16 +490,15 @@
     (println)
     (if (empty? by-file)
       (println "No findings; nothing inserted.")
-      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage fix-kondo-ratchets --seed %s"
+      (do (println (format "Inserted %d ignores across %d files. Now seed the budget:\n  ./bin/mage kondo-ratchets-shrink --seed %s"
                            (count (distinct (map (juxt :filename :row) findings)))
                            (count by-file)
                            linter))
-          ;; Inserted ignores carry no justification comment of their own, so the justification ratchet
-          ;; fails unless the linter is grandfathered -- but an insert lands under whatever comment was
-          ;; already above the flagged form, which justifies it. Advising an exemption none of the sites
-          ;; need would just fail no-stale-exemptions-test instead, so ask the scanner first.
+          ;; An existing comment above the flagged form may justify the inserted ignore. Suggest an
+          ;; exemption only when the scanner still finds uncommented ignores; otherwise it is unnecessary
+          ;; and the ratchet check reports it as stale.
           (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
             (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
                                                               (kondo-ratchet/scan roots))))
               (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
-                               linter kondo-ratchet/ratchets-file))))))))
+                               linter kondo-ratchet/*ratchets-file*))))))))

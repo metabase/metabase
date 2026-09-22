@@ -1,8 +1,8 @@
 import { createContext, useContext } from "react";
 
+import type { DataSelectorDatabase } from "metabase/querying/common/components/DataSelector";
 import type { QueryModalType } from "metabase/querying/constants";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Collection,
@@ -35,8 +35,10 @@ export interface NativeQueryEditorContextValue {
 
   canChangeDatabase: boolean;
   editorContext: "question" | "action";
-  databaseIsDisabled?: (database: Database) => boolean;
-  databaseDisabledTooltip?: (database: Database) => string | undefined;
+  databaseIsDisabled?: (database: DataSelectorDatabase) => boolean;
+  databaseDisabledTooltip?: (
+    database: DataSelectorDatabase,
+  ) => string | undefined;
   onSetDatabaseId?: (id: DatabaseId) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
 
@@ -50,8 +52,6 @@ export interface NativeQueryEditorContextValue {
   snippets: NativeQuerySnippet[];
   snippetCollections: Collection[];
 
-  isPromptInputOpen?: boolean;
-  onTogglePromptInput?: () => void;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   isShowingTemplateTagsEditor: boolean;

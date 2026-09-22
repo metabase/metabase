@@ -1,19 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCardQueryDownloadEndpoint,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -133,7 +133,7 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
   const dashcard = createMockDashboardCard({
     ...card,
@@ -177,6 +177,23 @@ const setup = ({
 };
 
 describe("DashCardMenu", () => {
+  it("supports opening and closing the menu with the keyboard", async () => {
+    setup();
+
+    const menuButton = screen.getByRole("button", { name: "More options" });
+    menuButton.focus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+    expect(menuButton).toHaveFocus();
+  });
+
   it("should display a link to the notebook editor", async () => {
     const { router } = setup();
 
@@ -312,7 +329,7 @@ describe("DashCardMenu", () => {
 
 describe("DashCardMenu.shouldRender", () => {
   const dashboard = createMockDashboard();
-  const metadata = getMetadata(
+  const metadata = createMockMetadataFromState(
     createMockState({
       entities: createMockEntitiesState({
         databases: [createSampleDatabase()],

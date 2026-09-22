@@ -73,7 +73,7 @@ export const DatabaseFormBody = ({
   const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
 
   return (
-    <Box mah={mah} mb="md" px={px} flex={1} style={{ overflowY: "auto" }}>
+    <Box mah={mah} mb="lg" px={px} flex={1} style={{ overflowY: "auto" }}>
       {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField

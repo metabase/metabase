@@ -74,13 +74,13 @@ export const PushChangesModal = ({
       title={t`Push to Git`}
       onClose={onClose}
       size="lg"
-      padding="xl"
+      padding="xxl"
     >
-      <Box pt="md">
+      <Box pt="lg">
         {errorMessage && (
           <Alert
             size="compact"
-            mb="md"
+            mb="lg"
             color="error"
             icon={<Icon name="warning" />}
           >
@@ -88,7 +88,7 @@ export const PushChangesModal = ({
           </Alert>
         )}
 
-        <Stack gap="lg">
+        <Stack gap="xl">
           <ChangesLists title={t`Changes to push`} />
 
           <CommitMessageSection
@@ -98,7 +98,7 @@ export const PushChangesModal = ({
         </Stack>
       </Box>
 
-      <Divider my="lg" />
+      <Divider my="xl" />
 
       <Box>
         <Group gap="sm" justify="end">

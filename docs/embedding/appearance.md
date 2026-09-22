@@ -38,13 +38,13 @@ defineMetabaseConfig({
 
 {% include plans-blockquote.html feature="Saved embedding themes" is_plural=true %}
 
-A theme is a named set of colors and fonts that the embed wizard can copy into each new embed's config. The embed doesn't reference the theme, the embed carries its own inlined copy of the values. Changing or deleting the theme won't affect existing embeds.
+A theme is a named set of colors and fonts that the embed wizard can copy into each new embed's config. The embed doesn't reference the theme; the embed carries its own inlined copy of the values. Changing or deleting the theme won't affect existing embeds.
 
 ### Manage themes
 
 Go to **Admin settings > Embedding > Themes**.
 
-Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing theme like you can any other custom theme).
+Metabase ships with light and dark themes that pick up any appearance settings you've set on your Metabase (though you can tinker with these default themes as well, including removing them like you can any other custom theme).
 
 From the Themes tab, you can:
 

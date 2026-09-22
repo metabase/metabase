@@ -1,6 +1,5 @@
 import { Switch } from "metabase/ui";
-
-import type { ChartSettingEnumToggleProps } from "../../types/widget-props";
+import type { ChartSettingEnumToggleProps } from "metabase/viz-core";
 
 export const ChartSettingEnumToggle = <T extends string>({
   value,
@@ -17,6 +16,5 @@ export const ChartSettingEnumToggle = <T extends string>({
     }
     id={id}
     role="switch"
-    size="sm"
   />
 );

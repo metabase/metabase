@@ -52,7 +52,7 @@
 (defn- create-sql-query-in-code-editor
   [args]
   (binding [shared/*memory-atom* (atom {:context {:user_is_viewing [{:type    "code_editor"
-                                                                     :buffers [{:id "buf-1"}]}]}})]
+                                                                     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}})]
     (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
                                                        :title     "Results"}
                                                       args))))
@@ -208,7 +208,7 @@
                   (is (= :native (get-in entity [:query :query :type])))))
               (testing "an open code-editor buffer wins"
                 (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1"}]}]}))]
+                                                                  :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
                   (is (= 1 (count parts)))
                   (is (= "code_edit" (:data-type (first parts)))))))))))))
 

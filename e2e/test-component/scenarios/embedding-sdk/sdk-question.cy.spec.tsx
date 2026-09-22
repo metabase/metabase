@@ -674,21 +674,21 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("be.visible");
 
+      // The data picker auto-opens once it mounts, because a new question has
+      // no source table. Wait for that, then close it with its own trigger, so
+      // every later step starts from a known picker state.
+      cy.log("wait for the data picker to auto-open, then close it");
+      H.popover().findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByText("Pick your starting data").click();
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
       cy.log("click on the button to switch target collection");
       cy.findByText("use second collection").click();
       cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("be.visible");
-    });
-
-    getSdkRoot().within(() => {
-      cy.log(
-        "the data picker auto-opens after the target-collection re-render because no source table is selected; interact with the already-open popover directly instead of toggling it, which races the async auto-open",
-      );
-      H.popover()
-        .findByRole("link", { name: "Orders" })
-        .should("be.visible")
-        .click();
 
       cy.log("ensure that the interactive question still works");
+      cy.findByText("Pick your starting data").click();
+      H.popover().findByRole("link", { name: "Orders" }).click();
       cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });

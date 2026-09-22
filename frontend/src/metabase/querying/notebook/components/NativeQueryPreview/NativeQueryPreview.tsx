@@ -65,7 +65,7 @@ export function NativeQueryPreview({
       )}
 
       {formattedError && showMetabaseLinks && (
-        <Flex justify="end" mt="lg">
+        <Flex justify="end" mt="xl">
           <ExternalLink className={S.ModalExternalLink} href={learnUrl}>
             {t`Learn how to debug SQL errors`}
           </ExternalLink>

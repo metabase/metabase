@@ -8,4 +8,9 @@
   /* Padding workaround since popover padding is overridden to zero */
   padding: var(--popover-padding);
   padding-top: 0;
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.timeInput {
+  margin-inline-end: var(--mantine-spacing-lg);
 }

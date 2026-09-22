@@ -26,6 +26,9 @@ jobs:
       fail-fast: false
     env:
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-react-${{ matrix.react-version }}
+      # Base name of this leg's granular-rerun artifact. Each matrix leg needs its own, or a
+      # leg would restore the other leg's failed set. `-attempt-N` is appended below.
+      RERUN_ARTIFACT_BASE: failed-specs-embedding-sdk-component-react-${{ matrix.react-version }}
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -73,6 +76,45 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Resolve previous attempt
+        if: ${{ github.run_attempt != '1' }}
+        run: echo "RERUN_PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
+      - name: Restore previously-failed specs
+        if: ${{ github.run_attempt != '1' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          # use pattern instead of name since this should still pass if the artifact doesn't exist
+          pattern: ${{ env.RERUN_ARTIFACT_BASE }}-attempt-${{ env.RERUN_PREV_ATTEMPT }}
+          path: target/rerun
+
+      - name: Get failed specs
+        if: ${{ github.run_attempt != '1' }}
+        run: |
+          if [ -s target/rerun/failed-specs ]; then
+            echo "Re-running failed specs from attempt $RERUN_PREV_ATTEMPT:"
+            cat target/rerun/failed-specs
+            echo "specs=$(cat target/rerun/failed-specs)" >> "$GITHUB_ENV"
+          else
+            echo "No failed-spec list from attempt $RERUN_PREV_ATTEMPT; running the full suite."
+          fi
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # run-tests.yml compiles it in parallel with the uberjar build, so downloading is ~10x faster than compiling here.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
@@ -92,9 +134,18 @@ jobs:
 
       - name: Run component tests for Embedding SDK
         id: run-tests
+        shell: bash
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js component
+          SPECS: ${{ env.specs }}
+          # record video for re-runs of previously failed specs
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
+        run: |
+          SPEC_ARGS=()
+          if [ -n "$SPECS" ]; then
+            SPEC_ARGS=(--spec "$SPECS")
+          fi
+          node e2e/runner/run_cypress_ci.js component "${SPEC_ARGS[@]}"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
@@ -125,10 +176,19 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         with:
-          name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}
+          name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}-attempt-${{ github.run_attempt }}
           path: |
             ./cypress
             ./logs/test.log
+          if-no-files-found: ignore
+
+      - name: "SDK component tests > Upload failed specs for rerun"
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: true
+        with:
+          name: ${{ env.RERUN_ARTIFACT_BASE }}-attempt-${{ github.run_attempt }}
+          path: ./cypress/test-results
           if-no-files-found: ignore
 
       - name: "SDK component tests > Publish Summary"
@@ -180,6 +240,7 @@ jobs:
       MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-backward-compatibility
+      RERUN_ARTIFACT_BASE: failed-specs-embedding-sdk-component-backward-compatibility
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -246,6 +307,37 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      - name: Resolve previous attempt
+        if: ${{ github.run_attempt != '1' }}
+        run: echo "RERUN_PREV_ATTEMPT=$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
+
+      - name: Restore previously-failed specs
+        if: ${{ github.run_attempt != '1' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          # use pattern instead of name since this should still pass if the artifact doesn't exist
+          pattern: ${{ env.RERUN_ARTIFACT_BASE }}-attempt-${{ env.RERUN_PREV_ATTEMPT }}
+          path: target/rerun
+
+      - name: Get failed specs
+        if: ${{ github.run_attempt != '1' }}
+        run: |
+          if [ -s target/rerun/failed-specs ]; then
+            echo "Re-running only the specs that failed on attempt $RERUN_PREV_ATTEMPT:"
+            cat target/rerun/failed-specs
+            echo "specs=$(cat target/rerun/failed-specs)" >> "$GITHUB_ENV"
+          else
+            echo "No failed-spec list from attempt $RERUN_PREV_ATTEMPT; running the full suite."
+          fi
+
+      # esbuild resolves every import in the spec bundle's graph, even the ones tree shaking then drops.
+      # The cljs imports resolve into target/cljs_dev, so the compiled CLJS has to exist before Cypress runs.
+      # The checked-out tree is the previous commit, which the current run's CLJS artifact was not built from,
+      # so compile from source instead of downloading.
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
@@ -261,11 +353,20 @@ jobs:
 
       - name: Run component tests for Embedding SDK
         id: run-tests
+        shell: bash
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          SPECS: ${{ env.specs }}
+          # record video for re-runs of previously failed specs
+          CYPRESS_VIDEO: ${{ env.specs && 'true' || 'false' }}
         run: |
+          SPEC_ARGS=()
+          if [ -n "$SPECS" ]; then
+            SPEC_ARGS=(--spec "$SPECS")
+          fi
           node e2e/runner/run_cypress_ci.js component \
-            --expose grepTags="-@skip-backward-compatibility"
+            --expose grepTags="-@skip-backward-compatibility" \
+            "${SPEC_ARGS[@]}"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
@@ -296,10 +397,19 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         with:
-          name: cypress-recording-embedding-sdk-cross-version
+          name: cypress-recording-embedding-sdk-cross-version-attempt-${{ github.run_attempt }}
           path: |
             ./cypress
             ./logs/test.log
+          if-no-files-found: ignore
+
+      - name: Upload failed specs for rerun
+        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: true
+        with:
+          name: ${{ env.RERUN_ARTIFACT_BASE }}-attempt-${{ github.run_attempt }}
+          path: ./cypress/test-results
           if-no-files-found: ignore
 
       - name: Publish Summary

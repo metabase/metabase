@@ -1,7 +1,7 @@
 import type { timelineApi } from "metabase/api";
 import type { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import type { selectQuestionFromCardBuilder } from "metabase/metadata-store";
 import type { QueryBuilderState } from "metabase/redux/store/qb";
-import type { getMetadata } from "metabase/selectors/metadata";
 import type { getSetting } from "metabase/settings";
 
 /**
@@ -11,7 +11,7 @@ import type { getSetting } from "metabase/settings";
  * stop reading the global `State`.
  */
 export type QueryBuilderStoreState = { qb: QueryBuilderState } & Parameters<
-  typeof getMetadata
+  typeof selectQuestionFromCardBuilder
 >[0] &
   Parameters<typeof getSetting>[0] &
   Parameters<typeof getEmbedOptions>[0] &

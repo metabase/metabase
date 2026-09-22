@@ -14,7 +14,7 @@
   in [[metabase.premium-features.core/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics aka stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
-  :encryption :when-encryption-key-set
+  :encryption :no
   :visibility :internal
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -32,6 +32,7 @@
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :encryption :no
   :visibility :admin
   :type       :json
   :audit      :never
@@ -305,6 +306,10 @@
   "Should we allow users to use Python transforms?"
   :transforms-python)
 
+(define-premium-feature enable-transform-testing?
+  "Should we allow users to author and run tests against their transforms?"
+  :transforms-testing)
+
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
   :dependencies)
@@ -436,6 +441,7 @@
    :tenants                        (enable-tenants?)
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
+   :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
@@ -443,6 +449,7 @@
 
 (defsetting token-features
   "Features registered for this instance's token"
+  :encryption :no
   :visibility :public
   :setter     :none
   :getter     -token-features

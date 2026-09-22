@@ -10,7 +10,7 @@ import Styles from "./sidesheet.module.css";
 export const SidesheetTabPanelContainer = (
   props: MantineStyleProps & { children: React.ReactNode },
 ) => (
-  <Box className={Styles.OverflowAuto} px="xl" py="lg" {...props}>
+  <Box className={Styles.OverflowAuto} px="xxl" py="xl" {...props}>
     <div>{props.children}</div>
   </Box>
 );

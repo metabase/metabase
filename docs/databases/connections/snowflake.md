@@ -77,7 +77,7 @@ The name of the database you want to connect to in Snowflake. On app.snowflake.c
 
 ### Schemas (optional)
 
-You can specify which schemas you want to sync and scan. If no schema is passed, then all schema available to that user and role will be listed as folders in Metabase.
+You can specify which schemas you want to sync and scan. If no schema is passed, then all schemas available to that user and role will be listed as folders in Metabase.
 
 Schema options include:
 
@@ -102,7 +102,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ### Role (optional)
 
-> **WARNING:** Metabase gets _all the permissions_ combined from _every_ role you grant the user in Snowflake. Setting the 'Role' here just adds the role to the connection string to tell Snowflake which role to default to – it **won't restrict** access on its own. So **be careful which roles you assign to the connection user**: if down the line you grant that user broader roles in Snowflake, Metabase will automatically gets those new permissions, potentially showing data you didn't mean for it to see. If instead you want Metabase to issue `SET ROLE` commands before querying anything, check out [connection impersonation](../../permissions/impersonation.md).
+> **WARNING:** Metabase gets _all the permissions_ combined from _every_ role you grant the user in Snowflake. Setting the 'Role' here just adds the role to the connection string to tell Snowflake which role to default to – it **won't restrict** access on its own. So **be careful which roles you assign to the connection user**: if down the line you grant that user broader roles in Snowflake, Metabase will automatically get those new permissions, potentially showing data you didn't mean for it to see. If instead you want Metabase to issue `SET ROLE` commands before querying anything, check out [connection impersonation](../../permissions/impersonation.md).
 
 Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
 
@@ -123,7 +123,7 @@ Some databases allow you to append options to the connection string that Metabas
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -158,6 +158,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

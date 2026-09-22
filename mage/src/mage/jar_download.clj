@@ -190,7 +190,6 @@
     (when-not (fs/exists? (io/file dir))
       (println (c/blue "Creating directory " dir))
       (fs/create-dirs dir))
-
     (if (fs/exists? jar-path)
       (println (str "Already downloaded " (c/green dl-url) " to " (c/green jar-path)
                     ", size: " (c/red (c/bold (jar-size-mb (fs/size jar-path))))))
@@ -276,7 +275,6 @@
         (println "env:")
         (doseq [[k v] extra-env]
           (println (str "  " (c/yellow k) "=" (c/green v))))
-
         (when (not (get extra-env "MB_PREMIUM_EMBEDDING_TOKEN"))
           ;; Check that the embedding token is set:
           (u/env "MB_PREMIUM_EMBEDDING_TOKEN"
@@ -286,7 +284,6 @@
                                    :latest-version latest-version
                                    :jar-path       jar-path
                                    :babashka/exit  1}))))
-
         (println (str "Socket repl will open on " (c/green socket-port) ". "
                       "See: https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775"))
         (println (str "\n\n   Open in browser: " (c/magenta "http://localhost:" port) "\n"))

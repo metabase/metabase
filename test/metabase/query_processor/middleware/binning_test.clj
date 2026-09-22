@@ -17,7 +17,10 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; Unit tests for bounds extraction live in [[metabase.lib.binning.util-test]].
 

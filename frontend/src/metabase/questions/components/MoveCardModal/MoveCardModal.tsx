@@ -185,7 +185,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                 value={"true"}
               />
               <Radio
-                mt="md"
+                mt="lg"
                 label={t`No, remove it from that dashboard`}
                 value={"false"}
               />

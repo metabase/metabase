@@ -1184,7 +1184,7 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
 
@@ -1218,7 +1218,7 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
 
@@ -1241,6 +1241,6 @@
                 :display-name "Custom Name"
                 :default      "Foo"
                 :required     true
-                :widget-type  "string/contains"
+                :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))

@@ -4,14 +4,13 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
+import { SettingHeader } from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   GetEmbeddableCard,
   GetEmbeddableDashboard,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../../SettingHeader";
 
 import { PublicLinksListing } from "./PublicLinksListing";
 
@@ -22,7 +21,7 @@ const DashboardEmbeddedResources = () => {
   const query = useListEmbeddableDashboardsQuery(undefined, refetchSettings);
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <SettingHeader id="embedded-dashboards" title={t`Embedded dashboards`} />
       <PublicLinksListing<GetEmbeddableDashboard>
         data-testid="-embedded-dashboards-setting"
@@ -38,7 +37,7 @@ export const QuestionEmbeddedResources = () => {
   const query = useListEmbeddableCardsQuery(undefined, refetchSettings);
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <SettingHeader id="embedded-questions" title={t`Embedded questions`} />
       <PublicLinksListing<GetEmbeddableCard>
         data-testid="-embedded-questions-setting"
@@ -52,7 +51,7 @@ export const QuestionEmbeddedResources = () => {
 
 export const EmbeddedResources = () => {
   return (
-    <Stack gap="lg" maw="50rem">
+    <Stack gap="xl" maw="50rem">
       <DashboardEmbeddedResources />
       <QuestionEmbeddedResources />
     </Stack>

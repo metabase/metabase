@@ -69,7 +69,16 @@ export function ExplorationVisualizationHeader({
         </Ellipsified>
         <Group align="center" gap="sm" style={{ flexShrink: 0 }}>
           {allCommentsCount > 0 ? (
-            <Indicator label={allCommentsCount} size={16} color="core-info">
+            <Indicator
+              label={allCommentsCount}
+              size={16}
+              color="core-info"
+              styles={{
+                indicator: {
+                  paddingInline: "calc(var(--mantine-spacing-xxs) / 2)",
+                },
+              }}
+            >
               {commentsButton}
             </Indicator>
           ) : (

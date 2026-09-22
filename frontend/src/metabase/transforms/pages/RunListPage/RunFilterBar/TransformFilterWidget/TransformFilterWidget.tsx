@@ -113,7 +113,7 @@ function TransformFilterForm({
 
   return (
     <Box component="form" miw={FILTER_WIDGET_MIN_WIDTH} onSubmit={handleSubmit}>
-      <Box px="md" pt="md">
+      <Box px="lg" pt="lg">
         <TextInput
           value={searchValue}
           placeholder={t`Search the list`}
@@ -127,7 +127,7 @@ function TransformFilterForm({
             value={transformIds.map(getTransformIdValue)}
             onChange={handleChange}
           >
-            <Stack p="md">
+            <Stack p="lg">
               {filteredTransforms.map((tag) => (
                 <Checkbox
                   key={tag.id}
@@ -139,12 +139,12 @@ function TransformFilterForm({
           </Checkbox.Group>
         </Box>
       ) : (
-        <Box p="md" c="text-secondary" ta="center">
+        <Box p="lg" c="text-secondary" ta="center">
           {t`No transforms found.`}
         </Box>
       )}
       <Divider />
-      <Group p="md" justify="end">
+      <Group p="lg" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
           {initialTransformIds.length > 0 ? `Update filter` : `Add filter`}
         </Button>
