@@ -494,11 +494,12 @@ describe("scenarios > organization > timelines > dashboard", () => {
     });
   });
 
-  it("should show the events of a metric", () => {
-    visitDashboardWithMetric();
-    H.waitForDashcardsToLoad({ count: 1 });
+  it("should show the events of a metric and of a model", () => {
+    visitDashboardWithMetricAndModel();
+    H.waitForDashcardsToLoad({ count: 2 });
 
-    eventChip(0, "RC1").should("be.visible").click();
+    eventChip(0, "RC1").should("be.visible");
+    eventChip(1, "RC1").should("be.visible").click();
     eventsSidebar().findByText("RC1").should("be.visible");
   });
 
@@ -683,7 +684,7 @@ function visitDashboardWithTimeSeries(visualizationSettings = {}) {
   H.getDashboardCard().findByText("Created At: Month").should("be.visible");
 }
 
-function visitDashboardWithMetric() {
+function visitDashboardWithMetricAndModel() {
   return createReleaseTimeline().then(({ timeline }) =>
     H.createQuestion({
       ...questionDetails,
@@ -693,16 +694,26 @@ function visitDashboardWithMetric() {
         "timeline.selected_timeline_ids": [timeline.id],
       },
     }).then(({ body: metric }) =>
-      H.createDashboardWithTabs({
-        dashcards: [
-          createMockDashboardCard({
-            id: -1,
-            card_id: metric.id,
-            size_x: 12,
-            size_y: 6,
-          }),
-        ],
-      }).then((dashboard) => H.visitDashboard(dashboard.id)),
+      H.createQuestion({
+        ...questionDetails,
+        name: "Orders model",
+        type: "model",
+        visualization_settings: {
+          "timeline.selected_timeline_ids": [timeline.id],
+        },
+      }).then(({ body: model }) =>
+        H.createDashboardWithTabs({
+          dashcards: [metric, model].map((card, index) =>
+            createMockDashboardCard({
+              id: -(index + 1),
+              card_id: card.id,
+              row: index * 6,
+              size_x: 12,
+              size_y: 6,
+            }),
+          ),
+        }).then((dashboard) => H.visitDashboard(dashboard.id)),
+      ),
     ),
   );
 }
