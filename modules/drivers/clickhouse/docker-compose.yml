@@ -5,7 +5,7 @@ services:
   ##########################################################################################################
 
   clickhouse:
-    image: 'clickhouse/clickhouse-server:latest-alpine'
+    image: 'clickhouse/clickhouse-server:26.8-alpine'
     container_name: 'mb-clickhouse-latest'
     hostname: clickhouse
     ports:
