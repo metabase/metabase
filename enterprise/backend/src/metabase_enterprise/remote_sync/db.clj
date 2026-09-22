@@ -540,10 +540,11 @@
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
 
 (mu/defn content-rsos
-  "The `:id`, `:model_type`, `:model_id`, and `:status` of the RemoteSyncObjects of the Collections with
-  `collection-ids` and of their contents."
+  "The `:id`, `:model_type`, `:model_id`, `:model_collection_id`, and `:status` of the RemoteSyncObjects of the
+  Collections with `collection-ids` and of their contents."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id :status] {:where (contents-rso-expr collection-ids)}))
+  (t2/select [:model/RemoteSyncObject :id :model_type :model_id :model_collection_id :status]
+             {:where (contents-rso-expr collection-ids)}))
 
 (mu/defn removed-content-rso-ids
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their

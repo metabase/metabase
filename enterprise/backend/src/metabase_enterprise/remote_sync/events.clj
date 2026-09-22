@@ -296,24 +296,31 @@
         (disable-library-tracking!)))))
 
 (defn- cascade-archived-state!
-  "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with each entity's
-  archived state: rows of archived entities become 'delete', and 'delete' rows of entities no longer archived become
-  'update'."
+  "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with the archived state
+  of each entity and of the collection it is in: rows of entities that are archived or in an archived collection
+  become 'delete', and 'delete' rows of existing entities that are neither become 'update'."
   [collection]
-  ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant.
-  (let [rows (->> (remote-sync.db/content-rsos (remote-sync.db/subtree-collection-ids [collection]))
-                  (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))
-        now  (t/offset-date-time)]
+  ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant. Transforms
+  ;; have no archived column, so only their collection shows that they were archived.
+  (let [collection-ids       (remote-sync.db/subtree-collection-ids [collection])
+        collection-archived? (remote-sync.db/archived-by-id :model/Collection (vec collection-ids))
+        rows                 (->> (remote-sync.db/content-rsos collection-ids)
+                                  (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))
+        now                  (t/offset-date-time)]
     (doseq [[model-type type-rows] (group-by :model_type rows)
             :let  [{:keys [model-key archived-key]} (spec/spec-for-model-type model-type)]
             :when (= :archived archived-key)
-            :let  [archived? (remote-sync.db/archived-by-id model-key (mapv :model_id type-rows))
-                   deleted   (filter #(and (true? (archived? (:model_id %)))
-                                           (not (contains? #{"delete" "removed"} (:status %))))
-                                     type-rows)
-                   restored  (filter #(and (false? (archived? (:model_id %)))
-                                           (= "delete" (:status %)))
-                                     type-rows)]]
+            :let  [entity-archived? (remote-sync.db/archived-by-id model-key (mapv :model_id type-rows))
+                   archived?        (fn [{:keys [model_id model_collection_id]}]
+                                      (or (true? (entity-archived? model_id))
+                                          (true? (collection-archived? model_collection_id))))
+                   deleted          (filter #(and (archived? %)
+                                                  (not (contains? #{"delete" "removed"} (:status %))))
+                                            type-rows)
+                   restored         (filter #(and (contains? entity-archived? (:model_id %))
+                                                  (not (archived? %))
+                                                  (= "delete" (:status %)))
+                                            type-rows)]]
       (when (seq deleted)
         (remote-sync.db/set-rsos-status! (map :id deleted) "delete" now))
       (when (seq restored)

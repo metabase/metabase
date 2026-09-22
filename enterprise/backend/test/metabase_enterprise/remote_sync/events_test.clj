@@ -483,6 +483,31 @@
                 ["Card" sibling-card]     "synced"}
                (rso-statuses)))))))
 
+(deftest collection-update-event-archive-cascades-to-transforms-test
+  (testing "GHY-4399: archiving a Transforms folder marks the transforms in it 'delete', and unarchiving it marks them
+            'update' again; transforms have no archived column, so their folder's archived state decides"
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (mt/with-temp [:model/Collection {folder :id}    {:name "Folder" :namespace "transforms" :location "/"}
+                     :model/Transform  {transform :id} {:name "Transform" :collection_id folder}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject
+                    (for [[model-type model-id] [["Collection" folder] ["Transform" transform]]]
+                      {:model_type model-type :model_id model-id :model_collection_id folder
+                       :model_name "x" :status "synced" :status_changed_at (t/offset-date-time)}))
+        (let [set-archived! (fn [archived]
+                              (t2/update! :model/Collection :id folder {:archived archived})
+                              (events/publish-event! :event/collection-update
+                                                     {:object  (t2/select-one :model/Collection :id folder)
+                                                      :user-id (mt/user->id :rasta)}))]
+          (set-archived! true)
+          (is (= {["Collection" folder]   "delete"
+                  ["Transform" transform] "delete"}
+                 (rso-statuses)))
+          (set-archived! false)
+          (is (= {["Collection" folder]   "update"
+                  ["Transform" transform] "update"}
+                 (rso-statuses))))))))
+
 (deftest collection-update-event-no-entry-for-normal-collection-test
   (testing "collection-update event doesn't create entry for non-remote-synced collections"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}]
