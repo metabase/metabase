@@ -1324,10 +1324,20 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T17:05:00
       author: ranquild
-      comment: Widen the primary key of metabase_table_user_settings to (table_id, worktree_id_helper) - a worktree holds its own overlay row for the same table_id
+      comment: Drop the primary key of metabase_table_user_settings so it can be widened to include the worktree
       changes:
         - dropPrimaryKey:
             tableName: metabase_table_user_settings
+      rollback:
+        - addPrimaryKey:
+            tableName: metabase_table_user_settings
+            columnNames: table_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:05:30
+      author: ranquild
+      comment: Widen the primary key of metabase_table_user_settings to (table_id, worktree_id_helper) - a worktree holds its own overlay row for the same table_id
+      changes:
         - addPrimaryKey:
             tableName: metabase_table_user_settings
             columnNames: table_id, worktree_id_helper
@@ -1336,9 +1346,6 @@ databaseChangeLog:
         - dropPrimaryKey:
             tableName: metabase_table_user_settings
             constraintName: pk_mb_table_user_settings
-        - addPrimaryKey:
-            tableName: metabase_table_user_settings
-            columnNames: table_id
 
   - changeSet:
       id: v65.2026-09-21T17:06:00
@@ -1440,10 +1447,20 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T17:15:00
       author: ranquild
-      comment: Widen the primary key of metabase_field_user_settings to (field_id, worktree_id_helper) - a worktree holds its own overlay row for the same field_id
+      comment: Drop the primary key of metabase_field_user_settings so it can be widened to include the worktree
       changes:
         - dropPrimaryKey:
             tableName: metabase_field_user_settings
+      rollback:
+        - addPrimaryKey:
+            tableName: metabase_field_user_settings
+            columnNames: field_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:15:30
+      author: ranquild
+      comment: Widen the primary key of metabase_field_user_settings to (field_id, worktree_id_helper) - a worktree holds its own overlay row for the same field_id
+      changes:
         - addPrimaryKey:
             tableName: metabase_field_user_settings
             columnNames: field_id, worktree_id_helper
@@ -1452,9 +1469,6 @@ databaseChangeLog:
         - dropPrimaryKey:
             tableName: metabase_field_user_settings
             constraintName: pk_mb_field_user_settings
-        - addPrimaryKey:
-            tableName: metabase_field_user_settings
-            columnNames: field_id
 
   - changeSet:
       id: v65.2026-09-21T17:16:00
