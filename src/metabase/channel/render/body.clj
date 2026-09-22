@@ -100,7 +100,8 @@
 
 (defn- scalar-color
   "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric.
-  Like the app, a numeric string counts as its number and a segment without a color gets the default fallback."
+  Like the app, a numeric string counts as its number (\"42\" but not \"42%\") and a segment without a color gets
+  the default fallback."
   [segments value]
   (when-let [value (cond
                      (number? value) value

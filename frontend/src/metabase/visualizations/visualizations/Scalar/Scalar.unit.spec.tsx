@@ -368,7 +368,7 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
 
     await userEvent.hover(screen.getByTestId("scalar-value"));
-    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(await screen.findByText("≥ 10,000")).toBeInTheDocument();
     expect(screen.getByText("≤ 100")).toBeInTheDocument();
   });
 
@@ -380,7 +380,7 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
 
     await userEvent.hover(screen.getByTestId("scalar-value"));
-    expect(await screen.findByText("≥ 10000")).toBeInTheDocument();
+    expect(await screen.findByText("≥ 10,000")).toBeInTheDocument();
     expect(screen.getByText("above goal")).toBeInTheDocument();
   });
 
