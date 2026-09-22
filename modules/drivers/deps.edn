@@ -16,6 +16,7 @@
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}
+  metabase/quack              {:local/root "quack"}
   metabase/redshift           {:local/root "redshift"}
   metabase/snowflake          {:local/root "snowflake"}
   metabase/sparksql           {:local/root "sparksql"}
