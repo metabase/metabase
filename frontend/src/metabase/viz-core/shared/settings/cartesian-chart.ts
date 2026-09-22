@@ -21,8 +21,15 @@ import type {
 import {
   getCardsColumns,
   getCardsReferencedColumns,
+  getChartSeriesModels,
 } from "../../echarts/cartesian/model";
+import { getYAxisSplit } from "../../echarts/cartesian/model/axis";
+import {
+  getDatasetExtents,
+  getJoinedCardsDataset,
+} from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
+import { getStackModels } from "../../echarts/cartesian/model/stack";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -276,6 +283,60 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 };
 
 export const getDefaultIsAutoSplitEnabled = () => true;
+
+// These displays build their single y-axis through `getYAxisModel` directly and
+// never reach `getYAxesModels`, so they can never end up with a right axis.
+const SINGLE_Y_AXIS_DISPLAYS = new Set<VisualizationDisplay>([
+  "waterfall",
+  "boxplot",
+]);
+
+export function getHasSplitYAxis(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): boolean {
+  if (settings["graph.split_panels"]) {
+    return false;
+  }
+
+  const display = rawSeries[0]?.card.display;
+
+  if (display == null || SINGLE_Y_AXIS_DISPLAYS.has(display)) {
+    return false;
+  }
+
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  // The sidebar cannot know which series the legend has hidden, so it asks for
+  // the split as if none were.
+  const { seriesModels } = getChartSeriesModels(
+    rawSeries,
+    cardsColumns,
+    [],
+    settings,
+  );
+  const stackModels = getStackModels(seriesModels, settings);
+  // `getCartesianChartModel` sorts the dataset before taking extents; sorting
+  // cannot move a min or a max, so the unsorted dataset gives the same split.
+  const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  const seriesExtents = getDatasetExtents(
+    seriesModels.map((seriesModel) => seriesModel.dataKey),
+    dataset,
+  );
+
+  // `getScatterPlotModel` passes `false`, so a scatter plot only splits through
+  // an explicit per-series axis assignment.
+  const isAutoSplitSupported = display !== "scatter";
+
+  const [, rightAxisSeriesKeys] = getYAxisSplit(
+    seriesModels,
+    stackModels,
+    seriesExtents,
+    settings,
+    isAutoSplitSupported,
+  );
+
+  return rightAxisSeriesKeys.size > 0;
+}
 
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,

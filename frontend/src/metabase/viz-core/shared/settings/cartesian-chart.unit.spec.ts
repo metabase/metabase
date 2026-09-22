@@ -1,16 +1,27 @@
-import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
+import type {
+  DatasetData,
+  RawSeries,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
+  createMockDataset,
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import { getCartesianChartModel } from "../../echarts/cartesian/model";
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import type { RenderingContext } from "../../types";
+import { DEFAULT_VISUALIZATION_THEME } from "../utils/theme";
 
 import {
   getDefaultBoxplotDimensions,
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
+  getHasSplitYAxis,
 } from "./cartesian-chart";
 
 const createSeries = ({
@@ -276,4 +287,168 @@ describe("getDefaultBoxplotDimensions", () => {
     // "status" has cardinality 2, "category" has cardinality 3
     expect(result).toEqual(["status"]);
   });
+});
+
+describe("getHasSplitYAxis", () => {
+  const MONTH = "month";
+  const CATEGORY = "category";
+  const REVENUE = "revenue";
+  const ORDERS = "orders";
+
+  const renderingContext: RenderingContext = {
+    getColor: (name) => name,
+    measureText: () => 10,
+    measureTextHeight: () => 10,
+    fontFamily: "Arial",
+    theme: DEFAULT_VISUALIZATION_THEME,
+  };
+
+  const createTwoMetricSeries = (rows: DatasetData["rows"]): RawSeries => [
+    createMockSingleSeries(
+      createMockCard({ display: "line" }),
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: MONTH, base_type: "type/Text" }),
+            createMockColumn({ name: REVENUE, base_type: "type/Number" }),
+            createMockColumn({ name: ORDERS, base_type: "type/Number" }),
+          ],
+          rows,
+        }),
+      }),
+    ),
+  ];
+
+  const createBreakoutSeries = (): RawSeries => [
+    createMockSingleSeries(
+      createMockCard({ display: "line" }),
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: MONTH, base_type: "type/Text" }),
+            createMockColumn({ name: CATEGORY, base_type: "type/Text" }),
+            createMockColumn({ name: ORDERS, base_type: "type/Number" }),
+          ],
+          rows: [
+            ["Jan", "a", 1],
+            ["Jan", "b", 10],
+            ["Jan", "c", 10000],
+            ["Feb", "a", 2],
+            ["Feb", "b", 20],
+            ["Feb", "c", 20000],
+          ],
+        }),
+      }),
+    ),
+  ];
+
+  // The real computed settings always carry the per-series accessor; the chart
+  // model reads each series' display through it.
+  const lineSeries = () => ({ display: "line" as const });
+
+  const twoMetricSettings = {
+    "graph.dimensions": [MONTH],
+    "graph.metrics": [REVENUE, ORDERS],
+    "graph.y_axis.auto_split": true,
+    series: lineSeries,
+  };
+
+  const divergentRows = [
+    ["Jan", 1, 900],
+    ["Feb", 2, 1000],
+  ];
+
+  const similarRows = [
+    ["Jan", 900, 950],
+    ["Feb", 1000, 1100],
+  ];
+
+  // The sidebar decides whether to offer the right-axis settings and the
+  // renderer decides whether to draw a right axis, through different code. A
+  // disagreement hides the settings on a chart that has two axes.
+  it.each([
+    {
+      name: "two metrics on ranges far apart",
+      hasRightAxis: true,
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: twoMetricSettings,
+    },
+    {
+      name: "two metrics on similar ranges",
+      hasRightAxis: false,
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: twoMetricSettings,
+    },
+    {
+      name: "the automatic split turned off",
+      hasRightAxis: false,
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.y_axis.auto_split": false },
+    },
+    {
+      name: "a single metric",
+      hasRightAxis: false,
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.metrics": [REVENUE] },
+    },
+    {
+      name: "a series pinned to the right axis by hand",
+      hasRightAxis: true,
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: ({ card }: LegacySeriesSettingsObjectKey) =>
+          card._seriesKey === ORDERS
+            ? { ...lineSeries(), axis: "right" as const }
+            : lineSeries(),
+      },
+    },
+    {
+      name: "split panels",
+      hasRightAxis: false,
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.split_panels": true },
+    },
+    {
+      name: "a breakout, where one metric column means no automatic split",
+      hasRightAxis: false,
+      rawSeries: createBreakoutSeries(),
+      settings: {
+        "graph.dimensions": [MONTH, CATEGORY],
+        "graph.metrics": [ORDERS],
+        "graph.y_axis.auto_split": true,
+        series: lineSeries,
+      },
+    },
+    {
+      name: "a breakout series pinned right, then grouped into Other",
+      hasRightAxis: false,
+      rawSeries: createBreakoutSeries(),
+      settings: {
+        "graph.dimensions": [MONTH, CATEGORY],
+        "graph.metrics": [ORDERS],
+        "graph.y_axis.auto_split": true,
+        "graph.max_categories_enabled": true,
+        "graph.max_categories": 2,
+        series: ({ card }: LegacySeriesSettingsObjectKey) =>
+          card._seriesKey === "c"
+            ? { ...lineSeries(), axis: "right" as const }
+            : lineSeries(),
+      },
+    },
+  ])(
+    "agrees with the rendered chart model for $name",
+    ({ rawSeries, settings, hasRightAxis }) => {
+      const chartModel = getCartesianChartModel(
+        rawSeries,
+        settings,
+        [],
+        renderingContext,
+      );
+
+      expect(chartModel.rightAxisModel != null).toBe(hasRightAxis);
+      expect(getHasSplitYAxis(rawSeries, settings)).toBe(hasRightAxis);
+    },
+  );
 });

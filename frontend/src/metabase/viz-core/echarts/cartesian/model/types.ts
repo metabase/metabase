@@ -193,9 +193,11 @@ export type TrendLinesModel = {
   seriesModels: TrendLineSeriesModel[];
 };
 
+export type YAxisSide = "left" | "right";
+
 export type StackDisplay = "bar" | "area";
 export type StackModel = {
-  axis: "left" | "right";
+  axis: YAxisSide;
   display: StackDisplay;
   seriesKeys: DataKey[];
 };

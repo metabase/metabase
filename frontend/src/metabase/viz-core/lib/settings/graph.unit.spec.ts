@@ -267,6 +267,113 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       },
     );
   });
+
+  describe("graph.y_axis._is_split", () => {
+    const getDefault = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis._is_split"]?.getDefault,
+    );
+
+    const MONTH_COLUMN = "month";
+    const REVENUE_COLUMN = "revenue";
+    const ORDERS_COLUMN = "orders";
+
+    // Revenue and orders live on ranges three orders of magnitude apart, which
+    // is what makes the automatic split kick in.
+    const createTwoMetricSeries = () => [
+      createMockSingleSeries(
+        createMockCard({ display: "line" }),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: MONTH_COLUMN,
+                display_name: "Month",
+                base_type: "type/Text",
+              }),
+              createMockColumn({
+                name: REVENUE_COLUMN,
+                display_name: "Revenue",
+                base_type: "type/Number",
+              }),
+              createMockColumn({
+                name: ORDERS_COLUMN,
+                display_name: "Orders",
+                base_type: "type/Number",
+              }),
+            ],
+            rows: [
+              ["Jan", 1, 900],
+              ["Feb", 2, 1000],
+            ],
+          }),
+        }),
+      ),
+    ];
+
+    it("should be false for a single-metric chart", () => {
+      const isSplit = getDefault(createTwoMetricSeries(), {
+        "graph.dimensions": [MONTH_COLUMN],
+        "graph.metrics": [REVENUE_COLUMN],
+        "graph.y_axis.auto_split": true,
+      });
+
+      expect(isSplit).toBe(false);
+    });
+
+    it("should be true when the automatic split moves a series to the right axis", () => {
+      const isSplit = getDefault(createTwoMetricSeries(), {
+        "graph.dimensions": [MONTH_COLUMN],
+        "graph.metrics": [REVENUE_COLUMN, ORDERS_COLUMN],
+        "graph.y_axis.auto_split": true,
+      });
+
+      expect(isSplit).toBe(true);
+    });
+
+    it("should be true when a series is explicitly assigned to the right axis", () => {
+      const isSplit = getDefault(createTwoMetricSeries(), {
+        "graph.dimensions": [MONTH_COLUMN],
+        "graph.metrics": [REVENUE_COLUMN, ORDERS_COLUMN],
+        "graph.y_axis.auto_split": false,
+        series: ({ card }) =>
+          card._seriesKey === ORDERS_COLUMN ? { axis: "right" } : {},
+      });
+
+      expect(isSplit).toBe(true);
+    });
+  });
+
+  describe("graph.y_axis.right.title_text", () => {
+    const getHidden = checkNotNull(
+      GRAPH_AXIS_SETTINGS["graph.y_axis.right.title_text"]?.getHidden,
+    );
+    const series = [createMockSingleSeries({ display: "line" })];
+
+    it("should be hidden when the chart has no right axis", () => {
+      const isHidden = getHidden(series, {
+        "graph.y_axis._is_split": false,
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be visible when the chart has a right axis", () => {
+      const isHidden = getHidden(series, {
+        "graph.y_axis._is_split": true,
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be hidden when y-axis labels are turned off", () => {
+      const isHidden = getHidden(series, {
+        "graph.y_axis._is_split": true,
+        "graph.y_axis.labels_enabled": false,
+      });
+
+      expect(isHidden).toBe(true);
+    });
+  });
 });
 
 describe("GRAPH_TREND_SETTINGS", () => {
