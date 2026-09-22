@@ -1,0 +1,1198 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-21T10:00:00
+      author: ranquild
+      comment: Create worktree table
+      changes:
+        - createTable:
+            tableName: worktree
+            remarks: One row per checked-out remote-sync branch (a git-worktree-style checkout of the synced content tree)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: branch
+                  type: varchar(254)
+                  remarks: Git branch this worktree is checked out to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this worktree; null once that user is deleted
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this worktree was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this worktree was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-21T10:01:00
+      author: ranquild
+      comment: Unique index on worktree.branch - a branch can be checked out at most once
+      changes:
+        - createIndex:
+            tableName: worktree
+            indexName: idx_worktree_branch
+            unique: true
+            columns:
+              - column:
+                  name: branch
+
+  - changeSet:
+      id: v65.2026-09-21T10:02:00
+      author: ranquild
+      comment: FK worktree.creator_id -> core_user; SET NULL so the worktree survives its creator's deletion
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: worktree
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_worktree_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-21T10:03:00
+      author: ranquild
+      comment: Index on worktree.creator_id - every foreign key is expected to be indexed
+      changes:
+        - createIndex:
+            tableName: worktree
+            indexName: idx_worktree_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      # MySQL keeps an index on every foreign key column and refuses to drop the last one, so the constraint has
+      # to come off first and go back on after -- re-added here rather than left to the changeset that created
+      # it, which rolls back later and would find it already gone.
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: worktree
+            constraintName: fk_worktree_creator_id
+        - dropIndex:
+            tableName: worktree
+            indexName: idx_worktree_creator_id
+        - addForeignKeyConstraint:
+            baseTableName: worktree
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_worktree_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-21T10:04:00
+      author: ranquild
+      comment: Create worktree_remapping table
+      changes:
+        - createTable:
+            tableName: worktree_remapping
+            remarks: Maps the entity_id an entity has on the branch to the entity_id of the copy a worktree checked out for it, so a worktree can hold its own copy of an entity the main app already has
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this remapping belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(254)
+                  remarks: Serdes model name the remapped entity_ids belong to (e.g. Transform)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_entity_id
+                  type: char(21)
+                  remarks: entity_id as it appears on the branch, and in every serialized file
+                  constraints:
+                    nullable: false
+              - column:
+                  name: local_entity_id
+                  type: char(21)
+                  remarks: entity_id of the row this worktree checked the entity out into
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-21T10:05:00
+      author: ranquild
+      comment: Unique index on (worktree_id, source_entity_id) - a branch entity is checked out at most once per worktree
+      changes:
+        - createIndex:
+            tableName: worktree_remapping
+            indexName: idx_worktree_remapping_source
+            unique: true
+            columns:
+              - column:
+                  name: worktree_id
+              - column:
+                  name: source_entity_id
+
+  - changeSet:
+      id: v65.2026-09-21T10:06:00
+      author: ranquild
+      comment: Unique index on local_entity_id - entity_id is globally unique, so a checked-out row backs exactly one remapping
+      changes:
+        - createIndex:
+            tableName: worktree_remapping
+            indexName: idx_worktree_remapping_target
+            unique: true
+            columns:
+              - column:
+                  name: local_entity_id
+
+  - changeSet:
+      id: v65.2026-09-21T10:07:00
+      author: ranquild
+      comment: FK worktree_remapping.worktree_id -> worktree; CASCADE so deleting a worktree drops its remappings
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: worktree_remapping
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_worktree_remapping_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:00:00
+      author: ranquild
+      comment: Add remote_sync_object.worktree_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:01:00
+      author: ranquild
+      comment: Index on remote_sync_object.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:02:00
+      author: ranquild
+      comment: FK remote_sync_object.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_object
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_object_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:03:00
+      author: ranquild
+      comment: Add remote_sync_task.worktree_id
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:04:00
+      author: ranquild
+      comment: Index on remote_sync_task.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:05:00
+      author: ranquild
+      comment: FK remote_sync_task.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:06:00
+      author: ranquild
+      comment: Add collection.worktree_id
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:07:00
+      author: ranquild
+      comment: Index on collection.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:08:00
+      author: ranquild
+      comment: FK collection.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: collection
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_collection_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:09:00
+      author: ranquild
+      comment: Add report_card.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:10:00
+      author: ranquild
+      comment: Index on report_card.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:11:00
+      author: ranquild
+      comment: FK report_card.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_report_card_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:12:00
+      author: ranquild
+      comment: Add report_dashboard.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:13:00
+      author: ranquild
+      comment: Index on report_dashboard.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:14:00
+      author: ranquild
+      comment: FK report_dashboard.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboard_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:15:00
+      author: ranquild
+      comment: Add report_dashboardcard.worktree_id
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:16:00
+      author: ranquild
+      comment: Index on report_dashboardcard.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: report_dashboardcard
+            indexName: idx_report_dashboardcard_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:17:00
+      author: ranquild
+      comment: FK report_dashboardcard.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:18:00
+      author: ranquild
+      comment: Add dashboard_tab.worktree_id
+      changes:
+        - addColumn:
+            tableName: dashboard_tab
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:19:00
+      author: ranquild
+      comment: Index on dashboard_tab.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: dashboard_tab
+            indexName: idx_dashboard_tab_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:20:00
+      author: ranquild
+      comment: FK dashboard_tab.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboard_tab
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_dashboard_tab_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:21:00
+      author: ranquild
+      comment: Add dashboardcard_series.worktree_id
+      changes:
+        - addColumn:
+            tableName: dashboardcard_series
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:22:00
+      author: ranquild
+      comment: Index on dashboardcard_series.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:23:00
+      author: ranquild
+      comment: FK dashboardcard_series.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_dashboardcard_series_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:24:00
+      author: ranquild
+      comment: Add parameter_card.worktree_id
+      changes:
+        - addColumn:
+            tableName: parameter_card
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:25:00
+      author: ranquild
+      comment: Index on parameter_card.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: parameter_card
+            indexName: idx_parameter_card_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:26:00
+      author: ranquild
+      comment: FK parameter_card.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: parameter_card
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_parameter_card_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:27:00
+      author: ranquild
+      comment: Add document.worktree_id
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:28:00
+      author: ranquild
+      comment: Index on document.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:29:00
+      author: ranquild
+      comment: FK document.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_document_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:30:00
+      author: ranquild
+      comment: Add timeline.worktree_id
+      changes:
+        - addColumn:
+            tableName: timeline
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:31:00
+      author: ranquild
+      comment: Index on timeline.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:32:00
+      author: ranquild
+      comment: FK timeline.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: timeline
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_timeline_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:33:00
+      author: ranquild
+      comment: Add timeline_event.worktree_id
+      changes:
+        - addColumn:
+            tableName: timeline_event
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:34:00
+      author: ranquild
+      comment: Index on timeline_event.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:35:00
+      author: ranquild
+      comment: FK timeline_event.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: timeline_event
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_timeline_event_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:36:00
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:37:00
+      author: ranquild
+      comment: Index on native_query_snippet.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:38:00
+      author: ranquild
+      comment: FK native_query_snippet.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_native_query_snippet_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:39:00
+      author: ranquild
+      comment: Add measure.worktree_id
+      changes:
+        - addColumn:
+            tableName: measure
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:40:00
+      author: ranquild
+      comment: Index on measure.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:41:00
+      author: ranquild
+      comment: FK measure.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_measure_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:42:00
+      author: ranquild
+      comment: Add segment.worktree_id
+      changes:
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:43:00
+      author: ranquild
+      comment: Index on segment.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:44:00
+      author: ranquild
+      comment: FK segment.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: segment
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_segment_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:45:00
+      author: ranquild
+      comment: Add dimension.worktree_id
+      changes:
+        - addColumn:
+            tableName: dimension
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:46:00
+      author: ranquild
+      comment: Index on dimension.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: dimension
+            indexName: idx_dimension_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:47:00
+      author: ranquild
+      comment: FK dimension.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dimension
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_dimension_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:48:00
+      author: ranquild
+      comment: Add glossary.worktree_id
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:49:00
+      author: ranquild
+      comment: Index on glossary.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: glossary
+            indexName: idx_glossary_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:50:00
+      author: ranquild
+      comment: FK glossary.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: glossary
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_glossary_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:51:00
+      author: ranquild
+      comment: Add transform.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:52:00
+      author: ranquild
+      comment: Index on transform.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:53:00
+      author: ranquild
+      comment: FK transform.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:54:00
+      author: ranquild
+      comment: Add transform_tag.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform_tag
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:55:00
+      author: ranquild
+      comment: Index on transform_tag.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform_tag
+            indexName: idx_transform_tag_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:56:00
+      author: ranquild
+      comment: FK transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_tag
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_tag_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T11:57:00
+      author: ranquild
+      comment: Add transform_transform_tag.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform_transform_tag
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T11:58:00
+      author: ranquild
+      comment: Index on transform_transform_tag.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform_transform_tag
+            indexName: idx_transform_transform_tag_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T11:59:00
+      author: ranquild
+      comment: FK transform_transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_transform_tag_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T12:00:00
+      author: ranquild
+      comment: Add transform_test.worktree_id
+      changes:
+        - addColumn:
+            tableName: transform_test
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T12:01:00
+      author: ranquild
+      comment: Index on transform_test.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: transform_test
+            indexName: idx_transform_test_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T12:02:00
+      author: ranquild
+      comment: FK transform_test.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_test
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_test_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T12:03:00
+      author: ranquild
+      comment: Add metabase_table_indexes.worktree_id
+      changes:
+        - addColumn:
+            tableName: metabase_table_indexes
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T12:04:00
+      author: ranquild
+      comment: Index on metabase_table_indexes.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: metabase_table_indexes
+            indexName: idx_mb_table_indexes_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T12:05:00
+      author: ranquild
+      comment: FK metabase_table_indexes.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_indexes
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_mb_table_indexes_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T12:06:00
+      author: ranquild
+      comment: Add python_library.worktree_id
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T12:07:00
+      author: ranquild
+      comment: Index on python_library.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: python_library
+            indexName: idx_python_library_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T12:08:00
+      author: ranquild
+      comment: FK python_library.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: python_library
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_python_library_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T13:00:00
+      author: ranquild
+      comment: Drop the unique constraint on python_library.path; a path is unique per worktree scope, enforced in the application
+      changes:
+        - dropUniqueConstraint:
+            tableName: python_library
+            constraintName: uk_python_library_path
+            uniqueColumns: path
+      rollback:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: path
+            constraintName: uk_python_library_path
+
+  - changeSet:
+      id: v65.2026-09-21T14:00:00
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id_helper, a generated column restating worktree_id with 0 for the main app
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        # VIRTUAL rather than STORED: MySQL refuses a stored generated column whose base column carries an
+        # ON DELETE CASCADE foreign key, which worktree_id does. A unique index over a virtual column is
+        # supported on both MySQL and MariaDB.
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) VIRTUAL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE native_query_snippet DROP COLUMN worktree_id_helper;
+
+  - changeSet:
+      id: v65.2026-09-21T14:01:00
+      author: ranquild
+      comment: Drop the global unique constraint on native_query_snippet.name - it is replaced by a per-worktree one below
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_name_key;
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE native_query_snippet DROP INDEX `name`;
+        - sql:
+            dbms: h2
+            sql: >-
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE NATIVE_QUERY_SNIPPET DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'NATIVE_QUERY_SNIPPET'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'NAME'
+              );
+      # The constraint has to come back under the name the database gave it originally, or a down-migration
+      # followed by an up-migration would leave nothing for the statements above to drop.
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_name_key UNIQUE (name);
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE native_query_snippet ADD UNIQUE KEY `name` (`name`);
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE NATIVE_QUERY_SNIPPET ADD CONSTRAINT UQ_NATIVE_QUERY_SNIPPET_NAME UNIQUE(NAME);
+
+  - changeSet:
+      id: v65.2026-09-21T14:02:00
+      author: ranquild
+      comment: Add unique constraint on native_query_snippet(name, worktree_id_helper)
+      changes:
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: name, worktree_id_helper
+            constraintName: uq_native_query_snippet_name_worktree
+      rollback:
+        - dropUniqueConstraint:
+            tableName: native_query_snippet
+            constraintName: uq_native_query_snippet_name_worktree
+            uniqueColumns: name, worktree_id_helper

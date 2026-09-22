@@ -109,6 +109,7 @@
 (defmethod serdes/make-spec "TransformTest"
   [_model-name _opts]
   {:copy      [:entity_id :name :description :inputs :expectations]
+   :skip      [:worktree_id]
    :transform {:created_at   (serdes/date)
                :transform_id (serdes/fk :model/Transform)
                :creator_id   (serdes/fk :model/User)}})

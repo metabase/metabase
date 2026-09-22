@@ -147,6 +147,6 @@
 (defmethod serdes/make-spec "TableIndex"
   [_model-name _opts]
   {:copy      [:index_name :structured]
-   :skip      [:status :error_message :last_executed_at :created_by]
+   :skip      [:status :error_message :last_executed_at :created_by :worktree_id]
    :transform {:transform_id (serdes/parent-ref)
                :created_at   (serdes/date)}})

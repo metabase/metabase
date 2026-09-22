@@ -166,7 +166,9 @@
     :model/TransformRunCancelation
     :model/TransformDagRun]
    (when config/ee-available?
-     [:model/MetabotGroupLimit
+     [:model/Worktree
+      :model/WorktreeRemapping
+      :model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant

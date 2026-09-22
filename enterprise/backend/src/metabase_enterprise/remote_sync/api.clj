@@ -380,6 +380,46 @@
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
 
+(api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
+  "List the remote-sync worktrees. Requires superuser permissions."
+  []
+  (api/check-superuser)
+  (t2/hydrate (remote-sync.db/worktrees) :creator))
+
+(api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
+  "Get a single remote-sync worktree by id. Requires superuser permissions."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (-> (api/check-404 (remote-sync.db/worktree id))
+      (t2/hydrate :creator)))
+
+(api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
+  "Create a remote-sync worktree for `branch`. The branch is expected to already exist on the source, and its
+  content is materialized into the worktree by a subsequent pull -- nothing else ever writes there. Requires
+  superuser permissions."
+  [_route
+   _query
+   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [taken (format "A worktree for branch '%s' already exists." branch)]
+    (api/check-400 (not (remote-sync.db/worktree-branch-taken? branch)) taken)
+    (-> (try
+          (remote-sync.db/insert-worktree! {:branch branch :creator_id api/*current-user-id*})
+          (catch Exception e
+            (if (remote-sync.db/worktree-branch-taken? branch)
+              (throw (ex-info taken {:status-code 400} e))
+              (throw e))))
+        (t2/hydrate :creator))))
+
+(api.macros/defendpoint :delete "/worktree/:id" :- :nil
+  "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser
+  permissions."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (remote-sync.db/worktree-exists? id))
+  (remote-sync.db/delete-worktree! id)
+  nil)
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."
   (api.macros/ns-handler *ns* +auth))

@@ -57,4 +57,5 @@
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
-   [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
+   [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]
+   [:worktree_id        {:optional true} [:maybe ::lib.schema.id/worktree]]])

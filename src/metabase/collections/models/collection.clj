@@ -410,6 +410,7 @@
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:is_sample             {:optional true} :boolean]
    [:is_remote_synced      {:optional true} [:maybe :boolean]]
+   [:worktree_id           {:optional true} [:maybe :metabase.lib.schema.id/worktree]]
    [:is_personal           {:optional true} :boolean]
    [:is_upload             {:optional true} [:maybe :boolean]]
    [:parent_id             {:optional true} [:maybe ms/PositiveInt]]
@@ -2192,7 +2193,7 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip [:worktree_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2476,10 +2477,12 @@
                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
-   :where [:or [:= :namespace nil]
-           [:= :namespace "analytics"]
-           [:= :namespace "shared-tenant-collection"]
-           [:= :namespace "tenant-specific"]]
+   :where [:and
+           [:= :this.worktree_id nil]
+           [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

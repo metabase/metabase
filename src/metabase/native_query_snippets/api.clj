@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -20,9 +21,10 @@
 (mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
   "List all native query snippets the current user has read access to."
   ([]
-   (list-native-query-snippets false))
-  ([archived :- ms/BooleanValue]
-   (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
+   (list-native-query-snippets false nil))
+  ([archived    :- ms/BooleanValue
+    worktree-id :- [:maybe ms/PositiveInt]]
+   (let [snippets (native-query-snippets.db/snippets-by-archived archived worktree-id)]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -33,9 +35,10 @@
   "Fetch all snippets"
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived]} :- [:map {:closed true}
-                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
-  (list-native-query-snippets (boolean archived)))
+   {:keys [archived worktree-id]} :- [:map {:closed true}
+                                      [:archived {:default false} [:maybe ms/BooleanValue]]
+                                      [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (list-native-query-snippets (boolean archived) (remote-sync/check-can-read-worktree worktree-id)))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."

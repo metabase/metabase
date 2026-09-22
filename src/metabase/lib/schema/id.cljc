@@ -101,3 +101,7 @@
 (mr/def ::sandbox
   "Valid Sandbox ID"
   pos-int?)
+
+(mr/def ::worktree
+  "Valid remote-sync Worktree ID"
+  pos-int?)

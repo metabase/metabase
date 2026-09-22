@@ -22,7 +22,7 @@
 
 (defn- segment-response [segment]
   (-> (into {} segment)
-      (dissoc :id :table_id)
+      (dissoc :id :table_id :worktree_id)
       (update :creator #(into {} %))
       (update :entity_id some?)
       (update :created_at some?)

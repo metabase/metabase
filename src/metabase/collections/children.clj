@@ -78,11 +78,15 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  `worktree-id` selects the collections a remote-sync worktree checked out; nil (the default) is the main app."
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           worktree-id]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
+             [:= :worktree_id worktree-id]
              (case archived
                nil nil
                false [:and
@@ -455,10 +459,12 @@
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
-  [_collection {:keys [archived?]}]
+  [collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:= :archived (boolean archived?)]})
+   :where  [:and
+            [:= :archived (boolean archived?)]
+            [:= :worktree_id (:worktree_id collection)]]})
 
 (defmethod collection-children-query :snippet
   [_model collection options]
@@ -481,6 +487,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              [:= :worktree_id (:worktree_id collection)]
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -701,6 +708,7 @@
         collection
         {:cte-name :visible_collection_ids}
         [:and
+         [:= :worktree_id (:worktree_id collection)]
          (when collection-type
            (if (= collection-type "remote-synced")
              [:= :is_remote_synced true]

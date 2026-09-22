@@ -472,7 +472,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -573,6 +573,7 @@
 
 (search.spec/define-spec "transform"
   {:model        :model/Transform
+   :where        [:= :this.worktree_id nil]
    :visibility   :superuser
    :attrs        {:archived      false
                   :collection-id false

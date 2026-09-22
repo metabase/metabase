@@ -24,7 +24,8 @@
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:default       {:optional true} [:maybe :boolean]]
-   [:entity_id     {:optional true} [:maybe :string]]])
+   [:entity_id     {:optional true} [:maybe :string]]
+   [:worktree_id   {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
@@ -46,4 +47,5 @@
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id  {:optional true} [:maybe ::lib.schema.id/worktree]]])

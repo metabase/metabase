@@ -108,6 +108,7 @@
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
+   :skip [:worktree_id]
    :transform {:name {:export str :import identity}
                :created_at (serdes/date)}})
 

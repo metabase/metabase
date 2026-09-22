@@ -80,6 +80,9 @@
                                    (set-snippet-id))))
          (assoc snippet :template_tags))))
 
+(t2/define-after-select :model/NativeQuerySnippet [snippet]
+  (dissoc snippet :worktree_id_helper))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
@@ -170,7 +173,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :content :description :entity_id :name]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

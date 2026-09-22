@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
@@ -79,9 +80,11 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Fetch *all* `Segments`."
-  []
-  (let [segments  (segments.db/unarchived-segments)
+  "Fetch *all* `Segments`. `worktree-id` lists the segments a remote-sync worktree checked out instead of the
+  main app's."
+  [_route-params
+   {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [segments  (segments.db/unarchived-segments (remote-sync/check-can-read-worktree worktree-id))
         table-ids (into #{} (keep :table_id) segments)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (segments.db/table-database-ids table-ids))

@@ -1,7 +1,29 @@
 (ns metabase.remote-sync.core
   (:require
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.db :as remote-sync.db]))
+
+(defenterprise check-worktree-exists!
+  "404s when `worktree-id` names no remote-sync worktree. Returns nil; call for side effect.
+
+  Worktrees are an enterprise feature, so on OSS any non-nil id names one that cannot exist."
+  metabase-enterprise.remote-sync.core
+  [worktree-id]
+  (api/check-404 (nil? worktree-id))
+  nil)
+
+(defn check-can-read-worktree
+  "Guard for a `worktree-id` request parameter. Nil means the main app and is always allowed; naming a worktree is
+  superuser-only, and the worktree has to exist. Returns `worktree-id` so it threads straight into the query.
+
+  A worktree is only ever read through a parameter that names it -- nothing it holds appears in a listing that did
+  not ask for it, and no endpoint creates content in one. A pull is the only thing that writes there."
+  [worktree-id]
+  (when worktree-id
+    (api/check-superuser)
+    (check-worktree-exists! worktree-id))
+  worktree-id)
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

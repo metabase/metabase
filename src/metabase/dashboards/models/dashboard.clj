@@ -411,7 +411,7 @@
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
+               :public_uuid_prefix :worktree_id]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -514,7 +514,7 @@
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :moderated-status           :mr.status}
-   :where        []
+   :where        [:= :this.worktree_id nil]
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
                                             ;; a magical alias, or perhaps this clause can be implicit

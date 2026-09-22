@@ -23,7 +23,8 @@
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."

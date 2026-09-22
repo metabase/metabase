@@ -213,7 +213,7 @@
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :table_id :worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
@@ -223,6 +223,7 @@
 
 (search/define-spec "measure"
   {:model :model/Measure
+   :where [:= :this.worktree_id nil]
    :attrs {:archived true
            :collection-id false
            :creator-id true

@@ -195,7 +195,8 @@
    [:model_table_id      {:optional true} [:maybe ::lib.schema.id/table]]
    [:model_table_name    {:optional true} [:maybe :string]]
    [:file_path           {:optional true} [:maybe :string]]
-   [:content_hash        {:optional true} [:maybe :string]]])
+   [:content_hash        {:optional true} [:maybe :string]]
+   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
@@ -239,4 +240,53 @@
    [:error_message           {:optional true} [:maybe :string]]
    [:version                 {:optional true} [:maybe :string]]
    [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
-   [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]])
+   [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]
+   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
+
+(mr/def ::worktree
+  "A Worktree as selected from the app DB: every column of `:worktree`."
+  [:map {:closed true}
+   [:id         ::lib.schema.id/worktree]
+   [:branch     :string]
+   [:creator_id [:maybe ::lib.schema.id/user]]
+   [:created_at ms/TemporalInstant]
+   [:updated_at ms/TemporalInstant]])
+
+(mr/def ::worktree.update
+  "The columns of `:worktree` an insert or update may set: every column except `id`, all optional."
+  [:map {:closed true}
+   [:branch     {:optional true} :string]
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at {:optional true} ms/TemporalInstant]
+   [:updated_at {:optional true} ms/TemporalInstant]])
+
+(mr/def ::worktree-remapping
+  "A WorktreeRemapping as selected from the app DB: every column of `:worktree_remapping`."
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:worktree_id      ::lib.schema.id/worktree]
+   [:type             :string]
+   [:source_entity_id :string]
+   [:local_entity_id  :string]])
+
+(mr/def ::worktree-remapping.update
+  "The columns of `:worktree_remapping` an insert or update may set: every column except `id`, all optional."
+  [:map {:closed true}
+   [:worktree_id      {:optional true} ::lib.schema.id/worktree]
+   [:type             {:optional true} :string]
+   [:source_entity_id {:optional true} :string]
+   [:local_entity_id  {:optional true} :string]])
+
+(def Worktree
+  "Response shape for a remote-sync worktree."
+  [:map
+   [:id         ::lib.schema.id/worktree]
+   [:branch     :string]
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at {:optional true} :any]
+   [:updated_at {:optional true} :any]
+   [:creator    {:optional true} [:maybe :map]]])
+
+(def WorktreeList
+  "Response shape for `GET /worktree`."
+  [:sequential Worktree])

@@ -26,6 +26,15 @@
  [source.p
   ->ingestable])
 
+(defenterprise check-worktree-exists!
+  "404s when `worktree-id` names no remote-sync worktree. The FK would reject a bogus id anyway, but as a 500
+  rather than a 404. Returns nil; call for side effect."
+  :feature :none
+  [worktree-id]
+  (when worktree-id
+    (api/check-404 (remote-sync.db/worktree-exists? worktree-id)))
+  nil)
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 

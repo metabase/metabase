@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -61,10 +62,10 @@
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]
   "Get a list of all transform tags."
   [_route-params
-   _query-params]
+   {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (log/info "Getting all transform tags")
   (api/check-data-analyst)
-  (t2/hydrate (transforms-rest.db/tags) :can_run))
+  (t2/hydrate (transforms-rest.db/tags (remote-sync/check-can-read-worktree worktree-id)) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-tag` routes."
