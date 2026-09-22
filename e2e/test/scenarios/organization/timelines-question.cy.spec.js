@@ -628,6 +628,7 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("See all").click();
       });
 
+      cy.findByTestId("timeline-event-popover").should("not.exist");
       cy.log("'See all' selects the cluster and focuses the sidebar on it");
       H.timelineEventChip("4 events").should(
         "have.attr",

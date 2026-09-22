@@ -43,6 +43,8 @@ Once you create an event, the event will show up in charts in the collection, pr
 - The date of the event falls within the chart's time range.
 - The timeline is visible (more on that [below](#adding-events-when-viewing-a-question)).
 
+A timeline you create later won't appear on an already-saved question until you turn it on and save the question again.
+
 You'll see an icon along the x-axis that plots the event. A vertical line will extend from the event to show when the data plotted on the chart intersects with the event.
 
 ![An event on a chart](./images/example-event.png)

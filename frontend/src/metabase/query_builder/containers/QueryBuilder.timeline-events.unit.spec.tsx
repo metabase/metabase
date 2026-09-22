@@ -114,6 +114,47 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
   return store;
 };
 
+const DESTINATION_COLLECTION = createMockCollection({ id: 123 });
+
+const setupNewQuestion = async (
+  options: Pick<Parameters<typeof setup>[0], "timelines" | "timelinesResponse">,
+) => {
+  setupCardCreateEndpoint();
+  fetchMock.get(
+    /\/api\/card\/\d+\/query_metadata/,
+    createMockCardQueryMetadata(),
+  );
+  const { store } = await setup({
+    card: createMockUnsavedCard({
+      dataset_query: CARD.dataset_query,
+      display: "line",
+    }),
+    ...options,
+  });
+  return store;
+};
+
+const getCreatedCard = (): Card => {
+  const body = checkNotNull(
+    fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
+      ?.options.body,
+  );
+  return JSON.parse(body.toString());
+};
+
+const saveNewQuestion = async (
+  options: Pick<Parameters<typeof setup>[0], "timelines" | "timelinesResponse">,
+) => {
+  const store = await setupNewQuestion(options);
+  const question = checkNotNull(getQuestion(store.getState())).setCollectionId(
+    DESTINATION_COLLECTION.id,
+  );
+  await act(async () => {
+    await store.dispatch(apiCreateQuestion(question));
+  });
+  return getCreatedCard();
+};
+
 describe("QueryBuilder > timeline events", () => {
   beforeEach(() => {
     trackSimpleEvent.mockClear();
@@ -150,32 +191,22 @@ describe("QueryBuilder > timeline events", () => {
   });
 
   it("waits for collection timelines before saving a new question", async () => {
-    setupCardCreateEndpoint();
-    fetchMock.get(
-      /\/api\/card\/\d+\/query_metadata/,
-      createMockCardQueryMetadata(),
-    );
     let resolveTimelines: (timelines: (typeof TIMELINE)[]) => void = () => {};
     const timelinesResponse = new Promise<(typeof TIMELINE)[]>((resolve) => {
       resolveTimelines = resolve;
     });
-    const destinationCollection = createMockCollection({ id: 123 });
     const destinationTimeline = createMockTimeline({
       id: 2,
-      collection_id: destinationCollection.id,
-      collection: destinationCollection,
+      collection_id: DESTINATION_COLLECTION.id,
+      collection: DESTINATION_COLLECTION,
       events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
     });
-    const { store } = await setup({
-      card: createMockUnsavedCard({
-        dataset_query: CARD.dataset_query,
-        display: "line",
-      }),
+    const store = await setupNewQuestion({
       timelinesResponse: () => timelinesResponse,
     });
     const question = checkNotNull(
       getQuestion(store.getState()),
-    ).setCollectionId(checkNotNull(destinationCollection.entity_id));
+    ).setCollectionId(checkNotNull(DESTINATION_COLLECTION.entity_id));
 
     const savePromise = store.dispatch(apiCreateQuestion(question));
 
@@ -193,15 +224,29 @@ describe("QueryBuilder > timeline events", () => {
     });
 
     expect(createCallBeforeTimelinesLoaded).toBeUndefined();
-
-    const body = checkNotNull(
-      fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
-        ?.options.body,
-    );
-    const created: Card = JSON.parse(body.toString());
-    expect(created.visualization_settings).toMatchObject({
+    expect(getCreatedCard().visualization_settings).toMatchObject({
       "timeline.selected_timeline_ids": [destinationTimeline.id],
     });
+  });
+
+  it("records an explicit empty selection when saving into a collection with no timelines", async () => {
+    const created = await saveNewQuestion({ timelines: [TIMELINE] });
+
+    expect(created.visualization_settings).toMatchObject(EVENTS_OFF);
+    expect(created).not.toHaveProperty("source_card_id");
+  });
+
+  it("records no selection when collection timelines fail to load", async () => {
+    const created = await saveNewQuestion({
+      timelinesResponse: () => Promise.reject(new Error("unavailable")),
+    });
+
+    expect(created.visualization_settings).not.toHaveProperty([
+      "timeline.selected_timeline_ids",
+    ]);
+    expect(created.visualization_settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
   });
 
   it("shows only the events a saved question recorded", async () => {

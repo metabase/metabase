@@ -1,9 +1,16 @@
 import cx from "classnames";
-import { useState } from "react";
+import {
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
-import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
+import { Box, Icon, Popover, Text, UnstyledButton } from "metabase/ui";
 import {
   TIMELINE_EVENTS_BAND,
   type TimelineEventGroup,
@@ -23,6 +30,7 @@ const POPOVER_OFFSET =
   AXIS_CLEARANCE;
 
 export const POPOVER_CLOSE_DELAY_MS = 150;
+const POPOVER_OPEN_DELAY_MS = 50;
 
 interface TimelineEventChipProps {
   group: TimelineEventGroup;
@@ -33,7 +41,7 @@ interface TimelineEventChipProps {
   zIndex?: number;
   className?: string;
   onFocus?: () => void;
-  onBlur?: () => void;
+  onBlur?: (event: FocusEvent<HTMLButtonElement>) => void;
   onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
@@ -59,13 +67,25 @@ export const TimelineEventChip = ({
 }: TimelineEventChipProps) => {
   const { events } = group;
 
-  // Remounting the hover card via a fresh key is how an action taken from the
-  // popover (e.g. "See all", which opens a sidebar) dismisses it: a hover-only
-  // card would otherwise linger under the cursor after the chart re-lays-out,
-  // and controlling `opened` fights Mantine's own hover handling. A remounted
-  // card starts closed and only re-opens on a new hover.
-  const [popoverKey, setPopoverKey] = useState(0);
-  const dismissPopover = () => setPopoverKey((key) => key + 1);
+  const [opened, setOpened] = useState(false);
+  // a keyboard-opened popover traps focus so its contents are reachable; a
+  // hover-opened one must not steal focus from wherever the user is typing
+  const [openedByKeyboard, setOpenedByKeyboard] = useState(false);
+  const openedRef = useRef(opened);
+  openedRef.current = opened;
+  const hoverTimeoutRef = useRef<number>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const cancelPendingHover = () => {
+    window.clearTimeout(hoverTimeoutRef.current);
+  };
+
+  const dismissPopover = () => {
+    cancelPendingHover();
+    setOpened(false);
+  };
+
+  useEffect(() => cancelPendingHover, []);
 
   const isSingleEvent = events.length === 1;
   const hasMoreThanMax = events.length > MAX_VISIBLE_EVENTS;
@@ -86,6 +106,47 @@ export const TimelineEventChip = ({
   const handleSelect = () => {
     onOpenTimelines?.(isSingleEvent ? undefined : events.map((e) => e.id));
     onSelectTimelineEvents?.(events);
+  };
+
+  // a popover that is already open by keyboard keeps its focus handling, so a
+  // passing pointer cannot strand the focus inside it
+  const openFromPointer = () => {
+    if (!openedRef.current) {
+      setOpenedByKeyboard(false);
+    }
+    setOpened(true);
+  };
+
+  const handleMouseEnter = () => {
+    cancelPendingHover();
+    onGroupHover?.(group);
+    hoverTimeoutRef.current = window.setTimeout(
+      openFromPointer,
+      POPOVER_OPEN_DELAY_MS,
+    );
+  };
+
+  const handleMouseLeave = () => {
+    cancelPendingHover();
+    onGroupHover?.(null);
+    hoverTimeoutRef.current = window.setTimeout(
+      () => setOpened(false),
+      POPOVER_CLOSE_DELAY_MS,
+    );
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && opened) {
+      event.stopPropagation();
+      dismissPopover();
+    }
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLButtonElement>) => {
+    if (!dropdownRef.current?.contains(event.relatedTarget)) {
+      dismissPopover();
+    }
+    onBlur?.(event);
   };
 
   const handleChipClick = () => {
@@ -109,17 +170,37 @@ export const TimelineEventChip = ({
     }
   };
 
+  const chipLabel = isSingleEvent ? events[0].name : t`${events.length} events`;
+
+  // without a select action, activating the chip shows the details that would
+  // otherwise only be reachable by hovering; a keyboard activation arrives as
+  // a click with no detail count and may also close them
+  const handleClick = (event: MouseEvent) => {
+    cancelPendingHover();
+    if (canSelect) {
+      handleChipClick();
+    } else if (event.detail === 0) {
+      setOpenedByKeyboard(true);
+      setOpened((isOpened) => !isOpened);
+    } else {
+      openFromPointer();
+    }
+  };
+
   return (
-    <HoverCard
-      key={popoverKey}
+    <Popover
+      opened={opened}
+      onChange={setOpened}
       position="top"
       offset={POPOVER_OFFSET}
-      openDelay={50}
-      closeDelay={POPOVER_CLOSE_DELAY_MS}
       shadow="sm"
+      withRoles={!canSelect}
+      trapFocus={openedByKeyboard}
+      returnFocus={openedByKeyboard}
+      closeOnEscape
       classNames={{ dropdown: S.bridgeDropdown }}
     >
-      <HoverCard.Target>
+      <Popover.Target>
         <UnstyledButton
           className={cx(
             S.chip,
@@ -138,14 +219,13 @@ export const TimelineEventChip = ({
           data-hidden={hidden}
           aria-hidden={hidden}
           tabIndex={hidden ? -1 : undefined}
-          aria-label={
-            isSingleEvent ? events[0].name : t`${events.length} events`
-          }
-          onClick={canSelect ? handleChipClick : undefined}
-          onMouseEnter={() => onGroupHover?.(group)}
-          onMouseLeave={() => onGroupHover?.(null)}
+          aria-label={chipLabel}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onKeyDown={handleKeyDown}
           onFocus={onFocus}
-          onBlur={onBlur}
+          onBlur={handleBlur}
         >
           {isSingleEvent ? (
             <Icon name={getTimelineEventGroupIconName(group)} size={12} />
@@ -155,8 +235,14 @@ export const TimelineEventChip = ({
             </Text>
           )}
         </UnstyledButton>
-      </HoverCard.Target>
-      <HoverCard.Dropdown p={0} bdrs="0.75rem">
+      </Popover.Target>
+      <Popover.Dropdown
+        ref={dropdownRef}
+        p={0}
+        bdrs="0.75rem"
+        onMouseEnter={cancelPendingHover}
+        onMouseLeave={handleMouseLeave}
+      >
         <div data-testid="timeline-event-popover">
           {isSingleEvent ? (
             <Box
@@ -164,6 +250,7 @@ export const TimelineEventChip = ({
               maw="16rem"
               mah="20rem"
               p="md"
+              tabIndex={0}
               style={{ overflowY: "auto" }}
             >
               {showDetails ? (
@@ -174,7 +261,12 @@ export const TimelineEventChip = ({
             </Box>
           ) : (
             <>
-              <Box w="16rem" mah="20rem" style={{ overflowY: "auto" }}>
+              <Box
+                w="16rem"
+                mah="20rem"
+                tabIndex={0}
+                style={{ overflowY: "auto" }}
+              >
                 <TimelineEventsList
                   events={visibleEvents}
                   showDetails={showDetails}
@@ -191,7 +283,7 @@ export const TimelineEventChip = ({
             </>
           )}
         </div>
-      </HoverCard.Dropdown>
-    </HoverCard>
+      </Popover.Dropdown>
+    </Popover>
   );
 };

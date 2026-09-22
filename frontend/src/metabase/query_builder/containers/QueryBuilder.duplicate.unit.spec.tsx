@@ -61,12 +61,12 @@ describe("QueryBuilder > saving a question based on another one", () => {
     expect(getCreatedCard().source_card_id).toBe(TEST_STRUCTURED_CARD.id);
   });
 
-  it("does not mark an edited question saved as a new one as a copy", async () => {
+  it("marks an edited question saved as a new one as a copy of the original", async () => {
     await setupQuestion();
 
     await triggerVisualizationQueryChange();
     await saveAsNewQuestion();
 
-    expect(getCreatedCard()).not.toHaveProperty("source_card_id");
+    expect(getCreatedCard().source_card_id).toBe(TEST_STRUCTURED_CARD.id);
   });
 });

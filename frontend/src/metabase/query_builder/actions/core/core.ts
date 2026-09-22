@@ -26,7 +26,11 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import {
+  LIST_TIMELINES_REQUEST,
+  getTransformedTimelines,
+  selectListTimelines,
+} from "metabase/timelines/panel/selectors";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
@@ -258,18 +262,20 @@ export const apiCreateQuestion = (
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
       await dispatch(
-        timelineApi.endpoints.listTimelines.initiate(
-          { include: "events" },
-          { forceRefetch: false, subscribe: false },
-        ),
+        timelineApi.endpoints.listTimelines.initiate(LIST_TIMELINES_REQUEST, {
+          forceRefetch: false,
+          subscribe: false,
+        }),
       );
-      const visibility = getCollectionTimelinesVisibility(
-        getTransformedTimelines(getState()),
-        submittableQuestion.collectionId(),
-      );
-      // Do not turn an unresolved or genuinely empty collection into an explicit "no events" selection.
-      if (visibility["timeline.selected_timeline_ids"]?.length) {
-        submittableQuestion = submittableQuestion.updateSettings(visibility);
+      // An empty collection must still be recorded, or the query builder would later pick up timelines the
+      // dashboard never shows; only a failed request leaves the selection unrecorded.
+      if (selectListTimelines(getState()).isSuccess) {
+        submittableQuestion = submittableQuestion.updateSettings(
+          getCollectionTimelinesVisibility(
+            getTransformedTimelines(getState()),
+            submittableQuestion.collectionId(),
+          ),
+        );
       }
     }
     // Saving models with list view setting as a question in not allowed for now,

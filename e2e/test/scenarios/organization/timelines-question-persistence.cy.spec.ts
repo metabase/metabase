@@ -5,6 +5,7 @@ import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instanc
 import type {
   Card,
   CardId,
+  CollectionId,
   TimelineId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -159,6 +160,75 @@ describe("scenarios > organization > timelines > question persistence", () => {
     );
   });
 
+  it("should keep a question saved into a collection without timelines empty until a timeline is turned on", () => {
+    H.createCollection({ name: "Quiet corner" }).then(({ body: collection }) =>
+      cy.wrap(collection.id).as("collectionId"),
+    );
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      display: "line",
+    });
+    H.saveQuestionToCollection(
+      "Orders by month",
+      { path: ["Our analytics", "Quiet corner"] },
+      { wrapId: true },
+    );
+    cy.get<CardId>("@questionId").then((questionId) => {
+      cy.request<Card>(`/api/card/${questionId}`)
+        .its("body.visualization_settings")
+        .should("deep.include", { "timeline.selected_timeline_ids": [] });
+      H.createDashboardWithTabs({
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: questionId,
+            size_x: 12,
+            size_y: 8,
+          }),
+        ],
+      }).then((dashboard) => cy.wrap(dashboard.id).as("dashboardId"));
+    });
+    cy.get<CollectionId>("@collectionId").then((collection_id) =>
+      H.createTimelineWithEvents({
+        timeline: { name: "Migration seasons", collection_id },
+        events: EVENTS,
+      }),
+    );
+
+    cy.log("a timeline created later stays off the question and its dashboard");
+    cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
+    H.visitQuestion("@questionId");
+    cy.wait("@getTimelines");
+    expectEvents([], EVENT_NAMES);
+    H.visitDashboard("@dashboardId");
+    H.waitForDashcardsToLoad();
+    expectEvents([], EVENT_NAMES);
+
+    cy.log("turning the timeline on and saving shows it on both");
+    H.visitQuestion("@questionId");
+    openQuestionEvents();
+    H.rightSidebar().within(() =>
+      H.timelineVisibility("Migration seasons").click(),
+    );
+    expectEvents(EVENT_NAMES);
+    H.saveSavedQuestion();
+    cy.reload();
+    expectEvents(EVENT_NAMES);
+    H.visitDashboard("@dashboardId");
+    H.waitForDashcardsToLoad();
+    expectEvents(EVENT_NAMES);
+  });
+
   it("should keep an explicitly empty selection hidden after saving and reloading the question and dashboard", () => {
     H.createTimelineWithEvents({
       timeline: { name: "Migration seasons" },
@@ -248,6 +318,39 @@ describe("scenarios > organization > timelines > question persistence", () => {
       ),
     );
     cy.reload();
+    expectEvents(["Swallows return"], ["Swifts return", "Rare visitor"]);
+  });
+
+  it("should save a question as a new one while it uses a timeline the user cannot see", () => {
+    createTimeSeriesWithHiddenTimeline();
+
+    cy.signInAsNormalUser();
+    H.visitQuestion("@questionId");
+    openQuestionEvents();
+    H.rightSidebar().within(() =>
+      H.toggleTimelineEventVisibility("Swifts return"),
+    );
+    expectEvents(["Swallows return"], ["Swifts return"]);
+
+    cy.intercept("POST", "/api/card").as("createQuestion");
+    cy.findByTestId("qb-header").button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save as new question").click();
+      cy.button("Save").click();
+    });
+    cy.wait("@createQuestion").its("response.statusCode").should("eq", 200);
+
+    cy.log("the new question keeps the timeline the user cannot see");
+    cy.get<TimelineId[]>("@timelineIds").then((timelineIds) =>
+      cy
+        .get("@createQuestion")
+        .its("response.body.visualization_settings")
+        .should((settings: VisualizationSettings) =>
+          expect(settings["timeline.selected_timeline_ids"]).to.have.members(
+            timelineIds,
+          ),
+        ),
+    );
     expectEvents(["Swallows return"], ["Swifts return", "Rare visitor"]);
   });
 
