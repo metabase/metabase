@@ -138,9 +138,18 @@ const LATER_EVENT = createMockTimelineEvent({
   timestamp: "2024-06-15T00:00:00Z",
 });
 
-const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
-  const { onTimelineEventsShown } = useDashCardTimelineEvents(dashcard);
-  useMount(() => onTimelineEventsShown?.());
+const DashCardChart = ({
+  dashcard,
+  onRender,
+}: {
+  dashcard: DashboardCard;
+  onRender?: (props: ReturnType<typeof useDashCardTimelineEvents>) => void;
+}) => {
+  const props = useDashCardTimelineEvents(dashcard);
+  useMount(() => {
+    props.onTimelineEventsShown?.();
+    onRender?.(props);
+  });
   return null;
 };
 
@@ -152,6 +161,7 @@ function setup({
   dashcardTabId = null,
   withSidebar = false,
   dashcards,
+  onRender,
   datasets = {},
   timelines = [TIMELINE],
   seedTimelines = true,
@@ -163,6 +173,7 @@ function setup({
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
   dashcards?: QuestionDashboardCard[];
+  onRender?: (props: ReturnType<typeof useDashCardTimelineEvents>) => void;
   datasets?: DashCardDataMap[number];
   timelines?: Timeline[];
   seedTimelines?: boolean;
@@ -191,7 +202,7 @@ function setup({
       isFullscreen={isFullscreen}
     >
       {/* two charts report, the dashboard is tracked once */}
-      <DashCardChart dashcard={dashcard} />
+      <DashCardChart dashcard={dashcard} onRender={onRender} />
       <DashCardChart dashcard={dashcard} />
       {withSidebar && <DashboardEventsSidebar />}
     </MockDashboardContext>,
@@ -258,12 +269,18 @@ describe("dashboard timeline events", () => {
   });
 
   it("offers no event controls in fullscreen, but still counts the impression", () => {
-    setup({ savedVisibility: EVENTS_RECORDED, isFullscreen: true });
+    const onRender = jest.fn();
+    setup({ savedVisibility: EVENTS_RECORDED, isFullscreen: true, onRender });
 
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "dashboard_events_shown",
       target_id: DASHBOARD_ID,
     });
+    const props = onRender.mock.calls[0][0];
+    expect(props.isEnabled).toBe(false);
+    expect(props.onOpenTimelines).toBeUndefined();
+    expect(props.onSelectTimelineEvents).toBeUndefined();
+    expect(props.onDeselectTimelineEvents).toBeUndefined();
   });
 
   it("does not track event visibility when dashboard event controls are disabled", () => {

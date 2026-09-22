@@ -14,6 +14,7 @@ import {
   fetchDashboard,
   markTimelineEventsShown,
   selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
   setDashCardTimelineEventsVisibility,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
@@ -493,10 +494,15 @@ describe("dashboard reducers", () => {
     });
 
     it("drops the session overrides when the dashboard is refetched", () => {
-      const state = timelineEvents(overriddenState().timelineEvents, {
+      const overridden = reducer(
+        overriddenState(),
+        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
+      );
+      const state = timelineEvents(overridden.timelineEvents, {
         type: fetchDashboard.fulfilled.type,
       });
       expect(state.overrides).toEqual({});
+      expect(state.enabledByDashCard).toEqual({});
       expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
     });
   });

@@ -22,6 +22,7 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
+import { apiCreateQuestion } from "../actions";
 import {
   openTimelines,
   updateTimelineEventsVisibility,
@@ -183,6 +184,46 @@ describe("QueryBuilder > timeline events", () => {
     const created: Card = JSON.parse(body.toString());
     expect(created.visualization_settings).toMatchObject({
       "timeline.selected_timeline_ids": [TIMELINE.id],
+    });
+  });
+
+  it("records the destination collection's events, not the current one's", async () => {
+    setupCardCreateEndpoint();
+    fetchMock.get(
+      /\/api\/card\/\d+\/query_metadata/,
+      createMockCardQueryMetadata(),
+    );
+    const destinationTimeline = createMockTimeline({
+      id: 2,
+      collection_id: 123,
+      events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
+    });
+    const { store } = await setup({
+      card: createMockUnsavedCard({
+        dataset_query: CARD.dataset_query,
+        display: "line",
+      }),
+      timelines: [
+        createMockTimeline({ ...TIMELINE, collection_id: null }),
+        destinationTimeline,
+      ],
+    });
+
+    // the Save modal picks the destination, so the question handed to the action already carries it
+    const question = checkNotNull(
+      getQuestion(store.getState()),
+    ).setCollectionId(destinationTimeline.collection_id);
+    await act(async () => {
+      await store.dispatch(apiCreateQuestion(question));
+    });
+
+    const body = checkNotNull(
+      fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
+        ?.options.body,
+    );
+    const created: Card = JSON.parse(body.toString());
+    expect(created.visualization_settings).toMatchObject({
+      "timeline.selected_timeline_ids": [destinationTimeline.id],
     });
   });
 

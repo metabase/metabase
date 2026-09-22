@@ -1927,6 +1927,18 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Excluded timeline event IDs must be"
                                   (t2/update! :model/Card (:id card) {:visualization_settings settings})))))))))
 
+(deftest card-timeline-malformed-saved-selection-test
+  (testing "a malformed selection saved before it was validated can still be repaired"
+    (mt/with-temp [:model/Timeline timeline {}
+                   :model/Card card {:display                :line
+                                     :visualization_settings {:timeline.selected_timeline_ids 7}}]
+      (mt/with-test-user :rasta
+        (doseq [repaired [[(:id timeline)] []]]
+          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}})
+          (is (= repaired
+                 (get-in (t2/select-one :model/Card (:id card))
+                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
 (deftest card-timeline-malformed-saved-exclusions-test
   (testing "a malformed excluded-event list saved before it was validated does not block later edits"
     (mt/with-temp [:model/Timeline timeline {}

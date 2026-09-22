@@ -778,19 +778,25 @@
 (defn- events-enabled? [visibility]
   (not (false? (:timeline_events.enabled visibility))))
 
-(defn- excluded-event-ids
-  "The event ids `visibility` hides. Settings saved before this was validated can hold anything, so a malformed value
-  counts as nothing hidden rather than throwing."
-  [visibility]
-  (let [ids (:timeline.excluded_timeline_event_ids visibility)]
+(defn- setting-ids
+  "The ids stored under `k` in `visibility`. Settings saved before these keys were validated can hold anything, so a
+  malformed value counts as no ids rather than throwing — otherwise the card could never be repaired."
+  [visibility k]
+  (let [ids (get visibility k)]
     (if (sequential? ids) (filter pos-int? ids) [])))
+
+(defn- selected-timeline-ids [visibility]
+  (setting-ids visibility :timeline.selected_timeline_ids))
+
+(defn- excluded-event-ids [visibility]
+  (setting-ids visibility :timeline.excluded_timeline_event_ids))
 
 (defn- newly-revealed-timeline-ids
   [visibility previous-visibility reveals-all?]
-  (let [selected-ids (set (:timeline.selected_timeline_ids visibility))]
+  (let [selected-ids (set (selected-timeline-ids visibility))]
     (if reveals-all?
       selected-ids
-      (let [added-ids    (set/difference selected-ids (set (:timeline.selected_timeline_ids previous-visibility)))
+      (let [added-ids    (set/difference selected-ids (set (selected-timeline-ids previous-visibility)))
             hidden-ids   (set (excluded-event-ids visibility))
             unhidden-ids (into [] (remove hidden-ids) (excluded-event-ids previous-visibility))]
         (into added-ids

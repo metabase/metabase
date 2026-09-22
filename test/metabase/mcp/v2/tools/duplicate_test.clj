@@ -311,6 +311,33 @@
             (is (=? {:name "Revenue" :collection_id dest-coll}
                     (t2/select-one :model/Card :id (first new-cards))))))))))
 
+(deftest duplicate-dashboard-deep-keeps-inaccessible-timeline-selection-test
+  (testing "a deep copy keeps a card's timeline selection the caller cannot read, like the REST deep copy"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {source-coll :id} {}
+                     :model/Collection {dest-coll :id} {}
+                     :model/Collection {restricted :id} {}
+                     :model/Timeline {timeline-id :id} {:collection_id restricted}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :type          :question
+                                                :display       :line
+                                                :collection_id source-coll
+                                                :dataset_query (venues-query)
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [timeline-id]}}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id source-coll}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted)
+        (let [result    (tool-result (call-tool! :rasta {:type          "dashboard"
+                                                         :id            dash-id
+                                                         :collection_id dest-coll
+                                                         :is_deep_copy  true}))
+              new-cards (map :card_id (copied-dashcards (:id result)))]
+          (is (= 1 (count new-cards)))
+          (is (= [timeline-id]
+                 (get-in (t2/select-one :model/Card :id (first new-cards))
+                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
 (deftest duplicate-dashboard-deep-uncopied-test
   (testing "GHY-4151: a deep copy reports cards it left behind as `uncopied`, and an unreadable one
             is reported by id alone — the tool must not hand the agent the name or query of a card
