@@ -30,16 +30,11 @@
   "Maximum number of ids per `:in` clause when reading remappings, to stay under database parameter limits."
   1000)
 
-(def ^:dynamic *worktree-id*
-  "The remote-sync worktree the running import or export is materializing content into, or nil for the main app.
-  Bound by [[do-with-worktree]] from the worktree the sync carries, and read nowhere outside serialization: a
-  request never sets it, and a worktree is never implied by who is asking."
-  nil)
-
 (defn current-worktree-id
-  "The remote-sync worktree the current import or export is operating on; nil is the main app."
+  "The remote-sync worktree being worked in; nil is the main app. The same one an endpoint declares in its
+  `:worktree` metadata, since a pull or a push is one more thing done to a world."
   []
-  *worktree-id*)
+  @(requiring-resolve 'metabase.remote-sync.core/*worktree-id*))
 
 (defn worktree-scoped?
   "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree:
@@ -115,12 +110,10 @@
              source))))))
 
 (defn do-with-worktree
-  "Run `thunk` with [[*worktree-id*]] bound to `worktree-id`. Impl for the remote-sync code that drives a pull or a
-  push: the worktree it carries in its context becomes the one serialization reads entities out of and writes them
-  into."
+  "Run `thunk` in the world `worktree-id` names. Impl for the remote-sync code that drives a pull or a push: the
+  worktree it carries becomes the one serialization reads entities out of and writes them into."
   [worktree-id thunk]
-  (binding [*worktree-id* worktree-id]
-    (thunk)))
+  ((requiring-resolve 'metabase.remote-sync.core/do-with-worktree) worktree-id thunk))
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).

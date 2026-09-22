@@ -9,6 +9,7 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import type { WorktreeNavProps } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
 import { useListWorktreesQuery } from "metabase-enterprise/api";
@@ -28,7 +29,8 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
   const branch = {
     id: `worktree-${worktree.id}`,
     name: worktree.branch,
-    icon: "git_branch" as const,
+    icon: { name: "git_branch" as const },
+    nonNavigable: true,
     children: buildCollectionTree(collections),
   };
 
@@ -36,6 +38,7 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
     <Tree
       data={[branch]}
       onSelect={onItemSelect}
+      TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label={worktree.branch}
     />

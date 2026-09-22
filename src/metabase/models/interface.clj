@@ -40,6 +40,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
@@ -675,7 +676,8 @@
     instance))
 
 (doseq [hook [:hook/timestamped? :hook/entity-id :hook/created-at-timestamped? :hook/updated-at-timestamped?]]
-  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/worktree-id))
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/worktree-id)
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/worktree-id))
 
 ;; --- helper fns
 (defn changes-with-pk

@@ -570,14 +570,15 @@
                               (contents-rso-expr collection-ids)]}))
 
 (mu/defn insert-rso!
-  "Insert the RemoteSyncObject `row`."
+  "Insert the RemoteSyncObject `row` into the world the running sync works in."
   [row :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/insert! :model/RemoteSyncObject row))
+  (t2/insert! :model/RemoteSyncObject (assoc row :worktree_id (serdes/current-worktree-id))))
 
 (mu/defn insert-rsos!
-  "Insert the RemoteSyncObject `rows`."
+  "Insert the RemoteSyncObject `rows` into the world the running sync works in."
   [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
-  (t2/insert! :model/RemoteSyncObject rows))
+  (t2/insert! :model/RemoteSyncObject
+              (mapv #(assoc % :worktree_id (serdes/current-worktree-id)) rows)))
 
 (mu/defn update-rso!
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
@@ -724,9 +725,10 @@
                              [:id :desc]]}))
 
 (mu/defn insert-task!
-  "Insert `task` and return the new instance."
+  "Insert `task` into the world the running sync works in, and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/insert-returning-instance! :model/RemoteSyncTask task))
+  (t2/insert-returning-instance! :model/RemoteSyncTask
+                                 (assoc task :worktree_id (serdes/current-worktree-id))))
 
 (mu/defn update-task!
   "Apply `changes` to the RemoteSyncTask with `task-id`."

@@ -11,7 +11,7 @@
   the API, and the overlay is the one thing a read cannot pass the worktree to -- the Field and Table rows it
   widens are hydrated, and a hydration method takes no options."
   []
-  @(requiring-resolve 'metabase.remote-sync.core/*worktree-id*))
+  ((requiring-resolve 'metabase.remote-sync.core/current-worktree-id)))
 
 (def user-settable-field-columns
   "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."

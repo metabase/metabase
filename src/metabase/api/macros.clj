@@ -862,7 +862,7 @@
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
   [:map {:closed true}
    [:scope       {:optional true} ::metadata-value-or-form]
-   [:worktree    {:optional true} ::metadata-value-or-form]
+   [:worktree    {:optional true} [:or ::metadata-value-or-form fn?]]
    [:multipart   {:optional true} [:or :boolean [:map {:closed true}
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]

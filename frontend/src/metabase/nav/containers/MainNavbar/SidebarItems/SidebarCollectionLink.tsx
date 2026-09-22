@@ -12,6 +12,7 @@ import type {
 import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { IconProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
@@ -33,6 +34,7 @@ type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
     nonNavigable?: boolean;
     collection: Collection;
+    icon?: IconProps;
   };
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
@@ -41,6 +43,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
+      icon,
       nonNavigable,
       hovered: isHovered,
       depth,
@@ -94,14 +97,14 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection, { isTenantUser });
+    const nodeIcon = icon ?? getCollectionIcon(collection, { isTenantUser });
     const isRegularCollection =
       PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
     const content = (
       <>
         <TreeNode.IconContainer transparent={false}>
-          <SidebarIcon {...icon} isSelected={isSelected} />
+          <SidebarIcon {...nodeIcon} isSelected={isSelected} />
         </TreeNode.IconContainer>
         <NameContainer>{collection.name}</NameContainer>
         {/* Unjustified type cast. FIXME */}
@@ -155,6 +158,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
         hovered={droppableProps?.hovered ?? false}
         highlighted={droppableProps?.highlighted ?? false}
         collection={collection}
+        icon={typeof item.icon === "string" ? { name: item.icon } : item.icon}
         nonNavigable={item.nonNavigable}
         ref={ref}
       />
