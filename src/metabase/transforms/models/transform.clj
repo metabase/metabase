@@ -34,7 +34,7 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/worktree-id]]
   (derive :model/Transform trait))
 
-(defmethod mi/worktree-container :model/Transform [_model]
+(defmethod mi/parent-entity :model/Transform [_model]
   {:fk :collection_id :model :model/Collection})
 
 (defn- transform-readable?

@@ -23,7 +23,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/DashboardTab [_model]
+(defmethod mi/parent-entity :model/DashboardTab [_model]
   {:fk :dashboard_id :model :model/Dashboard})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]

@@ -16,7 +16,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/TimelineEvent [_model]
+(defmethod mi/parent-entity :model/TimelineEvent [_model]
   {:fk :timeline_id :model :model/Timeline})
 
 ;;;; schemas

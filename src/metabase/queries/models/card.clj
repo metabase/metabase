@@ -135,7 +135,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/Card [_model]
+(defmethod mi/parent-entity :model/Card [_model]
   {:fk :collection_id :model :model/Collection})
 
 (defn- parent-document-id

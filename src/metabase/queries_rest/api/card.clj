@@ -40,6 +40,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -169,7 +170,9 @@
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
-  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
+  (let [cards          (->> (cards-for-filter-option f model-id)
+                            (filter worktree/in-current-world?)
+                            (filter mi/can-read?))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]

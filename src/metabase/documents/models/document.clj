@@ -48,7 +48,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/Document [_model]
+(defmethod mi/parent-entity :model/Document [_model]
   {:fk :collection_id :model :model/Collection})
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below

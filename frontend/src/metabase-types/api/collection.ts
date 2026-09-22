@@ -76,6 +76,9 @@ export interface Collection {
   is_sample?: boolean; // true if the collection part of the sample content
   is_library_root?: boolean;
 
+  /** the remote-sync branch this collection was checked out for; undefined is the main app */
+  worktree_id?: number | null;
+
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
   effective_ancestors?: CollectionEssentials[];
@@ -172,6 +175,8 @@ export type ListCollectionItemsSortColumn =
 // `/api/ee/stale/:id`, `/api/notification/admin`).
 export type ListCollectionItemsRequest = {
   id: CollectionId;
+  /** undefined is the main app */
+  "worktree-id"?: number;
   models?: (CollectionItemModel | "no_models")[];
   q?: string;
   "include-available-models"?: boolean;

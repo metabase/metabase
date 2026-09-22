@@ -610,21 +610,22 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
-(defmulti worktree-container
-  "What holds a `:hook/worktree-id` model, as `{:fk :model}`: the column naming its holder, and the holder's model.
-  Content belongs to the world of whatever holds it -- a card to its collection, a dashboard card to its dashboard.
-  Nil for a model nothing holds, whose worktree is given explicitly or not at all."
+(defmulti parent-entity
+  "What a `:hook/worktree-id` model hangs off, as `{:fk :model :id}`: the column naming its parent, the parent's
+  model, and, when the column is not the parent's id itself, how to read the id from it. Content belongs to the
+  world of its parent -- a card to its collection, a dashboard card to its dashboard. Nil for a model with no
+  parent, whose worktree is given explicitly or not at all."
   {:arglists '([model])}
   dispatch-on-model)
 
-(defmethod worktree-container :default [_model] nil)
+(defmethod parent-entity :default [_model] nil)
 
-(defn- container-id
-  "The id of whatever holds `instance`, nil when nothing does -- which is what tells the caller there is no world
-  to inherit."
+(defn- parent-id
+  "The id of `instance`'s parent, nil when it has none -- which is what tells the caller there is no world to
+  inherit."
   [model instance]
-  (when-some [{:keys [fk]} (worktree-container model)]
-    (get instance fk)))
+  (when-some [{:keys [fk id] :or {id identity}} (parent-entity model)]
+    (some-> (get instance fk) id)))
 
 (defn worktree-id
   "The remote-sync worktree the `model` row with `id` belongs to; nil both for the main app's content and for a
@@ -633,46 +634,44 @@
   (when (and id (isa? (t2/resolve-model model) :hook/worktree-id))
     (models.db/worktree-id-of model id)))
 
-(defn- container-worktree-id
-  "The worktree whatever holds `instance` belongs to; nil for a holder in the main app."
+(defn- parent-worktree-id
+  "The worktree `instance`'s parent belongs to; nil for a parent in the main app."
   [model instance]
-  (when-some [{:keys [fk] holder :model} (worktree-container model)]
-    (worktree-id holder (get instance fk))))
+  (when-some [{parent :model} (parent-entity model)]
+    (worktree-id parent (parent-id model instance))))
 
-(defn- check-worktree-matches-container!
-  "Throw unless `instance` belongs to the same world as whatever holds it. A branch's content and the main app's
-  live in the same tables, so a dashboard in a worktree holding a card from the main app -- or the other way
-  round -- would be content that only half exists in either world."
+(defn- check-worktree-matches-parent!
+  "Throw unless `instance` belongs to the same world as its parent. A branch's content and the main app's live in
+  the same tables, so a dashboard in a worktree holding a card from the main app -- or the other way round --
+  would be content that only half exists in either world."
   [model instance]
-  (when (some? (container-id model instance))
-    (let [worktree-id (container-worktree-id model instance)]
+  (when (some? (parent-id model instance))
+    (let [worktree-id (parent-worktree-id model instance)]
       (when-not (= (:worktree_id instance) worktree-id)
-        (throw (ex-info (format "Content in worktree %s cannot be held by content in worktree %s"
+        (throw (ex-info (format "Content in worktree %s cannot hang off content in worktree %s"
                                 (pr-str (:worktree_id instance)) (pr-str worktree-id))
-                        {:status-code           400
-                         :worktree_id           (:worktree_id instance)
-                         :container-worktree-id worktree-id}))))))
+                        {:status-code        400
+                         :worktree_id        (:worktree_id instance)
+                         :parent-worktree-id worktree-id}))))))
 
 (t2/define-before-insert :hook/worktree-id
   [instance]
-  (let [model    (t2.protocols/model instance)
-        instance (cond-> instance
-                   (and (some? (container-id model instance))
+  (let [instance (cond-> instance
+                   (and (some? (parent-id &model instance))
                         (not (contains? instance :worktree_id)))
-                   (assoc :worktree_id (container-worktree-id model instance)))]
-    (check-worktree-matches-container! model instance)
+                   (assoc :worktree_id (parent-worktree-id &model instance)))]
+    (check-worktree-matches-parent! &model instance)
     instance))
 
 (t2/define-before-update :hook/worktree-id
   [instance]
-  (let [model   (t2.protocols/model instance)
-        changes (t2/changes instance)]
+  (let [changes (t2/changes instance)]
     (when (contains? changes :worktree_id)
       (throw (ex-info "The worktree a piece of content belongs to cannot be changed"
                       {:status-code 400
                        :worktree_id (:worktree_id changes)})))
-    (when (contains? changes (:fk (worktree-container model)))
-      (check-worktree-matches-container! model instance))
+    (when (contains? changes (:fk (parent-entity &model)))
+      (check-worktree-matches-parent! &model instance))
     instance))
 
 (doseq [hook [:hook/timestamped? :hook/entity-id :hook/created-at-timestamped? :hook/updated-at-timestamped?]]

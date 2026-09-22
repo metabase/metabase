@@ -19,7 +19,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/Timeline [_model]
+(defmethod mi/parent-entity :model/Timeline [_model]
   {:fk :collection_id :model :model/Collection})
 
 ;;;; transforms

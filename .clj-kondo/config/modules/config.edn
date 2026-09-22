@@ -825,6 +825,7 @@
            request
            revisions
            util
+           worktree
            xrays}
    :model-imports #{:model/Action
                     :model/Card
@@ -2142,7 +2143,8 @@
            revisions
            search
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           worktree}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection

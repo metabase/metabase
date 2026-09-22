@@ -28,7 +28,7 @@
   #_(derive :hook/search-index)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/DashboardCard [_model]
+(defmethod mi/parent-entity :model/DashboardCard [_model]
   {:fk :dashboard_id :model :model/Dashboard})
 
 (t2/deftransforms :model/DashboardCard

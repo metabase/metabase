@@ -12,7 +12,7 @@
   (derive :metabase/model)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/DashboardCardSeries [_model]
+(defmethod mi/parent-entity :model/DashboardCardSeries [_model]
   {:fk :dashboardcard_id :model :model/DashboardCard})
 
 ;; Serialization

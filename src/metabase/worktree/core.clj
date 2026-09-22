@@ -18,6 +18,12 @@
   []
   *worktree-id*)
 
+(defn in-current-world?
+  "Whether `instance` belongs to the world being worked in: the main app's content by default, and a branch's when
+  the request named one. Lists that span collections need it, since both worlds share the tables."
+  [instance]
+  (= (:worktree_id instance) *worktree-id*))
+
 (defn do-with-worktree
   "Impl for [[with-worktree]]."
   [worktree-id thunk]

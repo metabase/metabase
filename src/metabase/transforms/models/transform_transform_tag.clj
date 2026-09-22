@@ -15,7 +15,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/TransformTransformTag [_model]
+(defmethod mi/parent-entity :model/TransformTransformTag [_model]
   {:fk :transform_id :model :model/Transform})
 
 (defmethod serdes/make-spec "TransformTransformTag"

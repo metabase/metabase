@@ -55,6 +55,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -67,6 +68,7 @@
                                        (when (= (keyword filter-option) :mine)
                                          api/*current-user-id*)) <>
     (t2/hydrate <> :creator)
+    (filter worktree/in-current-world? <>)
     (filter mi/can-read? <>)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

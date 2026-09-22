@@ -393,7 +393,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app, :worktree :worktree/query}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -410,7 +410,8 @@
                                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
                                                                        [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -446,6 +447,7 @@
   "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
   Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other
   scope params so the metadata describes the list being shown."
+  {:worktree :worktree/query}
   [_route-params
    {:keys [models archived namespace pinned-state collection-type include-library
            show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
@@ -456,7 +458,8 @@
                                                                      [:collection-type            {:optional true} collections.children/CollectionType]
                                                                      [:include-library            {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:worktree-id                {:optional true} [:maybe ms/PositiveInt]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         restrict-models (collections.children/visible-model-kwds root-collection model-set)]

@@ -55,6 +55,8 @@ export type EntityPickerProps = {
   options: EntityPickerOptions;
   searchParams?: Partial<SearchRequest>;
   value?: OmniPickerValue;
+  /** the remote-sync branch to pick in; undefined is the main app */
+  worktreeId?: number;
   searchQuery?: string;
   recentsContext?: RecentContexts[];
   isNewCollectionDialogOpen: boolean;

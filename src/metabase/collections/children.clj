@@ -22,6 +22,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.util :as collections.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
@@ -39,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -715,11 +717,16 @@
             [:not [:in :type [collection/library-collection-type
                               collection/library-metrics-collection-type
                               collection/library-data-collection-type]]]])
-         (if archived?
-           [:or
-            [:= :archived true]
-            [:= :id (collection/trash-collection-id)]]
-           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
+         (let [trash-id (collection/trash-collection-id (worktree/worktree-id))]
+           (if archived?
+             [:or
+              [:= :archived true]
+              [:= :id trash-id]]
+             [:and [:= :archived false] [:not= :id trash-id]]))
+         ;; The main app's top-level collections and a branch's both sit at "/", so the root of a world lists only
+         ;; the collections of the world the request asked for. Below the root the parent already picks the world.
+         (when (collection.root/is-root-collection? collection)
+           [:= :worktree_id (worktree/worktree-id)])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         ;; never show tenant-specific root collections as children of another collection
         [:or

@@ -528,6 +528,9 @@
   [location-path :- LocationPath]
   (last (location-path->ids location-path)))
 
+(defmethod mi/parent-entity :model/Collection [_model]
+  {:fk :location, :model :model/Collection, :id location-path->parent-id})
+
 (mu/defn all-ids-in-location-path-are-valid? :- :boolean
   "Do all the IDs in `location-path` belong to actual Collections? (This requires a DB call to check this, so this
   should only be used when creating/updating a Collection. Don't use this for casual schema validation.)"
@@ -1876,24 +1879,11 @@
                      :type        (:type collection)
                      :user-id     (:personal_owner_id collection)}))))
 
-(defn- assert-worktree-matches-parent
-  "Refuse a collection whose parent belongs to another world. A branch's collection tree and the main app's live in
-  the same table, so a collection nested under one from another world would appear in a tree it does not belong to."
-  [collection]
-  (when-let [parent-id (some-> (:location collection) location-path->parent-id)]
-    (let [parent-worktree-id (mi/worktree-id :model/Collection parent-id)]
-      (when-not (= (:worktree_id collection) parent-worktree-id)
-        (throw (ex-info "A collection cannot be nested under a collection from another worktree"
-                        {:status-code        400
-                         :worktree_id        (:worktree_id collection)
-                         :parent_worktree_id parent-worktree-id}))))))
-
 (t2/define-before-insert :model/Collection
   [{collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-not-instance-collection-in-worktree collection)
-  (assert-worktree-matches-parent collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
   (u/prog1 (-> collection

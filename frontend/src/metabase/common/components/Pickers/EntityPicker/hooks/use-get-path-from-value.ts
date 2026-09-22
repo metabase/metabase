@@ -371,11 +371,6 @@ async function getCollectionPathFromValue({
 
   const itemNamespace = value.namespace ?? getNamespace(item);
 
-  const rootCollectionItem = await getRootCollectionItem({
-    namespace: itemNamespace ?? null,
-    dispatch,
-  });
-
   const collection = isCollectionValue
     ? item
     : await dispatch(
@@ -383,6 +378,22 @@ async function getCollectionPathFromValue({
           id: parentCollectionId ?? "root",
         }),
       ).unwrap();
+
+  const branchPath = await getWorktreePath({
+    collection,
+    item: isCollectionValue ? undefined : item,
+    model: value.model,
+    dispatch,
+  });
+
+  if (branchPath) {
+    return branchPath;
+  }
+
+  const rootCollectionItem = await getRootCollectionItem({
+    namespace: itemNamespace ?? null,
+    dispatch,
+  });
 
   const location = PLUGIN_LIBRARY.isLibraryCollectionType(collection?.type)
     ? collection?.location
@@ -558,6 +569,46 @@ async function getCollectionPathFromValue({
     });
   }
   return locationPath;
+}
+
+/**
+ * The path of a collection a branch checked out, or undefined for the main app's own. A branch has no root
+ * collection, so its path starts at the top-level collection rather than at "Our analytics".
+ */
+async function getWorktreePath({
+  collection,
+  item,
+  model,
+  dispatch,
+}: {
+  collection?: Collection;
+  item?: { id: OmniPickerItem["id"]; name: string };
+  model: OmniPickerCollectionItemValue["model"];
+  dispatch: DispatchFn;
+}): Promise<OmniPickerItem[] | undefined> {
+  if (collection?.worktree_id == null) {
+    return undefined;
+  }
+
+  const location = collection.effective_location ?? collection.location ?? "";
+  const ancestorIds = location.split("/").filter(Boolean).map(Number);
+  const collections = await Promise.all(
+    [...ancestorIds, collection.id].map((id) =>
+      dispatch(collectionApi.endpoints.getCollection.initiate({ id })).unwrap(),
+    ),
+  );
+  const path: OmniPickerItem[] = collections.map((ancestor) => ({
+    id: ancestor.id,
+    name: ancestor.name,
+    model: "collection",
+    can_write: ancestor.can_write,
+    type: ancestor.type,
+    location: ancestor.location,
+    here: ["collection"],
+    below: allCollectionModels,
+  }));
+
+  return item ? [...path, { id: item.id, name: item.name, model }] : path;
 }
 
 function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {

@@ -52,7 +52,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/Dashboard [_model]
+(defmethod mi/parent-entity :model/Dashboard [_model]
   {:fk :collection_id :model :model/Collection})
 
 (defmethod mi/can-write? :model/Dashboard

@@ -21,7 +21,7 @@
   (derive :hook/timestamped?)
   (derive :hook/worktree-id))
 
-(defmethod mi/worktree-container :model/TransformTest [_model]
+(defmethod mi/parent-entity :model/TransformTest [_model]
   {:fk :transform_id :model :model/Transform})
 
 (defn- json-column
