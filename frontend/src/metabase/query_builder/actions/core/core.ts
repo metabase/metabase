@@ -256,12 +256,16 @@ export const apiCreateQuestion = (
         null &&
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
-      submittableQuestion = submittableQuestion.updateSettings(
-        getCollectionTimelinesVisibility(
-          getTransformedTimelines(getState()),
-          submittableQuestion.collectionId(),
-        ),
+      const visibility = getCollectionTimelinesVisibility(
+        getTransformedTimelines(getState()),
+        submittableQuestion.collectionId(),
       );
+      // Only record something we actually resolved. An empty result means the timelines never loaded, the
+      // destination id could not be matched, or the collection has none — recording it would save an explicit
+      // "no events" the user never chose, and there is no undoing that from the collection defaults.
+      if (visibility["timeline.selected_timeline_ids"].length > 0) {
+        submittableQuestion = submittableQuestion.updateSettings(visibility);
+      }
     }
     // Saving models with list view setting as a question in not allowed for now,
     // so we change it back to table.
