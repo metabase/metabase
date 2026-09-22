@@ -787,6 +787,12 @@
   [row :- ::remote-sync.schema/worktree.update]
   (t2/insert-returning-instance! :model/Worktree row))
 
+(mu/defn update-worktree-branch!
+  "Point the Worktree with `worktree-id` at `branch`, returning the number updated."
+  [worktree-id :- ::lib.schema.id/worktree
+   branch      :- :string]
+  (t2/update! :model/Worktree worktree-id {:branch branch}))
+
 (mu/defn delete-worktree!
   "Delete the Worktree with `worktree-id`; every `worktree_id` FK cascades."
   [worktree-id :- ::lib.schema.id/worktree]

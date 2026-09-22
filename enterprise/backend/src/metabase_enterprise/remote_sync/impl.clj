@@ -309,6 +309,15 @@
   (or (some-> api/*worktree-id* remote-sync.db/worktree-branch)
       (settings/remote-sync-branch)))
 
+(defn set-sync-branch!
+  "Point the caller at `branch`: their worktree when they are working inside one, the `remote-sync-branch` setting
+  otherwise. The write counterpart of [[sync-branch]] -- a worktree switching branches must never move the main
+  app, and a worktree is what a stash or a new branch created inside one moves onto."
+  [branch]
+  (if-let [worktree-id api/*worktree-id*]
+    (remote-sync.db/update-worktree-branch! worktree-id branch)
+    (settings/remote-sync-branch! branch)))
+
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
    `remote-sync-branch` setting has since drifted to a different value. Used as a
@@ -1446,8 +1455,8 @@
               (do
                 (case (:status result)
                   :success (do
-                             (when (and branch (nil? api/*worktree-id*))
-                               (settings/remote-sync-branch! branch))
+                             (when branch
+                               (set-sync-branch! branch))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
@@ -1690,14 +1699,14 @@
                                       {:deleted [] :overwritten []})))}))))
 
 (defn create-branch!
-  "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
-   to the new name. Does not publish events or return a response map; the caller
-   is responsible for those concerns."
+  "Creates a new remote branch from `base-branch` and switches the caller onto it -- their worktree when they are
+   working inside one, the `remote-sync-branch` setting otherwise. Does not publish events or return a response
+   map; the caller is responsible for those concerns."
   [name base-branch]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source name base-branch)
-    (settings/remote-sync-branch! name)))
+    (set-sync-branch! name)))
 
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
