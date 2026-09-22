@@ -30,6 +30,7 @@ import {
 } from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
 import { getStackModels } from "../../echarts/cartesian/model/stack";
+import type { YAxisSides } from "../../echarts/cartesian/model/types";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -284,30 +285,36 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 
 export const getDefaultIsAutoSplitEnabled = () => true;
 
-// These displays build their single y-axis through `getYAxisModel` directly and
-// never reach `getYAxesModels`, so they can never end up with a right axis.
+// These build their single y-axis through `getYAxisModel` directly and never
+// reach `getYAxesModels`, so they only ever have a left axis.
 const SINGLE_Y_AXIS_DISPLAYS = new Set<VisualizationDisplay>([
   "waterfall",
   "boxplot",
 ]);
 
-export function getHasSplitYAxis(
+/**
+ * Which sides the chart puts a y-axis on. `getYAxesModels` builds an axis model
+ * per side and returns null for a side with no series, so this answers the same
+ * question the renderer answers, through the same `getYAxisSplit`.
+ */
+export function getYAxisSides(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-): boolean {
-  if (settings["graph.split_panels"]) {
-    return false;
-  }
-
+): YAxisSides {
   const display = rawSeries[0]?.card.display;
 
-  if (display == null || SINGLE_Y_AXIS_DISPLAYS.has(display)) {
-    return false;
+  if (display == null) {
+    return { left: false, right: false };
+  }
+
+  if (SINGLE_Y_AXIS_DISPLAYS.has(display)) {
+    return { left: true, right: false };
   }
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
   // The sidebar cannot know which series the legend has hidden, so it asks for
-  // the split as if none were.
+  // the split as if none were. A side the legend has emptied keeps its label
+  // setting, which is the harmless direction to be wrong in.
   const { seriesModels } = getChartSeriesModels(
     rawSeries,
     cardsColumns,
@@ -327,7 +334,7 @@ export function getHasSplitYAxis(
   // an explicit per-series axis assignment.
   const isAutoSplitSupported = display !== "scatter";
 
-  const [, rightAxisSeriesKeys] = getYAxisSplit(
+  const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
     seriesModels,
     stackModels,
     seriesExtents,
@@ -335,7 +342,10 @@ export function getHasSplitYAxis(
     isAutoSplitSupported,
   );
 
-  return rightAxisSeriesKeys.size > 0;
+  return {
+    left: leftAxisSeriesKeys.size > 0,
+    right: rightAxisSeriesKeys.size > 0,
+  };
 }
 
 export const getDefaultXAxisScale = (

@@ -265,7 +265,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.x_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis.scale"?: SeriesSettingDefinition<Value, Props>;
-  "graph.y_axis._is_split"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis._axes"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.auto_range"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.auto_split"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
