@@ -45,7 +45,11 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/worktree-container :model/Document [_model]
+  [[:collection_id :model/Collection]])
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
@@ -513,6 +517,7 @@
 
 (search.spec/define-spec "document"
   {:model :model/Document
+   :where [:= :this.worktree_id nil]
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
@@ -621,7 +626,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder]
+   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder :worktree_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content

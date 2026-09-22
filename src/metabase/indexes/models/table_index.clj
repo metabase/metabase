@@ -22,7 +22,8 @@
 
 (doto :model/TableIndex
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (def ^:private transform-structured
   "JSON in/out for `:structured`, re-keywordizing enum-valued fields (the `fixes`) and validating against the schema
@@ -147,6 +148,6 @@
 (defmethod serdes/make-spec "TableIndex"
   [_model-name _opts]
   {:copy      [:index_name :structured]
-   :skip      [:status :error_message :last_executed_at :created_by]
+   :skip      [:status :error_message :last_executed_at :created_by :worktree_id]
    :transform {:transform_id (serdes/parent-ref)
                :created_at   (serdes/date)}})

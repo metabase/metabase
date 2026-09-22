@@ -608,6 +608,67 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(defmulti worktree-container
+  "What holds a `:hook/worktree-id` model, as a sequence of `[fk-column container-model]` pairs tried in order.
+  Content belongs to the world of whatever holds it -- a card to its collection, dashboard or document, a
+  dashboard card to its dashboard -- so the first of these columns that is set decides the row's `worktree_id`.
+  Returns nil for a model nothing holds, whose worktree is given explicitly or not at all."
+  {:arglists '([model])}
+  dispatch-on-model)
+
+(defmethod worktree-container :default [_model] nil)
+
+(defn- container-worktree-id
+  "The `worktree_id` of whatever holds `instance`, and the column that named it, as `[found? worktree-id column]`.
+  `found?` is false when no container column is set, which is what tells the caller there is nothing to inherit."
+  [model instance]
+  (or (first (for [[fk container-model] (worktree-container model)
+                   :let                 [container-id (get instance fk)]
+                   :when                container-id]
+               [true (t2/select-one-fn :worktree_id container-model :id container-id) fk]))
+      [false nil nil]))
+
+(defn- check-worktree-matches-container!
+  "Throw unless `instance` belongs to the same world as whatever holds it. A branch's content and the main app's
+  live in the same tables, so a dashboard in a worktree holding a card from the main app -- or the other way
+  round -- would be content that only half exists in either world."
+  [model instance]
+  (let [[found? container-worktree-id container-column] (container-worktree-id model instance)]
+    (when (and found? (not= (:worktree_id instance) container-worktree-id))
+      (throw (ex-info (format "A %s in worktree %s cannot be held by a %s in worktree %s"
+                              (name model) (pr-str (:worktree_id instance))
+                              (name container-column) (pr-str container-worktree-id))
+                      {:status-code           400
+                       :worktree_id           (:worktree_id instance)
+                       :container-column      container-column
+                       :container-worktree-id container-worktree-id})))))
+
+(t2/define-before-insert :hook/worktree-id
+  [instance]
+  (let [model     (t2.protocols/model instance)
+        [found? container-worktree-id _] (container-worktree-id model instance)
+        instance  (cond-> instance
+                    (and found? (not (contains? instance :worktree_id)))
+                    (assoc :worktree_id container-worktree-id))]
+    (check-worktree-matches-container! model instance)
+    instance))
+
+(t2/define-before-update :hook/worktree-id
+  [instance]
+  (let [model   (t2.protocols/model instance)
+        changes (t2/changes instance)]
+    (when (contains? changes :worktree_id)
+      (throw (ex-info "The worktree a piece of content belongs to cannot be changed"
+                      {:status-code 400
+                       :worktree_id (:worktree_id changes)})))
+    (when (some (comp (set (map first (worktree-container model))) key) changes)
+      (check-worktree-matches-container! model instance))
+    instance))
+
+(doseq [hook [:hook/timestamped? :hook/entity-id :hook/created-at-timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/worktree-id))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -648,6 +709,13 @@
 (defmethod perms-objects-set :default
   [_instance _read-or-write]
   nil)
+
+(defn worktree-content?
+  "Whether `instance` is content a remote-sync worktree checked out rather than the main app's own. Only admins
+  reach it: a branch's content is a working copy, and the permissions it carries are the branch's, not this
+  instance's."
+  [instance]
+  (some? (:worktree_id instance)))
 
 (defmulti can-read?
   "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use

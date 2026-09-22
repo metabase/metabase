@@ -118,6 +118,7 @@
    [:namespace           {:optional true} [:maybe [:or :keyword :string]]]
    [:is_personal         {:optional true} :boolean]
    [:is_remote_synced    {:optional true} :boolean]
+   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]
    [:can_write           {:optional true} :boolean]
    [:parent_id           {:optional true} :nil]
    [:effective_location  {:optional true} [:maybe :string]]
@@ -148,4 +149,5 @@
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
-   [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+   [:is_remote_synced     {:optional true} [:maybe :boolean]]
+   [:worktree_id          {:optional true} [:maybe ::lib.schema.id/worktree]]])

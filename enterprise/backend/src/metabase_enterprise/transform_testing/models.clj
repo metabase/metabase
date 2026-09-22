@@ -18,7 +18,11 @@
 (doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
+
+(defmethod mi/worktree-container :model/TransformTest [_model]
+  [[:transform_id :model/Transform]])
 
 (defn- json-column
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
@@ -109,6 +113,7 @@
 (defmethod serdes/make-spec "TransformTest"
   [_model-name _opts]
   {:copy      [:entity_id :name :description :inputs :expectations]
+   :skip      [:worktree_id]
    :transform {:created_at   (serdes/date)
                :transform_id (serdes/fk :model/Transform)
                :creator_id   (serdes/fk :model/User)}})

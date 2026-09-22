@@ -115,10 +115,10 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id worktree-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
+    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id worktree-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)

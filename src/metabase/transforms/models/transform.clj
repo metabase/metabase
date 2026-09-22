@@ -31,8 +31,11 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/worktree-id]]
   (derive :model/Transform trait))
+
+(defmethod mi/worktree-container :model/Transform [_model]
+  [[:collection_id :model/Collection]])
 
 (defn- transform-readable?
   "Whether the current user can read `instance`. Any extra `args` (an optional `models-cache`) are
@@ -472,7 +475,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -573,6 +576,7 @@
 
 (search.spec/define-spec "transform"
   {:model        :model/Transform
+   :where        [:= :this.worktree_id nil]
    :visibility   :superuser
    :attrs        {:archived      false
                   :collection-id false

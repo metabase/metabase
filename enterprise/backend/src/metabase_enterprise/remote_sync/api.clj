@@ -32,7 +32,7 @@
   Throws a 409 carrying `:branch_mismatch true` and the current `:current_branch` so the client can
   refresh its view and retry. Returns the (now-validated) branch on success."
   [requested-branch]
-  (let [current (settings/remote-sync-branch)]
+  (let [current (impl/sync-branch)]
     (when-not (= requested-branch current)
       (throw (ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
                               current)
@@ -65,7 +65,7 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (check-branch-matches-setting! expected_branch)
-  (let [branch-name (or branch (settings/remote-sync-branch))
+  (let [branch-name (or branch (impl/sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
         (impl/async-import!
@@ -268,7 +268,7 @@
   ;; still allowed here. Setting the branch during first-time configuration (no current branch) is allowed.
   ;; Blanking the branch is also blocked in read-write — otherwise it would reset the guard and let a
   ;; follow-up call switch freely.
-  (let [current-branch (settings/remote-sync-branch)
+  (let [current-branch (impl/sync-branch)
         new-branch     (:remote-sync-branch settings)
         effective-type (or remote-sync-type (settings/remote-sync-type))]
     (api/check-400 (not (and (= :read-write effective-type)
@@ -342,7 +342,7 @@
    _query
    {:keys [name]} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+  (let [base-branch (or (remote-sync.task/last-version) (impl/sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
@@ -379,6 +379,46 @@
     (catch Exception e
       (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
                       {:status-code 400})))))
+
+(api.macros/defendpoint :get "/worktree" :- remote-sync.schema/WorktreeList
+  "List the remote-sync worktrees. Requires superuser permissions."
+  []
+  (api/check-superuser)
+  (t2/hydrate (remote-sync.db/worktrees) :creator))
+
+(api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
+  "Get a single remote-sync worktree by id. Requires superuser permissions."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (-> (api/check-404 (remote-sync.db/worktree id))
+      (t2/hydrate :creator)))
+
+(api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
+  "Create a remote-sync worktree for `branch`. The branch is expected to already exist on the source, and its
+  content is materialized into the worktree by a subsequent pull -- nothing else ever writes there. Requires
+  superuser permissions."
+  [_route
+   _query
+   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [taken (format "A worktree for branch '%s' already exists." branch)]
+    (api/check-400 (not (remote-sync.db/worktree-branch-taken? branch)) taken)
+    (-> (try
+          (remote-sync.db/insert-worktree! {:branch branch :creator_id api/*current-user-id*})
+          (catch Exception e
+            (if (remote-sync.db/worktree-branch-taken? branch)
+              (throw (ex-info taken {:status-code 400} e))
+              (throw e))))
+        (t2/hydrate :creator))))
+
+(api.macros/defendpoint :delete "/worktree/:id" :- :nil
+  "Delete a remote-sync worktree along with every piece of content it checked out. Requires superuser
+  permissions."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (remote-sync.db/worktree-exists? id))
+  (remote-sync.db/delete-worktree! id)
+  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

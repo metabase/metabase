@@ -4,6 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -82,6 +84,7 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
+   [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]
    [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
@@ -159,8 +162,12 @@
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (transforms.core/get-transforms query-params))
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]
+    [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-access! (:worktree_id query-params))
+  (transforms.core/get-transforms (-> query-params
+                                      (dissoc :worktree_id)
+                                      (assoc :worktree-id (:worktree_id query-params)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

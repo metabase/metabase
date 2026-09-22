@@ -14,11 +14,12 @@
   (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
 
 (mu/defn transforms-for-ordering
-  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
-   excluding [[transform-id]]."
+  "The id, name, target, target Table id, source Database id, and table dependencies of every main-app Transform
+   excluding [[transform-id]]. A transform a remote-sync worktree checked out never takes part in ordering."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
-             :id [:not= transform-id]))
+             :id [:not= transform-id]
+             :worktree_id nil))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

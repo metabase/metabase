@@ -28,7 +28,8 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -122,6 +123,7 @@
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
                :description_set :semantic_type_set :fk_target_field_id_set]
+   :skip      [:worktree_id :worktree_id_helper]
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}

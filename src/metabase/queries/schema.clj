@@ -216,7 +216,8 @@
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
-   [:verified-result-metadata?                 {:optional true} :boolean]])
+   [:verified-result-metadata?                 {:optional true} :boolean]
+   [:worktree_id                                                                      {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
@@ -233,7 +234,8 @@
    [:card_id                   {:optional true} [:maybe ::lib.schema.id/card]]
    [:parameterized_object_type {:optional true} [:maybe [:or :keyword :string]]]
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_id              {:optional true} [:maybe :string]]])
+   [:parameter_id              {:optional true} [:maybe :string]]
+   [:worktree_id               {:optional true} [:maybe ::lib.schema.id/worktree]]])
 
 (mr/def ::query.query
   "The `:query` column of a Query, decoded."

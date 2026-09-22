@@ -32,7 +32,7 @@
     (update library :path normalize-path)
     library))
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/worktree-id]]
   (derive :model/PythonLibrary trait))
 
 (defmethod mi/can-read? :model/PythonLibrary
@@ -86,6 +86,7 @@
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
   {:copy      [:path :source :entity_id]
+   :skip      [:worktree_id]
    :transform {:created_at (serdes/date)}})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]

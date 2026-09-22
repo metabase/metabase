@@ -132,7 +132,13 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/worktree-container :model/Card [_model]
+  [[:collection_id :model/Collection]
+   [:dashboard_id :model/Dashboard]
+   [:document_id :model/Document]])
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -1376,7 +1382,7 @@
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
           :metabot_conversation_id :metabot_chart_id
           ;; always re-derived from public_uuid on import
-          :public_uuid_prefix]
+          :public_uuid_prefix :worktree_id]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
@@ -1533,13 +1539,13 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"] [:= :this.worktree_id nil])))
 
 (search/define-spec "dataset"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"] [:= :this.worktree_id nil])))
 
 (search/define-spec "metric"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"] [:= :this.worktree_id nil])))
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]

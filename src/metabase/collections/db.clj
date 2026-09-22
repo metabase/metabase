@@ -35,9 +35,12 @@
   (t2/select-one [:model/Collection :id :namespace] :id collection-id))
 
 (mu/defn collection-of-type
-  "The ::collections.schema/collection of `type`, or nil."
-  [type :- :string]
-  (t2/select-one :model/Collection :type type))
+  "The ::collections.schema/collection of `type` in the world `worktree-id` names, or nil."
+  ([type :- :string]
+   (collection-of-type type nil))
+  ([type        :- :string
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (t2/select-one :model/Collection :type type :worktree_id worktree-id)))
 
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
@@ -266,10 +269,10 @@
                                                 [:= :is_remote_synced true]
                                                 [:= :location "/"]]}))
 
-(mu/defn personal-collection-ids
+(mu/defn personal-collection-ids :- [:set ::lib.schema.id/collection]
   "The IDs of every personal ::collections.schema/collection."
   []
-  (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]))
+  (or (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]) #{}))
 
 (mu/defn personal-collection-ids-by-owner
   "A map of owner User ID to personal ::collections.schema/collection ID for `user-ids`."
@@ -293,7 +296,7 @@
 
 (mu/defn insert-collection!
   "Insert `collection` and return the new instance."
-  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
+  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced :worktree_id])]
   (t2/insert-returning-instance! :model/Collection collection))
 
 (mu/defn update-collection!

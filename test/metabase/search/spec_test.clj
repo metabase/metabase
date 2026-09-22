@@ -60,6 +60,7 @@
                                                       :archived_directly
                                                       :collection_position
                                                       :collection_id
+                                                      :worktree_id
                                                       :creator_id
                                                       :dashboard_id
                                                       :database_id
@@ -110,11 +111,11 @@
                                 :fields #{:name :router_database_id}
                                 :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id :updated_at}
+                                :fields       #{:description :archived :table_id :name :id :updated_at :worktree_id}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
-                                                :archived_directly :location :namespace :created_at}
+                                                :archived_directly :location :namespace :created_at :worktree_id}
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       #{:authority_level :name :type :location}

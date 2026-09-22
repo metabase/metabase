@@ -3,9 +3,11 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -97,13 +99,19 @@
 
 (mu/defn delete-removed-instances!
   "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
-  synced collections, and a delete of every row when nothing restricts it."
+  synced collections, and a delete of every row when nothing restricts it.
+
+  A worktree-scoped model is restricted to the worktree being imported into, so a pull into a worktree can never
+  reconcile away the main app's content, nor another worktree's."
   [model-key    :- :keyword
    removal-opts :- RemovalOpts]
   (when-let [exprs (removal-exprs removal-opts)]
-    (if (seq exprs)
-      (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
-      (t2/delete! model-key))))
+    (let [exprs (cond-> exprs
+                  (serdes/worktree-scoped? model-key)
+                  (conj [:= :worktree_id (serdes/current-worktree-id)]))]
+      (if (seq exprs)
+        (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
+        (t2/delete! model-key)))))
 
 (defn- unsynced-anti-join-expr
   "A `[:not [:exists ...]]` fragment keeping only rows with no RemoteSyncObject of `model-type` in 'synced'
@@ -288,14 +296,20 @@
   (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
 (mu/defn user-settings-exist-for-table?
-  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
-  [table-id :- ::lib.schema.id/table]
-  (or (t2/exists? :model/TableUserSettings :table_id table-id)
-      (t2/exists? :model/FieldUserSettings
-                  {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                   :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
-                           [:= :f.id :u.field_id]]
-                   :where [:= :f.table_id table-id]})))
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row in the world `worktree-id`
+  names."
+  ([table-id :- ::lib.schema.id/table]
+   (user-settings-exist-for-table? table-id nil))
+  ([table-id    :- ::lib.schema.id/table
+    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+   (or (t2/exists? :model/TableUserSettings :table_id table-id :worktree_id worktree-id)
+       (t2/exists? :model/FieldUserSettings
+                   {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                    :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
+                            [:= :f.id :u.field_id]]
+                    :where [:and
+                            [:= :f.table_id table-id]
+                            [:= :u.worktree_id worktree-id]]}))))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
@@ -746,3 +760,51 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+
+(mu/defn worktrees
+  "Every Worktree, oldest first."
+  []
+  (t2/select :model/Worktree {:order-by [[:id :asc]]}))
+
+(mu/defn worktree
+  "The Worktree with `worktree-id`, or nil."
+  [worktree-id :- ::lib.schema.id/worktree]
+  (t2/select-one :model/Worktree :id worktree-id))
+
+(mu/defn worktree-exists?
+  "Whether a Worktree with `worktree-id` exists."
+  [worktree-id :- ::lib.schema.id/worktree]
+  (t2/exists? :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch
+  "The branch the Worktree with `worktree-id` is checked out to, or nil."
+  [worktree-id :- ::lib.schema.id/worktree]
+  (t2/select-one-fn :branch :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch-taken?
+  "Whether a Worktree for `branch` already exists."
+  [branch :- :string]
+  (t2/exists? :model/Worktree :branch branch))
+
+(mu/defn insert-worktree!
+  "Insert the Worktree `row` and return the new instance."
+  [row :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/Worktree row))
+
+(mu/defn update-worktree-branch!
+  "Point the Worktree with `worktree-id` at `branch`, returning the number updated."
+  [worktree-id :- ::lib.schema.id/worktree
+   branch      :- :string]
+  (t2/update! :model/Worktree worktree-id {:branch branch}))
+
+(mu/defn delete-worktree!
+  "Delete the Worktree with `worktree-id`; every `worktree_id` FK cascades."
+  [worktree-id :- ::lib.schema.id/worktree]
+  (t2/delete! :model/Worktree :id worktree-id))
+
+(mu/defn user-summaries
+  "The display columns of the Users with `user-ids`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select [:model/User :id :first_name :last_name :email
+              :date_joined :last_login :is_superuser :is_qbnewb :is_active]
+             :id [:in user-ids]))

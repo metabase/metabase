@@ -12,7 +12,8 @@
 (doto :model/Glossary
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"
@@ -56,6 +57,7 @@
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:entity_id :term :definition]
+   :skip      [:worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)}})
 

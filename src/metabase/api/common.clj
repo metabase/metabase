@@ -340,12 +340,21 @@
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 
+(defn- check-worktree-access
+  "Refuse a non-admin any content a worktree checked out. A branch's content is a working copy of someone else's
+  world: the permissions that govern it are the branch's, so this instance can only say who may see a branch at
+  all, and that is admins."
+  [obj]
+  (when (mi/worktree-content? obj)
+    (check-403 *is-superuser?*)))
+
 (defn read-check
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
   ([obj]
    (check-404 obj)
+   (check-worktree-access obj)
    (try
      (check-403 (mi/can-read? obj))
      (catch clojure.lang.ExceptionInfo e
@@ -368,6 +377,7 @@
   `obj` if the check is successful."
   ([obj]
    (check-404 obj)
+   (check-worktree-access obj)
    (try
      (check-403 (mi/can-write? obj))
      (catch clojure.lang.ExceptionInfo e

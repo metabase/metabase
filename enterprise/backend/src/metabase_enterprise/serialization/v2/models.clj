@@ -175,4 +175,6 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Worktree"
+   "WorktreeEntityRemapping"])
