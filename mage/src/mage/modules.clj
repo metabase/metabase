@@ -1,5 +1,6 @@
 (ns mage.modules
   (:require
+   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -11,8 +12,6 @@
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
@@ -356,8 +355,7 @@
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
                     (str/includes? filename "modules/drivers/"))
-            (when-not *github-output-only?*
-              (println (str "Running driver tests because " (pr-str filename) " was changed")))
+            (println (str "Running driver tests because " (pr-str filename) " was changed"))
             filename))
         updated-files))
 
@@ -425,33 +423,6 @@
 ;;;; Driver test decisions - consolidated logic for which drivers to run
 ;;;; =============================================================================
 
-(def cloud-drivers
-  "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
-  since they need round trip times, so we skip them on PRs unless specifically needed."
-  #{:athena :bigquery :databricks :redshift :snowflake})
-
-(def ^:private all-drivers
-  "All driver test jobs in drivers.yml, in order."
-  [:h2
-   :athena
-   :bigquery
-   :clickhouse
-   :databricks
-   :druid-jdbc
-   :mongo
-   :mongo-ssl
-   :mongo-sharded-cluster
-   :mysql-mariadb
-   :oracle
-   :postgres
-   :presto-jdbc
-   :redshift
-   :snowflake
-   :sparksql
-   :sqlite
-   :sqlserver
-   :vertica])
-
 (def ^:private driver-directory->drivers
   "Maps driver directory names to the driver keyword(s) they correspond to.
    Most directories map to a single driver, but some (like mongo) map to multiple test jobs."
@@ -480,203 +451,39 @@
                     (get driver-directory->drivers dir-name))))
         updated-files))
 
-(defn- parse-bool
-  "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
-  [s]
-  (= (str/lower-case (str s)) "true"))
+(defn- cli-driver-analysis
+  "Report what the module graph says about the diff, for the CI gate to decide on.
 
-(defn- parse-only-driver
-  "Parse the `--only-driver` CLI arg into a driver keyword, or nil when unset.
+   This answers only what needs the module dependency graph and the changed-file list. Branch,
+   labels, the dispatch input and the shared test-gate verdict are policy, and live in
+   `.github/scripts/gate/drivers.ts` with the rules that read them.
 
-  Throws on an unknown driver: a typo would otherwise read as `nil` and quietly run the normal decisions
-  instead of the one job that was asked for."
-  [s]
-  (when-not (str/blank? s)
-    (let [driver (keyword (str/trim s))]
-      (when-not (contains? (set all-drivers) driver)
-        (throw (ex-info (str "Unknown driver: " (str/trim s))
-                        {:driver driver, :known-drivers (mapv name all-drivers)})))
-      driver)))
-
-(defn- parse-labels
-  "Parse comma-separated labels string into a set of label strings."
-  [labels-str]
-  (if (str/blank? labels-str)
-    #{}
-    (into #{} (map str/trim) (str/split labels-str #","))))
-
-(defn run-driver-label
-  "PR label string that opts `driver`'s test job into a given CI run."
-  [driver]
-  (str "ci:run-" (name driver)))
-
-(defn- driver-decision
-  "Determine if a driver should run and why.
-
-   Returns a map with :should-run (boolean) and :reason (string).
-
-   For the decision priority order, see: mage -driver-decisions -h
-
-   ## What counts as 'driver deps affected'?
-
-   The driver module is considered affected when:
-   - Files in modules/drivers/* are changed (triggers all drivers)
-   - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed"
-  [driver
-   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
-   driver-deps-affected?
-   updated]
-  (cond
-    ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
-    ;; that driver and nothing else -- not even H2/Postgres, since asking for a job by name is a
-    ;; stronger signal than any rule below.
-    only-driver
-    (if (= driver only-driver)
-      {:should-run true
-       :reason     (str "requested via --only-driver=" (name only-driver))}
-      {:should-run false
-       :reason     (str "--only-driver=" (name only-driver) " requested instead")})
-
-    ;; Priority 1: Global force-run. Every driver runs.
-    force-run
-    {:should-run true
-     :reason "force-run (master/release branch or ci:run-all label)"}
-
-    ;; Priority 2: Global skip (no backend changes)
-    skip
-    {:should-run false
-     :reason "workflow skip (no backend changes)"}
-
-    ;; Priority 3: H2 and Postgres always run when backend tests run
-    (#{:h2 :postgres} driver)
-    {:should-run true
-     :reason "H2/Postgres always run"}
-
-    ;; Priority 4: ci:run-all-drivers or ci:run-<driver> label
-    (or (contains? pr-labels "ci:run-all-drivers")
-        (contains? pr-labels (run-driver-label driver)))
-    {:should-run true
-     :reason (if (contains? pr-labels "ci:run-all-drivers")
-               "ci:run-all-drivers label"
-               (str (run-driver-label driver) " label"))}
-
-    ;; Priority 5: The driver's own source changed - the change is exactly what needs testing.
-    (contains? particular-driver-changed? driver)
-    {:should-run true
-     :reason "driver files changed"}
-
-    ;; Priority 6: Cloud driver + ci:run-all-cloud-drivers label
-    (and (contains? cloud-drivers driver)
-         (contains? pr-labels "ci:run-all-cloud-drivers"))
-    {:should-run true
-     :reason "ci:run-all-cloud-drivers label"}
-
-    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
-    (and (contains? cloud-drivers driver)
-         (seq (set/intersection updated modules-triggering-cloud-drivers)))
-    {:should-run true
-     :reason "Module updated which explicitly triggers cloud drivers"}
-
-    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
-    (and (contains? cloud-drivers driver)
-         driver-deps-affected?)
-    {:should-run true
-     :reason "driver module affected by shared code changes"}
-
-    ;; Priority 9: Cloud driver, no relevant changes → skip
-    (contains? cloud-drivers driver)
-    {:should-run false
-     :reason "no relevant changes for cloud driver"}
-
-    ;; Priority 10: Driver deps affected by shared code changes
-    driver-deps-affected?
-    {:should-run true
-     :reason "driver module affected by shared code changes"}
-
-    ;; Priority 11: Self-hosted driver, not affected
-    :else
-    {:should-run false
-     :reason "driver module not affected"}))
-
-(defn- cli-driver-decisions
-  "Determine which driver tests should run based on PR context.
-
-   Outputs decisions in GITHUB_OUTPUT format (key=value lines) plus human-readable logs.
-   Use --github-output-only to output only the key=value lines for CI.
+   JSON goes to stdout and the human-readable summary to stderr, so a caller can capture one
+   without the other.
 
    Usage:
-     ./bin/mage -driver-decisions \\
-       --git-ref=master \\
-       --force-run=false \\
-       --pr-labels=ci:run-all-cloud-drivers,other-label \\
-       --skip=false \\
-       --only-driver=bigquery"
+     ./bin/mage -driver-analysis --git-ref=master"
   [{:keys [options] :as _parsed}]
-  (let [github-output-only? (some? (:github-output-only options))
-        git-ref (get options :git-ref "master")
-        force-run (parse-bool (:force-run options))
-        only-driver (parse-only-driver (:only-driver options))
-        ;; force-run and --only-driver each decide every driver on their own, so the change
-        ;; analysis is not consulted there.
-        analysis (when-not (or force-run only-driver)
+  (let [git-ref  (get options :git-ref "master")
+        analysis (binding [*out* *err*]
                    (let [updated-files (u/updated-files git-ref)
-                         updated (updated-files->updated-modules updated-files)
-                         driver-affected? (driver-deps-affected? updated)
-                         important-file-changed? (changes-important-file-for-drivers? updated-files)]
-                     {:particular-driver-changed? (drivers-with-file-changes updated-files)
-                      :updated updated
-                      :driver-affected? driver-affected?
-                      :important-file-changed? important-file-changed?}))
-        {:keys [particular-driver-changed? updated driver-affected? important-file-changed?]} analysis
-        ctx {:git-ref git-ref
-             :force-run force-run
-             :pr-labels (parse-labels (:pr-labels options))
-             :skip (parse-bool (:skip options))
-             :particular-driver-changed? (or particular-driver-changed? #{})
-             :only-driver only-driver}
-        decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver
-                                                  ctx
-                                                  ;; module dependency check combines both conditions
-                                                  (boolean (or driver-affected? important-file-changed?))
-                                                  (or updated #{}))
-                                 :driver driver))
-                        all-drivers)]
-    (if github-output-only?
-      ;; In github-output-only mode, print just the key=value lines (no colors)
-      (doseq [{:keys [driver should-run]} decisions]
-        (println (str (name driver) "-should-run=" should-run)))
-      (do
-        ;; Print module analysis summary
-        (when analysis
-          (println "")
-          (println "=== Module Analysis ===")
-          (println "Changed modules:" (pr-str updated))
-          (println "Driver module affected:" driver-affected?)
-          (println "Important file changed:" (boolean important-file-changed?))
-          (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
-        (println "")
-        ;; Print human-readable decision summary
-        (println "=== Driver Decisions ===")
-        (doseq [{:keys [driver should-run reason]} decisions]
-          (println (format "%-25s %s - %s"
-                           (name driver)
-                           (if should-run (c/green "RUN ") (c/yellow "SKIP"))
-                           reason)))
-        (println "")
-        ;; Print GITHUB_OUTPUT preview with colors
-        (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
-          (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
-          (doseq [{:keys [driver]} drivers-to-run]
-            (println (str (name driver) "-should-run=true")))
-          (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
-          (doseq [{:keys [driver]} drivers-to-skip]
-            (println (str (name driver) "-should-run=false"))))))
+                         updated       (updated-files->updated-modules updated-files)
+                         analysis      {:driverDepsAffected         (driver-deps-affected? updated)
+                                        :importantFileChanged       (boolean (changes-important-file-for-drivers? updated-files))
+                                        :driversChanged             (mapv name (sort (drivers-with-file-changes updated-files)))
+                                        :cloudTriggerModulesUpdated (boolean (seq (set/intersection updated modules-triggering-cloud-drivers)))}]
+                     (println "")
+                     (println "=== Module Analysis ===")
+                     (println "Changed modules:" (pr-str updated))
+                     (println "Driver module affected:" (:driverDepsAffected analysis))
+                     (println "Important file changed:" (:importantFileChanged analysis))
+                     (println "Drivers with file changes:" (pr-str (:driversChanged analysis)))
+                     (println "Cloud-trigger module updated:" (:cloudTriggerModulesUpdated analysis))
+                     analysis))]
+    (println (json/generate-string analysis))
     (u/exit 0)))
 
 (defn -main
-  "See [[cli-driver-decisions]]."
-  [{:keys [options] :as parsed}]
-  (binding [*github-output-only?* (:github-output-only options)]
-    (cli-driver-decisions parsed)))
+  "See [[cli-driver-analysis]]."
+  [parsed]
+  (cli-driver-analysis parsed))

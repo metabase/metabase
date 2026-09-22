@@ -1,14 +1,10 @@
 name: Test gate
 
-# Decides whether a test suite should run, so each suite owns its own gating
-# instead of the caller computing a `skip` input for it.
-#
-# `force-run` and `force-skip` are global overrides; `defer` hands the decision
-# to the paths filter, which is the only path that pays for a checkout.
-#
-# Only the lowest unmerged PR of a stack runs CI: it is the one whose base ref
-# is the stack base. Every PR above it is force-skipped and gets tested once it
-# reaches the bottom of the stack.
+# Decides whether a test suite should run, so each suite owns its own gating instead of the caller
+# computing a `skip` input for it. The decision itself lives in .github/actions/test-gate; this
+# workflow is the wrapper for suites that need nothing but the shared verdict. A suite that also
+# has per-job decisions to make runs its own `gate` job over that action instead, so its outputs can
+# be named after its jobs -- a reusable workflow's outputs have to be declared statically.
 on:
   workflow_call:
     inputs:
@@ -19,29 +15,29 @@ on:
           Leave empty to decide on the overrides alone and skip the paths filter.
         type: string
         default: ''
+      ignore-diff:
+        description: >-
+          Run regardless of the diff, skipping the paths filter. For a direct workflow_dispatch of
+          the suite, which names the one thing to run. The force-skip overrides still apply.
+        type: boolean
+        default: false
     outputs:
       run:
         description: Whether the calling suite should run.
-        value: >-
-          ${{ jobs.should-run.outputs.verdict != 'force-skip'
-          && (inputs.filters == ''
-          || jobs.should-run.outputs.verdict == 'force-run'
-          || jobs.files-changed.outputs.any == 'true') }}
+        value: ${{ jobs.should-run.outputs.run }}
       matched:
         description: >-
           Which of the requested filters the diff touched, as a JSON array, for suites whose jobs
           map to different filters. A force-run reports every requested filter.
-        value: >-
-          ${{ (jobs.should-run.outputs.verdict == 'force-run' && jobs.should-run.outputs.filters)
-          || jobs.files-changed.outputs.matched || '[]' }}
+        value: ${{ jobs.should-run.outputs.matched }}
       files:
         description: >-
           The changed files behind each requested filter, as a JSON object of filter name to array
-          of paths. An empty object when the paths filter did not run.
-        value: ${{ jobs.files-changed.outputs.files || '{}' }}
+          of paths. Every list is empty unless the paths filter ran.
+        value: ${{ jobs.should-run.outputs.files }}
       force-run:
         description: Whether the suite should run in full, ignoring the diff.
-        value: ${{ jobs.should-run.outputs.verdict == 'force-run' }}
+        value: ${{ jobs.should-run.outputs.force-run }}
       verdict:
         description: force-run, force-skip, or defer.
         value: ${{ jobs.should-run.outputs.verdict }}
@@ -52,75 +48,18 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
-      verdict: ${{ steps.decide.outputs.verdict }}
-      filters: ${{ steps.decide.outputs.filters }}
+      run: ${{ steps.gate.outputs.run }}
+      matched: ${{ steps.gate.outputs.matched }}
+      files: ${{ steps.gate.outputs.files }}
+      force-run: ${{ steps.gate.outputs.force-run }}
+      verdict: ${{ steps.gate.outputs.verdict }}
     steps:
-      - name: Decide
-        id: decide
-        # Precedence matters for the conditions below.
-        env:
-          FILTERS: ${{ inputs.filters }}
-          VERDICT: >-
-            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
-            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
-            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
-            || 'defer' }}
-        run: |
-          echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
-          # Echoed back as JSON so a force-run can report every requested filter as matched.
-          echo "filters=$(jq -Rc 'split("[,\\s]+";"") | map(select(length > 0))' <<< "$FILTERS")" | tee -a "$GITHUB_OUTPUT"
-
-  files-changed:
-    name: Detect changed files
-    needs: should-run
-    if: ${{ needs.should-run.outputs.verdict == 'defer' && inputs.filters != '' }}
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    outputs:
-      matched: ${{ steps.match.outputs.matched }}
-      any: ${{ steps.match.outputs.any }}
-      files: ${{ steps.match.outputs.files }}
-    steps:
-      # The filter definitions are the only thing on disk that paths-filter reads.
+      # The gate action and the filter definitions are the only things it reads from disk.
       - uses: actions/checkout@v6
         with:
           sparse-checkout: .github
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
+      - id: gate
+        uses: ./.github/actions/test-gate
         with:
-          token: ${{ github.token }}
-          list-files: json
-          filters: .github/file-paths.yaml
-      - name: Match the diff against the requested filters
-        id: match
-        uses: actions/github-script@v9
-        env:
-          REQUESTED: ${{ inputs.filters }}
-          # Every filter's verdict and file list, as paths-filter set them.
-          CHANGES: ${{ toJSON(steps.changes.outputs) }}
-        with:
-          script: | # js
-            const fs = require('fs');
-
-            const requested = process.env.REQUESTED.split(/[\s,]+/).filter(Boolean);
-            const changes = JSON.parse(process.env.CHANGES);
-            const changed = JSON.parse(changes.changes);
-
-            // A filter name that no longer exists would silently gate the suite off forever.
-            const defined = [...fs.readFileSync('.github/file-paths.yaml', 'utf8')
-              .matchAll(/^(\w+):/gm)].map(([, name]) => name);
-            const unknown = requested.filter((filter) => !defined.includes(filter));
-            if (unknown.length) {
-              core.setFailed(`Unknown filter(s) in .github/file-paths.yaml: ${unknown.join(', ')}`);
-              return;
-            }
-
-            const matched = requested.filter((filter) => changed.includes(filter));
-            core.info(`requested: ${requested.join(', ')}`);
-            core.info(`matched: ${matched.join(', ') || 'none'}`);
-            core.setOutput('matched', JSON.stringify(matched));
-            core.setOutput('any', matched.length > 0);
-            core.setOutput('files', JSON.stringify(Object.fromEntries(
-              requested.map((filter) => [filter, JSON.parse(changes[`${filter}_files`] ?? '[]')]))));
+          filters: ${{ inputs.filters }}
+          ignore-diff: ${{ inputs.ignore-diff }}

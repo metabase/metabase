@@ -38,55 +38,80 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # The shared verdict, the static-viz probe and the backend plan, in one job:
+  # `.github/scripts/gate/backend.ts` turns them into what each job runs -- a `strategy.matrix`, or
+  # nothing at all -- so those jobs carry a single condition and everything else is decided here.
+  # The script is a plain module, unit tested by the ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      filters: >-
-        backend_all project_backend_checks project_migration_checks project_ratchet_checks
-
-  # Generated static-viz output can shift without any backend source changing, so the suite follows
-  # it too. The job always runs -- a skipped one would skip every job below -- but its steps only do
-  # the work when nothing else has already decided the suite.
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    needs: gate
+    name: Decide whether to run
+    # The static-viz probe builds the frontend, so this is not a slim-runner job.
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10
-    env:
-      PROBE: >-
-        ${{ needs.gate.outputs.verdict == 'defer'
-        && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
+    timeout-minutes: 15
     outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+      project-checks: ${{ steps.plan.outputs.project-checks }}
+      project-checks-backend: ${{ steps.plan.outputs.project-checks-backend }}
+      project-checks-migrations: ${{ steps.plan.outputs.project-checks-migrations }}
+      project-checks-ratchets: ${{ steps.plan.outputs.project-checks-ratchets }}
+      be-linter-clj-kondo: ${{ steps.plan.outputs.be-linter-clj-kondo }}
+      be-linter-eastwood: ${{ steps.plan.outputs.be-linter-eastwood }}
+      be-linter-eastwood-test: ${{ steps.plan.outputs.be-linter-eastwood-test }}
+      be-linter-eastwood-test-changed: ${{ steps.plan.outputs.be-linter-eastwood-test-changed }}
+      be-check: ${{ steps.plan.outputs.be-check }}
+      be-cljfmt: ${{ steps.plan.outputs.be-cljfmt }}
+      be-tests: ${{ steps.plan.outputs.be-tests }}
     steps:
       - uses: actions/checkout@v6
-        if: ${{ env.PROBE == 'true' }}
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          filters: >-
+            backend_all project_backend_checks project_migration_checks project_ratchet_checks
+
+      # Generated static-viz output can shift without any backend source changing, so the suite
+      # follows it too. Building it is expensive and only ever turns the suite on, so the probe is
+      # skipped whenever something has already decided the suite runs.
+      - name: Decide whether to probe static-viz
+        id: probe
+        env:
+          PROBE: >-
+            ${{ steps.base.outputs.verdict == 'defer'
+            && !contains(fromJSON(steps.base.outputs.matched), 'backend_all') }}
+        run: echo "probe=$PROBE" | tee -a "$GITHUB_OUTPUT"
       - name: Prepare front-end environment
-        if: ${{ env.PROBE == 'true' }}
+        if: ${{ steps.probe.outputs.probe == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
-        if: ${{ env.PROBE == 'true' }}
+        if: ${{ steps.probe.outputs.probe == 'true' }}
         uses: ./.github/actions/prepare-backend
       - name: Build static-viz frontend
-        if: ${{ env.PROBE == 'true' }}
+        if: ${{ steps.probe.outputs.probe == 'true' }}
         run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Check for static viz changes
-        if: ${{ env.PROBE == 'true' }}
+        if: ${{ steps.probe.outputs.probe == 'true' }}
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: static_viz
+        id: static-viz
         with:
           token: ${{ github.token }}
           filters: .github/static-viz-sources.yaml
 
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Plan the backend jobs
+        id: plan
+        env:
+          MATCHED: ${{ steps.base.outputs.matched }}
+          FORCE_RUN: ${{ steps.base.outputs.force-run }}
+          STATIC_VIZ: ${{ steps.static-viz.outputs.static_viz }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: bun .github/scripts/gate/backend.ts
+
   project-checks:
     name: 'Project tests: Suites'
     needs: gate
-    if: >-
-      ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
-      || contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks')
-      || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
+    if: ${{ needs.gate.outputs.project-checks != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -98,17 +123,15 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks') }}
+          if: ${{ needs.gate.outputs.project-checks-backend != '' }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks') }}
+          if: ${{ needs.gate.outputs.project-checks-migrations != '' }}
           run: ./bin/mage project-tests migrations
         # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
         # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
         - name: Run ratchet checks
-          if: >-
-            ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
-            || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
+          if: ${{ needs.gate.outputs.project-checks-ratchets != '' }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:
@@ -172,10 +195,8 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    needs: &backend-gate-needs [gate, static-viz-files-changed]
-    if: &backend-gate >-
-      ${{ contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
-      || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-linter-clj-kondo != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -187,8 +208,8 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    needs: *backend-gate-needs
-    if: *backend-gate
+    needs: gate
+    if: ${{ needs.gate.outputs.be-linter-eastwood != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -200,12 +221,8 @@ jobs:
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
-    # Master / release safety net: lint every backend test namespace.
-    needs: *backend-gate-needs
-    if: >-
-      ${{ needs.gate.outputs.force-run == 'true'
-      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
-      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-linter-eastwood-test != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -217,12 +234,8 @@ jobs:
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
-    # Lint only the test namespaces touched by the diff.
-    needs: *backend-gate-needs
-    if: >-
-      ${{ needs.gate.outputs.force-run != 'true' && github.event_name == 'pull_request'
-      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
-      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-linter-eastwood-test-changed != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -287,48 +300,13 @@ jobs:
         run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    needs: *backend-gate-needs
-    if: *backend-gate
+    needs: gate
+    if: ${{ needs.gate.outputs.be-tests != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        java-version: [25]
-        job:
-          - name: Enterprise Tests
-            edition: ee
-            test-group-name: ee
-            test-args: >-
-              :only '"enterprise/backend/test"'
-          - name: EE App DB Tests (Part 1)
-            edition: ee
-            test-group-name: ee-app-db-1
-            test-args: >-
-              :only '["test" ".clj-kondo/test"]'
-              :partition/total 2
-              :partition/index 0
-          - name: EE App DB Tests (Part 2)
-            edition: ee
-            test-group-name: ee-app-db-2
-            test-args: >-
-              :only '["test" ".clj-kondo/test"]'
-              :partition/total 2
-              :partition/index 1
-          - name: OSS App DB Tests (Part 1)
-            edition: oss
-            test-group-name: oss-app-db-1
-            test-args: >-
-              :only '["test" ".clj-kondo/test"]'
-              :partition/total 2
-              :partition/index 0
-          - name: OSS App DB Tests (Part 2)
-            edition: oss
-            test-group-name: oss-app-db-2
-            test-args: >-
-              :only '["test" ".clj-kondo/test"]'
-              :partition/total 2
-              :partition/index 1
+      matrix: ${{ fromJSON(needs.gate.outputs.be-tests) }}
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
       # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
@@ -485,8 +463,8 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    needs: *backend-gate-needs
-    if: *backend-gate
+    needs: gate
+    if: ${{ needs.gate.outputs.be-check != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -502,8 +480,8 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    needs: *backend-gate-needs
-    if: *backend-gate
+    needs: gate
+    if: ${{ needs.gate.outputs.be-cljfmt != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
@@ -517,7 +495,6 @@ jobs:
   be-tests-result:
     needs:
       - gate
-      - static-viz-files-changed
       - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test

@@ -8,28 +8,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The shared verdict, the spec narrowing and the chunking, in one job:
+  # `.github/scripts/gate/e2e.ts` turns the verdict and the changed files into the strategy.matrix
+  # the suite runs as, or nothing when it should sit the run out, so the test job carries a single
+  # condition and everything else is decided here. The script is a plain module, unit tested by the
+  # ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      filters: e2e_all e2e_specs
-
-  e2e-matrix-builder:
-    needs: gate
-    uses: ./.github/workflows/e2e-matrix-builder.yml
-    with:
-      chunks: 50
-      # The e2e_all file list covers every change that triggers all e2e tests; when it is identical
-      # to the changed spec files, only specs changed and we can run just those.
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # Only narrow on pull requests that haven't been forced to run everything. On push to
-      # master/release branches a force-run reports every filter as matched, so without this guard a
-      # run that touched only specs would silently run a narrowed suite.
-      specs: >-
-        ${{ (needs.gate.outputs.verdict != 'force-run'
-        && github.event_name == 'pull_request'
-        && join(fromJSON(needs.gate.outputs.files).e2e_all || fromJSON('[]'), ',')
-        == join(fromJSON(needs.gate.outputs.files).e2e_specs || fromJSON('[]'), ','))
-        && join(fromJSON(needs.gate.outputs.files).e2e_specs || fromJSON('[]'), ',') || '' }}
+    name: Decide whether to run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      e2e-tests: ${{ steps.plan.outputs.e2e-tests }}
+      total-chunks: ${{ steps.plan.outputs.total-chunks }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            /.nvmrc
+            /package.json
+          sparse-checkout-cone-mode: false
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          filters: e2e_all e2e_specs
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Plan the e2e run
+        id: plan
+        env:
+          RUN: ${{ steps.base.outputs.run }}
+          FORCE_RUN: ${{ steps.base.outputs.force-run }}
+          FILES: ${{ steps.base.outputs.files }}
+          EVENT_NAME: ${{ github.event_name }}
+          DEFAULT_RUNNER: ${{ vars.DEFAULT_RUNNER_KEY }}
+        run: bun .github/scripts/gate/e2e.ts
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -65,21 +79,17 @@ jobs:
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - gate
-      - e2e-matrix-builder
-    # No status function, so a failed matrix builder keeps this out: the strategy below cannot
-    # parse a matrix it never produced.
-    if: ${{ needs.gate.outputs.run == 'true' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.e2e-tests != '' }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.gate.outputs.e2e-tests) }}
     secrets: inherit
     with:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
-      total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
+      total_chunks: ${{ fromJSON(needs.gate.outputs.total-chunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
@@ -149,7 +159,6 @@ jobs:
   e2e-tests-result:
     needs:
       - gate
-      - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
@@ -162,11 +171,6 @@ jobs:
         if: ${{ needs.gate.result == 'failure' }}
         run: |
           echo "The test gate failed, so the suite never ran"
-          exit 1
-      - name: Check the matrix builder
-        if: ${{ needs.e2e-matrix-builder.result == 'failure' }}
-        run: |
-          echo "The matrix builder failed, so the suite never ran"
           exit 1
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}

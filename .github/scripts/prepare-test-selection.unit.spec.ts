@@ -211,14 +211,17 @@ describe("test selection workflow steps", () => {
     "loki.yml": { suite: "loki" },
   };
 
+  // The gate reads the story selection and its plan script decides on it; what the workflow has to
+  // get right is that the visual test keys off that verdict and nothing else.
   it("skips Loki visual tests only for an empty story selection", () => {
     const { jobs } = loadWorkflow("loki.yml");
-    expect(jobs["story-selection"].outputs?.selection).toBe(
-      "${{ steps.loki-selection.outputs.selection }}",
+    expect(jobs.gate.outputs?.["visual-test"]).toBe(
+      "${{ steps.plan.outputs.visual-test }}",
     );
     expect(jobs["visual-test"].if).toContain(
-      "needs.story-selection.outputs.selection != 'empty'",
+      "needs.gate.outputs.visual-test != ''",
     );
+    // A missing job output compares equal to '0', so the check must not be a numeric one.
     expect(jobs["visual-test"].if).not.toMatch(/outputs\.[\w-]+ *[!=]= *'\d+'/);
   });
 

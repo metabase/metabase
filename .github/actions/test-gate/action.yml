@@ -1,0 +1,118 @@
+name: Test gate
+description: >-
+  Decide whether a test suite should run. The global overrides come first; only `defer` consults the
+  paths filter. The calling job must have checked out `.github`.
+
+inputs:
+  filters:
+    description: >-
+      Filter names from .github/file-paths.yaml, comma- or whitespace-separated. The suite runs when
+      the diff matches any of them. Leave empty to decide on the overrides alone and skip the paths
+      filter.
+    required: false
+    default: ''
+  ignore-diff:
+    description: >-
+      Run regardless of the diff, skipping the paths filter. For a direct workflow_dispatch of the
+      suite, which names the one thing to run. The force-skip overrides still apply, and `matched`
+      comes back empty because nothing was asked of the diff.
+    required: false
+    default: 'false'
+
+outputs:
+  verdict:
+    description: force-run, force-skip, or defer.
+    value: ${{ steps.match.outputs.verdict }}
+  run:
+    description: Whether the calling suite should run.
+    value: ${{ steps.match.outputs.run }}
+  force-run:
+    description: Whether the suite should run in full, ignoring the diff.
+    value: ${{ steps.match.outputs.force-run }}
+  matched:
+    description: >-
+      Which of the requested filters the diff touched, as a JSON array, for suites whose jobs map to
+      different filters. A force-run reports every requested filter.
+    value: ${{ steps.match.outputs.matched }}
+  files:
+    description: >-
+      The changed files behind each requested filter, as a JSON object of filter name to array of
+      paths. Every list is empty unless the paths filter ran.
+    value: ${{ steps.match.outputs.files }}
+
+runs:
+  using: composite
+  steps:
+    # Only the lowest unmerged PR of a stack runs CI: it is the one whose base ref is the stack base.
+    # Every PR above it is force-skipped and gets tested once it reaches the bottom of the stack.
+    - name: Apply the global overrides
+      id: verdict
+      shell: bash
+      # Precedence matters for the conditions below.
+      env:
+        VERDICT: >-
+          ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
+          || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
+          || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+          || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
+          || 'defer' }}
+      run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+
+    - name: Test which files changed
+      id: changes
+      if: >-
+        ${{ steps.verdict.outputs.verdict == 'defer' && inputs.filters != ''
+        && inputs.ignore-diff != 'true' }}
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ github.token }}
+        list-files: json
+        filters: .github/file-paths.yaml
+
+    - name: Match the diff against the requested filters
+      id: match
+      uses: actions/github-script@v9
+      env:
+        REQUESTED: ${{ inputs.filters }}
+        VERDICT: ${{ steps.verdict.outputs.verdict }}
+        IGNORE_DIFF: ${{ inputs.ignore-diff }}
+        # Every filter's verdict and file list, as paths-filter set them. Empty when it did not run.
+        CHANGES: ${{ toJSON(steps.changes.outputs) }}
+      with:
+        script: | # js
+          const fs = require('fs');
+
+          const verdict = process.env.VERDICT;
+          const ignoreDiff = process.env.IGNORE_DIFF === 'true';
+          const requested = process.env.REQUESTED.split(/[\s,]+/).filter(Boolean);
+
+          // A filter name that no longer exists would silently gate the suite off forever.
+          const defined = [...fs.readFileSync('.github/file-paths.yaml', 'utf8')
+            .matchAll(/^(\w+):/gm)].map(([, name]) => name);
+          const unknown = requested.filter((filter) => !defined.includes(filter));
+          if (unknown.length) {
+            core.setFailed(`Unknown filter(s) in .github/file-paths.yaml: ${unknown.join(', ')}`);
+            return;
+          }
+
+          const changes = JSON.parse(process.env.CHANGES);
+          const changed = JSON.parse(changes.changes ?? '[]');
+
+          const matched = verdict === 'force-skip' || ignoreDiff
+            ? []
+            : verdict === 'force-run'
+              ? requested
+              : requested.filter((filter) => changed.includes(filter));
+
+          core.info(`verdict: ${verdict}`);
+          core.info(`requested: ${requested.join(', ') || 'none'}`);
+          core.info(`matched: ${matched.join(', ') || 'none'}`);
+
+          core.setOutput('verdict', verdict);
+          core.setOutput('force-run', verdict === 'force-run');
+          core.setOutput('matched', JSON.stringify(matched));
+          core.setOutput('files', JSON.stringify(Object.fromEntries(
+            requested.map((filter) => [filter, JSON.parse(changes[`${filter}_files`] ?? '[]')]))));
+          core.setOutput('run', verdict !== 'force-skip'
+            && (ignoreDiff || requested.length === 0 || verdict === 'force-run'
+            || matched.length > 0));
