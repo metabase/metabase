@@ -1,0 +1,79 @@
+name: Profile Backend
+
+# The only on-demand entry point for the backend test suites. Dispatching this workflow runs one
+# job of one suite against the ref you dispatch on, under clj-async-profiler, and attaches a
+# flamegraph to the job.
+#
+# The suite workflows below are called unchanged: services, matrix legs, test args and quarantine
+# gating are whatever the normal CI run uses, because they are the same jobs. They declare nothing
+# for this feature -- they read `target` and `tests` off `github.event.inputs`, which inside a
+# called workflow is this dispatch's payload.
+#
+# Renaming an input here means updating every reader -- `grep -rn github.event.inputs .github/`.
+# Nothing enforces that, deliberately: a stale name reads as empty, which runs every leg of the
+# suite unprofiled, on the run you are watching. It cannot affect a normal CI run, where those
+# references are empty either way.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which job to profile.'
+        type: choice
+        required: true
+        options:
+          - backend
+          - app-db-mariadb
+          - app-db-mysql
+          - app-db-postgres
+          - drivers-athena
+          - drivers-bigquery
+          - drivers-clickhouse
+          - drivers-databricks
+          - drivers-druid-jdbc
+          - drivers-h2
+          - drivers-mongo
+          - drivers-mongo-sharded-cluster
+          - drivers-mongo-ssl
+          - drivers-mysql-mariadb
+          - drivers-oracle
+          - drivers-postgres
+          - drivers-presto-jdbc
+          - drivers-redshift
+          - drivers-snowflake
+          - drivers-sparksql
+          - drivers-sqlite
+          - drivers-sqlserver
+          - drivers-vertica
+          - semantic-search-h2
+          - semantic-search-mariadb
+          - semantic-search-mysql
+          - semantic-search-postgres
+          - semantic-search-appdb-mode
+      tests:
+        description: 'Optional: profile only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank profiles the target''s usual set.'
+        type: string
+        required: false
+        default: ''
+
+# These jobs gate on `inputs.target` -- this workflow's own input. Only the called workflows reach
+# for `github.event.inputs.target`, because `inputs` there is their own `workflow_call` signature.
+jobs:
+  backend:
+    if: ${{ inputs.target == 'backend' }}
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+
+  app-db:
+    if: ${{ startsWith(inputs.target, 'app-db-') }}
+    uses: ./.github/workflows/app-db.yml
+    secrets: inherit
+
+  drivers:
+    if: ${{ startsWith(inputs.target, 'drivers-') }}
+    uses: ./.github/workflows/drivers.yml
+    secrets: inherit
+
+  semantic-search:
+    if: ${{ startsWith(inputs.target, 'semantic-search-') }}
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit
