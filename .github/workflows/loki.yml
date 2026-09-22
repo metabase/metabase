@@ -13,25 +13,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The shared verdict plus the run's story selection, in one job:
+  # `.github/scripts/gate/loki.ts` turns them into whether the visual test runs and whether it has a
+  # selection to narrow itself to, so the test job carries a single condition and everything else is
+  # decided here. The script is a plain module, unit tested by the ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      filters: frontend_loki_all
-
-  # Always runs, so a skipped selection never skips the test job below. Without a plan there is
-  # nothing to narrow, and the empty outputs run every story.
-  story-selection:
-    needs: gate
+    name: Decide whether to run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      SELECT: ${{ needs.gate.outputs.run == 'true' && inputs.test-plan-artifact-id != '' }}
     outputs:
-      selection: ${{ steps.loki-selection.outputs.selection }}
-      test-plan-artifact-id: ${{ steps.loki-selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
+      visual-test: ${{ steps.plan.outputs.visual-test }}
+      test-plan-artifact-id: ${{ steps.plan.outputs.test-plan-artifact-id }}
     steps:
       - name: Checkout Repository
-        if: ${{ env.SELECT == 'true' }}
         uses: actions/checkout@v6
         with:
           sparse-checkout: |
@@ -40,24 +34,38 @@ jobs:
             /package.json
           sparse-checkout-cone-mode: false
 
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          filters: frontend_loki_all
+
       - name: Prepare Node + Bun environment
-        if: ${{ env.SELECT == 'true' }}
         uses: ./.github/actions/prepare-node-bun
 
-      - name: Prepare Loki story selection
-        id: loki-selection
-        if: ${{ env.SELECT == 'true' }}
+      # Only for the verdict: a plan that selects no stories keeps the visual test out of the run
+      # entirely. The paths file it writes here is thrown away with the runner -- the test job reads
+      # the plan again for its own copy.
+      - name: Read the Loki story selection
+        id: story-selection
+        if: ${{ steps.base.outputs.run == 'true' && inputs.test-plan-artifact-id != '' }}
         uses: ./.github/actions/prepare-test-selection
         with:
           suite: loki
           test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
+      - name: Plan the Loki jobs
+        id: plan
+        env:
+          RUN: ${{ steps.base.outputs.run }}
+          SELECTION: ${{ steps.story-selection.outputs.selection }}
+          TEST_PLAN_ARTIFACT_ID: ${{ inputs.test-plan-artifact-id }}
+        run: bun .github/scripts/gate/loki.ts
+
   visual-test:
     name: loki-run
-    needs: [gate, story-selection]
-    # A missing job output compares equal to '0' in GitHub expressions,
-    # so an empty selection is marked with a non-numeric value.
-    if: ${{ needs.gate.outputs.run == 'true' && needs.story-selection.outputs.selection != 'empty' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.visual-test != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -87,11 +95,11 @@ jobs:
 
       - name: Prepare Loki story selection
         id: loki-selection
-        if: ${{ needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        if: ${{ needs.gate.outputs.test-plan-artifact-id != '' }}
         uses: ./.github/actions/prepare-test-selection
         with:
           suite: loki
-          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+          test-plan-artifact-id: ${{ needs.gate.outputs.test-plan-artifact-id }}
 
       - name: Build Storybook
         env:
@@ -118,7 +126,7 @@ jobs:
 
   loki-tests-result:
     name: visual-test
-    needs: [gate, story-selection, visual-test]
+    needs: [gate, visual-test]
     if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
