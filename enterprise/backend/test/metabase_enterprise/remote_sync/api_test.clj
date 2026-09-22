@@ -239,6 +239,19 @@
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
 
+(deftest import-without-expected-branch-succeeds-test
+  (testing "GHY-4636: `mb git-sync import` sends only `branch`; the import must run without `expected_branch`"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (=? {:status "success" :task_id int?} resp))
+            (is (remote-sync.task/successful? completed-task))))))))
+
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
     (let [mock-main (test-helpers/create-mock-source)]
