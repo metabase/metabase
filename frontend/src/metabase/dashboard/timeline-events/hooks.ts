@@ -75,13 +75,15 @@ export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
 ): DashCardTimelineEvents => {
   const dispatch = useDispatch();
-  // fullscreen hides every sidebar, so the panel these controls open could never appear
   const { withTimelineEvents = false, isFullscreen } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
   const canDisplayEvents = useSelector(
     (state) => getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
-  const isEnabled = withTimelineEvents && canDisplayEvents && !isFullscreen;
+  const showsEvents = withTimelineEvents && canDisplayEvents;
+  // fullscreen hides every sidebar, so the panel these controls open could never appear; the chips
+  // still render, so the chart is still an impression
+  const isEnabled = showsEvents && !isFullscreen;
 
   const timelineEventsVisibility = useSelector((state) => {
     if (!canDisplayEvents) {
@@ -134,7 +136,12 @@ export const useDashCardTimelineEvents = (
     (isPublicEmbedding() || isStaticEmbedding() ? EMPTY_EVENTS : undefined);
 
   if (!isEnabled) {
-    return { isEnabled: false, timelineEvents, timelineEventsVisibility };
+    return {
+      isEnabled: false,
+      timelineEvents,
+      timelineEventsVisibility,
+      onTimelineEventsShown: showsEvents ? onTimelineEventsShown : undefined,
+    };
   }
 
   return {
