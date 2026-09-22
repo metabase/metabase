@@ -139,8 +139,32 @@ const config = {
       },
       {
         test: /\.(svg|png)$/,
+        // SVG font faces live under frontend/fonts and must stay files: inlining them
+        // adds close to a megabyte of base64 to this bundle.
+        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
         type: "asset/inline",
         resourceQuery: { not: [/component|source/] },
+      },
+      {
+        // Fonts are emitted as files, never inlined: base64 would add megabytes.
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        type: "asset/resource",
+        generator: {
+          // The app build owns these files. Emitting them here as well would race
+          // with its `clean`, and would leave removed fonts behind if that clean
+          // had to skip the directory. This build only needs the URL.
+          emit: false,
+          // Keep the family directory: the backend derives the whitelabel font
+          // list from these directory names.
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => {
+            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
+            const segments = pathData.filename.split("/");
+            const family = segments[segments.length - 2];
+            return `../dist/fonts/${family}/[name].[contenthash:8][ext]`;
+          },
+        },
       },
       {
         test: /\.css$/,
