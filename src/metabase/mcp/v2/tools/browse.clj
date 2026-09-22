@@ -509,7 +509,7 @@
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
       (common/success-content (if line
-                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) line)
+                                (message/msg ["%s" "%s"] (message/data body) line)
                                 body)))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -709,7 +709,7 @@
                       (message/msg ["Returned %d of %d — continue with `offset: %d`."]
                                    (count rows) total (+ offset limit))))]
     (common/success-content (if line
-                              (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                              (message/msg ["%s" "%s"] (message/data envelope) line)
                               envelope))))
 
 ;;; --------------------------------------------- browse_collection tree -------------------------------------------

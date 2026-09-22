@@ -22,6 +22,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.browse :as tools.browse]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
@@ -47,7 +48,7 @@
   [user args]
   (mt/with-test-user user
     (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)
-          text                   (if error (message/render (:message error)) (-> result :content first :text))]
+          text                   (if error (message/render (:message error)) (v2.tu/strip-data-boundary (-> result :content first :text)))]
       (if (or error (:isError result))
         {:error text}
         (let [[body line] (str/split text #"\n" 2)]
@@ -408,7 +409,7 @@
   "Invoke the tool handler and return `[envelope steering-line]` — the parsed JSON body and the
    trailing steering sentence, which the handler appends to the text block after a newline."
   [args]
-  (let [text           (-> (tools.browse/browse-data args {}) :content first :text)
+  (let [text           (v2.tu/strip-data-boundary (-> (tools.browse/browse-data args {}) :content first :text))
         [body & rest*] (str/split-lines text)]
     [(json/decode+kw body) (when (seq rest*) (str/join "\n" rest*))]))
 
@@ -629,7 +630,7 @@
                               {:action "get_fields" :table_ids [t1 t2] :fields ["fields.name"]}
                               {})
                              :content first :text)
-                envelope (json/decode+kw (first (str/split-lines text)))]
+                envelope (json/decode+kw (first (str/split-lines (v2.tu/strip-data-boundary text))))]
             (is (= 1 (count (:tables envelope)))
                 "the byte budget dropped the second table")
             (is (= [{:id     t2
@@ -986,7 +987,7 @@
   "Call `browse_data` as `user` and return the parsed JSON envelope (first line of the text block)."
   [user args]
   (mt/with-test-user user
-    (let [text (-> (tools.browse/browse-data args {}) :content first :text)]
+    (let [text (v2.tu/strip-data-boundary (-> (tools.browse/browse-data args {}) :content first :text))]
       (json/decode+kw (first (str/split-lines text))))))
 
 (defn- values-for
@@ -1109,7 +1110,7 @@
   "[[dispatch-data]]'s text block, or a registry-level rejection's message."
   [token-scopes args]
   (let [{:keys [result error]} (dispatch-data token-scopes args)]
-    (if error (message/render (:message error)) (-> result :content first :text))))
+    (if error (message/render (:message error)) (v2.tu/strip-data-boundary (-> result :content first :text)))))
 
 (def ^:private content-read #{metabot.scope/agent-content-read})
 
@@ -1150,8 +1151,9 @@
   (testing (str "GHY-4138: a strict MCP client sends every declared property, nulling the ones it "
                 "does not populate — that call must be indistinguishable from the minimal one")
     (let [table-id (mt/id :venues)]
-      (is (= (dispatch-data content-read {:action "get_fields" :table_ids [table-id]})
-             (dispatch-data content-read {:action          "get_fields"
+      ;; texts, not whole outcomes: each response carries its own random data boundary
+      (is (= (dispatch-text content-read {:action "get_fields" :table_ids [table-id]})
+             (dispatch-text content-read {:action          "get_fields"
                                           :table_ids       [table-id]
                                           :database_id     nil
                                           :schema          nil

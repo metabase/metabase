@@ -15,6 +15,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.query-processor.core :as qp]
@@ -50,7 +51,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- payload
   "Parse the JSON payload line of a successful execute_query response. Throws if the call

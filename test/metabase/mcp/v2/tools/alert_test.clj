@@ -11,6 +11,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.alert :as tools.alert]
    [metabase.metabot.scope :as metabot.scope]
@@ -42,7 +43,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- tool-result
   [outcome]

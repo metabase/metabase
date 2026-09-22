@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; registers the run_saved_question tool for the call-tool seam below; aliased for the
    ;; direct unit test of the private `check-parameter-value!`
    [metabase.mcp.v2.tools.query :as tools.query]
@@ -39,7 +40,7 @@
 (defn- response-text
   "The outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- tool-result
   "The decoded JSON payload of a successful call, with the steering line (the text after the

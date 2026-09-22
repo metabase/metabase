@@ -14,6 +14,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the :transform projection the write echo projects through.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.transform :as tools.transform]
@@ -71,7 +72,7 @@
   (when (:isError response)
     (throw (ex-info (str "tool call failed: " (-> response :content first :text))
                     {:response response})))
-  (-> response :content first :text json/decode+kw))
+  (-> response :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
