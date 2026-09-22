@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { delay } from "metabase/utils/promise";
 import type { TimelineEventGroup } from "metabase/viz-core";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
@@ -359,6 +360,8 @@ describe("TimelineEventChip", () => {
     await waitFor(() => expect(chip).not.toHaveFocus());
 
     await userEvent.hover(chip);
+    // the hover-open delay must elapse for the pointer to take over the popover
+    await act(() => delay(100));
     await userEvent.unhover(chip);
 
     await waitFor(() => {
