@@ -108,6 +108,9 @@
   frontend has not been built. For example `(find-hashed-file \"Lato\" \"lato-v16-latin-700\" \"woff2\")`
   returns `\"lato-v16-latin-700.a1b2c3d4.woff2\"`."
   [font-name stem ext]
+  ;; A face the build splits by `unicode-range` emits its latin chunk under the name the whole face
+  ;; would have had, so this matches it and never the `.rest.` chunk, which carries no latin glyphs
+  ;; and would render nothing in a rule with no `unicode-range`.
   (let [pattern (re-pattern (str (Pattern/quote stem) "\\.[a-f0-9]+\\." ext))]
     (some #(when (re-matches pattern %) %)
           (get @emitted-filenames (font-dirname font-name)))))
