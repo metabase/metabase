@@ -517,10 +517,6 @@ export function buildPerPanelYAxes(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): YAXisOption[] {
-  const yTicksWidth = settings["graph.y_axis.axis_enabled"]
-    ? chartLayout.ticksDimensions.yTicksWidthLeft -
-      renderingContext.theme.cartesian.ticks.marginY
-    : 0;
   const panelAxisModels = chartModel.splitPanelYAxisModels ?? [];
 
   return panelAxisModels.map((axisModel, index) => {
@@ -528,7 +524,7 @@ export function buildPerPanelYAxes(
       ...buildMetricAxis(
         axisModel,
         chartModel.yAxisScaleTransforms,
-        yTicksWidth,
+        chartLayout.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
         true,

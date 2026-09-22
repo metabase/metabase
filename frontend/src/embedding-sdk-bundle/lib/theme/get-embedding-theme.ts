@@ -2,7 +2,6 @@ import { merge } from "icepick";
 import _ from "underscore";
 
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
-import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
@@ -44,17 +43,16 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
  * into a Mantine theme override for internal use.
  */
 export function getEmbeddingThemeOverride(
-  userTheme: MetabaseTheme,
+  theme: MetabaseTheme,
   font: string | undefined,
   whitelabeledColors?: ColorSettings | undefined,
   colorScheme: ResolvedColorScheme = "light",
 ): MantineThemeOverride {
-  const theme = applyThemePreset(userTheme) ?? userTheme;
   const { axisColor, gridlineColor } = getEmbeddingCartesianColors(
     {
       background: theme.colors?.background,
       foreground: theme.colors?.["text-primary"],
-      border: userTheme.colors?.border,
+      border: theme.colors?.border,
     },
     colorScheme,
   );

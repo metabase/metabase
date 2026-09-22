@@ -367,6 +367,14 @@ export const buildMetricAxis = (
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
+  const rangeMin = "min" in range ? range.min : undefined;
+  // When the axis starts at or above zero the x-axis line sits on the bottom
+  // gridline, and stacking the two translucent lines renders darker than the
+  // other gridlines, so we skip the duplicated min gridline.
+  const hasXAxisLineAtMin =
+    !!settings["graph.x_axis.axis_enabled"] &&
+    axisModel.extent[0] >= 0 &&
+    (rangeMin == null || rangeMin === 0);
   const lineStyle = {
     type: "solid" as const,
     opacity: hasSplitLine ? 1 : 0,
@@ -393,7 +401,7 @@ export const buildMetricAxis = (
     ...range,
     ...axisNameOptions,
     splitLine: settings["graph.y_axis.axis_enabled"]
-      ? { lineStyle }
+      ? { lineStyle, showMinLine: !hasXAxisLineAtMin }
       : undefined,
     position,
     axisLine: {

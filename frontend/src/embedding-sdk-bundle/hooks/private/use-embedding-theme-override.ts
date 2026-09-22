@@ -41,7 +41,7 @@ export function useEmbeddingThemeOverride(
       setGlobalEmbeddingColors(themeWithPreset?.colors, appColors ?? {});
 
       return getEmbeddingThemeOverride(
-        theme || {},
+        themeWithPreset ?? {},
         font,
         appColors ?? {},
         resolvedColorScheme,
@@ -57,12 +57,15 @@ export function useEmbeddingThemeOverride(
         whitelabelColors: appColors ?? {},
         embeddingThemeOverride: theme,
       });
-      const { axisColor, gridlineColor } = getEmbeddingCartesianColors({
-        background: derivedTheme.colors["background_page-primary"],
-        foreground: derivedTheme.colors["text-primary"],
-        border: theme.colors?.border,
-        axis: theme.colors?.["chart-axis"],
-      });
+      const { axisColor, gridlineColor } = getEmbeddingCartesianColors(
+        {
+          background: derivedTheme.colors["background_page-primary"],
+          foreground: derivedTheme.colors["text-primary"],
+          border: theme.colors?.border,
+          axis: theme.colors?.["chart-axis"],
+        },
+        resolvedColorScheme,
+      );
 
       // Convert derived colors to Mantine color tuples
       const colors = Object.fromEntries(
