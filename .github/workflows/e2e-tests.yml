@@ -8,28 +8,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The shared verdict plus the spec narrowing, in one job: `.github/scripts/gate/e2e.ts` turns the
+  # verdict and the changed files into whether the suite runs and which specs the matrix builder
+  # chunks, so the test job carries a single condition and everything else is decided here. The
+  # script is a plain module, unit tested by the ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      filters: e2e_all e2e_specs
+    name: Decide whether to run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      e2e-tests: ${{ steps.plan.outputs.e2e-tests }}
+      specs: ${{ steps.plan.outputs.specs }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            /.nvmrc
+            /package.json
+          sparse-checkout-cone-mode: false
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          filters: e2e_all e2e_specs
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Plan the e2e run
+        id: plan
+        env:
+          RUN: ${{ steps.base.outputs.run }}
+          FORCE_RUN: ${{ steps.base.outputs.force-run }}
+          FILES: ${{ steps.base.outputs.files }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: bun .github/scripts/gate/e2e.ts
 
   e2e-matrix-builder:
     needs: gate
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      # The e2e_all file list covers every change that triggers all e2e tests; when it is identical
-      # to the changed spec files, only specs changed and we can run just those.
-      # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
-      # Only narrow on pull requests that haven't been forced to run everything. On push to
-      # master/release branches a force-run reports every filter as matched, so without this guard a
-      # run that touched only specs would silently run a narrowed suite.
-      specs: >-
-        ${{ (needs.gate.outputs.verdict != 'force-run'
-        && github.event_name == 'pull_request'
-        && join(fromJSON(needs.gate.outputs.files).e2e_all || fromJSON('[]'), ',')
-        == join(fromJSON(needs.gate.outputs.files).e2e_specs || fromJSON('[]'), ','))
-        && join(fromJSON(needs.gate.outputs.files).e2e_specs || fromJSON('[]'), ',') || '' }}
+      # Empty leaves the builder on its default glob, which is every spec.
+      specs: ${{ needs.gate.outputs.specs }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -70,7 +90,7 @@ jobs:
       - e2e-matrix-builder
     # No status function, so a failed matrix builder keeps this out: the strategy below cannot
     # parse a matrix it never produced.
-    if: ${{ needs.gate.outputs.run == 'true' }}
+    if: ${{ needs.gate.outputs.e2e-tests != '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
