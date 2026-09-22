@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.worktree.db :as worktree.db]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
@@ -32,7 +33,7 @@
   :feature :none
   [worktree-id]
   (when worktree-id
-    (api/check-404 (remote-sync.db/worktree-exists? worktree-id)))
+    (api/check-404 (worktree.db/worktree-exists? worktree-id)))
   nil)
 
 (defenterprise collection-editable?

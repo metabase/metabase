@@ -1,4 +1,4 @@
-(ns metabase-enterprise.remote-sync.models.worktree
+(ns metabase-enterprise.worktree.models.worktree
   "Model for remote-sync worktrees. A worktree is a self-contained checkout of a git branch: its content lives in
   the same tables as the main app, tagged with a `worktree_id`, and is synced with the worktree's own `branch`.
 

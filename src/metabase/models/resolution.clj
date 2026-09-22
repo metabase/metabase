@@ -161,8 +161,8 @@
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
-    :model/Worktree                          metabase-enterprise.remote-sync.models.worktree
-    :model/WorktreeEntityRemapping                 metabase-enterprise.remote-sync.models.worktree-entity-remapping})
+    :model/Worktree                          metabase-enterprise.worktree.models.worktree
+    :model/WorktreeEntityRemapping                 metabase-enterprise.worktree.models.worktree-entity-remapping})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

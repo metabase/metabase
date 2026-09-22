@@ -12,6 +12,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.worktree.db :as worktree.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -407,13 +408,13 @@
   "List the remote-sync worktrees. Requires superuser permissions."
   []
   (api/check-superuser)
-  (t2/hydrate (remote-sync.db/worktrees) :creator))
+  (t2/hydrate (worktree.db/worktrees) :creator))
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
   "Get a single remote-sync worktree by id. Requires superuser permissions."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (-> (api/check-404 (remote-sync.db/worktree id))
+  (-> (api/check-404 (worktree.db/worktree id))
       (t2/hydrate :creator)))
 
 (api.macros/defendpoint :post "/worktree" :- remote-sync.schema/Worktree
@@ -425,11 +426,11 @@
    {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (let [taken (format "A worktree for branch '%s' already exists." branch)]
-    (api/check-400 (not (remote-sync.db/worktree-branch-taken? branch)) taken)
+    (api/check-400 (not (worktree.db/worktree-branch-taken? branch)) taken)
     (-> (try
-          (remote-sync.db/insert-worktree! {:branch branch :creator_id api/*current-user-id*})
+          (worktree.db/insert-worktree! {:branch branch :creator_id api/*current-user-id*})
           (catch Exception e
-            (if (remote-sync.db/worktree-branch-taken? branch)
+            (if (worktree.db/worktree-branch-taken? branch)
               (throw (ex-info taken {:status-code 400} e))
               (throw e))))
         (t2/hydrate :creator))))
@@ -439,8 +440,8 @@
   permissions."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (remote-sync.db/worktree-exists? id))
-  (remote-sync.db/delete-worktree! id)
+  (api/check-404 (worktree.db/worktree-exists? id))
+  (worktree.db/delete-worktree! id)
   nil)
 
 (def ^{:arglists '([request respond raise])} routes

@@ -4094,6 +4094,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
+           metabase-enterprise.remote-sync.db
            metabase-enterprise.remote-sync.init}
    :uses #{analytics.interface
            api
@@ -4114,8 +4115,9 @@
            worktree
            enterprise/data-apps
            enterprise/serialization
-           enterprise/transforms.python}
-   :model-exports #{:model/RemoteSyncTask :model/WorktreeEntityRemapping}
+           enterprise/transforms.python
+           enterprise/worktree}
+   :model-exports #{:model/RemoteSyncTask}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -4484,7 +4486,18 @@
            util
            warehouse-schema-overlay
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  enterprise/worktree
+  {:team "Gadget"
+   :api  #{metabase-enterprise.worktree.db}
+   :uses #{api
+           collections
+           lib.schema
+           models
+           util
+           enterprise/remote-sync}
+   :model-exports #{:model/WorktreeEntityRemapping}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

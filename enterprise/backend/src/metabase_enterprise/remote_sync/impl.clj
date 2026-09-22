@@ -15,6 +15,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.worktree.db :as worktree.db]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -307,7 +308,7 @@
   the `remote-sync-branch` setting when it is the main app's. A worktree tracks a branch of its own and never
   touches the main app's setting."
   []
-  (or (some-> (worktree/worktree-id) remote-sync.db/worktree-branch)
+  (or (some-> (worktree/worktree-id) worktree.db/worktree-branch)
       (settings/remote-sync-branch)))
 
 (defn set-sync-branch!
@@ -316,7 +317,7 @@
   app, and a worktree is what a stash or a new branch created inside one moves onto."
   [branch]
   (if-let [worktree-id (worktree/worktree-id)]
-    (remote-sync.db/update-worktree-branch! worktree-id branch)
+    (worktree.db/update-worktree-branch! worktree-id branch)
     (settings/remote-sync-branch! branch)))
 
 (defn- branch-changed-since-scheduling?
