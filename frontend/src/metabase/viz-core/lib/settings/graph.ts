@@ -713,12 +713,6 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
-// Split panels draw one mini y-axis per series, all built with `showLabel:
-// false`, so no axis label renders and neither label field has anything to name.
-const isYAxisLabelHidden = (vizSettings: ComputedVisualizationSettings) =>
-  vizSettings["graph.y_axis.labels_enabled"] === false ||
-  vizSettings["graph.split_panels"] === true;
-
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
@@ -752,21 +746,6 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
         data: { cols },
       },
     ]) => cols[0] && getDefaultIsHistogram(cols[0]),
-  },
-  "graph.y_axis._axes": {
-    readDependencies: [
-      "series",
-      // The split can be triggered by metrics whose column formatting differs,
-      // so the column accessor has to exist before this runs.
-      "column_settings",
-      "graph.metrics",
-      "graph.dimensions",
-      "stackable.stack_type",
-      "graph.y_axis.auto_split",
-      "graph.split_panels",
-    ],
-    getHidden: () => true,
-    getDefault: (series, vizSettings) => getYAxisSides(series, vizSettings),
   },
   "graph.x_axis.scale": {
     getSection: () => t`Axes`,
@@ -1032,11 +1011,8 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "input",
-    // Hide only when the chart is positively known to have no left axis, so a
-    // chart type that does not compute the sides keeps today's behaviour.
     getHidden: (_series, vizSettings) =>
-      isYAxisLabelHidden(vizSettings) ||
-      vizSettings["graph.y_axis._axes"]?.left === false,
+      vizSettings["graph.y_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
@@ -1048,13 +1024,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
 
       return getDefaultYAxisTitle(metricNames);
     },
-    readDependencies: [
-      "series",
-      "graph.metrics",
-      "graph.y_axis._axes",
-      "graph.split_panels",
-      "graph.y_axis.labels_enabled",
-    ],
+    readDependencies: ["series", "graph.metrics"],
   },
   "graph.y_axis.right.title_text": {
     getSection: () => t`Axes`,
@@ -1066,21 +1036,28 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Right y-axis`;
     },
     widget: "input",
-    // Show only when the chart is positively known to have a right axis, so no
-    // chart gains a field it had no axis for.
-    getHidden: (_series, vizSettings) =>
-      isYAxisLabelHidden(vizSettings) ||
-      vizSettings["graph.y_axis._axes"]?.right !== true,
+    // Only a split chart has a second axis to label. A chart with one axis,
+    // on either side, labels it through `graph.y_axis.title_text`. The sides
+    // are computed here rather than as a setting because only the sidebar
+    // needs them, and computing them joins the whole dataset.
+    getHidden: (series, vizSettings) => {
+      if (vizSettings["graph.y_axis.labels_enabled"] === false) {
+        return true;
+      }
+      // The sidebar also opens for charts that cannot render yet, such as a
+      // bar chart with no breakout, and building their series throws.
+      try {
+        const sides = getYAxisSides(series, vizSettings);
+        return !(sides.left && sides.right);
+      } catch {
+        return true;
+      }
+    },
     // No getDefault: an unset value is what makes the right axis inherit the
     // left label, so saved questions keep their current rendering.
     getProps: (_series, vizSettings) => ({
       placeholder: vizSettings["graph.y_axis.title_text"],
     }),
-    readDependencies: [
-      "graph.y_axis._axes",
-      "graph.split_panels",
-      "graph.y_axis.labels_enabled",
-    ],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

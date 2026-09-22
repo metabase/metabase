@@ -266,6 +266,28 @@ describe("getYAxesModels", () => {
     expect(checkNotNull(rightAxisModel).label).toBe("Orders");
   });
 
+  it("should label a right axis with no left axis from 'graph.y_axis.title_text'", () => {
+    // The sidebar hides the right label field on a one-axis chart, so a right
+    // label stored while the chart was split must not keep driving this axis.
+    const { leftAxisModel, rightAxisModel } = getYAxesModels(
+      seriesModels,
+      dataset,
+      dataset,
+      {
+        series: () => ({ axis: "right" }),
+        "graph.y_axis.title_text": "Shown in the sidebar",
+        "graph.y_axis.right.title_text": "Stale right label",
+      },
+      columnByDataKey,
+      true,
+      [],
+      false,
+    );
+
+    expect(leftAxisModel).toBeNull();
+    expect(checkNotNull(rightAxisModel).label).toBe("Shown in the sidebar");
+  });
+
   it("should suppress both labels when 'graph.y_axis.labels_enabled' is false", () => {
     const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
       "graph.y_axis.labels_enabled": false,

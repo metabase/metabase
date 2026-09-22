@@ -57,7 +57,6 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
-  YAxisSide,
 } from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
@@ -422,7 +421,7 @@ export const getYAxisFormatter = (
 const getYAxisLabel = (
   seriesNames: string[],
   settings: ComputedVisualizationSettings,
-  side: YAxisSide,
+  isSplitRightAxis: boolean,
 ) => {
   if (settings["graph.y_axis.labels_enabled"] === false) {
     return undefined;
@@ -431,11 +430,10 @@ const getYAxisLabel = (
   // A right label that is unset or blank inherits the left one. Unset covers
   // questions saved before the right axis had its own label; blank covers
   // clearing the field, which has to return to what its placeholder shows.
-  const specifiedAxisName =
-    side === "right"
-      ? settings["graph.y_axis.right.title_text"] ||
-        settings["graph.y_axis.title_text"]
-      : settings["graph.y_axis.title_text"];
+  const specifiedAxisName = isSplitRightAxis
+    ? settings["graph.y_axis.right.title_text"] ||
+      settings["graph.y_axis.title_text"]
+    : settings["graph.y_axis.title_text"];
 
   if (specifiedAxisName != null) {
     return specifiedAxisName;
@@ -510,7 +508,7 @@ interface YAxisModelOptions {
   formattingOptions?: ColumnSettings;
   gridSize?: VisualizationGridSize;
   showLabel?: boolean;
-  side?: YAxisSide;
+  isSplitRightAxis?: boolean;
 }
 
 export function getYAxisModel(
@@ -527,7 +525,7 @@ export function getYAxisModel(
     formattingOptions,
     gridSize,
     showLabel = true,
-    side = "left",
+    isSplitRightAxis = false,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -542,7 +540,7 @@ export function getYAxisModel(
   );
   const column = columnByDataKey[seriesKeys[0]];
   const label = showLabel
-    ? getYAxisLabel(seriesNames, settings, side)
+    ? getYAxisLabel(seriesNames, settings, isSplitRightAxis)
     : undefined;
   const formatter = getYAxisFormatter(
     column,
@@ -632,7 +630,6 @@ export function getYAxesModels(
       stackType: settings["stackable.stack_type"] ?? null,
       formattingOptions: { compact: isCompactFormatting },
       gridSize,
-      side: "left",
     },
   );
 
@@ -650,7 +647,9 @@ export function getYAxesModels(
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
       gridSize,
-      side: "right",
+      // A right axis with nothing on the left is the chart's only axis, and
+      // the only axis takes the one label field the sidebar shows for it.
+      isSplitRightAxis: leftAxisSeriesKeys.length > 0,
     },
   );
 
