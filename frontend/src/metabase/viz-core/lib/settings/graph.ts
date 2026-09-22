@@ -29,13 +29,13 @@ import {
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
-  getHasSplitYAxis,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
   getSeriesModelsForSettings,
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
+  getYAxisSides,
   getYAxisUnpinFromZeroDefault,
   isShowStackValuesValid,
   isStackingValueValid,
@@ -713,6 +713,12 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
+// Split panels draw one mini y-axis per series, all built with `showLabel:
+// false`, so no axis label renders and neither label field has anything to name.
+const isYAxisLabelHidden = (vizSettings: ComputedVisualizationSettings) =>
+  vizSettings["graph.y_axis.labels_enabled"] === false ||
+  vizSettings["graph.split_panels"] === true;
+
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
@@ -747,7 +753,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       },
     ]) => cols[0] && getDefaultIsHistogram(cols[0]),
   },
-  "graph.y_axis._is_split": {
+  "graph.y_axis._axes": {
     readDependencies: [
       "series",
       // The split can be triggered by metrics whose column formatting differs,
@@ -760,7 +766,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       "graph.split_panels",
     ],
     getHidden: () => true,
-    getDefault: (series, vizSettings) => getHasSplitYAxis(series, vizSettings),
+    getDefault: (series, vizSettings) => getYAxisSides(series, vizSettings),
   },
   "graph.x_axis.scale": {
     getSection: () => t`Axes`,
@@ -1026,8 +1032,11 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "input",
+    // Hide only when the chart is positively known to have no left axis, so a
+    // chart type that does not compute the sides keeps today's behaviour.
     getHidden: (_series, vizSettings) =>
-      vizSettings["graph.y_axis.labels_enabled"] === false,
+      isYAxisLabelHidden(vizSettings) ||
+      vizSettings["graph.y_axis._axes"]?.left === false,
     getDefault: (series, vizSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
@@ -1039,7 +1048,13 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
 
       return getDefaultYAxisTitle(metricNames);
     },
-    readDependencies: ["series", "graph.metrics"],
+    readDependencies: [
+      "series",
+      "graph.metrics",
+      "graph.y_axis._axes",
+      "graph.split_panels",
+      "graph.y_axis.labels_enabled",
+    ],
   },
   "graph.y_axis.right.title_text": {
     getSection: () => t`Axes`,
@@ -1051,15 +1066,21 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Right y-axis`;
     },
     widget: "input",
+    // Show only when the chart is positively known to have a right axis, so no
+    // chart gains a field it had no axis for.
     getHidden: (_series, vizSettings) =>
-      vizSettings["graph.y_axis._is_split"] !== true ||
-      vizSettings["graph.y_axis.labels_enabled"] === false,
+      isYAxisLabelHidden(vizSettings) ||
+      vizSettings["graph.y_axis._axes"]?.right !== true,
     // No getDefault: an unset value is what makes the right axis inherit the
     // left label, so saved questions keep their current rendering.
     getProps: (_series, vizSettings) => ({
       placeholder: vizSettings["graph.y_axis.title_text"],
     }),
-    readDependencies: ["graph.y_axis._is_split", "graph.y_axis.labels_enabled"],
+    readDependencies: [
+      "graph.y_axis._axes",
+      "graph.split_panels",
+      "graph.y_axis.labels_enabled",
+    ],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

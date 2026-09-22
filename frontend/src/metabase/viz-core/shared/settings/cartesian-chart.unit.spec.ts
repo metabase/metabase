@@ -21,7 +21,7 @@ import {
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
-  getHasSplitYAxis,
+  getYAxisSides,
 } from "./cartesian-chart";
 
 const createSeries = ({
@@ -289,7 +289,7 @@ describe("getDefaultBoxplotDimensions", () => {
   });
 });
 
-describe("getHasSplitYAxis", () => {
+describe("getYAxisSides", () => {
   const MONTH = "month";
   const CATEGORY = "category";
   const REVENUE = "revenue";
@@ -303,9 +303,23 @@ describe("getHasSplitYAxis", () => {
     theme: DEFAULT_VISUALIZATION_THEME,
   };
 
-  const createTwoMetricSeries = (rows: DatasetData["rows"]): RawSeries => [
+  // The real computed settings always carry the per-series accessor; the chart
+  // model reads each series' display through it.
+  const lineSeries = () => ({ display: "line" as const });
+
+  const pinnedRight =
+    (...keys: string[]) =>
+    ({ card }: LegacySeriesSettingsObjectKey) =>
+      keys.includes(String(card._seriesKey))
+        ? { ...lineSeries(), axis: "right" as const }
+        : lineSeries();
+
+  const createTwoMetricSeries = (
+    rows: DatasetData["rows"],
+    display: VisualizationDisplay = "line",
+  ): RawSeries => [
     createMockSingleSeries(
-      createMockCard({ display: "line" }),
+      createMockCard({ display }),
       createMockDataset({
         data: createMockDatasetData({
           cols: [
@@ -342,13 +356,16 @@ describe("getHasSplitYAxis", () => {
     ),
   ];
 
-  // The real computed settings always carry the per-series accessor; the chart
-  // model reads each series' display through it.
-  const lineSeries = () => ({ display: "line" as const });
-
   const twoMetricSettings = {
     "graph.dimensions": [MONTH],
     "graph.metrics": [REVENUE, ORDERS],
+    "graph.y_axis.auto_split": true,
+    series: lineSeries,
+  };
+
+  const breakoutSettings = {
+    "graph.dimensions": [MONTH, CATEGORY],
+    "graph.metrics": [ORDERS],
     "graph.y_axis.auto_split": true,
     series: lineSeries,
   };
@@ -363,83 +380,97 @@ describe("getHasSplitYAxis", () => {
     ["Feb", 1000, 1100],
   ];
 
-  // The sidebar decides whether to offer the right-axis settings and the
-  // renderer decides whether to draw a right axis, through different code. A
-  // disagreement hides the settings on a chart that has two axes.
+  // The sidebar decides which axis label fields to offer and the renderer
+  // decides which axes to draw, through different code. A disagreement either
+  // hides the setting for an axis that exists or offers one for an axis that
+  // does not.
   it.each([
     {
       name: "two metrics on ranges far apart",
-      hasRightAxis: true,
+      sides: { left: true, right: true },
       rawSeries: createTwoMetricSeries(divergentRows),
       settings: twoMetricSettings,
     },
     {
       name: "two metrics on similar ranges",
-      hasRightAxis: false,
+      sides: { left: true, right: false },
       rawSeries: createTwoMetricSeries(similarRows),
       settings: twoMetricSettings,
     },
     {
       name: "the automatic split turned off",
-      hasRightAxis: false,
+      sides: { left: true, right: false },
       rawSeries: createTwoMetricSeries(divergentRows),
       settings: { ...twoMetricSettings, "graph.y_axis.auto_split": false },
     },
     {
       name: "a single metric",
-      hasRightAxis: false,
+      sides: { left: true, right: false },
       rawSeries: createTwoMetricSeries(divergentRows),
       settings: { ...twoMetricSettings, "graph.metrics": [REVENUE] },
     },
     {
-      name: "a series pinned to the right axis by hand",
-      hasRightAxis: true,
+      name: "one series pinned to the right axis",
+      sides: { left: true, right: true },
       rawSeries: createTwoMetricSeries(similarRows),
       settings: {
         ...twoMetricSettings,
         "graph.y_axis.auto_split": false,
-        series: ({ card }: LegacySeriesSettingsObjectKey) =>
-          card._seriesKey === ORDERS
-            ? { ...lineSeries(), axis: "right" as const }
-            : lineSeries(),
+        series: pinnedRight(ORDERS),
       },
     },
     {
+      name: "every series pinned to the right axis, leaving no left axis",
+      sides: { left: false, right: true },
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: pinnedRight(REVENUE, ORDERS),
+      },
+    },
+    {
+      name: "every breakout series pinned to the right axis",
+      sides: { left: false, right: true },
+      rawSeries: createBreakoutSeries(),
+      settings: { ...breakoutSettings, series: pinnedRight("a", "b", "c") },
+    },
+    {
       name: "split panels",
-      hasRightAxis: false,
+      sides: { left: true, right: false },
       rawSeries: createTwoMetricSeries(divergentRows),
       settings: { ...twoMetricSettings, "graph.split_panels": true },
     },
     {
-      name: "a breakout, where one metric column means no automatic split",
-      hasRightAxis: false,
-      rawSeries: createBreakoutSeries(),
+      name: "stacked bars",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(divergentRows, "bar"),
       settings: {
-        "graph.dimensions": [MONTH, CATEGORY],
-        "graph.metrics": [ORDERS],
-        "graph.y_axis.auto_split": true,
-        series: lineSeries,
+        ...twoMetricSettings,
+        series: () => ({ display: "bar" as const }),
+        "stackable.stack_type": "stacked" as const,
       },
     },
     {
+      name: "a breakout, where one metric column means no automatic split",
+      sides: { left: true, right: false },
+      rawSeries: createBreakoutSeries(),
+      settings: breakoutSettings,
+    },
+    {
       name: "a breakout series pinned right, then grouped into Other",
-      hasRightAxis: false,
+      sides: { left: true, right: false },
       rawSeries: createBreakoutSeries(),
       settings: {
-        "graph.dimensions": [MONTH, CATEGORY],
-        "graph.metrics": [ORDERS],
-        "graph.y_axis.auto_split": true,
+        ...breakoutSettings,
         "graph.max_categories_enabled": true,
         "graph.max_categories": 2,
-        series: ({ card }: LegacySeriesSettingsObjectKey) =>
-          card._seriesKey === "c"
-            ? { ...lineSeries(), axis: "right" as const }
-            : lineSeries(),
+        series: pinnedRight("c"),
       },
     },
   ])(
-    "agrees with the rendered chart model for $name",
-    ({ rawSeries, settings, hasRightAxis }) => {
+    "agrees with the axes the chart model builds for $name",
+    ({ rawSeries, settings, sides }) => {
       const chartModel = getCartesianChartModel(
         rawSeries,
         settings,
@@ -447,8 +478,27 @@ describe("getHasSplitYAxis", () => {
         renderingContext,
       );
 
-      expect(chartModel.rightAxisModel != null).toBe(hasRightAxis);
-      expect(getHasSplitYAxis(rawSeries, settings)).toBe(hasRightAxis);
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
+    },
+  );
+
+  it("reports no axes when the chart plots nothing", () => {
+    expect(getYAxisSides([], {})).toEqual({ left: false, right: false });
+  });
+
+  it.each(["waterfall", "boxplot"] as const)(
+    "reports a left axis only for %s, which never builds a right one",
+    (display) => {
+      expect(
+        getYAxisSides(createTwoMetricSeries(divergentRows, display), {
+          ...twoMetricSettings,
+          "graph.metrics": [REVENUE],
+        }),
+      ).toEqual({ left: true, right: false });
     },
   );
 });
