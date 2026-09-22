@@ -482,56 +482,25 @@
                                                             :module-counts (read-modules modules-after-path))
                                                      workflow-url))))}
 
-  -driver-decisions
-  {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
-   :examples [["./bin/mage -driver-decisions --git-ref=master --force-run=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-cloud-drivers" "Run all cloud drivers via label"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
-              ["./bin/mage -driver-decisions --only-driver=bigquery" "Run only the BigQuery job, whatever the other rules say"]
-              ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
-   :requires [[clojure.string :as str]
-              [table.core :as table]
-              [mage.modules]]
+  -driver-analysis
+  {:doc "Report what the module graph says about the diff, for the CI driver gate to decide on."
+   :examples [["./bin/mage -driver-analysis" "Analyse the diff against master"]
+              ["./bin/mage -driver-analysis --git-ref=release-x.57.x" "Analyse against another base"]]
+   :requires [[mage.modules]]
    :usage-fn
    (fn [_current-task]
      (let [driver-triggers (vec (sort mage.modules/default-modules-which-trigger-drivers))]
        (str
-        "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
-        (with-out-str
-          (table/table [["Priority" "Condition" "Result" "Reason"]
-                        ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
-                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label"]
-                        ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
-                        ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
-                        ["4"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["5"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed"]
-                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
-                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
-                        ["8"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
-                        ["9"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["10"
-                         (str (pr-str driver-triggers) " module deps affected")
-                         "RUN"
-                         (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["11"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
-        "\nThis table decides only WHETHER a driver runs. Whether its failures GATE is a separate\n"
-        "question, answered at the end of the job by ci-conductor's quarantine rules.\n"
-        "\n\n## Labels of Interest\n\n"
-        "These PR labels influence driver test decisions:\n\n"
-        "  ci:run-all-drivers        Force-run ALL drivers\n"
-        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb\n"
-        "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
-        "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
-        "\n## All Drivers\n\n"
-        (str/join ", " (map name (sort mage.modules/all-drivers)))
-        "\n")))
-   :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
-             [nil "--force-run FORCE_RUN" "Run every driver regardless of the diff"]
-             [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
-             [nil "--skip SKIP"]
-             [nil "--only-driver DRIVER" "Run only this driver's job, ignoring every other rule"]
-             [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
+        "# Facts about the diff that need the Clojure module graph, as JSON on stdout:\n\n"
+        "  driverDepsAffected          any of " (pr-str driver-triggers) " affected by module changes\n"
+        "  importantFileChanged        deps.edn or modules/drivers/** changed\n"
+        "  driversChanged              drivers whose own modules/drivers/<dir>/ sources changed\n"
+        "  cloudTriggerModulesUpdated  a changed module explicitly triggers the cloud drivers\n"
+        "\nWhat CI does with them -- branch, PR labels, workflow_dispatch and the shared test gate --\n"
+        "is policy, and lives in .github/scripts/gate/drivers.ts alongside the rules that read it.\n"
+        "\nWhether a driver's failures GATE is a third question, answered at the end of the job by\n"
+        "ci-conductor's quarantine rules.\n")))
+   :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]]
 
    :task (task! (mage.modules/-main parsed))}
 

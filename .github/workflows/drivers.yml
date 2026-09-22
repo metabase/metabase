@@ -69,75 +69,80 @@ jobs:
       # A direct dispatch names a driver and runs it whatever the diff says.
       ignore-diff: ${{ inputs.driver != '' }}
 
-  # This job determines which driver tests should run based on PR context.
-  # All decision logic is consolidated in mage driver-decisions.
-  determine-driver-skips:
+  # Which driver jobs run. `mage -driver-analysis` answers only what needs the Clojure module graph
+  # -- whether the driver module is affected, whose sources changed -- and the rules that read it
+  # live in `.github/scripts/gate/drivers.ts` with the branch, labels and dispatch input they weigh
+  # against. The outputs are named after the jobs they decide, so each job below carries a single
+  # condition. The script is a plain module, unit tested by the ci-scripts jest project.
+  plan:
+    name: Decide which drivers to test
     needs: gate
     if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
+    # A force-run and a named driver each decide every driver on their own, so neither reaches a
+    # rule that reads the module graph -- and neither pays for the JVM that builds it.
+    env:
+      ANALYSE: ${{ needs.gate.outputs.force-run != 'true' && inputs.driver == '' }}
     outputs:
-      # All driver run decisions (from mage driver-decisions)
-      h2-should-run: ${{ steps.driver-decisions.outputs.h2-should-run }}
-      athena-should-run: ${{ steps.driver-decisions.outputs.athena-should-run }}
-      bigquery-should-run: ${{ steps.driver-decisions.outputs.bigquery-should-run }}
-      clickhouse-should-run: ${{ steps.driver-decisions.outputs.clickhouse-should-run }}
-      databricks-should-run: ${{ steps.driver-decisions.outputs.databricks-should-run }}
-      druid-should-run: ${{ steps.driver-decisions.outputs.druid-should-run }}
-      druid-jdbc-should-run: ${{ steps.driver-decisions.outputs.druid-jdbc-should-run }}
-      mongo-should-run: ${{ steps.driver-decisions.outputs.mongo-should-run }}
-      mongo-ssl-should-run: ${{ steps.driver-decisions.outputs.mongo-ssl-should-run }}
-      mongo-sharded-cluster-should-run: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-should-run }}
-      mysql-mariadb-should-run: ${{ steps.driver-decisions.outputs.mysql-mariadb-should-run }}
-      oracle-should-run: ${{ steps.driver-decisions.outputs.oracle-should-run }}
-      postgres-should-run: ${{ steps.driver-decisions.outputs.postgres-should-run }}
-      presto-jdbc-should-run: ${{ steps.driver-decisions.outputs.presto-jdbc-should-run }}
-      redshift-should-run: ${{ steps.driver-decisions.outputs.redshift-should-run }}
-      snowflake-should-run: ${{ steps.driver-decisions.outputs.snowflake-should-run }}
-      sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
-      sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
-      sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
-      vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
+      be-tests-h2: ${{ steps.plan.outputs.be-tests-h2 }}
+      be-tests-h2-oss: ${{ steps.plan.outputs.be-tests-h2-oss }}
+      be-tests-athena-ee: ${{ steps.plan.outputs.be-tests-athena-ee }}
+      be-tests-bigquery-cloud-sdk-ee: ${{ steps.plan.outputs.be-tests-bigquery-cloud-sdk-ee }}
+      be-tests-bigquery-transforms-python-ee: ${{ steps.plan.outputs.be-tests-bigquery-transforms-python-ee }}
+      be-tests-clickhouse-ee: ${{ steps.plan.outputs.be-tests-clickhouse-ee }}
+      be-tests-databricks-ee: ${{ steps.plan.outputs.be-tests-databricks-ee }}
+      be-tests-druid-jdbc-ee: ${{ steps.plan.outputs.be-tests-druid-jdbc-ee }}
+      be-tests-mongo: ${{ steps.plan.outputs.be-tests-mongo }}
+      be-tests-mongo-ssl: ${{ steps.plan.outputs.be-tests-mongo-ssl }}
+      be-tests-mongo-sharded-cluster-ee: ${{ steps.plan.outputs.be-tests-mongo-sharded-cluster-ee }}
+      be-tests-mysql-mariadb: ${{ steps.plan.outputs.be-tests-mysql-mariadb }}
+      be-tests-oracle: ${{ steps.plan.outputs.be-tests-oracle }}
+      be-tests-postgres: ${{ steps.plan.outputs.be-tests-postgres }}
+      be-tests-presto-jdbc-ee: ${{ steps.plan.outputs.be-tests-presto-jdbc-ee }}
+      be-tests-redshift-ee: ${{ steps.plan.outputs.be-tests-redshift-ee }}
+      be-tests-snowflake-ee: ${{ steps.plan.outputs.be-tests-snowflake-ee }}
+      be-tests-sparksql-ee: ${{ steps.plan.outputs.be-tests-sparksql-ee }}
+      be-tests-sqlite-ee: ${{ steps.plan.outputs.be-tests-sqlite-ee }}
+      be-tests-sqlserver: ${{ steps.plan.outputs.be-tests-sqlserver }}
+      login-to-ecr: ${{ steps.plan.outputs.login-to-ecr }}
+      be-tests-vertica-ee: ${{ steps.plan.outputs.be-tests-vertica-ee }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Prepare back-end environment
+        if: ${{ env.ANALYSE == 'true' }}
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref != ''
-        run: |
-          # Fetch the base branch to ensure its history is available for diffing
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-      - name: Determine which drivers should run
-        id: driver-decisions
-        run: |
-          # All decision logic is in mage - it analyzes module dependencies,
-          # branch context, labels, and file changes to decide what runs.
-          MAGE_ARGS=(
-            --git-ref="${BASE_REF}"
-            --force-run="${FORCE_RUN}"
-            --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --only-driver="${ONLY_DRIVER}"
-          )
-          echo "Running:"
-          echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
-          echo ""
-          # First call: show human-readable output for debugging
-          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
-          echo ""
-          echo "Want to force-run a specific driver? Add a ci:run-<driver> or ci:run-all-drivers label to your PR."
-          echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
-          # Second call: output only key=value lines for GITHUB_OUTPUT
-          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
+        if: >-
+          ${{ env.ANALYSE == 'true' && github.event_name == 'pull_request'
+          && github.event.pull_request.base.ref != '' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        # The base branch history has to be present to diff against.
+        run: git fetch --depth=1 origin "$BASE_REF:$BASE_REF"
+      - name: Analyse the module graph
+        id: analysis
+        if: ${{ env.ANALYSE == 'true' }}
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ needs.gate.outputs.force-run == 'true' }}
+        # JSON on stdout, the human-readable summary on stderr and so straight into the log.
+        run: echo "json=$(./bin/mage -driver-analysis --git-ref="$BASE_REF")" | tee -a "$GITHUB_OUTPUT"
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Plan the driver jobs
+        id: plan
+        env:
+          RUN: ${{ needs.gate.outputs.run }}
+          FORCE_RUN: ${{ needs.gate.outputs.force-run }}
           ONLY_DRIVER: ${{ inputs.driver }}
-        shell: bash
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          ANALYSIS: ${{ steps.analysis.outputs.json }}
+        run: bun .github/scripts/gate/drivers.ts
 
   be-tests-athena-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-athena-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -165,8 +170,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-bigquery-cloud-sdk-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-bigquery-cloud-sdk-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -202,8 +207,8 @@ jobs:
         artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-bigquery-transforms-python-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-bigquery-transforms-python-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
@@ -240,8 +245,8 @@ jobs:
         logs-artifact-suffix: transforms-python
 
   be-tests-clickhouse-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-clickhouse-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -302,8 +307,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-druid-jdbc-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-druid-jdbc-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -329,8 +334,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-databricks-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-databricks-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -391,8 +396,8 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
 
   be-tests-h2:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-h2 != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -410,8 +415,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-h2-oss:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-h2-oss != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -430,8 +435,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-mysql-mariadb:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-mysql-mariadb != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -554,8 +559,8 @@ jobs:
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-mongo != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -613,8 +618,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo-ssl:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-mongo-ssl != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -668,8 +673,8 @@ jobs:
             :only-tags [:mb/driver-tests]
 
   be-tests-mongo-sharded-cluster-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-mongo-sharded-cluster-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -692,8 +697,8 @@ jobs:
           :only metabase.driver.mongo.sharded-cluster-test
 
   be-tests-oracle:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-oracle != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -756,8 +761,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-postgres:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-postgres != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -854,8 +859,8 @@ jobs:
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-presto-jdbc-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-presto-jdbc-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -914,8 +919,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-redshift-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-redshift-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -1010,8 +1015,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-snowflake-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-snowflake-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 70
     strategy:
@@ -1072,8 +1077,8 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }}
 
   be-tests-sparksql-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-sparksql-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1097,8 +1102,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-sqlite-ee:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-sqlite-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1117,8 +1122,8 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
 
   be-tests-sqlserver:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.be-tests-sqlserver != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -1179,8 +1184,8 @@ jobs:
 
   # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
   # be-tests-starburst-ee:
-  #   needs: determine-driver-skips
-  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+  #   needs: plan
+  #   if: ${{ needs.plan.outputs.be-tests-starburst-ee != '' }}
   #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 40
   #   env:
@@ -1206,8 +1211,8 @@ jobs:
   #         :only-tags [:mb/driver-tests]
 
   login-to-ecr:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    needs: plan
+    if: ${{ needs.plan.outputs.login-to-ecr != '' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
@@ -1238,8 +1243,8 @@ jobs:
       docker_password: ${{ steps.login-ecr.outputs.docker_password }}
 
   be-tests-vertica-ee:
-    needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    needs: [plan, login-to-ecr]
+    if: ${{ needs.plan.outputs.be-tests-vertica-ee != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1270,7 +1275,7 @@ jobs:
   drivers-tests-result:
     needs:
       - gate
-      - determine-driver-skips
+      - plan
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
@@ -1307,10 +1312,10 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            // Drop the determine-driver-skips bookkeeping job; the rest -- the gate and the
-            // driver jobs -- gate this check.
+            // Drop the plan bookkeeping job; the rest -- the gate and the driver jobs --
+            // gate this check.
             const jobs = Object.entries(needs)
-              .filter(([jobName]) => jobName !== 'determine-driver-skips')
+              .filter(([jobName]) => jobName !== 'plan')
               .map(([jobName, jobValues]) => ({
                 name: jobName,
                 result: jobValues.result
