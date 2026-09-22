@@ -34,19 +34,60 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
-  # Each job below maps to its own filter, so they read `matched` rather than `run`.
+  # The shared verdict, the run's test plan, and the frontend plan, in one job:
+  # `.github/scripts/gate/frontend.ts` turns the matched filters and the plan's unit selection into
+  # what each job runs -- a `strategy.matrix`, or nothing at all -- so those jobs carry a single
+  # condition and everything else is decided here. The script is a plain module, unit tested by the
+  # ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      filters: frontend_all e2e_all custom_viz_all ci_scripts
+    name: Decide whether to run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      fe-lint: ${{ steps.plan.outputs.fe-lint }}
+      fe-type-check: ${{ steps.plan.outputs.fe-type-check }}
+      fe-tests-unit: ${{ steps.plan.outputs.fe-tests-unit }}
+      fe-tests-timezones: ${{ steps.plan.outputs.fe-tests-timezones }}
+      fe-tests-ci-scripts: ${{ steps.plan.outputs.fe-tests-ci-scripts }}
+      fe-custom-viz: ${{ steps.plan.outputs.fe-custom-viz }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            .github
+            /.nvmrc
+            /package.json
+          sparse-checkout-cone-mode: false
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          filters: frontend_all e2e_all custom_viz_all ci_scripts
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      # Only for the verdict: a plan that selects nothing keeps fe-tests-unit out of the run
+      # entirely. The paths file it writes here is thrown away with the runner -- the test job reads
+      # the plan again for its own copy.
+      - name: Read the unit test selection
+        id: unit-selection
+        if: ${{ inputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: unit
+          test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
+      - name: Plan the frontend jobs
+        id: plan
+        env:
+          MATCHED: ${{ steps.base.outputs.matched }}
+          UNIT_SELECTION: ${{ steps.unit-selection.outputs.selection }}
+          SKIP: ${{ inputs.skip }}
+          SKIP_LINT: ${{ inputs.skip-lint }}
+          SKIP_CUSTOM_VIZ: ${{ inputs.skip-custom-viz }}
+        run: bun .github/scripts/gate/frontend.ts
 
   fe-lint:
     needs: gate
-    # Linting covers the e2e specs too.
-    if: >-
-      ${{ !inputs.skip-lint
-      && (contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
-      || contains(fromJSON(needs.gate.outputs.matched), 'e2e_all')) }}
+    if: ${{ needs.gate.outputs.fe-lint != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -81,7 +122,7 @@ jobs:
 
   fe-type-check:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ needs.gate.outputs.fe-type-check != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -97,15 +138,13 @@ jobs:
 
   fe-tests-unit:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ needs.gate.outputs.fe-tests-unit != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1, 2] # 2 shards for parallel execution
+      matrix: ${{ fromJSON(needs.gate.outputs.fe-tests-unit) }}
     env:
-      SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
       UNIT_TEST_RESULTS_FILE: unit-test-results.json
@@ -133,7 +172,7 @@ jobs:
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ strategy.job-total }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results
@@ -162,7 +201,7 @@ jobs:
 
   fe-tests-timezones:
     needs: gate
-    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: ${{ needs.gate.outputs.fe-tests-timezones != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -175,7 +214,7 @@ jobs:
   # No CLJS compile: the CI-script specs don't import app code.
   fe-tests-ci-scripts:
     needs: gate
-    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'ci_scripts') }}
+    if: ${{ needs.gate.outputs.fe-tests-ci-scripts != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -189,7 +228,7 @@ jobs:
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
     needs: gate
-    if: ${{ !inputs.skip-custom-viz && contains(fromJSON(needs.gate.outputs.matched), 'custom_viz_all') }}
+    if: ${{ needs.gate.outputs.fe-custom-viz != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:
