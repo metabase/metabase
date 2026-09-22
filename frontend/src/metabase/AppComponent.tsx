@@ -11,6 +11,7 @@ import {
   getIsPageHeaderVisible,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -39,7 +40,6 @@ import {
   AppMain,
 } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
 import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";

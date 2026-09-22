@@ -10,7 +10,6 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   useCreateCommentMutation,
   useDeleteCommentMutation,
@@ -27,6 +26,7 @@ import {
   getCommentNodeId,
   getListCommentsQuery,
 } from "metabase/comments/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";

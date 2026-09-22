@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
@@ -345,9 +346,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 

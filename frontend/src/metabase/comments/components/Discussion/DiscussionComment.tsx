@@ -4,9 +4,9 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";

@@ -54,7 +54,7 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write`, `transform_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
@@ -75,9 +75,11 @@ chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
-holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`. Inside
-a JSON-RPC batch the refusal is an in-band `-32600` error instead. UI shell reads are never challenged: see
-[Resources](#resources).
+holds plus the one required, so a client can step up. Each tool also declares its scope in `securitySchemes`, which is
+draft [SEP-1488](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1488), supported by ChatGPT. It is
+not part of MCP 2025-03-26 (the version this server reports) or the final 2026-07-28 tools spec, so other clients
+discover the missing scope from the 403 instead. Inside a JSON-RPC batch the refusal is an in-band `-32600` error
+instead. UI shell reads are never challenged: see [Resources](#resources).
 
 OAuth protected resource metadata is available at:
 
@@ -85,7 +87,18 @@ OAuth protected resource metadata is available at:
 /.well-known/oauth-protected-resource/api/metabase-mcp
 ```
 
-The consent screen grants every scope the client requested, without the opportunity to customize.
+On the consent screen, the baseline scopes are ticked and locked, and every other scope the client requested starts
+unticked. Only the scopes the user ticks are granted, and only for the token this authorization mints: an untick never
+touches a token the app already has. A scope left unticked is not remembered by Metabase. A later 403 can trigger
+another step-up in clients that support it. Other clients may require manual reauthorization. Each challenge's
+`error_description` ends with a note that the user must tick the permission on the consent screen.
+
+Several clients replace the 403's `error_description` with their own text, so the `initialize` result's
+`instructions` explain scope failures to the model too: an auth error usually means a missing permission rather than an
+expired login, the model should name the failed tool or resource and the permission it requires, and the user grants it
+by reconnecting and ticking permissions on the consent screen. Because every optional permission starts unticked, the
+instructions tell the model to have the user tick every permission they want, not only the new one. The instructions
+are one static string, the same for every caller: there is no per-connection permission list.
 
 ## Available tools
 
@@ -110,6 +123,7 @@ the scope may not call it.
 | `execute_sql` | `agent:sql:run` | Escape hatch: execute a raw SQL string against a database, returning rows plus a query_handle. |
 | `get_content` | `agent:content:read` | Fetch content by {type, id} — the typed read for anything found via search or browse_collection. |
 | `get_parameter_values` | `agent:content:read` | Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. |
+| `glossary` | `agent:content:read` | Look up a business term as this Metabase instance defines it; the defined term names ride the tool's own description. |
 | `learn` | `agent:content:read` | Read this server's task docs (skills) for the write dialects the schemas can't fully describe. |
 | `measure_write` | `agent:content:write` | Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another query's aggregation as ["measure", id]. |
 | `metric_write` | `agent:content:write` | Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own or referenced from other queries. |

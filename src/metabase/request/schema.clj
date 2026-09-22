@@ -21,7 +21,9 @@
    [:auth-provider      {:optional true} [:maybe :string]]
    [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
-   [:token-scopes-checked {:optional true} :boolean]])
+   [:token-scopes-checked {:optional true} :boolean]
+   [:data-app-scoped?     {:optional true} :boolean]
+   [:authenticated-via-oauth? {:optional true} :boolean]])
 
 (mr/def ::json-value
   "A JSON-shaped value: a scalar, a sequence of JSON values, or a string-keyed JSON object."
@@ -107,6 +109,8 @@
    [:slack/validated?        {:optional true} :boolean]
    [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
+   [:authenticated-via-oauth? {:optional true} :boolean]
+   [:data-app-scoped?        {:optional true} :boolean]
    [:mcp-ui-session-id       {:optional true} [:maybe :string]]
    [:mcp-ui-credential       {:optional true} [:maybe
                                                [:map {:closed true}

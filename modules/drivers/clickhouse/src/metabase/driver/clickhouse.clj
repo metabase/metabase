@@ -81,6 +81,7 @@
                               :test/time-type                   false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/testing               true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
                               :window-functions/offset          true}]
@@ -134,6 +135,23 @@
   (->> (str/split (or s "") #"[\s,]+")
        (remove str/blank?)
        first))
+
+(defmethod driver.sql/default-schema :clickhouse
+  [driver database]
+  ;; ClickHouse opens a database where other engines have a default schema, so an unqualified reference resolves to
+  ;; the one this connection opened rather than to anything the driver could name on its own. `:db` is the older
+  ;; spelling of `:dbname`, and only `:dbname` reaches the JDBC URL, so details naming a database answer for
+  ;; themselves; details naming none connect anyway, and the server reports where they landed.
+  (let [details (:details database)]
+    (or (first-db-name (:dbname details))
+        (first-db-name (:db details))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver database nil
+         (fn [^java.sql.Connection conn]
+           (with-open [stmt (.createStatement conn)
+                       rset (.executeQuery stmt "SELECT currentDatabase()")]
+             (when (.next rset)
+               (.getString rset 1))))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -524,6 +542,33 @@
                  :always  (conj ["AS"] [sql-query sql-params]))
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
+
+(defmethod driver/do-with-test-connection :clickhouse
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^java.sql.Connection conn]
+     (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+           ^QuerySettings query-settings                     (.getDefaultQuerySettings clickhouse-conn)]
+       (.setDefaultQuerySettings clickhouse-conn (doto (QuerySettings. (.getAllSettings query-settings))
+                                                   (.serverSetting "session_id" (str (random-uuid)))))
+       (try
+         (f conn)
+         (finally
+           (.setDefaultQuerySettings clickhouse-conn query-settings)))))))
+
+(defmethod driver/compile-create-temp-table :clickhouse
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE TEMPORARY TABLE " [:inline (keyword table)]
+                                                  " ENGINE = Memory AS " sql-query]]))
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :clickhouse
+  [driver table]
+  [(first (sql.qp/format-honeysql driver [:raw ["DROP TEMPORARY TABLE IF EXISTS " [:inline (keyword table)]]]))
+   []])
 
 (defmethod driver/compile-insert :clickhouse
   [driver {:keys [query output-table]}]

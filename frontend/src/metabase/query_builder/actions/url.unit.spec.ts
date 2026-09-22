@@ -12,6 +12,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
+import type { DraftQuestionBuilder } from "metabase/metadata-store";
 import {
   type NavigateOptions,
   type To,
@@ -21,7 +22,7 @@ import {
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
   ORDERS_ID,
@@ -54,12 +55,18 @@ function buildSavedQuestion(card: Card): Question {
 }
 
 function buildPristineTableQuestion(): Question {
-  const entities = createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  });
-  const metadata = createMockMetadataFromState(createMockState({ entities }));
-  return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
+  return checkNotNull(tableMetadata.table(ORDERS_ID)).newQuestion();
 }
+
+const tableMetadata = createMockMetadataFromState(
+  createMockState({
+    entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
+  }),
+);
+
+// What `selectQuestionFromOptsBuilder` gives the thunk, over test metadata.
+const buildDraftQuestion: DraftQuestionBuilder = (opts) =>
+  Question.create({ ...opts, metadata: tableMetadata });
 
 // Re-presents the `navigate(to, options)` call as the descriptor the assertions
 // below were written against: `state` rides in the options, and replacing vs
@@ -314,7 +321,7 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
       const navigation = getDispatchedNavigation();
       expect(navigation?.descriptor.pathname).toBe(expectedUrl);
       expect(navigation?.descriptor.pathname).toBe(
-        getTableUrlForPristineQuestion(question),
+        getTableUrlForPristineQuestion(question, buildDraftQuestion),
       );
     });
 

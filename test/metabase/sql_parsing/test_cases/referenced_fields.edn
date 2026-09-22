@@ -1,13 +1,5 @@
-;; Referenced Fields Test Cases
-;; Each test case has:
-;; - :name - descriptive name for the test
-;; - :sql - the SQL query to analyze
-;; - :dialect - SQL dialect (postgres, mysql, snowflake, bigquery, redshift, duckdb)
-;; - :expected - vector of [table field] pairs (sorted)
-
-{:test-cases
- [;; Basic SELECT queries
-  {:name "simple-select-with-columns"
+{:cases
+ [{:name "simple-select-with-columns"
    :sql "SELECT id, name FROM users"
    :dialect "postgres"
    :expected [["users" "id"] ["users" "name"]]}
@@ -32,7 +24,6 @@
    :dialect "postgres"
    :expected [["users" "id"] ["users" "name"]]}
 
-  ;; Wildcards
   {:name "unqualified-wildcard-single-table"
    :sql "SELECT * FROM users"
    :dialect "postgres"
@@ -53,7 +44,6 @@
    :dialect "postgres"
    :expected [["transactions" "total"] ["transactions" "user_id"] ["users" "*"] ["users" "id"]]}
 
-  ;; JOINs
   {:name "inner-join-simple"
    :sql "SELECT u.id, o.total FROM users u INNER JOIN orders o ON u.id = o.user_id"
    :dialect "postgres"
@@ -79,8 +69,6 @@
    :dialect "postgres"
    :expected [["transactions" "total"] ["transactions" "user_id"] ["users" "id"]]}
 
-  ;; CTEs
-  ;; Note: CTEs create scopes, and sqlglot attributes columns to the CTE scope in some cases
   {:name "simple-cte"
    :sql "WITH active_users AS (SELECT id FROM users WHERE active) SELECT * FROM active_users"
    :dialect "postgres"
@@ -89,7 +77,6 @@
   {:name "cte-with-join"
    :sql "WITH active AS (SELECT id FROM users WHERE active = true) SELECT a.id, t.total FROM active a JOIN transactions t ON a.id = t.user_id"
    :dialect "postgres"
-   ;; Note: sqlglot sees columns from CTE join and attributes some to transactions scope
    :expected [["transactions" "active"] ["transactions" "id"] ["transactions" "total"] ["transactions" "user_id"] ["users" "active"] ["users" "id"]]}
 
   {:name "multiple-ctes"
@@ -97,7 +84,6 @@
    :dialect "postgres"
    :expected [["transactions" "created_at"] ["transactions" "total"] ["transactions" "user_id"] ["users" "active"] ["users" "id"]]}
 
-  ;; Subqueries
   {:name "subquery-in-from"
    :sql "SELECT * FROM (SELECT id, name FROM users WHERE active = true) AS active_users"
    :dialect "postgres"
@@ -106,7 +92,6 @@
   {:name "subquery-in-where"
    :sql "SELECT id, name FROM users WHERE id IN (SELECT user_id FROM transactions WHERE total > 100)"
    :dialect "postgres"
-   ;; Note: sqlglot attributes some subquery columns to outer scope
    :expected [["transactions" "total"] ["transactions" "user_id"] ["users" "id"] ["users" "name"] ["users" "total"] ["users" "user_id"]]}
 
   {:name "correlated-subquery"
@@ -114,8 +99,6 @@
    :dialect "postgres"
    :expected [["transactions" "user_id"] ["users" "id"] ["users" "name"]]}
 
-  ;; Aggregations
-  ;; Note: The * in COUNT(*) is not a column reference, it's part of the aggregate function syntax
   {:name "count-aggregate"
    :sql "SELECT COUNT(*) FROM users"
    :dialect "postgres"
@@ -136,7 +119,6 @@
    :dialect "postgres"
    :expected [["employees" "department"] ["employees" "salary"]]}
 
-  ;; Window functions
   {:name "window-function-simple"
    :sql "SELECT name, salary, RANK() OVER (ORDER BY salary DESC) FROM employees"
    :dialect "postgres"
@@ -147,7 +129,6 @@
    :dialect "postgres"
    :expected [["employees" "department"] ["employees" "name"] ["employees" "salary"]]}
 
-  ;; CASE expressions
   {:name "case-expression"
    :sql "SELECT name, CASE WHEN age < 18 THEN 'minor' ELSE 'adult' END AS age_group FROM users"
    :dialect "postgres"
@@ -158,7 +139,6 @@
    :dialect "postgres"
    :expected [["users" "active"] ["users" "age"] ["users" "name"]]}
 
-  ;; Set operations
   {:name "union-simple"
    :sql "SELECT id, name FROM users UNION SELECT id, name FROM archived_users"
    :dialect "postgres"
@@ -169,7 +149,6 @@
    :dialect "postgres"
    :expected [["active_users" "id"] ["inactive_users" "id"]]}
 
-  ;; Schema-qualified tables
   {:name "schema-qualified-single"
    :sql "SELECT id, name FROM public.users"
    :dialect "postgres"
@@ -180,7 +159,6 @@
    :dialect "postgres"
    :expected [["orders" "total"] ["orders" "user_id"] ["users" "id"]]}
 
-  ;; Complex queries
   {:name "complex-with-cte-join-subquery"
    :sql "WITH ranked AS (SELECT id, name, RANK() OVER (ORDER BY created_at DESC) as rank FROM users WHERE active = true) SELECT r.id, r.name, t.total FROM ranked r JOIN (SELECT user_id, SUM(amount) as total FROM transactions GROUP BY user_id) t ON r.id = t.user_id WHERE r.rank <= 10"
    :dialect "postgres"
@@ -189,10 +167,8 @@
   {:name "nested-subqueries"
    :sql "SELECT id, name FROM users WHERE id IN (SELECT user_id FROM transactions WHERE total > (SELECT AVG(total) FROM transactions))"
    :dialect "postgres"
-   ;; Note: sqlglot attributes some subquery columns to outer scope
    :expected [["transactions" "total"] ["transactions" "user_id"] ["users" "id"] ["users" "name"] ["users" "total"] ["users" "user_id"]]}
 
-  ;; Edge cases
   {:name "table-alias-same-as-table-name"
    :sql "SELECT users.id, users.name FROM users users"
    :dialect "postgres"
@@ -208,7 +184,6 @@
    :dialect "postgres"
    :expected []}
 
-  ;; Different dialects
   {:name "mysql-backticks"
    :sql "SELECT `id`, `name` FROM `users` WHERE `active` = 1"
    :dialect "mysql"
@@ -217,7 +192,6 @@
   {:name "bigquery-struct"
    :sql "SELECT id, name, address.city FROM users"
    :dialect "bigquery"
-   ;; Note: Struct field access (address.city) is not parsed as a column reference
    :expected [["users" "id"] ["users" "name"]]}
 
   {:name "snowflake-uppercase"
@@ -225,7 +199,6 @@
    :dialect "snowflake"
    :expected [["USERS" "ID"] ["USERS" "NAME"]]}
 
-  ;; INSERT/UPDATE/DELETE (less common but valid)
   {:name "insert-with-select"
    :sql "INSERT INTO archive_users SELECT id, name, email FROM users WHERE active = false"
    :dialect "postgres"
@@ -234,11 +207,9 @@
   {:name "update-with-join"
    :sql "UPDATE users SET last_purchase = t.max_date FROM (SELECT user_id, MAX(created_at) as max_date FROM transactions GROUP BY user_id) t WHERE users.id = t.user_id"
    :dialect "postgres"
-   ;; Note: UPDATE statements may not be fully parsed by sqlglot for field extraction
    :expected []}
 
   {:name "delete-with-subquery"
    :sql "DELETE FROM users WHERE id IN (SELECT user_id FROM transactions WHERE total < 10)"
    :dialect "postgres"
-   ;; Note: DELETE statements don't include the target table's columns in references
    :expected [["transactions" "total"] ["transactions" "user_id"]]}]}
