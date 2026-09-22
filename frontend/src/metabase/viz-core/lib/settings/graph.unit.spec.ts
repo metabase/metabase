@@ -268,10 +268,7 @@ describe("GRAPH_AXIS_SETTINGS", () => {
     );
   });
 
-  describe("y-axis existence and the label fields", () => {
-    const getAxesDefault = checkNotNull(
-      GRAPH_AXIS_SETTINGS["graph.y_axis._axes"]?.getDefault,
-    );
+  describe("the y-axis label fields", () => {
     const isLeftLabelHidden = checkNotNull(
       GRAPH_AXIS_SETTINGS["graph.y_axis.title_text"]?.getHidden,
     );
@@ -316,102 +313,54 @@ describe("GRAPH_AXIS_SETTINGS", () => {
       ),
     ];
 
-    const baseSettings = {
+    const splitSettings = {
       "graph.dimensions": [MONTH_COLUMN],
       "graph.metrics": [REVENUE_COLUMN, ORDERS_COLUMN],
       "graph.y_axis.auto_split": true,
     };
 
-    describe("graph.y_axis._axes", () => {
-      it("should report a left axis only for a single-metric chart", () => {
-        expect(
-          getAxesDefault(createTwoMetricSeries(), {
-            ...baseSettings,
-            "graph.metrics": [REVENUE_COLUMN],
-          }),
-        ).toEqual({ left: true, right: false });
-      });
+    it.each([
+      {
+        name: "a single-metric chart",
+        settings: { ...splitSettings, "graph.metrics": [REVENUE_COLUMN] },
+      },
+      {
+        // The only axis is on the right, and the shared field labels it.
+        name: "a chart with every series pinned right",
+        settings: {
+          ...splitSettings,
+          "graph.y_axis.auto_split": false,
+          series: () => ({ axis: "right" as const }),
+        },
+      },
+      {
+        // Split panels draw one shared label from the left axis model.
+        name: "split panels",
+        settings: { ...splitSettings, "graph.split_panels": true },
+      },
+    ])("should offer only the shared label for $name", ({ settings }) => {
+      const series = createTwoMetricSeries();
 
-      it("should report both axes when the automatic split moves a series right", () => {
-        expect(getAxesDefault(createTwoMetricSeries(), baseSettings)).toEqual({
-          left: true,
-          right: true,
-        });
-      });
-
-      it("should report no left axis when every series is pinned right", () => {
-        expect(
-          getAxesDefault(createTwoMetricSeries(), {
-            ...baseSettings,
-            "graph.y_axis.auto_split": false,
-            series: () => ({ axis: "right" as const }),
-          }),
-        ).toEqual({ left: false, right: true });
-      });
+      expect(isLeftLabelHidden(series, settings)).toBe(false);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
     });
 
-    describe("the label fields follow the axes", () => {
-      it.each([
-        {
-          name: "one left axis",
-          axes: { left: true, right: false },
-          left: false,
-          right: true,
-        },
-        {
-          name: "both axes",
-          axes: { left: true, right: true },
-          left: false,
-          right: false,
-        },
-        {
-          name: "only a right axis",
-          axes: { left: false, right: true },
-          left: true,
-          right: false,
-        },
-        {
-          name: "no axes at all",
-          axes: { left: false, right: false },
-          left: true,
-          right: true,
-        },
-      ])("$name", ({ axes, left, right }) => {
-        const settings = { "graph.y_axis._axes": axes };
-        const series = createTwoMetricSeries();
+    it("should offer both labels when the chart splits its y-axis", () => {
+      const series = createTwoMetricSeries();
 
-        expect(isLeftLabelHidden(series, settings)).toBe(left);
-        expect(isRightLabelHidden(series, settings)).toBe(right);
-      });
+      expect(isLeftLabelHidden(series, splitSettings)).toBe(false);
+      expect(isRightLabelHidden(series, splitSettings)).toBe(false);
+    });
 
-      it("should hide both when y-axis labels are turned off", () => {
-        const settings = {
-          "graph.y_axis._axes": { left: true, right: true },
-          "graph.y_axis.labels_enabled": false,
-        };
-        const series = createTwoMetricSeries();
+    it("should hide both when y-axis labels are turned off", () => {
+      const settings = {
+        ...splitSettings,
+        "graph.y_axis.labels_enabled": false,
+      };
+      const series = createTwoMetricSeries();
 
-        expect(isLeftLabelHidden(series, settings)).toBe(true);
-        expect(isRightLabelHidden(series, settings)).toBe(true);
-      });
-
-      it("should hide both for split panels, which label each panel's axis", () => {
-        const settings = {
-          "graph.y_axis._axes": { left: true, right: false },
-          "graph.split_panels": true,
-        };
-        const series = createTwoMetricSeries();
-
-        expect(isLeftLabelHidden(series, settings)).toBe(true);
-        expect(isRightLabelHidden(series, settings)).toBe(true);
-      });
-
-      it("should keep the left label when the sides were never computed", () => {
-        const series = createTwoMetricSeries();
-
-        expect(isLeftLabelHidden(series, {})).toBe(false);
-        expect(isRightLabelHidden(series, {})).toBe(true);
-      });
+      expect(isLeftLabelHidden(series, settings)).toBe(true);
+      expect(isRightLabelHidden(series, settings)).toBe(true);
     });
   });
 
