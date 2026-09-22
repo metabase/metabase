@@ -693,6 +693,32 @@
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
+(deftest export-after-collection-rename-moves-contents-test
+  (testing "GHY-4642: pushing after a synced collection is renamed moves its contents' files under the new collection path"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection 2" :location "/"}
+                     :model/Card _ {:name "Question 2" :collection_id coll-id}]
+        (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+              repo-files #(set (source.p/list-files (source.p/snapshot source)))
+              push!      #(wait-for-task-completion
+                           (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                        settings/check-and-update-remote-settings! (constantly nil)
+                                        impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/collection_2.yaml"
+                       "collections/main/collection_2/question_2.yaml"}
+                     (repo-files)))
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:name "Marketing Reports"})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/marketing_reports.yaml"
+                       "collections/main/marketing_reports/question_2.yaml"}
+                     (repo-files))))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test
