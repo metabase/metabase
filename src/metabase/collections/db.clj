@@ -266,10 +266,10 @@
                                                 [:= :is_remote_synced true]
                                                 [:= :location "/"]]}))
 
-(mu/defn personal-collection-ids
+(mu/defn personal-collection-ids :- [:set ::lib.schema.id/collection]
   "The IDs of every personal ::collections.schema/collection."
   []
-  (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]))
+  (or (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil]) #{}))
 
 (mu/defn personal-collection-ids-by-owner
   "A map of owner User ID to personal ::collections.schema/collection ID for `user-ids`."
