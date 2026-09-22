@@ -75,18 +75,13 @@
   safe: changed content always arrives at a new URL."
   #"^/app/dist/(?:.+\.)?[a-f0-9]{8,}(?:\.[a-z0-9]+)+$")
 
-(def ^:private static-font-pattern
-  "Matches a bundled font. Fonts ship at a stable path and are treated as static."
-  #"^/app/fonts/.+\.(?:woff2?|ttf|otf|eot)$")
-
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
   (boolean
    (and (= request-method :get)
         uri
-        (or (re-matches cache-busted-asset-pattern uri)
-            (re-matches static-font-pattern uri)))))
+        (re-matches cache-busted-asset-pattern uri))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a
