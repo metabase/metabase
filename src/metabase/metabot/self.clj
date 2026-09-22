@@ -14,6 +14,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.timing :as timing]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
@@ -26,6 +27,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.typesafe :as typesafe]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
@@ -49,6 +51,8 @@
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "typesafe"   (throw (ex-info (tru "TypeSafe serves System One models, which cannot chat. Ask them questions with metabase.metabot.self.system-one instead.")
+                                 {:provider provider}))
     "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -66,6 +70,7 @@
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "typesafe"   typesafe/list-models
     "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -88,7 +93,8 @@
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
   no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
-  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  operator loaded, `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead, and
+  `typesafe`, whose System One models are never offered for selection."
   [provider]
   ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
   ;; a provider that simply has no models
@@ -101,7 +107,7 @@
                       "openai"     openai/supported-models
                       "openrouter" openrouter/supported-models
                       "zai"        zai/supported-models
-                      ("azure" "google" "metabase" "vllm") nil
+                      ("azure" "google" "metabase" "typesafe" "vllm") nil
                       (throw (ex-info (str "Unknown LLM provider: " provider)
                                       {:provider provider})))]
     (into {}
@@ -280,10 +286,11 @@
                             :error-type "llm-sse-error"}))
          part)))
 
-(defn- report-token-usage-xf
-  "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
+(defn report-token-usage!
+  "Report one LLM call's token `usage` (AI SDK usage keys: `:promptTokens`, `:completionTokens`,
+  `:cacheCreationTokens`, `:cacheReadTokens`) to Prometheus, Snowplow and the AI usage log.
 
-  Prometheus + Snowplow:
+  `tracking-opts`, used for Prometheus + Snowplow:
     - `:profile-id` — the profile id (e.g. `:internal`)
     - `:model`      — the model (e.g. `openrouter/anthropic/claude-haiku-4.5`)
     - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
@@ -293,45 +300,52 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
-  (let [start-ms      (u/start-timer)]
+  [{:keys [model profile-id request-id session-id source tag ai-proxy?]} usage duration-ms]
+  (timing/record! {:kind :model :tag tag :model model :ms (long duration-ms)})
+  (let [model          (or model "unknown")
+        prompt         (:promptTokens usage 0)
+        completion     (:completionTokens usage 0)
+        cache-creation (:cacheCreationTokens usage 0)
+        cache-read     (:cacheReadTokens usage 0)]
+    (analytics.core/track-token-usage!
+     ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
+     {:prometheus            true
+      :snowplow              (some? request-id)
+      :profile               (some-> profile-id name)
+      :model-id              model
+      :prompt-tokens         prompt
+      :completion-tokens     completion
+      :cache-creation-tokens cache-creation
+      :cache-read-tokens     cache-read
+      :total-tokens          (+ prompt completion)
+      :estimated-costs-usd   0.0
+      :duration-ms           (long duration-ms)
+      :user-id               api/*current-user-id*
+      :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
+      :session-id            session-id
+      :source                source
+      :tag                   tag})
+    (usage/log-ai-usage!
+     {:source                (or source tag "unknown")
+      :model                 model
+      :prompt-tokens         prompt
+      :completion-tokens     completion
+      :cache-creation-tokens cache-creation
+      :cache-read-tokens     cache-read
+      :conversation-id       session-id
+      :profile-id            (usage/valid-usage-profile-id profile-id)
+      :request-id            request-id
+      :ai-proxied            (boolean ai-proxy?)})))
+
+(defn- report-token-usage-xf
+  "Transducer that runs [[report-token-usage!]] for each :usage part in the aisdk stream."
+  [tracking-opts]
+  (let [start-ms (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
-             (let [usage           (:usage part)
-                   model           (or model (:model part) "unknown")
-                   prompt          (:promptTokens usage 0)
-                   completion      (:completionTokens usage 0)
-                   cache-creation  (:cacheCreationTokens usage 0)
-                   cache-read      (:cacheReadTokens usage 0)]
-               (analytics.core/track-token-usage!
-                ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
-                {:prometheus            true
-                 :snowplow              (some? request-id)
-                 :profile               (some-> profile-id name)
-                 :model-id              model
-                 :prompt-tokens         prompt
-                 :completion-tokens     completion
-                 :cache-creation-tokens cache-creation
-                 :cache-read-tokens     cache-read
-                 :total-tokens          (+ prompt completion)
-                 :estimated-costs-usd   0.0
-                 :duration-ms           (long (u/since-ms start-ms))
-                 :user-id               api/*current-user-id*
-                 :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
-                 :session-id            session-id
-                 :source                source
-                 :tag                   tag})
-               (usage/log-ai-usage!
-                {:source                (or source tag "unknown")
-                 :model                 model
-                 :prompt-tokens         prompt
-                 :completion-tokens     completion
-                 :cache-creation-tokens cache-creation
-                 :cache-read-tokens     cache-read
-                 :conversation-id       session-id
-                 :profile-id            profile-id
-                 :request-id            request-id
-                 :ai-proxied            (boolean ai-proxy?)})))
+             (report-token-usage! (update tracking-opts :model #(or % (:model part)))
+                                  (:usage part)
+                                  (u/since-ms start-ms)))
            part))))
 
 (defn- report-tool-usage-xf
@@ -356,7 +370,7 @@
                                                                           (some? iteration) (assoc "step" iteration))}))
          part)))
 
-(defn- with-retries
+(defn with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
   Records prometheus metrics with `:model` and `:tag` from `tracking-opts` as labels.

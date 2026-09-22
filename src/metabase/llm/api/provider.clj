@@ -338,10 +338,11 @@
   "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
   provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
   still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
-  [{conn-key :key :as conn} requested-model]
-  (when-let [model-ref (if (not-empty requested-model)
-                         (str conn-key "/" requested-model)
-                         (connection-model-ref conn))]
+  [{conn-key :key :keys [type] :as conn} requested-model]
+  (when-let [model-ref (and (not (llm.provider/system-one-type? type))
+                            (if (not-empty requested-model)
+                              (str conn-key "/" requested-model)
+                              (connection-model-ref conn)))]
     (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!

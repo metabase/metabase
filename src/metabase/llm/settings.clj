@@ -416,6 +416,27 @@
   :visibility :settings-manager
   :export?    false)
 
+;;; ------------------------------------------------- TypeSafe --------------------------------------------------
+
+(defsetting llm-typesafe-api-base-url
+  (deferred-tru "The TypeSafe API base URL, without the `/v1` path.")
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :default    "https://api.typesafe.ai"
+  :export?    false
+  :getter     (connection-field-getter :llm-typesafe-api-base-url)
+  :setter     (connection-field-setter :llm-typesafe-api-base-url)
+  :doc        "Backed by the typesafe connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-typesafe-api-key
+  (deferred-tru "The TypeSafe API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-typesafe-api-key)
+  :setter     (connection-field-setter :llm-typesafe-api-key)
+  :doc        "Backed by the typesafe connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; The per-provider credential settings above are read-only at runtime: they configure a connection only when set
 ;;; by an environment variable, which [[metabase.llm.provider/connections]] resolves on every read. Editing one in
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.

@@ -805,7 +805,7 @@
              :id-segment   id-seg}))))
 
 (defn- fetch-past-artifact [conversation-id message-id kind artifact-id]
-  (api/check-403 (contains? #{:internal :nlq :nlq-fallback} shared/*profile-id*))
+  (api/check-403 (contains? #{:internal :nlq :nlq-old :nlq-fallback} shared/*profile-id*))
   (recall/owned-conversation! conversation-id)
   (let [state (recall/state-at (metabot.db/live-messages conversation-id) (parse-long message-id))
         chart (when (= kind "chart") (get-in state [:charts artifact-id]))

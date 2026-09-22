@@ -25,6 +25,10 @@ import {
   MetabotPromptSuggestions,
   type MetabotPromptSuggestionsRef,
 } from "./MetabotPromptSuggestions";
+import {
+  MetabotResponseTimer,
+  getConversationResponseTimings,
+} from "./MetabotResponseTimer";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotChatConfig = {
@@ -125,16 +129,21 @@ export const MetabotChat = ({
       {shouldShowHeader && (
         <Box className={Styles.header} data-testid="metabot-chat-header">
           {title && (
-            <Text
-              className={Styles.headerTitle}
-              c={metabot.title ? "text-primary" : "text-secondary"}
-              fw={metabot.title ? "bold" : "normal"}
-              truncate
-              title={title}
-              data-testid="metabot-conversation-title"
-            >
-              {title}
-            </Text>
+            <Box className={Styles.headerTitleGroup}>
+              <Text
+                className={Styles.headerTitle}
+                c={metabot.title ? "text-primary" : "text-secondary"}
+                fw={metabot.title ? "bold" : "normal"}
+                truncate
+                title={title}
+                data-testid="metabot-conversation-title"
+              >
+                {title}
+              </Text>
+              <MetabotResponseTimer
+                timings={getConversationResponseTimings(metabot.messages)}
+              />
+            </Box>
           )}
           {headerActions && (
             <Box className={Styles.headerActions}>{headerActions}</Box>

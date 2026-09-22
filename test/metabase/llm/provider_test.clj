@@ -659,8 +659,14 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-             "vllm" "metabase"}
+             "vllm" "typesafe" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
+
+(deftest ^:parallel provider-kind-test
+  (is (= #{"typesafe"}
+         (into #{} (comp (map :type) (filter llm.provider/system-one-type?)) (llm.provider/provider-types))))
+  (is (= :chat (llm.provider/provider-kind "anthropic")))
+  (is (nil? (llm.provider/provider-kind "evilai"))))
 
 (deftest ^:parallel provider-types-test
   (testing "every registered type is addressable by name, and unknown names are not"
@@ -695,6 +701,8 @@
             ;; nor is there for vLLM, which serves whatever the operator loaded: connecting adopts the model
             ;; its probe exercised
             "vllm"       nil
+            ;; System One models never serve Metabot
+            "typesafe"   nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -713,6 +721,7 @@
             "bedrock"    "anthropic.claude-haiku-4-5"
             ;; a vLLM server serves the one model the operator loaded, so there is no cheaper tier to fall back to
             "vllm"       nil
+            "typesafe"   nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai"))))

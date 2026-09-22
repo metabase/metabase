@@ -36,7 +36,8 @@
 (def supported-models
   "DeepSeek models offered in the Metabot model picker, as a map of model id -> display name.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"deepseek-v4-flash" "DeepSeek V4 Flash"
+  {"deepseek-flash"    "DeepSeek V4.1 Flash"
+   "deepseek-v4-flash" "DeepSeek V4 Flash"
    "deepseek-v4-pro"   "DeepSeek V4 Pro"})
 
 (def ^:private thinking-enabled-payload

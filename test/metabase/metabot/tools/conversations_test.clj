@@ -96,7 +96,7 @@
 (deftest ^:parallel recall-profile-scope-test
   (doseq [[id profile] @@#'profiles/*profiles]
     (let [names (set (map (comp :tool-name meta) (:tools profile)))
-          enabled? (contains? #{:internal :nlq :nlq-fallback} id)]
+          enabled? (contains? #{:internal :nlq :nlq-old :nlq-fallback} id)]
       (is (= enabled? (contains? names "conversation_search")) (str id))
       (is (= enabled? (contains? names "recent_chats")) (str id))
       (is (= enabled? (contains? names "read_conversation")) (str id)))))

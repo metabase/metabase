@@ -173,10 +173,11 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID            |
-| ----------------- | ------------------- |
-| DeepSeek V4 Flash | `deepseek-v4-flash` |
-| DeepSeek V4 Pro   | `deepseek-v4-pro`   |
+| Model               | Model ID            |
+| ------------------- | ------------------- |
+| DeepSeek V4.1 Flash | `deepseek-flash`    |
+| DeepSeek V4 Flash   | `deepseek-v4-flash` |
+| DeepSeek V4 Pro     | `deepseek-v4-pro`   |
 
 Credentials:
 
@@ -269,6 +270,19 @@ Credentials:
 
 - **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
+
+## TypeSafe
+
+- Provider key: `typesafe`
+
+Supported models:
+
+TypeSafe serves System One models, which answer typed questions for Metabase rather than chat, so its models aren't picked in the model settings.
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://docs.typesafe.ai/introduction/quickstart) You can also set it with the environment variable `MB_LLM_TYPESAFE_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.typesafe.ai`. You can also set it with the environment variable `MB_LLM_TYPESAFE_API_BASE_URL`.
 
 ## Metabase AI service
 

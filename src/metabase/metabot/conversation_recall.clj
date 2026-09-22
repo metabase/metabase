@@ -12,7 +12,7 @@
 
 (def profiles
   "Profiles whose conversations participate in recall."
-  #{"internal" "nlq" "nlq-fallback"})
+  #{"internal" "nlq" "nlq-old" "nlq-fallback"})
 
 (defn eligible-message?
   "Whether a message is a live, recallable user message or successful completed assistant message."

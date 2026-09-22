@@ -337,6 +337,18 @@ export const createConversation = (
   },
 });
 
+export const getAgentDefaultProfileOverride = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+): MetabotConversationState["profileOverride"] => {
+  const agentId = fixedMetabotAgentIds.find(
+    (id) => state.agents[id]?.conversationId === conversationId,
+  );
+  return agentId
+    ? conversationDefaultsByAgentId[agentId]?.profileOverride
+    : undefined;
+};
+
 export const createConversationForAgent = (
   agentId: MetabotAgentId,
   overrides?: Partial<MetabotConversationState>,

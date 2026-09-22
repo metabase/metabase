@@ -188,6 +188,7 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
+                                  :tools_routed             (boolean (:routed? profile))
                                   :external_tool_catalog    (not-empty (deferred-tool-catalog tools))
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?

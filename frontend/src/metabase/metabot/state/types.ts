@@ -138,6 +138,9 @@ export type MetabotMessage = {
   parts: MetabotMessagePart[];
   status: MetabotMessageStatus;
   contextTokens?: number;
+  responseStartedAtMs?: number;
+  responseEndedAtMs?: number;
+  firstChartAtMs?: number;
 };
 
 export type MetabotToolCall = {

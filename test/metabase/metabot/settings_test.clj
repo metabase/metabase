@@ -441,6 +441,14 @@
            clojure.lang.ExceptionInfo #"Invalid Azure model"
            (metabot.settings/llm-metabot-provider! "azure/anthropic/a/b"))))))
 
+(deftest validate-metabot-provider-rejects-a-system-one-connection-test
+  (with-connections [configured-anthropic (connection "typesafe" "typesafe" {:api-key "ts-test-key"})]
+    (doseq [setting-key [:llm-metabot-provider :llm-mini-model]]
+      (testing setting-key
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"names a System One provider"
+             (setting/set! setting-key "typesafe/jev-latest")))))))
+
 (deftest validate-metabot-provider-google-model-format-test
   (with-connections [configured-anthropic configured-google]
     (testing "accepts a publisher-qualified model"

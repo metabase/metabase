@@ -429,7 +429,7 @@
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
     (used-tables/record-used-tables! assistant-msg-id kept-parts)
-    (when (and finished? (nil? error) (contains? #{"internal" "nlq" "nlq-fallback"} profile-id))
+    (when (and finished? (nil? error) (contains? #{"internal" "nlq" "nlq-old" "nlq-fallback"} profile-id))
       (recall-index/request-sync! (metabot.db/message-conversation-id assistant-msg-id)))))
 
 (defn leaf-message

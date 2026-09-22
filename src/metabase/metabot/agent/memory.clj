@@ -116,6 +116,19 @@
   [memory todos]
   (record memory [:todos] (vec todos)))
 
+(defn set-skills
+  "Set the ids (keywords) of the skills this conversation has loaded."
+  [memory skill-ids]
+  (let [skill-names (vec (sort (map name skill-ids)))]
+    (if (= (get-in memory [:state :skills] []) skill-names)
+      memory
+      (record memory [:skills] skill-names))))
+
+(defn get-skills
+  "The ids (keywords) of the skills this conversation has loaded."
+  [memory]
+  (set (map keyword (get-in memory [:state :skills]))))
+
 (defn set-link-registry
   "Set the link registry (url → stable id mappings)."
   [memory link-registry]

@@ -1,3 +1,12 @@
+{% if tools_routed %}
+# Tools and skills for this turn
+
+A separate routing model reads each user message before you do and chooses the
+tools and skill instructions you get for that turn, so they can change between
+turns. The skill instructions you need are included below; there is nothing to
+load. If the request needs a capability you have no tool for this turn, tell the
+user what you can't do rather than approximating it with the tools you have.
+{% endif %}
 {% if skill_catalog %}
 # Available skills
 

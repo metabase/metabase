@@ -107,7 +107,10 @@
     (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
-                          (#'self/resolve-adapter "unknown")))))
+                          (#'self/resolve-adapter "unknown"))))
+  (testing "System One providers cannot chat"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"System One models, which cannot chat"
+                          (#'self/resolve-adapter "typesafe")))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
@@ -2218,7 +2221,7 @@
       (is (seq models))
       (is (every? (comp string? :display-name val) models))))
   (testing "the types with no allow-list return nil rather than an empty map"
-    (doseq [provider ["azure" "google" "vllm" "metabase"]]
+    (doseq [provider ["azure" "google" "vllm" "typesafe" "metabase"]]
       (is (nil? (self/known-models provider)) provider)))
   (testing "an unregistered provider throws instead of reading as one with no models"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo

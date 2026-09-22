@@ -39,6 +39,7 @@ import {
   ensureChain,
   evictConversationIfUnused,
   findLastToolCallPart,
+  getAgentDefaultProfileOverride,
   getAgentOrThrow,
   getMetabotInitialState,
   getRequestConversation,
@@ -377,12 +378,35 @@ export const metabot = createSlice({
         convo.experimental.metabotReqIdOverride = action.payload.id;
       },
     ),
+    endAgentResponse: convoReducer(
+      (convo, action: ConvoPayloadAction<{ nowMs: number }>) => {
+        const message = convo.messages.findLast(
+          (candidate) => candidate.role === "agent",
+        );
+        if (message?.responseStartedAtMs != null) {
+          message.responseEndedAtMs ??= action.payload.nowMs;
+        }
+      },
+    ),
+    agentChartReceived: convoReducer(
+      (convo, action: ConvoPayloadAction<{ nowMs: number }>) => {
+        const message = convo.messages.findLast(
+          (candidate) => candidate.role === "agent",
+        );
+        if (message) {
+          message.firstChartAtMs ??= action.payload.nowMs;
+        }
+      },
+    ),
     setProfileOverride: convoReducer(
       (
         convo,
         action: ConvoPayloadAction<{ profile: MetabotProfileId | undefined }>,
+        state,
       ) => {
-        convo.profileOverride = action.payload.profile;
+        convo.profileOverride =
+          action.payload.profile ??
+          getAgentDefaultProfileOverride(state, convo.conversationId);
       },
     ),
     // REACTIONS REDUCERS
@@ -465,6 +489,7 @@ export const metabot = createSlice({
           convo.hasMessagedInSession = true;
           convo.stateBeforeTurn = convo.state;
           startAgentMessage(convo, action.meta.arg.assistant_message_id);
+          openAgentMessage(convo).responseStartedAtMs = action.meta.startedAtMs;
           ensureChain(convo);
         }
       })

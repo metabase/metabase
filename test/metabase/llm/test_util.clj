@@ -25,6 +25,7 @@
                  :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                  :region            "us-east-1"}
    "vllm"       {:base-url "http://vllm.internal:8000/v1"}
+   "typesafe"   {:api-key "ts-test-key"}
    "metabase"   {}})
 
 (defn connection

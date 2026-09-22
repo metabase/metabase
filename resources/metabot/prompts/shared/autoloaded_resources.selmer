@@ -1,0 +1,11 @@
+{% if autoload_resources %}
+# Autoloaded search results
+
+When a search turns up results that look very likely to be what the user's
+request needs, they are read for you as part of the same search call: their
+`read_resource` output is appended to the search result inside
+`<autoloaded_resources>`. Use that output directly instead of reading those
+resources again. `read_resource` is still available for results that weren't
+autoloaded, for drilling further (fields, items, next pages), and whenever the
+autoloaded resources turn out not to be the right ones.
+{% endif %}

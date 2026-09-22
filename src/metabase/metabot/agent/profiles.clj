@@ -72,6 +72,12 @@
     opt in.
   - :external-mcp-tools? - Optional boolean (default false). When true, the tools of the external MCP
     servers the current user is connected to are added to the profile's tools for each run.
+  - :routing? - Optional boolean (default false). When true, a System One model picks each turn's tools
+    and skills (see [[metabase.metabot.agent.routing]]) and the chosen skills are inlined instead of
+    loaded via `load_skill`.
+  - :autoload-resources? - Optional boolean (default false). When true, search results a System One model
+    judges likely to be needed are read with `read_resource` as part of the search call (see
+    [[metabase.metabot.agent.autoload]]).
 
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
@@ -87,7 +93,9 @@
                [:required-tool-call? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]
                [:system-prompt-context {:optional true} [:fn ifn?]]
-               [:external-mcp-tools? {:optional true} :boolean]]]
+               [:external-mcp-tools? {:optional true} :boolean]
+               [:routing? {:optional true} :boolean]
+               [:autoload-resources? {:optional true} :boolean]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
         tool-names    (set tool-name-seq)]
@@ -124,6 +132,8 @@
   :prompt-template     "internal.selmer"
   :max-iterations      15
   :external-mcp-tools? true
+  :routing?            true
+  :autoload-resources? true
   :tools               [#'tools/conversation-search-tool
                         #'tools/recent-chats-tool
                         #'tools/read-conversation-tool
@@ -175,20 +185,30 @@
 ;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
 ;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
 ;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
+(def ^:private nlq-profile
+  {:name                :nlq
+   :prompt-template     "natural-language-querying-only.selmer"
+   :max-iterations      15
+   :routing?            true
+   :autoload-resources? true
+   :tools               [#'tools/conversation-search-tool
+                         #'tools/recent-chats-tool
+                         #'tools/read-conversation-tool
+                         #'tools/retrieve-library-entities-tool
+                         #'tools/read-resource-tool
+                         #'tools/construct-notebook-query-tool
+                         #'tools/create-chart-tool
+                         #'tools/edit-chart-tool
+                         #'tools/run-query-tool
+                         #'tools/save-entity-tool]})
+
+(register-profile! nlq-profile)
+
+;; :nlq without System One routing or autoloading, as a baseline to compare :nlq against.
 (register-profile!
- {:name            :nlq
-  :prompt-template "natural-language-querying-only.selmer"
-  :max-iterations  15
-  :tools           [#'tools/conversation-search-tool
-                    #'tools/recent-chats-tool
-                    #'tools/read-conversation-tool
-                    #'tools/retrieve-library-entities-tool
-                    #'tools/read-resource-tool
-                    #'tools/construct-notebook-query-tool
-                    #'tools/create-chart-tool
-                    #'tools/edit-chart-tool
-                    #'tools/run-query-tool
-                    #'tools/save-entity-tool]})
+ (-> nlq-profile
+     (assoc :name :nlq-old)
+     (dissoc :routing? :autoload-resources?)))
 
 (register-profile!
  {:name            :nlq-fallback
@@ -298,7 +318,7 @@
   can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
   and on OSS / unlicensed instances."
   [profile-id]
-  (and (= profile-id :nlq)
+  (and (#{:nlq :nlq-old} profile-id)
        (not (entity-retrieval/entity-retrieval-available?))))
 
 (defn profile-registered?

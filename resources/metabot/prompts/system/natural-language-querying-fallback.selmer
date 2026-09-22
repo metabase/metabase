@@ -50,6 +50,7 @@ Your job is to answer analytical questions by producing visualizations. For othe
 {% endif %}
 
 {% include "metabot/prompts/shared/skills.selmer" %}
+{% include "metabot/prompts/shared/autoloaded_resources.selmer" %}
 
 {% if custom_instructions %}
 

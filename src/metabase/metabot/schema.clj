@@ -167,7 +167,8 @@
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
    [:todos {:optional true} [:sequential ::todo]]
    [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   [:skills {:optional true} [:sequential :string]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."

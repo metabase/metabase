@@ -315,7 +315,7 @@
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         _          (when (seq attachments)
                      (api/check-400 (and (contains? #{metabot.config/internal-metabot-id "metabotmetabotmetabot"} metabot-id)
-                                         (contains? #{"internal" "nlq"} profile-id))
+                                         (contains? #{"internal" "nlq" "nlq-old"} profile-id))
                                     (tru "Attachments are only supported in internal and NLQ conversations.")))
         ;; reject before `start-turn!` persists anything or the title job calls the LLM
         _          (when-not (profiles/profile-registered? (keyword profile-id))

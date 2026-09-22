@@ -284,7 +284,7 @@
              :join [[:metabot_message :m] [:= :m.conversation_id :c.id]]
              :where [:and [:= :c.user_id user-id]
                      (when excluded-id [:not= :c.id excluded-id])
-                     [:in :m.profile_id ["internal" "nlq" "nlq-fallback"]]
+                     [:in :m.profile_id ["internal" "nlq" "nlq-old" "nlq-fallback"]]
                      [:= :m.deleted_at nil] [:= :m.role "assistant"]
                      [:= :m.finished true] [:= :m.error nil]]
              :group-by [:c.id :c.title]

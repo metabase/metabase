@@ -71,6 +71,8 @@ export const {
   addAgentMessage,
   addDeveloperMessage,
   addUserMessage,
+  agentChartReceived,
+  endAgentResponse,
   setIsProcessing,
   setConversationSnapshot,
   setConversationTitle,
@@ -479,7 +481,7 @@ const findCodeEditBuffer = (
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
   MetabotAgentRequest & { isFullPageMetabot: boolean },
-  { rejectValue: SendAgentRequestError }
+  { rejectValue: SendAgentRequestError; pendingMeta: { startedAtMs: number } }
 >(
   "metabase/metabot/sendAgentRequest",
   async (
@@ -548,6 +550,11 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
+                if (part.data.type === "card") {
+                  dispatch(
+                    agentChartReceived({ conversationId, nowMs: Date.now() }),
+                  );
+                }
                 // TODO: always push, but let the surface render and/or navigate on its own
                 if (isFullPageMetabot) {
                   pushDataPart({ type: "data_part", part });
@@ -770,8 +777,11 @@ export const sendAgentRequest = createAsyncThunk<
         error: handled.error,
         display: handled.display,
       });
+    } finally {
+      dispatch(endAgentResponse({ conversationId, nowMs: Date.now() }));
     }
   },
+  { getPendingMeta: () => ({ startedAtMs: Date.now() }) },
 );
 
 export const cancelInflightConversationRequests = createAsyncThunk(

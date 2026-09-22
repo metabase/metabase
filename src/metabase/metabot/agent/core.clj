@@ -10,11 +10,14 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.autoload :as autoload]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.routing :as routing]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.timing :as timing]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -155,7 +158,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :nlq-old :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -455,6 +458,7 @@
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
+   :nlq-old                   :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
@@ -479,19 +483,41 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/profile->tools profile capabilities)
+        tracking-opts (merge {:profile-id          profile-id
+                              :request-id          (str (random-uuid))
+                              :source              "metabot_agent"
+                              :tag                 "agent"
+                              :required-permission (or (profile-id->required-permission profile-id)
+                                                       :permission/metabot)}
+                             tracking-opts)
+        s1-tracking  (select-keys tracking-opts [:profile-id :request-id :session-id :source])
+        all-tools    (profiles/profile->tools profile capabilities)
+        routing      (when (:routing? profile)
+                       (routing/route messages context (keys all-tools) s1-tracking))
+        routed?      (and routing (not (:escalate? routing)))
+        ;; skills stay loaded for the rest of the conversation once any turn needed them
+        skill-ids    (into (set (map keyword (:skills state))) (:skills routing))
+        profile      (cond-> profile
+                       (seq skill-ids) (update :always-on-skills (fnil into []) skill-ids)
+                       routed?         (assoc :routed? true))
+        base-tools   (cond-> all-tools
+                       routed? (routing/limit-tools (:tools routing) skill-ids context))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
-        memory       (assoc (memory/initialize messages seeded context)
-                            :conversation-id conversation-id
-                            :client-ids (client-content-ids context))
+        memory       (cond-> (assoc (memory/initialize messages seeded context)
+                                    :conversation-id conversation-id
+                                    :client-ids (client-content-ids context))
+                       (seq skill-ids) (memory/set-skills skill-ids))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        tools        (cond-> (-> (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+                                 (autoload/wrap-search-tools profile (routing/latest-prompt messages) s1-tracking))
                        (and (:external-mcp-tools? profile) api/*current-user-id*)
                        (tools/with-external-mcp-tools api/*current-user-id*))]
     (log/info "Starting agent" {:profile  profile-id
+                                :routing  (select-keys routing [:intents :escalate?])
+                                :skills   skill-ids
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
@@ -500,13 +526,7 @@
      :context          context
      :memory-atom      memory-atom
      :reasoning-effort reasoning-effort
-     :tracking-opts    (merge {:profile-id          profile-id
-                               :request-id          (str (random-uuid))
-                               :source              "metabot_agent"
-                               :tag                 "agent"
-                               :required-permission (or (profile-id->required-permission profile-id)
-                                                        :permission/metabot)}
-                              tracking-opts)}))
+     :tracking-opts    tracking-opts}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -585,6 +605,9 @@
                                                  :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
                                  reduced-result))
           parts              @parts-atom]
+      (doseq [{:keys [function duration-ms]} parts
+              :when (and function duration-ms)]
+        (timing/record! {:kind :tool :tool function :ms (long duration-ms)}))
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom memory/set-link-registry @link-registry-atom)
       ;; Capture response for debug log
@@ -726,7 +749,8 @@
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
+                      metabot.perms/*cache*                    (atom {})
+                      timing/*timings*                         (atom [])]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
@@ -748,7 +772,8 @@
                                 {result        :result
                                  iteration     :iteration
                                  finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
+                                                                    (iterate #(binding [timing/*step* (:iteration %)]
+                                                                                (loop-step %)))
                                                                     (drop-while #(= :continue (:status %)))
                                                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
@@ -797,4 +822,7 @@
                       (log/errorf "Agent loop error: %s" msg)))
                   (rf init (error-part e)))
                 (finally
+                  (log/info "Metabot turn timing" (assoc (timing/summary @timing/*timings*)
+                                                         :profile  profile-id
+                                                         :total-ms (long (u/since-ms start-ms))))
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
