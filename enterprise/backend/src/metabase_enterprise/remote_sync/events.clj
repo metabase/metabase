@@ -22,7 +22,9 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -92,15 +94,8 @@
         "synced"
         status))))
 
-(defn- create-or-update-remote-sync-object-entry!
-  "Creates or updates a remote sync object entry for a model change.
-
-   Parameters:
-   - model-type: Type of model ('Card', 'Dashboard', 'Document', 'Collection', etc.)
-   - model-id: ID of the affected model
-   - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
-   - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
-                         and optionally :display, :table_id, :table_name"
+(defn- upsert-remote-sync-object-entry!
+  "Impl for [[create-or-update-remote-sync-object-entry!]], which picks the world it writes in."
   [model-type model-id status hydrate-details-fn]
   (let [existing (remote-sync.db/rso model-type model-id)]
     (cond
@@ -132,6 +127,21 @@
                                      :model_display (some-> model-details :display name)
                                      :model_table_id (:table_id model-details)
                                      :model_table_name (:table_name model-details)})))))
+
+(defn- create-or-update-remote-sync-object-entry!
+  "Creates or updates a remote sync object entry for a model change, in the world the entity belongs to: a branch's
+  content is dirty in that branch's ledger, not in the main app's.
+
+   Parameters:
+   - model-type: Type of model ('Card', 'Dashboard', 'Document', 'Collection', etc.)
+   - model-id: ID of the affected model
+   - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
+   - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
+                         and optionally :display, :table_id, :table_name"
+  [model-type model-id status hydrate-details-fn]
+  (worktree/do-with-worktree (some-> (spec/spec-for-model-type model-type) :model-key (mi/worktree-id model-id))
+                             (fn []
+                               (upsert-remote-sync-object-entry! model-type model-id status hydrate-details-fn))))
 
 ;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 

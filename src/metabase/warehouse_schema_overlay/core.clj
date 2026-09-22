@@ -4,14 +4,8 @@
   (:require
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
-
-(defn- current-worktree-id
-  "The worktree the request declared it works in, nil for the main app. Resolved lazily: this namespace sits below
-  the API, and the overlay is the one thing a read cannot pass the worktree to -- the Field and Table rows it
-  widens are hydrated, and a hydration method takes no options."
-  []
-  ((requiring-resolve 'metabase.remote-sync.core/current-worktree-id)))
 
 (def user-settable-field-columns
   "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
@@ -83,10 +77,10 @@
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Field)
             user-settings? true
-            worktree-id    (current-worktree-id)}} :- [:maybe [:map {:closed true}
-                                                               [:alias          {:optional true} :keyword]
-                                                               [:user-settings? {:optional true} :boolean]
-                                                               [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            worktree-id    (worktree/worktree-id)}} :- [:maybe [:map {:closed true}
+                                                                [:alias          {:optional true} :keyword]
+                                                                [:user-settings? {:optional true} :boolean]
+                                                                [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
@@ -169,10 +163,10 @@
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Table)
             user-settings? true
-            worktree-id    (current-worktree-id)}} :- [:maybe [:map {:closed true}
-                                                               [:alias          {:optional true} :keyword]
-                                                               [:user-settings? {:optional true} :boolean]
-                                                               [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            worktree-id    (worktree/worktree-id)}} :- [:maybe [:map {:closed true}
+                                                                [:alias          {:optional true} :keyword]
+                                                                [:user-settings? {:optional true} :boolean]
+                                                                [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)

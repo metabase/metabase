@@ -17,6 +17,7 @@ import type {
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
 import type {
+  RemoteSyncChangesRequest,
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
@@ -54,7 +55,12 @@ export interface RemoteSyncDirtyState {
   /** Refetch the dirty state data */
   refetch: ReturnType<
     UseQuery<
-      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
+      QueryDefinition<
+        RemoteSyncChangesRequest | void,
+        BaseQueryFn,
+        TagType,
+        RemoteSyncChangesResponse
+      >
     >
   >["refetch"];
 }

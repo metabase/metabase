@@ -82,6 +82,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.worktree.core :as worktree]
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -91,8 +92,6 @@
 
 (p/import-vars
  [metabase.models.serialization.path
-  current-worktree-id
-  do-with-worktree
   ensure-remapping!
   entity-id
   field-hierarchy
@@ -666,7 +665,7 @@
   keeps the id of the copy this worktree checked out, and the remapping table pairs the two), as is everything in
   [[worktree-copy-skipped-keys]]. Returns `ingested` untouched outside a worktree."
   [model-name ingested]
-  (if (and (current-worktree-id) (worktree-scoped? model-name))
+  (if (and (worktree/worktree-id) (worktree-scoped? model-name))
     (apply dissoc ingested :entity_id worktree-copy-skipped-keys)
     ingested))
 
@@ -702,7 +701,7 @@
         scoped? (worktree-scoped? model-name)
         source  (:entity_id ingested)
         row     (cond-> (worktree-copy model-name ingested)
-                  scoped? (assoc :worktree_id (current-worktree-id)))]
+                  scoped? (assoc :worktree_id (worktree/worktree-id)))]
     (u/prog1 (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model model :row row}))
       (when scoped?
         (ensure-remapping! model-name (:entity_id <>) source)))))

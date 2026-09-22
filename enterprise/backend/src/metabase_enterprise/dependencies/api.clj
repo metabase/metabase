@@ -21,7 +21,6 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.remote-sync.core :as worktree]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.segments.schema]
@@ -30,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (def ^:private entity-keys
@@ -228,7 +228,7 @@
   (cond-> {:user-id                api/*current-user-id*
            :is-superuser?          api/*is-superuser?*
            :is-data-analyst?       api/*is-data-analyst?*
-           :worktree-id            (worktree/current-worktree-id)}
+           :worktree-id            (worktree/worktree-id)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies

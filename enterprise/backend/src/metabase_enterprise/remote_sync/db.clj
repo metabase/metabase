@@ -10,6 +10,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (def ^:private ConditionKey
@@ -107,7 +108,7 @@
   (when-let [exprs (removal-exprs removal-opts)]
     (let [exprs (cond-> exprs
                   (serdes/worktree-scoped? model-key)
-                  (conj [:= :worktree_id (serdes/current-worktree-id)]))]
+                  (conj [:= :worktree_id (worktree/worktree-id)]))]
       (if (seq exprs)
         (t2/delete! model-key {:where (if (= 1 (count exprs)) (first exprs) (into [:and] exprs))})
         (t2/delete! model-key)))))
@@ -445,7 +446,7 @@
   "Restricts a ledger query to the world the running sync or request works in. The ledger holds a row per piece of
   content, so a worktree's rows belong to it alone."
   []
-  [:= :worktree_id (serdes/current-worktree-id)])
+  [:= :worktree_id (worktree/worktree-id)])
 
 (defn- rso-keys-expr
   "Matches the RemoteSyncObject rows of the `[{:model_type :model_id}]` `rows`."
@@ -458,7 +459,7 @@
   "The RemoteSyncObject of the entity `model-type` `model-id`, or nil."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (serdes/current-worktree-id)))
+  (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (worktree/worktree-id)))
 
 (mu/defn lock-rso
   "The RemoteSyncObject of the entity `model-type` `model-id`, locked for update, or nil."
@@ -471,40 +472,40 @@
 (mu/defn rso-by-file-path
   "The RemoteSyncObject at `file-path`, or nil."
   [file-path :- :string]
-  (t2/select-one :model/RemoteSyncObject :file_path file-path :worktree_id (serdes/current-worktree-id)))
+  (t2/select-one :model/RemoteSyncObject :file_path file-path :worktree_id (worktree/worktree-id)))
 
 (mu/defn rso-exists?
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (serdes/current-worktree-id)))
+  (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (worktree/worktree-id)))
 
 (mu/defn rso-of-type-exists?
   "Whether any entity of `model-type` has a RemoteSyncObject."
   [model-type :- :string]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type :worktree_id (serdes/current-worktree-id)))
+  (t2/exists? :model/RemoteSyncObject :model_type model-type :worktree_id (worktree/worktree-id)))
 
 (mu/defn rso-count-of-type
   "The number of RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/count :model/RemoteSyncObject :model_type model-type :worktree_id (serdes/current-worktree-id)))
+  (t2/count :model/RemoteSyncObject :model_type model-type :worktree_id (worktree/worktree-id)))
 
 (mu/defn rso-keys
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
   []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :worktree_id (serdes/current-worktree-id)))
+  (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :worktree_id (worktree/worktree-id)))
 
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
              :status [:in ["removed" "delete"]]
-             :worktree_id (serdes/current-worktree-id)))
+             :worktree_id (worktree/worktree-id)))
 
 (mu/defn all-rso-ids
   "The IDs of every RemoteSyncObject."
   []
-  (t2/select-pks-set :model/RemoteSyncObject :worktree_id (serdes/current-worktree-id)))
+  (t2/select-pks-set :model/RemoteSyncObject :worktree_id (worktree/worktree-id)))
 
 (mu/defn unsynced-rsos
   "The RemoteSyncObjects whose status is not synced."
@@ -534,14 +535,14 @@
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type :worktree_id (serdes/current-worktree-id)))
+  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type :worktree_id (worktree/worktree-id)))
 
 (mu/defn rsos-of-models
   "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
   [model-type :- :string
    model-ids  :- [:sequential ms/PositiveInt]]
   (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]
-             :worktree_id (serdes/current-worktree-id)))
+             :worktree_id (worktree/worktree-id)))
 
 (mu/defn active-child-rsos
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
@@ -551,7 +552,7 @@
              :model_type model-type
              :model_table_id table-id
              :status [:not-in ["removed" "delete"]]
-             :worktree_id (serdes/current-worktree-id)))
+             :worktree_id (worktree/worktree-id)))
 
 (mu/defn content-rso-statuses
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
@@ -572,13 +573,13 @@
 (mu/defn insert-rso!
   "Insert the RemoteSyncObject `row` into the world the running sync works in."
   [row :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/insert! :model/RemoteSyncObject (assoc row :worktree_id (serdes/current-worktree-id))))
+  (t2/insert! :model/RemoteSyncObject (assoc row :worktree_id (worktree/worktree-id))))
 
 (mu/defn insert-rsos!
   "Insert the RemoteSyncObject `rows` into the world the running sync works in."
   [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
   (t2/insert! :model/RemoteSyncObject
-              (mapv #(assoc % :worktree_id (serdes/current-worktree-id)) rows)))
+              (mapv #(assoc % :worktree_id (worktree/worktree-id)) rows)))
 
 (mu/defn update-rso!
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
@@ -597,7 +598,7 @@
   "Mark every RemoteSyncObject as synced as of `timestamp`."
   [timestamp :- ms/TemporalInstant]
   (t2/update! :model/RemoteSyncObject
-              {:worktree_id (serdes/current-worktree-id)}
+              {:worktree_id (worktree/worktree-id)}
               {:status "synced" :status_changed_at timestamp}))
 
 (mu/defn mark-rsos-synced!
@@ -641,19 +642,19 @@
   "Delete the RemoteSyncObject of the entity `model-type` `model-id`."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (serdes/current-worktree-id)))
+  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id :worktree_id (worktree/worktree-id)))
 
 (mu/defn delete-rsos-of-type!
   "Delete the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :worktree_id (serdes/current-worktree-id)))
+  (t2/delete! :model/RemoteSyncObject :model_type model-type :worktree_id (worktree/worktree-id)))
 
 (mu/defn delete-rsos-of-models!
   "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`."
   [model-type :- :string
    model-ids  :- [:set ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]
-              :worktree_id (serdes/current-worktree-id)))
+              :worktree_id (worktree/worktree-id)))
 
 (mu/defn delete-rsos-of-keys!
   "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
@@ -663,7 +664,7 @@
 (mu/defn delete-all-rsos!
   "Delete every RemoteSyncObject."
   []
-  (t2/delete! :model/RemoteSyncObject :worktree_id (serdes/current-worktree-id)))
+  (t2/delete! :model/RemoteSyncObject :worktree_id (worktree/worktree-id)))
 
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
@@ -728,7 +729,7 @@
   "Insert `task` into the world the running sync works in, and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
   (t2/insert-returning-instance! :model/RemoteSyncTask
-                                 (assoc task :worktree_id (serdes/current-worktree-id))))
+                                 (assoc task :worktree_id (worktree/worktree-id))))
 
 (mu/defn update-task!
   "Apply `changes` to the RemoteSyncTask with `task-id`."

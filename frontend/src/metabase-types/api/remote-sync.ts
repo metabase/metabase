@@ -270,6 +270,10 @@ export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
 
+export type RemoteSyncChangesRequest = {
+  "worktree-id"?: number;
+};
+
 export type Worktree = {
   id: number;
   branch: string;

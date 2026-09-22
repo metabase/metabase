@@ -16,11 +16,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.models.serialization :as serdes]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +30,7 @@
   and the main app's otherwise. Refuses a worktree to anyone but an admin."
   [worktree-id thunk]
   (remote-sync/check-worktree-access! worktree-id)
-  (serdes/do-with-worktree worktree-id thunk))
+  (worktree/do-with-worktree worktree-id thunk))
 
 (defn- check-branch-matches-setting!
   "Compare-and-swap guard against the multi-tab staleness hole: the client sends the branch it

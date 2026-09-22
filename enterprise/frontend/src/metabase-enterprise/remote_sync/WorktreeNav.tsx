@@ -4,6 +4,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { buildCollectionTree } from "metabase/common/collections/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   SidebarHeading,
@@ -12,8 +13,13 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import type { WorktreeNavProps } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
-import { useListWorktreesQuery } from "metabase-enterprise/api";
+import {
+  useGetRemoteSyncChangesQuery,
+  useListWorktreesQuery,
+} from "metabase-enterprise/api";
 import type { Worktree } from "metabase-types/api";
+
+import { CollectionSyncStatusBadge } from "./components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 
 type WorktreeBranchProps = {
   worktree: Worktree;
@@ -25,6 +31,9 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
     "exclude-archived": true,
     "worktree-id": worktree.id,
   });
+  const { data: changes } = useGetRemoteSyncChangesQuery({
+    "worktree-id": worktree.id,
+  });
 
   const branch = {
     id: `worktree-${worktree.id}`,
@@ -34,6 +43,17 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
     children: buildCollectionTree(collections),
   };
 
+  const renderDirtyBadge = (item: ITreeNodeItem) => {
+    if (changes == null) {
+      return undefined;
+    }
+    const isDirty =
+      item.id === branch.id
+        ? changes.dirty.length > 0
+        : changes.changedCollections[Number(item.id)];
+    return isDirty ? <CollectionSyncStatusBadge /> : undefined;
+  };
+
   return (
     <Tree
       data={[branch]}
@@ -41,6 +61,7 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
       TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label={worktree.branch}
+      rightSection={renderDirtyBadge}
     />
   );
 }

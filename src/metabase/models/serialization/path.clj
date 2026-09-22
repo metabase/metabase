@@ -11,6 +11,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.worktree.core :as worktree]
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
@@ -30,12 +31,6 @@
   "Maximum number of ids per `:in` clause when reading remappings, to stay under database parameter limits."
   1000)
 
-(defn current-worktree-id
-  "The remote-sync worktree being worked in; nil is the main app. The same one an endpoint declares in its
-  `:worktree` metadata, since a pull or a push is one more thing done to a world."
-  []
-  @(requiring-resolve 'metabase.remote-sync.core/*worktree-id*))
-
 (defn worktree-scoped?
   "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree:
   one that derives `:hook/worktree-id`, i.e. whose table carries the column. Extraction for these is filtered by
@@ -54,8 +49,8 @@
   is read from the remapping table; a row with no remapping is main-app content the worktree merely refers to, and
   keeps its own id."
   [model-name entity-id]
-  (or (when (and (current-worktree-id) entity-id)
-        (models.db/worktree-entity-remapping-source-entity-id (current-worktree-id) (name model-name) entity-id))
+  (or (when (and (worktree/worktree-id) entity-id)
+        (models.db/worktree-entity-remapping-source-entity-id (worktree/worktree-id) (name model-name) entity-id))
       entity-id))
 
 (defn local-entity-id
@@ -63,7 +58,7 @@
   worktree checked out, so a load never matches -- or overwrites -- the main app's row for the same entity; `nil`
   when this worktree has not checked the entity out yet, which is what makes a load insert a fresh copy."
   [model-name entity-id]
-  (if-let [worktree-id (current-worktree-id)]
+  (if-let [worktree-id (worktree/worktree-id)]
     (when entity-id
       (models.db/worktree-entity-remapping-local-entity-id worktree-id (name model-name) entity-id))
     entity-id))
@@ -73,10 +68,10 @@
   through unchanged -- they name content the worktree has not checked out, so they cannot match any local row.
   Returns the ids untouched outside a worktree."
   [model-name entity-ids]
-  (if (and (current-worktree-id) (seq entity-ids))
+  (if (and (worktree/worktree-id) (seq entity-ids))
     (let [source->local (into {}
                               (mapcat (fn [chunk]
-                                        (models.db/worktree-entity-remapping-source->local (current-worktree-id) (name model-name) chunk)))
+                                        (models.db/worktree-entity-remapping-source->local (worktree/worktree-id) (name model-name) chunk)))
                               (partition-all remapping-batch-size entity-ids))]
       (into #{} (map #(source->local % %)) entity-ids))
     (set entity-ids)))
@@ -94,9 +89,9 @@
   ([model-name local-entity-id]
    (ensure-remapping! model-name local-entity-id nil))
   ([model-name local-entity-id source]
-   (if-not (and (current-worktree-id) local-entity-id)
+   (if-not (and (worktree/worktree-id) local-entity-id)
      (or source local-entity-id)
-     (let [worktree-id (current-worktree-id)
+     (let [worktree-id (worktree/worktree-id)
            model-name  (name model-name)]
        (or (models.db/worktree-entity-remapping-source-entity-id worktree-id model-name local-entity-id)
            (when (models.db/worktree-entity-remapping-source-exists? worktree-id model-name local-entity-id)
@@ -108,12 +103,6 @@
            (let [source (or source (u/generate-nano-id))]
              (models.db/insert-worktree-entity-remapping! worktree-id model-name source local-entity-id)
              source))))))
-
-(defn do-with-worktree
-  "Run `thunk` in the world `worktree-id` names. Impl for the remote-sync code that drives a pull or a push: the
-  worktree it carries becomes the one serialization reads entities out of and writes them into."
-  [worktree-id thunk]
-  ((requiring-resolve 'metabase.remote-sync.core/do-with-worktree) worktree-id thunk))
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -153,7 +142,7 @@
   (let [eid (entity-id model-name entity)]
     {:model model-name
      :id    (if (and (worktree-scoped? model-name)
-                     (= (:worktree_id entity) (current-worktree-id)))
+                     (= (:worktree_id entity) (worktree/worktree-id)))
               (ensure-remapping! model-name eid)
               eid)}))
 

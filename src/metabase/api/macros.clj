@@ -34,7 +34,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.remote-sync.core :as worktree]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -42,6 +42,7 @@
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [ring.middleware.multipart-params]
    [ring.util.codec]))
 
@@ -597,8 +598,9 @@
                              :worktree/body  `(:worktree_id ~body-params)
                              `(~declaration {:route ~route-params, :query ~query-params, :body ~body-params}))]
          ~@(when parameter?
-             [`(worktree/check-worktree-access! ~worktree-id)])
-         (worktree/do-with-worktree ~worktree-id (^:once fn* [] ~body-form))))))
+             [`(remote-sync/check-worktree-access! ~worktree-id)])
+         (worktree/with-worktree ~worktree-id
+           ~body-form)))))
 
 (defmacro endpoint-core-fn*
   "Impl for [[endpoint-core-fn]]"

@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -275,7 +276,7 @@
   [canonical worktree-id]
   (if worktree-id
     (u/prog1 (u/generate-nano-id)
-      (serdes/do-with-worktree worktree-id #(serdes/ensure-remapping! "Collection" <> canonical)))
+      (worktree/do-with-worktree worktree-id #(serdes/ensure-remapping! "Collection" <> canonical)))
     canonical))
 
 (defn create-library-collection!
@@ -322,8 +323,8 @@
   Returns false for user-created subcollections that inherit a library type. A worktree's copy is recognized by
   the id the branch knows it by, which is what its own generated `entity_id` is remapped to."
   [collection]
-  (library-entity-id? (serdes/do-with-worktree (:worktree_id collection)
-                                               #(serdes/source-entity-id "Collection" (:entity_id collection)))))
+  (library-entity-id? (worktree/do-with-worktree (:worktree_id collection)
+                                                 #(serdes/source-entity-id "Collection" (:entity_id collection)))))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.

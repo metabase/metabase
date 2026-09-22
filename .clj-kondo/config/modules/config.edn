@@ -270,7 +270,8 @@
            request
            settings
            util
-           util.config}
+           util.config
+           worktree}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -621,7 +622,8 @@
            upload
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           worktree}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -963,7 +965,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
-
 
   embedding.rest
   {:team "Embedding"
@@ -1684,7 +1685,8 @@
            parameters
            util
            util.classloader
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           worktree}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -3171,7 +3173,7 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{remote-sync util}
+   :uses #{util worktree}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
@@ -3205,6 +3207,7 @@
                     :model/Field
                     :model/Table
                     :model/User}}
+
 
   warehouses.rest
   {:team "UX West"
@@ -3340,6 +3343,10 @@
            models
            premium-features
            util}}
+
+  worktree
+  {:team "Gadget"
+   :api  #{metabase.worktree.core}}
 
   xrays
   {:team "Graphy"
@@ -3730,7 +3737,6 @@
            premium-features
            queries
            query-processor
-           remote-sync
            request
            revisions
            segments
@@ -3742,6 +3748,7 @@
            util
            util.graph
            warehouse-schema-overlay
+           worktree
            enterprise/permissions.sandbox}
    :model-imports #{:model/Card
                     :model/Collection
@@ -4104,6 +4111,7 @@
            task.history
            util
            warehouse-schema-overlay
+           worktree
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}

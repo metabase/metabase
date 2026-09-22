@@ -4,18 +4,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.db :as remote-sync.db]))
 
-(def ^:dynamic *worktree-id*
-  "The remote-sync worktree the request works in, or nil for the main app. Never inferred from who is asking: every
-  endpoint that can work inside a worktree declares where its id comes from in its `:worktree` metadata -- a
-  parameter it takes, or the entity it is about -- and `metabase.api.macros` binds this from that declaration for
-  the duration of the request."
-  nil)
-
-(defn current-worktree-id
-  "The remote-sync worktree the request works in; nil is the main app."
-  []
-  *worktree-id*)
-
 (defenterprise check-worktree-exists!
   "404s when `worktree-id` names no remote-sync worktree. Returns nil; call for side effect.
 
@@ -34,13 +22,6 @@
     (api/check-superuser)
     (check-worktree-exists! worktree-id))
   nil)
-
-(defn do-with-worktree
-  "Run `thunk` with [[*worktree-id*]] bound to `worktree-id`. Impl for the `:worktree` endpoint declaration; call it
-  directly only from code that owns a worktree outright, such as a pull or a push."
-  [worktree-id thunk]
-  (binding [*worktree-id* worktree-id]
-    (thunk)))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

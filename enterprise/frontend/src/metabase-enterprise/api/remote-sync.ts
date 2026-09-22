@@ -7,6 +7,7 @@ import type {
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
+  RemoteSyncChangesRequest,
   RemoteSyncChangesResponse,
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
@@ -71,10 +72,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
        * @see remote-sync-middleware.ts
        */
     }),
-    getRemoteSyncChanges: builder.query<RemoteSyncChangesResponse, void>({
-      query: () => ({
+    getRemoteSyncChanges: builder.query<
+      RemoteSyncChangesResponse,
+      RemoteSyncChangesRequest | void
+    >({
+      query: (params) => ({
         url: `/api/ee/remote-sync/dirty`,
         method: "GET",
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("collection-dirty-entities")],
       transformResponse: (response: RemoteSyncChangesResponse) => {

@@ -28,6 +28,7 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -306,7 +307,7 @@
   the `remote-sync-branch` setting when it is the main app's. A worktree tracks a branch of its own and never
   touches the main app's setting."
   []
-  (or (some-> (serdes/current-worktree-id) remote-sync.db/worktree-branch)
+  (or (some-> (worktree/worktree-id) remote-sync.db/worktree-branch)
       (settings/remote-sync-branch)))
 
 (defn set-sync-branch!
@@ -314,7 +315,7 @@
   otherwise. The write counterpart of [[sync-branch]] -- a worktree switching branches must never move the main
   app, and a worktree is what a stash or a new branch created inside one moves onto."
   [branch]
-  (if-let [worktree-id (serdes/current-worktree-id)]
+  (if-let [worktree-id (worktree/worktree-id)]
     (remote-sync.db/update-worktree-branch! worktree-id branch)
     (settings/remote-sync-branch! branch)))
 
@@ -382,7 +383,7 @@
     (report 0.7 {:force? true})
     (when (and has-transforms?
                (not (settings/remote-sync-transforms))
-               (nil? (serdes/current-worktree-id)))
+               (nil? (worktree/worktree-id)))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! true))
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
@@ -400,7 +401,7 @@
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms)
-               (nil? (serdes/current-worktree-id)))
+               (nil? (worktree/worktree-id)))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
@@ -1564,24 +1565,6 @@
        (run-task-body! task-id branch sync-fn :on-success on-success)))
     task))
 
-(declare async-import!* async-export!*)
-
-(defn async-import!
-  "Imports remote-synced collections from a remote source repository asynchronously.
-
-  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
-  and an import-args map of additional arguments to pass to the import function. Optionally accepts an :on-success
-  callback that receives [task-id result] after a successful import. Checks for dirty changes and throws an
-  exception if force? is false and changes exist.
-
-  When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
-  them, so the dirty-changes guard is skipped.
-
-  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
-  are unsaved changes and neither force? nor merge? is set."
-  [branch force? import-args & {:keys [worktree-id] :as opts}]
-  (serdes/do-with-worktree worktree-id #(async-import!* branch force? import-args opts)))
-
 (defn- async-import!*
   [branch force? import-args {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
@@ -1621,24 +1604,21 @@
                                   :base-snapshot    base-snapshot)))
                 :on-success on-success)))
 
-(defn async-export!
-  "Exports the remote-synced collections to the remote source repository asynchronously.
+(defn async-import!
+  "Imports remote-synced collections from a remote source repository asynchronously.
 
-  Takes a branch name to export to, a force? boolean, and a commit message string. Optionally accepts
-  `:merge?` (perform a 3-way merge when the remote has advanced) and an `:on-success` callback that
-  receives [task-id result] after a successful export.
+  Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
+  and an import-args map of additional arguments to pass to the import function. Optionally accepts an :on-success
+  callback that receives [task-id result] after a successful import. Checks for dirty changes and throws an
+  exception if force? is false and changes exist.
 
-  Behavior when the remote branch has advanced beyond the last synced version:
-  - `force?`          -> overwrite the remote wholesale.
-  - `:merge? true`    -> entity-identity 3-way merge; non-conflicting remote changes are merged in and
-                         reconciled into the local app DB; genuine same-entity conflicts surface as a
-                         `:conflict` task result.
-  - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
-                         decides whether to force, branch, or merge.
+  When `:merge?` is set, a local-only 3-way merge keeps un-pushed local changes instead of overwriting
+  them, so the dirty-changes guard is skipped.
 
-  Returns a RemoteSyncTask."
-  [branch force? message & {:keys [worktree-id] :as opts}]
-  (serdes/do-with-worktree worktree-id #(async-export!* branch force? message opts)))
+  Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
+  are unsaved changes and neither force? nor merge? is set."
+  [branch force? import-args & {:keys [worktree-id] :as opts}]
+  (worktree/do-with-worktree worktree-id #(async-import!* branch force? import-args opts)))
 
 (defn- async-export!*
   [branch force? message {:keys [on-success merge?]}]
@@ -1670,6 +1650,25 @@
                            :source          source
                            :base-snapshot   base-snapshot))
                 :on-success on-success)))
+
+(defn async-export!
+  "Exports the remote-synced collections to the remote source repository asynchronously.
+
+  Takes a branch name to export to, a force? boolean, and a commit message string. Optionally accepts
+  `:merge?` (perform a 3-way merge when the remote has advanced) and an `:on-success` callback that
+  receives [task-id result] after a successful export.
+
+  Behavior when the remote branch has advanced beyond the last synced version:
+  - `force?`          -> overwrite the remote wholesale.
+  - `:merge? true`    -> entity-identity 3-way merge; non-conflicting remote changes are merged in and
+                         reconciled into the local app DB; genuine same-entity conflicts surface as a
+                         `:conflict` task result.
+  - neither (default) -> `:conflict` task result; the caller (typically the UI, via the export preflight)
+                         decides whether to force, branch, or merge.
+
+  Returns a RemoteSyncTask."
+  [branch force? message & {:keys [worktree-id] :as opts}]
+  (worktree/do-with-worktree worktree-id #(async-export!* branch force? message opts)))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
