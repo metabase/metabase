@@ -28,6 +28,10 @@
   [:map {:closed true}
    [:table-id ::lib.schema.id/table]])
 
+(def ^:private ^:dynamic *fields-added?*
+  "Bound by [[sync-instances!]] to a volatile that is set to true when a Field of the Table is created or reactivated."
+  nil)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -136,7 +140,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (events/publish-event! :event/table-fields-added {:table-id (u/the-id table)})
+        (some-> *fields-added?* (vreset! true))
         (sync.db/fields new-and-updated-fields)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -249,7 +253,11 @@
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
-   (sync-instances! table db-metadata our-metadata nil))
+   (binding [*fields-added?* (volatile! false)]
+     (u/prog1 (sync-instances! table db-metadata our-metadata nil)
+       ;; publish once per Table, after retiring, so a renamed column's old Field is already inactive
+       (when @*fields-added?*
+         (events/publish-event! :event/table-fields-added {:table-id (u/the-id table)})))))
 
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]

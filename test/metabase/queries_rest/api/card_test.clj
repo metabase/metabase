@@ -5590,26 +5590,36 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
 
+(defn- model-column-names-after-ddl!
+  "Create a model on a one-column H2 table, run `ddl` against the table, sync, and return the names of the columns
+  that `GET /api/card/:id/query_metadata` offers for the model."
+  [ddl]
+  (mt/test-driver :h2
+    (mt/with-temp-test-data [["grid_view"
+                              [{:field-name "name", :base-type :type/Text}]
+                              [["a"]]]]
+      (mt/with-model-cleanup [:model/Card]
+        (let [db       (mt/db)
+              mp       (mt/metadata-provider)
+              model-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                  (assoc (card-with-name-and-query (mt/random-name)
+                                                                                   (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
+                                                         :type :model)))]
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) [ddl])
+          (sync/sync-database! db)
+          (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" model-id))
+               :tables
+               (m/find-first #(= (str "card__" model-id) (:id %)))
+               :fields
+               (map :name)))))))
+
 (deftest model-shows-column-added-to-source-table-after-sync-test
   (testing "GHY-4638: after sync finds a new column in a model's source table, the model's columns include it"
-    (mt/test-driver :h2
-      (mt/with-temp-test-data [["grid_view"
-                                [{:field-name "name", :base-type :type/Text}]
-                                [["a"]]]]
-        (mt/with-model-cleanup [:model/Card]
-          (let [db       (mt/db)
-                mp       (mt/metadata-provider)
-                model-id (:id (mt/user-http-request :crowberto :post 200 "card"
-                                                    (assoc (card-with-name-and-query (mt/random-name)
-                                                                                     (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
-                                                           :type :model)))]
-            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db)
-                           ["ALTER TABLE \"GRID_VIEW\" ADD COLUMN \"EXTRA\" VARCHAR;"])
-            (sync/sync-database! db)
-            (testing "the columns the query builder offers for filters and new columns"
-              (is (= ["ID" "NAME" "EXTRA"]
-                     (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" model-id))
-                          :tables
-                          (m/find-first #(= (str "card__" model-id) (:id %)))
-                          :fields
-                          (map :name)))))))))))
+    (is (= ["ID" "NAME" "EXTRA"]
+           (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ADD COLUMN \"EXTRA\" VARCHAR;")))))
+
+(deftest model-drops-renamed-column-after-sync-test
+  (testing "GHY-4638: when sync finds a column renamed in a model's source table, the model shows the new name and
+           not the old one, which no longer exists"
+    (is (= ["ID" "TITLE"]
+           (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ALTER COLUMN \"NAME\" RENAME TO \"TITLE\";")))))
