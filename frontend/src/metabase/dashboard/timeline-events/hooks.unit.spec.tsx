@@ -501,6 +501,20 @@ describe("dashboard timeline events", () => {
     expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(1);
   });
 
+  it.each([
+    ["recorded no selection", {}],
+    ["recorded an empty selection", { "timeline.selected_timeline_ids": [] }],
+  ])(
+    "does not load the timelines when every chart %s",
+    (_description, savedVisibility) => {
+      setupTimelinesEndpoints([TIMELINE]);
+
+      setup({ savedVisibility, seedTimelines: false });
+
+      expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(0);
+    },
+  );
+
   describe.each([
     ["public dashboards", "isPublicEmbedding"],
     ["static embedded dashboards", "isStaticEmbedding"],

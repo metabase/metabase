@@ -28,19 +28,17 @@ import {
   getDashCardSelectedTimelineEventIds,
   getDashCardTimelineEventsVisibility,
   getDashCardTimeseriesXAxis,
-  getTimelineEventsDashCardIds,
+  getHasSelectedTimelineEvents,
 } from "./selectors";
 
 // keeps the timelines loaded for the events sidebar; charts load their own
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
-  const hasEventsDashCards = useSelector(
-    (state) => getTimelineEventsDashCardIds(state).length > 0,
-  );
+  const hasSelectedEvents = useSelector(getHasSelectedTimelineEvents);
 
   useListTimelinesQuery(
     { include: "events" },
-    { skip: !withTimelineEvents || !hasEventsDashCards },
+    { skip: !withTimelineEvents || !hasSelectedEvents },
   );
 };
 
