@@ -8,6 +8,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -78,7 +79,7 @@
   [user-id :- ::lib.schema.id/user]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}]
-    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
+    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope (worktree/worktree-id))
          (map normalize-bookmark-result))))
 
 (defn save-ordering!

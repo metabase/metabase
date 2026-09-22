@@ -466,7 +466,8 @@
            lib.schema
            permissions
            queries
-           util}
+           util
+           worktree}
    :model-exports #{:model/CardBookmark
                     :model/CollectionBookmark
                     :model/DashboardBookmark}

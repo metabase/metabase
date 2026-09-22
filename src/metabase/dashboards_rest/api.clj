@@ -1453,7 +1453,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1480,7 +1482,9 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1518,7 +1522,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]

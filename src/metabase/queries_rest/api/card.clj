@@ -790,7 +790,9 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
   and optionally re-sorts the rows via the `sort` body param."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Card (eid-translation/->id-or-404 :card (:card-id route))))}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
@@ -838,7 +840,9 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Card (:card-id route)))}
   [{:keys [card-id export-format]} :- [:map {:closed true}
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
@@ -925,7 +929,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (mi/worktree-id :model/Card (:card-id route)))}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]
    _query-params
