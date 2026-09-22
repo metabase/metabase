@@ -105,7 +105,7 @@ const PushChangesForm = ({
         )}
 
         <Stack gap="xl">
-          <ChangesLists title={t`Changes to push`} />
+          <ChangesLists title={t`Changes to push`} worktreeId={worktreeId} />
 
           <CommitMessageSection
             value={commitMessage}

@@ -12,6 +12,7 @@ import type {
   RemoteSyncChangesRequest,
   RemoteSyncChangesResponse,
   RemoteSyncConfigurationSettings,
+  RemoteSyncCurrentTaskRequest,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
   TestRemoteSyncConnectionRequest,
@@ -164,17 +165,25 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
-    getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
-      query: () => ({
+    getRemoteSyncCurrentTask: builder.query<
+      RemoteSyncTask,
+      RemoteSyncCurrentTaskRequest | void
+    >({
+      query: (params) => ({
         method: "GET",
         url: `/api/ee/remote-sync/current-task`,
+        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-current-task")],
     }),
-    cancelRemoteSyncCurrentTask: builder.mutation<void, void>({
-      query: () => ({
+    cancelRemoteSyncCurrentTask: builder.mutation<
+      void,
+      RemoteSyncCurrentTaskRequest | void
+    >({
+      query: (params) => ({
         method: "POST",
         url: `/api/ee/remote-sync/current-task/cancel`,
+        params: params ?? undefined,
       }),
       invalidatesTags: () => [tag("remote-sync-current-task")],
     }),

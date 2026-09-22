@@ -89,6 +89,11 @@ export type ForcePushCasualties = {
 };
 
 /** Dry-run preview of what pushing the current state would do, given the live remote branch. */
+export type RemoteSyncCurrentTaskRequest = {
+  /** undefined is the main app */
+  "worktree-id"?: number;
+};
+
 export type ExportPreflightRequest = {
   branch: string;
   "worktree-id"?: number;

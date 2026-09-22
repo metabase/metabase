@@ -230,7 +230,9 @@
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
-  []
+  {:worktree :worktree/query}
+  [_route-params
+   {:keys [_worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")

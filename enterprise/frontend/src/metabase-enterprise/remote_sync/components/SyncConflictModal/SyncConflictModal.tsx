@@ -234,7 +234,7 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
         ) : conflicts && conflicts.length > 0 ? (
           <ConflictingChangesList conflicts={conflicts} />
         ) : (
-          <ChangesLists />
+          <ChangesLists worktreeId={worktreeId} />
         )}
 
         <OutOfSyncOptions

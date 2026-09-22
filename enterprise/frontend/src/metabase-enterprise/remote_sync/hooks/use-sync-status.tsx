@@ -19,6 +19,7 @@ import {
   getStartedAt,
   getTaskOutcome,
   getTaskType,
+  getTaskWorktreeId,
 } from "../selectors";
 import { modalDismissed, taskCleared } from "../sync-task-slice";
 
@@ -41,6 +42,7 @@ export const useSyncStatus = () => {
   const isSuccess = useSelector(getIsSuccess);
   const outcome = useSelector(getTaskOutcome);
   const hasPendingMutation = useSelector(getHasPendingMutation);
+  const worktreeId = useSelector(getTaskWorktreeId);
 
   const minutesSinceLastUpdate = lastProgressReportAt
     ? dayjs().diff(dayjs(lastProgressReportAt), "minute")
@@ -55,11 +57,14 @@ export const useSyncStatus = () => {
 
   // Always subscribed, so a fresh tab discovers a sync started elsewhere (or a stale row the backend
   // repairs on read); polling only while a task is being watched.
-  useGetRemoteSyncCurrentTaskQuery(undefined, {
-    pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
-    skipPollingIfUnfocused: true,
-    skip: !isRemoteSyncEnabled,
-  });
+  useGetRemoteSyncCurrentTaskQuery(
+    worktreeId == null ? undefined : { "worktree-id": worktreeId },
+    {
+      pollingInterval: shouldPoll ? SYNC_STATUS_POLL_INTERVAL : undefined,
+      skipPollingIfUnfocused: true,
+      skip: !isRemoteSyncEnabled,
+    },
+  );
 
   // A stopped task has nothing left to poll, so drop it instead of hiding the modal; otherwise the next
   // taskUpdated for the same stale row would reopen it.
@@ -71,6 +76,7 @@ export const useSyncStatus = () => {
       <SyncProgressModal
         taskType={taskType}
         progress={progress}
+        worktreeId={worktreeId}
         isQuiet={isQuiet}
         isCancelled={isCancelled}
         minutesSinceLastUpdate={minutesSinceLastUpdate}

@@ -7,14 +7,19 @@ import { AllChangesView } from "./AllChangesView";
 
 interface ChangesListsProps {
   title?: string;
+  /** undefined is the main app */
+  worktreeId?: number;
 }
 
-export const ChangesLists = ({ title }: ChangesListsProps) => {
+export const ChangesLists = ({ title, worktreeId }: ChangesListsProps) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
-    useGetRemoteSyncChangesQuery(undefined, {
-      refetchOnMountOrArgChange: true,
-      refetchOnFocus: true,
-    });
+    useGetRemoteSyncChangesQuery(
+      worktreeId == null ? undefined : { "worktree-id": worktreeId },
+      {
+        refetchOnMountOrArgChange: true,
+        refetchOnFocus: true,
+      },
+    );
 
   if (isLoadingChanges) {
     return (
