@@ -18,6 +18,7 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.app-db.worktree :as app-db.worktree]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
@@ -187,7 +188,8 @@
                      ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
                      (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
                                                           {:order-by [[:orderexecuted :desc]]}))))))]
-        (f migrate))))
+        (app-db.worktree/without-scope
+         (f migrate)))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations!

@@ -143,19 +143,7 @@
     (let [scoped (scoped-tables)]
       (walk/postwalk (fn [x] (cond-> x (query-map? x) (scope-query scoped))) query))))
 
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/select.*
-                                                #_model      :default
-                                                #_query      clojure.lang.IPersistentMap]
-  [_query-type _model _parsed-args query]
-  (scope-all query))
-
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/update.*
-                                                #_model      :default
-                                                #_query      clojure.lang.IPersistentMap]
-  [_query-type _model _parsed-args query]
-  (scope-all query))
-
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
+(methodical/defmethod t2.pipeline/build :after [#_query-type :default
                                                 #_model      :default
                                                 #_query      clojure.lang.IPersistentMap]
   [_query-type _model _parsed-args query]
