@@ -162,6 +162,17 @@ export const getTimelineEventsDashCardXAxes = createSelector(
   shallowEqualResult,
 );
 
+export const getHasSelectedTimelineEvents = createSelector(
+  [getTimelineEventsDashCardIds, getTimelineEventsOverrides, getDashcards],
+  (dashcardIds, overrides, dashcards) =>
+    dashcardIds.some(
+      (dashcardId) =>
+        (resolveDashCardVisibility(overrides, dashcards, dashcardId)?.[
+          "timeline.selected_timeline_ids"
+        ]?.length ?? 0) > 0,
+    ),
+);
+
 export const getDashboardTimelineEventsAggregate = createSelector(
   [
     getTimelineEventsDashCardIds,
