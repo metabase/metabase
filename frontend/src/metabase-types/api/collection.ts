@@ -232,6 +232,8 @@ export interface CreateCollectionRequest {
 
 export type ListCollectionsRequest = {
   archived?: boolean;
+  /** undefined is the main app */
+  "worktree-id"?: number;
   namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
