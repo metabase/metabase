@@ -1932,12 +1932,14 @@
     (mt/with-temp [:model/Timeline timeline {}
                    :model/Card card {:display                :line
                                      :visualization_settings {:timeline.selected_timeline_ids 7}}]
-      (mt/with-test-user :rasta
-        (doseq [repaired [[(:id timeline)] []]]
-          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}})
-          (is (= repaired
-                 (get-in (t2/select-one :model/Card (:id card))
-                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
+      (doseq [repaired [[(:id timeline)] []]]
+        ;; no bound user, so each case starts from the malformed value again
+        (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids 7}})
+        (mt/with-test-user :rasta
+          (t2/update! :model/Card (:id card) {:visualization_settings {:timeline.selected_timeline_ids repaired}}))
+        (is (= repaired
+               (get-in (t2/select-one :model/Card (:id card))
+                       [:visualization_settings :timeline.selected_timeline_ids])))))))
 
 (deftest card-timeline-malformed-saved-exclusions-test
   (testing "a malformed excluded-event list saved before it was validated does not block later edits"
