@@ -488,7 +488,8 @@
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))
-                           (dissoc :id :entity_id :created_at :updated_at))))]
+                           ;; the copy belongs to the world of the dashboard it lands in, which it inherits
+                           (dissoc :id :entity_id :created_at :updated_at :worktree_id))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn- update-colvalmap-setting

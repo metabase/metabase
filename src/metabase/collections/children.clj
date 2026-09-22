@@ -45,6 +45,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- world-clause
+  "Restricts a listing that spans collections -- a world's root or its Trash -- to the world it belongs to: the main
+  app with `nil`, a branch with its id. Both worlds' content shares the tables, and neither the root nor the Trash
+  holds its content by `collection_id`. Nil elsewhere, where the parent collection already picks the world."
+  [collection column]
+  (cond
+    (collection.root/is-root-collection? collection) [:= column (worktree/worktree-id)]
+    (collection/is-trash? collection)                [:= column (:worktree_id collection)]))
+
 (defn- location-from-collection-id-clause
   "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
    then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
@@ -347,6 +356,7 @@
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
+               (world-clause collection :document.worktree_id)
                (when created-by-id
                  [:= :document.creator_id created-by-id])
                [:= :document.archived (boolean archived?)]
@@ -549,6 +559,7 @@
                      [:and
                       [:= :c.collection_id (:id collection)]
                       [:= :c.archived_directly false]])
+                   (world-clause collection :c.worktree_id)
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
@@ -665,6 +676,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
+                   (world-clause collection :d.worktree_id)
                    (when created-by-id
                      [:= :d.creator_id created-by-id])
                    [:= :d.archived (boolean archived?)]]}
@@ -723,10 +735,7 @@
               [:= :archived true]
               [:= :id trash-id]]
              [:and [:= :archived false] [:not= :id trash-id]]))
-         ;; The main app's top-level collections and a branch's both sit at "/", so the root of a world lists only
-         ;; the collections of the world the request asked for. Below the root the parent already picks the world.
-         (when (collection.root/is-root-collection? collection)
-           [:= :worktree_id (worktree/worktree-id)])]
+         (world-clause collection :worktree_id)]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         ;; never show tenant-specific root collections as children of another collection
         [:or

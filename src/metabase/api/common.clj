@@ -348,6 +348,13 @@
   (when (mi/worktree-content? obj)
     (check-403 *is-superuser?*)))
 
+(defn- check-worktree-create-access
+  "Refuse a non-admin content created inside a worktree: the row is not there to read its `worktree_id` from, so the
+  parent it names says which world it would land in."
+  [model entity]
+  (when (some? (mi/worktree-of model entity))
+    (check-403 *is-superuser?*)))
+
 (defn read-check
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
@@ -417,6 +424,7 @@
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
   {:added "0.32.0"}
   [model entity]
+  (check-worktree-create-access model entity)
   (try
     (check-403 (mi/can-create? model entity))
     (catch clojure.lang.ExceptionInfo e

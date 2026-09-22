@@ -61,11 +61,14 @@ export const AddToDashSelectDashModal = ({
 
   const questionCollection = card.collection ?? ROOT_COLLECTION;
   const isQuestionInPersonalCollection = !!questionCollection.is_personal;
+  // A card can only go on a dashboard of its own world, and a recent dashboard is rarely from that world.
+  const worktreeId = card.collection?.worktree_id ?? undefined;
   const isRecentDashboardInPersonalCollection =
     mostRecentlyViewedDashboard?.collection?.is_personal;
 
   const showRecentDashboard =
     mostRecentlyViewedDashboard?.id &&
+    worktreeId == null &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
   const value = useMemo(() => {
@@ -128,6 +131,7 @@ export const AddToDashSelectDashModal = ({
       onChange={onDashboardSelected}
       onClose={onClose}
       value={value}
+      worktreeId={worktreeId}
       options={{
         hasPersonalCollections: true,
         hasRootCollection: !isQuestionInPersonalCollection,

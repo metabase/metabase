@@ -726,6 +726,13 @@
   [instance]
   (some? (:worktree_id instance)))
 
+(defn worktree-of
+  "The worktree a `model` row belongs to, read from the row itself or, for one about to be created, from the parent
+  it names."
+  [model instance]
+  (or (:worktree_id instance)
+      (parent-worktree-id (t2/resolve-model model) instance)))
+
 (defmulti can-read?
   "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use
   one of these implementations:
