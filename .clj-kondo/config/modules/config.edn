@@ -654,6 +654,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            util
            warehouse-schema-overlay}
@@ -1727,7 +1728,8 @@
                     :model/TransformJobTransformTag
                     :model/TransformTag
                     :model/TransformTransformTag
-                    :model/User}}
+                    :model/User
+                    :model/WorktreeEntityRemapping}}
 
   mq
   {:team "UX West"
@@ -2970,6 +2972,7 @@
    :uses #{api
            lib.schema
            models
+           remote-sync
            request
            transforms
            transforms.base
@@ -4103,7 +4106,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncTask :model/WorktreeEntityRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

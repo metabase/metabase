@@ -57,4 +57,4 @@
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]
-   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])

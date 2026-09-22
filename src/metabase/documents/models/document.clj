@@ -49,7 +49,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/Document [_model]
-  [[:collection_id :model/Collection]])
+  {:fk :collection_id :model :model/Collection})
 
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not

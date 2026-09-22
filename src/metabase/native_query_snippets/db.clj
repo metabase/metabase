@@ -16,7 +16,7 @@
   ([archived :- :boolean]
    (snippets-by-archived archived nil))
   ([archived    :- :boolean
-    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+    worktree-id :- [:maybe pos-int?]]
    (t2/select :model/NativeQuerySnippet
               :archived archived
               :worktree_id worktree-id

@@ -2,9 +2,9 @@
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
   in its user-settings table."
   (:require
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def user-settable-field-columns
@@ -40,7 +40,7 @@
   `field-alias`; see [[field-user-settings-column]]."
   [field-alias    :- :keyword
    settings-alias :- :keyword
-   worktree-id    :- [:maybe ::lib.schema.id/worktree]]
+   worktree-id    :- [:maybe ms/PositiveInt]]
   [[(t2/table-name :model/FieldUserSettings) settings-alias]
    [:and
     [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]
@@ -79,7 +79,7 @@
             user-settings? true}} :- [:maybe [:map {:closed true}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]
-                                              [:worktree-id    {:optional true} [:maybe ::lib.schema.id/worktree]]]]]
+                                              [:worktree-id    {:optional true} [:maybe ms/PositiveInt]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
@@ -124,7 +124,7 @@
   `table-alias`; see [[table-user-settings-column]]."
   [table-alias    :- :keyword
    settings-alias :- :keyword
-   worktree-id    :- [:maybe ::lib.schema.id/worktree]]
+   worktree-id    :- [:maybe ms/PositiveInt]]
   [[(t2/table-name :model/TableUserSettings) settings-alias]
    [:and
     [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]
@@ -164,7 +164,7 @@
             user-settings? true}} :- [:maybe [:map {:closed true}
                                               [:alias          {:optional true} :keyword]
                                               [:user-settings? {:optional true} :boolean]
-                                              [:worktree-id    {:optional true} [:maybe ::lib.schema.id/worktree]]]]]
+                                              [:worktree-id    {:optional true} [:maybe ms/PositiveInt]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)

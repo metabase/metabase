@@ -8,8 +8,8 @@
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -38,11 +38,11 @@
   "Fetch all snippets"
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived worktree_id]} :- [:map {:closed true}
+   {:keys [archived worktree-id]} :- [:map {:closed true}
                                       [:archived {:default false} [:maybe ms/BooleanValue]]
-                                      [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! worktree_id)
-  (list-native-query-snippets (boolean archived) worktree_id))
+                                      [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-access! worktree-id)
+  (list-native-query-snippets (boolean archived) worktree-id))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."

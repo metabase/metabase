@@ -13,7 +13,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/DashboardCardSeries [_model]
-  [[:dashboardcard_id :model/DashboardCard]])
+  {:fk :dashboardcard_id :model :model/DashboardCard})
 
 ;; Serialization
 

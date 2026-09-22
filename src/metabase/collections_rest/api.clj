@@ -20,9 +20,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -74,13 +74,13 @@
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only worktree_id]} :- [:map {:closed true}
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:worktree_id                    {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! worktree_id)
+   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map {:closed true}
+                                                                                             [:archived                       {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                             [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+                                                                                             [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-access! worktree-id)
   (as->
    (collections.children/select-collections {:archived                       (boolean archived)
                                              :exclude-other-user-collections exclude-other-user-collections
@@ -91,10 +91,10 @@
                                                                                #{nil})
                                              :shallow                        false
                                              :personal-only                  personal-only
-                                             :worktree-id                    worktree_id
+                                             :worktree-id                    worktree-id
                                              :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
-    (if (or archived personal-only worktree_id)
+    (if (or archived personal-only worktree-id)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
@@ -144,7 +144,7 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow collection-id worktree_id]}
+           namespace namespaces shallow collection-id worktree-id]}
    :- [:map {:closed true}
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -153,10 +153,10 @@
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
        [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
-       [:worktree_id                    {:optional true} [:maybe ms/PositiveInt]]]]
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
-  (remote-sync/check-worktree-access! worktree_id)
+  (remote-sync/check-worktree-access! worktree-id)
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
@@ -168,7 +168,7 @@
                                                                   :namespaces                     namespaces
                                                                   :shallow                        shallow
                                                                   :collection-id                  collection-id
-                                                                  :worktree-id                    worktree_id
+                                                                  :worktree-id                    worktree-id
                                                                   :include-library?               include-library})
                         (t2/hydrate :can_write))]
     (if shallow

@@ -20,7 +20,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/Timeline [_model]
-  [[:collection_id :model/Collection]])
+  {:fk :collection_id :model :model/Collection})
 
 ;;;; transforms
 

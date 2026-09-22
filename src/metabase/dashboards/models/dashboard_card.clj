@@ -29,7 +29,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/DashboardCard [_model]
-  [[:dashboard_id :model/Dashboard]])
+  {:fk :dashboard_id :model :model/Dashboard})
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

@@ -30,4 +30,4 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]
-   [:worktree_id   {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]])

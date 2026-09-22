@@ -357,7 +357,7 @@
 (mu/defn worktree-entity-remapping-source-entity-id
   "The source entity id -- the one the branch knows the entity by -- that the remote-sync worktree with `worktree-id`
   maps the `model-name` row with `local-entity-id` to, or nil."
-  [worktree-id     :- ::lib.schema.id/worktree
+  [worktree-id     :- ms/PositiveInt
    model-name      :- :string
    local-entity-id :- :string]
   (t2/select-one-fn :source_entity_id :model/WorktreeEntityRemapping
@@ -368,7 +368,7 @@
 (mu/defn worktree-entity-remapping-local-entity-id
   "The entity id of the `model-name` row the remote-sync worktree with `worktree-id` checked out for the branch's
   `source-entity-id`, or nil."
-  [worktree-id      :- ::lib.schema.id/worktree
+  [worktree-id      :- ms/PositiveInt
    model-name       :- :string
    source-entity-id :- :string]
   (t2/select-one-fn :local_entity_id :model/WorktreeEntityRemapping
@@ -379,7 +379,7 @@
 (mu/defn worktree-entity-remapping-source->local
   "A map of source entity id to local entity id for the `model-name` rows the remote-sync worktree with `worktree-id`
   checked out for `source-entity-ids`."
-  [worktree-id       :- ::lib.schema.id/worktree
+  [worktree-id       :- ms/PositiveInt
    model-name        :- :string
    source-entity-ids :- [:sequential :string]]
   (t2/select-fn->fn :source_entity_id :local_entity_id
@@ -391,7 +391,7 @@
 (mu/defn worktree-entity-remapping-source-exists?
   "Whether `source-entity-id` is already a source entity id of a `model-name` remapping in the remote-sync worktree
   with `worktree-id`."
-  [worktree-id      :- ::lib.schema.id/worktree
+  [worktree-id      :- ms/PositiveInt
    model-name       :- :string
    source-entity-id :- :string]
   (t2/exists? :model/WorktreeEntityRemapping
@@ -402,7 +402,7 @@
 (mu/defn update-worktree-entity-remapping-local-entity-id!
   "Point the remote-sync worktree's `model-name` remapping for `source-entity-id` at `local-entity-id`, returning the
   number updated (0 when the worktree has no remapping for that source yet)."
-  [worktree-id      :- ::lib.schema.id/worktree
+  [worktree-id      :- ms/PositiveInt
    model-name       :- :string
    source-entity-id :- :string
    local-entity-id  :- :string]
@@ -415,7 +415,7 @@
 (mu/defn insert-worktree-entity-remapping!
   "Record that the remote-sync worktree with `worktree-id` holds the branch's `model-name` entity `source-entity-id`
   as the local row with `local-entity-id`."
-  [worktree-id      :- ::lib.schema.id/worktree
+  [worktree-id      :- ms/PositiveInt
    model-name       :- :string
    source-entity-id :- :string
    local-entity-id  :- :string]

@@ -40,7 +40,7 @@
   the main app), optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]
-   worktree-id  :- [:maybe ::lib.schema.id/worktree]]
+   worktree-id  :- [:maybe ms/PositiveInt]]
   (t2/select :model/Transform {:where    [:and
                                           [:= :worktree_id worktree-id]
                                           [:in :source_type source-types]

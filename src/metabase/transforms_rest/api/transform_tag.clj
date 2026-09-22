@@ -19,7 +19,7 @@
    [:id pos-int?]
    [:name [:or :string LocalizedString]]
    [:entity_id [:maybe :string]]
-   [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
    [:created_at :any]
    [:updated_at :any]
    [:built_in_type {:optional true} [:maybe :string]]

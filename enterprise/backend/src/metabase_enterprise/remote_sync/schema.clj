@@ -196,7 +196,7 @@
    [:model_table_name    {:optional true} [:maybe :string]]
    [:file_path           {:optional true} [:maybe :string]]
    [:content_hash        {:optional true} [:maybe :string]]
-   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id         {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::remote-sync-task.outcome
   "The `:outcome` column of a RemoteSyncTask, decoded."
@@ -241,12 +241,12 @@
    [:version                 {:optional true} [:maybe :string]]
    [:conflicts               {:optional true} [:maybe [:or [:sequential :string] [:set :string]]]]
    [:outcome                 {:optional true} [:maybe ::remote-sync-task.outcome]]
-   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::worktree
   "A Worktree as selected from the app DB: every column of `:worktree`."
   [:map {:closed true}
-   [:id         ::lib.schema.id/worktree]
+   [:id         ms/PositiveInt]
    [:branch     :string]
    [:creator_id [:maybe ::lib.schema.id/user]]
    [:created_at ms/TemporalInstant]
@@ -264,7 +264,7 @@
   "A WorktreeEntityRemapping as selected from the app DB: every column of `:worktree_entity_remapping`."
   [:map {:closed true}
    [:id               ms/PositiveInt]
-   [:worktree_id      ::lib.schema.id/worktree]
+   [:worktree_id      ms/PositiveInt]
    [:type             :string]
    [:source_entity_id :string]
    [:local_entity_id  :string]])
@@ -272,7 +272,7 @@
 (mr/def ::worktree-entity-remapping.update
   "The columns of `:worktree_entity_remapping` an insert or update may set: every column except `id`, all optional."
   [:map {:closed true}
-   [:worktree_id      {:optional true} ::lib.schema.id/worktree]
+   [:worktree_id      {:optional true} ms/PositiveInt]
    [:type             {:optional true} :string]
    [:source_entity_id {:optional true} :string]
    [:local_entity_id  {:optional true} :string]])
@@ -280,7 +280,7 @@
 (def Worktree
   "Response shape for a remote-sync worktree."
   [:map
-   [:id         ::lib.schema.id/worktree]
+   [:id         ms/PositiveInt]
    [:branch     :string]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} :any]

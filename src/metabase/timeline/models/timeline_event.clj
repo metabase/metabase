@@ -17,7 +17,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/TimelineEvent [_model]
-  [[:timeline_id :model/Timeline]])
+  {:fk :timeline_id :model :model/Timeline})
 
 ;;;; schemas
 

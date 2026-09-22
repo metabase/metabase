@@ -22,7 +22,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/TransformTest [_model]
-  [[:transform_id :model/Transform]])
+  {:fk :transform_id :model :model/Transform})
 
 (defn- json-column
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its

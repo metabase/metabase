@@ -610,47 +610,49 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
 
 (defmulti worktree-container
-  "What holds a `:hook/worktree-id` model, as a sequence of `[fk-column container-model]` pairs tried in order.
-  Content belongs to the world of whatever holds it -- a card to its collection, dashboard or document, a
-  dashboard card to its dashboard -- so the first of these columns that is set decides the row's `worktree_id`.
-  Returns nil for a model nothing holds, whose worktree is given explicitly or not at all."
+  "What holds a `:hook/worktree-id` model, as `{:fk :model}`: the column naming its holder, and the holder's model.
+  Content belongs to the world of whatever holds it -- a card to its collection, a dashboard card to its dashboard.
+  Nil for a model nothing holds, whose worktree is given explicitly or not at all."
   {:arglists '([model])}
   dispatch-on-model)
 
 (defmethod worktree-container :default [_model] nil)
 
-(defn- container-worktree-id
-  "The `worktree_id` of whatever holds `instance`, and the column that named it, as `[found? worktree-id column]`.
-  `found?` is false when no container column is set, which is what tells the caller there is nothing to inherit."
+(defn- container-id
+  "The id of whatever holds `instance`, nil when nothing does -- which is what tells the caller there is no world
+  to inherit."
   [model instance]
-  (or (first (for [[fk container-model] (worktree-container model)
-                   :let                 [container-id (get instance fk)]
-                   :when                container-id]
-               [true (t2/select-one-fn :worktree_id container-model :id container-id) fk]))
-      [false nil nil]))
+  (when-some [{:keys [fk]} (worktree-container model)]
+    (get instance fk)))
+
+(defn- container-worktree-id
+  "The worktree whatever holds `instance` belongs to; nil for a holder in the main app."
+  [model instance]
+  (when-some [{:keys [fk] holder :model} (worktree-container model)]
+    (when-some [id (get instance fk)]
+      (t2/select-one-fn :worktree_id holder :id id))))
 
 (defn- check-worktree-matches-container!
   "Throw unless `instance` belongs to the same world as whatever holds it. A branch's content and the main app's
   live in the same tables, so a dashboard in a worktree holding a card from the main app -- or the other way
   round -- would be content that only half exists in either world."
   [model instance]
-  (let [[found? container-worktree-id container-column] (container-worktree-id model instance)]
-    (when (and found? (not= (:worktree_id instance) container-worktree-id))
-      (throw (ex-info (format "A %s in worktree %s cannot be held by a %s in worktree %s"
-                              (name model) (pr-str (:worktree_id instance))
-                              (name container-column) (pr-str container-worktree-id))
-                      {:status-code           400
-                       :worktree_id           (:worktree_id instance)
-                       :container-column      container-column
-                       :container-worktree-id container-worktree-id})))))
+  (when (some? (container-id model instance))
+    (let [worktree-id (container-worktree-id model instance)]
+      (when-not (= (:worktree_id instance) worktree-id)
+        (throw (ex-info (format "Content in worktree %s cannot be held by content in worktree %s"
+                                (pr-str (:worktree_id instance)) (pr-str worktree-id))
+                        {:status-code           400
+                         :worktree_id           (:worktree_id instance)
+                         :container-worktree-id worktree-id}))))))
 
 (t2/define-before-insert :hook/worktree-id
   [instance]
-  (let [model     (t2.protocols/model instance)
-        [found? container-worktree-id _] (container-worktree-id model instance)
-        instance  (cond-> instance
-                    (and found? (not (contains? instance :worktree_id)))
-                    (assoc :worktree_id container-worktree-id))]
+  (let [model    (t2.protocols/model instance)
+        instance (cond-> instance
+                   (and (some? (container-id model instance))
+                        (not (contains? instance :worktree_id)))
+                   (assoc :worktree_id (container-worktree-id model instance)))]
     (check-worktree-matches-container! model instance)
     instance))
 
@@ -662,7 +664,7 @@
       (throw (ex-info "The worktree a piece of content belongs to cannot be changed"
                       {:status-code 400
                        :worktree_id (:worktree_id changes)})))
-    (when (some (comp (set (map first (worktree-container model))) key) changes)
+    (when (contains? changes (:fk (worktree-container model)))
       (check-worktree-matches-container! model instance))
     instance))
 

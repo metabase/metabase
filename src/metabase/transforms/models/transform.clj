@@ -35,7 +35,7 @@
   (derive :model/Transform trait))
 
 (defmethod mi/worktree-container :model/Transform [_model]
-  [[:collection_id :model/Collection]])
+  {:fk :collection_id :model :model/Collection})
 
 (defn- transform-readable?
   "Whether the current user can read `instance`. Any extra `args` (an optional `models-cache`) are

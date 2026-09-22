@@ -301,7 +301,7 @@
   ([table-id :- ::lib.schema.id/table]
    (user-settings-exist-for-table? table-id nil))
   ([table-id    :- ::lib.schema.id/table
-    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+    worktree-id :- [:maybe ms/PositiveInt]]
    (or (t2/exists? :model/TableUserSettings :table_id table-id :worktree_id worktree-id)
        (t2/exists? :model/FieldUserSettings
                    {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
@@ -768,17 +768,17 @@
 
 (mu/defn worktree
   "The Worktree with `worktree-id`, or nil."
-  [worktree-id :- ::lib.schema.id/worktree]
+  [worktree-id :- ms/PositiveInt]
   (t2/select-one :model/Worktree :id worktree-id))
 
 (mu/defn worktree-exists?
   "Whether a Worktree with `worktree-id` exists."
-  [worktree-id :- ::lib.schema.id/worktree]
+  [worktree-id :- ms/PositiveInt]
   (t2/exists? :model/Worktree :id worktree-id))
 
 (mu/defn worktree-branch
   "The branch the Worktree with `worktree-id` is checked out to, or nil."
-  [worktree-id :- ::lib.schema.id/worktree]
+  [worktree-id :- ms/PositiveInt]
   (t2/select-one-fn :branch :model/Worktree :id worktree-id))
 
 (mu/defn worktree-branch-taken?
@@ -793,13 +793,13 @@
 
 (mu/defn update-worktree-branch!
   "Point the Worktree with `worktree-id` at `branch`, returning the number updated."
-  [worktree-id :- ::lib.schema.id/worktree
+  [worktree-id :- ms/PositiveInt
    branch      :- :string]
   (t2/update! :model/Worktree worktree-id {:branch branch}))
 
 (mu/defn delete-worktree!
   "Delete the Worktree with `worktree-id`; every `worktree_id` FK cascades."
-  [worktree-id :- ::lib.schema.id/worktree]
+  [worktree-id :- ms/PositiveInt]
   (t2/delete! :model/Worktree :id worktree-id))
 
 (mu/defn user-summaries

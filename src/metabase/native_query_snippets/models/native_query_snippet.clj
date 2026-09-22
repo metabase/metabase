@@ -28,7 +28,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/NativeQuerySnippet [_model]
-  [[:collection_id :model/Collection]])
+  {:fk :collection_id :model :model/Collection})
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet

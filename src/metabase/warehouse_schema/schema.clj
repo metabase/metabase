@@ -24,7 +24,7 @@
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id               {:optional true} [:maybe :string]]
-   [:worktree_id             {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
@@ -118,7 +118,7 @@
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]
-   [:worktree_id            {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."
@@ -174,7 +174,7 @@
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
    [:data_source_set         {:optional true} :boolean]
-   [:worktree_id            {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."

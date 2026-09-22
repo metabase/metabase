@@ -157,7 +157,7 @@
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe [:or :keyword :string]]]
-   [:worktree_id           {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-dag-run
   "A TransformDagRun as selected from the app DB: every column of `:transform_dag_run`."
@@ -297,7 +297,7 @@
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:built_in_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:worktree_id   {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."
@@ -313,4 +313,4 @@
    [:tag_id       {:optional true} [:maybe ms/PositiveInt]]
    [:entity_id    {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]
-   [:worktree_id  {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])

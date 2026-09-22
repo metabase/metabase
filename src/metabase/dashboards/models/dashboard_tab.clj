@@ -24,7 +24,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/DashboardTab [_model]
-  [[:dashboard_id :model/Dashboard]])
+  {:fk :dashboard_id :model :model/Dashboard})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]

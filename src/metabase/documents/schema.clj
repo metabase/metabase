@@ -49,4 +49,4 @@
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]
-   [:worktree_id         {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id         {:optional true} [:maybe ms/PositiveInt]]])

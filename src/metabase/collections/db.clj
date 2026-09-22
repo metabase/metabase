@@ -39,7 +39,7 @@
   ([type :- :string]
    (collection-of-type type nil))
   ([type        :- :string
-    worktree-id :- [:maybe ::lib.schema.id/worktree]]
+    worktree-id :- [:maybe ms/PositiveInt]]
    (t2/select-one :model/Collection :type type :worktree_id worktree-id)))
 
 (mu/defn root-remote-synced-collection

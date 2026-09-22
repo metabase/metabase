@@ -283,29 +283,29 @@
   created collection. Throws if that world already has one."
   ([] (create-library-collection! nil))
   ([worktree-id]
-  (when-not (nil? (library-collection worktree-id))
-    (throw (ex-info "Library already exists" {:worktree-id worktree-id})))
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :worktree_id worktree-id
-                                                          :entity_id (library-copy-entity-id library-entity-id worktree-id)})
-        base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :worktree_id worktree-id
-                                                          :entity_id (library-copy-entity-id library-data-entity-id worktree-id)})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :worktree_id worktree-id
-                                                          :entity_id (library-copy-entity-id library-metrics-entity-id worktree-id)})]
-    (doseq [col [library data metrics]]
-      (collections.db/delete-permissions-for-collection! (:id col))
-      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
-    library)))
+   (when-not (nil? (library-collection worktree-id))
+     (throw (ex-info "Library already exists" {:worktree-id worktree-id})))
+   (let [library       (collections.db/insert-collection! {:name      "Library"
+                                                           :type      library-collection-type
+                                                           :location  "/"
+                                                           :worktree_id worktree-id
+                                                           :entity_id (library-copy-entity-id library-entity-id worktree-id)})
+         base-location (str "/" (:id library) "/")
+         data          (collections.db/insert-collection! {:name      "Data"
+                                                           :type      library-data-collection-type
+                                                           :location  base-location
+                                                           :worktree_id worktree-id
+                                                           :entity_id (library-copy-entity-id library-data-entity-id worktree-id)})
+         metrics       (collections.db/insert-collection! {:name      "Metrics"
+                                                           :type      library-metrics-collection-type
+                                                           :location  base-location
+                                                           :worktree_id worktree-id
+                                                           :entity_id (library-copy-entity-id library-metrics-entity-id worktree-id)})]
+     (doseq [col [library data metrics]]
+       (collections.db/delete-permissions-for-collection! (:id col))
+       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
+       (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
+     library)))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -454,7 +454,7 @@
    [:type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:is_sample             {:optional true} :boolean]
    [:is_remote_synced      {:optional true} [:maybe :boolean]]
-   [:worktree_id           {:optional true} [:maybe :metabase.lib.schema.id/worktree]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]
    [:is_personal           {:optional true} :boolean]
    [:is_upload             {:optional true} [:maybe :boolean]]
    [:parent_id             {:optional true} [:maybe ms/PositiveInt]]

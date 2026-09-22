@@ -84,7 +84,7 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
-   [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
@@ -163,11 +163,9 @@
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:database-id {:optional true} [:maybe ms/PositiveInt]]
-    [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! (:worktree_id query-params))
-  (transforms.core/get-transforms (-> query-params
-                                      (dissoc :worktree_id)
-                                      (assoc :worktree-id (:worktree_id query-params)))))
+    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-access! (:worktree-id query-params))
+  (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

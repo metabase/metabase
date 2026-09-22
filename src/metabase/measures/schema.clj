@@ -58,4 +58,4 @@
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]
-   [:worktree_id        {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id        {:optional true} [:maybe ms/PositiveInt]]])

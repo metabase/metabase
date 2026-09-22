@@ -21,4 +21,4 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
-   [:worktree_id {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])

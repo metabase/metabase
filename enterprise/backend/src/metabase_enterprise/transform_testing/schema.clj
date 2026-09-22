@@ -149,7 +149,7 @@
    [:inputs       ::inputs]
    [:expectations ::expectations]
    [:created_at   ms/TemporalInstant]
-   [:worktree_id  [:maybe ::lib.schema.id/worktree]]
+   [:worktree_id  [:maybe ms/PositiveInt]]
    [:updated_at   ms/TemporalInstant]])
 
 (mr/def ::transform-test.create
@@ -169,7 +169,7 @@
    [:description  {:optional true} [:maybe :string]]
    [:inputs       {:optional true} ::inputs]
    [:expectations {:optional true} ::expectations]
-   [:worktree_id  {:optional true} [:maybe ::lib.schema.id/worktree]]])
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a transform test run."

@@ -136,9 +136,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/Card [_model]
-  [[:collection_id :model/Collection]
-   [:dashboard_id :model/Dashboard]
-   [:document_id :model/Document]])
+  {:fk :collection_id :model :model/Collection})
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column

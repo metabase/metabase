@@ -53,7 +53,7 @@
   (derive :hook/worktree-id))
 
 (defmethod mi/worktree-container :model/Dashboard [_model]
-  [[:collection_id :model/Collection]])
+  {:fk :collection_id :model :model/Collection})
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
