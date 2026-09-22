@@ -152,9 +152,8 @@
   (boolean (when-let [instance (remote-sync.db/instance (:model-key model-spec) model-id)]
              (spec/check-eligibility model-spec instance))))
 
-(defn- create-or-update-sync-object-from-spec!
-  "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
-   This is the spec-based version of create-or-update-remote-sync-object-entry!.
+(defn- upsert-sync-object-from-spec!
+  "Impl for [[create-or-update-sync-object-from-spec!]], which picks the world it writes in.
 
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
@@ -206,6 +205,13 @@
                                       (merge {:status            (resolve-status model-type model-id status existing)
                                               :status_changed_at (t/offset-date-time)}
                                              fields)))))))
+
+(defn- create-or-update-sync-object-from-spec!
+  "Creates or updates a RemoteSyncObject entry using a spec for field hydration, in the world the entity belongs
+  to: a branch's content is dirty in that branch's ledger, not in the main app's."
+  [model-spec model-id status]
+  (worktree/with-worktree (mi/worktree-id (:model-key model-spec) model-id)
+    (upsert-sync-object-from-spec! model-spec model-id status)))
 
 (defn- cascade-filter
   "Derives the filter conditions for querying eligible children from a child spec."
