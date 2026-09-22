@@ -118,8 +118,6 @@
     (check-allowed-to-run-query! query)
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
-    (when-let [dashboard-id (:dashboard_id card)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [card]))
     (check-no-save-cycle! ::no-id query)))
 
 (mu/defn check-allowed-to-update-card!

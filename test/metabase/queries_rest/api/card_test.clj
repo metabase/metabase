@@ -3162,6 +3162,30 @@
                   (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
           (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
 
+(deftest copy-card-onto-public-dashboard-timeline-permissions-test
+  (testing "POST /api/card/:id/copy autoplaces the copy on the source's dashboard, so it needs timeline read access"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues)
+                                                :display                :line
+                                                :dashboard_id           dash-id
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     ;; the source is shown by a visualizer dashcard, which never emits its card's events
+                     :model/DashboardCard _ {:dashboard_id           dash-id
+                                             :card_id                card-id
+                                             :visualization_settings {:visualization {}}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (mt/with-model-cleanup [:model/Card]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 (format "card/%d/copy" card-id))))
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))
+          (testing "a user who can read the timeline can copy it"
+            (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" card-id)))]
+              (is (= #{card-id copy-id}
+                     (set (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"

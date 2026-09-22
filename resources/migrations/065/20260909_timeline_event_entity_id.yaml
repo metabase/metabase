@@ -1,3 +1,9 @@
+## Timeline events get an entity_id so serialization and remote sync can key them on a stable, portable
+## identifier instead of a per-instance row id. The shape mirrors 20260723_backfill_entity_ids: add the column
+## nullable, backfill it, then add NOT NULL and UNIQUE. All three dialect variants of the backfill live in one
+## changeset so every database executes (and records) it — a changeset whose only change is dbms-filtered away
+## never reaches the changelog, which breaks consolidation.
+
 databaseChangeLog:
   - changeSet:
       id: v65.h1c4r5
@@ -13,6 +19,10 @@ databaseChangeLog:
                   remarks: NanoID used to identify the event across instances
                   constraints:
                     nullable: true
+      rollback:
+        - dropColumn:
+            tableName: timeline_event
+            columnName: entity_id
 
   - changeSet:
       id: v65.zvhbd7
