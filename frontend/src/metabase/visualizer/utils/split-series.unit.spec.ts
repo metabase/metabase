@@ -10,6 +10,15 @@ import { splitVisualizerSeries } from "./split-series";
 
 registerVisualizations();
 
+const referencedEntities = {
+  card: {
+    10: {
+      status: "completed" as const,
+      data: { cols: [createMockColumn({ name: "count" })], rows: [[10]] },
+    },
+  },
+};
+
 describe("splitVisualizerSeries", () => {
   it("should split a single series into multiple series", () => {
     const series = splitVisualizerSeries(
@@ -57,6 +66,7 @@ describe("splitVisualizerSeries", () => {
                 "previous-value": 0,
               },
             ],
+            referenced_entities: referencedEntities,
           }),
         },
       ],
@@ -120,5 +130,8 @@ describe("splitVisualizerSeries", () => {
     ]);
     expect(series1.columnValuesMapping).toBeDefined();
     expect(series2.columnValuesMapping).toBeDefined();
+    // dynamic goals resolve from the referenced entities of every split series
+    expect(series1.data.referenced_entities).toEqual(referencedEntities);
+    expect(series2.data.referenced_entities).toEqual(referencedEntities);
   });
 });
