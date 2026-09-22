@@ -47,129 +47,51 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # The shared verdict plus the app-DB plan, in one job: `.github/scripts/gate/app-db.ts` turns the
+  # verdict into the `strategy.matrix` each test job runs, so those jobs carry a single condition --
+  # whether a matrix came back for them -- and everything else is decided here. The script is a
+  # plain module, unit tested by the ci-scripts jest project.
   gate:
-    uses: ./.github/workflows/test-gate.yml
-    with:
-      # A direct dispatch names an app DB and always runs, so it asks for no filters: the gate then
-      # only checks for a force-cancel.
-      filters: ${{ inputs.app-db == '' && 'backend_all' || '' }}
-
-  app-db-matrix:
-    needs: gate
-    if: ${{ needs.gate.outputs.run == 'true' }}
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    name: Decide whether to run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    name: Determine app DB versions
     outputs:
-      mariadb: ${{ steps.versions.outputs.mariadb }}
-      mysql: ${{ steps.versions.outputs.mysql }}
-      postgres: ${{ steps.versions.outputs.postgres }}
-      shards: ${{ steps.versions.outputs.shards }}
+      be-tests-mariadb: ${{ steps.plan.outputs.be-tests-mariadb }}
+      be-tests-mysql: ${{ steps.plan.outputs.be-tests-mysql }}
+      be-tests-postgres: ${{ steps.plan.outputs.be-tests-postgres }}
     steps:
-      - name: Select versions and shards to test
-        id: versions
-        uses: actions/github-script@v9
-        env:
-          RUN_ALL: ${{ needs.gate.outputs.force-run }}
+      - uses: actions/checkout@v6
         with:
-          script: | # js
-            const runAll = process.env.RUN_ALL === 'true';
-
-            const versions = {
-              mariadb: [
-                {
-                  name: 'MariaDB 10.6',
-                  image: 'metabase/mariadb:10.6',
-                  'junit-name': 'be-tests-mariadb-10-6-ee',
-                  env: { 'enable-ssl-tests': 'false' },
-                  latest: false
-                },
-                {
-                  name: 'MariaDB Latest',
-                  image: 'mariadb:latest',
-                  'junit-name': 'be-tests-mariadb-latest-ee',
-                  env: { 'enable-ssl-tests': 'false' },
-                  latest: true
-                },
-              ],
-              mysql: [
-                {
-                  name: 'MySQL 8',
-                  image: 'mysql:8.4',
-                  'junit-name': 'be-tests-mysql-8-ee',
-                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
-                  latest: false
-                },
-                {
-                  name: 'MySQL 9',
-                  image: 'mysql:9',
-                  'junit-name': 'be-tests-mysql-9-ee',
-                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
-                  // treating 9.0 as latest until we introduce mysql 26+ support
-                  latest: true
-                },
-              ],
-              postgres: [
-                {
-                  name: 'Postgres 14.x',
-                  'junit-name': 'be-tests-postgres-ee',
-                  image: 'postgres:14-alpine',
-                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
-                  latest: false,
-                },
-                {
-                  name: 'Postgres Latest',
-                  'junit-name': 'be-tests-postgres-latest-ee',
-                  image: 'postgres:latest',
-                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
-                  latest: true,
-                },
-              ],
-            };
-
-
-            for (const [db, dbVersions] of Object.entries(versions)) {
-              const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
-              core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
-              core.setOutput(db, JSON.stringify(selected));
-            }
-
-            const commonExcludes = ":mb/driver-tests :mb/transforms-python-test :mb/old-migrations-test";
-
-            const shards = [
-              {
-                name: 'Enterprise Tests',
-                'build-static-viz': false,
-                'test-args': `:only '"enterprise/backend/test"' :exclude-tags '[${commonExcludes}]'`,
-              },
-              {
-                name: 'EE App DB Tests (Part 1)', // migrations shard
-                'build-static-viz': true,
-                'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
-              },
-              {
-                name: 'EE App DB Tests (Part 2)',
-                'build-static-viz': true,
-                'test-args': `:only '"test"' :partition/total 2 :partition/index 0 :exclude-tags '[${commonExcludes} :mb/app-db-migrations-test]'`,
-              },
-              {
-                name: 'EE App DB Tests (Part 3)',
-                'build-static-viz': true,
-                'test-args': `:only '"test"' :partition/total 2 :partition/index 1 :exclude-tags '[${commonExcludes} :mb/app-db-migrations-test]'`,
-              },
-            ];
-            core.setOutput('shards', JSON.stringify(shards));
+          sparse-checkout: |
+            .github
+            /.nvmrc
+            /package.json
+          sparse-checkout-cone-mode: false
+      - name: Apply the shared gate
+        id: base
+        uses: ./.github/actions/test-gate
+        with:
+          # A direct dispatch names an app DB and always runs, so it asks for no filters: the gate
+          # then only checks for a force-cancel.
+          filters: ${{ inputs.app-db == '' && 'backend_all' || '' }}
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Plan the app DB matrices
+        id: plan
+        env:
+          RUN: ${{ steps.base.outputs.run }}
+          FORCE_RUN: ${{ steps.base.outputs.force-run }}
+          ONLY_APP_DB: ${{ inputs.app-db }}
+        run: bun .github/scripts/gate/app-db.ts
 
   be-tests-mariadb:
-    needs: app-db-matrix
-    if: ${{ inputs.app-db == '' || inputs.app-db == 'mariadb' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-tests-mariadb != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
-        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+      matrix: ${{ fromJSON(needs.gate.outputs.be-tests-mariadb) }}
 
     services:
       mysql:
@@ -222,15 +144,13 @@ jobs:
           test-args: ${{ matrix.job.test-args }}
 
   be-tests-mysql:
-    needs: app-db-matrix
-    if: ${{ inputs.app-db == '' || inputs.app-db == 'mysql' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-tests-mysql != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.app-db-matrix.outputs.mysql) }}
-        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+      matrix: ${{ fromJSON(needs.gate.outputs.be-tests-mysql) }}
 
     services:
       mysql:
@@ -281,15 +201,13 @@ jobs:
     steps: *app-db-test-steps
 
   be-tests-postgres:
-    needs: app-db-matrix
-    if: ${{ inputs.app-db == '' || inputs.app-db == 'postgres' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.be-tests-postgres != '' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix:
-        version: ${{ fromJSON(needs.app-db-matrix.outputs.postgres) }}
-        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+      matrix: ${{ fromJSON(needs.gate.outputs.be-tests-postgres) }}
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       CI: 'true'
@@ -325,7 +243,6 @@ jobs:
   app-db-tests-result:
     needs:
       - gate
-      - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres

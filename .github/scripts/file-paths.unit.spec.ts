@@ -101,6 +101,8 @@ describe("file-paths.yaml", () => {
     "ci_scripts",
   ])("runs %s when the test gate changes", (filter) => {
     expect(matches(filter, ".github/workflows/test-gate.yml")).toBe(true);
+    expect(matches(filter, ".github/actions/test-gate/action.yml")).toBe(true);
+    expect(matches(filter, ".github/scripts/gate/app-db.ts")).toBe(true);
   });
 
   // The build filters replace what used to be an inline condition in run-tests.yml, so what they
