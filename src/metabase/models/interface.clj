@@ -630,7 +630,7 @@
   [model instance]
   (when-some [{:keys [fk] holder :model} (worktree-container model)]
     (when-some [id (get instance fk)]
-      (t2/select-one-fn :worktree_id holder :id id))))
+      (models.db/worktree-id-of holder id))))
 
 (defn- check-worktree-matches-container!
   "Throw unless `instance` belongs to the same world as whatever holds it. A branch's content and the main app's

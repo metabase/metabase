@@ -19,6 +19,14 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(defn entity-worktree-id
+  "The remote-sync worktree the dependency entity of `entity-type` with `entity-id` belongs to; nil for the main
+  app's, and for an entity type no worktree ever holds."
+  [entity-type entity-id]
+  (when-let [model (deps.dependency-types/dependency-type->model entity-type)]
+    (when (isa? model :hook/worktree-id)
+      (t2/select-one-fn :worktree_id model :id entity-id))))
+
 (def ^:private VisibleOpts
   "Opts consumed by [[visible-entities-expr]]: the current user (`:user-id`, `:is-superuser?`,
   `:is-data-analyst?`), plus whether to include archived items (`:include-archived-items`,

@@ -3171,7 +3171,7 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{util}
+   :uses #{remote-sync util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
@@ -3730,6 +3730,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            revisions
            segments

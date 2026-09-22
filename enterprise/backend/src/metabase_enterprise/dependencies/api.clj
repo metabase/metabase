@@ -20,6 +20,7 @@
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.core :as worktree]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.segments.schema]
@@ -222,10 +223,12 @@
 (defn- current-user-visibility
   "The current user and the world being asked about, as the `:visible` filter-spec opts consumed by
   `metabase-enterprise.dependencies.db`."
-  [{:keys [include-archived-items worktree-id]}]
-  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
-    include-archived-items (assoc :include-archived-items include-archived-items)
-    worktree-id            (assoc :worktree-id worktree-id)))
+  [{:keys [include-archived-items]}]
+  (cond-> {:user-id                api/*current-user-id*
+           :is-superuser?          api/*is-superuser?*
+           :is-data-analyst?       api/*is-data-analyst?*
+           :worktree-id            (worktree/current-worktree-id)}
+    include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies
   ([]
@@ -236,10 +239,9 @@
 (defn- readable-graph-dependents
   ([]
    (readable-graph-dependents nil))
-  ([{:keys [include-archived-items broken worktree-id] :or {include-archived-items :exclude}}]
+  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude}}]
    (dependency/filtered-graph-dependents
-    (cond-> {:visible (current-user-visibility {:include-archived-items include-archived-items
-                                                :worktree-id            worktree-id})}
+    (cond-> {:visible (current-user-visibility {:include-archived-items include-archived-items})}
       broken (assoc :broken? true)))))
 
 (defn- node-usages
@@ -364,17 +366,17 @@
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
   depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency."
+  {:worktree (fn [{:keys [query]}]
+               (dependencies.db/entity-worktree-id (:type query) (:id query)))}
   [_route-params
    {:keys [id type]} :- [:map {:closed true}
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
-  (let [entity      (api/read-check (deps.dependency-types/dependency-type->model type) id)
-        worktree-id (:worktree_id entity)
-        starting-nodes [[type id]]
-        upstream-graph (readable-graph-dependencies {:include-archived-items :all :worktree-id worktree-id})
-        downstream-graph (graph/cached-graph (readable-graph-dependents {:worktree-id worktree-id}))
-        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all
-                                                                   :worktree-id            worktree-id}))
+  (api/read-check (deps.dependency-types/dependency-type->model type) id)
+  (let [starting-nodes [[type id]]
+        upstream-graph (readable-graph-dependencies {:include-archived-items :all})
+        downstream-graph (graph/cached-graph (readable-graph-dependents))
+        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
         edges (graph/edges-between edge-graph nodes)]

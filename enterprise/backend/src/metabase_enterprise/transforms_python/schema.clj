@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-python.schema
   "Malli schemas for the transforms-python module."
   (:require
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 

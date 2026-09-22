@@ -4,8 +4,14 @@
   (:require
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- current-worktree-id
+  "The worktree the request declared it works in, nil for the main app. Resolved lazily: this namespace sits below
+  the API, and the overlay is the one thing a read cannot pass the worktree to -- the Field and Table rows it
+  widens are hydrated, and a hydration method takes no options."
+  []
+  @(requiring-resolve 'metabase.remote-sync.core/*worktree-id*))
 
 (def user-settable-field-columns
   "The Field columns users can set. Their user values live in `metabase_field_user_settings`, never in `metabase_field`."
@@ -40,7 +46,7 @@
   `field-alias`; see [[field-user-settings-column]]."
   [field-alias    :- :keyword
    settings-alias :- :keyword
-   worktree-id    :- [:maybe ms/PositiveInt]]
+   worktree-id    :- [:maybe pos-int?]]
   [[(t2/table-name :model/FieldUserSettings) settings-alias]
    [:and
     [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]
@@ -76,10 +82,11 @@
 
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Field)
-            user-settings? true}} :- [:maybe [:map {:closed true}
-                                              [:alias          {:optional true} :keyword]
-                                              [:user-settings? {:optional true} :boolean]
-                                              [:worktree-id    {:optional true} [:maybe ms/PositiveInt]]]]]
+            user-settings? true
+            worktree-id    (current-worktree-id)}} :- [:maybe [:map {:closed true}
+                                                               [:alias          {:optional true} :keyword]
+                                                               [:user-settings? {:optional true} :boolean]
+                                                               [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
@@ -124,7 +131,7 @@
   `table-alias`; see [[table-user-settings-column]]."
   [table-alias    :- :keyword
    settings-alias :- :keyword
-   worktree-id    :- [:maybe ms/PositiveInt]]
+   worktree-id    :- [:maybe pos-int?]]
   [[(t2/table-name :model/TableUserSettings) settings-alias]
    [:and
     [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]
@@ -161,10 +168,11 @@
 
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Table)
-            user-settings? true}} :- [:maybe [:map {:closed true}
-                                              [:alias          {:optional true} :keyword]
-                                              [:user-settings? {:optional true} :boolean]
-                                              [:worktree-id    {:optional true} [:maybe ms/PositiveInt]]]]]
+            user-settings? true
+            worktree-id    (current-worktree-id)}} :- [:maybe [:map {:closed true}
+                                                               [:alias          {:optional true} :keyword]
+                                                               [:user-settings? {:optional true} :boolean]
+                                                               [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)
