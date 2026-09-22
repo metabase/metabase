@@ -27,7 +27,8 @@
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]
-   [:include-archived-items {:optional true} [:enum :exclude :all :only]]])
+   [:include-archived-items {:optional true} [:enum :exclude :all :only]]
+   [:worktree-id {:optional true} [:maybe pos-int?]]])
 
 (def ^:private EntityType
   "A dependency-type keyword, or the equivalent string. Every column these entity types are filtered against uses
@@ -65,12 +66,15 @@
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
   - Transform: analysts can view any transform they have source view permission to."
-  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
+  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items
+                                             worktree-id]
                                       :or   {include-archived-items :exclude}}]
   (into [:or]
         (keep (fn [[entity-type model]]
-                (let [table-name (t2/table-name model)
-                      id-column  (keyword (name table-name) "id")]
+                (let [table-name     (t2/table-name model)
+                      id-column      (keyword (name table-name) "id")
+                      worktree-clause (when (isa? model :hook/worktree-id)
+                                        [:= (keyword (name table-name) "worktree_id") worktree-id])]
                   (case model
                     :model/Sandbox
                     (when is-superuser?
@@ -83,7 +87,8 @@
                       is-superuser?
                       [:and
                        [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
+                       [:in entity-id-field
+                        ^:allow-subquery {:select [:id] :from [table-name] :where worktree-clause}]]
 
                       is-data-analyst?
                       [:and
@@ -92,12 +97,14 @@
                         ^:allow-subquery
                         {:select [:id]
                          :from   [table-name]
-                         :where  [:in :source_database_id
+                         :where  [:and
+                                  worktree-clause
+                                  [:in :source_database_id
                                   (perms/visible-database-filter-select
                                    {:user-id          user-id
                                     :is-superuser?    is-superuser?
                                     :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]}]])
+                                   {:perms/create-queries :query-builder})]]}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
                     (let [archived-column (keyword (name table-name) "archived")]
@@ -111,6 +118,7 @@
                           {:select [:id]
                            :from   [table-name]
                            :where  [:and
+                                    worktree-clause
                                     (collection/visible-collection-filter-clause
                                      (keyword (name table-name) "collection_id")
                                      {:include-archived-items include-archived-items}
@@ -144,6 +152,7 @@
                         {:select [:id]
                          :from   [table-name]
                          :where  [:and
+                                  worktree-clause
                                   [:in table-id-column
                                    ^:allow-subquery
                                    {:select [:metabase_table.id]

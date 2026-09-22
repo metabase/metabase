@@ -25,6 +25,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -195,12 +196,14 @@
   visibility_type :sensitive in the response."
   {:scope api-scope/data-app}
   [_route-params
-   _query-params
+   {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    query :- ::lib-be.schema/maybe-legacy-query]
+  (remote-sync/check-worktree-access! worktree-id)
   (queries/batch-fetch-query-metadata
    [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
-     {:include-sensitive-fields? include-sensitive-fields})))
+   (cond-> {:worktree-id worktree-id}
+     (some? (get-in query [:settings :include-sensitive-fields]))
+     (assoc :include-sensitive-fields? (get-in query [:settings :include-sensitive-fields])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
