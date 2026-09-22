@@ -1,0 +1,150 @@
+## Workspaces, take two: a named workspace an agent or a person authors inside, so one instance can
+## hold several versions of the same canonical table at once.
+##
+## `workspace_table_remapping` was introduced (20260908) keyed on `(db_id, from_schema, from_table)`,
+## which permits exactly ONE remapping per canonical table per database — the whole-instance
+## `workspaces-enabled` setting decided whether it applied. That is N=1 by construction: a second
+## agent remapping the same table has nowhere to put the row. Adding `workspace_id` and widening the
+## source constraint to include it is what makes N versions representable.
+##
+## A workspace spans databases: the remapping row keeps its own `db_id`, so one workspace can hold
+## remappings across several warehouses.
+##
+## The target-side constraint `(db_id, to_schema, to_table)` deliberately does NOT gain `workspace_id`.
+## `to_table` is a random UUID, so two canonical tables sharing one physical workspace table remains a
+## bug no matter which workspace produced them.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v64.workspace-1
+      author: bryan
+      comment: Create workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: A named authoring context; its table remappings isolate its transform output from production and from other workspaces
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Human-readable workspace name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this workspace was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.workspace-2
+      author: bryan
+      comment: Add foreign key on workspace(creator_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            ## No cascade: deleting a user must not silently destroy the workspaces they created
+            ## along with the remappings that point queries at real warehouse tables.
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v64.workspace-3
+      author: bryan
+      comment: Index on workspace.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v64.workspace-4
+      author: bryan
+      comment: Add workspace_id to workspace_table_remapping
+      ## Nullable: existing rows predate workspaces and belong to no workspace. Reads with no
+      ## workspace bound see canonical tables, so an unowned remapping is inert rather than wrong.
+      changes:
+        - addColumn:
+            tableName: workspace_table_remapping
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Workspace this remapping belongs to; NULL for rows predating workspaces
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.workspace-5
+      author: bryan
+      comment: Drop the single-workspace unique constraint on workspace_table_remapping (db_id, from_schema, from_table)
+      ## Dropped rather than edited: changeset v64.workspace-table-remapping-2 may already be applied,
+      ## and Liquibase changesets are immutable once run.
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+            columnNames: db_id, from_schema, from_table
+
+  - changeSet:
+      id: v64.workspace-6
+      author: bryan
+      comment: Add unique constraint on workspace_table_remapping (db_id, workspace_id, from_schema, from_table)
+      ## `db_id` stays the leading column so MySQL keeps reusing this index for the
+      ## fk_workspace_table_remapping_db_id foreign key, as the original changeset noted.
+      ## One canonical table may now be remapped once PER WORKSPACE instead of once per database.
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+            columnNames: db_id, workspace_id, from_schema, from_table
+
+  - changeSet:
+      id: v64.workspace-7
+      author: bryan
+      comment: Add foreign key on workspace_table_remapping(workspace_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_remapping
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_remapping_workspace_id
+            ## RESTRICT, deliberately not cascade. A remapping row is the only record that its
+            ## workspace table exists and what it stands for: cascading would delete the row and
+            ## leave the warehouse table behind, unreferenced and unnameable, accumulating in the
+            ## workspace schema forever. Deleting a workspace must therefore drop its tables first
+            ## — the order `transforms/execute.clj` already uses, dropping the target table before
+            ## calling `unmap-table!`. The constraint is the backstop that makes skipping that step
+            ## a loud error instead of silent orphaned tables.
+            ##
+            ## (The `db_id` FK on this table does cascade, which is right: when the Database itself
+            ## is gone its tables are moot.)
+            onDelete: RESTRICT

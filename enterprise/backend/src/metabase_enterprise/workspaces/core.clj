@@ -9,43 +9,62 @@
    [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.schema :as ws.schema]))
 
+;;; Every hook below takes the workspace from [[metabase.workspaces.core/*current-workspace-id*]] rather than as an
+;;; argument, so the OSS arities stay as they were and callers scope themselves with `with-workspace`.
+;;;
+;;; The write path (`remap-table!`) demands a workspace: materializing into the canonical table is the outcome
+;;; worth refusing. The read paths tolerate its absence and answer with the canonical table, which is what a
+;;; caller outside any workspace should see.
+
 (defenterprise-schema remap-table! :- ::ws.schema/table-info
-  "Record (or reuse) the remapping of the canonical table `table-name` in `schema` and return its workspace table."
+  "Record (or reuse) the current workspace's remapping of the canonical table `table-name` in `schema` and return its
+  workspace table. Throws when no workspace is in effect."
   :feature :workspaces
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- ::lib.schema.common/non-blank-string]
-  (ws.impl/remap-table! db-id schema table-name))
+  (ws.impl/remap-table! (workspaces/current-workspace-id-or-throw) db-id schema table-name))
 
 (defenterprise-schema unmap-table! :- :boolean
-  "Delete the remapping of the canonical table `table-name` in `schema`, returning whether there was one."
+  "Delete the current workspace's remapping of the canonical table `table-name` in `schema`, returning whether there
+  was one. False when no workspace is in effect: there is nothing to unmap."
   :feature :workspaces
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- ::lib.schema.common/non-blank-string]
-  (ws.impl/unmap-table! db-id schema table-name))
+  (if-let [workspace-id (workspaces/current-workspace-id)]
+    (ws.impl/unmap-table! workspace-id db-id schema table-name)
+    false))
 
 (defenterprise-schema workspace-table :- ::ws.schema/table-info
-  "The workspace table backing the canonical table `table-name` in `schema`, or that table itself."
+  "The current workspace's table backing the canonical table `table-name` in `schema`, or that table itself when
+  there is no remapping or no workspace in effect."
   :feature :workspaces
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- ::lib.schema.common/non-blank-string]
-  (ws.impl/workspace-table db-id schema table-name))
+  (if-let [workspace-id (workspaces/current-workspace-id)]
+    (ws.impl/workspace-table workspace-id db-id schema table-name)
+    {:schema schema, :name table-name}))
 
 (defenterprise-schema canonical-table :- ::ws.schema/table-info
-  "The canonical table backed by the workspace table `table-name` in `schema`, or that table itself."
+  "The canonical table backed by the workspace table `table-name` in `schema` in the current workspace, or that table
+  itself when it is not one or no workspace is in effect."
   :feature :workspaces
   [db-id      :- ::lib.schema.id/database
    schema     :- [:maybe :string]
    table-name :- ::lib.schema.common/non-blank-string]
-  (ws.impl/canonical-table db-id schema table-name))
+  (if-let [workspace-id (workspaces/current-workspace-id)]
+    (ws.impl/canonical-table workspace-id db-id schema table-name)
+    {:schema schema, :name table-name}))
 
 (defenterprise-schema table-remappings :- [:sequential ::ws.schema/workspace-table-remapping]
-  "Every remapping of the Database with `db-id`."
+  "Every remapping of the Database with `db-id` in the current workspace; empty when none is in effect."
   :feature :workspaces
   [db-id :- ::lib.schema.id/database]
-  (ws.impl/table-remappings db-id))
+  (if-let [workspace-id (workspaces/current-workspace-id)]
+    (ws.impl/table-remappings workspace-id db-id)
+    []))
 
 (defenterprise-schema enabled? :- :boolean
   "Whether workspaces are enabled on this instance."

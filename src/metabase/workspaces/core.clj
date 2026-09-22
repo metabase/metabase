@@ -13,6 +13,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.workspaces.schema :as ws.schema]))
 
 (def ^:dynamic *allow-table-remapping*
@@ -30,6 +31,42 @@
   "Execute `body` with [[*allow-table-remapping*]] set to `false`, so compiled queries name the canonical tables."
   [& body]
   `(binding [*allow-table-remapping* false]
+     ~@body))
+
+(def ^:dynamic *current-workspace-id*
+  "The Workspace whose table remappings are in force, or nil for none.
+
+  One instance holds many workspaces, each with its own remapping of the same canonical table, so \"which
+  workspace\" is a property of the caller rather than of the instance — hence a binding rather than a setting.
+  Bind it with [[with-workspace]].
+
+  Unbound (nil) means no remapping applies and queries read the canonical tables. That is the right default for
+  reads: someone who never asked for a workspace gets production, as they did before workspaces existed. It is NOT
+  a safe default for writes, so [[current-workspace-id-or-throw]] exists for the transform-execution path, where
+  silently writing to the canonical table is the damaging outcome."
+  nil)
+
+(defn current-workspace-id
+  "The Workspace whose remappings are in force, or nil for none."
+  []
+  *current-workspace-id*)
+
+(defn current-workspace-id-or-throw
+  "The Workspace whose remappings are in force. Throws when there is none.
+
+  For paths that MATERIALIZE data — running a transform — where falling back to the canonical table would
+  overwrite production output that dashboards read."
+  []
+  (or *current-workspace-id*
+      (throw (ex-info (tru "No workspace is in effect: this operation must run inside a workspace.")
+                      {:status-code 400}))))
+
+(defmacro with-workspace
+  "Execute `body` with the Workspace `workspace-id`'s table remappings in force. The query processor and transform
+  execution read the binding rather than taking it as an argument, so every call underneath is scoped without
+  threading an id through each one."
+  [workspace-id & body]
+  `(binding [*current-workspace-id* ~workspace-id]
      ~@body))
 
 (defenterprise-schema enabled? :- :boolean

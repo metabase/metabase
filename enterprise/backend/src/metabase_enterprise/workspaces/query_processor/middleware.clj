@@ -149,8 +149,11 @@
              (workspaces/enabled?))
     (throw (ex-info (tru "Database routing is not supported together with workspaces.")
                     {:type qp.error-type/qp, :database-id db-id})))
-  (if-let [remappings (when (workspaces/allow-table-remapping?)
-                        (ws.impl/remappings-for-db db-id))]
+  ;; No workspace in effect means no remapping: the query reads the canonical tables, as every query did before
+  ;; workspaces existed. Which workspace comes from the binding, so a query carries no workspace of its own.
+  (if-let [remappings (when-let [workspace-id (and (workspaces/allow-table-remapping?)
+                                                   (workspaces/current-workspace-id))]
+                        (ws.impl/remappings-for-db workspace-id db-id))]
     (let [schemas (into #{} (comp (filter (comp #{db-id} :db_id)) (map :schema)) (ws.impl/workspace-schemas))
           mp      (lib.metadata/transforming-metadata-provider
                    (table-transform remappings schemas)

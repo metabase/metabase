@@ -19,12 +19,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^{:arglists '([db-id])} cached-remappings-for-db
-  "The remappings of the Database with `db-id`, cached for a few seconds so the query processor does not hit the app
-  DB on every query. Writes on this instance clear it; other instances see them once the entry expires."
+(def ^:private ^{:arglists '([workspace-id db-id])} cached-remappings-for-db
+  "The remappings of the Database with `db-id` in the Workspace with `workspace-id`, cached for a few seconds so the
+  query processor does not hit the app DB on every query. Writes on this instance clear it; other instances see them
+  once the entry expires.
+
+  `workspace-id` is part of the cache key, not just the query. Keying on `db-id` alone would let a read in one
+  workspace serve another workspace's remappings from a warm entry — rows that look plausible and are wrong, which
+  is worse than an error."
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[db-id]] [(mdb/unique-identifier) db-id])}
-   (fn [db-id] (ws.db/remappings-for-db db-id))
+   ^{::memoize/args-fn (fn [[workspace-id db-id]] [(mdb/unique-identifier) workspace-id db-id])}
+   (fn [workspace-id db-id] (ws.db/remappings-for-db workspace-id db-id))
    :ttl/threshold 5000))
 
 (def ^:private ^{:arglists '([])} cached-workspace-schemas
@@ -56,10 +61,12 @@
   nil)
 
 (mu/defn remappings-for-db :- [:maybe [:sequential ::ws.schema/workspace-table-remapping]]
-  "The remappings of the Database with `db-id` while workspaces are enabled, otherwise nil."
-  [db-id :- ::lib.schema.id/database]
+  "The remappings of the Database with `db-id` in the Workspace with `workspace-id` while workspaces are enabled,
+  otherwise nil."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database]
   (when (ws.settings/workspaces-enabled)
-    (not-empty (cached-remappings-for-db db-id))))
+    (not-empty (cached-remappings-for-db workspace-id db-id))))
 
 (mu/defn- workspace-schema-for-database :- ::lib.schema.common/non-blank-string
   "The workspace schema of `database`. Throws unless it is set and usable."
@@ -85,14 +92,15 @@
   (str/replace (str (random-uuid)) "-" ""))
 
 (mu/defn- get-or-create-remapping! :- ::ws.schema/workspace-table-remapping
-  "The remapping of the canonical table, moved to `to-schema` if the workspace schema changed since it was created,
-  or a new one. Safe against a concurrent first run of the same target."
-  [db-id       :- ::lib.schema.id/database
-   from-schema :- [:maybe :string]
-   from-table  :- ::lib.schema.common/non-blank-string
-   to-schema   :- ::lib.schema.common/non-blank-string]
+  "The remapping of the canonical table in the Workspace with `workspace-id`, moved to `to-schema` if the workspace
+  schema changed since it was created, or a new one. Safe against a concurrent first run of the same target."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database
+   from-schema  :- [:maybe :string]
+   from-table   :- ::lib.schema.common/non-blank-string
+   to-schema    :- ::lib.schema.common/non-blank-string]
   (let [id (ws.db/update-or-insert-remapping!
-            db-id from-schema from-table
+            workspace-id db-id from-schema from-table
             (fn [existing]
               (cond
                 (nil? existing)                        {:to_schema to-schema, :to_table (random-table-name)}
@@ -101,43 +109,52 @@
     (ws.db/remapping id)))
 
 (mu/defn remap-table! :- ::ws.schema/table-info
-  "Record (or reuse) the remapping of the canonical table `table-name` in `schema` and return its workspace table."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- ::lib.schema.common/non-blank-string]
+  "Record (or reuse) the remapping of the canonical table `table-name` in `schema` for the Workspace with
+  `workspace-id`, and return its workspace table."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database
+   schema       :- [:maybe :string]
+   table-name   :- ::lib.schema.common/non-blank-string]
   (let [database  (ws.db/database db-id)
         to-schema (workspace-schema-for-database database)
-        {:keys [to_schema to_table]} (get-or-create-remapping! db-id schema table-name to-schema)]
+        {:keys [to_schema to_table]} (get-or-create-remapping! workspace-id db-id schema table-name to-schema)]
     {:schema to_schema, :name to_table}))
 
 (mu/defn unmap-table! :- :boolean
-  "Delete the remapping of the canonical table `table-name` in `schema`, returning whether there was one."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- ::lib.schema.common/non-blank-string]
-  (let [deleted (ws.db/delete-remapping-for-source! db-id schema table-name)]
+  "Delete the Workspace with `workspace-id`'s remapping of the canonical table `table-name` in `schema`, returning
+  whether there was one."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database
+   schema       :- [:maybe :string]
+   table-name   :- ::lib.schema.common/non-blank-string]
+  (let [deleted (ws.db/delete-remapping-for-source! workspace-id db-id schema table-name)]
     (clear-remappings-cache!)
     (pos? deleted)))
 
 (mu/defn workspace-table :- ::ws.schema/table-info
-  "The workspace table backing the canonical table `table-name` in `schema`, or that table itself."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- ::lib.schema.common/non-blank-string]
-  (if-let [{:keys [to_schema to_table]} (ws.db/remapping-for-source db-id schema table-name)]
+  "The Workspace with `workspace-id`'s workspace table backing the canonical table `table-name` in `schema`, or that
+  table itself when it has no remapping there."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database
+   schema       :- [:maybe :string]
+   table-name   :- ::lib.schema.common/non-blank-string]
+  (if-let [{:keys [to_schema to_table]} (ws.db/remapping-for-source workspace-id db-id schema table-name)]
     {:schema to_schema, :name to_table}
     {:schema schema, :name table-name}))
 
 (mu/defn canonical-table :- ::ws.schema/table-info
-  "The canonical table backed by the workspace table `table-name` in `schema`, or that table itself."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- ::lib.schema.common/non-blank-string]
-  (if-let [{:keys [from_schema from_table]} (ws.db/remapping-for-target db-id schema table-name)]
+  "The canonical table backed by the workspace table `table-name` in `schema` in the Workspace with `workspace-id`,
+  or that table itself when it is not one."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database
+   schema       :- [:maybe :string]
+   table-name   :- ::lib.schema.common/non-blank-string]
+  (if-let [{:keys [from_schema from_table]} (ws.db/remapping-for-target workspace-id db-id schema table-name)]
     {:schema from_schema, :name from_table}
     {:schema schema, :name table-name}))
 
 (mu/defn table-remappings :- [:sequential ::ws.schema/workspace-table-remapping]
-  "Every remapping of the Database with `db-id`."
-  [db-id :- ::lib.schema.id/database]
-  (ws.db/remappings-for-db db-id))
+  "Every remapping of the Database with `db-id` in the Workspace with `workspace-id`."
+  [workspace-id :- ::ws.schema/workspace-id
+   db-id        :- ::lib.schema.id/database]
+  (ws.db/remappings-for-db workspace-id db-id))

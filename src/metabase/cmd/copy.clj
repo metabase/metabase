@@ -174,6 +174,9 @@
       :model/Tenant
       :model/ConnectionImpersonation
       :model/CustomVizPlugin
+      ;; Workspace before WorkspaceTableRemapping: the remapping rows carry a workspace_id FK, and
+      ;; this order is the INSERT order.
+      :model/Workspace
       :model/WorkspaceTableRemapping])))
 
 (defn- objects->columns+values
