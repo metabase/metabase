@@ -15,6 +15,17 @@ const OUTPUT_FILE = path.join(
 
 const BUN_MODULES_DIR = path.join(__dirname, "..", "node_modules", ".bun");
 
+// Bundled web fonts. They are not npm packages, but they ship inside the product,
+// so their licences belong in the same disclaimer.
+const FONTS_DIR = path.join(
+  __dirname,
+  "..",
+  "resources",
+  "frontend_client",
+  "app",
+  "fonts",
+);
+
 const LICENSE_FILE_NAMES = [
   "LICENSE",
   "LICENSE.md",
@@ -28,6 +39,9 @@ const LICENSE_FILE_NAMES = [
   "COPYING",
   "COPYING.md",
   "COPYING.txt",
+  // SIL Open Font Licence, how most of the bundled font families ship it
+  "OFL.txt",
+  "OFL.md",
 ];
 
 function normalizeRepoUrl(url) {
@@ -90,6 +104,24 @@ function scanBunPackages(bunModulesDir) {
   }
 
   return packages;
+}
+
+/**
+ * One entry per bundled font family, shaped like a scanned package so the same
+ * grouping and rendering applies. `Noto_Sans` is reported as `Noto Sans`.
+ */
+function scanBundledFonts(fontsDir) {
+  if (!fs.existsSync(fontsDir)) {
+    return [];
+  }
+  return fs
+    .readdirSync(fontsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => ({
+      name: entry.name.replace(/_/g, " "),
+      path: path.join(fontsDir, entry.name),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function findLicenseFile(packagePath) {
@@ -197,23 +229,41 @@ if (require.main === module) {
   const packages = scanBunPackages(BUN_MODULES_DIR);
   console.log(`Found ${packages.length} packages`);
 
-  const output = generateDisclaimerText(packages, (pkg) => {
-    const pkgJson = getPackageInfo(pkg.path) || {};
-    const licenseFile = findLicenseFile(pkg.path);
-    // Fall back to license field from package.json if no LICENSE file found
-    const licenseText = licenseFile || pkgJson.license || undefined;
+  const fonts = scanBundledFonts(FONTS_DIR);
+  const licensedFonts = fonts.filter((font) => findLicenseFile(font.path));
+  const unlicensedFonts = fonts.filter((font) => !findLicenseFile(font.path));
+  console.log(
+    `Found ${fonts.length} bundled font families, ${licensedFonts.length} with a licence file`,
+  );
+  if (unlicensedFonts.length > 0) {
+    // Named rather than guessed: recording a licence we have not been given
+    // would be worse than recording that it is missing.
+    console.warn(
+      `WARNING: no licence file for ${unlicensedFonts.length} bundled font families, ` +
+        `so they are absent from the disclaimer: ${unlicensedFonts.map((f) => f.name).join(", ")}`,
+    );
+  }
 
-    const repo = pkgJson.repository;
-    const repoUrl =
-      (typeof repo === "string" ? repo : repo?.url) ||
-      pkgJson.homepage ||
-      undefined;
-    return {
-      licenseText,
-      repoUrl: repoUrl,
-      homepage: pkgJson.homepage,
-    };
-  });
+  const output = generateDisclaimerText(
+    [...packages, ...licensedFonts],
+    (pkg) => {
+      const pkgJson = getPackageInfo(pkg.path) || {};
+      const licenseFile = findLicenseFile(pkg.path);
+      // Fall back to license field from package.json if no LICENSE file found
+      const licenseText = licenseFile || pkgJson.license || undefined;
+
+      const repo = pkgJson.repository;
+      const repoUrl =
+        (typeof repo === "string" ? repo : repo?.url) ||
+        pkgJson.homepage ||
+        undefined;
+      return {
+        licenseText,
+        repoUrl: repoUrl,
+        homepage: pkgJson.homepage,
+      };
+    },
+  );
 
   fs.writeFileSync(outputPath, output);
   console.log(`Generated ${outputPath}`);
