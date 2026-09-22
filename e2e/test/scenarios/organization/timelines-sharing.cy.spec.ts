@@ -84,6 +84,9 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     cy.findByTestId("timeline-event-popover").should("contain", "RC1");
 
     cy.log("a grouped chip lists every event in the group");
+    // park the pointer away from the chip so nothing hovers it after the reload
+    cy.findByTestId("embed-frame-header").realHover();
+    cy.findByTestId("timeline-event-popover").should("not.exist");
     cy.signInAsAdmin();
     cy.get<TimelineId>("@timelineId").then((id) =>
       H.createTimelineEvent({

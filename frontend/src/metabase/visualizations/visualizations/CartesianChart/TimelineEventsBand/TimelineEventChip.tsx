@@ -191,6 +191,7 @@ export const TimelineEventChip = ({
     <Popover
       opened={opened}
       onChange={setOpened}
+      onDismiss={() => setOpenedByKeyboard(false)}
       position="top"
       offset={POPOVER_OFFSET}
       shadow="sm"
