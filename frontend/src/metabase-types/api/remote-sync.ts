@@ -59,6 +59,7 @@ export type ExportChangesRequest = {
   message?: string;
   branch?: string;
   force?: boolean;
+  worktree_id?: number;
   /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
 };
@@ -101,6 +102,7 @@ export type ExportPreflightResponse = {
 export type ImportFromBranchRequest = {
   branch: string;
   force?: boolean;
+  worktree_id?: number;
   /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
   merge?: boolean;
   /**

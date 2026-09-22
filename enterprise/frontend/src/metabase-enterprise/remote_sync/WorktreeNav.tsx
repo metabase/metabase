@@ -13,12 +13,14 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import type { WorktreeNavProps } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
+import { Group } from "metabase/ui";
 import {
   useGetRemoteSyncChangesQuery,
   useListWorktreesQuery,
 } from "metabase-enterprise/api";
 import type { Worktree } from "metabase-types/api";
 
+import { WorktreeMenu } from "./WorktreeMenu";
 import { CollectionSyncStatusBadge } from "./components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 
 type WorktreeBranchProps = {
@@ -43,14 +45,19 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
     children: buildCollectionTree(collections),
   };
 
-  const renderDirtyBadge = (item: ITreeNodeItem) => {
-    if (changes == null) {
-      return undefined;
+  const hasChanges = changes != null && changes.dirty.length > 0;
+
+  const renderRightSection = (item: ITreeNodeItem) => {
+    if (item.id === branch.id) {
+      return (
+        <Group gap="xs" wrap="nowrap">
+          {hasChanges && <CollectionSyncStatusBadge />}
+          <WorktreeMenu worktree={worktree} hasChanges={hasChanges} />
+        </Group>
+      );
     }
     const isDirty =
-      item.id === branch.id
-        ? changes.dirty.length > 0
-        : changes.changedCollections[Number(item.id)];
+      changes != null && changes.changedCollections[Number(item.id)];
     return isDirty ? <CollectionSyncStatusBadge /> : undefined;
   };
 
@@ -61,7 +68,7 @@ function WorktreeBranch({ worktree, onItemSelect }: WorktreeBranchProps) {
       TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label={worktree.branch}
-      rightSection={renderDirtyBadge}
+      rightSection={renderRightSection}
     />
   );
 }
