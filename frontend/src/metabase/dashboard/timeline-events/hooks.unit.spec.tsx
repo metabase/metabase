@@ -41,10 +41,9 @@ import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-ev
 import { registerVisualizations } from "metabase/visualizations/register";
 import { getComputedSettingsForSeries } from "metabase/viz-core";
 import type {
-  CardId,
+  DashCardDataMap,
   DashboardCard,
   DashboardTabId,
-  Dataset,
   QuestionDashboardCard,
   Timeline,
   TimelineEvent,
@@ -162,7 +161,7 @@ function setup({
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
   dashcards?: QuestionDashboardCard[];
-  datasets?: Record<CardId, Dataset>;
+  datasets?: DashCardDataMap[number];
   timelines?: Timeline[];
   seedTimelines?: boolean;
 } = {}) {
@@ -372,27 +371,39 @@ describe("dashboard timeline events", () => {
     ).toEqual([SAME_RANGE_EVENT.id]);
   });
 
-  it("lists an event that only the chart's added series reaches", async () => {
+  const setupSeriesChart = ({ withSeries }: { withSeries: boolean }) => {
     const seriesCard = createMockCard({ id: 42, display: "line" });
-    const dashcards = [
-      createMockDashboardCard({
-        id: DASHCARD_ID,
-        dashboard_id: DASHBOARD_ID,
-        card: createMockCard({
-          display: "line",
-          visualization_settings: EVENTS_RECORDED,
-        }),
-        series: [seriesCard],
-      }),
-    ];
     setup({
-      dashcards,
+      dashcards: [
+        createMockDashboardCard({
+          id: DASHCARD_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: createMockCard({
+            display: "line",
+            visualization_settings: EVENTS_RECORDED,
+          }),
+          series: withSeries ? [seriesCard] : [],
+        }),
+      ],
       datasets: { [seriesCard.id]: LATER_DATASET },
       timelines: [createMockTimeline({ ...TIMELINE, events: [LATER_EVENT] })],
       withSidebar: true,
     });
+  };
+
+  it("lists an event that only the chart's added series reaches", async () => {
+    setupSeriesChart({ withSeries: true });
 
     expect(await screen.findByText(LATER_EVENT.name)).toBeInTheDocument();
+  });
+
+  it("does not list that event when the chart has no series", async () => {
+    setupSeriesChart({ withSeries: false });
+
+    expect(
+      await screen.findByText("Add context to your time series charts"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(LATER_EVENT.name)).not.toBeInTheDocument();
   });
 
   it.each(["metric", "model"] as const)(

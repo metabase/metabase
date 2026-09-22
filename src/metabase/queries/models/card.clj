@@ -24,6 +24,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -785,18 +786,16 @@
     (if (sequential? ids) (filter pos-int? ids) [])))
 
 (defn- newly-revealed-timeline-ids
-  "The ids of the selected timelines whose events `visibility` shows but `previous-visibility` did not. A timeline the
-  card already showed stays visible whatever the user saves, so only the difference needs a read check."
   [visibility previous-visibility reveals-all?]
   (let [selected-ids (set (:timeline.selected_timeline_ids visibility))]
     (if reveals-all?
       selected-ids
       (let [added-ids    (set/difference selected-ids (set (:timeline.selected_timeline_ids previous-visibility)))
             hidden-ids   (set (excluded-event-ids visibility))
-            unhidden-ids (into #{} (remove hidden-ids) (excluded-event-ids previous-visibility))]
+            unhidden-ids (into [] (remove hidden-ids) (excluded-event-ids previous-visibility))]
         (into added-ids
               (filter selected-ids)
-              (queries.db/timeline-ids-of-events unhidden-ids))))))
+              (models.db/timeline-ids-of-events unhidden-ids))))))
 
 (defn- check-timeline-visibility-permissions!
   [card previous-card]
@@ -806,11 +805,10 @@
                                :timeline_events.enabled]
           visibility          (select-keys (:visualization_settings card) visibility-keys)
           previous-visibility (select-keys (:visualization_settings previous-card) visibility-keys)
-          ;; Turning events back on, or switching to a display that draws them, reveals the whole selection at once.
-          reveals-all?        (and (events-enabled? visibility)
-                                   (or (not (events-enabled? previous-visibility))
-                                       (and (timeline-events-supported-display? (:display card))
-                                            (not (timeline-events-supported-display? (:display previous-card))))))]
+          draws-events?       (fn [visibility display]
+                                (and (events-enabled? visibility) (timeline-events-supported-display? display)))
+          reveals-all?        (and (draws-events? visibility (:display card))
+                                   (not (draws-events? previous-visibility (:display previous-card))))]
       (when (or reveals-all? (not= visibility previous-visibility))
         (when-some [excluded-ids (:timeline.excluded_timeline_event_ids visibility)]
           (api/check-400 (and (sequential? excluded-ids) (every? pos-int? excluded-ids))
@@ -818,10 +816,11 @@
         (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
           (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
                          (tru "Selected timeline IDs must be a sequence of positive integers."))
-          ;; Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
-          (when-let [revealed-ids (not-empty (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
-            (doseq [timeline (queries.db/timelines revealed-ids)]
-              (api/read-check timeline))))))))
+          ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
+          ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+          (doseq [timeline (queries.db/timelines
+                            (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+            (api/read-check timeline)))))))
 
 (defn- dashboard-exposed-timeline-ids
   "The ids of the timelines whose events `card` shows when it is on a dashboard."
@@ -829,7 +828,7 @@
   ;; Archived cards count too: archiving is undone by a plain `archived: false`, which runs no timeline check.
   (let [timeline-ids (:timeline.selected_timeline_ids settings)]
     (when (and (timeline-events-supported-display? display)
-               (not (false? (:timeline_events.enabled settings)))
+               (events-enabled? settings)
                (sequential? timeline-ids))
       (filter pos-int? timeline-ids))))
 

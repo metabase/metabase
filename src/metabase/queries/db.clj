@@ -67,13 +67,6 @@
   [timeline-ids :- [:set ms/PositiveInt]]
   (t2/select :model/Timeline :id [:in timeline-ids]))
 
-(mu/defn timeline-ids-of-events :- [:set ms/PositiveInt]
-  "The ids of the Timelines the TimelineEvents with `event-ids` belong to."
-  [event-ids :- [:set ms/PositiveInt]]
-  (or (when (seq event-ids)
-        (t2/select-fn-set :timeline_id :model/TimelineEvent :id [:in event-ids]))
-      #{}))
-
 (mu/defn card-query-info
   "The query, type, result metadata, and schema of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]

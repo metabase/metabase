@@ -1831,11 +1831,27 @@
               {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled false}
               {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]]]
       (testing description
-        (mt/with-temp [:model/Card card {:visualization_settings before}]
+        (mt/with-temp [:model/Card card {:display :line :visualization_settings before}]
           (mt/with-test-user :rasta
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
                                   (t2/update! :model/Card (:id card) {:visualization_settings after}))))
           (is (= before (t2/select-one-fn :visualization_settings :model/Card (:id card)))))))))
+
+(deftest card-timeline-visibility-on-a-display-without-events-test
+  (testing "a display that cannot draw events shows nothing, so its visibility settings need no timeline access"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {:display                :table
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]
+                                                              :timeline_events.enabled        false}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-test-user :rasta
+        (let [settings {:timeline.selected_timeline_ids [(:id timeline)] :timeline_events.enabled true}]
+          (t2/update! :model/Card (:id card) {:visualization_settings settings})
+          (is (= settings (t2/select-one-fn :visualization_settings :model/Card (:id card)))))
+        (testing "switching to a display that draws them is still checked"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
+                                (t2/update! :model/Card (:id card) {:display :line}))))))))
 
 (deftest partially-readable-card-timeline-selection-test
   (testing "on a card that also selects a timeline the user cannot read"
@@ -1854,30 +1870,30 @@
                                        :timeline.excluded_timeline_event_ids []}
                                       overrides))
             ;; no bound user, so this restores the starting point without a permission check
-            reset!           #(t2/update! :model/Card (:id card) {:visualization_settings (settings)})
+            restore!         #(t2/update! :model/Card (:id card) {:visualization_settings (settings)})
             update-settings! (fn [settings]
                                (mt/with-test-user :rasta
                                  (t2/update! :model/Card (:id card) {:visualization_settings settings}))
                                (t2/select-one-fn :visualization_settings :model/Card (:id card)))]
         (testing "an event of the readable timeline can be hidden and shown again"
-          (reset!)
+          (restore!)
           (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id readable-event)])]
             (is (= hidden (update-settings! hidden)))
             (is (= (settings) (update-settings! (settings))))))
         (testing "an event of the unreadable timeline can be hidden but not shown again"
-          (reset!)
+          (restore!)
           (let [hidden (settings :timeline.excluded_timeline_event_ids [(:id private-event)])]
             (is (= hidden (update-settings! hidden)))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
                                   (update-settings! (settings))))
             (is (= hidden (t2/select-one-fn :visualization_settings :model/Card (:id card))))))
         (testing "the readable timeline can be deselected and selected again"
-          (reset!)
+          (restore!)
           (let [deselected (settings :timeline.selected_timeline_ids [(:id private-timeline)])]
             (is (= deselected (update-settings! deselected)))
             (is (= (settings) (update-settings! (settings))))))
         (testing "another unreadable timeline cannot be selected"
-          (reset!)
+          (restore!)
           (mt/with-temp [:model/Timeline other-private {:collection_id (:id restricted)}]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions"
                                   (update-settings!
