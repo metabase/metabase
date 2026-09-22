@@ -16,6 +16,11 @@ export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
 
 export type { SdkIframeEmbedSetupExperience } from "metabase/plugins/oss/embedding-iframe-sdk-setup";
 
+export type {
+  GuestTokenProvider,
+  GuestTokenProviderResponse,
+} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
   | "select-embed-options"
