@@ -27,6 +27,11 @@ const GOAL_LINE_SETTINGS: VisualizationSettings = {
 
 const REFERENCED_GOAL = { type: "card", id: 9, column: "goal" } as const;
 
+const REFERENCED_GOAL_SETTINGS: VisualizationSettings = {
+  ...GOAL_LINE_SETTINGS,
+  "graph.goal_value": REFERENCED_GOAL,
+};
+
 const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("LINE_CHART_DEFINITION", () => {
@@ -42,10 +47,7 @@ describe("LINE_CHART_DEFINITION", () => {
 
     it("accepts a goal reference that is still resolving", () => {
       expect(() =>
-        checkRenderable(createSeries(), {
-          ...GOAL_LINE_SETTINGS,
-          "graph.goal_value": REFERENCED_GOAL,
-        }),
+        checkRenderable(createSeries(), REFERENCED_GOAL_SETTINGS),
       ).not.toThrow();
     });
 
@@ -65,10 +67,7 @@ describe("LINE_CHART_DEFINITION", () => {
       });
 
       expect(() =>
-        checkRenderable(series, {
-          ...GOAL_LINE_SETTINGS,
-          "graph.goal_value": REFERENCED_GOAL,
-        }),
+        checkRenderable(series, REFERENCED_GOAL_SETTINGS),
       ).not.toThrow();
     });
 
@@ -79,12 +78,9 @@ describe("LINE_CHART_DEFINITION", () => {
         },
       });
 
-      expect(() =>
-        checkRenderable(series, {
-          ...GOAL_LINE_SETTINGS,
-          "graph.goal_value": REFERENCED_GOAL,
-        }),
-      ).toThrow(GOAL_ERROR);
+      expect(() => checkRenderable(series, REFERENCED_GOAL_SETTINGS)).toThrow(
+        GOAL_ERROR,
+      );
     });
 
     it("refuses to render when the referenced value is not a number", () => {
@@ -102,12 +98,9 @@ describe("LINE_CHART_DEFINITION", () => {
         },
       });
 
-      expect(() =>
-        checkRenderable(series, {
-          ...GOAL_LINE_SETTINGS,
-          "graph.goal_value": REFERENCED_GOAL,
-        }),
-      ).toThrow(GOAL_ERROR);
+      expect(() => checkRenderable(series, REFERENCED_GOAL_SETTINGS)).toThrow(
+        GOAL_ERROR,
+      );
     });
 
     it("reads the raw series when given a transformed one", () => {
@@ -119,10 +112,7 @@ describe("LINE_CHART_DEFINITION", () => {
       const transformed = Object.assign(createSeries(), { _raw: rawSeries });
 
       expect(() =>
-        checkRenderable(transformed, {
-          ...GOAL_LINE_SETTINGS,
-          "graph.goal_value": REFERENCED_GOAL,
-        }),
+        checkRenderable(transformed, REFERENCED_GOAL_SETTINGS),
       ).toThrow(GOAL_ERROR);
     });
   });
