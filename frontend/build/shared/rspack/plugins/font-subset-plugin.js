@@ -26,7 +26,7 @@ const MIN_USEFUL_CHUNK_BYTES = 3000;
  * unchanged because the browser fetches the second chunk on demand.
  *
  * Subsetting a face costs around 100ms, so chunks are cached on disk under the
- * hash of their source. A cold build pays about ten seconds, later builds
+ * hash of their source. A cold build pays about sixteen seconds, later builds
  * nothing.
  */
 class FontSubsetPlugin {
@@ -98,7 +98,24 @@ class FontSubsetPlugin {
 
   async chunksFor(rel, subsetFont) {
     const buf = fs.readFileSync(path.join(this.fontsDir, rel));
-    const key = crypto.createHash("sha1").update(buf).digest("hex").slice(0, 12);
+    // A face may ship a wider companion under `full/`, covering scripts the web
+    // file omits. Lato does: the shipped file is a lean latin subset, so without
+    // this the default font cannot render Cyrillic at all. The latin chunk still
+    // comes from the lean file, so the critical path is unchanged, and the wider
+    // glyphs only arrive when a page needs them.
+    const fullPath = path.join(
+      this.fontsDir,
+      path.dirname(rel),
+      "full",
+      `${path.basename(rel, ".woff2")}.ttf`,
+    );
+    const restBuf = fs.existsSync(fullPath) ? fs.readFileSync(fullPath) : buf;
+    const key = crypto
+      .createHash("sha1")
+      .update(buf)
+      .update(restBuf)
+      .digest("hex")
+      .slice(0, 12);
     const dir = path.dirname(rel);
     fs.mkdirSync(path.join(this.outputDir, dir), { recursive: true });
 
@@ -111,7 +128,10 @@ class FontSubsetPlugin {
       const chunkRel = path.join(dir, `${base}.${key}.${name}.woff2`);
       const chunkPath = path.join(this.outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
-        const subset = await subsetFont(buf, characters, { targetFormat: "woff2" });
+        const from = name === "rest" ? restBuf : buf;
+        const subset = await subsetFont(from, characters, {
+          targetFormat: "woff2",
+        });
         if (name === "rest" && subset.length < MIN_USEFUL_CHUNK_BYTES) {
           made.rest = undefined;
           continue;
