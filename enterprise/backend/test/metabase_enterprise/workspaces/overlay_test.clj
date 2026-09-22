@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase.test :as mt]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (def ^:private workspace-schema "ws_overlay")
@@ -26,17 +27,20 @@
   that -- as sync leaves it -- has a Table row of its own."
   [f]
   (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
-    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
-      (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id       (mt/id)
-                                                       :from_schema schema
-                                                       :from_table  name
-                                                       :to_schema   workspace-schema
-                                                       :to_table    workspace-table}
-                     :model/Table                   _ {:db_id  (mt/id)
-                                                       :schema workspace-schema
-                                                       :name   workspace-table}]
-        (#'ws.impl/clear-remappings-cache!)
-        (f [schema name])))))
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-overlay", :creator_id (mt/user->id :crowberto)}]
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+        (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                         :workspace_id ws-id
+                                                         :from_schema  schema
+                                                         :from_table   name
+                                                         :to_schema    workspace-schema
+                                                         :to_table     workspace-table}
+                       :model/Table                   _ {:db_id  (mt/id)
+                                                         :schema workspace-schema
+                                                         :name   workspace-table}]
+          (#'ws.impl/clear-remappings-cache!)
+          (workspaces/with-workspace ws-id
+            (f [schema name])))))))
 
 (deftest workspace-table-stands-where-the-canonical-one-would-test
   (testing "with workspaces on, the workspace table is what a reader sees, in the canonical table's place and under

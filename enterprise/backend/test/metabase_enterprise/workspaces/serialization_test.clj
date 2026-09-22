@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (def ^:private workspace-schema "ws_serdes")
@@ -13,20 +14,23 @@
 
 (defn- do-with-workspace-orders!
   "Calls `f` with the canonical `[schema name]` of the orders table and the id of the workspace table standing in
-  for it."
+  for it, with that workspace bound so the serdes hooks resolve its remapping."
   [f]
   (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
-    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
-      (mt/with-temp [:model/WorkspaceTableRemapping _        {:db_id       (mt/id)
-                                                              :from_schema schema
-                                                              :from_table  name
-                                                              :to_schema   workspace-schema
-                                                              :to_table    workspace-table}
-                     :model/Table                   ws-table {:db_id  (mt/id)
-                                                              :schema workspace-schema
-                                                              :name   workspace-table}]
-        (#'ws.impl/clear-remappings-cache!)
-        (f [schema name] (:id ws-table))))))
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-serdes", :creator_id (mt/user->id :crowberto)}]
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+        (mt/with-temp [:model/WorkspaceTableRemapping _        {:db_id        (mt/id)
+                                                                :workspace_id ws-id
+                                                                :from_schema  schema
+                                                                :from_table   name
+                                                                :to_schema    workspace-schema
+                                                                :to_table     workspace-table}
+                       :model/Table                   ws-table {:db_id  (mt/id)
+                                                                :schema workspace-schema
+                                                                :name   workspace-table}]
+          (#'ws.impl/clear-remappings-cache!)
+          (workspaces/with-workspace ws-id
+            (f [schema name] (:id ws-table))))))))
 
 (deftest workspace-table-exports-as-the-canonical-table-test
   (testing "a workspace table travels as the canonical table it stands in for, so content referencing it loads
