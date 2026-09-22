@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 import { useMount } from "react-use";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks";
@@ -26,6 +26,7 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
+  SET_EDITING_DASHBOARD,
   openEventsSidebar,
   removeCardFromDashboard,
   selectTimelineEvents,
@@ -42,6 +43,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import { getComputedSettingsForSeries } from "metabase/viz-core";
 import type {
   DashCardDataMap,
+  DashCardId,
   DashboardCard,
   DashboardTabId,
   QuestionDashboardCard,
@@ -62,8 +64,14 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { useDashCardTimelineEvents } from "./hooks";
-import { getDashCardVisibleTimelineEventIds } from "./selectors";
+import {
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "./hooks";
+import {
+  getDashCardVisibleTimelineEventIds,
+  getIsDashCardTimelineEventsEnabled,
+} from "./selectors";
 
 registerVisualizations();
 
@@ -454,6 +462,31 @@ describe("dashboard timeline events", () => {
       expect(await screen.findByText(EVENT.name)).toBeInTheDocument();
     },
   );
+
+  it("re-reports a chart too small for events after a dashboard state reset", async () => {
+    // mirrors what the chart does: report its measured state whenever the reporter identity changes
+    const SmallChart = ({ dashcardId }: { dashcardId: DashCardId }) => {
+      const report = useReportDashCardTimelineEventsEnabled(dashcardId);
+      useEffect(() => report(false), [report]);
+      return null;
+    };
+    const { store } = renderWithProviders(
+      <MockDashboardContext dashboardId={DASHBOARD_ID} withTimelineEvents>
+        <SmallChart dashcardId={DASHCARD_ID} />
+      </MockDashboardContext>,
+      { storeInitialState: createMockState() },
+    );
+
+    const isEnabled = () =>
+      getIsDashCardTimelineEventsEnabled(store.getState(), DASHCARD_ID);
+    await waitFor(() => expect(isEnabled()).toBe(false));
+
+    act(() => {
+      store.dispatch({ type: SET_EDITING_DASHBOARD, payload: {} });
+    });
+
+    await waitFor(() => expect(isEnabled()).toBe(false));
+  });
 
   it("ignores a chart that is too small to show events", async () => {
     const question = createMockCard({
