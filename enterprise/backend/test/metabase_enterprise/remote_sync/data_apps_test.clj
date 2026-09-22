@@ -16,8 +16,8 @@
 (comment metabase-enterprise.data-apps.models.data-app/keep-me)
 
 (defn- import! [files]
-  ;; the import's data-app materialization is gated on :data-apps-preview; enable it so apps sync.
-  (mt/with-premium-features #{:data-apps-preview}
+  ;; the import's data-app materialization is gated on :data-apps; enable it so apps sync.
+  (mt/with-premium-features #{:data-apps}
     (let [source  (test-helpers/create-mock-source :initial-files files)
           task-id (t2/insert-returning-pk! :model/RemoteSyncTask
                                            {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
