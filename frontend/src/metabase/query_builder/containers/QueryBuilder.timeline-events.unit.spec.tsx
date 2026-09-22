@@ -146,7 +146,7 @@ describe("QueryBuilder > timeline events", () => {
     });
     expect(
       checkNotNull(getQuestion(store.getState())).settings(),
-    ).not.toHaveProperty("timeline.selected_timeline_ids");
+    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
   });
 
   it("records the collection's events when saving a brand new question", async () => {
@@ -226,6 +226,51 @@ describe("QueryBuilder > timeline events", () => {
       "timeline.selected_timeline_ids": [destinationTimeline.id],
     });
   });
+
+  it.each([
+    {
+      description: "the timelines have not loaded",
+      timelines: [],
+      collectionId: CARD.collection_id,
+    },
+    {
+      description: "the destination cannot be matched to a timeline",
+      timelines: [TIMELINE],
+      collectionId: "entity-id-string",
+    },
+  ])(
+    "records nothing rather than an empty selection when $description",
+    async ({ timelines, collectionId }) => {
+      setupCardCreateEndpoint();
+      fetchMock.get(
+        /\/api\/card\/\d+\/query_metadata/,
+        createMockCardQueryMetadata(),
+      );
+      const { store } = await setup({
+        card: createMockUnsavedCard({
+          dataset_query: CARD.dataset_query,
+          display: "line",
+        }),
+        timelines,
+      });
+
+      const question = checkNotNull(
+        getQuestion(store.getState()),
+      ).setCollectionId(collectionId);
+      await act(async () => {
+        await store.dispatch(apiCreateQuestion(question));
+      });
+
+      const body = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
+          ?.options.body,
+      );
+      const created: Card = JSON.parse(body.toString());
+      expect(created.visualization_settings).not.toHaveProperty([
+        "timeline.selected_timeline_ids",
+      ]);
+    },
+  );
 
   it("shows only the events a saved question recorded", async () => {
     const store = await setupWithTimelines({
@@ -363,8 +408,10 @@ describe("QueryBuilder > timeline events", () => {
     await saveQuestion();
 
     const settings = await getSavedSettings();
-    expect(settings).not.toHaveProperty("timeline.selected_timeline_ids");
-    expect(settings).not.toHaveProperty("timeline.excluded_timeline_event_ids");
+    expect(settings).not.toHaveProperty(["timeline.selected_timeline_ids"]);
+    expect(settings).not.toHaveProperty([
+      "timeline.excluded_timeline_event_ids",
+    ]);
     expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
@@ -393,7 +440,7 @@ describe("QueryBuilder > timeline events", () => {
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
     expect(
       checkNotNull(getQuestion(store.getState())).settings(),
-    ).not.toHaveProperty("timeline.selected_timeline_ids");
+    ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
     expect(getIsDirty(store.getState())).toBe(false);
   });
 
