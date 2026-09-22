@@ -10,6 +10,9 @@ const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
 // Bundled font sources. Deliberately outside resources/ so they are not packaged
 // into the jar twice: the build emits hashed copies into app/dist/fonts.
 const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
+// Written by FontSubsetPlugin before each compile: the per-range chunks and the
+// stylesheet that declares them.
+const GENERATED_FONTS_PATH = ROOT_PATH + "/target/font-subsets";
 const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
@@ -46,6 +49,7 @@ const RESOLVE_ALIASES = {
   locales: LOCALES_PATH,
   img: IMAGES_PATH,
   fonts: FONTS_PATH,
+  "generated-fonts": GENERATED_FONTS_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,
   "metabase-lib": LIB_SRC_PATH,
