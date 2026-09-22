@@ -70,7 +70,10 @@
      ~@body))
 
 (defenterprise-schema enabled? :- :boolean
-  "Whether workspaces are enabled on this instance."
+  "Whether a workspace is in force for this caller.
+
+  Not an instance-wide flag: an instance holds many workspaces at once, so what a caller needs to know is whether
+  *it* is in one. The token feature gates the instance; [[*current-workspace-id*]] answers per request."
   metabase-enterprise.workspaces.core
   []
   false)

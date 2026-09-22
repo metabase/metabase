@@ -12,14 +12,18 @@
     (thunk)))
 
 (deftest enabled?-test
-  (testing "workspaces-enabled is gated on the :workspaces token feature"
-    (mt/with-temporary-setting-values [workspaces-enabled true]
-      (testing "off without the token feature, even though the setting is on"
-        (mt/with-premium-features #{}
-          (is (false? (workspaces/enabled?)))))
-      (testing "on with both the setting and the token feature"
-        (mt/with-premium-features #{:workspaces}
-          (is (true? (workspaces/enabled?))))))))
+  (testing "enabled? asks whether a workspace is in force for this caller, not whether the instance has a flag set"
+    (mt/with-premium-features #{:workspaces}
+      (testing "false outside every workspace"
+        (is (false? (workspaces/enabled?))))
+      (testing "true inside one"
+        (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws", :creator_id (mt/user->id :crowberto)}]
+          (workspaces/with-workspace ws-id
+            (is (true? (workspaces/enabled?)))))))
+    (testing "and false without the token feature, whatever the binding says"
+      (mt/with-premium-features #{}
+        (workspaces/with-workspace 42
+          (is (false? (workspaces/enabled?))))))))
 
 (deftest remap-table!-test
   (mt/with-premium-features #{:workspaces}
@@ -80,26 +84,25 @@
     ;; workspace's read would hit the first's entry and return rows naming a table it does not own --
     ;; plausible-looking data that is wrong, rather than an error.
     (mt/with-premium-features #{:workspaces}
-      (mt/with-temporary-setting-values [workspaces-enabled true]
-        (mt/with-temp [:model/Workspace {ws-1 :id} {:name "ws-1", :creator_id (mt/user->id :crowberto)}
-                       :model/Workspace {ws-2 :id} {:name "ws-2", :creator_id (mt/user->id :crowberto)}]
-          (ws-schema-set!
-           (fn []
-             (try
-               (let [table-1 (ws.impl/remap-table! ws-1 (mt/id) nil "orders")]
-                 ;; warm ws-1's entry first, so a db-id-only key would already be populated
-                 (is (= 1 (count (ws.impl/remappings-for-db ws-1 (mt/id)))))
-                 (testing "ws-2 has no remappings even with ws-1's entry warm"
-                   (is (nil? (ws.impl/remappings-for-db ws-2 (mt/id)))))
-                 (let [table-2 (ws.impl/remap-table! ws-2 (mt/id) nil "orders")]
-                   (testing "each workspace reads back its own row"
-                     (is (= [(:name table-1)]
-                            (mapv :to_table (ws.impl/remappings-for-db ws-1 (mt/id)))))
-                     (is (= [(:name table-2)]
-                            (mapv :to_table (ws.impl/remappings-for-db ws-2 (mt/id))))))))
-               (finally
-                 (ws.impl/unmap-table! ws-1 (mt/id) nil "orders")
-                 (ws.impl/unmap-table! ws-2 (mt/id) nil "orders"))))))))))
+      (mt/with-temp [:model/Workspace {ws-1 :id} {:name "ws-1", :creator_id (mt/user->id :crowberto)}
+                     :model/Workspace {ws-2 :id} {:name "ws-2", :creator_id (mt/user->id :crowberto)}]
+        (ws-schema-set!
+         (fn []
+           (try
+             (let [table-1 (ws.impl/remap-table! ws-1 (mt/id) nil "orders")]
+               ;; warm ws-1's entry first, so a db-id-only key would already be populated
+               (is (= 1 (count (ws.impl/remappings-for-db ws-1 (mt/id)))))
+               (testing "ws-2 has no remappings even with ws-1's entry warm"
+                 (is (nil? (ws.impl/remappings-for-db ws-2 (mt/id)))))
+               (let [table-2 (ws.impl/remap-table! ws-2 (mt/id) nil "orders")]
+                 (testing "each workspace reads back its own row"
+                   (is (= [(:name table-1)]
+                          (mapv :to_table (ws.impl/remappings-for-db ws-1 (mt/id)))))
+                   (is (= [(:name table-2)]
+                          (mapv :to_table (ws.impl/remappings-for-db ws-2 (mt/id))))))))
+             (finally
+               (ws.impl/unmap-table! ws-1 (mt/id) nil "orders")
+               (ws.impl/unmap-table! ws-2 (mt/id) nil "orders")))))))))
 
 (deftest unmap-table!-test
   (testing "deletes the remapping"
@@ -137,12 +140,12 @@
        (fn []
          (try
            (ws.impl/remap-table! ws-id (mt/id) nil "orders")
-           (testing "nil while workspaces-enabled is false"
-             (mt/with-temporary-setting-values [workspaces-enabled false]
-               (is (nil? (ws.impl/remappings-for-db ws-id (mt/id))))))
-           (testing "the remapping rows while workspaces-enabled is true"
-             (mt/with-temporary-setting-values [workspaces-enabled true]
-               (is (= 1 (count (ws.impl/remappings-for-db ws-id (mt/id)))))))
+           (testing "the workspace's remapping rows"
+             (is (= 1 (count (ws.impl/remappings-for-db ws-id (mt/id))))))
+           (testing "and none for a workspace that has no remappings"
+             (mt/with-temp [:model/Workspace {other :id} {:name "other"
+                                                          :creator_id (mt/user->id :crowberto)}]
+               (is (nil? (ws.impl/remappings-for-db other (mt/id))))))
            (finally
              (ws.impl/unmap-table! ws-id (mt/id) nil "orders"))))))))
 

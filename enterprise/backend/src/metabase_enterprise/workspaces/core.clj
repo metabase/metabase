@@ -2,7 +2,6 @@
   "EE implementations of the workspace mode hooks declared in `metabase.workspaces.core`."
   (:require
    [metabase-enterprise.workspaces.impl :as ws.impl]
-   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise-schema]]
@@ -67,10 +66,13 @@
     []))
 
 (defenterprise-schema enabled? :- :boolean
-  "Whether workspaces are enabled on this instance."
+  "Whether a workspace is in force for this caller.
+
+  Not an instance-wide flag: an instance holds many workspaces at once, so what a caller needs to know is whether
+  *it* is in one. The token feature gates the instance; the binding answers per request."
   :feature :workspaces
   []
-  (boolean (ws.settings/workspaces-enabled)))
+  (some? (workspaces/current-workspace-id)))
 
 (defenterprise-schema workspace-schemas :- [:sequential [:map
                                                          [:db_id ::lib.schema.id/database]

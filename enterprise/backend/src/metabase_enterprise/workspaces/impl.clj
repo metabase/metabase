@@ -15,6 +15,7 @@
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.schema :as ws.schema]))
 
 (set! *warn-on-reflection* true)
@@ -48,11 +49,14 @@
 (mu/defn workspace-schemas :- [:sequential [:map
                                             [:db_id ::lib.schema.id/database]
                                             [:schema ::lib.schema.common/non-blank-string]]]
-  "Every `{:db_id, :schema}` transforms write their output into while workspaces are on, otherwise empty."
+  "Every `{:db_id, :schema}` transforms write their output into, whether or not a workspace is in force.
+
+  Deliberately NOT gated on the current workspace. These schemas are where runs write, so the overlay hides their
+  tables from anyone browsing a database -- a reader outside every workspace most of all, since they have no
+  remapping that would put one back under a canonical name. Gating this on the binding is how workspace tables
+  leak into an unbound read."
   []
-  (if (ws.settings/workspaces-enabled)
-    (cached-workspace-schemas)
-    []))
+  (cached-workspace-schemas))
 
 (mu/defn- clear-remappings-cache! :- :nil
   []
@@ -61,12 +65,13 @@
   nil)
 
 (mu/defn remappings-for-db :- [:maybe [:sequential ::ws.schema/workspace-table-remapping]]
-  "The remappings of the Database with `db-id` in the Workspace with `workspace-id` while workspaces are enabled,
-  otherwise nil."
+  "The remappings of the Database with `db-id` in the Workspace with `workspace-id`, or nil when it has none.
+
+  No gate beyond the argument: `workspace-id` is required, so a caller with no workspace has nothing to pass and
+  never reaches here."
   [workspace-id :- ::ws.schema/workspace-id
    db-id        :- ::lib.schema.id/database]
-  (when (ws.settings/workspaces-enabled)
-    (not-empty (cached-remappings-for-db workspace-id db-id))))
+  (not-empty (cached-remappings-for-db workspace-id db-id)))
 
 (mu/defn- workspace-schema-for-database :- ::lib.schema.common/non-blank-string
   "The workspace schema of `database`. Throws unless it is set and usable."

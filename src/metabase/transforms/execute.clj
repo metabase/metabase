@@ -12,18 +12,31 @@
 (set! *warn-on-reflection* true)
 
 (defn- remap-target
-  "Redirect `transform`'s target to its workspace table when workspaces are enabled, else unmap it; an incremental
-  transform whose target just moved back out of the workspace runs in full."
+  "Redirect `transform`'s target to the current workspace's table, or leave it alone outside one.
+
+  Unmapping is deliberately NOT implicit here, and it used to be. While an instance-wide setting said whether
+  workspaces were on, turning it off left this code able to find the remapping and delete it, so an incremental
+  transform whose target had just moved back out ran in full once. A workspace is now a property of the caller
+  rather than of the instance, so a run outside every workspace has no workspace to unmap *from*:
+  `unmap-table!` has nothing to look up and answers false. Finding the remapping anyway would mean searching
+  across workspaces, which is the cross-workspace resolution ENG-11025 exists to prevent.
+
+  Leaving a workspace is therefore explicit -- unmap the table, or delete the workspace, which refuses while its
+  remappings remain. A run outside a workspace writes where the transform is configured to, as it did before
+  workspaces existed.
+
+  Restoring the implicit behaviour would need a way to ask \"does this target have a remapping in ANY workspace\"
+  and a rule for which one wins. `ws.db/remapping-for-source` is scoped to one workspace precisely so that
+  question cannot be asked by accident."
   [transform]
-  (if-let [db-id (transforms-base.i/target-db-id transform)]
-    (let [{:keys [schema name]} (:target transform)]
-      (if (workspaces/enabled?)
-        (let [{:keys [schema name]} (workspaces/remap-table! db-id schema name)]
-          (update transform :target assoc :schema schema :name name))
-        (cond-> transform
-          (and (workspaces/unmap-table! db-id schema name)
-               (transforms-base.u/incremental-target? transform))
-          (assoc :full-incremental-run? true))))
+  (if (workspaces/enabled?)
+    (if-let [db-id (transforms-base.i/target-db-id transform)]
+      (let [{:keys [schema name]} (:target transform)
+            workspace-table       (workspaces/remap-table! db-id schema name)]
+        (update transform :target assoc
+                :schema (:schema workspace-table)
+                :name   (:name workspace-table)))
+      transform)
     transform))
 
 (defn delete-target-table!
