@@ -126,55 +126,6 @@ describe("scenarios > admin > settings", () => {
     H.restore(); // avoid leaving https site url
   });
 
-  it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
-    cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
-
-    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
-      semantic_type: null,
-    });
-
-    cy.visit("/admin/settings/localization");
-
-    cy.findByTestId("date_style-formatting-setting")
-      .findByDisplayValue("January 31, 2018")
-      .click({ force: true });
-
-    H.popover().findByText("2018/1/31").click({ force: true });
-    cy.wait("@saveFormatting");
-
-    cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
-      "2018/1/31",
-    );
-
-    cy.findByTestId("custom-formatting-setting")
-      .findByText("17:24 (24-hour clock)")
-      .click();
-    cy.wait("@saveFormatting");
-    cy.findByDisplayValue("HH:mm").should("be.checked");
-
-    H.openOrdersTable({ limit: 2 });
-
-    cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "Created At")
-      .and("contain", "2028/2/11, 21:40");
-
-    // Go back to the settings and reset the time formatting
-    cy.visit("/admin/settings/localization");
-
-    cy.findByTestId("custom-formatting-setting")
-      .findByText("5:24 PM (12-hour clock)")
-      .click();
-
-    cy.wait("@saveFormatting");
-    cy.findByDisplayValue("h:mm A").should("be.checked");
-
-    H.openOrdersTable({ limit: 2 });
-
-    cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
-  });
-
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
     // Set the semantic type of total to currency
     cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
@@ -286,7 +237,7 @@ describe("scenarios > admin > settings (EE)", () => {
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/license");
 
-    cy.findByTestId("admin-layout-content")
+    cy.findByLabelText("Navigation bar")
       .findByLabelText("store icon")
       .should("not.exist");
   });
@@ -770,11 +721,15 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("€10.00");
   });
 
-  it("should use fix up clj unit testsdate and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+  it("should apply date and time style settings to table cells and the date filter widget (metabase#11394, metabase#9151, metabase#12472)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
+
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
 
     cy.visit("/admin/settings/localization");
 
@@ -796,6 +751,19 @@ describe("scenarios > admin > localization", () => {
       cy.findByDisplayValue("HH:mm").should("be.checked");
     });
 
+    cy.log(
+      "Globalized date formats are applied to table cells (metabase#11394)",
+    );
+    H.openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.findAllByTestId("cell-data")
+      .should("contain", "Created At")
+      .and("contain", "2028/2/11, 21:40");
+
+    cy.log(
+      "Date and time styles are applied in the date filter widget (metabase#9151, metabase#12472)",
+    );
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
@@ -830,6 +798,20 @@ describe("scenarios > admin > localization", () => {
       cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
+
+    cy.log("Switching back to the 12-hour clock updates the formatting");
+    cy.visit("/admin/settings/localization");
+
+    cy.findByTestId("custom-formatting-setting").within(() => {
+      cy.findByText("5:24 PM (12-hour clock)").click();
+      cy.wait("@updateFormatting");
+      cy.findByDisplayValue("h:mm A").should("be.checked");
+    });
+
+    H.openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.findAllByTestId("cell-data").should("contain", "2028/2/11, 9:40 PM");
   });
 });
 
@@ -840,19 +822,23 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to load and save a custom map", () => {
+  it("should be able to load a custom map before a name is added, then save it (#14635)", () => {
     cy.visit("/admin/settings/maps");
     cy.button("Add a map").click();
-    cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
-      "Test Map",
-    );
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
+    cy.log("Loading works before a map name is entered (#14635)");
     cy.button("Load").click();
-    cy.wait("@getGeoJson");
+    cy.wait("@getGeoJson").then((interception) => {
+      expect(interception.response.statusCode).to.eq(200);
+    });
+
+    cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
+      "Test Map",
+    );
     cy.findByTestId("map-region-key-select").click();
     H.selectDropdown().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
@@ -861,23 +847,6 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");
       cy.contains("Test Map");
-    });
-  });
-
-  it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
-    cy.intercept("GET", "/api/geojson*").as("load");
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type(
-      "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
-    );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    cy.wait("@load").then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
     });
   });
 });

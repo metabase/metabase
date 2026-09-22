@@ -1,9 +1,6 @@
 const { H } = cy;
 
-import {
-  checkGroupConsistencyAfterDeletingMappings,
-  crudGroupMappingsWidget,
-} from "./shared/group-mappings-widget";
+import { checkGroupMappingsWidget } from "./shared/group-mappings-widget";
 import { getSamlCertificate, setupSaml } from "./shared/helpers";
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
@@ -16,7 +13,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
   });
 
-  it("should allow to save and enable saml", () => {
+  it("should allow to save and enable saml, then update its settings", () => {
     cy.visit("/admin/settings/authentication/saml");
 
     enterSamlSettings();
@@ -27,10 +24,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
 
     H.goToAuthOverviewPage();
     getSamlCard().findByText("Active").should("exist");
-  });
 
-  it("should allow to update saml settings", () => {
-    setupSaml();
+    cy.log("Update the existing settings");
     cy.visit("/admin/settings/authentication/saml");
 
     H.typeAndBlurUsingLabel(
@@ -98,12 +93,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       );
     });
 
-    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-      crudGroupMappingsWidget("saml");
-    });
-
-    it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
-      checkGroupConsistencyAfterDeletingMappings("saml");
+    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups, while keeping remaining mappings consistent", () => {
+      checkGroupMappingsWidget("saml");
     });
   });
 });

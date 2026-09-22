@@ -413,70 +413,86 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         );
       });
 
-      it("should immediately invalidate current LDAP sessions when enforcement is required", () => {
-        H.setupLdap();
-        signInWithLdap();
-        cy.findByTestId("greeting-message").should("be.visible");
-        H.openNavigationSidebar();
-        H.navigationSidebar()
-          .findByText("Your personal collection")
-          .should("be.visible");
+      it(
+        "should immediately invalidate current LDAP sessions when enforcement is required",
+        { tags: "@external" },
+        () => {
+          H.setupLdap();
+          signInWithLdap();
+          cy.findByTestId("greeting-message").should("be.visible");
+          H.openNavigationSidebar();
+          H.navigationSidebar()
+            .findByText("Your personal collection")
+            .should("be.visible");
 
-        cy.log("An admin turns enforcement on part-way through their session");
-        cy.task("requestAsAdmin", {
-          method: "PUT",
-          url: "/api/setting",
-          body: {
-            "mfa-enforcement": "required",
-            "mfa-requirement-deadline": null,
-          },
-        });
+          cy.log(
+            "An admin turns enforcement on part-way through their session",
+          );
+          cy.task("requestAsAdmin", {
+            method: "PUT",
+            url: "/api/setting",
+            body: {
+              "mfa-enforcement": "required",
+              "mfa-requirement-deadline": null,
+            },
+          });
 
-        cy.log("next api request should return unauthenticated");
-        H.navigationSidebar().findByText("Your personal collection").click();
+          cy.log("next api request should return unauthenticated");
+          H.navigationSidebar().findByText("Your personal collection").click();
 
-        cy.log("should be brought to login screen");
-        cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
-          "be.visible",
-        );
-      });
+          cy.log("should be brought to login screen");
+          cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
+            "be.visible",
+          );
+        },
+      );
 
-      it("should not invalidate sessions created via SAML, even when enforcement is required", () => {
-        H.setupSaml();
-        createSamlUser();
+      it(
+        "should not invalidate sessions created via SAML, even when enforcement is required",
+        { tags: "@external" },
+        () => {
+          H.setupSaml();
+          createSamlUser();
 
-        cy.signOut();
-        cy.visit("/auth/login");
-        cy.button("Sign in with SSO").click();
+          cy.signOut();
+          cy.visit("/auth/login");
+          cy.button("Sign in with SSO").click();
 
-        cy.log("The IdP takes over — any password works, the domain is fixed");
-        cy.get("#username").type(SAML_USER.username);
-        cy.get("#domain").select(SAML_USER.domain);
-        cy.get("#password").type("anything");
-        cy.get("button").click();
+          cy.log(
+            "The IdP takes over — any password works, the domain is fixed",
+          );
+          cy.get("#username").type(SAML_USER.username);
+          cy.get("#domain").select(SAML_USER.domain);
+          cy.get("#password").type("anything");
+          cy.get("button").click();
 
-        cy.log("Straight in: SSO providers are exempt from the MFA gate");
-        cy.findByTestId("greeting-message").should("be.visible");
+          cy.log("Straight in: SSO providers are exempt from the MFA gate");
+          cy.findByTestId("greeting-message").should("be.visible");
 
-        cy.log("An admin turns enforcement on part-way through their session");
-        cy.task("requestAsAdmin", {
-          method: "PUT",
-          url: "/api/setting",
-          body: {
-            "mfa-enforcement": "required",
-            "mfa-requirement-deadline": null,
-          },
-        });
+          cy.log(
+            "An admin turns enforcement on part-way through their session",
+          );
+          cy.task("requestAsAdmin", {
+            method: "PUT",
+            url: "/api/setting",
+            body: {
+              "mfa-enforcement": "required",
+              "mfa-requirement-deadline": null,
+            },
+          });
 
-        cy.log("The SAML session survives — the IdP owns MFA for those users");
-        H.navigationSidebar().findByText("Our analytics").click();
-        H.collectionTable().findByText("Orders, Count").click();
-        cy.location("pathname").should(
-          "contain",
-          `/question/${ORDERS_COUNT_QUESTION_ID}`,
-        );
-        cy.findByTestId("login-page").should("not.exist");
-      });
+          cy.log(
+            "The SAML session survives — the IdP owns MFA for those users",
+          );
+          H.navigationSidebar().findByText("Our analytics").click();
+          H.collectionTable().findByText("Orders, Count").click();
+          cy.location("pathname").should(
+            "contain",
+            `/question/${ORDERS_COUNT_QUESTION_ID}`,
+          );
+          cy.findByTestId("login-page").should("not.exist");
+        },
+      );
     });
 
     describe("login", () => {

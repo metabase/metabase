@@ -13,17 +13,6 @@ describe(
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should setup ldap (metabase#16173)", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      enterLdapSettings();
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Success").should("exist");
-    });
-
     it("should update ldap settings", () => {
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
@@ -73,22 +62,20 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should not reset previously populated fields when schema validation fails for just one of them", () => {
+    it("should not reset previously populated fields when schema or connection validation fails for just one of them (metabase#16226)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       enterLdapSettings();
+
+      cy.log("Schema validation error");
       enterLdapPort("0");
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
       cy.findAllByText("nullable integer greater than 0").should("exist");
       cy.findByDisplayValue("localhost").should("exist");
-    });
 
-    it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      enterLdapSettings();
+      cy.log("Connection validation error");
       enterLdapPort("1");
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
@@ -97,7 +84,7 @@ describe(
       cy.findByDisplayValue("localhost").should("exist");
     });
 
-    it("shouldn't be possible to save a non-integer port (#13313)", () => {
+    it("should setup ldap and not allow saving a non-integer port (metabase#13313, metabase#16173)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByLabelText(/LDAP Port/i)
