@@ -65,9 +65,9 @@ jobs:
   gate:
     uses: ./.github/workflows/test-gate.yml
     with:
-      # A direct dispatch names a driver and always runs, so it asks for no filters: the gate then
-      # only checks for a force-cancel.
-      filters: ${{ inputs.driver == '' && 'backend_all' || '' }}
+      filters: backend_all
+      # A direct dispatch names a driver and runs it whatever the diff says.
+      ignore-diff: ${{ inputs.driver != '' }}
 
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.

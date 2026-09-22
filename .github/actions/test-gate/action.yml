@@ -11,6 +11,13 @@ inputs:
       filter.
     required: false
     default: ''
+  ignore-diff:
+    description: >-
+      Run regardless of the diff, skipping the paths filter. For a direct workflow_dispatch of the
+      suite, which names the one thing to run. The force-skip overrides still apply, and `matched`
+      comes back empty because nothing was asked of the diff.
+    required: false
+    default: 'false'
 
 outputs:
   verdict:
@@ -53,7 +60,9 @@ runs:
 
     - name: Test which files changed
       id: changes
-      if: ${{ steps.verdict.outputs.verdict == 'defer' && inputs.filters != '' }}
+      if: >-
+        ${{ steps.verdict.outputs.verdict == 'defer' && inputs.filters != ''
+        && inputs.ignore-diff != 'true' }}
       uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
       with:
         token: ${{ github.token }}
@@ -66,6 +75,7 @@ runs:
       env:
         REQUESTED: ${{ inputs.filters }}
         VERDICT: ${{ steps.verdict.outputs.verdict }}
+        IGNORE_DIFF: ${{ inputs.ignore-diff }}
         # Every filter's verdict and file list, as paths-filter set them. Empty when it did not run.
         CHANGES: ${{ toJSON(steps.changes.outputs) }}
       with:
@@ -73,6 +83,7 @@ runs:
           const fs = require('fs');
 
           const verdict = process.env.VERDICT;
+          const ignoreDiff = process.env.IGNORE_DIFF === 'true';
           const requested = process.env.REQUESTED.split(/[\s,]+/).filter(Boolean);
 
           // A filter name that no longer exists would silently gate the suite off forever.
@@ -87,7 +98,7 @@ runs:
           const changes = JSON.parse(process.env.CHANGES);
           const changed = JSON.parse(changes.changes ?? '[]');
 
-          const matched = verdict === 'force-skip'
+          const matched = verdict === 'force-skip' || ignoreDiff
             ? []
             : verdict === 'force-run'
               ? requested
@@ -103,4 +114,5 @@ runs:
           core.setOutput('files', JSON.stringify(Object.fromEntries(
             requested.map((filter) => [filter, JSON.parse(changes[`${filter}_files`] ?? '[]')]))));
           core.setOutput('run', verdict !== 'force-skip'
-            && (requested.length === 0 || verdict === 'force-run' || matched.length > 0));
+            && (ignoreDiff || requested.length === 0 || verdict === 'force-run'
+            || matched.length > 0));

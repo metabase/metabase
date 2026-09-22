@@ -71,9 +71,9 @@ jobs:
         id: base
         uses: ./.github/actions/test-gate
         with:
-          # A direct dispatch names an app DB and always runs, so it asks for no filters: the gate
-          # then only checks for a force-cancel.
-          filters: ${{ inputs.app-db == '' && 'backend_all' || '' }}
+          filters: backend_all
+          # A direct dispatch names an app DB and runs it whatever the diff says.
+          ignore-diff: ${{ inputs.app-db != '' }}
       - name: Prepare Node + Bun environment
         uses: ./.github/actions/prepare-node-bun
       - name: Plan the app DB matrices

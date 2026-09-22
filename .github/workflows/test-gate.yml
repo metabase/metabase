@@ -15,6 +15,12 @@ on:
           Leave empty to decide on the overrides alone and skip the paths filter.
         type: string
         default: ''
+      ignore-diff:
+        description: >-
+          Run regardless of the diff, skipping the paths filter. For a direct workflow_dispatch of
+          the suite, which names the one thing to run. The force-skip overrides still apply.
+        type: boolean
+        default: false
     outputs:
       run:
         description: Whether the calling suite should run.
@@ -56,3 +62,4 @@ jobs:
         uses: ./.github/actions/test-gate
         with:
           filters: ${{ inputs.filters }}
+          ignore-diff: ${{ inputs.ignore-diff }}
