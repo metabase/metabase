@@ -73,8 +73,6 @@ export function getMetabaseSdkCssVariables({
 }) {
   const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
 
-  // `getSdkDesignSystemCssVariables` below always re-declares `--mb-color-core-brand`,
-  // so the brand ramp has to stay dynamic here to keep tracking the SDK theme's brand.
   return css`
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
