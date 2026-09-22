@@ -12,6 +12,10 @@ import {
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
+import {
+  setupAdhocQueryMetadataEndpoint,
+  setupCardDataset,
+} from "__support__/server-mocks/dataset";
 import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import {
   act,
@@ -33,7 +37,7 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
-import type { BaseEntityId, CardId } from "metabase-types/api";
+import type { BaseEntityId, Card, CardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -124,6 +128,7 @@ const setup = async ({
   withChartTypeSelector = false,
   initialSqlParameters,
   cardId = TEST_CARD_ID,
+  deserializedCard,
   preventWaitForLoader = false,
   mockNavigation,
 }: Partial<
@@ -132,6 +137,7 @@ const setup = async ({
       isValidCard?: boolean;
       withCustomLayout?: boolean;
       cardId: BaseEntityId | CardId | null;
+      deserializedCard?: Card;
       preventWaitForLoader?: boolean;
       mockNavigation?: SdkInternalNavigationContextValue;
     }
@@ -157,6 +163,10 @@ const setup = async ({
   setupTableEndpoints(TEST_TABLE);
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
+  setupCardDataset({ dataset: TEST_DATASET });
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({ databases: [TEST_DB], tables: [TEST_TABLE] }),
+  );
 
   setupEntityIdEndpoint({ card: { [TEST_ENTITY_ID]: TEST_CARD_ID } });
 
@@ -178,6 +188,7 @@ const setup = async ({
     <SdkInternalNavigationContext.Provider value={mockNavigation ?? null}>
       <SdkQuestion
         questionId={cardId}
+        deserializedCard={deserializedCard}
         title={title}
         withChartTypeSelector={withChartTypeSelector}
         initialSqlParameters={initialSqlParameters}
@@ -384,10 +395,24 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
   });
 
+  it("should keep showing the loader while there is no question source yet (EMB-2390)", async () => {
+    await setup({ cardId: null, preventWaitForLoader: true });
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/To run your code, click on the Run button/),
+    ).not.toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(0);
+  });
+
   describe("navigation stack initialization", () => {
     it("should push a question entry with id=null for an ad-hoc question (questionId is null)", async () => {
       const mockNavigation = makeMockNavigation();
-      await setup({ cardId: null, mockNavigation });
+      await setup({
+        cardId: null,
+        deserializedCard: createMockCard(),
+        mockNavigation,
+      });
 
       expect(mockNavigation.push).toHaveBeenCalledWith({
         type: "question",
