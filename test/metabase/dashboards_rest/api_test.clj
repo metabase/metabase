@@ -1391,7 +1391,22 @@
                                                                                    :visualization_settings visualizer}]
                                                                       :tabs []})))))
               (is (= [visualizer]
-                     (map :visualization_settings (t2/select :model/DashboardCard :dashboard_id public-id)))))))))))
+                     (map :visualization_settings (t2/select :model/DashboardCard :dashboard_id public-id))))
+              (testing "but turning it back into a plain dashcard would show them, so it is rejected"
+                (let [[dashcard] (t2/select :model/DashboardCard :dashboard_id public-id)]
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                               {:dashcards [(assoc dashcard :visualization_settings {})]
+                                                :tabs []})))
+                  (testing "nor can a second plain dashcard be added for the same card"
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                                 {:dashcards [dashcard {:id -1 :card_id card-id
+                                                                        :row 4 :col 0 :size_x 4 :size_y 4}]
+                                                  :tabs []}))))
+                  (is (= [visualizer]
+                         (map :visualization_settings
+                              (t2/select :model/DashboardCard :dashboard_id public-id)))))))))))))
 
 (deftest copy-dashboard-with-dashboard-questions
   (testing "`is_deep_copy=true` works for dashboards regardless of whether they have dashboard questions"

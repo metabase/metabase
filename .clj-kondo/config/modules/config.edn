@@ -2158,7 +2158,6 @@
                     :model/Notification
                     :model/Revision
                     :model/Timeline
-                    :model/TimelineEvent
                     :model/User}}
 
   queries.rest
