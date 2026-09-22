@@ -15,6 +15,7 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import {
   useMetabotAgent,
@@ -101,7 +102,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     trackExplorationAgentMessageSent("plan_chat");
     submitInput(prompt, {
       preventOpenSidebar: true,
-      profile: "explorations",
+      profile: METABOT_PROFILE_OVERRIDES.EXPLORATIONS,
     });
   }, [prompt, submitInput]);
 
@@ -289,12 +290,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             <Messages
               messages={messages}
               onRetryMessage={(id) =>
-                retryMessage(id, { profile: "explorations" })
+                retryMessage(id, {
+                  profile: METABOT_PROFILE_OVERRIDES.EXPLORATIONS,
+                })
               }
               onContinueMessage={(prompt) =>
                 submitInput(prompt, {
                   preventOpenSidebar: true,
-                  profile: "explorations",
+                  profile: METABOT_PROFILE_OVERRIDES.EXPLORATIONS,
                 })
               }
               isDoingScience={isDoingScience}

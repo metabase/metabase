@@ -1441,6 +1441,7 @@
               analytics
               analytics.interface
               api
+              api-routes
               api-scope
               app-db
               audit-app

@@ -1,0 +1,260 @@
+;; Curated map of Metabase's application database, primed into the :megabot system prompt by
+;; `metabase.metabot.megabot-context`. Every :table and column named here is checked against the live
+;; app-db schema by `metabase.metabot.megabot-context-test` — if a migration renames or drops one, that
+;; test fails. Keep it to the tables and columns that answer real questions; `describe_app_db` covers the
+;; rest of the schema on demand.
+;;
+;; :columns is an ordered vector of [column note] pairs; a nil note just lists the column.
+;; :unmaintained lists tables that exist but that nothing keeps up to date. The test checks that no
+;; :tables entry or :routing answer points at one, and describe_app_db flags them.
+{:unmaintained
+ {"query_table" "no longer written — do not use it to find which cards use a table"
+  "query_field" "no longer written — do not use it to find which cards use a field"
+  "metric"      "legacy table metrics; current metrics are report_card rows with type = 'metric'"}
+
+ :domains
+ [{:name "Warehouse metadata (what is in the connected databases)"
+   :tables
+   [{:table   "metabase_database"
+     :purpose "One row per connected warehouse database. The id is the database_id the warehouse tools take."
+     :columns [["id" nil] ["name" nil] ["engine" "driver, e.g. postgres, snowflake, h2"]
+               ["is_sample" "the bundled Sample Database"] ["is_audit" "the internal usage-analytics db; skip it"]
+               ["details" "connection JSON, encrypted — do not parse"] ["router_database_id" "set on DB-routing destinations"]]}
+    {:table   "metabase_table"
+     :purpose "One row per synced warehouse table or view."
+     :columns [["id" nil] ["db_id" "→ metabase_database.id"] ["schema" nil] ["name" "physical name"]
+               ["display_name" "sync's value; see metabase_table_user_settings"] ["description" "sync's value; see metabase_table_user_settings"]
+               ["active" "false = gone upstream; filter active = true"]
+               ["visibility_type" "sync's value: NULL = visible; hidden | technical | cruft — admins' choice is in metabase_table_user_settings"]
+               ["estimated_row_count" nil] ["view_count" nil] ["is_upload" "created by CSV upload"]]}
+    {:table   "metabase_field"
+     :purpose "One row per column of a synced table (plus nested JSON sub-fields)."
+     :columns [["id" nil] ["table_id" "→ metabase_table.id"] ["name" "physical name"] ["display_name" nil]
+               ["description" nil] ["database_type" "the warehouse's own type"]
+               ["base_type" "e.g. type/Integer, type/Text, type/DateTime"]
+               ["semantic_type" "sync's guess, e.g. type/PK, type/FK, type/Category — admin overrides in metabase_field_user_settings"]
+               ["fk_target_field_id" "→ metabase_field.id the FK points to (sync's value; admin-added FKs are in metabase_field_user_settings)"]
+               ["parent_id" "set for nested JSON sub-fields"] ["active" "filter active = true"]
+               ["visibility_type" "normal | details-only | sensitive | hidden | retired"]
+               ["has_field_values" "list | search | none | auto-list"] ["fingerprint" "JSON stats: distinct count, nil%, min/max, avg length"]]}
+    {:table   "metabase_table_user_settings"
+     :purpose "What admins set on a table in the data model, which overrides metabase_table. At most one row per table."
+     :columns [["table_id" "→ metabase_table.id"] ["display_name" nil] ["description" nil] ["visibility_type" nil]
+               ["description_set" "true = the admin set description, even to NULL"]
+               ["visibility_type_set" "true = the admin set visibility_type, even to NULL"]]}
+    {:table   "metabase_field_user_settings"
+     :purpose "What admins set on a field in the data model, which overrides metabase_field. At most one row per field."
+     :columns [["field_id" "→ metabase_field.id"] ["display_name" nil] ["description" nil] ["semantic_type" nil]
+               ["fk_target_field_id" nil] ["visibility_type" nil] ["has_field_values" nil]
+               ["description_set" nil] ["semantic_type_set" nil] ["fk_target_field_id_set" nil]]}
+    {:table   "metabase_fieldvalues"
+     :purpose "Cached distinct values of low-cardinality fields — the cheapest way to see a column's categories."
+     :columns [["field_id" "→ metabase_field.id"] ["values" "JSON array"] ["human_readable_values" nil]
+               ["has_more_values" "true = list is truncated"] ["type" "full = the real list; others are sandbox/linked-filter variants"]]}
+    {:table   "dimension"
+     :purpose "Field value remappings (display a name instead of an id)."
+     :columns [["field_id" nil] ["type" "internal (custom values) | external (show another field)"]
+               ["human_readable_field_id" "→ metabase_field.id shown instead"]]}]}
+
+  {:name "Content (questions, models, metrics, dashboards, collections)"
+   :tables
+   [{:table   "report_card"
+     :purpose "Saved questions, models, and metrics — all one table, told apart by type."
+     :columns [["id" nil] ["name" nil] ["description" nil] ["type" "question | model | metric"]
+               ["display" "visualization, e.g. table, bar, line, scalar"]
+               ["dataset_query" "JSON MBQL 5: {\"lib/type\":\"mbql/query\",\"database\":<id>,\"stages\":[…]}; native SQL is stages[0].native"]
+               ["query_type" "query | native"] ["database_id" "→ metabase_database.id"]
+               ["table_id" "source table, when the query has one"] ["source_card_id" "source card, when built on another card"]
+               ["collection_id" "→ collection.id; NULL = root collection"] ["dashboard_id" "set = a dashboard question saved inside that dashboard"]
+               ["creator_id" "→ core_user.id"] ["archived" "true = in the trash; filter archived = false"]
+               ["result_metadata" "JSON column metadata of the last run"] ["view_count" nil] ["last_used_at" nil]
+               ["created_at" nil] ["updated_at" nil] ["entity_id" "stable cross-instance id"]]}
+    {:table   "report_dashboard"
+     :purpose "Dashboards."
+     :columns [["id" nil] ["name" nil] ["description" nil] ["collection_id" "→ collection.id; NULL = root"]
+               ["creator_id" nil] ["parameters" "JSON array of dashboard filters"] ["archived" nil]
+               ["view_count" nil] ["last_viewed_at" nil]]}
+    {:table   "report_dashboardcard"
+     :purpose "A card placed on a dashboard. Which dashboards use card X → WHERE card_id = X."
+     :columns [["dashboard_id" "→ report_dashboard.id"] ["card_id" "→ report_card.id; NULL for text/heading/link cards"]
+               ["dashboard_tab_id" "→ dashboard_tab.id"] ["parameter_mappings" "JSON: which dashboard filter drives which column"]
+               ["visualization_settings" nil] ["row" nil] ["col" nil] ["size_x" nil] ["size_y" nil]]}
+    {:table   "dashboardcard_series"
+     :purpose "Extra cards combined into one dashboard card's chart."
+     :columns [["dashboardcard_id" nil] ["card_id" nil]]}
+    {:table   "dashboard_tab"
+     :purpose "Tabs of a dashboard."
+     :columns [["dashboard_id" nil] ["name" nil] ["position" nil]]}
+    {:table   "collection"
+     :purpose "Folders holding cards, dashboards, documents, snippets."
+     :columns [["id" nil] ["name" nil] ["location" "materialized path of ancestor ids, e.g. /3/17/ ; / = top level"]
+               ["personal_owner_id" "set = someone's personal collection"]
+               ["namespace" "NULL = normal content; snippets, analytics, … for special trees"]
+               ["type" "NULL normally; instance-analytics, trash, …"] ["authority_level" "official = verified collection"]
+               ["archived" nil]]}
+    {:table   "document"
+     :purpose "Documents (rich-text pages that can embed cards)."
+     :columns [["id" nil] ["name" nil] ["document" "the body JSON"] ["collection_id" nil] ["creator_id" nil] ["archived" nil]]}
+    {:table   "native_query_snippet"
+     :purpose "Reusable SQL snippets."
+     :columns [["name" nil] ["content" "the SQL"] ["collection_id" nil] ["archived" nil]]}
+    {:table   "segment"
+     :purpose "Named, reusable filters on a table."
+     :columns [["id" nil] ["table_id" nil] ["name" nil] ["description" nil] ["definition" "JSON MBQL filter"] ["archived" nil]]}
+    {:table   "measure"
+     :purpose "Named, reusable aggregations on a table."
+     :columns [["id" nil] ["table_id" nil] ["name" nil] ["description" nil] ["definition" "JSON MBQL aggregation"] ["archived" nil]]}
+    {:table   "moderation_review"
+     :purpose "Verified-content badges."
+     :columns [["moderated_item_type" "card | dashboard"] ["moderated_item_id" nil] ["status" "verified or NULL"] ["most_recent" "only trust rows where true"]]}
+    {:table   "timeline_event"
+     :purpose "Events annotated on time-series charts."
+     :columns [["timeline_id" "→ timeline.id"] ["name" nil] ["timestamp" nil]]}]}
+
+  {:name "Usage and history"
+   :tables
+   [{:table   "query_execution"
+     :purpose "One row per query run. Use it for most-run questions, slow queries, errors, and who ran what."
+     :columns [["started_at" nil] ["running_time" "milliseconds"] ["result_rows" nil]
+               ["executor_id" "→ core_user.id"] ["card_id" "NULL for ad-hoc queries"] ["dashboard_id" nil]
+               ["database_id" nil] ["native" "true = SQL"]
+               ["context" "ad-hoc | question | dashboard | collection | pulse | dashboard-subscription | csv-download | public-question | agent | …"]
+               ["error" "non-NULL = the run failed"] ["cache_hit" nil]]}
+    {:table   "view_log"
+     :purpose "One row per view of an item. Most-viewed dashboards/questions/tables."
+     :columns [["user_id" nil] ["model" "card | dashboard | table | collection | document"] ["model_id" nil]
+               ["timestamp" nil] ["has_access" nil]]}
+    {:table   "recent_views"
+     :purpose "Each user's recently viewed/selected items."
+     :columns [["user_id" nil] ["model" nil] ["model_id" nil] ["timestamp" nil] ["context" "view | selection"]]}
+    {:table   "audit_log"
+     :purpose "Events: create/update/delete of content, logins, setting changes."
+     :columns [["topic" "e.g. card-create, dashboard-update, user-login, setting-update"] ["user_id" nil]
+               ["model" nil] ["model_id" nil] ["details" "JSON payload"] ["timestamp" nil]]}
+    {:table   "revision"
+     :purpose "Edit history of cards, dashboards, segments, … with full JSON snapshots."
+     :columns [["model" "Card | Dashboard | Segment | …"] ["model_id" nil] ["user_id" nil] ["timestamp" nil]
+               ["object" "JSON snapshot after the edit"] ["is_creation" nil] ["is_reversion" nil]
+               ["most_recent" "true = current version"]]}
+    {:table   "task_history"
+     :purpose "Background job runs: sync, fingerprinting, field-value caching, …"
+     :columns [["task" "e.g. sync, analyze, field values scanning"] ["db_id" nil] ["started_at" nil]
+               ["ended_at" nil] ["duration" "ms"] ["status" "started | success | failed"] ["task_details" "JSON, holds the error on failure"]]}
+    {:table   "metabot_conversation"
+     :purpose "Metabot chat conversations."
+     :columns [["id" nil] ["user_id" nil] ["title" nil] ["created_at" nil]]}
+    {:table   "metabot_message"
+     :purpose "Messages within a Metabot conversation."
+     :columns [["conversation_id" nil] ["role" nil] ["profile_id" nil] ["data" "JSON message parts"] ["total_tokens" nil] ["created_at" nil]]}]}
+
+  {:name "People and permissions"
+   :tables
+   [{:table   "core_user"
+     :purpose "Users."
+     :columns [["id" nil] ["email" nil] ["first_name" nil] ["last_name" nil] ["is_superuser" "admin"]
+               ["is_active" "false = deactivated"] ["type" "personal | internal | api-key"]
+               ["date_joined" nil] ["last_login" nil] ["sso_source" nil]
+               ["login_attributes" "JSON user attributes (drive sandboxing)"] ["tenant_id" nil]]}
+    {:table   "permissions_group"
+     :purpose "Groups."
+     :columns [["id" nil] ["name" nil] ["magic_group_type" "all-internal-users | admin | … ; NULL = custom group"]]}
+    {:table   "permissions_group_membership"
+     :purpose "User ↔ group."
+     :columns [["user_id" nil] ["group_id" nil] ["is_group_manager" nil]]}
+    {:table   "data_permissions"
+     :purpose "Data permissions per group, per database, optionally per schema/table."
+     :columns [["group_id" nil]
+               ["perm_type" "perms/view-data | perms/create-queries | perms/download-results | perms/manage-table-metadata | perms/manage-database | perms/transforms"]
+               ["db_id" nil] ["schema_name" nil] ["table_id" "NULL = applies to the whole db"]
+               ["perm_value" "e.g. unrestricted | blocked | query-builder-and-native | query-builder | no | yes"]]}
+    {:table   "permissions"
+     :purpose "Collection and application permissions as path strings."
+     :columns [["group_id" nil] ["object" "e.g. /collection/5/ (curate) or /collection/5/read/ (view)"] ["collection_id" nil]]}
+    {:table   "sandboxes"
+     :purpose "Row-level security: a group sees a table through a filtering card."
+     :columns [["group_id" nil] ["table_id" nil] ["card_id" nil] ["attribute_remappings" "JSON user-attribute → parameter"]]}
+    {:table   "api_key"
+     :purpose "API keys (each backed by a core_user of type api-key)."
+     :columns [["name" nil] ["user_id" nil] ["key_prefix" nil] ["creator_id" nil]]}
+    {:table   "tenant"
+     :purpose "Tenants (multi-tenant embedding)."
+     :columns [["id" nil] ["name" nil] ["slug" nil] ["is_active" nil]]}]}
+
+  {:name "Alerts and subscriptions"
+   :tables
+   [{:table   "notification"
+     :purpose "Alerts and other notifications (the new system)."
+     :columns [["id" nil] ["payload_type" "notification/card = question alert | notification/system-event | …"]
+               ["payload_id" "for alerts → notification_card.id"] ["active" nil] ["creator_id" nil]]}
+    {:table   "notification_card"
+     :purpose "The card an alert watches."
+     :columns [["id" nil] ["card_id" nil] ["send_condition" "has_result | goal_above | goal_below"] ["send_once" nil]]}
+    {:table   "notification_subscription"
+     :purpose "When a notification fires."
+     :columns [["notification_id" nil] ["type" nil] ["cron_schedule" nil] ["event_name" nil]]}
+    {:table   "notification_handler"
+     :purpose "Where a notification is delivered."
+     :columns [["notification_id" nil] ["channel_type" "channel/email | channel/slack | channel/http"] ["active" nil]]}
+    {:table   "notification_recipient"
+     :purpose "Who receives a handler's messages."
+     :columns [["notification_handler_id" nil] ["type" nil] ["user_id" nil] ["permissions_group_id" nil] ["details" "JSON, e.g. a raw email address"]]}
+    {:table   "pulse"
+     :purpose "Dashboard subscriptions (rows with dashboard_id set) and legacy pulses."
+     :columns [["id" nil] ["name" nil] ["dashboard_id" nil] ["creator_id" nil] ["archived" nil]]}
+    {:table   "pulse_channel"
+     :purpose "A subscription's delivery channel and schedule."
+     :columns [["pulse_id" nil] ["channel_type" "email | slack | http"] ["schedule_type" "hourly | daily | weekly | monthly"]
+               ["schedule_hour" nil] ["schedule_day" nil] ["enabled" nil] ["details" "JSON, e.g. slack channel"]]}
+    {:table   "pulse_card"
+     :purpose "Cards included in a subscription."
+     :columns [["pulse_id" nil] ["card_id" nil] ["dashboard_card_id" nil]]}]}
+
+  {:name "Configuration and data pipeline"
+   :tables
+   [{:table   "setting"
+     :purpose "Instance settings as key/value strings. Values may be encrypted, and settings still at their default have no row."
+     :columns [["key" "setting name, e.g. site-name, site-url"] ["value" nil]]}
+    {:table   "transform"
+     :purpose "Transforms: queries/Python that write a table into a warehouse."
+     :columns [["id" nil] ["name" nil] ["source" "JSON: the query or python source"] ["target" "JSON: target schema/table"]
+               ["source_database_id" nil] ["target_table_id" "→ metabase_table.id once written"] ["collection_id" nil]]}
+    {:table   "transform_run"
+     :purpose "Runs of a transform."
+     :columns [["transform_id" nil] ["status" nil] ["start_time" nil] ["end_time" nil] ["message" "error text on failure"]]}
+    {:table   "cache_config"
+     :purpose "Query caching policies per database/dashboard/question (model + model_id)."
+     :columns [["model" nil] ["model_id" nil] ["strategy" nil] ["config" "JSON"]]}
+    {:table   "persisted_info"
+     :purpose "Model persistence: a model materialized into a warehouse table."
+     :columns [["card_id" nil] ["database_id" nil] ["table_name" nil] ["state" nil] ["active" nil] ["error" nil]]}
+    {:table   "dependency"
+     :purpose "Dependency graph between entities (card → table, transform → table, …). Enterprise only, and empty unless that feature is enabled."
+     :columns [["from_entity_type" nil] ["from_entity_id" nil] ["to_entity_type" nil] ["to_entity_id" nil]]}]}]
+
+ :routing
+ [["A warehouse's tables and columns" "usually already listed under \"This instance\"; otherwise metabase_table (db_id) → metabase_field (table_id), active = true, with the *_user_settings overrides applied"]
+  ["How two warehouse tables join" "metabase_field.fk_target_field_id → the target field, then its table_id"]
+  ["A column's distinct values" "metabase_fieldvalues.values for its field_id"]
+  ["Saved questions / models / metrics" "report_card, split by type; archived = false"]
+  ["The SQL or MBQL behind a card" "report_card.dataset_query"]
+  ["Which cards use a table" "report_card.table_id (the MBQL source table) or source_card_id (built on another card); joins and native SQL only show up in the dataset_query text, so also search it for the table's id or name"]
+  ["Which dashboards show a card" "report_dashboardcard.card_id → dashboard_id"]
+  ["What is in a collection, including sub-collections" "collection_id = X, and sub-collections via collection.location LIKE '%/X/%'"]
+  ["Most-used content" "view_log (views) or query_execution (runs), grouped by model_id / card_id"]
+  ["Slow or failing queries" "query_execution: running_time, error"]
+  ["Where a card or dashboard lives" "collection_id → collection; a NULL collection_id is the root collection"]
+  ["Who changed something and when" "revision (full snapshots) or audit_log (events)"]
+  ["Users, groups, and access" "core_user, permissions_group_membership, data_permissions, permissions (collections), sandboxes"]
+  ["Alerts" "notification (payload_type notification/card) → notification_card, notification_handler, notification_recipient"]
+  ["Dashboard subscriptions" "pulse WHERE dashboard_id IS NOT NULL → pulse_channel"]
+  ["Sync status and errors" "task_history, plus metabase_database / metabase_table initial_sync_status"]
+  ["Denormalized, analytics-friendly versions of the above" "the v_* views: v_content, v_query_log, v_view_log, v_audit_log, v_users, v_tables, v_fields, v_databases, v_dashboardcard, v_alerts, v_subscriptions, v_group_members"]]
+
+ :gotchas
+ ["Most content tables have archived — trashed items stay in the table. Filter archived = false unless the user asks about the trash."
+  "Warehouse metadata keeps rows for dropped tables/columns. Filter active = true."
+  "What admins edit in the data model (names, descriptions, visibility, semantic types, FKs) lives in metabase_table_user_settings / metabase_field_user_settings, not in metabase_table / metabase_field. LEFT JOIN them and prefer their value: for a column with a matching *_set flag, use it when the flag is true; otherwise use COALESCE(settings value, base value)."
+  "JSON columns (dataset_query, parameters, visualization_settings, details, result_metadata, …) are stored as text. Use the app-db dialect's JSON functions to reach inside them, or read the text."
+  "Some table names are SQL reserved words (setting, collection, dimension, measure) and so are some columns (key, value, timestamp, type, row, values). Quote them in the app-db dialect."
+  "The metabase_* tables describe the warehouses. They do not hold warehouse data: to read rows, run a warehouse query with the database_id."
+  "metabase_database.details, setting.value (for secrets), and core_user.password are encrypted or hashed. Don't try to decode them."]}

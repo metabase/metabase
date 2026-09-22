@@ -99,6 +99,13 @@
   :default    true
   :export?    false)
 
+(defsetting megabot-api-read-only?
+  (deferred-tru "Kill switch for the experimental megabot `call_api` tool: when true, only GET requests are allowed (no writes).")
+  :type       :boolean
+  :visibility :internal
+  :default    false
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider

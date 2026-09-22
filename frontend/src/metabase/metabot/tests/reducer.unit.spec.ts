@@ -80,7 +80,7 @@ describe("metabot reducer", () => {
 
       expect(convoForAgent(store, "ask")).toMatchObject({
         conversationId: "convo-from-url",
-        profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
+        profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
       });
     });
 

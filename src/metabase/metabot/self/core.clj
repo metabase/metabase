@@ -106,6 +106,10 @@
     [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:terminal-error?   {:optional true} :boolean]
+    ;; a question for the user; the agent loop shows it as assistant text when this call ends the turn
+    [:user-question     {:optional true} [:maybe [:map {:closed true}
+                                                  [:question :string]
+                                                  [:options {:optional true} [:maybe [:sequential :string]]]]]]
     [:data-parts        {:optional true} [:sequential DataPart]]
     [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
     [:instructions      {:optional true} [:maybe :string]]

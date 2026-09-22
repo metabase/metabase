@@ -6,7 +6,10 @@
   one of them into a real saved question — in a collection, as a question on a
   dashboard, or embedded in a document at a chosen position — and emits an
   `entity_saved` data part so the inline chart can show where it landed. It should
-  only be called when the user asks to save the chart."
+  only be called when the user asks to save the chart.
+
+  The save itself ([[resolve-chart]] + [[save-chart!]]) is shared with the megabot profile's
+  `save_result` tool, which wraps it in its own description, errors, and output."
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -27,52 +30,58 @@
 
 (set! *warn-on-reflection* true)
 
+(def chart-id-schema
+  "A generated chart's id as a save tool takes it."
+  ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
+  [:string {:min 1 :max 36}])
+
+(def destination-schema
+  "Where a save tool puts the chart: a collection, a dashboard, or a document."
+  [:multi {:dispatch :target_type}
+   ["collection"
+    [:map {:closed true}
+     [:target_type [:= "collection"]]
+     ;; omit for the user's personal collection; explicit null for the root collection
+     [:collection_id {:optional true} [:maybe :int]]]]
+   ["dashboard"
+    [:map {:closed true}
+     [:target_type [:= "dashboard"]]
+     [:dashboard_id :int]]]
+   ["document"
+    [:map {:closed true}
+     [:target_type [:= "document"]]
+     [:document_id :int]
+     [:position {:optional true} [:maybe :int]]]]])
+
 (def ^:private save-entity-schema
   [:map {:closed true}
-   ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
-   [:chart_id [:string {:min 1 :max 36}]]
+   [:chart_id chart-id-schema]
    [:name :string]
    [:description :string]
-   [:destination
-    [:multi {:dispatch :target_type}
-     ["collection"
-      [:map {:closed true}
-       [:target_type [:= "collection"]]
-       ;; omit for the user's personal collection; explicit null for the root collection
-       [:collection_id {:optional true} [:maybe :int]]]]
-     ["dashboard"
-      [:map {:closed true}
-       [:target_type [:= "dashboard"]]
-       [:dashboard_id :int]]]
-     ["document"
-      [:map {:closed true}
-       [:target_type [:= "document"]]
-       [:document_id :int]
-       [:position {:optional true} [:maybe :int]]]]]]])
+   [:destination destination-schema]])
 
 (defn- agent-error! [msg]
   (throw (ex-info msg {:agent-error? true :status-code 400})))
 
-(defn- resolve-chart
+(defn resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
-  build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
-  lookup in `edit_chart` / `links/resolve-chart-link`."
+  build a card: a legacy `dataset_query`, a `display` keyword, and the chart's own
+  `title`/`description` when it has them. Returns nil when there is no such chart.
+  Mirrors the lookup in `edit_chart` / `links/resolve-chart-link`."
   [chart-id]
   (let [chart (get (shared/current-charts-state) chart-id)
         query (or (first (:queries chart))
                   (get (shared/current-queries-state) (:query_id chart)))]
-    (when-not query
-      (agent-error!
-       (tru (str "No generated chart found with id `{0}`. Create a chart with "
-                 "`construct_notebook_query` first, then save it using the id it returns.")
-            chart-id)))
-    ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
-    ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
-    ;; and keep the raw config under `:chart_config` instead
-    {:dataset_query (links/->legacy-mbql query)
-     :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
-                        (some-> (get-in chart [:chart_config :display_type]) keyword)
-                        :table)}))
+    (when query
+      ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
+      ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
+      ;; and keep the raw config under `:chart_config` instead
+      {:dataset_query (links/->legacy-mbql query)
+       :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
+                          (some-> (get-in chart [:chart_config :display_type]) keyword)
+                          :table)
+       :title         (get-in chart [:chart_config :title])
+       :description   (get-in chart [:chart_config :description])})))
 
 (defn- personal-collection-id []
   (or (:id (collection/user->personal-collection api/*current-user-id*))
@@ -156,6 +165,29 @@
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
+(defn save-chart!
+  "Save the generated chart `chart-id` as a card at `destination` (see [[destination-schema]]), from the
+  `dataset_query` and `display` [[resolve-chart]] returned. Returns `{:card :destination :destination-name :link}`:
+  `:destination` is `{:type :id}` and `:link` the `metabase://` link of the card or of the dashboard/document it went
+  into.
+
+  Creates the card and stamps which conversation + generated chart it came from in ONE transaction, so a reloaded
+  conversation can't observe the card without its origin. The stamp is a raw table update — it should not run the
+  Card model's heavy before-update pipeline. The `:card-create` event is delayed until after the transaction
+  commits so subscribers see the card."
+  [chart-id {:keys [destination] :as args}]
+  (let [saved (t2/with-transaction [_conn]
+                (let [saved (case (:target_type destination)
+                              "collection" (save-to-collection! args)
+                              "dashboard"  (save-to-dashboard! args)
+                              "document"   (save-to-document! args))]
+                  (when-let [conversation-id (shared/current-conversation-id)]
+                    (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart-id))
+                  saved))]
+    (events/publish-event! :event/card-create
+                           {:object (:card saved) :user-id api/*current-user-id*})
+    saved))
+
 (mu/defn ^{:tool-name "save_entity"
            :scope     scope/agent-question-create}
   save-entity-tool
@@ -197,29 +229,18 @@
   After saving, tell the user where it went and share the returned link."
   [{:keys [chart_id destination description] question-name :name} :- save-entity-schema]
   (try
-    (let [{:keys [dataset_query display]} (resolve-chart chart_id)
-          args {:name          question-name
-                :description    description
-                :dataset_query  dataset_query
-                :display        display
-                :destination    destination}
-          ;; Create the card and stamp which conversation + generated chart it came
-          ;; from in ONE transaction, so a reloaded conversation can't observe the
-          ;; card without its origin. The stamp is a raw table update — it should not
-          ;; run the Card model's heavy before-update pipeline. The `:card-create`
-          ;; event is delayed until after the transaction commits so subscribers see
-          ;; the card.
+    (let [{:keys [dataset_query display]}
+          (or (resolve-chart chart_id)
+              (agent-error!
+               (tru (str "No generated chart found with id `{0}`. Create a chart with "
+                         "`construct_notebook_query` first, then save it using the id it returns.")
+                    chart_id)))
           {:keys [card link destination-name] saved-destination :destination}
-          (t2/with-transaction [_conn]
-            (let [saved (case (:target_type destination)
-                          "collection" (save-to-collection! args)
-                          "dashboard"  (save-to-dashboard! args)
-                          "document"   (save-to-document! args))]
-              (when-let [conversation-id (shared/current-conversation-id)]
-                (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
-              saved))
-          _ (events/publish-event! :event/card-create
-                                   {:object card :user-id api/*current-user-id*})
+          (save-chart! chart_id {:name          question-name
+                                 :description   description
+                                 :dataset_query dataset_query
+                                 :display       display
+                                 :destination   destination})
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
                             ""

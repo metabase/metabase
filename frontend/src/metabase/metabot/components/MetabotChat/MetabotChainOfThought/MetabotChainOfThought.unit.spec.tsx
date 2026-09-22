@@ -6,7 +6,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 
@@ -298,6 +298,49 @@ describe("MetabotChainOfThought", () => {
     );
     // no link title yet (the card doesn't exist mid-save) -> the generic verb
     expect(screen.getAllByText("Saving").length).toBeGreaterThan(0);
+  });
+
+  it("labels a settled save_result step with its title as is, linking what was saved and where", async () => {
+    fetchMock.get(
+      "path:/api/card/7",
+      createMockCard({ id: 7, name: "Sales by Month" }),
+    );
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "save_result",
+            // the backend's localized title already carries the verb
+            title:
+              "Saved [Sales by Month](metabase://question/7) to [Ops](metabase://dashboard/123)",
+            status: "ended",
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    const label = await screen.findByText("Saved to");
+    expect(label).toHaveTextContent("Saved Sales by Month to Ops");
+    expect(label).not.toHaveTextContent("Saved Saved");
+    expect(await screen.findByText("Sales by Month")).toBeInTheDocument();
+    expect(await screen.findByText("Ops")).toBeInTheDocument();
+  });
+
+  it("labels a running save_result step with its generic verb", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "save_result", status: "started" },
+        ],
+      }),
+      true,
+    );
+    expect(screen.getAllByText("Saving the result").length).toBeGreaterThan(0);
   });
 
   it("keeps the top-level preview generic but names the entity in the active row", async () => {

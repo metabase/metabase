@@ -300,7 +300,7 @@ const conversationDefaultsByAgentId: Partial<
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
   },
   ask: {
-    profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
+    profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
   },
 };
 

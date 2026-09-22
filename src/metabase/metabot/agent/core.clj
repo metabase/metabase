@@ -155,7 +155,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations :megabot])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -180,6 +180,17 @@
   (and (= (:type part) :tool-output)
        (some? (get-in part [:result :structured-output]))))
 
+(defn- successful-terminal-outputs
+  "The `:tool-output` parts of **successful** calls in `parts` to one of `terminal-tools` (a set of tool-name
+  strings), in call order."
+  [terminal-tools parts]
+  (let [id->output (into {} (comp (filter successful-tool-output?) (map (juxt :id identity))) parts)]
+    (into []
+          (keep #(when (and (= (:type %) :tool-input)
+                            (contains? terminal-tools (:function %)))
+                   (id->output (:id %))))
+          parts)))
+
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
   tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
@@ -189,14 +200,7 @@
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
   it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
   [terminal-tools parts]
-  (boolean
-   (when (seq terminal-tools)
-     (let [success-ids (into #{} (comp (filter successful-tool-output?) (map :id)) parts)]
-       (some (fn [p]
-               (and (= (:type p) :tool-input)
-                    (contains? terminal-tools (:function p))
-                    (contains? success-ids (:id p))))
-             parts)))))
+  (boolean (seq (successful-terminal-outputs terminal-tools parts))))
 
 (defn- truncated?
   "Whether the provider cut this iteration off at its output-token limit. A truncated
@@ -214,6 +218,29 @@
                      (get-in part [:result :terminal-error?]))
             (not-empty (get-in part [:result :output]))))
         parts))
+
+(defn- terminal-user-questions
+  "The `:user-question`s (`{:question :options}`) carried by successful terminal-tool calls in `parts`, in
+  call order."
+  [terminal-tools parts]
+  (keep #(get-in % [:result :user-question]) (successful-terminal-outputs terminal-tools parts)))
+
+(defn- normalize-for-match [s]
+  (-> s str/trim (str/replace #"\s+" " ") u/lower-case-en))
+
+(defn- user-question-text
+  "`question` followed by `options` as a numbered list, so the user can reply with a number; nil when there
+  is nothing to show. The question is left out when the model already wrote it in `model-text`. No words of
+  our own are added, since the conversation may not be in English."
+  [model-text {:keys [question options]}]
+  (let [already-written? (and (not (str/blank? model-text))
+                              (str/includes? (normalize-for-match model-text)
+                                             (normalize-for-match question)))]
+    (->> [(when-not already-written? (str/trim question))
+          (str/join "\n" (map-indexed (fn [i option] (str (inc i) ". " option)) options))]
+         (remove str/blank?)
+         (str/join "\n\n")
+         not-empty)))
 
 (defn- should-continue?
   "Determine if agent should continue iterating."
@@ -256,6 +283,59 @@
                               (update links-key links/invert-slack-links registry-map)))))
           parts)))
 
+(def ^:private compact-history-keep-recent
+  "How many of the most-recent tool outputs to leave untouched when compacting replayed history."
+  3)
+
+(def ^:private compact-history-output-threshold
+  "Only tool outputs longer than this many chars are candidates for elision."
+  2000)
+
+(def ^:private compact-history-batch
+  "Old, large tool outputs are elided this many at a time. Eliding one rewrites the replayed history from that output
+  on, which misses the provider's prompt cache for everything after it, so batching makes that happen once per batch
+  rather than on every step."
+  5)
+
+(defn- compact-tool-outputs
+  "Shrink the replayed message array for long loops: replace the `:output` of OLD, large
+  `:tool-output` parts with a one-line stub, keeping the most recent `compact-history-keep-recent`
+  tool outputs and any output under `compact-history-output-threshold` chars verbatim. Old, large outputs
+  are elided oldest first, `compact-history-batch` at a time, so the replayed prefix stays stable
+  between batches. The tool name lives on the paired `:tool-input` part, so id->function is indexed
+  first. Replay-only: persisted rows keep the full output, and the agent can always re-run the tool to
+  fetch the data again.
+
+  `:keep-recent`, `:threshold`, and `:batch` override the `compact-history-*` defaults (used by tests to
+  pin behavior)."
+  ([parts] (compact-tool-outputs parts nil))
+  ([parts {:keys [keep-recent threshold batch]}]
+   (let [parts       (vec parts)
+         keep-recent (or keep-recent compact-history-keep-recent)
+         threshold   (or threshold compact-history-output-threshold)
+         batch       (or batch compact-history-batch)
+         id->fn      (into {}
+                           (keep (fn [p] (when (= :tool-input (:type p)) [(:id p) (:function p)])))
+                           parts)
+         output-idxs (into [] (keep-indexed (fn [i p] (when (= :tool-output (:type p)) i))) parts)
+         ;; [index chars] of the OLD tool outputs over the threshold, oldest first
+         candidates  (into []
+                           (keep (fn [i]
+                                   (let [n (count (some-> (get-in parts [i :result :output]) str))]
+                                     (when (> n threshold) [i n]))))
+                           (drop-last keep-recent output-idxs))
+         idx->chars  (into {} (take (* batch (quot (count candidates) batch))) candidates)]
+     (into []
+           (map-indexed
+            (fn [i part]
+              (if-let [n (idx->chars i)]
+                (assoc-in part [:result :output]
+                          (format "[%s result elided to save context — %d chars. Re-run the tool if you need this data again.]"
+                                  (or (id->fn (:id part)) "tool")
+                                  n))
+                part)))
+           parts))))
+
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
@@ -264,10 +344,13 @@
   [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history context memory)
-                         (invert-links @link-registry-atom))
+        input-parts  (cond-> (-> (messages/build-message-history context memory)
+                                 (invert-links @link-registry-atom))
+                       (:compact-history? profile)
+                       compact-tool-outputs)
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       (:required-tool-call? profile) (assoc :tool-choice "required")
+                       (:max-output-tokens profile)   (assoc :max-tokens (:max-output-tokens profile)))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -516,10 +599,24 @@
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
-(defn- terminal-error-text-part
-  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
+(defn- assistant-text-part
+  "Tool results are not rendered in the conversation, so anything the user must see from one (a terminal
+  error, a question) is streamed as assistant text."
   [message]
   {:type :text, :id (str (random-uuid)), :text message})
+
+(defn- finish-turn
+  "End the loop with `reason`: stream `text` (when non-blank) as assistant text, then the final state part."
+  [{:keys [rf agent] :as loop-state} result text reason]
+  (let [result' (cond-> result
+                  (not (str/blank? text)) (rf (assistant-text-part text)))]
+    (if (reduced? result')
+      (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+      (assoc loop-state
+             :status :done
+             ;; surfaced so run-agent-loop can record it on the turn span
+             :finish-reason reason
+             :result (rf result' (final-state-part @(:memory-atom agent)))))))
 
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
@@ -606,28 +703,24 @@
               (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
               terminal-error
-              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
-                (if (reduced? result'')
-                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
-                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
-                      (assoc loop-state
-                             :status :done
-                             :finish-reason :terminal-error
-                             :result (rf result'' (final-state-part @memory-atom))))))
+              (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
+                  (finish-turn loop-state result' terminal-error :terminal-error))
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state :result result' :iteration (inc iteration))
 
               :else
-              (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+              (let [reason   (finish-reason iteration max-iter terminal-tools parts)
+                    ;; a turn that ends on a question (ask_user) leaves the model no step to write it
+                    question (when (= reason :terminal-tool)
+                               (let [model-text (collect-text-from-parts parts)]
+                                 (->> (terminal-user-questions terminal-tools parts)
+                                      (keep #(user-question-text model-text %))
+                                      (str/join "\n\n"))))]
                 (if (= reason :length)
                   (log/warn "Agent loop complete" {:iterations iteration :reason reason})
                   (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-                (assoc loop-state
-                       :status :done
-                       ;; surfaced so run-agent-loop can record it on the turn span
-                       :finish-reason reason
-                       :result (rf result' (final-state-part @memory-atom)))))))))))
+                (finish-turn loop-state result' question reason)))))))))
 
 ;;; Public API
 

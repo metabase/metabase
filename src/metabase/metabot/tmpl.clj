@@ -79,3 +79,24 @@
                              (mkline (for [col columns] (fmt col (get row col))))
                              (mkline (map fmt columns row))))]
        (str/join "\n" (concat [header-row separator-row] data-rows))))))
+
+(defn ellipsize
+  "`s` (nil reads as \"\") cut to its first `max-chars` characters, with `marker` (default \"…\") appended when it
+  was longer."
+  ([s max-chars] (ellipsize s max-chars "…"))
+  ([s max-chars marker]
+   (let [s (str s)]
+     (if (> (count s) max-chars)
+       (str (subs s 0 max-chars) marker)
+       s))))
+
+(def default-max-output-chars
+  "Default character cap for `truncate-output`; a JVM/context safety valve for LLM-facing tool output."
+  100000)
+
+(defn truncate-output
+  "Cap `s` to `default-max-output-chars` characters, appending a truncation marker when it overflows. The tool
+  `:output` string is the only channel the LLM sees, so this keeps a single huge result from blowing the
+  context/JVM."
+  [s]
+  (ellipsize s default-max-output-chars "\n…[output truncated]"))

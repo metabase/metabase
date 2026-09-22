@@ -21,12 +21,13 @@
 
 (def ^:private link-type-paths
   "Map of metabase:// link types to their URL paths."
-  {"model"     "/model"
-   "metric"    "/metric"
-   "dashboard" "/dashboard"
-   "document"  "/document"
-   "question"  "/question"
-   "transform" "/data-studio/transforms"})
+  {"model"      "/model"
+   "metric"     "/metric"
+   "collection" "/collection"
+   "dashboard"  "/dashboard"
+   "document"   "/document"
+   "question"   "/question"
+   "transform"  "/data-studio/transforms"})
 
 ;;; Query/Chart URL Generation
 
@@ -168,6 +169,7 @@
   - metabase://model/{id} - Links to models
   - metabase://metric/{id} - Links to metrics
   - metabase://dashboard/{id} - Links to dashboards
+  - metabase://collection/{id} - Links to collections
   - metabase://document/{id} - Links to documents
   - metabase://table/{id} - Links to tables (as questions)
   - metabase://transform/{id} - Links to transforms

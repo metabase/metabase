@@ -51,3 +51,23 @@
       (assoc result :output (format-clarification-output (:structured-output result))))
     (catch Exception e
       {:output (str "Failed to ask clarification: " (or (ex-message e) "Unknown error"))})))
+
+(mu/defn ^{:tool-name "ask_user"}
+  ask-user-tool
+  "Ask the user a clarifying question and stop until they answer. Use this instead of guessing when
+  the request is ambiguous or you are missing something only the user can supply (which database, which
+  metric definition, a date range). `question` is what to ask; `options` optionally offers a few
+  suggested answers. Prefer answering directly when you can — only ask when a wrong guess would waste
+  work. The question and options are shown to the user as your message, so don't also write them out
+  yourself; put choices in `options` rather than in the question. Options appear as a numbered list, so
+  the user may reply with a number. In a profile that lists ask_user as terminal, a successful call ends
+  the turn and waits for the reply."
+  [{:keys [question options]} :- [:map {:closed true}
+                                  [:question :string]
+                                  [:options {:optional true} [:maybe [:sequential :string]]]]]
+  (let [user-question {:question question :options (or options [])}]
+    {:structured-output user-question
+     ;; tool results aren't rendered to the user, so `:user-question` is how the question reaches them
+     :user-question     user-question
+     :instructions      "The question has been presented to the user. Stop and wait for their response before continuing."
+     :output            (format-clarification-output user-question)}))

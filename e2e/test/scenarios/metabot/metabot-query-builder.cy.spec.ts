@@ -57,8 +57,8 @@ describe("Metabot Query Builder", () => {
 
     // the reply renders inline in the full-page conversation...
     cy.wait("@metabotAgent").then(({ request }) => {
-      // the full-page conversation uses the nlq profile
-      expect(request.body.profile_id).to.equal("nlq");
+      // the full-page conversation (New → AI exploration) uses the megabot profile
+      expect(request.body.profile_id).to.equal("megabot");
     });
     H.lastChatMessage().should("have.text", "Here's what I found.");
 

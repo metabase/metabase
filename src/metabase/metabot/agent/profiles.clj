@@ -11,6 +11,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.megabot-context :as megabot-context]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
@@ -84,6 +85,13 @@
                [:skills? {:optional true} :boolean]
                [:required-tool-call? {:optional true} :boolean]
                [:terminal-tools {:optional true} [:set :string]]
+               ;; Loop-hygiene knobs, currently only set by :megabot (whose 1000-iteration budget makes
+               ;; them matter). Optional so every other profile keeps its exact current behavior.
+               ;; :max-output-tokens caps each LLM call's output (else the model ceiling applies);
+               ;; :compact-history? replaces old, large tool outputs with short stubs when the replayed
+               ;; message array is rebuilt, so long tasks don't blow the context.
+               [:max-output-tokens {:optional true} [:maybe :int]]
+               [:compact-history? {:optional true} :boolean]
                [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
         tool-name-seq (map #(:tool-name (meta %)) tool-vars)
@@ -213,6 +221,46 @@
                     #'tools/static-viz-tool
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
+
+;; :megabot is a deliberately unguarded proof-of-concept profile (dev/experimentation only): a minimal, guardrail-free
+;; prompt, an effectively unlimited iteration budget, and tools that carry no :scope, so nothing scope-filters or
+;; scope-checks them. Permissions still apply wherever a tool acts as the current user (the QP, the REST API). The
+;; tools are described in `metabase.metabot.tools.megabot`, `metabase.metabot.tools.api-call`, and
+;; `metabase.metabot.tools.memory`; the knowledge primed into the prompt in `metabase.metabot.megabot-context`.
+(register-profile!
+ {:name                  :megabot
+  :prompt-template       "megabot.selmer"
+  :max-iterations        1000
+  ;; Structured queries are the default warehouse path, so their dialect is inlined (cached prefix) rather
+  ;; than left to a load_skill the model might skip and fall back to SQL. The operator catalog stays on demand.
+  :always-on-skills      [:megabot-discovery :megabot-query]
+  ;; Loop hygiene so the 1000-iteration budget is usable on long tasks: cap each turn's output, and
+  ;; compact old tool outputs to short stubs when the replayed history is rebuilt (see agent/core).
+  :max-output-tokens     16384
+  :compact-history?      true
+  ;; A successful ask_user is the answer for this turn — stop and wait for the user's reply. The loop
+  ;; streams its question as assistant text, since the model gets no further step to write it.
+  :terminal-tools        #{"ask_user"}
+  ;; Primed knowledge, so conversations don't start by rediscovering the app db: the curated app-db
+  ;; map (static, cached prefix), a live instance snapshot (dialect, warehouse dbs, content counts),
+  ;; and the persistent-note catalog (keys + summaries; bodies load on demand via read_note).
+  :system-prompt-context #'megabot-context/megabot-system-context
+  :tools                 [#'tools/run-warehouse-sql-tool
+                          #'tools/run-warehouse-query-tool
+                          #'tools/query-app-db-tool
+                          #'tools/describe-app-db-tool
+                          #'tools/show-result-tool
+                          #'tools/save-result-tool
+                          #'tools/navigate-tool
+                          #'tools/call-api-tool
+                          #'tools/list-api-endpoints-tool
+                          #'tools/describe-api-endpoint-tool
+                          #'tools/write-note-tool
+                          #'tools/read-note-tool
+                          #'tools/delete-note-tool
+                          #'tools/todo-write-tool
+                          #'tools/todo-read-tool
+                          #'tools/ask-user-tool]})
 
 (register-profile!
  {:name            :explorations

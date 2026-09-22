@@ -45,6 +45,11 @@ export const METABOT_PROFILES = {
       return t`SQL`;
     },
   },
+  megabot: {
+    get label() {
+      return t`Megabot`;
+    },
+  },
   // deprecated
   slack: {
     get label() {
@@ -86,10 +91,18 @@ export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   NLQ: "nlq",
   SQL: "sql",
+  MEGABOT: "megabot",
+  EXPLORATIONS: "explorations",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
+const HISTORY_ENABLED_PROFILES: ReadonlySet<string | undefined> = new Set([
+  METABOT_PROFILE_OVERRIDES.DEFAULT,
+  METABOT_PROFILE_OVERRIDES.NLQ,
+  METABOT_PROFILE_OVERRIDES.MEGABOT,
+]);
+
 export const isHistoryEnabledProfile = (profile: string | undefined) =>
-  profile === undefined || profile === "nlq";
+  HISTORY_ENABLED_PROFILES.has(profile);
 
 export const resolveMetabotProfileId = (
   profile: MetabotProfileId | undefined,
@@ -124,13 +137,28 @@ export const TOOL_MESSAGES = {
     active: () => t`Inspecting the visualization`,
     done: () => t`Inspected the visualization`,
   },
+  ask_user: {
+    active: () => t`Asking for clarification`,
+    done: () => t`Asked for clarification`,
+  },
   analyze_data: {
     active: () => t`Analyzing the data`,
     done: () => t`Analyzed the data`,
   },
+  // writes replace the done label with a tool_title naming what changed, so it only shows for reads
+  call_api: {
+    active: () => t`Working on it`,
+    done: () => t`Looked up details`,
+  },
   construct_notebook_query: {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
+  },
+  // API discovery is plumbing the user doesn't need to see
+  describe_api_endpoint: { active: () => undefined, done: () => undefined },
+  describe_app_db: {
+    active: () => t`Reading the app database schema`,
+    done: () => t`Read the app database schema`,
   },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
@@ -140,8 +168,37 @@ export const TOOL_MESSAGES = {
     active: () => t`Getting transform details`,
     done: () => t`Got transform details`,
   },
+  list_api_endpoints: { active: () => undefined, done: () => undefined },
   list_available_fields: { active: () => undefined, done: () => undefined },
   load_skill: { active: () => undefined, done: () => undefined },
+  query_app_db: {
+    active: () => t`Reading app metadata`,
+    done: () => t`Read app metadata`,
+  },
+  run_warehouse_query: {
+    active: () => t`Querying the warehouse`,
+    done: () => t`Queried the warehouse`,
+  },
+  run_warehouse_sql: {
+    active: () => t`Running SQL`,
+    done: () => t`Ran SQL`,
+  },
+  show_result: {
+    active: () => t`Rendering the result`,
+    done: () => t`Rendered the result`,
+  },
+  write_note: {
+    active: () => t`Saving a note`,
+    done: () => t`Saved a note`,
+  },
+  read_note: {
+    active: () => t`Reading notes`,
+    done: () => t`Read notes`,
+  },
+  delete_note: {
+    active: () => t`Deleting a note`,
+    done: () => t`Deleted a note`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -161,6 +218,15 @@ export const TOOL_MESSAGES = {
           ),
   },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
+  // a settled save replaces the done label with a tool_title naming what was saved and where
+  save_result: {
+    active: () => t`Saving the result`,
+    done: () => t`Saved the result`,
+  },
+  navigate: {
+    active: () => t`Navigating`,
+    done: () => t`Navigated`,
+  },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {
     active: () => t`Checking available data sources`,

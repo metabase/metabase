@@ -77,6 +77,7 @@
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotNote                       metabase.metabot.models.metabot-note
     :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
     :model/MetabotUsedTable                  metabase.metabot.models.metabot-used-table
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log

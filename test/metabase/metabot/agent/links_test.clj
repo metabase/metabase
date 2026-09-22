@@ -133,6 +133,7 @@
     (is (= "/model/123" (links/resolve-metabase-uri "metabase://model/123" {} {})))
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" {} {})))
     (is (= "/dashboard/789" (links/resolve-metabase-uri "metabase://dashboard/789" {} {})))
+    (is (= "/collection/404" (links/resolve-metabase-uri "metabase://collection/404" {} {})))
     (is (= "/document/303" (links/resolve-metabase-uri "metabase://document/303" {} {})))
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
     (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))

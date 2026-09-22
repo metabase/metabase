@@ -210,7 +210,11 @@
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
-    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
+    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))
+    (testing "megabot's run tools register queries in memory and show_result reads them back"
+      (is (contains? @#'agent-tools/state-dependent-tools "run_warehouse_sql"))
+      (is (contains? @#'agent-tools/state-dependent-tools "run_warehouse_query"))
+      (is (contains? @#'agent-tools/state-dependent-tools "show_result")))))
 
 (deftest wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"
