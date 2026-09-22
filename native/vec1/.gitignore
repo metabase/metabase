@@ -1,0 +1,5 @@
+# Downloaded by bin/fetch-vec1.sh (pinned + checksum-verified there, so not vendored).
+vec1.c
+sqlite3.h
+sqlite3ext.h
+build-output
