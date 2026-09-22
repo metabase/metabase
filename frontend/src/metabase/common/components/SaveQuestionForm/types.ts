@@ -1,5 +1,6 @@
 import type Question from "metabase-lib/v1/Question";
 import type {
+  CardId,
   CollectionId,
   DashboardId,
   DashboardTabId,
@@ -12,6 +13,7 @@ export type SaveQuestionProps<C = CollectionId> = {
     question: Question,
     options?: {
       dashboardTabId?: DashboardTabId;
+      sourceCardId?: CardId;
     },
   ) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
@@ -53,12 +55,8 @@ export type UpdateQuestionOptions = {
 export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
-  onCreate: (
-    question: Question,
-    options?: {
-      dashboardTabId?: DashboardTabId | undefined;
-    },
-  ) => Promise<Question>;
+  sourceCardId?: CardId;
+  onCreate: SaveQuestionProps["onCreate"];
 } & Pick<SaveQuestionProps, "targetCollection">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
