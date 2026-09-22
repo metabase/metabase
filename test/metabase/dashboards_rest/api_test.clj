@@ -1395,6 +1395,28 @@
                 (is (= [action-id]
                        (map :action_id (t2/select :model/DashboardCard :dashboard_id public-id))))))))))))
 
+(deftest move-card-between-tabs-on-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id deleting a tab and re-adding its card on another tab exposes nothing new"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                     :model/DashboardTab {tab-a-id :id} {:dashboard_id public-id :name "A" :position 0}
+                     :model/DashboardTab tab-b {:dashboard_id public-id :name "B" :position 1}
+                     :model/DashboardCard _ {:dashboard_id public-id :dashboard_tab_id tab-a-id
+                                             :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
+            (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
+                                  {:tabs      [tab-b]
+                                   :dashcards [{:id -1 :card_id card-id :dashboard_tab_id (:id tab-b)
+                                                :row 0 :col 0 :size_x 4 :size_y 4}]})
+            (is (= [(:id tab-b)]
+                   (map :dashboard_tab_id (t2/select :model/DashboardCard :dashboard_id public-id))))))))))
+
 (deftest convert-hidden-dashcard-to-plain-on-shared-dashboard-test
   (testing "PUT /api/dashboard/:id rejects turning a dashcard that hides its card's events into one that shows them"
     (mt/with-temporary-setting-values [enable-public-sharing true]
