@@ -208,15 +208,22 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     });
   });
 
-  it("should trigger sync when clicking Check now", () => {
+  it("should send a page viewed event and trigger sync when clicking Check now", () => {
+    H.resetSnowplow();
+    H.enableTracking();
     cy.intercept("POST", "/api/ee/security-center/sync").as("sync");
     cy.visit("/admin/security-center");
     securityCenterContent().within(() => {
       cy.findByText("Security Center").should("be.visible");
     });
+    H.expectUnstructuredSnowplowEvent({
+      event: "security_center_page_viewed",
+    });
 
     cy.findByTestId("sync-advisories").click();
     cy.wait("@sync");
+
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("per-version download link", () => {
@@ -236,8 +243,11 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
       updated_at: "2026-03-24T00:00:00Z",
     } as const;
 
-    it("stores and returns download_jar_urls through the real backend", () => {
+    it("stores download_jar_urls and shows a single download button for the fix matching the instance major version", () => {
+      H.mockSessionProperty("version", { tag: "v0.59.3" });
       H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
+
+      cy.log("The backend stores and returns download_jar_urls");
       cy.request("GET", "/api/ee/security-center").then(({ body }) => {
         const advisory = body.advisories.find(
           (a: { advisory_id: string }) => a.advisory_id === "TEST-DL",
@@ -247,11 +257,7 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
           { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
         ]);
       });
-    });
 
-    it("shows a single download button for the fix matching the instance major version", () => {
-      H.mockSessionProperty("version", { tag: "v0.59.3" });
-      H.seedSecurityAdvisories([DOWNLOADABLE_ADVISORY]);
       cy.visit("/admin/security-center");
 
       cy.findAllByTestId("advisory-card")

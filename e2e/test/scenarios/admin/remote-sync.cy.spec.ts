@@ -954,28 +954,6 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("can toggle sync for a shared tenant collection", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Tenant Collection To Sync");
-
-        cy.visit("/admin/settings/remote-sync");
-
-        cy.findByTestId("admin-layout-content").within(() => {
-          // Find the collection row and toggle sync on
-          cy.findByRole("switch", {
-            name: "Sync Tenant Collection To Sync",
-          }).click({ force: true });
-
-          // Save changes
-          cy.button("Save changes").click();
-
-          // Verify the setting was saved
-          cy.findByText(/success/i).should("exist");
-        });
-      });
-
       it("should disable sync toggles in read-only mode", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
@@ -1044,6 +1022,9 @@ describe("Remote Sync", () => {
             cy.findByTestId("admin-layout-content")
               .button("Save changes")
               .click();
+            cy.findByTestId("admin-layout-content")
+              .findByText(/success/i)
+              .should("exist");
 
             // Create a question in the tenant collection
             H.createQuestion({
@@ -1056,8 +1037,11 @@ describe("Remote Sync", () => {
 
             cy.visit("/");
 
-            // Verify sync status indicator appears
-            H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
+            // Verify the sync status badge appears on the tenant collection
+            H.navigationSidebar()
+              .findByRole("treeitem", { name: /Syncable Tenant Collection/ })
+              .findByTestId("remote-sync-status")
+              .should("exist");
 
             // Push changes
             H.clickPushOption();
@@ -1071,42 +1055,6 @@ describe("Remote Sync", () => {
               .findByRole("link", { name: /Syncable Tenant Collection/ })
               .findByTestId("remote-sync-status")
               .should("not.exist");
-          },
-        );
-      });
-
-      it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Badge Test Collection").then(
-          (response) => {
-            const collectionId = response.body.id;
-
-            // Enable sync
-            cy.visit("/admin/settings/remote-sync");
-            // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
-            cy.findByTestId("admin-layout-content")
-              .findByRole("switch", { name: "Sync Badge Test Collection" })
-              .click({ force: true });
-            cy.findByTestId("admin-layout-content")
-              .button("Save changes")
-              .click();
-
-            // Create content to trigger dirty state
-            H.createQuestion({
-              name: "Status Badge Test Question",
-              query: { "source-table": PRODUCTS_ID },
-              collection_id: collectionId,
-            });
-
-            cy.visit("/");
-
-            // Verify the sync status badge appears on the tenant collection
-            H.navigationSidebar()
-              .findByRole("treeitem", { name: /Badge Test Collection/ })
-              .findByTestId("remote-sync-status")
-              .should("exist");
           },
         );
       });

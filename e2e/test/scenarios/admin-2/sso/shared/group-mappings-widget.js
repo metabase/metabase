@@ -1,41 +1,4 @@
-export function crudGroupMappingsWidget(authenticationMethod) {
-  cy.visit("/admin/settings/authentication/" + authenticationMethod);
-  cy.wait("@getSettings");
-  cy.wait("@getSessionProperties");
-
-  // Create mapping, then delete it along with its groups
-  createMapping("cn=People1");
-  addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
-  deleteMappingWithGroups("cn=People1");
-
-  cy.wait(["@deleteGroup", "@deleteGroup"]);
-
-  // Create mapping, then clear its groups of members
-  createMapping("cn=People2");
-  addGroupsToMapping("cn=People2", ["collection", "readonly"]);
-  // Groups deleted along with first mapping should not be offered
-  cy.findByText("data").should("not.exist");
-  cy.findByText("nosql").should("not.exist");
-
-  cy.findByTestId("admin-content-table").within(() => {
-    cy.icon("close").click({ force: true });
-  });
-  cy.findByText(/remove all members/i).click();
-  cy.button("Remove mapping and members").click();
-
-  cy.wait(["@clearGroup", "@clearGroup"]);
-
-  cy.visit("/admin/people/groups");
-  cy.findByText("data").should("not.exist");
-  cy.findByText("nosql").should("not.exist");
-
-  checkThatGroupHasNoMembers("collection");
-  checkThatGroupHasNoMembers("readonly");
-}
-
-export function checkGroupConsistencyAfterDeletingMappings(
-  authenticationMethod,
-) {
+export function checkGroupMappingsWidget(authenticationMethod) {
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
   cy.wait("@getSettings");
   cy.wait("@getSessionProperties");
@@ -49,11 +12,18 @@ export function checkGroupConsistencyAfterDeletingMappings(
   createMapping("cn=People3");
   addGroupsToMapping("cn=People3", ["collection", "readonly"]);
 
-  deleteMappingWithGroups("cn=People2");
+  cy.log(
+    "Deleting a mapping with its groups keeps the remaining mappings consistent",
+  );
+  deleteMapping(
+    "cn=People2",
+    /delete the groups/i,
+    "Remove mapping and delete groups",
+  );
+  cy.wait(["@deleteGroup", "@deleteGroup"]);
 
-  // Scope to the table: the group dropdown is portaled and stays mounted
-  // (hidden) after being opened, so a group name can also linger as an
-  // off-screen option outside the table.
+  // Scope to the table: the group dropdown is portaled, so a group name can
+  // also show up as an option outside the table.
   cy.findByTestId("admin-content-table").within(() => {
     // cn=People1 will have Admin and nosql as groups
     cy.findByText("1 other group");
@@ -61,23 +31,53 @@ export function checkGroupConsistencyAfterDeletingMappings(
     cy.findByText("readonly");
   });
 
-  // Ensure mappings are as expected after a page reload
+  cy.log("Deleted groups are no longer offered for mappings");
+  mappingRow("cn=People3").findByText("readonly").click();
+  cy.findByRole("option", { name: "readonly" }).should("exist");
+  cy.findByRole("option", { name: "data" }).should("not.exist");
+  cy.findByRole("option", { name: "collection" }).should("not.exist");
+  cy.realPress("{esc}");
+
+  cy.log("Mappings are as expected after a page reload");
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
   cy.findByTestId("admin-content-table").within(() => {
     cy.findByText("1 other group");
     cy.findByText("readonly");
   });
+
+  cy.log(
+    "Deleting mappings while clearing their groups empties the groups, skipping Administrators",
+  );
+  deleteMapping(
+    "cn=People3",
+    /remove all members/i,
+    "Remove mapping and members",
+  );
+  cy.wait("@clearGroup");
+  deleteMapping(
+    "cn=People1",
+    /remove all members/i,
+    "Remove mapping and members",
+  );
+  cy.wait("@clearGroup");
+
+  cy.visit("/admin/people/groups");
+  cy.findByText("data").should("not.exist");
+  cy.findByText("collection").should("not.exist");
+
+  checkThatGroupHasNoMembers("nosql");
+  checkThatGroupHasNoMembers("readonly");
 }
 
-const deleteMappingWithGroups = (mappingName) => {
-  cy.findByText(mappingName)
-    .closest("tr")
-    .within(() => {
-      cy.icon("close").click({ force: true });
-    });
+const mappingRow = (mappingName) => cy.findByText(mappingName).closest("tr");
 
-  cy.findByText(/delete the groups/i).click();
-  cy.button("Remove mapping and delete groups").click();
+const deleteMapping = (mappingName, consequenceLabel, confirmLabel) => {
+  mappingRow(mappingName).within(() => {
+    cy.icon("close").click({ force: true });
+  });
+
+  cy.findByText(consequenceLabel).click();
+  cy.button(confirmLabel).click();
 
   // Removing the mapping PUTs the setting and invalidates session properties,
   // triggering a refetch. Wait for both to settle so this trailing refetch
@@ -100,11 +100,9 @@ const createMapping = (name) => {
 };
 
 const addGroupsToMapping = (mappingName, groups) => {
-  cy.findByText(mappingName)
-    .closest("tr")
-    .within(() => {
-      cy.findByText("Default").click();
-    });
+  mappingRow(mappingName).within(() => {
+    cy.findByText("Default").click();
+  });
 
   groups.forEach((group) => {
     cy.findByRole("option", { name: group }).click();

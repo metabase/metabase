@@ -528,7 +528,7 @@ describe("scenarios > admin > people", () => {
         setupGoogleAuth();
       });
 
-      it("invite member when SSO is not configured", () => {
+      it("invite member when Google SSO is configured but password login is still enabled", () => {
         const { first_name, last_name, email } = TEST_USER;
         const FULL_NAME = `${first_name} ${last_name}`;
         cy.visit("/admin/people");

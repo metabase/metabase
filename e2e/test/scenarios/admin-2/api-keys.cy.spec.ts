@@ -73,7 +73,7 @@ describe("scenarios > admin > settings > API keys", () => {
     });
   });
 
-  it("should allow creating an API key", () => {
+  it("should allow creating an API key, and show an error when a previously used key name is submitted", () => {
     const name = "New key";
     const group = "Administrators";
     visitApiKeySettings();
@@ -86,14 +86,7 @@ describe("scenarios > admin > settings > API keys", () => {
 
     cy.button("Done").click();
     cy.findByTestId("api-keys-table").findByText(name);
-  });
 
-  it("should show an error when a previously used key name is submitted", () => {
-    const name = "New key";
-    const group = "Administrators";
-    visitApiKeySettings();
-    H.tryToCreateApiKeyViaModal({ name, group });
-    cy.button("Done").click();
     H.tryToCreateApiKeyViaModal({ name, group }).then(({ response }) => {
       expect(response?.statusCode).to.equal(400);
     });
