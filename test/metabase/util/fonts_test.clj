@@ -47,6 +47,12 @@
                         (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2")))
         (is (re-matches #"/app/dist/fonts/PT_Serif/PTSerif-Bold\.[a-f0-9]+\.woff2"
                         (u.fonts/hashed-font-url-path "PT Serif" "PTSerif-Bold" "woff2"))))
+      (testing "the chunk that carries no latin glyphs is never the one resolved"
+        (is (not (str/includes? (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2")
+                                ".rest."))))
+      (testing "a face the build does not split still resolves"
+        (is (re-matches #"/app/dist/fonts/Lato/lato-v16-latin-regular\.[a-f0-9]+\.ttf"
+                        (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "ttf"))))
       (testing "a face that does not exist resolves to nil rather than a broken URL"
         (is (nil? (u.fonts/hashed-font-url-path "Slabo 27px" "Slabo27px-Bold" "woff2")))))
     (testing "without a frontend build there is no file to point at"
