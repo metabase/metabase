@@ -7,7 +7,9 @@ const { IS_DEV_MODE } = require("../constants");
 const ROOT_PATH = path.resolve(__dirname, "../../../..");
 const ASSETS_PATH = ROOT_PATH + "/resources/frontend_client/app/assets";
 const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
-const FONTS_PATH = ROOT_PATH + "/resources/frontend_client/app/fonts";
+// Bundled font sources. Deliberately outside resources/ so they are not packaged
+// into the jar twice: the build emits hashed copies into app/dist/fonts.
+const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
 const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
