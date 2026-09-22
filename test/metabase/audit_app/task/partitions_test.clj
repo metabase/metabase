@@ -4,7 +4,8 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.task.partitions :as partitions]
-   [next.jdbc :as next.jdbc]))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,6 +91,48 @@
           (partitions/manage-partitions conn now 25)
           (is (= #{"query_execution_2026_08"}
                  (set (partitions/current-partitions conn)))))
+        (finally
+          (drop-all-tables conn)
+          ;; make sure we end up in a good state for other tests
+          (partitions/create-partition conn {:name "query_execution_2026_08"
+                                             :from "1970-01-01"
+                                             :to "2099-01-01"}))))))
+
+(defn insert-execution! [started-at]
+  (t2/insert! :model/QueryExecution {:started_at started-at
+                                     :hash (.getBytes "lol")
+                                     :result_rows 0
+                                     :native false}))
+
+(deftest initial-partition-to-fully-managed
+  (when (= :postgres (mdb/db-type))
+    (with-open [conn (.getConnection (mdb/data-source))]
+      (try
+        (testing "initial partition"
+          (drop-all-tables conn)
+          ;; initial partition
+          (partitions/create-partition conn {:name "query_execution_2026_08"
+                                             :from "1970-01-01"
+                                             :to "2026-10-01"})
+          (partitions/create-partition conn {:name "query_execution_2026_10"
+                                             :from "2026-10-01"
+                                             :to "2026-11-01"})
+          ;; initial data
+          (insert-execution! #inst "2026-02-01")
+          (insert-execution! #inst "2026-07-01")
+          (insert-execution! #inst "2026-08-01")
+          (insert-execution! #inst "2026-09-01")
+          (insert-execution! #inst "2026-10-02")
+          (is (not (partitions/fully-on-partitions?))))
+        (testing "after second partition is added"
+          (partitions/manage-partitions conn #inst "2026-09-01" 25)
+          (is (not (partitions/fully-on-partitions?))))
+        (testing "after third partition is added"
+          (partitions/manage-partitions conn #inst "2026-10-01" 25)
+          (is (not (partitions/fully-on-partitions?))))
+        (testing "after fourth partition is added"
+          (partitions/manage-partitions conn #inst "2026-11-01" 25)
+          (is (partitions/fully-on-partitions?)))
         (finally
           (drop-all-tables conn)
           ;; make sure we end up in a good state for other tests
