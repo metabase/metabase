@@ -220,8 +220,10 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    ;; Grandfather against the dashboard as it was before this update, as REST does: a card that already showed
+    ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
-     dashboard current-cards (concat to-create to-update))
+     dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
