@@ -224,6 +224,115 @@
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
+(def ^:private wif-base-details
+  {:account "acct.us-east-2.aws"
+   :warehouse "COMPUTE_WH"
+   :db "TESTDB"
+   :user "SERVICE_USER"
+   :auth-mode "wif"})
+
+(deftest ^:parallel connection-details->spec-wif-oidc-inline-test
+  (testing "WIF OIDC with an inline pasted JWT sets :token"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token "eyJhbGciOi.the-jwt.signature"))]
+      (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+      (is (= "OIDC" (:workloadIdentityProvider spec)))
+      (is (= "eyJhbGciOi.the-jwt.signature" (:token spec)))
+      (is (not (contains? spec :token_file_path))))))
+
+(deftest ^:parallel connection-details->spec-wif-oidc-file-path-test
+  (testing "WIF OIDC with a token file path sets :token_file_path (not :token)"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token-file-path "/var/run/secrets/tokens/oidc-token"))]
+      (is (= "/var/run/secrets/tokens/oidc-token" (:token_file_path spec)))
+      (is (not (contains? spec :token))))))
+
+(deftest ^:parallel connection-details->spec-wif-oidc-file-path-wins-test
+  (testing "file path wins over inline token — enables in-place rotation on K8s"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token "eyJhbGciOi.the-jwt.signature"
+                       :wif-token-file-path "/var/run/secrets/tokens/oidc-token"))]
+      (is (= "/var/run/secrets/tokens/oidc-token" (:token_file_path spec)))
+      (is (not (contains? spec :token))))))
+
+(deftest ^:parallel connection-details->spec-wif-cloud-providers-test
+  (testing "WIF AWS/AZURE/GCP set no client-side credential fields"
+    (doseq [provider ["AWS" "AZURE" "GCP"]]
+      (testing provider
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc wif-base-details :wif-provider provider))]
+          (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+          (is (= provider (:workloadIdentityProvider spec)))
+          (is (not (contains? spec :token)))
+          (is (not (contains? spec :token_file_path))))))))
+
+(deftest ^:parallel connection-details->spec-wif-strips-legacy-creds-test
+  (testing "under WIF, stray password and private-key fields do not leak into the JDBC spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token "jwt"
+                       :password "stale-password"
+                       :private-key-value "stale-key"
+                       :private-key-options "uploaded"))]
+      (is (not (contains? spec :password)))
+      (is (not (contains? spec :private_key_file)))
+      (is (nil? (:connection-uri spec))))))
+
+(deftest ^:parallel connection-details->spec-wif-role-as-property-test
+  (testing "under WIF, :role is in the JDBC properties map"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :role "MY_ROLE"
+                       :wif-provider "OIDC"
+                       :wif-token "jwt"))]
+      (is (= "MY_ROLE" (:role spec)))
+      (is (nil? (:connection-uri spec))))))
+
+(deftest ^:parallel normalize-details-auth-mode-backfill-test
+  (testing ":auth-mode is backfilled for legacy details maps that lack it"
+    (are [in expected] (= expected (:auth-mode (#'driver.snowflake/normalize-details in)))
+      {:password "abc"}                          "password"
+      {:private-key-path  "/tmp/k"}              "key-pair"
+      {:private-key-value "xxx"}                 "key-pair"
+      {:private-key-id    1}                     "key-pair"
+      {:password "abc" :private-key-path "/x"}   "key-pair"
+      {}                                         "key-pair"))
+  (testing "an explicit :auth-mode is preserved"
+    (are [in] (= (:auth-mode in) (:auth-mode (#'driver.snowflake/normalize-details in)))
+      {:auth-mode "wif"      :wif-token "jwt"}
+      {:auth-mode "password" :password  "abc"}
+      {:auth-mode "key-pair" :private-key-value "xxx"})))
+
+(deftest ^:parallel db-details-to-test-and-migrate-wif-test
+  (testing "WIF-only details are unambiguous — no candidates returned"
+    (is (nil? (driver/db-details-to-test-and-migrate
+               :snowflake
+               (assoc wif-base-details
+                      :wif-provider "OIDC"
+                      :wif-token    "jwt")))))
+  (testing "when WIF and password are both set, WIF is tried first"
+    (let [candidates (driver/db-details-to-test-and-migrate
+                      :snowflake
+                      (assoc wif-base-details
+                             :password     "stale-pw"
+                             :wif-provider "OIDC"
+                             :wif-token    "jwt"))]
+      (is (some? candidates))
+      (is (= :wif (-> candidates first meta :auth))))))
+
 (defn- pem->private-key
   [pem]
   (let [encoded (-> pem
