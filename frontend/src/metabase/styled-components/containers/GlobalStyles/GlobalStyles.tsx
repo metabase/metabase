@@ -3,7 +3,7 @@ import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import "metabase/css/core/fonts.css";
+import "generated-fonts/fonts.css";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
@@ -49,7 +49,7 @@ export const GlobalStyles = (): JSX.Element => {
           }
         `,
       )}
-    ${getSaveDomImageStyles(isEmbeddingSdk())}
+      ${getSaveDomImageStyles(isEmbeddingSdk())}
     body {
         font-size: 0.875em;
         ${isStaticEmbedding() || isPublicEmbedding()

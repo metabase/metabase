@@ -1,7 +1,11 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
+
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+const {
+  FontSubsetPlugin,
+} = require("./frontend/build/shared/rspack/plugins/font-subset-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
@@ -34,6 +38,7 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
   COMPRESSION_CONFIG,
@@ -141,29 +146,21 @@ const config = {
         test: /\.(svg|png)$/,
         // SVG font faces live under frontend/fonts and must stay files: inlining them
         // adds close to a megabyte of base64 to this bundle.
-        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
+        exclude: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
         type: "asset/inline",
         resourceQuery: { not: [/component|source/] },
       },
       {
         // Fonts are emitted as files, never inlined: base64 would add megabytes.
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
           // The app build owns these files. Emitting them here as well would race
           // with its `clean`, and would leave removed fonts behind if that clean
           // had to skip the directory. This build only needs the URL.
           emit: false,
-          // Keep the family directory: the backend derives the whitelabel font
-          // list from these directory names.
-          /** @param {{ filename: string }} pathData */
-          filename: (pathData) => {
-            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
-            const segments = pathData.filename.split("/");
-            const family = segments[segments.length - 2];
-            return `../dist/fonts/${family}/[name].[contenthash:8][ext]`;
-          },
+          filename: (pathData) => fontAssetName(pathData, "../dist/fonts"),
         },
       },
       {
@@ -304,6 +301,11 @@ const config = {
   },
 
   plugins: [
+    new FontSubsetPlugin({
+      source: __dirname + "/frontend/src/metabase/css/core/fonts.css",
+      fontsDir: __dirname + "/frontend/fonts",
+      outputDir: __dirname + "/target/font-subsets",
+    }),
     ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others

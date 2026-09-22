@@ -353,6 +353,7 @@
     "stylelint": "^16.25.0",
     "stylelint-config-css-modules": "^4.5.1",
     "stylelint-config-standard": "^36.0.0",
+    "subset-font": "^2.7.0",
     "swc-plugin-coverage-instrument": "0.0.32",
     "ts-dedent": "^2.2.0",
     "ts-morph": "^25.0.0",

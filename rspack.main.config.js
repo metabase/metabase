@@ -7,12 +7,6 @@ const rspack = require("@rspack/core");
 const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-const {
-  COMPRESSION_CONFIG,
-} = require("./frontend/build/shared/rspack/compression");
-const {
-  bundleStatsPlugins,
-} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -20,6 +14,12 @@ const {
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -27,6 +27,10 @@ const {
 const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
+const {
+  FontSubsetPlugin,
+} = require("./frontend/build/shared/rspack/plugins/font-subset-plugin");
 const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
@@ -240,18 +244,10 @@ const config = {
       },
       {
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
-          // Keep the family directory: the backend derives the whitelabel font
-          // list from these directory names.
-          /** @param {{ filename: string }} pathData */
-          filename: (pathData) => {
-            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
-            const segments = pathData.filename.split("/");
-            const family = segments[segments.length - 2];
-            return `fonts/${family}/[name].[contenthash:8][ext]`;
-          },
+          filename: (pathData) => fontAssetName(pathData, "fonts"),
         },
       },
       {
@@ -436,6 +432,11 @@ const config = {
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
+    }),
+    new FontSubsetPlugin({
+      source: __dirname + "/frontend/src/metabase/css/core/fonts.css",
+      fontsDir: __dirname + "/frontend/fonts",
+      outputDir: __dirname + "/target/font-subsets",
     }),
     ...COMPRESSION_CONFIG,
   ],
