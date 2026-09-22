@@ -832,11 +832,15 @@
                (sequential? timeline-ids))
       (filter pos-int? timeline-ids))))
 
-(defn visualizer-dashcard?
-  "Whether `dashcard` renders its own visualizer visualization instead of its card's, in which case it never shows the
-  card's timeline events."
+(defn dashcard-hides-card-events?
+  "Whether `dashcard` never shows its card's timeline events, whatever the card selects: a visualizer dashcard renders
+  its own visualization, an action dashcard renders a button, and a virtual dashcard has no card of its own. The
+  public payload and the checks guarding it both read this, so they cannot drift apart."
   [dashcard]
-  (contains? (:visualization_settings dashcard) :visualization))
+  (let [settings (:visualization_settings dashcard)]
+    (or (contains? settings :visualization)
+        (some? (:action_id dashcard))
+        (some? (:virtual_card settings)))))
 
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
@@ -853,6 +857,16 @@
   [dashboard card-ids]
   (when (seq card-ids)
     (check-shared-dashboard-timeline-permissions! dashboard (queries.db/cards (set card-ids)))))
+
+(defn check-newly-exposed-dashcards-timeline-permissions!
+  "[[check-shared-dashboard-timeline-permissions!]] for the cards `new-dashcards` newly expose on `dashboard`. A card
+  is grandfathered only when `existing-dashcards` already shows its events, so turning a dashcard that hides them
+  into one that shows them is checked like any other placement."
+  [dashboard existing-dashcards new-dashcards]
+  (let [exposed-card-ids  (comp (remove dashcard-hides-card-events?) (keep :card_id))
+        existing-card-ids (into #{} exposed-card-ids existing-dashcards)
+        new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
+    (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
 
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so

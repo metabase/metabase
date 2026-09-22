@@ -220,6 +220,8 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard current-cards (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already

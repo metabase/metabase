@@ -1637,8 +1637,14 @@
                                   :else cols)]
                [k updated-cols]))))))
 
+(defn- timeline-setting-ids
+  "The ids stored under a `:timeline.*` visualization setting. Settings saved before these keys were validated can
+  hold anything, so a non-sequential value counts as no ids rather than throwing mid-export."
+  [ids]
+  (when (sequential? ids) ids))
+
 (defn- export-fks [ids model]
-  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) ids))
+  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) (timeline-setting-ids ids)))
 
 (defn- export-timeline-events [settings]
   (-> settings
@@ -1740,7 +1746,7 @@
   (and (vector? ref) (= 2 (count ref)) (every? entity-id? ref)))
 
 (defn- import-fks [refs ref? model]
-  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) refs))
+  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
 
 (defn- import-timeline-events [settings]
   (-> settings
@@ -1788,8 +1794,8 @@
 
 (defn- timeline-events-deps
   [allow-int-ids? settings]
-  (let [selected-ids (:timeline.selected_timeline_ids settings)
-        excluded-ids (:timeline.excluded_timeline_event_ids settings)
+  (let [selected-ids (timeline-setting-ids (:timeline.selected_timeline_ids settings))
+        excluded-ids (timeline-setting-ids (:timeline.excluded_timeline_event_ids settings))
         timeline-ids (concat
                       (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
                       (if allow-int-ids?

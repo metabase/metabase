@@ -147,6 +147,7 @@ const DashCardChart = ({ dashcard }: { dashcard: DashboardCard }) => {
 function setup({
   savedVisibility,
   withTimelineEvents = true,
+  isFullscreen = false,
   selectedTabId = null,
   dashcardTabId = null,
   withSidebar = false,
@@ -157,6 +158,7 @@ function setup({
 }: {
   savedVisibility?: VisualizationSettings;
   withTimelineEvents?: boolean;
+  isFullscreen?: boolean;
   selectedTabId?: DashboardTabId | null;
   dashcardTabId?: DashboardTabId | null;
   withSidebar?: boolean;
@@ -186,6 +188,7 @@ function setup({
     <MockDashboardContext
       dashboardId={DASHBOARD_ID}
       withTimelineEvents={withTimelineEvents}
+      isFullscreen={isFullscreen}
     >
       {/* two charts report, the dashboard is tracked once */}
       <DashCardChart dashcard={dashcard} />
@@ -252,6 +255,12 @@ describe("dashboard timeline events", () => {
       event: "dashboard_events_shown",
       target_id: DASHBOARD_ID,
     });
+  });
+
+  it("offers no event controls in fullscreen, where no sidebar can open", () => {
+    setup({ savedVisibility: EVENTS_RECORDED, isFullscreen: true });
+
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
   it("does not track event visibility when dashboard event controls are disabled", () => {

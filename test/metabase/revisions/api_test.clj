@@ -1111,6 +1111,32 @@
           (is (=? [{:target [:dimension [:template-tag "RATING"]]}]
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))
 
+(deftest revert-dashboard-to-a-dashcard-that-shows-events-test
+  (testing "POST /api/revision/revert rejects restoring a plain dashcard over one that hid its card's events"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id public-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (create-dashboard-revision! public-id true :crowberto)
+        ;; the card stays on the dashboard, but as a visualizer dashcard its events are no longer shown
+        (t2/update! :model/DashboardCard dashcard-id
+                    {:visualization_settings {:visualization {:display "line" :columnValuesMapping {} :settings {}}}})
+        (create-dashboard-revision! public-id false :crowberto)
+        (let [[_ {revision-id :id}] (revision/revisions :model/Dashboard public-id)]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "revision/revert"
+                                       {:entity "dashboard" :id public-id :revision_id revision-id})))
+          (is (= [{:visualization {:display "line" :columnValuesMapping {} :settings {}}}]
+                 (map :visualization_settings (t2/select :model/DashboardCard :dashboard_id public-id))))
+          (testing "a user who can read the timeline can restore it"
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "dashboard" :id public-id :revision_id revision-id})
+            (is (= [{}] (map :visualization_settings (t2/select :model/DashboardCard :dashboard_id public-id))))))))))
+
 (deftest revert-dashboard-with-restricted-timeline-card-test
   (testing "POST /api/revision/revert re-adding a card whose selected timeline the user cannot read"
     (mt/with-temporary-setting-values [enable-public-sharing true]

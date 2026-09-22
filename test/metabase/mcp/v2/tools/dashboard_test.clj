@@ -103,6 +103,21 @@
           (testing "the dashcard got a real id, not the temp one"
             (is (pos-int? (get-in result [:dashcards 0 :id])))))))))
 
+(deftest add-card-with-restricted-timeline-to-shared-dashboard-test
+  (testing "adding a card to a shared dashboard needs read access to the timelines it shows, as in the REST writer"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card card {:display                :line
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that"
+                     (tool-error (call-tool! :rasta nil "dashboard_write"
+                                             (wire {:method "update" :id (:id dashboard)
+                                                    :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))
+
 (deftest create-with-a-bad-op-writes-nothing-test
   (testing "GHY-4147: a create whose ops fail leaves no dashboard behind — otherwise the agent sees
             an error, retries, and ends up with a pile of empty dashboards"

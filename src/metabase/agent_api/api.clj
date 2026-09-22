@@ -1374,6 +1374,10 @@
         (case action
           "add"
           (let [card    (api/read-check :model/Card card_id)
+                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
+                ;; same read check the REST writer applies runs here too.
+                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
+                         (agent-api.db/dashboard dashboard-id) current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))

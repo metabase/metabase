@@ -136,7 +136,8 @@ const DashboardActionMenuInner = ({
               onClick={() => setShowAutoRefreshOptions(true)}
             />
 
-            {withTimelineEvents && (
+            {/* fullscreen hides every sidebar, so the panel this opens could never appear */}
+            {withTimelineEvents && !isFullscreen && (
               <Menu.Item
                 leftSection={<Icon name="calendar" />}
                 onClick={() =>

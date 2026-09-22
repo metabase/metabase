@@ -32,9 +32,10 @@
   card-param-remapped-value]
  [metabase.queries.models.card
   check-shared-dashboard-timeline-permissions!
+  check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
   create-card!
-  visualizer-dashcard?
+  dashcard-hides-card-events?
   with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id

@@ -845,23 +845,11 @@
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
       (api/check-400 (not (dashboards-rest.db/card-internal-to-other-dashboard-exists? (u/the-id existing-dashboard) (set card-ids)))))))
 
-(defn- check-new-dashcards-timeline-permissions!
-  "Cards newly placed on a publicly shared or embedded dashboard expose their selected timeline events, so the current
-  user needs read access to those timelines. Cards the dashboard already shows are grandfathered, and visualizer
-  dashcards are skipped because the public payload never emits their card's events."
-  [existing-dashboard new-dashcards]
-  ;; Both sides skip visualizer dashcards: a card is grandfathered only if the dashboard already shows its events,
-  ;; otherwise adding it as a visualizer dashcard and converting it back would slip past this check.
-  (let [exposed-card-ids  (comp (remove queries/visualizer-dashcard?) (keep :card_id))
-        existing-card-ids (into #{} exposed-card-ids (:dashcards existing-dashboard))
-        new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids))
-                                new-dashcards)]
-    (queries/check-shared-dashboard-timeline-permissions-for-card-ids! existing-dashboard new-card-ids)))
-
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
-    (check-new-dashcards-timeline-permissions! dashboard (concat to-create to-update))
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already

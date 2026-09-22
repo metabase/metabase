@@ -1347,6 +1347,83 @@
                                             :dashboardcard_id (t2/select-one-pk :model/DashboardCard
                                                                                 :dashboard_id public-id)))))))))))
 
+(deftest add-card-showing-no-events-to-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id allows a card that never draws its selected timeline, whatever it names"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {table-card-id :id} {:display                :table
+                                                      :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Card {disabled-card-id :id} {:display                :line
+                                                         :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]
+                                                                                  :timeline_events.enabled        false}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-readable-collection! [table-card-id disabled-card-id]
+            (doseq [[description card-id] [["a display that cannot draw events" table-card-id]
+                                           ["events turned off" disabled-card-id]]]
+              (testing description
+                (is (= [card-id]
+                       (map :card_id (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" public-id)
+                                                                       {:dashcards [{:id -1 :card_id card-id
+                                                                                     :row 0 :col 0 :size_x 4 :size_y 4}]
+                                                                        :tabs []})))))))))))))
+
+(deftest convert-action-dashcard-to-plain-on-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id rejects clearing action_id, which turns a dashcard that hid its card's events into one that shows them"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp [:model/Collection restricted {}
+                         :model/Timeline timeline {:collection_id (:id restricted)}
+                         :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id public-id
+                                                                 :action_id    action-id
+                                                                 :card_id      model-id
+                                                                 :row 0 :col 0 :size_x 4 :size_y 4}]
+            (t2/update! :model/Card model-id {:display                :line
+                                              :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})
+            (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+            (with-dashboards-in-writeable-collection! [public-id]
+              (api.card-test/with-cards-in-readable-collection! [model-id]
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                             {:dashcards [{:id dashcard-id :card_id model-id :action_id nil
+                                                           :row 0 :col 0 :size_x 4 :size_y 4}]
+                                              :tabs []})))
+                (is (= [action-id]
+                       (map :action_id (t2/select :model/DashboardCard :dashboard_id public-id))))))))))))
+
+(deftest convert-hidden-dashcard-to-plain-on-shared-dashboard-test
+  (testing "PUT /api/dashboard/:id rejects turning a dashcard that hides its card's events into one that shows them"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:display                :line
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {public-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (with-dashboards-in-writeable-collection! [public-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
+            (doseq [[description hidden-settings]
+                    [["a visualizer dashcard" {:visualization {:display "line" :columnValuesMapping {} :settings {}}}]
+                     ["a virtual dashcard"    {:virtual_card {:display "text"}}]]]
+              (testing description
+                (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id           public-id
+                                                                       :card_id                card-id
+                                                                       :visualization_settings hidden-settings
+                                                                       :row 0 :col 0 :size_x 4 :size_y 4}]
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :put 403 (format "dashboard/%d" public-id)
+                                               {:dashcards [{:id dashcard-id :card_id card-id
+                                                             :row 0 :col 0 :size_x 4 :size_y 4
+                                                             :visualization_settings {}}]
+                                                :tabs []})))
+                  (is (= [hidden-settings]
+                         (map :visualization_settings
+                              (t2/select :model/DashboardCard :dashboard_id public-id)))))))))))))
+
 (deftest point-dashcard-at-archived-restricted-timeline-card-test
   (testing "PUT /api/dashboard/:id cannot point a dashcard at an archived card whose selected timeline the user cannot read"
     (mt/with-temporary-setting-values [enable-public-sharing true]
