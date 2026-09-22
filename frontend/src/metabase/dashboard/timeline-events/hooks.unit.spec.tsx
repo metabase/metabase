@@ -257,10 +257,13 @@ describe("dashboard timeline events", () => {
     });
   });
 
-  it("offers no event controls in fullscreen, where no sidebar can open", () => {
+  it("offers no event controls in fullscreen, but still counts the impression", () => {
     setup({ savedVisibility: EVENTS_RECORDED, isFullscreen: true });
 
-    expect(trackSimpleEvent).not.toHaveBeenCalled();
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "dashboard_events_shown",
+      target_id: DASHBOARD_ID,
+    });
   });
 
   it("does not track event visibility when dashboard event controls are disabled", () => {
