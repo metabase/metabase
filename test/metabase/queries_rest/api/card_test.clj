@@ -4,6 +4,7 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.queries-rest.api.card-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -18,6 +19,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
@@ -40,6 +42,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.revisions.models.revision :as revision]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
@@ -5586,3 +5589,27 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+(deftest model-shows-column-added-to-source-table-after-sync-test
+  (testing "GHY-4638: after sync finds a new column in a model's source table, the model's columns include it"
+    (mt/test-driver :h2
+      (mt/with-temp-test-data [["grid_view"
+                                [{:field-name "name", :base-type :type/Text}]
+                                [["a"]]]]
+        (mt/with-model-cleanup [:model/Card]
+          (let [db       (mt/db)
+                mp       (mt/metadata-provider)
+                model-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                    (assoc (card-with-name-and-query (mt/random-name)
+                                                                                     (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
+                                                           :type :model)))]
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db)
+                           ["ALTER TABLE \"GRID_VIEW\" ADD COLUMN \"EXTRA\" VARCHAR;"])
+            (sync/sync-database! db)
+            (testing "the columns the query builder offers for filters and new columns"
+              (is (= ["ID" "NAME" "EXTRA"]
+                     (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" model-id))
+                          :tables
+                          (m/find-first #(= (str "card__" model-id) (:id %)))
+                          :fields
+                          (map :name)))))))))))
