@@ -35,6 +35,7 @@ function BoxPlotInner({
   rawSeries,
   settings: originalSettings,
   autoAdjustSettings,
+  isVisualizer,
   fontFamily,
   card,
   width,
@@ -217,15 +218,19 @@ function BoxPlotInner({
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onToggleSeriesVisibility={handleToggleSeriesVisibility}
         onHoverChange={onHoverChange}
         width={width}
         height={height}
+        chartHeight={chartSize.height || undefined}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}

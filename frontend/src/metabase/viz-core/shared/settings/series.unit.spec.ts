@@ -1,4 +1,14 @@
-import { getSeriesColors } from "./series";
+import {
+  createMockDatasetData,
+  createMockInsight,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+
+import {
+  getSeriesColors,
+  isSeriesTrendLineUnavailable,
+  isTrendLineUnavailable,
+} from "./series";
 
 describe("getSeriesColors", () => {
   const mockSeriesKeys = ["Series A", "Series B", "Series C"];
@@ -160,5 +170,149 @@ describe("getSeriesColors", () => {
     );
 
     expect(result["Display Title"]).toBe("#CUSTOM_COLOR");
+  });
+});
+
+describe("isTrendLineUnavailable", () => {
+  const seriesWithInsights = () => [
+    createMockSingleSeries(
+      {},
+      {
+        data: createMockDatasetData({
+          insights: [createMockInsight({ col: "count" })],
+        }),
+      },
+    ),
+  ];
+
+  it("should be available with insights and a single dimension", () => {
+    expect(
+      isTrendLineUnavailable(seriesWithInsights(), {
+        "graph.dimensions": ["CREATED_AT"],
+      }),
+    ).toBe(false);
+  });
+
+  it("should be unavailable without insights", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: createMockDatasetData({ insights: [] }) },
+      ),
+    ];
+
+    expect(
+      isTrendLineUnavailable(series, { "graph.dimensions": ["CREATED_AT"] }),
+    ).toBe(true);
+  });
+
+  it("should be unavailable with multiple dimensions", () => {
+    expect(
+      isTrendLineUnavailable(seriesWithInsights(), {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      }),
+    ).toBe(true);
+  });
+
+  it("should read insights from the raw series behind a transformed series", () => {
+    const transformedSeries = Object.assign(
+      [
+        createMockSingleSeries(
+          { name: "Gadget" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+        createMockSingleSeries(
+          { name: "Gizmo" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      { _raw: seriesWithInsights() },
+    );
+
+    expect(
+      isTrendLineUnavailable(transformedSeries, {
+        "graph.dimensions": ["CREATED_AT"],
+      }),
+    ).toBe(false);
+    expect(
+      isTrendLineUnavailable(transformedSeries, {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("isSeriesTrendLineUnavailable", () => {
+  const insights = [createMockInsight({ col: "count" })];
+  const settings = { "graph.dimensions": ["CREATED_AT"] };
+
+  const combinedCards = () =>
+    Object.assign(
+      [
+        createMockSingleSeries(
+          { id: 1, name: "Orders" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+        createMockSingleSeries(
+          { id: 2, name: "Revenue" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      {
+        _raw: [
+          createMockSingleSeries(
+            { id: 1, name: "Orders" },
+            { data: createMockDatasetData({ insights: [] }) },
+          ),
+          createMockSingleSeries(
+            { id: 2, name: "Revenue" },
+            { data: createMockDatasetData({ insights }) },
+          ),
+        ],
+      },
+    );
+
+  it("should look up the insights of the series' own card", () => {
+    const series = combinedCards();
+
+    expect(isSeriesTrendLineUnavailable(series[0], series, settings)).toBe(
+      true,
+    );
+    expect(isSeriesTrendLineUnavailable(series[1], series, settings)).toBe(
+      false,
+    );
+  });
+
+  it("should fall back to the first card when the series has no card id", () => {
+    const series = Object.assign(
+      [
+        createMockSingleSeries(
+          { id: undefined, name: "count" },
+          { data: createMockDatasetData({ insights: undefined }) },
+        ),
+      ],
+      {
+        _raw: [
+          createMockSingleSeries(
+            { id: undefined },
+            { data: createMockDatasetData({ insights }) },
+          ),
+        ],
+      },
+    );
+
+    expect(isSeriesTrendLineUnavailable(series[0], series, settings)).toBe(
+      false,
+    );
+  });
+
+  it("should be unavailable with multiple dimensions regardless of the card", () => {
+    const series = combinedCards();
+
+    expect(
+      isSeriesTrendLineUnavailable(series[1], series, {
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      }),
+    ).toBe(true);
   });
 });
