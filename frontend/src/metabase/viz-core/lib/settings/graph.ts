@@ -29,6 +29,7 @@ import {
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
+  getHasSplitYAxis,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
   getSeriesModelsForSettings,
@@ -746,6 +747,21 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       },
     ]) => cols[0] && getDefaultIsHistogram(cols[0]),
   },
+  "graph.y_axis._is_split": {
+    readDependencies: [
+      "series",
+      // The split can be triggered by metrics whose column formatting differs,
+      // so the column accessor has to exist before this runs.
+      "column_settings",
+      "graph.metrics",
+      "graph.dimensions",
+      "stackable.stack_type",
+      "graph.y_axis.auto_split",
+      "graph.split_panels",
+    ],
+    getHidden: () => true,
+    getDefault: (series, vizSettings) => getHasSplitYAxis(series, vizSettings),
+  },
   "graph.x_axis.scale": {
     getSection: () => t`Axes`,
     get group() {
@@ -1024,6 +1040,26 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.y_axis.right.title_text": {
+    getSection: () => t`Axes`,
+    get title() {
+      return t`Label`;
+    },
+    index: 1,
+    get group() {
+      return t`Right y-axis`;
+    },
+    widget: "input",
+    getHidden: (_series, vizSettings) =>
+      vizSettings["graph.y_axis._is_split"] !== true ||
+      vizSettings["graph.y_axis.labels_enabled"] === false,
+    // No getDefault: an unset value is what makes the right axis inherit the
+    // left label, so saved questions keep their current rendering.
+    getProps: (_series, vizSettings) => ({
+      placeholder: vizSettings["graph.y_axis.title_text"],
+    }),
+    readDependencies: ["graph.y_axis._is_split", "graph.y_axis.labels_enabled"],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},
