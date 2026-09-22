@@ -6,6 +6,7 @@ import {
   skipToken,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -23,24 +24,29 @@ import type {
   CollectionItem,
 } from "metabase-types/api";
 
+const LIBRARY_ITEM_MODELS = ["metric", "table", "collection"] as const;
+
+type GetIcon = (item: ObjectWithModel) => IconData;
+
+/** Builds the whole Library subtree from the Library root collection. The root itself is not
+ *  rendered: its children — the seeded Data and Metrics folders plus any folders the user created —
+ *  become the top-level rows. Everything below them is loaded lazily when a row is expanded. */
 export function useLibraryCollectionTree(
-  collection: Collection | undefined,
-  sectionType: LibrarySectionType,
-  metricCollectionId?: CollectionId,
+  libraryCollection: Collection | undefined,
 ) {
   const dispatch = useDispatch();
   const getIcon = useGetIcon();
 
-  // 1. Fetch top-level items
+  // 1. Fetch the Library root's children
   const {
     data: topLevelItems,
     isLoading,
     error,
   } = useListCollectionItemsQuery(
-    collection
+    libraryCollection
       ? {
-          id: collection.id,
-          models: ["metric", "table", "collection"],
+          id: libraryCollection.id,
+          models: [...LIBRARY_ITEM_MODELS],
           archived: false,
         }
       : skipToken,
@@ -57,7 +63,7 @@ export function useLibraryCollectionTree(
   useEffect(() => {
     setLoadedCollections(new Map());
     loadingIds.current = new Set();
-  }, [collection]);
+  }, [libraryCollection]);
 
   const loadCollectionItems = useCallback(
     async (collectionId: CollectionId) => {
@@ -71,7 +77,7 @@ export function useLibraryCollectionTree(
         collectionApi.endpoints.listCollectionItems.initiate(
           {
             id: collectionId,
-            models: ["metric", "table", "collection"],
+            models: [...LIBRARY_ITEM_MODELS],
             archived: false,
           },
           { forceRefetch: true },
@@ -86,8 +92,7 @@ export function useLibraryCollectionTree(
   const refreshCollections = useCallback(
     async (collectionIds: CollectionId[]) => {
       for (const id of collectionIds) {
-        const key = String(id);
-        loadingIds.current.delete(key);
+        loadingIds.current.delete(String(id));
       }
       await Promise.all(collectionIds.map(loadCollectionItems));
     },
@@ -96,43 +101,24 @@ export function useLibraryCollectionTree(
 
   // 3. Build tree
   const tree = useMemo((): TreeItem[] => {
-    if (isLoading || !topLevelItems || !collection) {
+    if (isLoading || !topLevelItems || !libraryCollection) {
       return [];
     }
 
-    const children = buildChildren(
-      topLevelItems.data,
-      loadedCollections,
-      getIcon,
+    return sortTopLevelRows(
+      buildChildren(
+        topLevelItems.data,
+        loadedCollections,
+        getIcon,
+        isRemoteSyncReadOnly,
+      ),
     );
-    const hasItems = children.length > 0;
-
-    return [
-      {
-        name: collection.name,
-        id: `collection:${collection.id}`,
-        icon: getIcon({ ...collection, model: "collection" }).name,
-        data: { ...collection, model: "collection" as const },
-        model: "collection",
-        children: hasItems
-          ? children
-          : [
-              createEmptyStateItem(
-                sectionType,
-                metricCollectionId,
-                isRemoteSyncReadOnly,
-              ),
-            ],
-      },
-    ];
   }, [
     isLoading,
     topLevelItems,
-    collection,
+    libraryCollection,
     loadedCollections,
     getIcon,
-    sectionType,
-    metricCollectionId,
     isRemoteSyncReadOnly,
   ]);
 
@@ -183,7 +169,8 @@ export function useLibraryCollectionTree(
 function buildChildren(
   items: CollectionItem[],
   loadedCollections: Map<CollectionId, CollectionItem[]>,
-  getIcon: ReturnType<typeof useGetIcon>,
+  getIcon: GetIcon,
+  isRemoteSyncReadOnly: boolean,
 ): TreeItem[] {
   const visibleItems = items.filter((i) => !i.archived);
   const collections = visibleItems.filter((i) => i.model === "collection");
@@ -195,16 +182,31 @@ function buildChildren(
       let children: TreeItem[] | undefined;
 
       if (childItems !== undefined) {
-        const built = buildChildren(childItems, loadedCollections, getIcon);
+        const built = buildChildren(
+          childItems,
+          loadedCollections,
+          getIcon,
+          isRemoteSyncReadOnly,
+        );
         children = built.length > 0 ? built : undefined;
       } else if (hasContent(col)) {
         children = [];
       }
 
+      // `children === undefined` means "resolved and empty" — either the fetch came back empty or
+      // `here`/`below` told us there is nothing to fetch. The seeded Data/Metrics sections show a
+      // pitch + call to action in that state instead of collapsing to a bare row.
+      const sectionType = getSeededSectionType(col);
+      if (children === undefined && sectionType != null) {
+        children = [
+          createEmptyStateItem(sectionType, col.id, isRemoteSyncReadOnly),
+        ];
+      }
+
       return {
         name: col.name,
         id: `collection:${col.id}`,
-        icon: "folder",
+        icon: getIcon({ ...col, model: "collection" }).name,
         data: col,
         model: "collection",
         children,
@@ -215,10 +217,7 @@ function buildChildren(
   ];
 }
 
-function buildItemNode(
-  item: CollectionItem,
-  getIcon: ReturnType<typeof useGetIcon>,
-): TreeItem {
+function buildItemNode(item: CollectionItem, getIcon: GetIcon): TreeItem {
   return {
     name: item.name,
     updatedAt: item["last-edit-info"]?.timestamp,
@@ -233,5 +232,42 @@ function hasContent(item: CollectionItem): boolean {
   return (
     (item.here != null && item.here.length > 0) ||
     (item.below != null && item.below.length > 0)
+  );
+}
+
+/** The `LibrarySectionType` of a seeded Library section, or null for user-created folders. */
+function getSeededSectionType(item: CollectionItem): LibrarySectionType | null {
+  if (!item.is_library_root) {
+    return null;
+  }
+  if (item.type === "library-data") {
+    return "data";
+  }
+  if (item.type === "library-metrics") {
+    return "metrics";
+  }
+  return null;
+}
+
+/** Sort rank of the seeded sections; everything the user created sorts after them. */
+const SEEDED_SECTION_RANK: Record<string, number> = {
+  "library-data": 0,
+  "library-metrics": 1,
+};
+const UNRANKED = 2;
+
+/** Data and Metrics always lead; user-created top-level folders follow, alphabetically. */
+function sortTopLevelRows(rows: TreeItem[]): TreeItem[] {
+  const rankOf = ({ data }: TreeItem) => {
+    if (isEmptyStateData(data) || !("is_library_root" in data)) {
+      return UNRANKED;
+    }
+    return data.is_library_root
+      ? (SEEDED_SECTION_RANK[String(data.type)] ?? UNRANKED)
+      : UNRANKED;
+  };
+
+  return [...rows].sort(
+    (a, b) => rankOf(a) - rankOf(b) || a.name.localeCompare(b.name),
   );
 }

@@ -1,0 +1,14 @@
+/* Pinned over the rail's scroll container, so the creation controls stay reachable and menus
+   open upward — the prototype's rail footer. `Sidebar` is the positioned ancestor. */
+.footer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: var(--mantine-spacing-lg);
+}
+
+/* Room for the pinned footer so the last nav row is never under it. */
+.hasFooter {
+  padding-bottom: 5rem;
+}

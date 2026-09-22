@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 
-import { AppBarContainer } from "metabase/app/nav/AppBar";
+import { AppPageHeader } from "metabase/app/nav/AppPageHeader";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
   getIsAdminApp,
-  getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
+  getIsPageHeaderVisible,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
@@ -33,7 +33,12 @@ import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
-import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import {
+  AppContainer,
+  AppContent,
+  AppContentContainer,
+  AppMain,
+} from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
 import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
@@ -75,8 +80,8 @@ export function App() {
     getIsMonitorApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
-  const isAppBarVisible = useSelector((state) =>
-    getIsAppBarVisible(state, routerProps),
+  const isPageHeaderVisible = useSelector((state) =>
+    getIsPageHeaderVisible(state, routerProps),
   );
   const isNavBarEnabled = useSelector((state) =>
     getIsNavBarEnabled(state, routerProps),
@@ -107,16 +112,18 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                </ContentViewportContext.Provider>
-              </AppContent>
+              <AppMain>
+                {isPageHeaderVisible && <AppPageHeader />}
+                <AppContent ref={setViewportElement}>
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                  </ContentViewportContext.Provider>
+                </AppContent>
+              </AppMain>
               <UndoListing />
               <StatusListing />
               <NewModals />

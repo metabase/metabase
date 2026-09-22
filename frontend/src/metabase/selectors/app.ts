@@ -1,11 +1,8 @@
-import type { Selector } from "@reduxjs/toolkit";
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getUser } from "metabase/current-user";
-import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import { selectIsWithinIframe } from "metabase/utils/iframe";
 
 export interface RouterProps {
   location: Location;
@@ -15,41 +12,30 @@ export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };
 
-export const getDetailViewState = (state: State) => {
-  return state.app.detailView;
+export const getPageCollection = (state: State) => {
+  return state.app.pageCollection;
+};
+
+export const getPageBackground = (state: State) => {
+  return state.app.pageBackground;
+};
+
+export const getNavSectionOverride = (state: State) => {
+  return state.app.navSection;
+};
+
+export const getNavSectionSeed = (state: State) => {
+  return state.app.navSectionSeed;
+};
+
+export const getOpenNavItems = (state: State) => {
+  return state.app.openNavItems;
 };
 
 export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
 };
-
-export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
-  [
-    selectIsWithinIframe,
-    getEmbedOptions,
-    (_state: State) => window.location.hash,
-    (state: State) => state.app.isNavbarOpen,
-  ],
-  (isEmbeddingIframe, embedOptions, locationHash, isNavbarOpen) => {
-    // In an embedded instance, when the app bar is hidden but the side nav is
-    // enabled, force the sidebar open or it would be totally inaccessible.
-    //
-    // The app bar is hidden exactly when `top_nav` is off or we're in
-    // fullscreen. The other factors in the app-tier getIsAppBarVisible only
-    // matter when the nav bar isn't rendered anyway.
-    const isFullscreen = locationHash.includes("fullscreen");
-    if (
-      isEmbeddingIframe &&
-      embedOptions.side_nav === true &&
-      (!embedOptions.top_nav || isFullscreen)
-    ) {
-      return true;
-    }
-
-    return isNavbarOpen;
-  },
-);
 
 export const getIsDndAvailable = (state: State) => {
   return state.app.isDndAvailable;

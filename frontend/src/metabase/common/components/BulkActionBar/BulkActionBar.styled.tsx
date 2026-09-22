@@ -4,12 +4,12 @@ import styled from "@emotion/styled";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Card } from "metabase/ui";
 
-export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
+export const BulkActionsToast = styled.div`
   position: fixed;
   bottom: 0;
   left: 50%;
-  margin-left: ${(props) =>
-    props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
+  /* The nav rail is always shown, so the toast is always centred on the content, not the window. */
+  margin-left: ${parseInt(NAV_SIDEBAR_WIDTH) / 2}px;
   margin-bottom: var(--mantine-spacing-lg);
   transform: translateX(-50%);
   z-index: 150;

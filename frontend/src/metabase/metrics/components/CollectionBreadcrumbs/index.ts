@@ -1,1 +1,0 @@
-export { CollectionBreadcrumbs } from "./CollectionBreadcrumbs";

@@ -47,6 +47,7 @@
    [:description     {:optional true} [:maybe ms/NonBlankString]]
    [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
    [:namespace       {:optional true} [:maybe ms/NonBlankString]]
+   [:icon            {:optional true} [:maybe ms/NonBlankString]]
    [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
 
 (def ^:private NewCollectionArguments

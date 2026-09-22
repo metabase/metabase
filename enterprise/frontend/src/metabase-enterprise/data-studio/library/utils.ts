@@ -10,6 +10,7 @@ import type {
 import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import type {
   GetEntityPickerSyntheticLibraryItemFunction,
+  LibraryCollectionType,
   LibrarySubCollectionType,
 } from "metabase/plugins/oss/library";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
@@ -128,7 +129,11 @@ export function getCollectionPickerItems({
   parentItem: OmniPickerItem;
   items: CollectionItem[];
 }): OmniPickerItem[] | undefined {
-  if (parentItem.model !== "collection" || parentItem.type !== "library") {
+  if (
+    parentItem.model !== "collection" ||
+    parentItem.type !== "library" ||
+    !parentItem.is_library_root
+  ) {
     return undefined;
   }
 
@@ -137,17 +142,17 @@ export function getCollectionPickerItems({
     "library-metrics",
   ];
 
-  return librarySubCollectionType.flatMap((type) => {
-    const sectionItems = items.filter((item) =>
+  const sectionItems = librarySubCollectionType.flatMap((type) => {
+    const typedItems = items.filter((item) =>
       isLibrarySectionCollectionItem(item, type),
     );
 
-    const realRoot = sectionItems.find((item) => item.is_library_root);
+    const realRoot = typedItems.find((item) => item.is_library_root);
     if (realRoot) {
       return [realRoot];
     }
 
-    if (sectionItems.length > 0) {
+    if (typedItems.length > 0) {
       const syntheticItem = getEntityPickerSyntheticLibraryItem({
         collectionId: parentItem.id,
         type,
@@ -158,6 +163,14 @@ export function getCollectionPickerItems({
 
     return [];
   });
+
+  // Folders the user created at the top level of the Library are plain `library` collections and
+  // pass through untouched; the two seeded sections above are the only rewritten rows.
+  const userFolders = items.filter(
+    (item) => item.model === "collection" && item.type === "library",
+  );
+
+  return [...sectionItems, ...userFolders];
 }
 
 function isLibrarySectionCollectionItem(
@@ -213,6 +226,6 @@ export const isLibraryDataCollectionType = (
 
 export const isLibraryCollectionType = (
   type?: string | null,
-): type is LibrarySubCollectionType => {
+): type is LibraryCollectionType => {
   return isLibrarySubCollectionType(type) || type === "library";
 };

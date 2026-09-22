@@ -103,16 +103,21 @@
                                   :type collection/library-data-collection-type :location loc)
           :metrics (t2/select-one :model/Collection
                                   :type collection/library-metrics-collection-type :location loc)}))
-    ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
-    (mt/with-temp [:model/Collection library {:name     "Library"
-                                              :type     collection/library-collection-type
-                                              :location "/"}
-                   :model/Collection data    {:name     "Data"
-                                              :type     collection/library-data-collection-type
-                                              :location (str "/" (:id library) "/")}
-                   :model/Collection metrics {:name     "Metrics"
-                                              :type     collection/library-metrics-collection-type
-                                              :location (str "/" (:id library) "/")}]
+    ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward. The
+    ;; hard-coded `entity_id`s are what make these count as the seeded system roots (see
+    ;; `collection/library-root-collection?`), which is what lets Data/Metrics live under the Library root.
+    (mt/with-temp [:model/Collection library {:name      "Library"
+                                              :type      collection/library-collection-type
+                                              :location  "/"
+                                              :entity_id collection/library-entity-id}
+                   :model/Collection data    {:name      "Data"
+                                              :type      collection/library-data-collection-type
+                                              :location  (str "/" (:id library) "/")
+                                              :entity_id @#'collection/library-data-entity-id}
+                   :model/Collection metrics {:name      "Metrics"
+                                              :type      collection/library-metrics-collection-type
+                                              :location  (str "/" (:id library) "/")
+                                              :entity_id @#'collection/library-metrics-entity-id}]
       (f {:library library :data data :metrics metrics}))))
 
 (defmacro with-library

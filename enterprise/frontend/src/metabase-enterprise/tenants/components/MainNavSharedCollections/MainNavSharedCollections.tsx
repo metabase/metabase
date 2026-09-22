@@ -66,6 +66,7 @@ export const MainNavSharedCollections = ({
 
   const [createCollection] = useCreateCollectionMutation();
 
+  // This component throws above for tenant users, so the tenant icon override never applies here.
   const sharedTenantCollectionTree = useMemo(
     () => buildCollectionTree(sharedTenantCollections),
     [sharedTenantCollections],

@@ -21,7 +21,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
 import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
@@ -98,10 +97,7 @@ export const TenantsListing = ({
                 className={CS.link}
                 gap="lg"
               >
-                <UserAvatar
-                  user={{ name: tenant.name }}
-                  bg={tenantIdToColor(tenant.id)}
-                />
+                <UserAvatar user={{ name: tenant.name }} />
                 <Box component="span" fw={700} c="core-brand">
                   {tenant.name}
                 </Box>

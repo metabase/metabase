@@ -1,0 +1,35 @@
+.drawer {
+  position: fixed;
+  inset-block: 0;
+  z-index: 5;
+  display: flex;
+  width: 20rem;
+  flex-direction: column;
+  background-color: var(--mb-color-background_page-primary);
+  border-inline-end: 1px solid var(--mb-color-border-neutral);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  transform: translateX(-0.75rem);
+  pointer-events: none;
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+.opened {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.header {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-block: var(--mantine-spacing-sm);
+}

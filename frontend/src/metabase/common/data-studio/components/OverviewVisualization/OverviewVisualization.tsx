@@ -1,9 +1,13 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
-import type { Card, Dataset } from "metabase-types/api";
+import { useDispatch } from "metabase/redux";
+import { openUrl } from "metabase/redux/app";
+import * as Urls from "metabase/urls";
+import { getCardAfterVisualizationClick } from "metabase/viz-core";
+import type { Card, Dataset, SeriesCard } from "metabase-types/api";
 
 import { useCardQueryData } from "../../hooks/use-card-query-data";
 
@@ -22,11 +26,31 @@ export function MetricCardVisualization({
   isLoading,
   className,
 }: MetricCardVisualizationProps) {
+  const dispatch = useDispatch();
   const question = useQuestionFromCard(card);
 
   const rawSeries = useMemo(
     () => (data ? [{ card, data: data.data }] : null),
     [card, data],
+  );
+
+  // This page has no editor to drill inside of, so a drill leaves for the
+  // drilled question, ad hoc, the same way the query builder navigates.
+  const navigateToNewCard = useCallback(
+    ({
+      nextCard,
+      previousCard,
+    }: {
+      nextCard: SeriesCard;
+      previousCard: SeriesCard;
+    }) => {
+      const cardAfterClick = getCardAfterVisualizationClick(
+        nextCard,
+        previousCard,
+      );
+      dispatch(openUrl(Urls.serializedQuestion(cardAfterClick)));
+    },
+    [dispatch],
   );
 
   return (
@@ -41,6 +65,7 @@ export function MetricCardVisualization({
         isRunning={isLoading}
         isDirty
         isResultDirty={false}
+        navigateToNewCardInsideQB={navigateToNewCard}
       />
     </DebouncedFrame>
   );

@@ -21,7 +21,7 @@ export function MetricAboutPage({
 
   return (
     <MetricPageCard cardId={cardId}>
-      {(card) => (
+      {(card, metadata) => (
         <PageContainer data-testid="metric-about-page" gap="xxl">
           <MetricPageShell
             card={card}
@@ -30,7 +30,7 @@ export function MetricAboutPage({
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
           />
-          <MetricAbout card={card} urls={urls} />
+          <MetricAbout card={card} metadata={metadata} urls={urls} />
         </PageContainer>
       )}
     </MetricPageCard>

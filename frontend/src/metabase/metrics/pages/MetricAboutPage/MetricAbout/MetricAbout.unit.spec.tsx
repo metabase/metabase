@@ -2,14 +2,17 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupMetricDatasetEndpoint,
+  setupMetricDimensionsEndpoints,
   setupMetricEndpoint,
+  setupRevisionsEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, Field, Metric } from "metabase-types/api";
@@ -129,17 +132,22 @@ function setup(
 ) {
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);
-  setupCardQueryMetadataEndpoint(
-    card,
-    createMockCardQueryMetadata({ databases: [SAMPLE_DB] }),
-  );
+  const metadata = createMockCardQueryMetadata({ databases: [SAMPLE_DB] });
+  setupCardQueryMetadataEndpoint(card, metadata);
   setupMetricEndpoint(
     metric ?? createMockMetric({ id: card.id, name: card.name }),
   );
   setupMetricDatasetEndpoint(metricDataset ?? dataset);
+  // The page now also renders the Dimensions, History and Definition panels.
+  setupMetricDimensionsEndpoints(card.id, { added: [], addable: [] });
+  setupRevisionsEndpoints([]);
+  setupAdhocQueryMetadataEndpoint(metadata);
 
   renderWithProviders(
-    <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
+    <Route
+      path="/"
+      element={<MetricAbout card={card} metadata={metadata} urls={mockUrls} />}
+    />,
     {
       storeInitialState: createMockState(),
       withRouter: true,
@@ -148,12 +156,23 @@ function setup(
   );
 }
 
-async function getMetricDatasetRequest(): Promise<unknown> {
+async function getMetricDatasetRequests(): Promise<unknown[]> {
   await waitFor(() => {
-    expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("metric-dataset").length,
+    ).toBeGreaterThan(0);
   });
 
-  return fetchMock.callHistory.lastCall("metric-dataset")?.request?.json();
+  return Promise.all(
+    fetchMock.callHistory
+      .calls("metric-dataset")
+      .map((call) => call.request?.json()),
+  );
+}
+
+async function getMetricDatasetRequest(): Promise<unknown> {
+  const requests = await getMetricDatasetRequests();
+  return requests.at(-1);
 }
 
 describe("MetricAbout", () => {
@@ -368,23 +387,21 @@ describe("MetricAbout", () => {
         metricDataset,
       });
 
-      const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Product - Created At: Day",
-      });
-      expect(dimensionSelect).toHaveTextContent("Product - Created At: Day");
+      expect(
+        await screen.findByRole("button", {
+          name: /Product - Created At: Day/,
+          pressed: true,
+        }),
+      ).toBeInTheDocument();
 
-      await userEvent.click(dimensionSelect);
-      const categoryOption = await screen.findByRole("option", {
-        name: /Product Category/,
-      });
-      expect(categoryOption).toContainElement(
-        within(categoryOption).getByLabelText("label icon"),
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Product Category/ }),
       );
-      await userEvent.click(categoryOption);
 
       expect(
         await screen.findByRole("button", {
-          name: "Select dimension: Product Category",
+          name: /Product Category/,
+          pressed: true,
         }),
       ).toBeInTheDocument();
 
@@ -453,17 +470,11 @@ describe("MetricAbout", () => {
         metricDataset,
       });
 
-      const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Product - Rating: 8 bins",
+      const activePill = await screen.findByRole("button", {
+        name: /Product - Rating: 8 bins/,
+        pressed: true,
       });
-      expect(dimensionSelect).toHaveTextContent("Product - Rating: 8 bins");
-
-      await userEvent.click(dimensionSelect);
-      const ratingOption = await screen.findByRole("option", {
-        name: /Product - Rating/,
-      });
-      expect(ratingOption).toHaveTextContent("Product - Rating");
-      expect(ratingOption).not.toHaveTextContent("8 bins");
+      expect(activePill).toHaveTextContent("Product - Rating: 8 bins");
     });
   });
 
@@ -549,10 +560,11 @@ describe("MetricAbout", () => {
       expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
         "150",
       );
+      // The dimension is offered as a pill but nothing is broken out by it yet.
       expect(
-        screen.queryByRole("button", { name: /Select dimension:/ }),
+        screen.queryByRole("button", { pressed: true }),
       ).not.toBeInTheDocument();
-      expect(await getMetricDatasetRequest()).toEqual(
+      expect(await getMetricDatasetRequests()).toContainEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({
             projections: expect.anything(),
@@ -578,9 +590,9 @@ describe("MetricAbout", () => {
         "150",
       );
       expect(
-        screen.queryByRole("button", { name: /Select dimension:/ }),
+        screen.queryByRole("group", { name: "Break out by" }),
       ).not.toBeInTheDocument();
-      expect(await getMetricDatasetRequest()).toEqual(
+      expect(await getMetricDatasetRequests()).toContainEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({
             projections: expect.anything(),

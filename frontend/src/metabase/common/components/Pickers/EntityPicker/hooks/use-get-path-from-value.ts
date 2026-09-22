@@ -431,6 +431,8 @@ async function getCollectionPathFromValue({
         name: libraryCollection.name,
         model: "collection",
         type: libraryCollection.type,
+        is_library_root: libraryCollection.is_library_root,
+        can_write: libraryCollection.can_write ?? false,
         below: allCollectionModels,
       });
     } else if (isInPersonalCollection && personalCollection) {

@@ -183,7 +183,11 @@ async function getRootItems({
     collectionItems.push({
       ...libraryCollection,
       model: "collection",
-      can_write: false,
+      // Forwarded from the API: a data analyst may create top-level folders in the Library.
+      can_write:
+        "can_write" in libraryCollection
+          ? (libraryCollection.can_write ?? false)
+          : false,
       location: "/",
       collection: undefined,
     });

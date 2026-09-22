@@ -1,13 +1,14 @@
 import { t } from "ttag";
 
 import {
+  type CollectionPlacementTarget,
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { IconProps } from "metabase/ui";
+import { type IconProps, isValidIconName } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import {
@@ -19,7 +20,6 @@ import {
   type CollectionId,
   type CollectionItem,
   type CollectionItemModel,
-  type CollectionType,
   type IconName,
   type User,
   isBaseEntityID,
@@ -140,7 +140,9 @@ export function isLibraryCollection(
   return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
 }
 
-export function isExamplesCollection(collection: Collection): boolean {
+export function isExamplesCollection(
+  collection: Pick<Collection, "is_sample" | "name">,
+): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }
 
@@ -298,19 +300,16 @@ export function canCopyItem(item: CollectionItem): item is CopyableItem {
 
 export function canPlaceEntityInCollection(
   entityType: EntityType,
-  collectionType: CollectionType | null | undefined,
+  target: CollectionPlacementTarget,
 ): boolean {
-  return canPlaceEntityInCollectionImpl(entityType, collectionType);
+  return canPlaceEntityInCollectionImpl(entityType, target);
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
   entityType: EntityType,
-  collectionType: CollectionType | null | undefined,
+  target: CollectionPlacementTarget,
 ): boolean {
-  return canPlaceEntityInCollectionOrDescendantsImpl(
-    entityType,
-    collectionType,
-  );
+  return canPlaceEntityInCollectionOrDescendantsImpl(entityType, target);
 }
 
 export function coerceCollectionId(
@@ -418,6 +417,10 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
+  if (collection.icon && isValidIconName(collection.icon)) {
+    return { name: collection.icon };
+  }
+
   if (collection.is_library_root) {
     switch (collection.type) {
       case "library":
@@ -452,7 +455,12 @@ export function getCollectionType(
   return collectionId !== undefined ? "other" : null;
 }
 
-export interface CollectionTreeItem extends Collection {
+// `icon` is narrowed to the resolved icon (never null) since the tree builder
+// always derives one via `getCollectionIcon`.
+export interface CollectionTreeItem extends Omit<
+  Collection,
+  "icon" | "children"
+> {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
   schemaName?: string;

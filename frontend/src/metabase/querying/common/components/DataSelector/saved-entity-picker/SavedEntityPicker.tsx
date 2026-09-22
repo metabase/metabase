@@ -136,7 +136,7 @@ function SavedEntityPickerInner({
   );
 
   const [selectedCollection, setSelectedCollection] = useState<
-    Collection | undefined
+    CollectionTreeItem | undefined
   >(initialCollection);
 
   const handleSelect = useCallback(

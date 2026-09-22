@@ -15,7 +15,7 @@
                           "trash"
                           "remote-synced"
                           "library"
-                          "library-models"
+                          "library-data"
                           "library-metrics"])
 
 (mr/def ::CardType [:enum "model" "question" "metric"])
@@ -46,6 +46,7 @@
    [:archived :boolean]
    [:children {:optional true} [:sequential [:ref ::Collection]]]
    [:authority_level {:optional true} [:maybe :string]]
+   [:icon {:optional true} [:maybe :string]]
    [:type {:optional true} ::CollectionType]
    [:is_remote_synced {:optional true} :boolean]
    [:parent_id {:optional true} [:maybe [:or :string ms/PositiveInt]]]
@@ -96,6 +97,7 @@
    [:location {:optional true} :string]
    [:effective_location {:optional true} :string]
    [:authority_level {:optional true} [:maybe :string]]
+   [:icon {:optional true} [:maybe :string]]
    [:dashboard_count {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::collection
@@ -148,4 +150,5 @@
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
+   [:icon                 {:optional true} [:maybe :string]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])

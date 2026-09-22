@@ -1,0 +1,1 @@
+export { ModelAboutPage } from "./ModelAboutPage";

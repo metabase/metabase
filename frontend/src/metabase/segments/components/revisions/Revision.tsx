@@ -25,7 +25,6 @@ interface Props {
   objectName: string;
   revision: RevisionType;
   tableId: TableId;
-  userColor?: string;
 }
 
 export function Revision({
@@ -33,7 +32,6 @@ export function Revision({
   revision,
   currentUser,
   tableId,
-  userColor,
 }: Props) {
   const { message, diffKeys } = getDiff(revision);
 
@@ -41,7 +39,7 @@ export function Revision({
     <li className={cx(CS.flex, CS.flexRow)}>
       <div className={cx(CS.flex, CS.flexColumn, CS.alignCenter, CS.mr2)}>
         <div className={CS.textWhite}>
-          <UserAvatar user={revision.user} bg={userColor} />
+          <UserAvatar user={revision.user} />
         </div>
 
         <div

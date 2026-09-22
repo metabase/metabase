@@ -28,6 +28,7 @@ import {
 } from "metabase/comments/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { trackExplorationCommentCreated } from "metabase/explorations/analytics";
@@ -39,7 +40,6 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
-  Avatar,
   Box,
   Group,
   Icon,
@@ -368,10 +368,11 @@ function ExplorationComment({
         />
       )}
       <Group gap="sm" align="flex-start" wrap="nowrap">
-        <Avatar
-          name={comment.creator?.common_name}
+        <UserAvatar
+          user={comment.creator}
           size="1.5rem"
           mt="0.125rem"
+          decorative
         />
         <Stack gap="xxs" flex={1} miw={0}>
           <Group gap="sm" align="center" wrap="nowrap">

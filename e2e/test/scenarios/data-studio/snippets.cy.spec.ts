@@ -258,7 +258,7 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Collection").click();
+      H.popover().findByText("Folder").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Test Folder");

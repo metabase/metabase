@@ -4,29 +4,21 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 
+import type {
+  NavSection,
+  OpenNavItem,
+} from "metabase/nav/containers/MainNavbar/types";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
-  DetailViewState,
+  PageBackground,
+  PageCollection,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
 } from "metabase/redux/store";
 import { LOCATION_CHANGE, navigate } from "metabase/router";
 import { shouldOpenInBlankWindow } from "metabase/urls";
-import { isSmallScreen, openInBlankWindow } from "metabase/utils/dom";
-
-interface LocationChangeAction {
-  type: string; // "@@router/LOCATION_CHANGE"
-  payload: {
-    pathname: string;
-    search: string;
-    hash: string;
-    action: string;
-    key: string;
-    state?: any;
-    query?: any;
-  };
-}
+import { openInBlankWindow } from "metabase/utils/dom";
 
 const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
@@ -61,45 +53,6 @@ const errorPage = handleActions(
   null,
 );
 
-// regexr.com/7r89i
-// Word boundaries are added so partial matches don't collapse the navbar
-// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
-const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
-
-export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
-  return (
-    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
-  );
-}
-
-export const OPEN_NAVBAR = "metabase/app/OPEN_NAVBAR";
-export const CLOSE_NAVBAR = "metabase/app/CLOSE_NAVBAR";
-export const TOGGLE_NAVBAR = "metabase/app/TOGGLE_NAVBAR";
-
-export const openNavbar = createAction(OPEN_NAVBAR);
-export const closeNavbar = createAction(CLOSE_NAVBAR);
-export const toggleNavbar = createAction(TOGGLE_NAVBAR);
-
-const isNavbarOpen = handleActions(
-  {
-    [OPEN_NAVBAR]: () => true,
-    [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
-    [CLOSE_NAVBAR]: () => false,
-    [LOCATION_CHANGE]: (
-      prevState: boolean,
-      { payload }: LocationChangeAction,
-    ) => {
-      if (payload.state?.preserveNavbarState) {
-        return prevState;
-      }
-
-      return isNavbarOpenForPathname(payload.pathname, prevState);
-    },
-  },
-  true,
-);
-
 export const OPEN_DIAGNOSTICS = "metabase/app/OPEN_DIAGNOSTIC_MODAL";
 export const CLOSE_DIAGNOSTICS = "metabase/app/CLOSE_DIAGNOSTIC_MODAL";
 
@@ -114,19 +67,101 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
-export const SET_DETAIL_VIEW = "metabase/app/SET_DETAIL_VIEW";
+export const SET_PAGE_COLLECTION = "metabase/app/SET_PAGE_COLLECTION";
 
-export const setDetailView = createAction<DetailViewState | null>(
-  SET_DETAIL_VIEW,
+/**
+ * Declares which collection the current page lives in, so the app header can
+ * render its breadcrumbs. Pages publish this with the `useHeaderCollection`
+ * hook; `null` clears the claim.
+ */
+export const setPageCollection = createAction<PageCollection | null>(
+  SET_PAGE_COLLECTION,
 );
 
-const detailView = handleActions(
+const pageCollection = handleActions<PageCollection | null>(
   {
-    [SET_DETAIL_VIEW]: {
-      next: (_oldState, { payload: newState }) => newState,
+    [SET_PAGE_COLLECTION]: {
+      next: (_state, { payload }) => payload,
     },
   },
   null,
+);
+
+export const SET_PAGE_BACKGROUND = "metabase/app/SET_PAGE_BACKGROUND";
+
+/** Published by `PageContainer`, which paints the secondary page background. */
+export const setPageBackground =
+  createAction<PageBackground>(SET_PAGE_BACKGROUND);
+
+const pageBackground = handleActions<PageBackground>(
+  {
+    [SET_PAGE_BACKGROUND]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  "primary",
+);
+
+export const SET_NAV_SECTION = "metabase/app/SET_NAV_SECTION";
+export const SET_NAV_SECTION_SEED = "metabase/app/SET_NAV_SECTION_SEED";
+
+export const setNavSection = createAction<NavSection>(SET_NAV_SECTION);
+
+/**
+ * The section the thing currently on screen belongs to, so reloading an official metric comes back
+ * on the Official rail instead of falling to the default. `null` when nothing with a section of its
+ * own is open.
+ */
+export const setNavSectionSeed = createAction<NavSection | null>(
+  SET_NAV_SECTION_SEED,
+);
+
+// `null` means "not chosen yet", so a deep link gets to decide its own section.
+const navSection = handleActions<NavSection | null>(
+  {
+    [SET_NAV_SECTION]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  null,
+);
+
+const navSectionSeed = handleActions<NavSection | null>(
+  {
+    [SET_NAV_SECTION_SEED]: {
+      next: (_state, { payload }) => payload,
+    },
+  },
+  null,
+);
+
+export const OPEN_NAV_ITEM = "metabase/app/OPEN_NAV_ITEM";
+export const CLOSE_NAV_ITEM = "metabase/app/CLOSE_NAV_ITEM";
+
+export const openNavItem = createAction<OpenNavItem>(OPEN_NAV_ITEM);
+/** Takes the row out of the rail by its `key`; the entity itself is untouched. */
+export const closeNavItem = createAction<string>(CLOSE_NAV_ITEM);
+
+const openNavItems = handleActions<OpenNavItem[], any>(
+  {
+    [OPEN_NAV_ITEM]: {
+      next: (state: OpenNavItem[], { payload }: { payload: OpenNavItem }) => {
+        const index = state.findIndex((item) => item.key === payload.key);
+
+        if (index === -1) {
+          return [...state, payload];
+        }
+
+        // Reopening keeps its place in the list, but picks up a renamed entity.
+        return state.map((item, i) => (i === index ? payload : item));
+      },
+    },
+    [CLOSE_NAV_ITEM]: {
+      next: (state: OpenNavItem[], { payload }: { payload: string }) =>
+        state.filter((item) => item.key !== payload),
+    },
+  },
+  [],
 );
 
 const tempStorageSlice = createSlice({
@@ -150,9 +185,12 @@ export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
-  detailView,
+  pageCollection,
+  pageBackground,
   errorPage,
-  isNavbarOpen,
+  navSection,
+  navSectionSeed,
+  openNavItems,
   isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {
       return initValue;
