@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupCardCreateEndpoint } from "__support__/server-mocks";
 import { getTimelineEventCheckbox } from "__support__/timelines";
-import { act, screen, waitFor, within } from "__support__/ui";
+import { act, waitFor } from "__support__/ui";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import {
@@ -17,6 +17,7 @@ import type { Card, TimelineEventsVisibility } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
   createMockUnsavedCard,
@@ -40,7 +41,6 @@ import {
   saveQuestion,
   setup,
   triggerVisualizationQueryChange,
-  waitForSaveToBeEnabled,
 } from "./test-utils";
 
 registerVisualizations();
@@ -149,53 +149,21 @@ describe("QueryBuilder > timeline events", () => {
     ).not.toHaveProperty(["timeline.selected_timeline_ids"]);
   });
 
-  it("records the collection's events when saving a brand new question", async () => {
-    setupCardCreateEndpoint();
-    // the app navigates to the created card once saved
-    fetchMock.get(
-      /\/api\/card\/\d+\/query_metadata/,
-      createMockCardQueryMetadata(),
-    );
-    await setup({
-      card: createMockUnsavedCard({
-        dataset_query: CARD.dataset_query,
-        display: "line",
-      }),
-      timelines: [TIMELINE],
-    });
-
-    await waitForSaveToBeEnabled();
-    await userEvent.click(screen.getByText("Save"));
-    await userEvent.click(
-      within(screen.getByTestId("save-question-modal")).getByText("Save"),
-    );
-
-    // the created card's own endpoints are not mocked here, so assert on the request rather than
-    // waiting for the app to navigate to it
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" }),
-      ).toBeTruthy(),
-    );
-    const body = checkNotNull(
-      fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
-        ?.options.body,
-    );
-    const created: Card = JSON.parse(body.toString());
-    expect(created.visualization_settings).toMatchObject({
-      "timeline.selected_timeline_ids": [TIMELINE.id],
-    });
-  });
-
-  it("records the destination collection's events, not the current one's", async () => {
+  it("waits for collection timelines before saving a new question", async () => {
     setupCardCreateEndpoint();
     fetchMock.get(
       /\/api\/card\/\d+\/query_metadata/,
       createMockCardQueryMetadata(),
     );
+    let resolveTimelines: (timelines: (typeof TIMELINE)[]) => void = () => {};
+    const timelinesResponse = new Promise<(typeof TIMELINE)[]>((resolve) => {
+      resolveTimelines = resolve;
+    });
+    const destinationCollection = createMockCollection({ id: 123 });
     const destinationTimeline = createMockTimeline({
       id: 2,
-      collection_id: 123,
+      collection_id: destinationCollection.id,
+      collection: destinationCollection,
       events: [createMockTimelineEvent({ ...RC1, id: 97, timeline_id: 2 })],
     });
     const { store } = await setup({
@@ -203,19 +171,28 @@ describe("QueryBuilder > timeline events", () => {
         dataset_query: CARD.dataset_query,
         display: "line",
       }),
-      timelines: [
-        createMockTimeline({ ...TIMELINE, collection_id: null }),
-        destinationTimeline,
-      ],
+      timelinesResponse: () => timelinesResponse,
     });
-
-    // the Save modal picks the destination, so the question handed to the action already carries it
     const question = checkNotNull(
       getQuestion(store.getState()),
-    ).setCollectionId(destinationTimeline.collection_id);
-    await act(async () => {
-      await store.dispatch(apiCreateQuestion(question));
+    ).setCollectionId(checkNotNull(destinationCollection.entity_id));
+
+    const savePromise = store.dispatch(apiCreateQuestion(question));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/timeline")).toBe(true);
     });
+    const createCallBeforeTimelinesLoaded = fetchMock.callHistory.lastCall(
+      "path:/api/card",
+      { method: "POST" },
+    );
+
+    resolveTimelines([destinationTimeline]);
+    await act(async () => {
+      await savePromise;
+    });
+
+    expect(createCallBeforeTimelinesLoaded).toBeUndefined();
 
     const body = checkNotNull(
       fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
@@ -226,51 +203,6 @@ describe("QueryBuilder > timeline events", () => {
       "timeline.selected_timeline_ids": [destinationTimeline.id],
     });
   });
-
-  it.each([
-    {
-      description: "the timelines have not loaded",
-      timelines: [],
-      collectionId: CARD.collection_id,
-    },
-    {
-      description: "the destination cannot be matched to a timeline",
-      timelines: [TIMELINE],
-      collectionId: "entity-id-string",
-    },
-  ])(
-    "records nothing rather than an empty selection when $description",
-    async ({ timelines, collectionId }) => {
-      setupCardCreateEndpoint();
-      fetchMock.get(
-        /\/api\/card\/\d+\/query_metadata/,
-        createMockCardQueryMetadata(),
-      );
-      const { store } = await setup({
-        card: createMockUnsavedCard({
-          dataset_query: CARD.dataset_query,
-          display: "line",
-        }),
-        timelines,
-      });
-
-      const question = checkNotNull(
-        getQuestion(store.getState()),
-      ).setCollectionId(collectionId);
-      await act(async () => {
-        await store.dispatch(apiCreateQuestion(question));
-      });
-
-      const body = checkNotNull(
-        fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" })
-          ?.options.body,
-      );
-      const created: Card = JSON.parse(body.toString());
-      expect(created.visualization_settings).not.toHaveProperty([
-        "timeline.selected_timeline_ids",
-      ]);
-    },
-  );
 
   it("shows only the events a saved question recorded", async () => {
     const store = await setupWithTimelines({

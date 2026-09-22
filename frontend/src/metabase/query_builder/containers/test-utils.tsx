@@ -229,6 +229,7 @@ interface SetupOpts {
   dataset?: Dataset;
   initialRoute?: string;
   timelines?: Timeline[];
+  timelinesResponse?: () => Promise<Timeline[]>;
 }
 
 export const setup = async ({
@@ -242,6 +243,7 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
   timelines = [],
+  timelinesResponse,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
@@ -250,7 +252,7 @@ export const setup = async ({
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints(timelines);
+  setupTimelinesEndpoints(timelinesResponse ?? timelines);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),

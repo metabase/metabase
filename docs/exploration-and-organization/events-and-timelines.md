@@ -57,7 +57,7 @@ If your question is a time series, you can click on the **Calendar** in the bott
 - Add a new event (even if you haven't saved the question yet).
 - Edit, move, or archive an event.
 
-When you save the question, Metabase records which timelines and events are turned on, and shows those same events wherever the question appears, including on dashboards. Toggling events on a saved question counts as a change, so save the question to keep your selection.
+When you save a new question or change a question's event selection and save it, Metabase records which timelines and events are turned on, and shows those same events wherever the question appears, including on dashboards. Toggling events on a saved question counts as a change, so save the question to keep your selection.
 
 ## Events on dashboards
 
@@ -66,7 +66,7 @@ A time series chart on a dashboard shows the events its question was saved with.
 To change which events a chart shows while viewing a dashboard, click on the **three-dot menu** (**...**) on the card and select **Events**. Metabase will open the same events sidebar you get on a question, listing every timeline you can view that has an event in the range of that chart, whatever collection the timeline lives in. You can:
 
 - Toggle a timeline or an event on or off for that card.
-- Add a new event. Metabase files it in the dashboard's collection, so you'll need curate access to that collection.
+- Add a new event, if you have curate access to the dashboard's collection. You can choose a timeline whose collection you can curate. If there are no available timelines, Metabase creates one in the dashboard's collection.
 - Edit, move, or archive an event, if you have curate access to the collection that holds the event's timeline.
 
 To toggle events for every time series chart on the current tab at once, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**. If some cards show an event and others don't, its checkbox shows a dash. Clicking it applies your choice to every card.
@@ -90,7 +90,7 @@ To temporarily hide the events from a chart:
 
 Your selections reset on reload unless you save the question.
 
-To permanently hide the timeline and its events, you'll need to [archive the timeline](#archiving-timelines). Alternatively, you could move the question to a different collection.
+To keep events hidden on this question, save the question after unchecking them. To hide a timeline and its events everywhere, [archive the timeline](#archiving-timelines).
 
 ## Edit an event
 
@@ -135,13 +135,13 @@ Event and timeline permissions depend on your [collection permissions](../permis
 
 - **View access**: you can view the collection's events and timelines. You can also temporarily apply timelines and events to time series in other collections.
 - **Curate access**. Anyone with curate access to a collection can add events and timelines to that collection.
-- **Saving a question's events**: when you change which events a question shows, or switch it to a chart type that displays events, Metabase checks that you can view every timeline the question has turned on. If you can't view one of them, the save fails.
+- **Saving a question's events**: you need view access to a timeline to turn it on or show one of its hidden events. You can keep existing selections for timelines you can no longer view. If you switch a question to a chart type that displays events, you need view access to every timeline it has turned on.
 
 ### Make a timeline and its events available for everyone
 
 If you want the event and timeline to be available to everyone, create the timeline in a collection that the [All Users group](../people-and-groups/managing.md#all-users) has access to, as by default everyone is in the All Users group.
 
-Note that for questions outside of that collection, you can only temporarily apply those timelines to charts. The timelines won't appear automatically when you reload the chart.
+For questions outside of that collection, save the question after applying a timeline if you want the timeline to remain visible after reload and wherever the question appears.
 
 ## Further reading
 

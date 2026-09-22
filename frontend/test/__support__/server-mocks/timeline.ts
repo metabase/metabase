@@ -2,6 +2,8 @@ import fetchMock from "fetch-mock";
 
 import type { Timeline } from "metabase-types/api";
 
-export function setupTimelinesEndpoints(timelines: Timeline[]) {
-  fetchMock.get("path:/api/timeline", timelines);
+type TimelineResponse = Timeline[] | (() => Promise<Timeline[]>);
+
+export function setupTimelinesEndpoints(response: TimelineResponse) {
+  fetchMock.get("path:/api/timeline", response);
 }

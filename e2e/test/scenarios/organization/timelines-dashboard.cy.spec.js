@@ -702,17 +702,22 @@ function visitDashboardWithMetricAndModel() {
           "timeline.selected_timeline_ids": [timeline.id],
         },
       }).then(({ body: model }) =>
-        H.createDashboardWithTabs({
-          dashcards: [metric, model].map((card, index) =>
-            createMockDashboardCard({
-              id: -(index + 1),
-              card_id: card.id,
-              row: index * 6,
-              size_x: 12,
-              size_y: 6,
-            }),
+        // Converting a question to a model forces its display to table, so restore the time-series display.
+        cy
+          .request("PUT", `/api/card/${model.id}`, { display: "line" })
+          .then(({ body: model }) =>
+            H.createDashboardWithTabs({
+              dashcards: [metric, model].map((card, index) =>
+                createMockDashboardCard({
+                  id: -(index + 1),
+                  card_id: card.id,
+                  row: index * 6,
+                  size_x: 12,
+                  size_y: 6,
+                }),
+              ),
+            }).then((dashboard) => H.visitDashboard(dashboard.id)),
           ),
-        }).then((dashboard) => H.visitDashboard(dashboard.id)),
       ),
     ),
   );
