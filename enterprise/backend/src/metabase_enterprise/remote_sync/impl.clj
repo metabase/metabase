@@ -381,7 +381,8 @@
         imported-data       (spec/extract-imported-entities seen-paths)]
     (report 0.7 {:force? true})
     (when (and has-transforms?
-               (not (settings/remote-sync-transforms)))
+               (not (settings/remote-sync-transforms))
+               (nil? api/*worktree-id*))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! true))
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
@@ -398,7 +399,8 @@
       (when finalize! (finalize!)))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
+               (settings/remote-sync-transforms)
+               (nil? api/*worktree-id*))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
