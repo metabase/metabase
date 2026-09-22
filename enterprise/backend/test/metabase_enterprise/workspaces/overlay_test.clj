@@ -71,14 +71,17 @@
     (mt/with-premium-features #{:workspaces}
       (mt/with-temporary-setting-values [workspaces-enabled true]
         (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
-          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
-            (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id       (mt/id)
-                                                             :from_schema schema
-                                                             :from_table  name
-                                                             :to_schema   workspace-schema
-                                                             :to_table    workspace-table}]
-              (#'ws.impl/clear-remappings-cache!)
-              (is (= #{[schema name]} (tables name))))))))))
+          (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-overlay", :creator_id (mt/user->id :crowberto)}]
+            (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+              (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                               :workspace_id ws-id
+                                                               :from_schema  schema
+                                                               :from_table   name
+                                                               :to_schema    workspace-schema
+                                                               :to_table     workspace-table}]
+                (#'ws.impl/clear-remappings-cache!)
+                (workspaces/with-workspace ws-id
+                  (is (= #{[schema name]} (tables name))))))))))))
 
 (deftest reads-are-the-real-tables-when-off-test
   (testing "with workspaces off both rows read as the tables they really are"
@@ -136,35 +139,97 @@
 (deftest a-schemaless-canonical-table-is-remapped-too-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-temporary-setting-values [workspaces-enabled true]
-      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
-        (mt/with-temp [:model/Table                   _ {:db_id (mt/id) :schema nil :name "schemaless"}
-                       :model/WorkspaceTableRemapping _ {:db_id       (mt/id)
-                                                         :from_schema nil
-                                                         :from_table  "schemaless"
-                                                         :to_schema   workspace-schema
-                                                         :to_table    workspace-table}
-                       :model/Table                   _ {:db_id  (mt/id)
-                                                         :schema workspace-schema
-                                                         :name   workspace-table}]
-          (#'ws.impl/clear-remappings-cache!)
-          (is (= 1 (count (t2/select :model/Table :db_id (mt/id) :name "schemaless"
-                                     {:from [(warehouse-schema-overlay/table-query)]})))))))))
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-overlay", :creator_id (mt/user->id :crowberto)}]
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+          (mt/with-temp [:model/Table                   _ {:db_id (mt/id) :schema nil :name "schemaless"}
+                         :model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                           :workspace_id ws-id
+                                                           :from_schema  nil
+                                                           :from_table   "schemaless"
+                                                           :to_schema    workspace-schema
+                                                           :to_table     workspace-table}
+                         :model/Table                   _ {:db_id  (mt/id)
+                                                           :schema workspace-schema
+                                                           :name   workspace-table}]
+            (#'ws.impl/clear-remappings-cache!)
+            (workspaces/with-workspace ws-id
+              (is (= 1 (count (t2/select :model/Table :db_id (mt/id) :name "schemaless"
+                                         {:from [(warehouse-schema-overlay/table-query)]})))))))))))
 
 (deftest an-inactive-workspace-table-does-not-hide-the-canonical-one-test
   (mt/with-premium-features #{:workspaces}
     (mt/with-temporary-setting-values [workspaces-enabled true]
       (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
-        (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
-          (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id       (mt/id)
-                                                           :from_schema schema
-                                                           :from_table  name
-                                                           :to_schema   workspace-schema
-                                                           :to_table    workspace-table}
-                         :model/Table                   _ {:db_id  (mt/id)
-                                                           :schema workspace-schema
-                                                           :name   workspace-table
-                                                           :active false}]
-            (#'ws.impl/clear-remappings-cache!)
-            (is (contains? (t2/select-pks-set :model/Table :db_id (mt/id) :active true
-                                              {:from [(warehouse-schema-overlay/table-query)]})
-                           (mt/id :orders)))))))))
+        (mt/with-temp [:model/Workspace {ws-id :id} {:name "ws-overlay", :creator_id (mt/user->id :crowberto)}]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+            (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                             :workspace_id ws-id
+                                                             :from_schema  schema
+                                                             :from_table   name
+                                                             :to_schema    workspace-schema
+                                                             :to_table     workspace-table}
+                           :model/Table                   _ {:db_id  (mt/id)
+                                                             :schema workspace-schema
+                                                             :name   workspace-table
+                                                             :active false}]
+              (#'ws.impl/clear-remappings-cache!)
+              (workspaces/with-workspace ws-id
+                (is (contains? (t2/select-pks-set :model/Table :db_id (mt/id) :active true
+                                                  {:from [(warehouse-schema-overlay/table-query)]})
+                               (mt/id :orders)))))))))))
+
+(def ^:private other-workspace-table "ws_orders_other")
+
+(deftest a-read-does-not-see-another-workspaces-table-test
+  (testing "with two workspaces remapping the same canonical table, each sees only its own"
+    ;; The overlay joins `workspace_table_remapping` in SQL rather than through the remapping hooks, so it has to
+    ;; scope on the workspace itself. Unscoped, this join matches whichever row the planner reaches -- showing one
+    ;; workspace the other's table under the canonical table's name.
+    (mt/with-premium-features #{:workspaces}
+      (mt/with-temporary-setting-values [workspaces-enabled true]
+        (let [{:keys [schema name]} (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+          (mt/with-temp [:model/Workspace {ws-1 :id} {:name "ws-1", :creator_id (mt/user->id :crowberto)}
+                         :model/Workspace {ws-2 :id} {:name "ws-2", :creator_id (mt/user->id :crowberto)}]
+            (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:workspaces-schema workspace-schema}}
+              (mt/with-temp [:model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                               :workspace_id ws-1
+                                                               :from_schema  schema
+                                                               :from_table   name
+                                                               :to_schema    workspace-schema
+                                                               :to_table     workspace-table}
+                             :model/WorkspaceTableRemapping _ {:db_id        (mt/id)
+                                                               :workspace_id ws-2
+                                                               :from_schema  schema
+                                                               :from_table   name
+                                                               :to_schema    workspace-schema
+                                                               :to_table     other-workspace-table}
+                             :model/Table                   _ {:db_id  (mt/id)
+                                                               :schema workspace-schema
+                                                               :name   workspace-table}
+                             :model/Table                   _ {:db_id  (mt/id)
+                                                               :schema workspace-schema
+                                                               :name   other-workspace-table}]
+                (#'ws.impl/clear-remappings-cache!)
+                (testing "each workspace's read resolves to its own physical table"
+                  (doseq [[ws-id expected] [[ws-1 workspace-table] [ws-2 other-workspace-table]]]
+                    (workspaces/with-workspace ws-id
+                      (let [rows (t2/select [:model/Table :id :schema :name]
+                                            :db_id (mt/id)
+                                            :name [:in [name workspace-table other-workspace-table]]
+                                            {:from [(warehouse-schema-overlay/table-query)]})
+                            ids  (into #{} (map :id) rows)]
+                        (is (= #{[schema name]} (into #{} (map (juxt :schema :name)) rows))
+                            "the canonical name is shown once, and the other workspace's table is not visible")
+                        (is (= #{(t2/select-one-pk :model/Table :db_id (mt/id)
+                                                   :schema workspace-schema :name expected)}
+                               ids)
+                            "and it is backed by this workspace's table, not the other's")))))
+                (testing "with no workspace bound, the canonical table is shown and neither workspace table is"
+                  (is (nil? (workspaces/current-workspace-id)))
+                  (is (= #{[schema name]}
+                         (into #{}
+                               (map (juxt :schema :name))
+                               (t2/select [:model/Table :schema :name]
+                                          :db_id (mt/id)
+                                          :name [:in [name workspace-table other-workspace-table]]
+                                          {:from [(warehouse-schema-overlay/table-query)]})))))))))))))

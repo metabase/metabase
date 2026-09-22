@@ -122,6 +122,21 @@
   []
   [])
 
+(defenterprise-schema current-workspace-id :- [:maybe pos-int?]
+  "The workspace whose remappings a read should see, or nil for none.
+
+  An instance holds many workspaces, each with its own remapping of the same canonical table, so the reader's
+  workspace is what picks between them. Scoping the remapping join and filter on it is what keeps a Table read in
+  one workspace from resolving against another's row -- a wrong table under a familiar name, which reads as data
+  rather than as an error.
+
+  nil means no remapping applies and reads name the canonical tables, matching every other read path outside a
+  workspace. Declared as a hook rather than by requiring the workspaces module: this module's `:uses` is
+  deliberately narrow, and this is the shape [[workspace-schemas]] above already uses."
+  metabase-enterprise.workspaces.core
+  []
+  nil)
+
 (def table-columns
   "Every column of `metabase_table`. Spelled out rather than read from `:metabase.warehouse-schema.schema/table`,
   which lives in a module above this one; `metabase.warehouse-schema-overlay.core-test` fails if the two drift."
@@ -168,11 +183,16 @@
 
 (mu/defn- workspace-remapping-join
   "The `:left-join` entries joining `workspace_table_remapping` as `remapping-alias` to the Table aliased
-  `table-alias` on the workspace table it points at -- the row that is standing in for a canonical table."
+  `table-alias` on the workspace table it points at -- the row that is standing in for a canonical table.
+
+  Scoped to `workspace-id`: the same canonical table is remapped once per workspace, so without it the join matches
+  whichever workspace's row the planner reaches first."
   [table-alias     :- :keyword
-   remapping-alias :- :keyword]
+   remapping-alias :- :keyword
+   workspace-id    :- pos-int?]
   [[(t2/table-name :model/WorkspaceTableRemapping) remapping-alias]
    [:and
+    [:= (u/qualified-key remapping-alias :workspace_id) workspace-id]
     [:= (u/qualified-key remapping-alias :db_id) (u/qualified-key table-alias :db_id)]
     [:= (u/qualified-key remapping-alias :to_schema) (u/qualified-key table-alias :schema)]
     [:= (u/qualified-key remapping-alias :to_table) (u/qualified-key table-alias :name)]]])
@@ -207,28 +227,40 @@
 
   The canonical row a workspace table stands in for drops out too, so the table is shown once. Only once that table
   is there to stand in, though: a remapping is recorded before the run writes, and sync gives the table its row
-  later still, and in between the canonical table is all there is."
+  later still, and in between the canonical table is all there is.
+
+  `workspace-id` is the reader's workspace, or nil outside one. It scopes the hiding of a canonical row to *our*
+  stand-in: another workspace's remapping of the same table must not hide the canonical row from a reader who has
+  no replacement to show in its place. With no workspace, nothing stands in for anything, so only the second half
+  applies and every workspace-schema table is dropped."
   [table-alias     :- :keyword
    remapping-alias :- :keyword
-   schemas         :- [:sequential WorkspaceSchema]]
+   schemas         :- [:sequential WorkspaceSchema]
+   workspace-id    :- [:maybe pos-int?]]
   [:and
-   [:not [:exists ^:allow-subquery
-          {:select [[[:inline 1]]]
-           :from   [[(t2/table-name :model/WorkspaceTableRemapping) :s]]
-           :join   [[(t2/table-name :model/Table) :st]
-                    [:and
-                     [:= :st.db_id :s.db_id]
-                     [:= :st.schema :s.to_schema]
-                     [:= :st.name :s.to_table]
-                     [:= :st.active true]]]
-           :where  [:and
-                    [:= :s.db_id (u/qualified-key table-alias :db_id)]
-                    [:or
-                     [:= :s.from_schema (u/qualified-key table-alias :schema)]
-                     [:and [:= :s.from_schema nil] [:= (u/qualified-key table-alias :schema) nil]]]
-                    [:= :s.from_table (u/qualified-key table-alias :name)]]}]]
+   (if workspace-id
+     [:not [:exists ^:allow-subquery
+            {:select [[[:inline 1]]]
+             :from   [[(t2/table-name :model/WorkspaceTableRemapping) :s]]
+             :join   [[(t2/table-name :model/Table) :st]
+                      [:and
+                       [:= :st.db_id :s.db_id]
+                       [:= :st.schema :s.to_schema]
+                       [:= :st.name :s.to_table]
+                       [:= :st.active true]]]
+             :where  [:and
+                      [:= :s.workspace_id workspace-id]
+                      [:= :s.db_id (u/qualified-key table-alias :db_id)]
+                      [:or
+                       [:= :s.from_schema (u/qualified-key table-alias :schema)]
+                       [:and [:= :s.from_schema nil] [:= (u/qualified-key table-alias :schema) nil]]]
+                      [:= :s.from_table (u/qualified-key table-alias :name)]]}]]
+     ;; Nothing stands in for a canonical table outside a workspace, so no canonical row is hidden.
+     true)
    [:or
-    [:not= (u/qualified-key remapping-alias :id) nil]
+    (if workspace-id
+      [:not= (u/qualified-key remapping-alias :id) nil]
+      false)
     [:not (in-workspace-schema table-alias schemas)]]])
 
 (mu/defn table-query :- [:tuple :any :keyword]
@@ -244,9 +276,18 @@
                                                     [:alias                {:optional true} :keyword]
                                                     [:user-settings?       {:optional true} :boolean]
                                                     [:workspace-remapping? {:optional true} :boolean]]]]
-   (let [schemas    (when workspace-remapping? (not-empty (workspace-schemas)))
-         remapping? (boolean schemas)]
-     [(if (or user-settings? remapping?)
+   ;; Two jobs here, and only one of them is about the reader's workspace.
+   ;;
+   ;; Hiding the workspace schemas is unconditional: they are where transform runs write, not part of any database
+   ;; anyone browses, so their tables stay out of a Table read no matter who is looking.
+   ;;
+   ;; Standing a workspace table *in place of* a canonical one is per-workspace, and needs a workspace to say
+   ;; which. With none bound, the canonical tables are what a read sees, as it did before workspaces existed.
+   (let [schemas      (when workspace-remapping? (not-empty (workspace-schemas)))
+         workspace-id (when schemas (current-workspace-id))
+         hiding?      (boolean schemas)
+         remapping?   (boolean workspace-id)]
+     [(if (or user-settings? hiding?)
         (cond-> ^:allow-subquery
          {:select (mapv (fn [column]
                           (cond
@@ -261,7 +302,7 @@
                         (sort table-columns))
           :from   [[(t2/table-name :model/Table) :t]]}
           user-settings? (assoc :left-join (table-user-settings-join :t :u))
-          remapping?     (update :left-join (fnil into []) (workspace-remapping-join :t :w))
-          remapping?     (assoc :where (workspace-table-filter :t :w schemas)))
+          remapping?     (update :left-join (fnil into []) (workspace-remapping-join :t :w workspace-id))
+          hiding?        (assoc :where (workspace-table-filter :t :w schemas workspace-id)))
         (t2/table-name :model/Table))
       alias])))

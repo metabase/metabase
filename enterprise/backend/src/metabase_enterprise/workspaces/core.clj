@@ -81,3 +81,14 @@
   (if (workspaces/allow-table-remapping?)
     (ws.impl/workspace-schemas)
     []))
+
+(defenterprise-schema current-workspace-id :- [:maybe pos-int?]
+  "The workspace whose remappings the Table overlay should resolve against, or nil for none.
+
+  The overlay builds SQL rather than calling the remapping hooks, so it reads the binding through this rather than
+  taking a workspace as an argument -- the ~10 `table-query` call sites have no workspace to pass. Nil when
+  remapping is suppressed, so a caller showing someone the SQL they authored sees canonical tables here too."
+  :feature :workspaces
+  []
+  (when (workspaces/allow-table-remapping?)
+    (workspaces/current-workspace-id)))
