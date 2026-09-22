@@ -1,3 +1,6 @@
+# Keep the current-version ClickHouse services on the same image.
+x-clickhouse-image: &clickhouse-image 'clickhouse/clickhouse-server:26.8-alpine'
+
 services:
 
   ##########################################################################################################
@@ -5,7 +8,7 @@ services:
   ##########################################################################################################
 
   clickhouse:
-    image: 'clickhouse/clickhouse-server:latest-alpine'
+    image: *clickhouse-image
     container_name: 'mb-clickhouse-latest'
     hostname: clickhouse
     ports:
@@ -74,7 +77,7 @@ services:
   ##########################################################################################################
 
   clickhouse_cluster_node1:
-    image: 'clickhouse/clickhouse-server:latest-alpine'
+    image: *clickhouse-image
     ulimits:
       nofile:
         soft: 262144
@@ -93,7 +96,7 @@ services:
       - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse_cluster_node2:
-    image: 'clickhouse/clickhouse-server:latest-alpine'
+    image: *clickhouse-image
     ulimits:
       nofile:
         soft: 262144
