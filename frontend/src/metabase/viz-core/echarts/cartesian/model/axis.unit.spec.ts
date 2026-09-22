@@ -266,6 +266,29 @@ describe("getYAxesModels", () => {
     expect(checkNotNull(rightAxisModel).label).toBe("Orders");
   });
 
+  it("should keep the right label when the legend hides every left series", () => {
+    const { leftAxisModel, rightAxisModel } = getYAxesModels(
+      [
+        createMockSeriesModel({ dataKey: LEFT_SERIES_KEY, visible: false }),
+        createMockSeriesModel({ dataKey: RIGHT_SERIES_KEY }),
+      ],
+      dataset,
+      dataset,
+      {
+        series: assignSeriesToAxis,
+        "graph.y_axis.title_text": "Revenue",
+        "graph.y_axis.right.title_text": "Orders",
+      },
+      columnByDataKey,
+      true,
+      [],
+      false,
+    );
+
+    expect(leftAxisModel).toBeNull();
+    expect(checkNotNull(rightAxisModel).label).toBe("Orders");
+  });
+
   it("should label a right axis with no left axis from 'graph.y_axis.title_text'", () => {
     // The sidebar hides the right label field on a one-axis chart, so a right
     // label stored while the chart was split must not keep driving this axis.
