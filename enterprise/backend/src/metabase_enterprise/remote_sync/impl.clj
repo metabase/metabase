@@ -202,7 +202,7 @@
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
-        imported-data (spec/extract-imported-entities ingest-list)
+        imported-data (spec/extract-imported-entities ingest-list #(serialization/ingest-one ingestable %))
         models-present (spec/models-in-import ingest-list)
         ;; Extract namespace info from imported Collection entities
         import-ns-info
@@ -1028,7 +1028,7 @@
   []
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
-    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+    (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
   (let [path    (or (:file_path row) (source/entity->path opts entity))

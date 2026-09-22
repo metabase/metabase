@@ -326,4 +326,24 @@ describe("useHasLibraryDirtyChanges", () => {
       });
     });
   });
+
+  describe("glossary dirty state", () => {
+    it("returns false for a dirty glossary entry because the Glossary tab carries its own badge", async () => {
+      const { result } = setup({
+        collections: [createLibraryCollection({ id: 1 })],
+        dirty: [
+          createMockDirtyEntity({
+            id: 10,
+            model: "glossary",
+            name: "ARR",
+            collection_id: undefined,
+          }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current).toBe(false);
+      });
+    });
+  });
 });
