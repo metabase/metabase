@@ -188,6 +188,17 @@ describe("deriveFullMetabaseTheme", () => {
       );
     });
 
+    it("keeps the dynamic brand ramp when the caller asks for it", () => {
+      const derived = deriveFullMetabaseTheme({
+        colorScheme: "light",
+        keepBrandRampDynamic: true,
+      });
+
+      expect(derived.colors["text-brand"]).toBe(
+        METABASE_LIGHT_THEME.colors["text-brand"],
+      );
+    });
+
     it("leaves whitelabel filter and summarize ramps alone", () => {
       const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
 

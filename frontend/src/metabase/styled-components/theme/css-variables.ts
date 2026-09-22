@@ -25,10 +25,12 @@ import type { ColorSettings } from "metabase-types/api";
 const createColorVars = (
   colorScheme: ResolvedColorScheme,
   whitelabelColors?: ColorSettings | null,
+  keepBrandRampDynamic?: boolean,
 ): string => {
   const theme = deriveFullMetabaseTheme({
     colorScheme,
     whitelabelColors,
+    keepBrandRampDynamic,
   });
 
   return Object.entries(theme.colors)
@@ -71,11 +73,13 @@ export function getMetabaseSdkCssVariables({
 }) {
   const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
 
+  // `getSdkDesignSystemCssVariables` below always re-declares `--mb-color-core-brand`,
+  // so the brand ramp has to stay dynamic here to keep tracking the SDK theme's brand.
   return css`
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
-      ${createColorVars(colorScheme, whitelabelColors)}
+      ${createColorVars(colorScheme, whitelabelColors, true)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

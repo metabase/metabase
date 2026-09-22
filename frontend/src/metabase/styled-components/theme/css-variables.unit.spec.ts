@@ -1,6 +1,30 @@
 import type { MantineTheme } from "metabase/ui";
+import { getBaseColorsForThemeDefinitionOnly } from "metabase/ui/colors/constants/base-colors";
 
-import { getThemeSpecificCssVariables } from "./css-variables";
+import {
+  getMetabaseSdkCssVariables,
+  getThemeSpecificCssVariables,
+} from "./css-variables";
+
+const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+// `text-brand` is defined off `brand[50]`, so it is dynamic or Ocean depending on
+// whether a brand color is in play.
+const TEXT_BRAND_RAMP = baseColors.brand[50];
+const TEXT_BRAND_OCEAN = baseColors.ocean[50];
+
+const createSdkTheme = (colors: Record<string, string>) =>
+  // The helpers under test read only these three fields off the theme, so a stub
+  // carrying them stands in for a full Mantine theme.
+  ({
+    fontFamilyMonospace: "monospace",
+    fn: {
+      // The real `themeColor` falls back to the primary color for an unset name, so it
+      // never hands back a bare color name.
+      themeColor: (name: string) => colors[name] ?? "#ffffff",
+    },
+    other: {},
+  }) as MantineTheme;
 
 describe("getThemeSpecificCssVariables", () => {
   it("returns the correct CSS variables", () => {
@@ -20,5 +44,19 @@ describe("getThemeSpecificCssVariables", () => {
 
     expect(styles).toContain("--mb-color-bg-dashboard: red;");
     expect(styles).toContain("--mb-color-bg-dashboard-card: purple;");
+  });
+});
+
+describe("getMetabaseSdkCssVariables", () => {
+  it("keeps the brand ramp dynamic so it tracks the SDK theme's brand", () => {
+    // A v1 SDK theme never reaches `deriveFullMetabaseTheme`; its brand lands as
+    // `--mb-color-core-brand` later in the same block, which the ramp resolves against
+    const styles = getMetabaseSdkCssVariables({
+      theme: createSdkTheme({ "core-brand": "#DF75E9" }),
+      font: "Lato",
+    }).styles;
+
+    expect(styles).toContain(`--mb-color-text-brand: ${TEXT_BRAND_RAMP};`);
+    expect(styles).not.toContain(`--mb-color-text-brand: ${TEXT_BRAND_OCEAN};`);
   });
 });
