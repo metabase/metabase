@@ -1,4 +1,5 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -7,6 +8,7 @@ import type {
   TimelineId,
   VisualizationSettings,
 } from "metabase-types/api";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -58,6 +60,103 @@ describe("scenarios > organization > timelines > question persistence", () => {
 
     H.visitDashboard("@dashboardId");
     expectEvents(["Swallows return"], ["Swifts return"]);
+  });
+
+  it("should save destination collection events with a new question", () => {
+    const collectionName = "Migration questions";
+
+    H.createCollection({ name: collectionName }).then(({ body: { id } }) =>
+      H.createTimelineWithEvents({
+        timeline: { name: "Migration seasons", collection_id: id },
+        events: EVENTS,
+      }).then(({ timeline }) => cy.wrap(timeline.id).as("timelineId")),
+    );
+    cy.intercept(
+      { method: "GET", url: "/api/timeline?include=events", times: 1 },
+      (request) => {
+        request.on("response", (response) => response.setDelay(5000));
+      },
+    ).as("getDelayedTimelines");
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      display: "line",
+    });
+    H.saveQuestionToCollection(
+      "Bird sightings by month",
+      { path: ["Our analytics", collectionName] },
+      { wrapId: true },
+    );
+    cy.wait("@getDelayedTimelines");
+    cy.get<CardId>("@questionId").then((id) =>
+      cy.get<TimelineId>("@timelineId").then((timelineId) =>
+        cy
+          .request<Card>(`/api/card/${id}`)
+          .its("body.visualization_settings")
+          .should((settings) => {
+            expect(settings["timeline.selected_timeline_ids"]).to.deep.equal([
+              timelineId,
+            ]);
+          }),
+      ),
+    );
+    cy.get<CardId>("@questionId").then((questionId) =>
+      H.createDashboardWithTabs({
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: questionId,
+            size_x: 12,
+            size_y: 8,
+          }),
+        ],
+      }).then((dashboard) => H.visitDashboard(dashboard.id)),
+    );
+    H.waitForDashcardsToLoad();
+    expectEvents(EVENT_NAMES);
+
+    cy.reload();
+    H.waitForDashcardsToLoad();
+    expectEvents(EVENT_NAMES);
+  });
+
+  it("should save a new question when collection timelines fail to load", () => {
+    cy.intercept("GET", "/api/timeline?include=events", {
+      statusCode: 500,
+      body: { message: "Timelines are unavailable" },
+    }).as("getFailedTimelines");
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      display: "line",
+    });
+    H.saveQuestionToCollection("Orders by month", undefined, { wrapId: true });
+
+    cy.wait("@getFailedTimelines");
+    cy.get<CardId>("@questionId").then((id) =>
+      cy
+        .request<Card>(`/api/card/${id}`)
+        .its("body.visualization_settings")
+        .should("not.have.property", "timeline.selected_timeline_ids"),
+    );
   });
 
   it("should keep an explicitly empty selection hidden after saving and reloading the question and dashboard", () => {

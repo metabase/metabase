@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/common/collections/utils";
+import {
+  canonicalCollectionId,
+  canonicalCollectionIdOrEntityId,
+} from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,
@@ -50,15 +53,19 @@ export const getDefaultTimeline = (
 
 /**
  * null, "root" and "tenant" mean the root collection, whose timelines have a
- * null collection_id, other ids are compared as is
+ * null collection_id. Regular collections can be addressed by numeric or entity id.
  */
 export const isCollectionTimeline = (
   timeline: Timeline,
   collectionId: CollectionId | null | undefined,
-) =>
-  canonicalCollectionId(collectionId) === null
+) => {
+  const canonicalId = canonicalCollectionIdOrEntityId(collectionId);
+
+  return canonicalId === null
     ? timeline.collection_id == null
-    : timeline.collection_id === collectionId;
+    : timeline.collection_id === canonicalId ||
+        timeline.collection?.entity_id === canonicalId;
+};
 
 export const getCollectionTimelines = (
   timelines: Timeline[],
