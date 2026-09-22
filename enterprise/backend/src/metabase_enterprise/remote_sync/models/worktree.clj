@@ -2,8 +2,8 @@
   "Model for remote-sync worktrees. A worktree is a self-contained checkout of a git branch: its content lives in
   the same tables as the main app, tagged with a `worktree_id`, and is synced with the worktree's own `branch`.
 
-  Nothing but a pull puts content into a worktree -- no API creates it -- and what a worktree holds is kept out of
-  every list, so the main app never shows it. Managing the worktrees themselves is superuser-only."
+  A worktree's content is kept out of the main app's lists: a list endpoint shows one world at a time, the one its
+  `worktree-id` parameter names. Reading or writing a branch's content at all is superuser-only."
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.api.common :as api]

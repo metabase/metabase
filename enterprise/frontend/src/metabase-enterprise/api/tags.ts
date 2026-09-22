@@ -38,6 +38,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "collection-dirty-entities",
   "collection-is-dirty",
   "remote-sync-branches",
+  "worktree",
   "remote-sync-current-task",
   "remote-sync-has-remote-changes",
   "source-replacement-run",

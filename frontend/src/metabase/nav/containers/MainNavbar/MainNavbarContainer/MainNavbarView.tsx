@@ -311,6 +311,10 @@ export function MainNavbarView({
             <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
           )}
 
+          {PLUGIN_REMOTE_SYNC.isEnabled && (
+            <PLUGIN_REMOTE_SYNC.WorktreeNav onItemSelect={onItemSelect} />
+          )}
+
           <SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection

@@ -242,6 +242,7 @@ export type ListCollectionsTreeRequest = {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
+  "worktree-id"?: number;
 };
 
 export interface DeleteCollectionRequest {

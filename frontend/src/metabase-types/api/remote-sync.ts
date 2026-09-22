@@ -269,3 +269,11 @@ export type TestRemoteSyncConnectionRequest = {
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
 };
+
+export type Worktree = {
+  id: number;
+  branch: string;
+  creator_id: number | null;
+  created_at: string;
+  updated_at: string;
+};

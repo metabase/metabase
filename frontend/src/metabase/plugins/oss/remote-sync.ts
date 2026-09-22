@@ -12,6 +12,7 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
+  WorktreeNavProps,
 } from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
@@ -61,6 +62,7 @@ export interface RemoteSyncDirtyState {
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
+  WorktreeNav: PluginPlaceholder,
   RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   // Unjustified type cast. FIXME
@@ -95,6 +97,7 @@ const getDefaultPluginRemoteSync = () => ({
 export const PLUGIN_REMOTE_SYNC: {
   isEnabled: boolean;
   LibraryNav: ComponentType;
+  WorktreeNav: ComponentType<WorktreeNavProps>;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType;

@@ -14,6 +14,7 @@ import type {
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
+  Worktree,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
@@ -123,6 +124,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("collection-is-dirty"),
       ],
     }),
+    listWorktrees: builder.query<Worktree[], void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/worktree`,
+      }),
+      providesTags: () => [listTag("worktree")],
+    }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({
         method: "GET",
@@ -184,4 +192,5 @@ export const {
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
+  useListWorktreesQuery,
 } = remoteSyncApi;

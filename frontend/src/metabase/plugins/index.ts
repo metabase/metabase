@@ -190,6 +190,7 @@ export type {
   GitSyncSetupMenuItemProps,
   PluginGroupManagersType,
   SyncedCollectionsSidebarSectionProps,
+  WorktreeNavProps,
 } from "./types";
 
 import { reinitializeRequestHandlers } from "metabase/api/client";
