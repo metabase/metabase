@@ -48,17 +48,10 @@
 
 (defn- check-reverted-dashcards-timeline-permissions!
   "Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline events, so
-  the current user needs read access to those timelines. Cards the dashboard already shows are grandfathered."
+  the current user needs read access to those timelines."
   [dashboard-id current-cards reverted-cards]
-  ;; Both sides skip visualizer dashcards, so a card is grandfathered only if the dashboard already shows its events.
-  (let [exposed-card-ids (comp (remove queries/visualizer-dashcard?) (keep :card_id))
-        current-card-ids (into #{} exposed-card-ids current-cards)
-        new-card-ids     (into #{} (comp exposed-card-ids (remove current-card-ids))
-                               reverted-cards)]
-    (when (seq new-card-ids)
-      (queries/check-shared-dashboard-timeline-permissions-for-card-ids!
-       (revisions.db/entity :model/Dashboard dashboard-id)
-       new-card-ids))))
+  (queries/check-newly-exposed-dashcards-timeline-permissions!
+   (revisions.db/entity :model/Dashboard dashboard-id) current-cards reverted-cards))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]

@@ -75,12 +75,13 @@ export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
 ): DashCardTimelineEvents => {
   const dispatch = useDispatch();
-  const { withTimelineEvents = false } = useDashboardContext();
+  // fullscreen hides every sidebar, so the panel these controls open could never appear
+  const { withTimelineEvents = false, isFullscreen } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
   const canDisplayEvents = useSelector(
     (state) => getDashCardTimeseriesXAxis(state, dashcardId) != null,
   );
-  const isEnabled = withTimelineEvents && canDisplayEvents;
+  const isEnabled = withTimelineEvents && canDisplayEvents && !isFullscreen;
 
   const timelineEventsVisibility = useSelector((state) => {
     if (!canDisplayEvents) {
