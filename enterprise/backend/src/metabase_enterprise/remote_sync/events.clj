@@ -295,6 +295,30 @@
         (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
         (disable-library-tracking!)))))
 
+(defn- cascade-archived-state!
+  "Brings the RemoteSyncObject rows of `collection`'s subtree, other than its own row, in line with each entity's
+  archived state: rows of archived entities become 'delete', and 'delete' rows of entities no longer archived become
+  'update'."
+  [collection]
+  ;; Archiving a collection archives its subtree in bulk SQL, which publishes no event per descendant.
+  (let [rows (->> (remote-sync.db/content-rsos (remote-sync.db/subtree-collection-ids [collection]))
+                  (remove #(and (= "Collection" (:model_type %)) (= (:id collection) (:model_id %)))))
+        now  (t/offset-date-time)]
+    (doseq [[model-type type-rows] (group-by :model_type rows)
+            :let  [{:keys [model-key archived-key]} (spec/spec-for-model-type model-type)]
+            :when (= :archived archived-key)
+            :let  [archived? (remote-sync.db/archived-by-id model-key (mapv :model_id type-rows))
+                   deleted   (filter #(and (true? (archived? (:model_id %)))
+                                           (not (contains? #{"delete" "removed"} (:status %))))
+                                     type-rows)
+                   restored  (filter #(and (false? (archived? (:model_id %)))
+                                           (= "delete" (:status %)))
+                                     type-rows)]]
+      (when (seq deleted)
+        (remote-sync.db/set-rsos-status! (map :id deleted) "delete" now))
+      (when (seq restored)
+        (remote-sync.db/set-rsos-status! (map :id restored) "update" now)))))
+
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
@@ -313,7 +337,10 @@
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
-        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details))
+        (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
+        (when (and (= topic :event/collection-update)
+                   (or (:archived object) (= "delete" (:status existing-entry))))
+          (cascade-archived-state! object)))
       (and existing-entry (not should-sync?))
       (do
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
