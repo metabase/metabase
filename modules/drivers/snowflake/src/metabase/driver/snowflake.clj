@@ -109,6 +109,33 @@
       (any-message? #"(?s)Error finalising cipher|unable to read encrypted data")
       (tru "The passphrase for this private key is incorrect.")
 
+      (any-message? #"No OIDC token was specified")
+      (tru "No OIDC token was provided. Paste a JWT or set the token file path.")
+
+      (any-message? #"(?s)Failed to parse JWT|Unable to extract JWT claims")
+      (tru "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path.")
+
+      (any-message? #"Missing issuer claim in JWT token")
+      (tru "The OIDC token is missing the required `iss` (issuer) claim.")
+
+      (any-message? #"Missing sub claim in JWT token")
+      (tru "The OIDC token is missing the required `sub` (subject) claim.")
+
+      (any-message? #"No AWS credentials were found")
+      (tru "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.).")
+
+      (any-message? #"No AWS region was found")
+      (tru "No AWS region was found. Set AWS_REGION in Metabase''s environment.")
+
+      (any-message? #"Managed identity is not enabled")
+      (tru "No Azure managed identity is configured on Metabase''s host.")
+
+      (any-message? #"(?s)Could not fetch Azure token|No access token found in Azure response")
+      (tru "Metabase couldn''t obtain a token from Azure''s identity endpoint.")
+
+      (any-message? #"No GCP token was found")
+      (tru "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached.")
+
       (and (string? message) (re-matches #"(?s).*Object does not exist.*$" message))
       :database-name-incorrect
 
@@ -181,6 +208,28 @@
           (dissoc :private-key-passphrase))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
+(defn- resolve-wif-credentials
+  "Translate WIF details into Snowflake JDBC properties. For OIDC,
+  `:wif-token-file-path` wins over an inline `:wif-token` so a rotating file
+  (e.g. a Kubernetes projected token) is preferred over a static paste."
+  [{:keys [wif-provider wif-token wif-token-file-path] :as details}]
+  (let [provider (some-> wif-provider u/upper-case-en)
+        wif-spec (cond-> {:authenticator            "WORKLOAD_IDENTITY"
+                          :workloadIdentityProvider provider}
+                   (and (= "OIDC" provider) (not (str/blank? wif-token-file-path)))
+                   (assoc :token_file_path wif-token-file-path)
+
+                   (and (= "OIDC" provider)
+                        (str/blank? wif-token-file-path)
+                        (not (str/blank? wif-token)))
+                   (assoc :token wif-token))]
+    (-> details
+        (merge wif-spec)
+        (dissoc :wif-provider :wif-token :wif-token-file-path
+                :password :private-key :private-key-value :private-key-path
+                :private-key-id :private-key-options :private-key-passphrase
+                :private-key-source :private-key-creator-id :private-key-created-at))))
+
 (defn- quote-name
   [raw-name]
   (when raw-name
@@ -226,49 +275,71 @@
     spec))
 
 (defmethod driver/db-details-to-test-and-migrate :snowflake
-  [_ {:keys [password private-key-id private-key-value private-key-path use-password private-key-options] :as details}]
-  (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path])))
-    (let [password-details (when password
-                             (-> details
-                                 ;; Setting private-key-value to nil will delete the secret
-                                 (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-path :private-key-options
-                                         :private-key-passphrase)
-                                 ;; Add meta for testing
-                                 (with-meta {:auth :password})))
-          private-key-path-details (when private-key-path
+  [_ {:keys [password private-key-id private-key-value private-key-path
+             use-password private-key-options
+             auth-mode wif-token wif-token-file-path]
+      :as details}]
+  ;; Private-key fields are counted independently because Metabase's history has left DBs with more
+  ;; than one populated at once (legacy `-value` plus a persisted `-id`, etc.) — the migrate flow
+  ;; tries each. WIF is new, has no such legacy state, and has a deterministic within-mode
+  ;; precedence (file-path wins in resolve-wif-credentials), so it counts as one signal.
+  (let [wif-signal (or wif-token wif-token-file-path)]
+    (when-not (= 1 (count (remove nil? [password private-key-id private-key-value private-key-path wif-signal])))
+      (let [wif-details (when wif-signal
+                          (-> details
+                              (assoc :auth-mode "wif")
+                              (dissoc :password :private-key-id :private-key-value :private-key-path
+                                      :private-key-options :private-key-passphrase :use-password)
+                              (with-meta {:auth :wif})))
+            password-details (when password
+                               (-> details
+                                   ;; Setting private-key-value to nil will delete the secret
+                                   (assoc :use-password true :private-key-value nil :auth-mode "password")
+                                   (dissoc :private-key-id :private-key-path :private-key-options
+                                           :private-key-passphrase :wif-token :wif-token-file-path :wif-provider)
+                                   ;; Add meta for testing
+                                   (with-meta {:auth :password})))
+            private-key-path-details (when private-key-path
+                                       (-> details
+                                           (assoc :use-password false :private-key-options "local" :auth-mode "key-pair")
+                                           (dissoc :password :private-key-value :wif-token :wif-token-file-path :wif-provider)
+                                           (with-meta {:auth :private-key-path})))
+            private-key-value-details (when private-key-value
+                                        (-> details
+                                            (assoc :use-password false :private-key-options "uploaded" :auth-mode "key-pair")
+                                            (dissoc :password :private-key-path :wif-token :wif-token-file-path :wif-provider)
+                                            (with-meta {:auth :private-key-value})))
+            private-key-id-details (when private-key-id
                                      (-> details
-                                         (assoc :use-password false :private-key-options "local")
-                                         (dissoc :password :private-key-value)
-                                         (with-meta {:auth :private-key-path})))
-          private-key-value-details (when private-key-value
-                                      (-> details
-                                          (assoc :use-password false :private-key-options "uploaded")
-                                          (dissoc :password :private-key-path)
-                                          (with-meta {:auth :private-key-value})))
-          private-key-id-details (when private-key-id
-                                   (-> details
-                                       (assoc :use-password false)
-                                       (dissoc :password :private-key-value :private-key-path :private-key-options)
-                                       (with-meta {:auth :private-key-id})))]
-      (cond-> []
-        (and use-password password-details)
-        (conj password-details)
+                                         (assoc :use-password false :auth-mode "key-pair")
+                                         (dissoc :password :private-key-value :private-key-path :private-key-options
+                                                 :wif-token :wif-token-file-path :wif-provider)
+                                         (with-meta {:auth :private-key-id})))]
+        (cond-> []
+          (and (= "wif" auth-mode) wif-details)
+          (conj wif-details)
 
-        (and (= "local" private-key-options) private-key-path-details)
-        (conj private-key-path-details)
+          (and use-password password-details)
+          (conj password-details)
 
-        private-key-value-details
-        (conj private-key-value-details)
+          (and (= "local" private-key-options) private-key-path-details)
+          (conj private-key-path-details)
 
-        (and (not= "local" private-key-options) private-key-path-details)
-        (conj private-key-path-details)
+          private-key-value-details
+          (conj private-key-value-details)
 
-        private-key-id-details
-        (conj private-key-id-details)
+          (and (not= "local" private-key-options) private-key-path-details)
+          (conj private-key-path-details)
 
-        (and (not use-password) password-details)
-        (conj password-details)))))
+          private-key-id-details
+          (conj private-key-id-details)
+
+          (and (not use-password) password-details)
+          (conj password-details)
+
+          ;; WIF as last-resort when auth-mode isn't explicitly "wif" but WIF fields are present
+          (and (not= "wif" auth-mode) wif-details)
+          (conj wif-details))))))
 
 (defn- normalize-additional-options [additional-options]
   (when-not (str/blank? additional-options)
@@ -284,8 +355,22 @@
     (dissoc details :schema)
     details))
 
+(defn- resolve-credentials
+  [{:keys [auth-mode password use-password] :as details}]
+  (case auth-mode
+    "wif"      (resolve-wif-credentials details)
+    "password" (-> details (dissoc :private-key) resolve-private-key)
+    "key-pair" (-> details (dissoc :password) resolve-private-key)
+    (-> details
+        (cond-> use-password
+          (dissoc :private-key))
+        ;; password takes precedence if `use-password` is missing
+        (cond-> (or (false? use-password) (not password))
+          (dissoc :password))
+        resolve-private-key)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
+  [_ {:keys [account additional-options host use-hostname], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (str "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect "
                    "results. Set the Start of Week Setting instead.")))
@@ -325,17 +410,12 @@
                                 (set/rename-keys dtls {:dbname :db})))
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (update :db quote-name)
-                   (cond-> use-password
-                     (dissoc :private-key))
-                   ;; password takes precedence if `use-password` is missing
-                   (cond-> (or (false? use-password) (not password))
-                     (dissoc :password))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (m/update-existing :schema upcase-not-nil)
                    (remove-schema-if-in-additional)
-                   resolve-private-key
-                   (dissoc :host :port :timezone)))
+                   resolve-credentials
+                   (dissoc :host :port :timezone :auth-mode)))
         (sql-jdbc.common/handle-additional-options (update details
                                                            :additional-options normalize-additional-options))
         ;; Role is not respected when used as connection property if connection string is present with private key
@@ -1027,8 +1107,18 @@
            (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE %s;" (quote-schema db)))
            true))))
 
+(defn- infer-auth-mode
+  [{:keys [password use-password private-key-id private-key-path private-key-value]}]
+  (cond
+    (true? use-password)                                   "password"
+    (false? use-password)                                  "key-pair"
+    (or private-key-id private-key-path private-key-value) "key-pair"
+    password                                               "password"
+    :else                                                  "key-pair"))
+
 (defn- normalize-details
-  "Normalize a Snowflake details map: merge regionid into account, infer use-password. Given nil, returns nil."
+  "Normalize a Snowflake details map: merge regionid into account, infer use-password and auth-mode.
+  Given nil, returns nil."
   [details]
   (cond-> details
     (not (str/blank? (:regionid details)))
@@ -1040,7 +1130,10 @@
          (nil? (:private-key-id details))
          (nil? (:private-key-path details))
          (nil? (:private-key-value details)))
-    (assoc :use-password true)))
+    (assoc :use-password true)
+
+    (not (contains? details :auth-mode))
+    (as-> d (assoc d :auth-mode (infer-auth-mode d)))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
