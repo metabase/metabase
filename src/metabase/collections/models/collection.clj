@@ -1880,7 +1880,7 @@
   the same table, so a collection nested under one from another world would appear in a tree it does not belong to."
   [collection]
   (when-let [parent-id (some-> (:location collection) location-path->parent-id)]
-    (let [parent-worktree-id (collections.db/collection-worktree-id parent-id)]
+    (let [parent-worktree-id (mi/worktree-id :model/Collection parent-id)]
       (when-not (= (:worktree_id collection) parent-worktree-id)
         (throw (ex-info "A collection cannot be nested under a collection from another worktree"
                         {:status-code        400

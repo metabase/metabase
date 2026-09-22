@@ -625,12 +625,18 @@
   (when-some [{:keys [fk]} (worktree-container model)]
     (get instance fk)))
 
+(defn worktree-id
+  "The remote-sync worktree the `model` row with `id` belongs to; nil both for the main app's content and for a
+  model no worktree ever holds, which has no `worktree_id` to read."
+  [model id]
+  (when (and id (isa? (t2/resolve-model model) :hook/worktree-id))
+    (models.db/worktree-id-of model id)))
+
 (defn- container-worktree-id
   "The worktree whatever holds `instance` belongs to; nil for a holder in the main app."
   [model instance]
   (when-some [{:keys [fk] holder :model} (worktree-container model)]
-    (when-some [id (get instance fk)]
-      (models.db/worktree-id-of holder id))))
+    (worktree-id holder (get instance fk))))
 
 (defn- check-worktree-matches-container!
   "Throw unless `instance` belongs to the same world as whatever holds it. A branch's content and the main app's

@@ -34,12 +34,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :namespace] :id collection-id))
 
-(mu/defn collection-worktree-id
-  "The remote-sync worktree the ::collections.schema/collection with `collection-id` belongs to; nil for the main
-  app's."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :worktree_id :model/Collection :id collection-id))
-
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type` in the world `worktree-id` names, or nil."
   ([type :- :string]
