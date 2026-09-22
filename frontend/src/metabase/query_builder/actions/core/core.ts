@@ -5,6 +5,7 @@ import {
   databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
+  timelineApi,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -256,14 +257,18 @@ export const apiCreateQuestion = (
         null &&
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
+      await dispatch(
+        timelineApi.endpoints.listTimelines.initiate(
+          { include: "events" },
+          { forceRefetch: false, subscribe: false },
+        ),
+      );
       const visibility = getCollectionTimelinesVisibility(
         getTransformedTimelines(getState()),
         submittableQuestion.collectionId(),
       );
-      // Only record something we actually resolved. An empty result means the timelines never loaded, the
-      // destination id could not be matched, or the collection has none — recording it would save an explicit
-      // "no events" the user never chose, and there is no undoing that from the collection defaults.
-      if (visibility["timeline.selected_timeline_ids"].length > 0) {
+      // Do not turn an unresolved or genuinely empty collection into an explicit "no events" selection.
+      if (visibility["timeline.selected_timeline_ids"]?.length) {
         submittableQuestion = submittableQuestion.updateSettings(visibility);
       }
     }
