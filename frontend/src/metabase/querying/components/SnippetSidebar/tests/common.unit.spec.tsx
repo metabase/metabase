@@ -13,10 +13,10 @@ describe("SnippetSidebar (OSS)", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
-  it("should display the `New snippet` but not the `New folder` option", async () => {
+  it("should display the `New snippet` but not the `New collection` option", async () => {
     await userEvent.click(getIcon("add"));
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
-    expect(screen.queryByText("New folder")).not.toBeInTheDocument();
+    expect(screen.queryByText("New collection")).not.toBeInTheDocument();
   });
 });
