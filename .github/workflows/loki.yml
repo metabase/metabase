@@ -3,10 +3,6 @@ name: Loki Visual Regression Testing
 on:
   workflow_call:
     inputs:
-      skip:
-        description: "Skip the Loki visual tests."
-        type: boolean
-        default: false
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
@@ -17,15 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: frontend_loki_all
+
+  # Always runs, so a skipped selection never skips the test job below. Without a plan there is
+  # nothing to narrow, and the empty outputs run every story.
   story-selection:
-    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    needs: gate
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
+    env:
+      SELECT: ${{ needs.gate.outputs.run == 'true' && inputs.test-plan-artifact-id != '' }}
     outputs:
       selection: ${{ steps.loki-selection.outputs.selection }}
       test-plan-artifact-id: ${{ steps.loki-selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
       - name: Checkout Repository
+        if: ${{ env.SELECT == 'true' }}
         uses: actions/checkout@v6
         with:
           sparse-checkout: |
@@ -35,10 +41,12 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Prepare Node + Bun environment
+        if: ${{ env.SELECT == 'true' }}
         uses: ./.github/actions/prepare-node-bun
 
       - name: Prepare Loki story selection
         id: loki-selection
+        if: ${{ env.SELECT == 'true' }}
         uses: ./.github/actions/prepare-test-selection
         with:
           suite: loki
@@ -46,10 +54,10 @@ jobs:
 
   visual-test:
     name: loki-run
-    needs: story-selection
+    needs: [gate, story-selection]
     # A missing job output compares equal to '0' in GitHub expressions,
     # so an empty selection is marked with a non-numeric value.
-    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
+    if: ${{ needs.gate.outputs.run == 'true' && needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -110,8 +118,8 @@ jobs:
 
   loki-tests-result:
     name: visual-test
-    needs: [story-selection, visual-test]
-    if: always() && !cancelled()
+    needs: [gate, story-selection, visual-test]
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:

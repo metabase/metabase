@@ -3,22 +3,10 @@ name: Frontend
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      skip-lint:
-        type: boolean
-        default: false
-      skip-custom-viz:
-        type: boolean
-        default: false
       # ID of this run's test-plan.json artifact, or '' to run the full suite.
       test-plan-artifact-id:
         type: string
         default: ""
-      skip-ci-scripts:
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -46,8 +34,19 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
+  # Each job below maps to its own filter, so they read `matched` rather than `run`.
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: frontend_all e2e_all custom_viz_all ci_scripts
+
   fe-lint:
-    if: ${{ !inputs.skip-lint }}
+    needs: gate
+    # Linting covers the e2e specs too.
+    if: >-
+      ${{ !inputs.skip-lint
+      && (contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
+      || contains(fromJSON(needs.gate.outputs.matched), 'e2e_all')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -81,7 +80,8 @@ jobs:
         run: bun run lint-css
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -96,7 +96,8 @@ jobs:
         name: Check types
 
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -160,7 +161,8 @@ jobs:
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ !inputs.skip && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -172,7 +174,8 @@ jobs:
 
   # No CLJS compile: the CI-script specs don't import app code.
   fe-tests-ci-scripts:
-    if: ${{ !inputs.skip-ci-scripts }}
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'ci_scripts') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -185,7 +188,8 @@ jobs:
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
-    if: ${{ !inputs.skip-custom-viz }}
+    needs: gate
+    if: ${{ !inputs.skip-custom-viz && contains(fromJSON(needs.gate.outputs.matched), 'custom_viz_all') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:
@@ -208,13 +212,14 @@ jobs:
 
   fe-tests-result:
     needs:
+      - gate
       - fe-lint
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
       - fe-tests-ci-scripts
       - fe-custom-viz
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:

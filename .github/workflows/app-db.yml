@@ -2,14 +2,6 @@ name: App DB Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
 
   # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
@@ -55,8 +47,16 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      # A direct dispatch names an app DB and always runs, so it asks for no filters: the gate then
+      # only checks for a force-cancel.
+      filters: ${{ inputs.app-db == '' && 'backend_all' || '' }}
+
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -70,7 +70,7 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ inputs.force-run }}
+          RUN_ALL: ${{ needs.gate.outputs.force-run }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -162,7 +162,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mariadb' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -223,7 +223,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'mysql' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -282,7 +282,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    if: ${{ inputs.app-db == '' || inputs.app-db == 'postgres' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -324,6 +324,7 @@ jobs:
 
   app-db-tests-result:
     needs:
+      - gate
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
@@ -331,7 +332,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

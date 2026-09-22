@@ -2,18 +2,16 @@ name: Build scripts
 
 on:
   workflow_call:
-    inputs:
-      skip-build-scripts:
-        type: boolean
-        default: false
-      skip-embedder-plugin:
-        type: boolean
-        default: false
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: build_scripts embedder_plugin
 
   test-embedder-plugin:
-    if: ${{ !inputs.skip-embedder-plugin }}
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'embedder_plugin') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     permissions:
@@ -63,7 +61,8 @@ jobs:
         '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
 
   test-build-scripts:
-    if: ${{ !inputs.skip-build-scripts }}
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'build_scripts') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     steps:

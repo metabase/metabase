@@ -2,26 +2,6 @@ name: Backend
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
-      run-project-backend-checks:
-        description: Run project-level backend checks.
-        type: boolean
-        default: false
-      run-project-migration-checks:
-        description: Run project-level migration checks.
-        type: boolean
-        default: false
-      run-project-ratchet-checks:
-        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
-        type: boolean
-        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -58,13 +38,55 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test-gate.yml
+    with:
+      filters: >-
+        backend_all project_backend_checks project_migration_checks project_ratchet_checks
+
+  # Generated static-viz output can shift without any backend source changing, so the suite follows
+  # it too. The job always runs -- a skipped one would skip every job below -- but its steps only do
+  # the work when nothing else has already decided the suite.
+  static-viz-files-changed:
+    name: Check whether static-viz files changed
+    needs: gate
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    env:
+      PROBE: >-
+        ${{ needs.gate.outputs.verdict == 'defer'
+        && !contains(fromJSON(needs.gate.outputs.matched), 'backend_all') }}
+    outputs:
+      static_viz: ${{ steps.static_viz.outputs.static_viz }}
+    steps:
+      - uses: actions/checkout@v6
+        if: ${{ env.PROBE == 'true' }}
+      - name: Prepare front-end environment
+        if: ${{ env.PROBE == 'true' }}
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        if: ${{ env.PROBE == 'true' }}
+        uses: ./.github/actions/prepare-backend
+      - name: Build static-viz frontend
+        if: ${{ env.PROBE == 'true' }}
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Check for static viz changes
+        if: ${{ env.PROBE == 'true' }}
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: static_viz
+        with:
+          token: ${{ github.token }}
+          filters: .github/static-viz-sources.yaml
+
   project-checks:
     name: 'Project tests: Suites'
+    needs: gate
     if: >-
-      ${{ inputs.force-run ||
-      inputs.run-project-backend-checks ||
-      inputs.run-project-migration-checks ||
-      inputs.run-project-ratchet-checks }}
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
+      || contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks')
+      || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -76,21 +98,23 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks') }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_migration_checks') }}
           run: ./bin/mage project-tests migrations
         # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
         # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
         - name: Run ratchet checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          if: >-
+            ${{ contains(fromJSON(needs.gate.outputs.matched), 'project_backend_checks')
+            || contains(fromJSON(needs.gate.outputs.matched), 'project_ratchet_checks') }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:
     name: Project tests
     needs: project-checks
-    if: ${{ always() && !cancelled() }}
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -148,7 +172,10 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    if: ${{ !inputs.skip }}
+    needs: &backend-gate-needs [gate, static-viz-files-changed]
+    if: &backend-gate >-
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -160,7 +187,8 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -173,7 +201,11 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && inputs.force-run }}
+    needs: *backend-gate-needs
+    if: >-
+      ${{ needs.gate.outputs.force-run == 'true'
+      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -186,7 +218,11 @@ jobs:
 
   be-linter-eastwood-test-changed:
     # Lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
+    needs: *backend-gate-needs
+    if: >-
+      ${{ needs.gate.outputs.force-run != 'true' && github.event_name == 'pull_request'
+      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -251,7 +287,8 @@ jobs:
         run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -448,7 +485,8 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -464,7 +502,8 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ !inputs.skip }}
+    needs: *backend-gate-needs
+    if: *backend-gate
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
@@ -477,6 +516,8 @@ jobs:
 
   be-tests-result:
     needs:
+      - gate
+      - static-viz-files-changed
       - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
@@ -485,7 +526,7 @@ jobs:
       - be-cljfmt
       - be-check
       - be-tests
-    if: always() && !cancelled()
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
