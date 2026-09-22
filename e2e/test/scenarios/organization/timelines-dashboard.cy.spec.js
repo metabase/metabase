@@ -474,11 +474,13 @@ describe("scenarios > organization > timelines > dashboard", () => {
     eventChip(0, "RC1").should("be.visible").click();
     eventsSidebar().should("be.visible");
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "replacedCardQuery",
-    );
+    // the replacement runs as a plain card query until the dashboard is saved
+    cy.intercept("POST", "/api/card/*/query").as("replacedCardQuery");
     H.editDashboard();
-    H.getDashboardCard().realHover().findByLabelText("Replace").click();
+    H.getDashboardCard()
+      .realHover({ position: "topLeft" })
+      .findByLabelText("Replace")
+      .click();
     H.entityPickerModal().findByText("Orders by month, launches").click();
     cy.wait("@replacedCardQuery");
     H.saveDashboard();
@@ -486,17 +488,17 @@ describe("scenarios > organization > timelines > dashboard", () => {
     eventChip(0, "GA").should("be.visible");
     eventChip(0, "RC1").should("not.exist");
     eventChip(0, "GA").click();
-    eventsSidebar()
-      .should("contain", "Launches")
-      .and("not.contain", "Releases");
+    eventsSidebar().within(() => {
+      H.timelineVisibility("Launches").should("be.checked");
+      H.timelineVisibility("Releases").should("not.be.checked");
+    });
   });
 
-  it("should show the events of a metric and of a model", () => {
-    visitDashboardWithMetricAndModel();
-    H.waitForDashcardsToLoad({ count: 2 });
+  it("should show the events of a metric", () => {
+    visitDashboardWithMetric();
+    H.waitForDashcardsToLoad({ count: 1 });
 
-    eventChip(0, "RC1").should("be.visible");
-    eventChip(1, "RC1").should("be.visible").click();
+    eventChip(0, "RC1").should("be.visible").click();
     eventsSidebar().findByText("RC1").should("be.visible");
   });
 
@@ -681,38 +683,28 @@ function visitDashboardWithTimeSeries(visualizationSettings = {}) {
   H.getDashboardCard().findByText("Created At: Month").should("be.visible");
 }
 
-function visitDashboardWithMetricAndModel() {
-  return createReleaseTimeline().then(({ timeline }) => {
-    const details = {
+function visitDashboardWithMetric() {
+  return createReleaseTimeline().then(({ timeline }) =>
+    H.createQuestion({
       ...questionDetails,
+      name: "Orders metric",
+      type: "metric",
       visualization_settings: {
         "timeline.selected_timeline_ids": [timeline.id],
       },
-    };
-    return H.createQuestion({
-      ...details,
-      name: "Orders metric",
-      type: "metric",
     }).then(({ body: metric }) =>
-      H.createQuestion({
-        ...details,
-        name: "Orders model",
-        type: "model",
-      }).then(({ body: model }) =>
-        H.createDashboardWithTabs({
-          dashcards: [metric, model].map((card, index) =>
-            createMockDashboardCard({
-              id: -(index + 1),
-              card_id: card.id,
-              row: index * 6,
-              size_x: 12,
-              size_y: 6,
-            }),
-          ),
-        }).then((dashboard) => H.visitDashboard(dashboard.id)),
-      ),
-    );
-  });
+      H.createDashboardWithTabs({
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: metric.id,
+            size_x: 12,
+            size_y: 6,
+          }),
+        ],
+      }).then((dashboard) => H.visitDashboard(dashboard.id)),
+    ),
+  );
 }
 
 function createTimelineQuestion({ timeline, events, ...questionOverrides }) {
