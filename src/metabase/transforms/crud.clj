@@ -170,7 +170,7 @@
                                             (or (:owner_user_id body) creator-id))
                             transform     (transforms.db/insert-transform!
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
+                                                                     :collection_id :owner_email :worktree_id])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided

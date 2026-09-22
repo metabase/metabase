@@ -15,7 +15,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
@@ -80,6 +79,7 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
   - `can-write=true` - filter to only tables the user can edit metadata for"
+  {:worktree :worktree/query}
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query can-write include-transform-targets worktree-id]}
@@ -97,7 +97,6 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (remote-sync/check-worktree-access! worktree-id)
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables

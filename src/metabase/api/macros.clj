@@ -34,6 +34,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.remote-sync.core :as worktree]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -580,28 +581,56 @@
                           respond))]
        (f respond' raise route-params query-params body-params request)))))
 
+(defn- worktree-binding-form
+  "Wraps `body-form` in the worktree the endpoint's `:worktree` metadata names, so everything it reads and writes is
+  that world's. The declaration is `:worktree/query` or `:worktree/body` to take the id from a `worktree-id`
+  parameter the endpoint itself declares, or a form evaluating to a function of the endpoint's parsed
+  `{:route :query :body}` params -- what an endpoint about one entity uses to take the id from the entity.
+  Endpoints that declare nothing work in the main app, as they did before worktrees existed."
+  [declaration route-params query-params body-params body-form]
+  (if-not declaration
+    body-form
+    (let [worktree-id (gensym "worktree-id-")
+          parameter?  (contains? #{:worktree/query :worktree/body} declaration)]
+      `(let [~worktree-id ~(case declaration
+                             :worktree/query `(:worktree-id ~query-params)
+                             :worktree/body  `(:worktree_id ~body-params)
+                             `(~declaration {:route ~route-params, :query ~query-params, :body ~body-params}))]
+         ~@(when parameter?
+             [`(worktree/check-worktree-access! ~worktree-id)])
+         (worktree/do-with-worktree ~worktree-id (^:once fn* [] ~body-form))))))
+
 (defmacro endpoint-core-fn*
   "Impl for [[endpoint-core-fn]]"
   {:style/indent [:form]}
-  [{:keys [body response-schema], :as args}]
+  [{:keys [body response-schema metadata], :as args}]
   (let [async?       (get-in args [:params :respond])
         route-params (gensym "route-params-")
         query-params (gensym "query-params-")
         body-params  (gensym "body-params-")
-        request      (gensym "request-")]
+        request      (gensym "request-")
+        route        (gensym "route-")
+        query        (gensym "query-")
+        body-param   (gensym "body-")]
     `(~(if async? `-core-fn-async `-core-fn)
       (fn
         [~@(when async?
              [(get-in args [:params :respond :binding])
               (get-in args [:params :raise :binding])])
          ~route-params ~query-params ~body-params ~request]
-        (let [~(params-binding args :route)   ~(decode-and-validate-params-form args :route   route-params)
-              ~(params-binding args :query)   ~(decode-and-validate-params-form args :query   query-params)
-              ~(params-binding args :body)    ~(decode-and-validate-params-form args :body    body-params)
+        (let [~route                          ~(decode-and-validate-params-form args :route   route-params)
+              ~query                          ~(decode-and-validate-params-form args :query   query-params)
+              ~body-param                     ~(decode-and-validate-params-form args :body    body-params)
+              ~(params-binding args :route)   ~route
+              ~(params-binding args :query)   ~query
+              ~(params-binding args :body)    ~body-param
               ~(params-binding args :request) ~(decode-and-validate-params-form args :request request)]
-          ~@(if response-schema
-              `[(validate-and-encode-response ~response-schema (do ~@body))]
-              body))))))
+          ~(worktree-binding-form
+            (:worktree metadata)
+            route query body-param
+            (if response-schema
+              `(validate-and-encode-response ~response-schema (do ~@body))
+              `(do ~@body))))))))
 
 (defn validate-schema
   "Impl for [[endpoint-core-fn]]: validate the schemas used for validation at evaluation time, so we can get instant
@@ -833,6 +862,7 @@
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
   [:map {:closed true}
    [:scope       {:optional true} ::metadata-value-or-form]
+   [:worktree    {:optional true} ::metadata-value-or-form]
    [:multipart   {:optional true} [:or :boolean [:map {:closed true}
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]

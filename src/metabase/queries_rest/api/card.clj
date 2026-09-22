@@ -649,7 +649,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (queries-rest.db/card-worktree-id (eid-translation/->id-or-404 :card (:id route))))}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]

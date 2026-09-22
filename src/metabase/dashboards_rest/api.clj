@@ -1161,7 +1161,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app
+   :worktree (fn [{:keys [route]}]
+               (dashboards-rest.db/dashboard-worktree-id (eid-translation/->id-or-404 :dashboard (:id route))))}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}

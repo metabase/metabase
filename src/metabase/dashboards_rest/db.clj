@@ -11,6 +11,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn dashboard-worktree-id
+  "The remote-sync worktree the Dashboard with `dashboard-id` belongs to; nil for the main app's."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one-fn :worktree_id :model/Dashboard :id dashboard-id))
+
 (mu/defn dashboards
   "The archived or unarchived (`archived?`) Dashboards, restricted to those created by `creator-id` when given, in
   case-insensitive name order."

@@ -22,7 +22,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -72,7 +71,7 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app, :worktree :worktree/query}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map {:closed true}
                                                                                              [:archived                       {:default false} [:maybe ms/BooleanValue]]
@@ -80,7 +79,6 @@
                                                                                              [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
                                                                                              [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
                                                                                              [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! worktree-id)
   (as->
    (collections.children/select-collections {:archived                       (boolean archived)
                                              :exclude-other-user-collections exclude-other-user-collections
@@ -141,7 +139,7 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app, :worktree :worktree/query}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id worktree-id]}
@@ -156,7 +154,6 @@
        [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
-  (remote-sync/check-worktree-access! worktree-id)
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}

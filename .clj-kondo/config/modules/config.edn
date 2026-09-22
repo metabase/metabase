@@ -266,6 +266,7 @@
            events
            lib.schema
            models
+           remote-sync
            request
            settings
            util
@@ -654,7 +655,6 @@
            permissions
            premium-features
            queries
-           remote-sync
            request
            util
            warehouse-schema-overlay}
@@ -2972,7 +2972,6 @@
    :uses #{api
            lib.schema
            models
-           remote-sync
            request
            transforms
            transforms.base
@@ -4096,6 +4095,7 @@
            lib.schema
            models
            premium-features
+           remote-sync
            search
            settings
            startup

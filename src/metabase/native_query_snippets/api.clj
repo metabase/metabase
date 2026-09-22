@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -36,12 +35,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app, :worktree :worktree/query}
   [_route-params
    {:keys [archived worktree-id]} :- [:map {:closed true}
                                       [:archived {:default false} [:maybe ms/BooleanValue]]
                                       [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! worktree-id)
   (list-native-query-snippets (boolean archived) worktree-id))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]

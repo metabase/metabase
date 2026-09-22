@@ -25,7 +25,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -194,11 +193,10 @@
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
   visibility_type :sensitive in the response."
-  {:scope api-scope/data-app}
+  {:scope api-scope/data-app, :worktree :worktree/query}
   [_route-params
    {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    query :- ::lib-be.schema/maybe-legacy-query]
-  (remote-sync/check-worktree-access! worktree-id)
   (queries/batch-fetch-query-metadata
    [query]
    (cond-> {:worktree-id worktree-id}

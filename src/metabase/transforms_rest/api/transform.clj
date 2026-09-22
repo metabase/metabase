@@ -4,8 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -156,6 +154,7 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
   "Get a list of transforms."
+  {:worktree :worktree/query}
   [_route-params
    query-params :-
    [:map {:closed true}
@@ -164,7 +163,6 @@
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:database-id {:optional true} [:maybe ms/PositiveInt]]
     [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (remote-sync/check-worktree-access! (:worktree-id query-params))
   (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -172,10 +170,12 @@
 ;;
 (api.macros/defendpoint :post "/" :- TransformResponse
   "Create a new transform."
+  {:worktree :worktree/body}
   [_route-params
    _query-params
    body :- [:map {:closed true}
             [:name :string]
+            [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
             [:description {:optional true} [:maybe :string]]
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]

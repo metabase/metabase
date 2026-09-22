@@ -100,11 +100,11 @@
                          :where  [:and
                                   worktree-clause
                                   [:in :source_database_id
-                                  (perms/visible-database-filter-select
-                                   {:user-id          user-id
-                                    :is-superuser?    is-superuser?
-                                    :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]]}]])
+                                   (perms/visible-database-filter-select
+                                    {:user-id          user-id
+                                     :is-superuser?    is-superuser?
+                                     :is-data-analyst? is-data-analyst?}
+                                    {:perms/create-queries :query-builder})]]}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
                     (let [archived-column (keyword (name table-name) "archived")]

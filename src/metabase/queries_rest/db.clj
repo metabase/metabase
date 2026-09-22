@@ -13,6 +13,11 @@
 
 (def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
 
+(mu/defn card-worktree-id
+  "The remote-sync worktree the Card with `card-id` belongs to; nil for the main app's."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :worktree_id :model/Card :id card-id))
+
 (mu/defn unarchived-cards
   "The unarchived Cards, in case-insensitive name order."
   []
