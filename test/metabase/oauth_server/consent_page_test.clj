@@ -87,7 +87,7 @@
                    :csrf-token   "test-csrf"}))]
       (is (re-find #"action=\"https://example\.com/metabase/oauth/authorize/decision\"" html))
       (testing "bundled fonts are also loaded from under the subpath"
-        (is (re-find #"url\('https://example\.com/metabase/app/fonts/" html)))))
+        (is (re-find #"url\('https://example\.com/metabase/app/dist/fonts/" html)))))
   (testing "at the domain root the action still targets /oauth/authorize/decision"
     (let [html (render!)]
       (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))
