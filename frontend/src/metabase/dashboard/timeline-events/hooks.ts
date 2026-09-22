@@ -21,6 +21,7 @@ import {
   deselectTimelineEvents,
   openEventsSidebar,
   selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
   trackTimelineEventsShown,
 } from "../actions/timeline-events";
 
@@ -29,6 +30,7 @@ import {
   getDashCardTimelineEventsVisibility,
   getDashCardTimeseriesXAxis,
   getHasSelectedTimelineEvents,
+  getIsDashCardTimelineEventsEnabled,
 } from "./selectors";
 
 // keeps the timelines loaded for the events sidebar; charts load their own
@@ -39,6 +41,29 @@ export const useDashboardTimelines = () => {
   useListTimelinesQuery(
     { include: "events" },
     { skip: !withTimelineEvents || !hasSelectedEvents },
+  );
+};
+
+/**
+ * The chart measures whether it is big enough to draw events and reports it here. Dashboard state resets clear that
+ * flag, and a chart that stays mounted would never correct it, so the callback identity tracks the stored value: a
+ * reset changes it, the chart's effect runs again, and the measurement is re-asserted.
+ */
+export const useReportDashCardTimelineEventsEnabled = (
+  dashcardId: DashCardId,
+) => {
+  const dispatch = useDispatch();
+  const reported = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcardId),
+  );
+
+  return useCallback(
+    (isEnabled: boolean) => {
+      if (isEnabled !== reported) {
+        dispatch(setDashCardTimelineEventsEnabled({ dashcardId, isEnabled }));
+      }
+    },
+    [dispatch, dashcardId, reported],
   );
 };
 
