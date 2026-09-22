@@ -1,8 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
@@ -71,9 +70,12 @@ function createLineSeries(
 }
 
 async function setup(rawSeries: RawSeries) {
+  jest.useFakeTimers();
   renderWithProviders(<Visualization rawSeries={rawSeries} />);
   // ExplicitSize sets the chart dimensions after mounting
-  await delay(0);
+  await act(async () => {
+    jest.advanceTimersByTime(0);
+  });
 }
 
 function getGoalLineLabel() {
@@ -81,6 +83,10 @@ function getGoalLineLabel() {
 }
 
 describe("LineChart dynamic goal", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("draws the goal line at the value answered by the dataset", async () => {
     await setup(createLineSeries(ANSWERED));
 
