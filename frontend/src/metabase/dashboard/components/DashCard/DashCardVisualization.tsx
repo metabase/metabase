@@ -7,7 +7,6 @@ import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { setDashCardTimelineEventsEnabled } from "metabase/dashboard/actions/timeline-events";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -19,6 +18,7 @@ import {
 import {
   getIsDashCardTimelineEventsEnabled,
   useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
 } from "metabase/dashboard/timeline-events";
 import {
   getVirtualCardType,
@@ -508,16 +508,8 @@ export function DashCardVisualization({
   const isChartTimelineEventsEnabled = useSelector((state) =>
     getIsDashCardTimelineEventsEnabled(state, dashcard.id),
   );
-  const handleTimelineEventsEnabledChange = useCallback(
-    (isEnabled: boolean) =>
-      dispatch(
-        setDashCardTimelineEventsEnabled({
-          dashcardId: dashcard.id,
-          isEnabled,
-        }),
-      ),
-    [dispatch, dashcard.id],
-  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
   const withTimelineEvents =
     isTimelineEventsEnabled && isChartTimelineEventsEnabled;
 
