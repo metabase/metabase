@@ -25,10 +25,14 @@ import {
   questionUpdated,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { getRecordedTimelineEventsVisibility } from "metabase/visualizations/lib/timeline-events-visibility";
+import {
+  getCollectionTimelinesVisibility,
+  getRecordedTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import {
   canDisplayTimelineEvents,
   getCardAfterVisualizationClick,
@@ -68,7 +72,6 @@ import {
   getParameters,
   getQuestion,
   getSubmittableQuestion,
-  getTimelineEventsVisibility,
   isBasedOnExistingQuestion,
 } from "../../store/selectors";
 import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
@@ -245,7 +248,8 @@ export const apiCreateQuestion = (
   return async (dispatch: Dispatch, getState: GetState) => {
     let submittableQuestion = getSubmittableQuestion(getState(), question);
     // A new time series shows its collection's timelines before it is saved, so record that selection — otherwise
-    // the saved question shows no events on a dashboard. Questions that recorded one, and charts that draw no
+    // the saved question shows no events on a dashboard. The defaults come from the collection it is being saved
+    // into, which the Save modal may have changed. Questions that recorded a selection, and charts that draw no
     // events, keep their settings untouched.
     if (
       getRecordedTimelineEventsVisibility(submittableQuestion.settings()) ==
@@ -253,7 +257,10 @@ export const apiCreateQuestion = (
       canDisplayTimelineEvents(submittableQuestion.display())
     ) {
       submittableQuestion = submittableQuestion.updateSettings(
-        getTimelineEventsVisibility(getState()),
+        getCollectionTimelinesVisibility(
+          getTransformedTimelines(getState()),
+          submittableQuestion.collectionId(),
+        ),
       );
     }
     // Saving models with list view setting as a question in not allowed for now,
