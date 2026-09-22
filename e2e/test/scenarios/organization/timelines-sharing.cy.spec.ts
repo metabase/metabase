@@ -52,6 +52,67 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     expectChartWithoutEvents();
   });
 
+  it("should open single and grouped chip details with the keyboard on a public dashboard", () => {
+    cy.get<DashboardId>("@dashboardId").then((id) =>
+      H.visitPublicDashboard(id),
+    );
+
+    H.timelineEventChip("RC1")
+      .should("be.visible")
+      .focus()
+      .should("be.focused");
+
+    cy.log("Enter opens the read-only details");
+    cy.realPress("Enter");
+    cy.findByTestId("timeline-event-popover")
+      .should("contain", "RC1")
+      .and("contain", "The first release candidate is ready.")
+      .and("not.contain", "See all");
+    cy.findByTestId("timeline-event-popover")
+      .findByRole("checkbox")
+      .should("not.exist");
+    cy.findByTestId("dashboard-events-sidebar").should("not.exist");
+
+    cy.log("Escape dismisses the details and returns focus to the chip");
+    cy.realPress("Escape");
+    cy.findByTestId("timeline-event-popover").should("not.exist");
+    H.timelineEventChip("RC1").should("be.focused");
+
+    cy.log("hovering still opens the details");
+    cy.findByTestId("embed-frame-header").realHover();
+    H.timelineEventChip("RC1").realHover();
+    cy.findByTestId("timeline-event-popover").should("contain", "RC1");
+
+    cy.log("a grouped chip lists every event in the group");
+    cy.signInAsAdmin();
+    cy.get<TimelineId>("@timelineId").then((id) =>
+      H.createTimelineEvent({
+        timeline_id: id,
+        name: "RC2",
+        description: "The second release candidate is ready.",
+        timestamp: "2027-10-20T00:00:00Z",
+      }),
+    );
+    cy.reload();
+    H.timelineEventChip("2 events")
+      .should("be.visible")
+      .focus()
+      .should("be.focused");
+    cy.realPress("Enter");
+    cy.findByTestId("timeline-event-popover")
+      .should("contain", "RC1")
+      .and("contain", "RC2")
+      .and("not.contain", "Internal release notes")
+      .and("not.contain", "See all");
+    cy.findByTestId("timeline-event-popover")
+      .findByRole("checkbox")
+      .should("not.exist");
+    cy.findByTestId("dashboard-events-sidebar").should("not.exist");
+    cy.realPress("Escape");
+    cy.findByTestId("timeline-event-popover").should("not.exist");
+    H.timelineEventChip("2 events").should("be.focused");
+  });
+
   it("should show only saved events read-only on a static embedded dashboard", () => {
     cy.get<DashboardId>("@dashboardId").then((id) =>
       H.visitEmbeddedPage({ resource: { dashboard: id }, params: {} }),
