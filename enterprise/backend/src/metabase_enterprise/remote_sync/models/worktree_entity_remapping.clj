@@ -1,4 +1,4 @@
-(ns metabase-enterprise.remote-sync.models.worktree-remapping
+(ns metabase-enterprise.remote-sync.models.worktree-entity-remapping
   "Model for the entity_id remapping a worktree keeps.
 
   `entity_id` is globally unique, so a worktree cannot check an entity out under the id it has on the branch while
@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/WorktreeRemapping [_model] :worktree_remapping)
+(methodical/defmethod t2/table-name :model/WorktreeEntityRemapping [_model] :worktree_entity_remapping)
 
-(doto :model/WorktreeRemapping
+(doto :model/WorktreeEntityRemapping
   (derive :metabase/model))

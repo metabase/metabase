@@ -32,7 +32,7 @@
     (update library :path normalize-path)
     library))
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/worktree-id]]
   (derive :model/PythonLibrary trait))
 
 (defmethod mi/can-read? :model/PythonLibrary

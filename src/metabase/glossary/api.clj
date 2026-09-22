@@ -24,12 +24,8 @@
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
-   {:keys [search worktree-id]} :- [:maybe [:map {:closed true}
-                                            [:search {:optional true} [:maybe ms/NonBlankString]]
-                                            [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]]
-  {:data      (t2/hydrate (glossary.db/glossary-entries
-                           search (remote-sync/check-can-read-worktree worktree-id))
-                          :creator)
+   {:keys [search]} :- [:maybe [:map {:closed true} [:search {:optional true} [:maybe ms/NonBlankString]]]]]
+  {:data      (t2/hydrate (glossary.db/glossary-entries search) :creator)
    :can_write (boolean (and (api/is-data-analyst?) (editable?)))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

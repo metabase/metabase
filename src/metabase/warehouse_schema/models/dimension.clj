@@ -19,7 +19,8 @@
 (doto :model/Dimension
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})

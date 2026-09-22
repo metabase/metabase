@@ -11,7 +11,6 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -99,11 +98,9 @@
         with-api-dimensions)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
-  "Fetch *all* `Measures`. `worktree-id` lists the measures a remote-sync worktree checked out instead of the
-  main app's."
-  [_route-params
-   {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [measures  (measures.db/unarchived-measures (remote-sync/check-can-read-worktree worktree-id))
+  "Fetch *all* `Measures`."
+  []
+  (let [measures  (measures.db/unarchived-measures)
         table-ids (into #{} (keep :table_id) measures)]
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (measures.db/table-database-ids table-ids))

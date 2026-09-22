@@ -27,10 +27,9 @@
   (t2/select-one :model/Measure :id id))
 
 (mu/defn unarchived-measures
-  "The unarchived Measures in the remote-sync worktree `worktree-id` (nil is the main app), in case-insensitive
-  name order."
-  [worktree-id :- [:maybe ::lib.schema.id/worktree]]
-  (t2/select :model/Measure, :archived false, :worktree_id worktree-id, {:order-by [[:%lower.name :asc]]}))
+  "The unarchived Measures, in case-insensitive name order."
+  []
+  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."

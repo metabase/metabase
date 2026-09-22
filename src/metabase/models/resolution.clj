@@ -162,7 +162,7 @@
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
     :model/Worktree                          metabase-enterprise.remote-sync.models.worktree
-    :model/WorktreeRemapping                 metabase-enterprise.remote-sync.models.worktree-remapping})
+    :model/WorktreeEntityRemapping                 metabase-enterprise.remote-sync.models.worktree-entity-remapping})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

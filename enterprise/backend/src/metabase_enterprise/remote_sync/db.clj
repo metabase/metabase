@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -302,7 +303,9 @@
                   {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
                    :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
                            [:= :f.id :u.field_id]]
-                   :where [:= :f.table_id table-id]})))
+                   :where [:and
+                           [:= :f.table_id table-id]
+                           [:= :u.worktree_id api/*worktree-id*]]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."

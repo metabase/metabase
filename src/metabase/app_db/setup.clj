@@ -19,6 +19,7 @@
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]

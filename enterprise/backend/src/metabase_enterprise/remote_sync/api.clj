@@ -32,7 +32,7 @@
   Throws a 409 carrying `:branch_mismatch true` and the current `:current_branch` so the client can
   refresh its view and retry. Returns the (now-validated) branch on success."
   [requested-branch]
-  (let [current (settings/remote-sync-branch)]
+  (let [current (impl/sync-branch)]
     (when-not (= requested-branch current)
       (throw (ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
                               current)
@@ -65,7 +65,7 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (check-branch-matches-setting! expected_branch)
-  (let [branch-name (or branch (settings/remote-sync-branch))
+  (let [branch-name (or branch (impl/sync-branch))
         user-id     api/*current-user-id*
         {task-id :id}
         (impl/async-import!
@@ -268,7 +268,7 @@
   ;; still allowed here. Setting the branch during first-time configuration (no current branch) is allowed.
   ;; Blanking the branch is also blocked in read-write — otherwise it would reset the guard and let a
   ;; follow-up call switch freely.
-  (let [current-branch (settings/remote-sync-branch)
+  (let [current-branch (impl/sync-branch)
         new-branch     (:remote-sync-branch settings)
         effective-type (or remote-sync-type (settings/remote-sync-type))]
     (api/check-400 (not (and (= :read-write effective-type)
@@ -342,7 +342,7 @@
    _query
    {:keys [name]} :- [:map {:closed true} [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+  (let [base-branch (or (remote-sync.task/last-version) (impl/sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try

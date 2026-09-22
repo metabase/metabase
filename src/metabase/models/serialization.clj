@@ -103,8 +103,6 @@
   lookup-by-id
   maybe-labeled
   source-entity-id
-  worktree-scope
-  worktree-scoped-models
   worktree-scoped?])
 
 ;; there was no science behind picking 100 as a number
@@ -485,13 +483,12 @@
   collection."
   [model {:keys [collection-set filter-column filter-ids] :as opts}]
   (let [spec          (*make-spec* (name model) opts)
-        order-columns (extract-order-columns (name model) opts)
-        scope         (worktree-scope model)]
+        order-columns (extract-order-columns (name model) opts)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (models.db/entities-reducible model filter-column filter-ids order-columns scope)
-      (models.db/entities-in-collections-reducible model collection-set filter-column filter-ids order-columns scope))))
+      (models.db/entities-reducible model filter-column filter-ids order-columns)
+      (models.db/entities-in-collections-reducible model collection-set filter-column filter-ids order-columns))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)

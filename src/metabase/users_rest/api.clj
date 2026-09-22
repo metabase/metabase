@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -385,6 +386,7 @@
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
+   [:worktree_id                [:maybe ms/PositiveInt]]
    ;; nil for API-key users, who have no personal collection
    [:personal_collection_id     [:maybe ms/PositiveInt]]
    [:group_ids                  [:set ms/PositiveInt]]
@@ -518,12 +520,14 @@
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
-       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+       [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (check-not-internal-user id)
+  (remote-sync/check-worktree-exists! (:worktree_id body))
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
@@ -548,7 +552,7 @@
         (when-let [changes (not-empty
                             (u/select-keys-when body
                                                 :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
+                                                           api/*is-superuser?* (conj :login_attributes :tenant_id :worktree_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
           (users-rest.db/update-user! id changes)

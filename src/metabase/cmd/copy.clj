@@ -167,7 +167,7 @@
     :model/TransformDagRun]
    (when config/ee-available?
      [:model/Worktree
-      :model/WorktreeRemapping
+      :model/WorktreeEntityRemapping
       :model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox

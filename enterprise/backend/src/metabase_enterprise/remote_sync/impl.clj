@@ -301,6 +301,14 @@
     (doseq [chunk (partition-all app-db-batch-size rows)]
       (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
 
+(defn sync-branch
+  "The branch the caller syncs: the branch their worktree is checked out to when they are working inside one, and
+  the `remote-sync-branch` setting otherwise. A worktree tracks a branch of its own and never touches the main
+  app's setting."
+  []
+  (or (some-> api/*worktree-id* remote-sync.db/worktree-branch)
+      (settings/remote-sync-branch)))
+
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
    `remote-sync-branch` setting has since drifted to a different value. Used as a
@@ -308,7 +316,7 @@
    guards and mutates the setting between scheduling and the work running."
   [pre-task-branch]
   (and (some? pre-task-branch)
-       (not= pre-task-branch (settings/remote-sync-branch))))
+       (not= pre-task-branch (sync-branch))))
 
 (defn- materialize-data-apps!
   "Materialize data apps from the snapshot a content import is landing. Data apps live under `data_apps/` in
@@ -424,7 +432,7 @@
   `count 0`. Caller guarantees `da-changed` is positive."
   [outcome da-changed]
   (case (:kind outcome)
-    "pull-skipped" {:kind "pulled" :count da-changed :branch (settings/remote-sync-branch)}
+    "pull-skipped" {:kind "pulled" :count da-changed :branch (sync-branch)}
     "pulled"       (update outcome :count (fnil + 0) da-changed)
     "merged"       (update outcome :pulled (fnil + 0) da-changed)
     outcome))
@@ -520,7 +528,7 @@
      :version snapshot-version
      :outcome {:kind "pulled"
                :count (+ (pulled-change-count imported-data) (count deletes))
-               :branch (settings/remote-sync-branch)}}))
+               :branch (sync-branch)}}))
 
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
@@ -576,7 +584,7 @@
          :merge-summary summary
          :outcome       {:kind "pulled"
                          :count (apply + (vals summary))
-                         :branch (settings/remote-sync-branch)}}))))
+                         :branch (sync-branch)}}))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -673,7 +681,7 @@
                    :version snapshot-version
                    :outcome {:kind "pulled"
                              :count (pulled-change-count imported-data)
-                             :branch (settings/remote-sync-branch)}}))
+                             :branch (sync-branch)}}))
 
               ;; --- Normal pull ---
               ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
@@ -711,7 +719,7 @@
                  :version snapshot-version
                  :outcome {:kind "pulled"
                            :count (pulled-change-count imported-data)
-                           :branch (settings/remote-sync-branch)}}))]
+                           :branch (sync-branch)}}))]
         ;; Data apps rode the pull inside `finalize!`, materialized from the real source snapshot (the repo
         ;; file tree under `data_apps/`), not the synthetic merged snapshot `load-snapshot!` sees. They're
         ;; counted outside serdes, so fold how many they upserted or removed into the outcome — otherwise a
@@ -820,8 +828,8 @@
              ;; when nothing changed on either side.
              :outcome (cond
                         (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
-                                      :branch (settings/remote-sync-branch)}
-                        (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
+                                      :branch (sync-branch)}
+                        (pos? pulled) {:kind "pulled" :count pulled :branch (sync-branch)}
                         :else         {:kind "push-skipped"})})
           ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
           ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
@@ -1169,7 +1177,7 @@
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
           {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+           :outcome {:kind "pushed" :count (count synced) :branch (sync-branch)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1205,7 +1213,7 @@
           {:status :success
            :outcome {:kind "pushed"
                      :count (+ (count writes) (count delete-paths))
-                     :branch (settings/remote-sync-branch)}})))))
+                     :branch (sync-branch)}})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -1392,7 +1400,7 @@
    (has-remote-changes? nil))
   ([{:keys [force-refresh?]}]
    (let [cache-state @remote-changes-cache
-         current-branch (settings/remote-sync-branch)]
+         current-branch (sync-branch)]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
        (let [last-imported (remote-sync.task/last-version)
@@ -1438,7 +1446,7 @@
               (do
                 (case (:status result)
                   :success (do
-                             (when branch
+                             (when (and branch (nil? api/*worktree-id*))
                                (settings/remote-sync-branch! branch))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
@@ -1560,7 +1568,7 @@
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
-  (let [pre-task-branch        (settings/remote-sync-branch)
+  (let [pre-task-branch        (sync-branch)
         source                 (source/source-from-settings branch)
         has-dirty?             (remote-sync.object/dirty?)
         snapshot               (source.p/snapshot source)
@@ -1584,10 +1592,10 @@
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)
                     (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
+                               pre-task-branch (sync-branch))
                     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
                                     {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
+                                     :current-branch  (sync-branch)})))
                   (import! snapshot task-id
                            (assoc import-args
                                   :force?           force?
@@ -1617,7 +1625,7 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
                     {:status-code 400})))
-  (let [pre-task-branch        (settings/remote-sync-branch)
+  (let [pre-task-branch        (sync-branch)
         source                 (source/source-from-settings branch)
         last-task-version      (remote-sync.task/last-version)
         snapshot               (source.p/snapshot source)
@@ -1631,10 +1639,10 @@
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)
                     (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
-                               pre-task-branch (settings/remote-sync-branch))
+                               pre-task-branch (sync-branch))
                     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
                                     {:pre-task-branch pre-task-branch
-                                     :current-branch  (settings/remote-sync-branch)})))
+                                     :current-branch  (sync-branch)})))
                   (export! snapshot task-id message
                            :force?          force?
                            :merge?          merge?
@@ -1697,7 +1705,7 @@
   [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
-    (source.p/create-branch source new-branch (settings/remote-sync-branch))
+    (source.p/create-branch source new-branch (sync-branch))
     (async-export! new-branch false message :on-success on-success)))
 
 (defn finish-remote-config!
@@ -1714,7 +1722,7 @@
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).
-        (:id (async-import! (settings/remote-sync-branch) true {} :force-deletion? false))))
+        (:id (async-import! (sync-branch) true {} :force-deletion? false))))
     (do
       (collection/clear-remote-synced-collection!)
       nil)))

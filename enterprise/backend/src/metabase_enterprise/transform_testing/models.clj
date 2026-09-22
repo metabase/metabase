@@ -18,7 +18,8 @@
 (doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- json-column
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its

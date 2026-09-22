@@ -16,9 +16,9 @@
    [:definition ms/NonBlankString]])
 
 (mu/defn entries :- [:sequential ::glossary.schema/glossary]
-  "Every main-app glossary entry, in term order."
+  "Every glossary entry, in term order."
   []
-  (glossary.db/glossary-entries nil nil))
+  (glossary.db/glossary-entries nil))
 
 (mu/defn create-entry! :- ::glossary.schema/glossary
   "Insert a glossary entry created by `user-id` and publish `:event/glossary-create`. Returns the new entry."

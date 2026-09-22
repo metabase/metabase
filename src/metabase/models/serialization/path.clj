@@ -10,7 +10,8 @@
    [metabase.models.db :as models.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,46 +30,33 @@
   "Maximum number of ids per `:in` clause when reading remappings, to stay under database parameter limits."
   1000)
 
-(def ^:dynamic *worktree-id*
-  "The remote-sync worktree an import or export is operating on; `nil` is the main app. Bound for the duration of a
-  single pull/push (which is always about exactly one worktree) by the remote-sync code that drives it, and left
-  `nil` by the plain serdes API, which only ever sees main-app content. A pull is the only thing that puts content
-  into a worktree -- no API creates it -- so this is the only place `worktree_id` is ever written. Extraction is
-  scoped by it, and entity ids are translated through the worktree's remapping table on the way out and back in."
-  nil)
-
-(def worktree-scoped-models
-  "Serdes model names whose table carries a `worktree_id` column. Extraction for these is scoped by
-  [[*worktree-id*]], loads stamp it, and their `entity_id`s are translated through `worktree_remapping` -- so a
-  worktree holds its own copy of an entity the main app already has, under an id of its own.
-
-  Tables and Fields are absent: they are shared warehouse metadata, the same row for the main app and every
-  worktree."
-  #{"Card" "Collection" "Dashboard" "DashboardCard" "DashboardCardSeries" "DashboardTab" "Dimension" "Document"
-    "Glossary" "Measure" "NativeQuerySnippet" "ParameterCard" "PythonLibrary" "Segment" "TableIndex" "Timeline"
-    "TimelineEvent" "Transform" "TransformTag" "TransformTest" "TransformTransformTag"})
+(defn current-worktree-id
+  "The remote-sync worktree the request, or the current import or export, is operating on; nil is the main app.
+  Resolved lazily: this namespace sits below `metabase.api.common` in the load order."
+  []
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  @(requiring-resolve 'metabase.api.common/*worktree-id*))
 
 (defn worktree-scoped?
-  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
-  [model]
-  (contains? worktree-scoped-models (if (string? model) model (name model))))
+  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree:
+  one that derives `:hook/worktree-id`, i.e. whose table carries the column. Extraction for these is filtered by
+  the worktree the caller is in, loads stamp it, and their `entity_id`s are translated through
+  `worktree_entity_remapping`, so a worktree holds its own copy of an entity the main app already has.
 
-(defn worktree-scope
-  "The worktree scope of a worktree-scoped `model`'s extraction, `{:worktree-id id}` naming [[*worktree-id*]] (nil
-  for the main app); `nil` for models that aren't worktree-scoped, whose tables have no column to restrict. Every
-  extraction query for a scoped model needs it, so an export only ever contains one worktree's content -- the main
-  app's, for the plain serdes API."
+  Tables and Fields do not: they are shared warehouse metadata, the same row for the main app and every worktree.
+  What a branch sets on one is not shared, though -- that lives in the `*UserSettings` overlay, which does carry
+  a row per worktree."
   [model]
-  (when (worktree-scoped? model)
-    {:worktree-id *worktree-id*}))
+  (isa? (t2.model/resolve-model (if (keyword? model) model (symbol (name model))))
+        :hook/worktree-id))
 
 (defn source-entity-id
   "The `entity_id` `entity-id` is serialized under -- the one the branch knows the entity by. Inside a worktree that
   is read from the remapping table; a row with no remapping is main-app content the worktree merely refers to, and
   keeps its own id."
   [model-name entity-id]
-  (or (when (and *worktree-id* entity-id)
-        (models.db/worktree-remapping-source-entity-id *worktree-id* (name model-name) entity-id))
+  (or (when (and (current-worktree-id) entity-id)
+        (models.db/worktree-entity-remapping-source-entity-id (current-worktree-id) (name model-name) entity-id))
       entity-id))
 
 (defn local-entity-id
@@ -76,9 +64,9 @@
   worktree checked out, so a load never matches -- or overwrites -- the main app's row for the same entity; `nil`
   when this worktree has not checked the entity out yet, which is what makes a load insert a fresh copy."
   [model-name entity-id]
-  (if *worktree-id*
+  (if-let [worktree-id (current-worktree-id)]
     (when entity-id
-      (models.db/worktree-remapping-local-entity-id *worktree-id* (name model-name) entity-id))
+      (models.db/worktree-entity-remapping-local-entity-id worktree-id (name model-name) entity-id))
     entity-id))
 
 (defn local-entity-ids
@@ -86,10 +74,10 @@
   through unchanged -- they name content the worktree has not checked out, so they cannot match any local row.
   Returns the ids untouched outside a worktree."
   [model-name entity-ids]
-  (if (and *worktree-id* (seq entity-ids))
+  (if (and (current-worktree-id) (seq entity-ids))
     (let [source->local (into {}
                               (mapcat (fn [chunk]
-                                        (models.db/worktree-remapping-source->local *worktree-id* (name model-name) chunk)))
+                                        (models.db/worktree-entity-remapping-source->local (current-worktree-id) (name model-name) chunk)))
                               (partition-all remapping-batch-size entity-ids))]
       (into #{} (map #(source->local % %)) entity-ids))
     (set entity-ids)))
@@ -107,31 +95,27 @@
   ([model-name local-entity-id]
    (ensure-remapping! model-name local-entity-id nil))
   ([model-name local-entity-id source]
-   (if-not (and *worktree-id* local-entity-id)
+   (if-not (and (current-worktree-id) local-entity-id)
      (or source local-entity-id)
-     (let [worktree-id *worktree-id*
+     (let [worktree-id (current-worktree-id)
            model-name  (name model-name)]
-       (or (models.db/worktree-remapping-source-entity-id worktree-id model-name local-entity-id)
-           (when (models.db/worktree-remapping-source-exists? worktree-id model-name local-entity-id)
+       (or (models.db/worktree-entity-remapping-source-entity-id worktree-id model-name local-entity-id)
+           (when (models.db/worktree-entity-remapping-source-exists? worktree-id model-name local-entity-id)
              local-entity-id)
            (when (and source
-                      (pos? (models.db/update-worktree-remapping-local-entity-id!
+                      (pos? (models.db/update-worktree-entity-remapping-local-entity-id!
                              worktree-id model-name source local-entity-id)))
              source)
            (let [source (or source (u/generate-nano-id))]
-             (models.db/insert-worktree-remapping! worktree-id model-name source local-entity-id)
+             (models.db/insert-worktree-entity-remapping! worktree-id model-name source local-entity-id)
              source))))))
 
-(defn current-worktree-id
-  "The remote-sync worktree the current import or export is operating on, or nil for the main app."
-  []
-  *worktree-id*)
-
 (defn do-with-worktree
-  "Run `thunk` with [[*worktree-id*]] bound to `worktree-id`. Impl for the remote-sync code that drives a pull or a
-  push; everything serdes does inside is scoped to that worktree."
+  "Run `thunk` with [[metabase.api.common/*worktree-id*]] bound to `worktree-id`. Impl for the remote-sync code
+  that drives a pull or a push; everything serdes does inside is scoped to that worktree."
   [worktree-id thunk]
-  (binding [*worktree-id* worktree-id]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (with-bindings {(requiring-resolve 'metabase.api.common/*worktree-id*) worktree-id}
     (thunk)))
 
 (defmulti entity-id
@@ -172,7 +156,7 @@
   (let [eid (entity-id model-name entity)]
     {:model model-name
      :id    (if (and (worktree-scoped? model-name)
-                     (= (:worktree_id entity) *worktree-id*))
+                     (= (:worktree_id entity) (current-worktree-id)))
               (ensure-remapping! model-name eid)
               eid)}))
 

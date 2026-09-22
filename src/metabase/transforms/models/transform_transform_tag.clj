@@ -11,7 +11,8 @@
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod serdes/make-spec "TransformTransformTag"
   [_model-name _opts]

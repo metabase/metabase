@@ -29,10 +29,9 @@
   (t2/select-one :model/Segment :id id))
 
 (mu/defn unarchived-segments
-  "The unarchived Segments in the remote-sync worktree `worktree-id` (nil is the main app), in case-insensitive
-  name order."
-  [worktree-id :- [:maybe ::lib.schema.id/worktree]]
-  (t2/select :model/Segment :archived false :worktree_id worktree-id {:order-by [[:%lower.name :asc]]}))
+  "The unarchived Segments, in case-insensitive name order."
+  []
+  (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."

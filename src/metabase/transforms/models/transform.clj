@@ -31,7 +31,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/worktree-id]]
   (derive :model/Transform trait))
 
 (defn- transform-readable?

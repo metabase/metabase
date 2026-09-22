@@ -12,7 +12,8 @@
 (doto :model/Glossary
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"

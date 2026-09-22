@@ -128,6 +128,16 @@
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
+(def ^:dynamic *worktree-id*
+  "The remote-sync worktree this request is addressed to, or `nil` for the main app. Bound from the host the
+  request came in on: `<branch>.<site-url>` -- `feat1.localhost:3000` -- addresses the worktree checked out to
+  branch `feat1`. Also bound by the remote-sync code that drives a pull or a push.
+
+  This is the only ambient worktree scope in the app. Everything the request reads is restricted to it, and a row
+  belongs to exactly one world, so a branch host shows that branch's content and nothing else."
+  nil)
+
+;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.permissions.models.permissions]] for
   more information about the Metabase permissions system."

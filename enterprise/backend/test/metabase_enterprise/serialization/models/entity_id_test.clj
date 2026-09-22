@@ -158,7 +158,7 @@
     :model/Comment
     :model/CommentReaction
     :model/Worktree
-    :model/WorktreeRemapping})
+    :model/WorktreeEntityRemapping})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

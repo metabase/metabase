@@ -4,7 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -160,10 +159,8 @@
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database-id {:optional true} [:maybe ms/PositiveInt]]
-    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (transforms.core/get-transforms
-   (update query-params :worktree-id remote-sync/check-can-read-worktree)))
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

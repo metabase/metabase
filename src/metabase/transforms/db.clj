@@ -39,11 +39,9 @@
   "The Transforms whose source type is one of `source-types`, in the remote-sync worktree `worktree-id` (nil is
   the main app), optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
-   database-id  :- [:maybe ::lib.schema.id/database]
-   worktree-id  :- [:maybe ::lib.schema.id/worktree]]
+   database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/Transform {:where    [:and
                                           [:in :source_type source-types]
-                                          [:= :worktree_id worktree-id]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 

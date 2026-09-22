@@ -359,7 +359,8 @@
            metabase.app-db.setup
            metabase.app-db.sql-errors
            metabase.app-db.transient-error}
-   :uses #{auth-provider
+   :uses #{api
+           auth-provider
            connection-pool
            task
            util
@@ -654,7 +655,6 @@
            permissions
            premium-features
            queries
-           remote-sync
            request
            util
            warehouse-schema-overlay}
@@ -1729,7 +1729,7 @@
                     :model/TransformTag
                     :model/TransformTransformTag
                     :model/User
-                    :model/WorktreeRemapping}}
+                    :model/WorktreeEntityRemapping}}
 
   mq
   {:team "UX West"
@@ -2972,7 +2972,6 @@
    :uses #{api
            lib.schema
            models
-           remote-sync
            request
            transforms
            transforms.base
@@ -3120,6 +3119,7 @@
            models
            permissions
            premium-features
+           remote-sync
            request
            session
            sso
@@ -4106,7 +4106,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
-   :model-exports #{:model/RemoteSyncTask :model/WorktreeRemapping}
+   :model-exports #{:model/RemoteSyncTask :model/WorktreeEntityRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

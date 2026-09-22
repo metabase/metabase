@@ -1,6 +1,6 @@
 (ns metabase.request.session
   (:require
-   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
+   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?* *worktree-id*]]
    [metabase.permissions.core :as perms]
    [metabase.request.db :as request.db]
    [metabase.request.schema :as request.schema]
@@ -32,10 +32,11 @@
 
 (mu/defn do-with-current-user
   "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
-  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
+  [{:keys [metabase-user-id is-superuser? is-data-analyst? user-locale settings is-group-manager? worktree-id], :as current-user-info} :- [:maybe [:or ::request.schema/current-user-info ::request.schema/request]]
    thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
+            *worktree-id*                  worktree-id
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *is-data-analyst?*             (boolean is-data-analyst?)

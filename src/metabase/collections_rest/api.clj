@@ -22,7 +22,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -74,15 +73,13 @@
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]} :- [:map {:closed true}
-                                                                                             [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                             [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
-                                                                                             [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
+                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
+                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
   (as->
-   (collections.children/select-collections {:worktree-id                    (remote-sync/check-can-read-worktree worktree-id)
-                                             :archived                       (boolean archived)
+   (collections.children/select-collections {:archived                       (boolean archived)
                                              :exclude-other-user-collections exclude-other-user-collections
                                              :namespaces                     (cond
                                                                                namespace [namespace]
@@ -143,7 +140,7 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow collection-id worktree-id]}
+           namespace namespaces shallow collection-id]}
    :- [:map {:closed true}
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -151,8 +148,7 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
-       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
   (let [archived    (if exclude-archived false nil)
@@ -161,8 +157,7 @@
                      (seq namespaces) (into #{} (map not-empty namespaces))
                      (premium-features/enable-audit-app?) #{nil "analytics"}
                      :else #{nil})
-        collections (-> (collections.children/select-collections {:worktree-id                    (remote-sync/check-can-read-worktree worktree-id)
-                                                                  :archived                       archived
+        collections (-> (collections.children/select-collections {:archived                       archived
                                                                   :exclude-other-user-collections exclude-other-user-collections
                                                                   :namespaces                     namespaces
                                                                   :shallow                        shallow
@@ -398,26 +393,23 @@
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
-           q include-available-models show-exploration-documents worktree-id]} :- [:map {:closed true}
-                                                                                   [:models                      {:optional true} [:maybe collections.children/Models]]
-                                                                                   [:collection-type             {:optional true} collections.children/CollectionType]
-                                                                                   [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                                   [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                                   [:include-library             {:default false} [:maybe ms/BooleanValue]]
-                                                                                   [:pinned-state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                                   [:sort-column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                                                                   [:sort-direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                                                                   [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                                   [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                                   [:q                           {:optional true} [:maybe :string]]
-                                                                                   [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                                                                   [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                                   [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+           q include-available-models show-exploration-documents]} :- [:map {:closed true}
+                                                                       [:models                      {:optional true} [:maybe collections.children/Models]]
+                                                                       [:collection-type             {:optional true} collections.children/CollectionType]
+                                                                       [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                                       [:include-library             {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:pinned-state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                       [:sort-column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                                                       [:sort-direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                       [:official-collections-first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:q                           {:optional true} [:maybe :string]]
+                                                                       [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection
-                               :namespace namespace
-                               :worktree_id (remote-sync/check-can-read-worktree worktree-id))
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (collections.children/visible-model-kwds root-collection model-set)
         restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))

@@ -40,6 +40,7 @@
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]
+                            [:user.worktree_id :worktree-id]
                             [:auth_identity.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
@@ -89,7 +90,8 @@
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:user.worktree_id :worktree-id]]
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
@@ -113,7 +115,8 @@
        (cond-> {:select    [[:user.id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:user.worktree_id :worktree-id]]
                 :from      [[:core_user :user]]
                 :where     [:and
                             [:= :user.is_active true]

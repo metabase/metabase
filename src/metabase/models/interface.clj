@@ -608,6 +608,17 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(declare current-worktree-id)
+
+(t2/define-before-insert :hook/worktree-id
+  [instance]
+  (cond-> instance
+    (not (contains? instance :worktree_id)) (assoc :worktree_id (current-worktree-id))))
+
+(doseq [hook [:hook/timestamped? :hook/entity-id :hook/created-at-timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/worktree-id))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -761,6 +772,14 @@
   "Return the ID of the current user."
   []
   @(requiring-resolve 'metabase.api.common/*current-user-id*))
+
+(defn current-worktree-id
+  "The remote-sync worktree [[metabase.api.common/*current-user*]] is working inside, or nil for the main app.
+  Stamped onto every `:hook/worktree-id` model at insert, so content belongs to whichever worktree its creator
+  was working inside and no caller has to say so. It is fixed from then on: every query is restricted to the
+  caller's worktree, so a write can no more reach across worlds than a read can."
+  []
+  @(requiring-resolve 'metabase.api.common/*worktree-id*))
 
 (defn- current-user-permissions-set []
   @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))

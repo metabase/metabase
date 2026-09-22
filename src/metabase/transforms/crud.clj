@@ -114,12 +114,11 @@
                    (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
 
 (defn get-transforms
-  "Get a list of transforms. `worktree-id` lists the transforms a remote-sync worktree checked out instead of the
-  main app's; nil (the default) is the main app."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id worktree-id]}]
+  "Get a list of transforms."
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id worktree-id)]
+    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)

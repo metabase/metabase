@@ -50,9 +50,9 @@
   (t2/delete! :model/TransformTag :id tag-id))
 
 (mu/defn tags
-  "Every TransformTag in the remote-sync worktree `worktree-id` (nil is the main app), in name order."
-  [worktree-id :- [:maybe ::lib.schema.id/worktree]]
-  (t2/select :model/TransformTag :worktree_id worktree-id {:order-by [[:name :asc]]}))
+  "Every TransformTag, in name order."
+  []
+  (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
 
 ;;; ---------------------------------------------------- Jobs ------------------------------------------------------
 

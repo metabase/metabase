@@ -13,17 +13,15 @@
   (api/check-404 (nil? worktree-id))
   nil)
 
-(defn check-can-read-worktree
-  "Guard for a `worktree-id` request parameter. Nil means the main app and is always allowed; naming a worktree is
-  superuser-only, and the worktree has to exist. Returns `worktree-id` so it threads straight into the query.
+(defn worktree-accessible?
+  "Whether `instance` is in the current user's worktree scope. A row belongs to exactly one world -- the main app
+  (a nil `:worktree_id`) or one worktree -- and is only ever visible from that world, so a user working inside a
+  worktree sees that worktree's content and nothing else. AND this into a worktree-scoped model's `can-read?` /
+  `can-write?` / `can-create?` and every caller is covered, not just the REST API.
 
-  A worktree is only ever read through a parameter that names it -- nothing it holds appears in a listing that did
-  not ask for it, and no endpoint creates content in one. A pull is the only thing that writes there."
-  [worktree-id]
-  (when worktree-id
-    (api/check-superuser)
-    (check-worktree-exists! worktree-id))
-  worktree-id)
+  Always true on OSS, where there are no worktrees for a row or a request to be in."
+  [instance]
+  (= (:worktree_id instance) api/*worktree-id*))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.

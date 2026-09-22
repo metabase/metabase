@@ -12,11 +12,9 @@
 (mu/defn glossary-entries
   "The Glossary entries whose term or definition contains `search` case-insensitively, or every
   entry when `search` is nil, in term order."
-  [search      :- [:maybe :string]
-   worktree-id :- [:maybe ::lib.schema.id/worktree]]
+  [search :- [:maybe :string]]
   (t2/select :model/Glossary
-             (cond-> {:where    [:= :worktree_id worktree-id]
-                      :order-by [[:term :asc]]}
+             (cond-> {:order-by [[:term :asc]]}
                search (assoc :where (let [pattern (h2x/like-substring search)]
                                       [:or
                                        [:like [:lower :term] pattern]

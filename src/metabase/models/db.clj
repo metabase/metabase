@@ -140,41 +140,26 @@
   [entity :- AfterSelectEntity]
   (t2/select-one (:model entity) (t2.identity-query/identity-query [(:row entity)])))
 
-(def ^:private WorktreeScope
-  "The remote-sync worktree an extraction is scoped to: `{:worktree-id id}` (nil is the main app), or nil for a
-  model whose table has no `worktree_id` column."
-  [:maybe [:map {:closed true} [:worktree-id [:maybe ::lib.schema.id/worktree]]]])
-
-(defn- worktree-scope-clause
-  [worktree-scope]
-  (when worktree-scope
-    [:= :worktree_id (:worktree-id worktree-scope)]))
-
 (mu/defn entities-reducible
   "A reducible of the `model` rows whose `filter-column` is one of `filter-ids` (every row when `filter-column` is
-  nil), in the remote-sync `worktree-scope` (unrestricted when nil), ordered ascending by `order-columns`
-  (unordered when empty)."
-  [model          :- [:or :keyword symbol?]
-   filter-column  :- [:maybe :keyword]
-   filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns  :- [:maybe [:sequential :keyword]]
-   worktree-scope :- WorktreeScope]
-  (t2/reducible-select model (cond-> {:where [:and
-                                              (when filter-column
-                                                [:in filter-column filter-ids])
-                                              (worktree-scope-clause worktree-scope)]}
+  nil), ordered ascending by `order-columns` (unordered when empty)."
+  [model         :- [:or :keyword symbol?]
+   filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select model (cond-> {}
+                               filter-column       (assoc :where [:in filter-column filter-ids])
                                (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn entities-in-collections-reducible
   "A reducible of the `model` rows whose `:collection_id` is in `collection-set` (nil in the set counts as the root
   collection) and whose `filter-column` is one of `filter-ids` (unrestricted when `filter-column` is nil), ordered
-  ascending by `order-columns` (unordered when empty), in the remote-sync `worktree-scope` (unrestricted when nil)."
+  ascending by `order-columns` (unordered when empty)."
   [model          :- [:or :keyword symbol?]
    collection-set :- [:or [:set [:maybe ms/PositiveInt]] [:sequential [:maybe ms/PositiveInt]]]
    filter-column  :- [:maybe :keyword]
    filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]
-   order-columns  :- [:maybe [:sequential :keyword]]
-   worktree-scope :- WorktreeScope]
+   order-columns  :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
@@ -182,8 +167,7 @@
                                          (when (some nil? collection-set)
                                            [:= :collection_id nil])]
                                         (when filter-column
-                                          [:in filter-column filter-ids])
-                                        (worktree-scope-clause worktree-scope)]}
+                                          [:in filter-column filter-ids])]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn update-entity!
@@ -370,72 +354,72 @@
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
 
-(mu/defn worktree-remapping-source-entity-id
+(mu/defn worktree-entity-remapping-source-entity-id
   "The source entity id -- the one the branch knows the entity by -- that the remote-sync worktree with `worktree-id`
   maps the `model-name` row with `local-entity-id` to, or nil."
   [worktree-id     :- ::lib.schema.id/worktree
    model-name      :- :string
    local-entity-id :- :string]
-  (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
+  (t2/select-one-fn :source_entity_id :model/WorktreeEntityRemapping
                     :worktree_id     worktree-id
                     :type            model-name
                     :local_entity_id local-entity-id))
 
-(mu/defn worktree-remapping-local-entity-id
+(mu/defn worktree-entity-remapping-local-entity-id
   "The entity id of the `model-name` row the remote-sync worktree with `worktree-id` checked out for the branch's
   `source-entity-id`, or nil."
   [worktree-id      :- ::lib.schema.id/worktree
    model-name       :- :string
    source-entity-id :- :string]
-  (t2/select-one-fn :local_entity_id :model/WorktreeRemapping
+  (t2/select-one-fn :local_entity_id :model/WorktreeEntityRemapping
                     :worktree_id      worktree-id
                     :type             model-name
                     :source_entity_id source-entity-id))
 
-(mu/defn worktree-remapping-source->local
+(mu/defn worktree-entity-remapping-source->local
   "A map of source entity id to local entity id for the `model-name` rows the remote-sync worktree with `worktree-id`
   checked out for `source-entity-ids`."
   [worktree-id       :- ::lib.schema.id/worktree
    model-name        :- :string
    source-entity-ids :- [:sequential :string]]
   (t2/select-fn->fn :source_entity_id :local_entity_id
-                    :model/WorktreeRemapping
+                    :model/WorktreeEntityRemapping
                     :worktree_id      worktree-id
                     :type             model-name
                     :source_entity_id [:in source-entity-ids]))
 
-(mu/defn worktree-remapping-source-exists?
+(mu/defn worktree-entity-remapping-source-exists?
   "Whether `source-entity-id` is already a source entity id of a `model-name` remapping in the remote-sync worktree
   with `worktree-id`."
   [worktree-id      :- ::lib.schema.id/worktree
    model-name       :- :string
    source-entity-id :- :string]
-  (t2/exists? :model/WorktreeRemapping
+  (t2/exists? :model/WorktreeEntityRemapping
               :worktree_id      worktree-id
               :type             model-name
               :source_entity_id source-entity-id))
 
-(mu/defn update-worktree-remapping-local-entity-id!
+(mu/defn update-worktree-entity-remapping-local-entity-id!
   "Point the remote-sync worktree's `model-name` remapping for `source-entity-id` at `local-entity-id`, returning the
   number updated (0 when the worktree has no remapping for that source yet)."
   [worktree-id      :- ::lib.schema.id/worktree
    model-name       :- :string
    source-entity-id :- :string
    local-entity-id  :- :string]
-  (t2/update! :model/WorktreeRemapping
+  (t2/update! :model/WorktreeEntityRemapping
               :worktree_id      worktree-id
               :type             model-name
               :source_entity_id source-entity-id
               {:local_entity_id local-entity-id}))
 
-(mu/defn insert-worktree-remapping!
+(mu/defn insert-worktree-entity-remapping!
   "Record that the remote-sync worktree with `worktree-id` holds the branch's `model-name` entity `source-entity-id`
   as the local row with `local-entity-id`."
   [worktree-id      :- ::lib.schema.id/worktree
    model-name       :- :string
    source-entity-id :- :string
    local-entity-id  :- :string]
-  (t2/insert! :model/WorktreeRemapping
+  (t2/insert! :model/WorktreeEntityRemapping
               {:worktree_id      worktree-id
                :type             model-name
                :source_entity_id source-entity-id

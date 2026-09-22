@@ -101,10 +101,10 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T10:04:00
       author: ranquild
-      comment: Create worktree_remapping table
+      comment: Create worktree_entity_remapping table
       changes:
         - createTable:
-            tableName: worktree_remapping
+            tableName: worktree_entity_remapping
             remarks: Maps the entity_id an entity has on the branch to the entity_id of the copy a worktree checked out for it, so a worktree can hold its own copy of an entity the main app already has
             columns:
               - column:
@@ -146,8 +146,8 @@ databaseChangeLog:
       comment: Unique index on (worktree_id, source_entity_id) - a branch entity is checked out at most once per worktree
       changes:
         - createIndex:
-            tableName: worktree_remapping
-            indexName: idx_worktree_remapping_source
+            tableName: worktree_entity_remapping
+            indexName: idx_worktree_entity_remapping_source
             unique: true
             columns:
               - column:
@@ -161,8 +161,8 @@ databaseChangeLog:
       comment: Unique index on local_entity_id - entity_id is globally unique, so a checked-out row backs exactly one remapping
       changes:
         - createIndex:
-            tableName: worktree_remapping
-            indexName: idx_worktree_remapping_target
+            tableName: worktree_entity_remapping
+            indexName: idx_worktree_entity_remapping_target
             unique: true
             columns:
               - column:
@@ -171,14 +171,14 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T10:07:00
       author: ranquild
-      comment: FK worktree_remapping.worktree_id -> worktree; CASCADE so deleting a worktree drops its remappings
+      comment: FK worktree_entity_remapping.worktree_id -> worktree; CASCADE so deleting a worktree drops its remappings
       changes:
         - addForeignKeyConstraint:
-            baseTableName: worktree_remapping
+            baseTableName: worktree_entity_remapping
             baseColumnNames: worktree_id
             referencedTableName: worktree
             referencedColumnNames: id
-            constraintName: fk_worktree_remapping_worktree_id
+            constraintName: fk_worktree_entity_remapping_worktree_id
             onDelete: CASCADE
 
   - changeSet:
@@ -1196,3 +1196,275 @@ databaseChangeLog:
             tableName: native_query_snippet
             constraintName: uq_native_query_snippet_name_worktree
             uniqueColumns: name, worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-21T16:00:00
+      author: ranquild
+      comment: Add core_user.worktree_id - the worktree a user is currently working inside
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this user is currently working inside; null means the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T16:01:00
+      author: ranquild
+      comment: Index on core_user.worktree_id (backs the FK below)
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T16:02:00
+      author: ranquild
+      comment: FK core_user.worktree_id -> worktree; SET NULL so deleting a worktree returns whoever is inside it to the main app
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_core_user_worktree_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-21T17:00:00
+      author: ranquild
+      comment: Add metabase_table_user_settings.worktree_id
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this overlay row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T17:01:00
+      author: ranquild
+      comment: Index on metabase_table_user_settings.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_mb_table_user_settings_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:02:00
+      author: ranquild
+      comment: FK metabase_table_user_settings.worktree_id -> worktree; CASCADE so deleting a worktree drops the overlay rows it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_mb_table_user_settings_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T17:03:00
+      author: ranquild
+      comment: Add metabase_table_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so it can carry a primary key
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) VIRTUAL NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE metabase_table_user_settings DROP COLUMN worktree_id_helper;
+
+  - changeSet:
+      id: v65.2026-09-21T17:04:00
+      author: ranquild
+      comment: Drop the FK on metabase_table_user_settings.table_id - H2 backs it with the primary key index the next changeset replaces
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            constraintName: fk_table_user_settings_table_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T17:05:00
+      author: ranquild
+      comment: Widen the primary key of metabase_table_user_settings to (table_id, worktree_id_helper) - a worktree holds its own overlay row for the same table_id
+      changes:
+        - dropPrimaryKey:
+            tableName: metabase_table_user_settings
+        - addPrimaryKey:
+            tableName: metabase_table_user_settings
+            columnNames: table_id, worktree_id_helper
+            constraintName: pk_mb_table_user_settings
+      rollback:
+        - dropPrimaryKey:
+            tableName: metabase_table_user_settings
+            constraintName: pk_mb_table_user_settings
+        - addPrimaryKey:
+            tableName: metabase_table_user_settings
+            columnNames: table_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:06:00
+      author: ranquild
+      comment: Restore the FK on metabase_table_user_settings.table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_table_user_settings_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T17:10:00
+      author: ranquild
+      comment: Add metabase_field_user_settings.worktree_id
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this overlay row was checked out into; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-21T17:11:00
+      author: ranquild
+      comment: Index on metabase_field_user_settings.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: metabase_field_user_settings
+            indexName: idx_mb_field_user_settings_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:12:00
+      author: ranquild
+      comment: FK metabase_field_user_settings.worktree_id -> worktree; CASCADE so deleting a worktree drops the overlay rows it checked out
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_mb_field_user_settings_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T17:13:00
+      author: ranquild
+      comment: Add metabase_field_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so it can carry a primary key
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) VIRTUAL NOT NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE metabase_field_user_settings DROP COLUMN worktree_id_helper;
+
+  - changeSet:
+      id: v65.2026-09-21T17:14:00
+      author: ranquild
+      comment: Drop the FK on metabase_field_user_settings.field_id - H2 backs it with the primary key index the next changeset replaces
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            constraintName: fk_field_user_setting_field_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_setting_field_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-21T17:15:00
+      author: ranquild
+      comment: Widen the primary key of metabase_field_user_settings to (field_id, worktree_id_helper) - a worktree holds its own overlay row for the same field_id
+      changes:
+        - dropPrimaryKey:
+            tableName: metabase_field_user_settings
+        - addPrimaryKey:
+            tableName: metabase_field_user_settings
+            columnNames: field_id, worktree_id_helper
+            constraintName: pk_mb_field_user_settings
+      rollback:
+        - dropPrimaryKey:
+            tableName: metabase_field_user_settings
+            constraintName: pk_mb_field_user_settings
+        - addPrimaryKey:
+            tableName: metabase_field_user_settings
+            columnNames: field_id
+
+  - changeSet:
+      id: v65.2026-09-21T17:16:00
+      author: ranquild
+      comment: Restore the FK on metabase_field_user_settings.field_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_setting_field_id
+            onDelete: CASCADE

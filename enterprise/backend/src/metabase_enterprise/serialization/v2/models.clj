@@ -177,4 +177,4 @@
    "UserParameterValue"
    "ViewLog"
    "Worktree"
-   "WorktreeRemapping"])
+   "WorktreeEntityRemapping"])

@@ -308,7 +308,8 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/worktree-id))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]

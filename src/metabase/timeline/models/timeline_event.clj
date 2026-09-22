@@ -13,7 +13,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/worktree-id))
 
 ;;;; schemas
 
