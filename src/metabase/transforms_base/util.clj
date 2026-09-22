@@ -8,7 +8,6 @@
    [java-time.api :as t]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
@@ -183,7 +182,7 @@
    This handles the case where transforms create tables without explicit schema
    but the driver needs a schema to find the table during sync."
   [driver database table]
-  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+  (when-let [default-schema (:default_schema database)]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
       default-schema)))
 

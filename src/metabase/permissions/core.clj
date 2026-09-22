@@ -1,6 +1,5 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
    [metabase.permissions.data-access-token]
    [metabase.permissions.models.application-permissions-revision]

@@ -70,6 +70,7 @@
    [:metadata_sync_schedule      {:optional true} [:maybe :string]]
    [:cache_field_values_schedule {:optional true} [:maybe :string]]
    [:timezone                    {:optional true} [:maybe :string]]
+   [:default_schema              {:optional true} [:maybe :string]]
    [:is_on_demand                {:optional true} [:maybe :boolean]]
    [:auto_run_queries            {:optional true} [:maybe :boolean]]
    [:refingerprint               {:optional true} [:maybe :boolean]]
