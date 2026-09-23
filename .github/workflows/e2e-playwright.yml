@@ -1,0 +1,331 @@
+name: E2E Playwright (spike)
+
+# Runs the Playwright e2e spike (e2e-playwright/) against the EE uberjar,
+# mirroring the shape of e2e-test.yml. Non-blocking while it's a spike.
+#
+# Remaining Cypress dependency: snapshot generation (e2e/snapshot-creators)
+# is still a Cypress run. Porting default.cy.snap.js to a plain API script
+# would let this workflow drop the prepare-cypress + CLJS steps entirely.
+
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: >-
+          Playwright workers per shard. Default 1 (serial, like a Cypress
+          shard). Dispatch with 2 to re-measure the CPU-contention cost of two
+          worker browsers + their two backend JVMs sharing one 4vCPU runner;
+          compare per-test durations in the playwright-timings-s* artifacts
+          across the two runs of the same commit (scripts/compare-timings.mjs).
+        required: false
+        default: "2"
+  pull_request:
+    # Run on code changes under the spike, but NOT on docs-only edits — the
+    # doc/ledger files (FINDINGS/RESUME/PORTING/QUEUE/PORTED, findings-inbox)
+    # change constantly and shouldn't spend a full sharded suite each time.
+    # A push touching any non-doc file still triggers (the negation only
+    # excludes files whose LAST-matching pattern is the ! one).
+    # NOTE: use `**.md`, NOT `**/*.md` — the latter requires an intermediate
+    # directory and so does NOT match a .md file directly under e2e-playwright/
+    # (e.g. CASE.md), which is how the first cut of this filter leaked.
+    paths:
+      - "e2e-playwright/**"
+      - "!e2e-playwright/**.md"
+      - "!e2e-playwright/PORTED.txt"
+      - "!e2e-playwright/findings-inbox/**"
+      - ".github/workflows/e2e-playwright.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+env:
+  DISPLAY: ""
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+
+jobs:
+  uberjar:
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
+
+  e2e-playwright:
+    needs: uberjar
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    # Raised 45->60: at ~207 specs the 4-way shards run ~41-45 min (s4 hit the
+    # 45 ceiling and was cancelled). 60 gives margin without adding runners; if
+    # per-shard time climbs again, bump SHARD_TOTAL + the matrix list instead.
+    timeout-minutes: 60
+    name: e2e-playwright-ee-s${{ matrix.shard }}
+    strategy:
+      fail-fast: false
+      # Sharded across N jobs to minimize critical-path wall-clock. Runners are
+      # free, so we optimize the slowest shard, not total CI minutes.
+      #
+      # MEASURED on the 2026-07-20 run (20 shards, before QA containers):
+      #   test execution 331m total | setup 88m total = 4.4m/shard (21% of job)
+      #   runner-minutes 419 | wall clock 24.6m
+      # The older "~13m fixed setup floor" note here was wrong by ~3x.
+      #
+      # The model is simply:   wall clock = setup + (test / N)
+      # Setup runs in PARALLEL on every shard, so the critical path carries
+      # exactly ONE setup no matter how large N is. It is a fixed FLOOR, not a
+      # term that grows with N. More shards always reduce wall clock, with
+      # diminishing returns as test/N sinks below the floor; they never make it
+      # worse. What N does multiply is runner-minutes (50 x setup instead of
+      # 20 x) — and per the note above, runners are free and we optimise the
+      # slowest shard, not total CI minutes.
+      #
+      # So the floor is the only thing worth attacking, and it just got higher:
+      # every shard now pulls/starts postgres+mysql+mongo+maildev+webhook+
+      # openldap and generates the QA-database snapshots.
+      #
+      # Each shard runs a slice with workers=1 + a per-worker backend (serial,
+      # like a Cypress shard — reverted from the w=2 A/B after its residual reds
+      # proved to be CPU-contention flakes, not bugs; see the run-step comment).
+      # Playwright's --shard split is count/order-based, not duration-balanced,
+      # and can't split a single spec file, so the heaviest file plus setup are
+      # the floor. To go below it, generate the
+      # snapshots ONCE as a shared artifact instead of per-shard — that is the
+      # single highest-value remaining CI optimisation, because lowering the
+      # floor is the only lever left once test/N is already small.
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+    env:
+      # Keep in sync with the shard matrix above.
+      SHARD_TOTAL: 50
+      MB_EDITION: ee
+      # resolveToken() in e2e-playwright/support/api.ts reads the
+      # CYPRESS_-prefixed names first — same secrets as e2e-test.yml.
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Retrieve uberjar artifact for ee
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      # The QA-database tier is a large fraction of the suite (actions,
+      # data-model-shared-*, sandboxing, transforms, workspaces,
+      # native-database-source). Without these it silently SKIPS — 831 tests on
+      # the 2026-07-20 run. snowplow-micro is deliberately omitted: the suite
+      # uses its own per-slot collector (support/snowplow-collector.ts).
+      #
+      # `maildev: true` stays even though each worker now runs its OWN maildev
+      # (support/maildev.ts). Two reasons: it pulls the pinned image the
+      # per-slot containers are started from, and it is still the mailbox used
+      # when PW_PER_WORKER_BACKEND is off. `maildev-ssl` (:1081/:465) is
+      # untouched by the per-slot work and is what the custom-SMTP specs use.
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          webhook: true
+          postgres: true
+          mysql: true
+          mongo: true
+
+      # Python-transforms tier: python-runner (:5001) + localstack S3 (:4566),
+      # the pair H.setPythonRunnerSettings points at. Cypress CI builds the
+      # runner from source in a dedicated `python` job (setup-python-runner.sh,
+      # private-repo clone); here the published image is pulled instead so
+      # every shard can run the @python-gated tests wherever sharding places
+      # them. Without this step AND PW_PYTHON_RUNNER_ENABLED below, those
+      # tests skip silently — same invisibility the QA-DB comment above
+      # describes. The image tag is pinned because `latest` is mutable and a
+      # mutable warehouse tag has already produced one phantom regression
+      # (#225, mysql-sample-8).
+      - name: Start python-runner and localstack
+        run: |
+          docker network create python-runner-net
+          # The backend hands the runner `http://localstack:4566` as its S3
+          # endpoint (python-storage-s-3-container-endpoint in
+          # H.setPythonRunnerSettings), so the container MUST be resolvable
+          # as `localstack` on the runner's network.
+          docker run -d --name localstack --network python-runner-net \
+            -p 127.0.0.1:4566:4566 localstack/localstack:4.9.2
+          docker run -d --name python-runner --network python-runner-net \
+            -p 127.0.0.1:5001:5000 \
+            -v /tmp/python-exec-work:/tmp/python-exec-work \
+            -e AWS_ACCESS_KEY_ID=test -e AWS_SECRET_ACCESS_KEY=test \
+            -e AWS_DEFAULT_REGION=us-east-1 \
+            -e AWS_ENDPOINT_URL=http://localstack:4566 \
+            -e AUTH_TOKEN=dev-token-12345 \
+            metabase/python-runner:v0.1.0-7838dc9
+          for i in $(seq 1 30); do
+            curl -s http://localhost:4566/_localstack/health >/dev/null && break
+            sleep 2
+          done
+          # localstack accepts unsigned S3 requests; a plain PUT creates the
+          # bucket without pulling the aws-cli image.
+          curl -sf -X PUT http://localhost:4566/metabase-python-runner
+          for i in $(seq 1 15); do
+            curl -sf -H "Authorization: Bearer dev-token-12345" \
+              http://localhost:5001/v1/status >/dev/null && break
+            sleep 2
+          done
+          curl -sf -H "Authorization: Bearer dev-token-12345" \
+            http://localhost:5001/v1/status
+
+      # Only needed because snapshot generation is still a Cypress run.
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      # The snapshot-creator specs bundle e2e/support helpers, which need the
+      # compiled CLJS output. Not needed by the Playwright suite itself.
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        # Generates the QA-database snapshots too (postgres-writable,
+        # mysql-writable, postgres-12, mongo-5, …). The previous `-@external`
+        # filter was carried over from when nothing needed them; it now costs
+        # ~16% of the suite in silent skips.
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: Install Playwright dependencies
+        working-directory: e2e-playwright
+        # Retried: registry tarball extraction fails transiently ("Fail
+        # extracting tarball for xlsx"). A single sleep-10 retry lost on
+        # run 29882602874 s46 (both attempts, ~10s apart — too close for a
+        # registry blip), costing the whole shard. Clearing bun's cache
+        # between attempts matters: a truncated cached tarball makes a plain
+        # retry fail identically.
+        run: |
+          for i in 1 2 3 4; do
+            bun install && exit 0
+            echo "bun install failed (attempt $i) — clearing cache, backing off"
+            bun pm cache rm || true
+            sleep $((i * 20))
+          done
+          bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('e2e-playwright/bun.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e-playwright
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: e2e-playwright
+        env:
+          # One worker per shard (serial, like a Cypress shard). We ran w=2 for
+          # a while — it reached parity on real races (fixed) but its remaining
+          # reds were 4vCPU CPU-contention timeouts, not bugs (green at both w=1
+          # AND w=2 locally), so each run reshuffled and surfaced a different
+          # marginal flake. w=1 removes that per-worker CPU starvation; measured
+          # ~1.07x Cypress wall-clock, so the cost is small. Still per-worker
+          # backend (one slot) — CI has no shared :4000 to fall back to.
+          # Dispatch with workers=2 to A/B; --fully-parallel is dropped so
+          # w=1 is fully serial and w=N parallelises across files, not within.
+          PW_PER_WORKER_BACKEND: "1"
+          PW_ACTION_TIMEOUT: "30000"
+          # Opens the QA-database tier. Without it every @external-gated test
+          # reports as skipped rather than failing, so its absence is invisible.
+          PW_QA_DB_ENABLED: "1"
+          # Opens the python-transforms tier (runner + localstack started
+          # above). Same silent-skip failure mode as the QA gate.
+          PW_PYTHON_RUNNER_ENABLED: "1"
+          # Worker backends boot from the fetched jar with capped heaps.
+          JAR_PATH: ${{ github.workspace }}/target/uberjar/metabase.jar
+          PW_WORKER_MAX_HEAP: 1500m
+        run: bunx playwright test --workers=${{ inputs.workers || '1' }} --shard=${{ matrix.shard }}/${{ env.SHARD_TOTAL }}
+
+      # Plain GitHub artifact only — deliberately NOT the upload-test-results
+      # action (S3/Trunk) and nothing reports to ci-conductor. Always kept,
+      # pass or fail, for Cypress-vs-Playwright timing comparisons.
+      - name: Upload timing results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-timings-s${{ matrix.shard }}
+          path: |
+            e2e-playwright/target/junit/playwright.xml
+            e2e-playwright/target/playwright-results.json
+          if-no-files-found: ignore
+
+      # A test that fails then passes on retry is reported `flaky` and the SHARD
+      # PASSES — so `if: failure()` below uploaded nothing, and the trace
+      # (config is trace: retain-on-failure, so the failed first attempt IS
+      # recorded on disk) was discarded. Every flaky-only failure was therefore
+      # undiagnosable: one investigation burned ~33 local runs falsifying
+      # hypotheses that a single trace would have settled. Reports are large
+      # (~125MB/shard), so this is gated on flaky rather than always().
+      - name: Check for flaky tests
+        id: flaky
+        if: always()
+        run: |
+          # `"status": *"flaky"` — the reporter emits it spaced ("status": "flaky"),
+          # but match both forms so a formatting change cannot silently turn this
+          # step into a no-op that reports "no flakes" forever.
+          if [ -f e2e-playwright/target/playwright-results.json ] \
+             && grep -qE '"status": *"flaky"' e2e-playwright/target/playwright-results.json; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: failure() || steps.flaky.outputs.found == 'true'
+        with:
+          name: playwright-report-s${{ matrix.shard }}
+          path: |
+            e2e-playwright/playwright-report
+            e2e-playwright/test-results
+          if-no-files-found: ignore
+
+      # The per-worker slot backends log to /tmp/mb-pw-slot-*/backend.log,
+      # outside the paths above. Capturing them every run (pass or fail)
+      # root-caused the "exited (code 0)" flake and is kept as a standing aid
+      # for any future slot-backend issue.
+      - name: Collect slot backend logs
+        if: always()
+        run: |
+          mkdir -p slot-logs
+          for d in /tmp/mb-pw-slot-*; do
+            if [ -e "$d/backend.log" ]; then
+              cp "$d/backend.log" "slot-logs/$(basename "$d").log" || true
+            fi
+          done
+          ls -la slot-logs || true
+      - name: Upload slot backend logs
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: slot-backend-logs-s${{ matrix.shard }}
+          path: slot-logs
+          if-no-files-found: ignore
