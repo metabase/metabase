@@ -1,16 +1,16 @@
-(ns metabase-enterprise.worktree.models.worktree
+(ns metabase-enterprise.remote-sync.models.worktree
   "Model for remote-sync worktrees. A worktree is a self-contained checkout of a git branch: its content lives in
   the same tables as the main app, tagged with a `worktree_id`, and is synced with the worktree's own `branch`.
 
-  A worktree's content is kept out of the main app's lists: a list endpoint shows one world at a time, the one its
-  `worktree-id` parameter names. Reading or writing a branch's content at all is superuser-only."
+  A worktree's content is kept out of the main app's lists: a request reads and writes the worktree of the user
+  it is made as. Entering one at all is superuser-only."
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.api.common :as api]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,7 +24,7 @@
 
 (t2/define-after-insert :model/Worktree
   [worktree]
-  (worktree/with-worktree (:id worktree)
+  (mdb.worktree/with-worktree (:id worktree)
     (collections/create-trash-collection!))
   worktree)
 

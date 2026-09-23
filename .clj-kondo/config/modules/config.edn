@@ -266,12 +266,10 @@
            events
            lib.schema
            models
-           remote-sync
            request
            settings
            util
-           util.config
-           worktree}
+           util.config}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
@@ -354,20 +352,20 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
+   :api  #{metabase.app-db.cluster-lock
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.sql-errors
-           metabase.app-db.transient-error}
+           metabase.app-db.transient-error
+           metabase.app-db.worktree}
    :uses #{auth-provider
            connection-pool
            task
            util
            util.classloader
-           util.config
-           worktree}
+           util.config}
    :model-imports #{:model/Field}}
 
   appearance
@@ -467,8 +465,7 @@
            lib.schema
            permissions
            queries
-           util
-           worktree}
+           util}
    :model-exports #{:model/CardBookmark
                     :model/CollectionBookmark
                     :model/DashboardBookmark}
@@ -624,8 +621,7 @@
            upload
            util
            util.config
-           warehouse-schema-overlay
-           worktree}
+           warehouse-schema-overlay}
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
@@ -651,6 +647,7 @@
    :uses #{api
            api-scope
            api.eid-translation
+           app-db
            collections
            documents
            events
@@ -661,8 +658,7 @@
            queries
            request
            util
-           warehouse-schema-overlay
-           worktree}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Collection}}
 
   comments
@@ -1688,8 +1684,7 @@
            parameters
            util
            util.classloader
-           warehouse-schema-overlay
-           worktree}
+           warehouse-schema-overlay}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Channel
@@ -1888,7 +1883,6 @@
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           worktree
            enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -2151,7 +2145,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Database
-                    :model/Document
                     :model/StoredResult
                     :model/StoredResultUse
                     :model/Table}}
@@ -2320,6 +2313,7 @@
            metabase.request.user-agent}
    :uses #{analytics.interface
            api
+           app-db
            embedding
            lib.schema
            permissions
@@ -3177,7 +3171,7 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{util worktree}
+   :uses #{app-db util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
@@ -3243,8 +3237,7 @@
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           warehouses.secrets
-           worktree}
+           warehouses.secrets}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3348,10 +3341,6 @@
            models
            premium-features
            util}}
-
-  worktree
-  {:team "Gadget"
-   :api  #{metabase.worktree.core}}
 
   xrays
   {:team "Graphy"
@@ -3753,7 +3742,6 @@
            util
            util.graph
            warehouse-schema-overlay
-           worktree
            enterprise/permissions.sandbox}
    :model-imports #{:model/Card
                     :model/Collection
@@ -4097,10 +4085,7 @@
 
   enterprise/remote-sync
   {:team "UX West"
-   :api  #{metabase-enterprise.remote-sync.api
-           metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.db
-           metabase-enterprise.remote-sync.init}
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.core metabase-enterprise.remote-sync.init}
    :uses #{analytics.interface
            api
            app-db
@@ -4117,12 +4102,10 @@
            task.history
            util
            warehouse-schema-overlay
-           worktree
            enterprise/data-apps
            enterprise/serialization
-           enterprise/transforms.python
-           enterprise/worktree}
-   :model-exports #{:model/RemoteSyncObject :model/RemoteSyncTask}
+           enterprise/transforms.python}
+   :model-exports #{:model/RemoteSyncTask}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -4491,43 +4474,7 @@
            util
            warehouse-schema-overlay
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}
-
-  enterprise/worktree
-  {:team "Gadget"
-   :api  #{metabase-enterprise.worktree.db}
-   :uses #{api
-           collections
-           lib.schema
-           models
-           util
-           worktree
-           enterprise/remote-sync}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
-                    :model/DashboardTab
-                    :model/Dimension
-                    :model/Document
-                    :model/FieldUserSettings
-                    :model/Glossary
-                    :model/Measure
-                    :model/NativeQuerySnippet
-                    :model/ParameterCard
-                    :model/PythonLibrary
-                    :model/RemoteSyncObject
-                    :model/RemoteSyncTask
-                    :model/Segment
-                    :model/TableIndex
-                    :model/TableUserSettings
-                    :model/Timeline
-                    :model/TimelineEvent
-                    :model/Transform
-                    :model/TransformTag
-                    :model/TransformTest
-                    :model/TransformTransformTag}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
