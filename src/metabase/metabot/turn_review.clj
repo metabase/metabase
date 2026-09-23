@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -17,7 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (java.net InetAddress)
+   (java.net InetAddress URI)
    (java.util.concurrent ArrayBlockingQueue ExecutorService RejectedExecutionException ThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
@@ -316,6 +317,13 @@
                      :profile     profile-id
                      :verdict     verdict}})))
 
+(defn- instance-name
+  []
+  (or (metabot.settings/metabot-papercuts-instance-name)
+      (some-> (system/site-url) URI. .getHost)
+      (not-empty (appearance/site-name))
+      (u/ignore-exceptions (.getHostName (InetAddress/getLocalHost)))))
+
 (defn- post-papercut!
   [report]
   (doseq [url   (some-> (metabot.settings/metabot-papercuts-server-url) (str/split #","))
@@ -361,8 +369,7 @@
                                             :parts           parts
                                             :signals         signals
                                             :reporter        (metabot.settings/metabot-papercuts-reporter)
-                                            :machine         (u/ignore-exceptions
-                                                               (.getHostName (InetAddress/getLocalHost)))
+                                            :machine         (instance-name)
                                             :ui-url          (or (metabot.settings/metabot-papercuts-ui-url)
                                                                  (system/site-url))}
                                            verdict))]

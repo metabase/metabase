@@ -142,6 +142,14 @@
   :export?    false
   :doc        false)
 
+(defsetting metabot-papercuts-instance-name
+  (deferred-tru "Name of this Metabase instance on the failures the Metabot turn review sends to the papercuts server. Defaults to the host of the site URL, then the site name, then the hostname.")
+  :type       :string
+  :visibility :admin
+  :encryption :no
+  :export?    false
+  :doc        false)
+
 (defsetting metabot-papercuts-ui-url
   (deferred-tru "Base URL of the conversation links in the failures the Metabot turn review sends to the papercuts server. Defaults to the site URL.")
   :type       :string

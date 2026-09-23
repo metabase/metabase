@@ -170,11 +170,22 @@
         (is (= "src/metabase/metabot/tools/construct.clj" (path "internal")))
         (is (= "src/metabase/metabot/tools/slackbot_query.clj" (path "slackbot")))))))
 
+(deftest instance-name-test
+  (testing "an unnamed instance goes by its site URL's host, then its site name"
+    (mt/with-temporary-setting-values [metabot-papercuts-instance-name nil
+                                       site-url                        "https://metabase.example.com"]
+      (is (= "metabase.example.com" (#'turn-review/instance-name))))
+    (mt/with-temporary-setting-values [metabot-papercuts-instance-name nil
+                                       site-url                        nil
+                                       site-name                       "Acme Analytics"]
+      (is (= "Acme Analytics" (#'turn-review/instance-name))))))
+
 (deftest review-turn-posts-papercuts-test
   (mt/with-temporary-setting-values [metabot-turn-review-enabled  true
                                      metabot-papercuts-server-url "http://papercuts.test"
                                      metabot-papercuts-token      "secret"
                                      metabot-papercuts-reporter   "tester"
+                                     metabot-papercuts-instance-name "test-instance"
                                      metabot-papercuts-ui-url     "http://metabase.test"]
     (t2/with-transaction [_conn nil {:rollback-only true}]
       (mt/with-current-user (mt/user->id :rasta)
@@ -208,6 +219,7 @@
                 (is (=? [{:url           "http://papercuts.test/api/reports"
                           :authorization "Bearer secret"
                           :reporter      "tester"
+                          :machine       "test-instance"
                           :report_id     (str "metabot:" conversation-id ":" assistant-msg-id)
                           :fingerprint   "metabot:search:silent_failure"
                           :title         "Metabot search reports a failure as success"

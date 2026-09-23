@@ -1443,6 +1443,7 @@
               api
               api-scope
               app-db
+              appearance
               audit-app
               channel
               collections
