@@ -138,7 +138,6 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
-      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/support/assets/**",
@@ -156,7 +155,6 @@ const configs = [
       "resources/**",
       "**/__snapshots__/**",
       ".shadow-cljs/**",
-      "!.storybook/**",
     ],
   },
   js.configs.recommended,
