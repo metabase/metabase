@@ -8,7 +8,6 @@
   (:require
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -34,24 +33,18 @@
   (cond-> {:table table}
     (some? schema) (assoc :schema schema)))
 
-(mu/defn- default-schema :- [:maybe :string]
-  [driver :- :keyword]
-  (when (get-method sql.normalize/default-schema driver)
-    (sql.normalize/default-schema driver)))
-
 (mu/defn- sql-table-replacements :- [:map-of ::sql-tools/table-spec ::sql-tools/table-spec]
-  "The `:tables` replacements for `sql-tools/replace-names`. A table in the driver's default schema also matches
+  "The `:tables` replacements for `sql-tools/replace-names`. A table in the database's default schema also matches
   unqualified."
-  [driver     :- :keyword
-   remappings :- [:sequential ::ws.schema/workspace-table-remapping]]
-  (let [default-schema (default-schema driver)]
-    (into {}
-          (mapcat (fn [{:keys [from_schema from_table to_schema to_table]}]
-                    (let [to (sql-table-spec to_schema to_table)]
-                      (cond-> [[(sql-table-spec from_schema from_table) to]]
-                        (and (some? from_schema) (= from_schema default-schema))
-                        (conj [(sql-table-spec nil from_table) to])))))
-          remappings)))
+  [default-schema :- [:maybe :string]
+   remappings     :- [:sequential ::ws.schema/workspace-table-remapping]]
+  (into {}
+        (mapcat (fn [{:keys [from_schema from_table to_schema to_table]}]
+                  (let [to (sql-table-spec to_schema to_table)]
+                    (cond-> [[(sql-table-spec from_schema from_table) to]]
+                      (and (some? from_schema) (= from_schema default-schema))
+                      (conj [(sql-table-spec nil from_table) to])))))
+        remappings))
 
 (mu/defn- parse-failure :- (lib.schema.common/instance-of-class clojure.lang.ExceptionInfo)
   "A QP error for SQL sqlglot could not read, so a query runs against nothing rather than the canonical tables."
@@ -77,32 +70,34 @@
 (mu/defn- rewrite-sql :- :string
   "Rewrite references to canonical tables of `remappings` in `sql` to their workspace tables, having first refused
   any direct reach into a workspace schema."
-  [driver     :- :keyword
-   sql        :- :string
-   remappings :- [:sequential ::ws.schema/workspace-table-remapping]
-   schemas    :- [:set ::lib.schema.common/non-blank-string]]
+  [driver         :- :keyword
+   default-schema :- [:maybe :string]
+   sql            :- :string
+   remappings     :- [:sequential ::ws.schema/workspace-table-remapping]
+   schemas        :- [:set ::lib.schema.common/non-blank-string]]
   (reject-workspace-schema-access (try
                                     (sql-tools/referenced-tables-raw driver sql)
                                     (catch Exception e
                                       (throw (parse-failure driver e))))
                                   schemas)
   (try
-    (sql-tools/replace-names driver sql {:tables (sql-table-replacements driver remappings)} {:allow-unused? true})
+    (sql-tools/replace-names driver sql {:tables (sql-table-replacements default-schema remappings)} {:allow-unused? true})
     (catch Exception e
       (throw (parse-failure driver e)))))
 
 (mu/defn- rewrite-sql-stages :- ::lib.schema/query
   "Rewrite the native stages of `query`, joins and nested queries included, to read the workspace tables."
-  [query      :- ::lib.schema/query
-   driver     :- :keyword
-   remappings :- [:sequential ::ws.schema/workspace-table-remapping]
-   schemas    :- [:set ::lib.schema.common/non-blank-string]]
+  [query          :- ::lib.schema/query
+   driver         :- :keyword
+   default-schema :- [:maybe :string]
+   remappings     :- [:sequential ::ws.schema/workspace-table-remapping]
+   schemas        :- [:set ::lib.schema.common/non-blank-string]]
   (lib.walk/walk-stages
    query
    (fn [_query _path stage]
      (when (and (lib/native-stage? stage)
                 (string? (:native stage)))
-       (update stage :native #(rewrite-sql driver % remappings schemas))))))
+       (update stage :native #(rewrite-sql driver default-schema % remappings schemas))))))
 
 (mu/defn- table-transform :- [:=> [:cat :map [:sequential :any]] [:sequential :any]]
   "A [[metabase.lib.metadata/transforming-metadata-provider]] transform moving a `:metadata/table` result to the
@@ -158,5 +153,8 @@
       (install-metadata-provider! mp)
       (-> query
           (assoc :lib/metadata mp)
-          (rewrite-sql-stages driver/*driver* remappings schemas)))
+          (rewrite-sql-stages driver/*driver*
+                              (:default-schema (lib.metadata/database (:lib/metadata query)))
+                              remappings
+                              schemas)))
     query))
