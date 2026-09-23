@@ -352,7 +352,7 @@ jobs:
             $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
         env:
-          # Both derived from profile.backend.yml, the sole dispatcher; its runs always profile. On a
+          # Both derived from test.profile-backend.yml, the sole dispatcher; its runs always profile. On a
           # normal CI run there are no dispatch inputs, so these render `false` and empty and the
           # leg's own selection stands.
           #

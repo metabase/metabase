@@ -150,7 +150,7 @@ runs:
       shell: bash
       id: run-test
       env:
-        # Both derived from profile.backend.yml, the sole dispatcher; its runs always profile. Inside
+        # Both derived from test.profile-backend.yml, the sole dispatcher; its runs always profile. Inside
         # a called workflow `github.event` is the caller's payload, so these resolve here rather than
         # in each calling workflow. On a normal CI run there are no dispatch inputs, so these render
         # `false` and empty and the job's own selection stands.

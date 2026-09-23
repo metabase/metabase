@@ -85,7 +85,7 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
-          # Set only by profile.backend.yml. Absent on a normal CI run, which leaves the decision rules
+          # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
           # alone; mage rejects a name that is not a driver.
           PROFILE_DRIVER: ${{ github.event.inputs.db }}
         shell: bash
