@@ -1,9 +1,20 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const TIMELINE_API = /^\/api\/timeline/;
+
+export const TIME_SERIES_QUESTION: StructuredQuestionDetails = {
+  name: "Orders by month",
+  display: "line",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
+};
 
 export function createQuestionAndDashboardWithEvents() {
   interceptTimelineRequests();
@@ -31,15 +42,7 @@ export function createQuestionAndDashboardWithEvents() {
       cy.wrap(timeline.id).as("timelineId");
       return H.createQuestionAndDashboard({
         questionDetails: {
-          name: "Orders by month",
-          display: "line",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
+          ...TIME_SERIES_QUESTION,
           visualization_settings: {
             "timeline.selected_timeline_ids": [timeline.id],
             "timeline.excluded_timeline_event_ids": [excludedEvent.id],
@@ -78,7 +81,7 @@ export function expectChartWithoutEvents({
 } = {}) {
   H.echartsContainer().findByText("Created At: Month").should("be.visible");
   cy.findByTestId("timeline-event-chip").should("not.exist");
-  cy.findByRole("button", { name: "Events", exact: true }).should("not.exist");
+  cy.findByRole("button", { name: "Events" }).should("not.exist");
   cy.icon("calendar").should("not.exist");
   cy.get(`@${requestAlias}.all`).should("have.length", 0);
 }

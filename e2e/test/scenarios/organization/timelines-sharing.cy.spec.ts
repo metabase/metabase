@@ -1,8 +1,10 @@
 const { H } = cy;
 
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { CardId, DashboardId, TimelineId } from "metabase-types/api";
 
 import {
+  TIME_SERIES_QUESTION,
   createQuestionAndDashboardWithEvents,
   expectChartWithoutEvents,
   expectReadOnlyDashboardEvents,
@@ -128,7 +130,7 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     // without the token this runs in plain-app mode and asserts the wrong surface
     H.activateToken("pro-self-hosted");
     cy.get<DashboardId>("@dashboardId").then((id) =>
-      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}` }),
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}`, qs: {} }),
     );
 
     expectReadOnlyDashboardEvents();
@@ -146,6 +148,40 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
     H.rightSidebar()
       .should("contain", "Create event")
       .and("contain", "Releases");
+  });
+
+  it("should not show events of a timeline the viewer cannot read in interactive embedding", () => {
+    H.activateToken("pro-self-hosted");
+    createDashboardWithPrivateTimeline();
+
+    cy.log("the admin who owns the timeline sees it through the same surface");
+    cy.get<DashboardId>("@privateDashboardId").then((id) =>
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}`, qs: {} }),
+    );
+    H.timelineEventChip("Secret release").should("be.visible");
+
+    cy.signOut();
+    cy.signIn("readonly");
+    cy.get<DashboardId>("@privateDashboardId").then((id) =>
+      H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}`, qs: {} }),
+    );
+
+    H.echartsContainer().findByText("Created At: Month").should("be.visible");
+    H.timelineEventChip("Secret release").should("not.exist");
+  });
+
+  it("should show events of a timeline the viewer cannot read on a public dashboard", () => {
+    createDashboardWithPrivateTimeline();
+
+    cy.get<DashboardId>("@privateDashboardId").then((id) =>
+      H.visitPublicDashboard(id),
+    );
+    H.timelineEventChip("Secret release").should("be.visible");
+
+    cy.log("and to a signed-in viewer without access to the collection");
+    cy.signIn("readonly");
+    cy.reload();
+    H.timelineEventChip("Secret release").should("be.visible");
   });
 
   it("should not show events on a public document", () => {
@@ -238,4 +274,30 @@ function expectDashCardMenuWithoutEvents() {
   H.getDashboardCard().findByRole("button", { name: "More options" }).click();
   H.menu().should("be.visible").findByText("Events").should("not.exist");
   cy.realPress("Escape");
+}
+
+function createDashboardWithPrivateTimeline() {
+  return H.createTimelineWithEvents({
+    timeline: {
+      name: "Private launches",
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    },
+    events: [{ name: "Secret release", timestamp: "2027-10-20T00:00:00Z" }],
+  }).then(({ timeline }) =>
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        ...TIME_SERIES_QUESTION,
+        name: "Orders by month, privately",
+        visualization_settings: {
+          "timeline.selected_timeline_ids": [timeline.id],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard with a private timeline",
+        enable_embedding: true,
+      },
+    }).then(({ body: { dashboard_id } }) =>
+      cy.wrap(dashboard_id).as("privateDashboardId"),
+    ),
+  );
 }
