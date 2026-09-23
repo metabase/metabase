@@ -15,10 +15,31 @@
   gap: 1rem;
 }
 
-.headerTitle {
+.headerTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   min-width: 0;
   flex: 1;
+}
+
+.headerTitle {
+  min-width: 0;
   line-height: 1.25;
+}
+
+.responseTimer {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.userPromptRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: 100%;
 }
 
 .headerActions {
@@ -165,6 +186,11 @@
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
 
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
+
   span {
     text-wrap-mode: wrap;
   }
@@ -177,6 +203,11 @@
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
+
+  > .promptSuggestionsContainer {
+    min-height: 0;
+    padding: 0 0 0.75rem;
+  }
 }
 
 .textInputContainer {

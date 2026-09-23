@@ -128,6 +128,9 @@ export type MetabotMessage = {
   parts: MetabotMessagePart[];
   status: MetabotMessageStatus;
   contextTokens?: number;
+  responseStartedAtMs?: number;
+  responseEndedAtMs?: number;
+  firstChartAtMs?: number;
 };
 
 export type MetabotToolCall = {
@@ -162,6 +165,7 @@ export interface MetabotConversationState {
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   hasMessagedInSession: boolean;
+  completedResponseId?: string;
   messages: MetabotMessage[];
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;

@@ -1297,6 +1297,7 @@
   {:team "Metabot"
    :api #{metabase.jev.api
           metabase.jev.apps.intent
+          metabase.jev.client
           metabase.jev.diagnostics}
    :uses #{api
            driver

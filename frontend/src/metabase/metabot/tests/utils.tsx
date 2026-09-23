@@ -360,6 +360,7 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
+    followUpPrompts?: string[];
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
@@ -382,6 +383,7 @@ export function setup(
     currentUser = createMockUser(),
     metabotInitialState,
     promptSuggestions = [],
+    followUpPrompts = [],
     storeInitialState = {},
     customReducers,
     conversations = [],
@@ -404,6 +406,11 @@ export function setup(
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
     createMockUserMetabotPermissions(),
+  );
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/follow-up-prompts",
+    { prompts: followUpPrompts },
+    { name: "metabot-follow-up-prompts" },
   );
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint(conversations);

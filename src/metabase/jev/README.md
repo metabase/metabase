@@ -69,8 +69,9 @@ Example — one state, two questions:
    :urgency (jev/noul   "Is being well-rested critical tomorrow?")})
 ```
 
-The token is read from the `jev-token` setting (settable over the API, or `MB_JEV_TOKEN`), falling
-back to the legacy `JEV_KEY` env var. It stays server-side and is never sent to the browser.
+The token comes from a **TypeSafe** connection in the admin AI settings provider list (or
+`MB_LLM_TYPESAFE_API_KEY`), falling back to the `jev-token` setting (`MB_JEV_TOKEN`) and the legacy
+`JEV_KEY` env var. It stays server-side and is never sent to the browser.
 
 ## The HTTP endpoints (for the frontend)
 
@@ -126,9 +127,11 @@ Frontend:
   (`use-jev-viz-suggestions`) and rings/dims the chart-type picker by fit.
 - `api/jev.ts` — the RTK Query slice all of the above call through.
 
-Setting:
-- `jev-token` (`metabase.jev.client`) — the server-side token, settable over the API / `MB_JEV_TOKEN`,
-  falling back to the legacy `JEV_KEY` env var.
+Settings:
+- The `typesafe` provider type (`metabase.llm.provider`) — configured like any other AI provider in admin
+  settings; its key and base URL are what `metabase.jev.client` calls Jev with.
+- `jev-token` (`metabase.jev.client`) — older fallback, settable over the API / `MB_JEV_TOKEN`, then the
+  legacy `JEV_KEY` env var.
 
 ## A jev-ial note
 

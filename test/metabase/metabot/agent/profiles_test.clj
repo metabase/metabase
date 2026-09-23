@@ -8,6 +8,17 @@
    [metabase.metabot.tools :as tools]
    [metabase.test :as mt]))
 
+(deftest jev-profile-flags-test
+  (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
+    (doseq [profile-id [:internal :nlq]]
+      (is (true? (:routing? (profiles/get-profile profile-id))))
+      (is (true? (:prefetch-data-sources? (profiles/get-profile profile-id)))))
+    (let [baseline (profiles/get-profile :nlq-old)]
+      (is (nil? (:routing? baseline)))
+      (is (nil? (:prefetch-data-sources? baseline)))
+      (is (= "natural-language-querying-fallback.selmer" (:prompt-template baseline)))
+      (is (= (:tools (profiles/get-profile :nlq)) (:tools baseline))))))
+
 (deftest get-profile-test
   (letfn [(tool-names [profile]
             (set (map #(:tool-name (meta %)) (:tools profile))))]

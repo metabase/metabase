@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -46,6 +46,10 @@ import { AgentToolCallPart } from "./MetabotAgentToolCallPart";
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+import {
+  MetabotResponseTimer,
+  getPromptResponseTimings,
+} from "./MetabotResponseTimer";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
@@ -133,6 +137,7 @@ interface UserMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotMessage;
   hideActions: boolean;
   extraActions?: ReactNode;
+  responseTimings?: ComponentProps<typeof MetabotResponseTimer>["timings"];
 }
 
 export const UserMessage = ({
@@ -140,6 +145,7 @@ export const UserMessage = ({
   className,
   hideActions,
   extraActions,
+  responseTimings = [],
   ...props
 }: UserMessageProps) => {
   const text = useMessageText(message);
@@ -150,13 +156,21 @@ export const UserMessage = ({
       data-testid="metabot-chat-message"
       {...props}
     >
-      {text && (
-        <AIMarkdown
-          className={cx(Styles.message, Styles.messageUser)}
-          singleNewlinesAreParagraphs
-        >
-          {text}
-        </AIMarkdown>
+      {(text || responseTimings.length > 0) && (
+        <Box className={Styles.userPromptRow}>
+          <MetabotResponseTimer
+            timings={responseTimings}
+            showTimeToFirstChart
+          />
+          {text && (
+            <AIMarkdown
+              className={cx(Styles.message, Styles.messageUser)}
+              singleNewlinesAreParagraphs
+            >
+              {text}
+            </AIMarkdown>
+          )}
+        </Box>
       )}
 
       <Flex className={Styles.messageActions}>
@@ -820,6 +834,7 @@ export const Messages = ({
                 message={message}
                 hideActions={isDoingScience && isLastMessage}
                 extraActions={getExtraActions?.(message.id)}
+                responseTimings={getPromptResponseTimings(messages, index)}
               />
             )}
             {renderAfterMessage?.(message)}

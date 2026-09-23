@@ -6,21 +6,33 @@
   (~0.1-0.4s) and its confidence is trustworthy (low when it is likely wrong), which makes it a good fit
   for offering an admin a *suggestion* they can accept or ignore.
 
-  This ns owns the HTTP call + the server-side key. The key is read from the [[jev-token]] setting
-  (settable over the API, `MB_JEV_TOKEN` env var), falling back to the legacy `JEV_KEY` process env var.
+  This ns owns the HTTP call + the server-side key. The key and base URL come from the `typesafe` connection in
+  the admin AI provider list (the `llm-typesafe-api-key` / `llm-typesafe-api-base-url` settings, which also honor
+  `MB_LLM_TYPESAFE_API_KEY` / `MB_LLM_TYPESAFE_API_BASE_URL`), falling back to the older [[jev-token]] setting
+  (`MB_JEV_TOKEN`) and the legacy `JEV_KEY` process env var.
   Higher layers assemble `state` from Metabase data and hand it here; the `/api/jev` pass-through and the
   table-suggestions endpoint both go through [[ask]]."
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase.jev.diagnostics :as diagnostics]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *endpoint* "https://api.typesafe.ai/v1/systemone")
-(def ^:dynamic *model* "jev-latest")
+(def ^:private default-base-url "https://api.typesafe.ai")
+
+(def ^:private system-one-path "/v1/systemone")
+
+(def ^:dynamic *endpoint*
+  "When set, the full System One endpoint URL to call instead of the configured base URL; for tests."
+  nil)
+
+(def ^:dynamic *model*
+  "The model a request runs on when it names none: TypeSafe's alias for its current production Jev."
+  "jev-latest")
 
 (defsetting jev-token
   (deferred-tru "API token for TypeSafe''s System One model (Jev). Used server-side to authenticate Jev requests; never sent to the browser.")
@@ -31,20 +43,49 @@
   :export?    false
   :audit      :no-value)
 
+(defn- provider-setting
+  "The value of the TypeSafe provider setting `setting-kw`, or nil. The provider settings belong to another module,
+  so they are read only once registered."
+  [setting-kw]
+  (when (setting/registered? setting-kw)
+    (not-empty (setting/get setting-kw))))
+
+(defn- typesafe-connection-field
+  "`field` of the first `typesafe` connection in the admin AI provider list, whatever its key, or nil."
+  [field]
+  (when (setting/registered? :llm-providers)
+    (some (fn [{:keys [type config]}]
+            (when (= type "typesafe")
+              (not-empty (get config field))))
+          (setting/get :llm-providers))))
+
 (defn- api-key
-  "The Jev token: the [[jev-token]] setting if set, else the legacy `JEV_KEY` process env var."
+  "The Jev token: the TypeSafe provider connection's key, else the [[jev-token]] setting, else the legacy
+  `JEV_KEY` process env var."
   []
-  (or (jev-token)
+  (or (provider-setting :llm-typesafe-api-key)
+      (typesafe-connection-field :api-key)
+      (jev-token)
       (System/getenv "JEV_KEY")))
 
+(defn- endpoint
+  "The System One endpoint URL: [[*endpoint*]] when bound, else the TypeSafe provider connection's base URL."
+  []
+  (or *endpoint*
+      (str (str/replace (or (provider-setting :llm-typesafe-api-base-url)
+                            (typesafe-connection-field :base-url)
+                            default-base-url)
+                        #"/+$" "")
+           system-one-path)))
+
 (defn key-present?
-  "True when a Jev API key is configured (setting or legacy env var)."
+  "True when a Jev API key is configured (a `typesafe` provider connection, the setting, or the legacy env var)."
   []
   (boolean (api-key)))
 
 (defn- require-api-key []
   (or (api-key)
-      (throw (ex-info "Jev token is not configured (set the `jev-token` setting or the JEV_KEY env var)"
+      (throw (ex-info "Jev token is not configured (add a TypeSafe connection in admin AI settings, or set the `jev-token` setting or the JEV_KEY env var)"
                       {:status-code 503}))))
 
 ;;; ---- question constructors (the three judgment shapes) ----
@@ -67,7 +108,7 @@
   across the range far better than a `noul` yes/no, and carries its own confidence. Answer:
   `{:score n :confidence c :probabilities {level p} :legend {…}}`."
   [instructions levels]
-  {:type "score" :instructions instructions :criteria levels})
+  {:type "score" :instructions instructions :criteria (vec levels)})
 
 ;;; ---- the call ----
 
@@ -82,7 +123,7 @@
    (try
      (let [body   {:model model :state state :questions questions}
            _      (diagnostics/capture-request! "jev" body)
-           resp   (http/post *endpoint*
+           resp   (http/post (endpoint)
                              {:headers            {"Authorization" (str "Bearer " (require-api-key))
                                                    "Content-Type"  "application/json"}
                               :body               (json/generate-string body)
@@ -103,7 +144,7 @@
   the JSON body when possible. Never throws on an HTTP error — the caller decides. Used by the dumb
   `/api/jev` proxy."
   [body]
-  (let [resp (http/post *endpoint*
+  (let [resp (http/post (endpoint)
                         {:headers            {"Authorization" (str "Bearer " (require-api-key))
                                               "Content-Type"  "application/json"}
                          :body               (json/generate-string (merge {:model *model*} body))

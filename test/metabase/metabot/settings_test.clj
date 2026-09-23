@@ -245,17 +245,37 @@
             (is (= expected (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
 (deftest metabot-supports-fast-mode-test
-  (testing "only BYOK anthropic connections serving a fast-capable model report support"
+  (testing "only supported direct connections and models report support"
     (with-connections [(connection "anthropic" "anthropic")
                        (connection "bedrock" "bedrock")
-                       (connection "openai" "openai")]
+                       (connection "openai" "openai")
+                       (connection "research" "openai")
+                       (connection "regional" "openai" {:base-url "https://eu.api.openai.com"})
+                       (connection "gateway" "openai" {:base-url "https://gateway.example"})
+                       (connection "google" "google")
+                       (connection "azure" "azure")
+                       (connection "router" "openrouter")]
       (doseq [[model-ref expected]
               {"anthropic/claude-opus-5"           true
                "anthropic/claude-opus-4-8"         true
                "anthropic/claude-opus-4-7"         false
                "anthropic/claude-sonnet-4-6"       false
                "bedrock/anthropic.claude-opus-4-8" false
-               "openai/gpt-5.4"                    false}]
+               "openai/gpt-5.4"                    false
+               "openai/gpt-6-astra"                true
+               "openai/gpt-5.6-sol"                true
+               "openai/gpt-5.6-terra"              true
+               "openai/gpt-5.6-luna"               true
+               "research/gpt-6-astra"              true
+               "regional/gpt-6-astra"              false
+               "gateway/gpt-6-astra"               false
+               "missing/gpt-6-astra"               false
+               "openai/unknown"                    false
+               "openai/gpt-6-astra-2099-01-01"     false
+               "openai"                            false
+               "google/anthropic/claude-opus-5"    false
+               "azure/openai/gpt-6-astra"          false
+               "router/openai/gpt-6-astra"         false}]
         (testing model-ref
           (with-selected-model model-ref
             (is (= expected (metabot.settings/llm-metabot-supports-fast-mode?))))))))
@@ -399,6 +419,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Invalid Azure model"
            (metabot.settings/llm-metabot-provider! "azure/anthropic/a/b"))))))
+
+(deftest validate-metabot-provider-rejects-a-system-one-connection-test
+  (with-connections [configured-anthropic (connection "typesafe" "typesafe" {:api-key "ts-test-key"})]
+    (doseq [setting-key [:llm-metabot-provider :llm-mini-model]]
+      (testing setting-key
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"names a System One provider"
+             (setting/set! setting-key "typesafe/jev-latest")))))))
 
 (deftest validate-metabot-provider-google-model-format-test
   (with-connections [configured-anthropic configured-google]

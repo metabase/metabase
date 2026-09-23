@@ -116,6 +116,14 @@
   [memory todos]
   (record memory [:todos] (vec todos)))
 
+(defn set-skills
+  "Set the ids (keywords) of the skills this conversation has loaded."
+  [memory skill-ids]
+  (let [skill-names (vec (sort (map name skill-ids)))]
+    (if (= (get-in memory [:state :skills] []) skill-names)
+      memory
+      (record memory [:skills] skill-names))))
+
 (defn add-client-ids
   "Add `ids` to the queries and charts this conversation knows the client supplied.
   Earlier turns' ids are kept. A tool can persist a client-supplied query and a later turn read

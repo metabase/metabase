@@ -14,9 +14,11 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.timing :as timing]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.deepseek :as deepseek]
@@ -25,6 +27,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.typesafe :as typesafe]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
@@ -48,6 +51,8 @@
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "typesafe"   (throw (ex-info (tru "TypeSafe serves System One models, which cannot chat. Ask them questions with metabase.jev.client instead.")
+                                 {:provider provider}))
     "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -65,6 +70,7 @@
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "typesafe"   typesafe/list-models
     "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -87,7 +93,8 @@
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
   no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
-  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  operator loaded, `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead, and
+  `typesafe`, whose System One models are never offered for selection."
   [provider]
   ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
   ;; a provider that simply has no models
@@ -100,7 +107,7 @@
                       "openai"     openai/supported-models
                       "openrouter" openrouter/supported-models
                       "zai"        zai/supported-models
-                      ("azure" "google" "metabase" "vllm") nil
+                      ("azure" "google" "metabase" "typesafe" "vllm") nil
                       (throw (ex-info (str "Unknown LLM provider: " provider)
                                       {:provider provider})))]
     (into {}
@@ -317,6 +324,7 @@
                    completion      (:completionTokens usage 0)
                    cache-creation  (:cacheCreationTokens usage 0)
                    cache-read      (:cacheReadTokens usage 0)]
+               (timing/record! {:kind :model :tag tag :model model :ms (long (u/since-ms start-ms))})
                (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus            true
@@ -346,7 +354,7 @@
                  :cache-creation-tokens cache-creation
                  :cache-read-tokens     cache-read
                  :conversation-id       session-id
-                 :profile-id            profile-id
+                 :profile-id            (usage/valid-usage-profile-id profile-id)
                  :request-id            request-id
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))
@@ -528,7 +536,8 @@
                                      :model-name model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
-                                       :fast?       (metabot.settings/llm-fast-mode)}
+                                       :fast?       (and (metabot.settings/llm-fast-mode)
+                                                         (catalog/supports-fast-mode? provider-and-model))}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
@@ -573,6 +582,8 @@
   catch them.
 
   `opts` extends `tracking-opts` and may include:
+    :retry?              - When false, attempt the request only once.
+    :reasoning?          - When false, suppress optional provider reasoning.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot`, which is always checked.
@@ -608,6 +619,7 @@
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
+                         (contains? opts :reasoning?) (assoc :reasoning? (:reasoning? opts))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
@@ -650,7 +662,8 @@
 
               :else
               (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+                              {:parts parts})))))
+        (constantly (not (false? (:retry? opts))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

@@ -148,6 +148,7 @@
    [:charts {:optional true} [:map-of ::state-map-key ::chart]]
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
    [:todos {:optional true} [:sequential ::todo]]
+   [:skills {:optional true} [:sequential :string]]
    [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
    [:link-registry {:optional true} [:map-of ::state-map-key :string]]
    ;; JSON has no sets, so a state read back out of metabot_message arrives as a vector here and

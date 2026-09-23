@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -114,11 +113,23 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::tool-call-argument
+  "A JSON-shaped tool argument whose object keys can be strings or keywords at any depth."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::tool-call-argument]]
+   [:map-of {::mr/deliberately-open true, :description "nested tool call argument object"}
+    [:or :string :keyword] [:ref ::tool-call-argument]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::tool-call-argument])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -233,8 +244,8 @@
                         the derived config and the suppression rules, and :reasoning parts
                         survive into the replayed input.
     :fast?            - When true, request the provider's fast mode where the model
-                        supports it (Anthropic Opus fast mode); adapters without one
-                        ignore it
+                        supports it (direct Anthropic or OpenAI). Direct OpenAI uses
+                        standard serving when false; other adapters ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
                         provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map {:closed true}

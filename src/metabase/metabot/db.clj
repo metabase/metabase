@@ -314,6 +314,16 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
+(mu/defn recent-messages
+  "The latest `limit` live messages, newest first."
+  [conversation-id :- :string
+   limit :- ms/PositiveInt]
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :desc] [:id :desc]]
+              :limit limit}))
+
 (mu/defn insert-message-returning-pk!
   "Insert `message` and return its ID."
   [message :- ::metabot.schema/metabot-message.update]
@@ -347,6 +357,51 @@
                        (coll? id) (assoc :id [:in id]))]
     (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
                                                   :deleted_by_user_id deleted-by-user-id})))
+
+(defn conversation-used-tables
+  "The active tables that queries in `conversation-id`'s live messages have used, with their database names, most
+  recently used first so callers that cap the list keep the tables the conversation is actually working with."
+  [conversation-id]
+  (t2/query {:select   [:t.id :t.name :t.display_name :t.schema [:db.name :database_name]]
+             :from     [[:metabot_used_table :ut]]
+             :join     [[:metabot_message :m]    [:= :m.id :ut.message_id]
+                        [:metabase_table :t]     [:= :t.id :ut.table_id]
+                        [:metabase_database :db] [:= :db.id :t.db_id]]
+             :where    [:and
+                        [:= :m.conversation_id conversation-id]
+                        [:= :m.deleted_at nil]
+                        [:= :t.active true]]
+             :group-by [:t.id :t.name :t.display_name :t.schema :db.name]
+             :order-by [[[:max :m.created_at] :desc] [:t.id :asc]]}))
+
+(defn joinable-tables
+  "Active tables reachable from `table-ids` through a foreign key in either direction, excluding `table-ids`
+  themselves. Both directions matter: a fact table points at its dimensions, and the tables that point back at it
+  are often the ones worth joining next."
+  [table-ids]
+  (when (seq table-ids)
+    (let [ids  (vec (distinct table-ids))
+          cols [:t.id :t.name :t.display_name :t.schema [:db.name :database_name]]
+          q    (fn [table-join where]
+                 (t2/query {:select-distinct cols
+                            :from   [[:metabase_field :f]]
+                            :join   [[:metabase_field :tgt]   [:= :tgt.id :f.fk_target_field_id]
+                                     [:metabase_table :t]     table-join
+                                     [:metabase_database :db] [:= :db.id :t.db_id]]
+                            :where  [:and where [:= :t.active true] [:not [:in :t.id ids]]]}))]
+      (vec (distinct (concat (q [:= :t.id :tgt.table_id] [:in :f.table_id ids])
+                             (q [:= :t.id :f.table_id]   [:in :tgt.table_id ids])))))))
+
+(defn table-field-names
+  "Active field names for each of `table-ids`, as a map of table id to a vector of names in column order."
+  [table-ids]
+  (when (seq table-ids)
+    (->> (t2/query {:select   [:table_id :name]
+                    :from     [:metabase_field]
+                    :where    [:and [:in :table_id table-ids] [:= :active true]]
+                    :order-by [:table_id :position]})
+         (group-by :table_id)
+         (into {} (map (fn [[table-id rows]] [table-id (mapv :name rows)]))))))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."

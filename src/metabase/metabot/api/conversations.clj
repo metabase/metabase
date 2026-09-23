@@ -14,6 +14,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.follow-up-prompts :as follow-up-prompts]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -156,6 +157,16 @@
   [{:keys [id]} :- ConversationIdParams]
   (let [conversation (api/read-check :model/MetabotConversation id)]
     (conversation-title/title-status id (:title conversation))))
+
+(api.macros/defendpoint :post "/:id/follow-up-prompts" :- [:map {:closed true}
+                                                           [:prompts [:vector {:max 3} ms/NonBlankString]]]
+  "Suggest follow-up prompts for the latest completed response in this conversation."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [message_id]} :- [:map {:closed true} [:message_id ms/UUIDString]]
+   _request]
+  (api/read-check :model/MetabotConversation id)
+  {:prompts (follow-up-prompts/generate id message_id)})
 
 (defn- with-context-window
   "Attach the window each message's `contextTokens` should be read against. It comes

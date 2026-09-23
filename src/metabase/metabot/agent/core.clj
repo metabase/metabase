@@ -10,11 +10,14 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.data-sources :as data-sources]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.routing :as routing]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.timing :as timing]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -155,7 +158,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :nlq-old :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -179,6 +182,10 @@
   [part]
   (and (= (:type part) :tool-output)
        (some? (get-in part [:result :structured-output]))))
+
+(def ^:private chart-terminal-tools
+  "Tools that deliver a chart. They end the turn only when routing judged the chart to be the whole answer."
+  #{"construct_notebook_query" "create_chart" "edit_chart"})
 
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
@@ -453,6 +460,7 @@
   to use that profile. Profiles not listed here have no profile-level permission gate."
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
+   :nlq-old                   :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools
    :explorations              :permission/metabot-nlq})
 
@@ -477,17 +485,57 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/profile->tools profile capabilities)
+        all-tools    (profiles/profile->tools profile capabilities)
+        prompt       (routing/latest-prompt messages)
+        prefetch?    (and prompt (:routing? profile) (data-sources/enabled? profile))
+        known        (when prefetch? (data-sources/known-data-sources conversation-id))
+        ;; searched speculatively, alongside routing, and used only if routing says the prompt needs new data
+        search       (when prefetch?
+                       (data-sources/start-search
+                        (tools/wrap-tools-with-state (select-keys all-tools data-sources/search-tool-names)
+                                                     nil metabot-id profile-id)
+                        prompt
+                        (map :name known)))
+        routing      (when (:routing? profile)
+                       (routing/route messages context (keys all-tools) {:known-data-sources known}))
+        routed?      (and routing (not (:escalate? routing)))
+        ;; skills stay loaded for the rest of the conversation once any turn needed them
+        skill-ids    (into (set (map keyword (:skills state))) (:skills routing))
+        profile      (cond-> profile
+                       (seq skill-ids) (update :always-on-skills (fnil into []) skill-ids)
+                       routed?        (assoc :routed? true)
+                       ;; Nothing is owed beyond the chart, so building it ends the turn rather than
+                       ;; spending another completion on prose the user did not ask for.
+                       (:chart-is-the-answer? routing)
+                       (update :terminal-tools (fnil into #{}) chart-terminal-tools))
+        base-tools   (cond-> all-tools
+                       routed? (routing/limit-tools (:tools routing) skill-ids context))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
-        memory       (-> (memory/initialize messages seeded context)
-                         (assoc :conversation-id conversation-id)
-                         (memory/add-client-ids (client-content-ids context)))
+        memory       (cond-> (-> (memory/initialize messages seeded context)
+                                 (assoc :conversation-id conversation-id)
+                                 (memory/add-client-ids (client-content-ids context)))
+                       (seq skill-ids) (memory/set-skills skill-ids))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)
+        ;; Prefetched sources when the turn needs new ones, always alongside the ones this conversation already
+        ;; queried: no tool result carries those forward on a turn the prefetch answered.
+        data-sources (when search
+                       (let [read-fn    (get-in tools ["read_resource" :fn])
+                             candidates (data-sources/known-data-source-candidates conversation-id routing)]
+                         (if (:needs-data-lookup? routing)
+                           (data-sources/describe search prompt read-fn candidates)
+                           (do (future-cancel search)
+                               (data-sources/describe-known candidates read-fn)))))
+        context      (cond-> context
+                       data-sources (assoc :relevant_data_sources data-sources))]
     (log/info "Starting agent" {:profile  profile-id
+                                :routing  (select-keys routing [:intents :escalate? :needs-data-lookup?
+                                                                :chart-is-the-answer?])
+                                :prefetched-data-sources? (some? data-sources)
+                                :skills   skill-ids
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
@@ -580,6 +628,9 @@
                                                  :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
                                  reduced-result))
           parts              @parts-atom]
+      (doseq [{:keys [function duration-ms]} parts
+              :when (and function duration-ms)]
+        (timing/record! {:kind :tool :tool function :ms (long duration-ms)}))
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom memory/set-link-registry @link-registry-atom)
       ;; Capture response for debug log
@@ -720,7 +771,8 @@
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})
-                      metabot.perms/*cache*                    (atom {})]
+                      metabot.perms/*cache*                    (atom {})
+                      timing/*timings*                         (atom [])]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
@@ -742,7 +794,8 @@
                                 {result        :result
                                  iteration     :iteration
                                  finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
-                                                                    (iterate loop-step)
+                                                                    (iterate #(binding [timing/*step* (:iteration %)]
+                                                                                (loop-step %)))
                                                                     (drop-while #(= :continue (:status %)))
                                                                     first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
@@ -791,4 +844,7 @@
                       (log/errorf "Agent loop error: %s" msg)))
                   (rf init (error-part e)))
                 (finally
+                  (log/info "Metabot turn timing" (assoc (timing/summary @timing/*timings*)
+                                                         :profile  profile-id
+                                                         :total-ms (long (u/since-ms start-ms))))
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

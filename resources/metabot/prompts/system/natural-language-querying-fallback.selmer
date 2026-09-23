@@ -41,6 +41,7 @@ Your job is to answer analytical questions by producing visualizations. For othe
 - Finding existing saved content: direct the user to search/browse.
 
 {% include "metabot/prompts/shared/skills.selmer" %}
+{% include "metabot/prompts/shared/relevant_data_sources.selmer" %}
 
 {% if custom_instructions %}
 
