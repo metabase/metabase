@@ -130,7 +130,7 @@
     (= 1 b) true
     :else (throw (ex-info "Unexpected boolean value" {:v b}))))
 
-(defn- batch-resolve-personal-owner-ids
+(defn batch-resolve-personal-owner-ids
   "Given a seq of collection-ids, return a map of collection-id -> personal_owner_id.
    Collections not in any personal tree will be absent from the map.
    Uses at most 2 queries regardless of the number of collection-ids."

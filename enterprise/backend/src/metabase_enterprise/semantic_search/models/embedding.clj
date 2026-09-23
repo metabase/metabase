@@ -1,11 +1,18 @@
 (ns metabase-enterprise.semantic-search.models.embedding
-  "Codec for the embedding vectors stored in the app DB by the Lucene semantic-search backend."
+  "`:model/SemanticSearchEmbedding` and the codec for the embedding vectors it stores in the app DB.
+
+  One row per search document per embedding space. The Lucene semantic-search backend treats this table as the
+  source of truth and each node's Lucene index as a disposable materialization of it."
   (:require
    [buddy.core.codecs :as buddy-codecs]
-   [buddy.core.hash :as buddy-hash])
+   [buddy.core.hash :as buddy-hash]
+   [metabase.models.interface :as mi]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer ByteOrder)
-   (java.nio.charset StandardCharsets)))
+   (java.nio.charset StandardCharsets)
+   (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,3 +47,19 @@
   (-> (.getBytes (or text "") StandardCharsets/UTF_8)
       buddy-hash/sha256
       buddy-codecs/bytes->hex))
+
+;;;; Model
+
+(derive :model/SemanticSearchEmbedding :metabase/model)
+
+(methodical/defmethod t2/table-name :model/SemanticSearchEmbedding [_model] :semantic_search_embedding)
+
+(defn- blob->bytes ^bytes [v]
+  ;; H2 hands back a java.sql.Blob where Postgres and MySQL hand back a byte array.
+  (if (instance? Blob v)
+    (let [^Blob b v] (.getBytes b 1 (int (.length b))))
+    v))
+
+(t2/deftransforms :model/SemanticSearchEmbedding
+  {:embedding {:in identity :out blob->bytes}
+   :document  mi/transform-json})

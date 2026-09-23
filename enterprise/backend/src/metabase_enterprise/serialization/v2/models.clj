@@ -152,6 +152,7 @@
    "SearchIndexMetadata"
    "Secret"
    "SecurityAdvisory"
+   "SemanticSearchEmbedding"
    "SemanticSearchTokenTracking"
    "Session"
    "SourceDimensionDaily"

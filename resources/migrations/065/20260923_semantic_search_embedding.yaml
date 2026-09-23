@@ -1,0 +1,134 @@
+## Create semantic_search_embedding: the app-DB home of the vectors behind semantic search.
+##
+## The Lucene semantic-search backend keeps its vector index on each node's local disk, rebuilt from this
+## table. Embeddings are the expensive part (network calls and tokens), so they live in the app DB: that
+## survives restarts, rides along in backups, and lets every node in a cluster sync a local index from
+## shared state. One row per (embedding space, search document); `content_hash` keys the embedding cache,
+## so a metadata-only change (archiving, a view-count bump) never calls the embedding provider again.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:00
+      author: paolo
+      comment: Add semantic_search_embedding
+      changes:
+        - createTable:
+            tableName: semantic_search_embedding
+            remarks: Embedding vectors for search documents, one row per search document per embedding space
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: embedding_space_id
+                  type: varchar(128)
+                  remarks: Identifies the provider/model/dimensions the vector was produced in; vectors from different spaces are not comparable
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(64)
+                  remarks: The search model of the indexed entity, e.g. card or dashboard
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: varchar(64)
+                  remarks: ID of the indexed entity within its search model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: Name of the indexed entity, kept for diagnostics
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  remarks: Whether the indexed entity is archived
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_hash
+                  type: char(64)
+                  remarks: SHA-256 hex of the embedded text; rows sharing a hash reuse one embedding
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dims
+                  type: int
+                  remarks: Number of components in the embedding
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding
+                  type: ${blob.type}
+                  remarks: The vector as little-endian float32, 4 bytes per component
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document
+                  type: ${text.type}
+                  remarks: JSON of the whole search document, so the local vector index can be rebuilt from this table alone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this row was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this row was last written, used as the watermark when nodes sync their local index
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:01
+      author: paolo
+      comment: Add unique constraint on semantic_search_embedding space/model/model_id
+      changes:
+        - addUniqueConstraint:
+            tableName: semantic_search_embedding
+            columnNames: embedding_space_id, model, model_id
+            constraintName: uq_semantic_search_embedding_space_model_model_id
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:02
+      author: paolo
+      comment: Index semantic_search_embedding by embedding space and update time
+      changes:
+        - createIndex:
+            tableName: semantic_search_embedding
+            indexName: idx_semantic_search_embedding_space_updated_at
+            columns:
+              - column:
+                  name: embedding_space_id
+              - column:
+                  name: updated_at
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:03
+      author: paolo
+      comment: Index semantic_search_embedding by embedding space and content hash
+      changes:
+        - createIndex:
+            tableName: semantic_search_embedding
+            indexName: idx_semantic_search_embedding_space_content_hash
+            columns:
+              - column:
+                  name: embedding_space_id
+              - column:
+                  name: content_hash
+      rollback: # nothing to do: rolling back the createTable changeset drops the whole table

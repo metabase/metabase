@@ -1,0 +1,176 @@
+(ns metabase-enterprise.semantic-search.lucene.store
+  "Reads and writes `semantic_search_embedding`, the app-DB table the Lucene semantic search backend indexes from.
+
+  Every node writes here; every node syncs its own Lucene index from here. Rows are scoped by embedding space, so
+  switching embedding model starts a fresh corpus without disturbing the old one."
+  (:require
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.models.embedding :as semantic.models.embedding]
+   [metabase.app-db.core :as mdb]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn space-id
+  "Identifier of the embedding space the configured model writes into. Rows in other spaces are not ours.
+
+  Throws when the configured embedding provider is not installed."
+  []
+  (:embedding-space-id (semantic.embedding/resolve-model (semantic.embedding/get-configured-model))))
+
+;;;; Writing
+
+(defn- cached-embeddings
+  "Map of content hash → stored embedding bytes, for those of `hashes` already embedded in `space`."
+  [space hashes]
+  (when-let [hashes (not-empty (set hashes))]
+    (into {}
+          (map (juxt :content_hash :embedding))
+          (t2/select [:model/SemanticSearchEmbedding :content_hash :embedding]
+                     {:where [:and
+                              [:= :embedding_space_id space]
+                              [:in :content_hash hashes]]}))))
+
+(defn- embed-texts!
+  "Map of content hash → embedding bytes for `texts`, or `{}` when the embedder cannot be called right now.
+
+  Never throws: an unavailable embedding service must not stop metadata updates, and the periodic repair
+  re-embeds whatever was skipped."
+  [model texts]
+  (if (semantic.embedding/embedder-circuit-untrusted?)
+    (do
+      (log/warn "Skipping semantic search embeddings: the embedding service circuit breaker is not closed")
+      {})
+    (let [collected (atom {})]
+      (try
+        (semantic.embedding/process-embeddings-streaming
+         model
+         (vec texts)
+         (fn [text->embedding] (swap! collected merge text->embedding) nil)
+         {:type :index :record-tokens? true})
+        (into {}
+              (map (fn [[text embedding]]
+                     [(semantic.models.embedding/content-hash text)
+                      (semantic.models.embedding/floats->bytes embedding)]))
+              @collected)
+        (catch Throwable t
+          (log/warnf "Failed to generate semantic search embeddings, skipping this batch: %s" (ex-message t))
+          {})))))
+
+(defn- document-row
+  "The table row for one ingestion document, or nil when we have no embedding for it."
+  [{:keys [space dims owner-ids embeddings]} {::keys [content-hash] :as document}]
+  (when-let [embedding (get embeddings content-hash)]
+    {:embedding_space_id space
+     :model              (:model document)
+     :model_id           (str (:id document))
+     :name               (:name document)
+     :archived           (boolean (:archived document))
+     :content_hash       content-hash
+     :dims               dims
+     :embedding          embedding
+     ;; The whole document travels with the row so a node can rebuild its Lucene index from this table alone.
+     :document           (-> document
+                             (dissoc ::content-hash)
+                             (assoc :personal_owner_id (get owner-ids (:collection_id document))))}))
+
+(defn- write-rows!
+  "Replace `rows` in one transaction. Toucan has no portable upsert, so delete the ids then insert them."
+  [space rows]
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (doseq [[model model-rows] (group-by :model rows)]
+        (t2/delete! :model/SemanticSearchEmbedding
+                    :embedding_space_id space
+                    :model model
+                    :model_id [:in (map :model_id model-rows)]))
+      (t2/insert! :model/SemanticSearchEmbedding rows))))
+
+(defn upsert-documents!
+  "Persist one batch of ingestion `documents` into `semantic_search_embedding`.
+
+  Text that is already embedded in this space reuses the stored vector, so metadata-only changes — an archive, a
+  view-count bump — never call the embedding provider. Documents whose embedding is missing and cannot be produced
+  right now are skipped, and the periodic repair backfills them.
+
+  Returns `{:rows <the rows written> :report {model n}}`."
+  [documents]
+  (let [documents (vec documents)]
+    (if (empty? documents)
+      {:rows [] :report {}}
+      (let [model      (semantic.embedding/get-configured-model)
+            space      (:embedding-space-id (semantic.embedding/resolve-model model))
+            hashed     (mapv #(assoc % ::content-hash (semantic.models.embedding/content-hash (:embeddable_text %)))
+                             documents)
+            cached     (cached-embeddings space (map ::content-hash hashed))
+            to-embed   (into #{}
+                             (comp (remove #(contains? cached (::content-hash %)))
+                                   (map :embeddable_text))
+                             hashed)
+            embeddings (merge cached (when (seq to-embed) (embed-texts! model to-embed)))
+            context    {:space      space
+                        :dims       (:vector-dimensions model)
+                        :owner-ids  (semantic.index/batch-resolve-personal-owner-ids (map :collection_id documents))
+                        :embeddings embeddings}
+            rows       (into [] (keep (partial document-row context)) hashed)]
+        (when (seq rows)
+          (write-rows! space rows))
+        {:rows rows :report (frequencies (map :model rows))}))))
+
+(defn delete-documents!
+  "Delete the rows for `model` and `ids` in the current embedding space, returning the number deleted."
+  [model ids]
+  (if (seq ids)
+    (t2/delete! :model/SemanticSearchEmbedding
+                :embedding_space_id (space-id)
+                :model model
+                :model_id [:in (map str ids)])
+    0))
+
+(defn delete-space!
+  "Delete every row of `space`, returning the number deleted."
+  [space]
+  (t2/delete! :model/SemanticSearchEmbedding :embedding_space_id space))
+
+;;;; Reading
+
+(defn space-stats
+  "`{:n <row count> :mx <latest updated_at>}` for `space` — the watermark a node syncs its Lucene index against."
+  [space]
+  (t2/query-one {:select [[[:count :*] :n] [[:max :updated_at] :mx]]
+                 :from   [:semantic_search_embedding]
+                 :where  [:= :embedding_space_id space]}))
+
+(defn rows-after
+  "Up to `limit` rows of `space` whose `id` is above `after-id`, lowest id first.
+
+  `since` bounds the scan to rows written at or after it; pass nil to walk the whole space."
+  [space after-id since limit]
+  (t2/select :model/SemanticSearchEmbedding
+             {:where    (cond-> [:and
+                                 [:= :embedding_space_id space]
+                                 [:> :id after-id]]
+                          since (conj [:>= :updated_at since]))
+              :order-by [[:id :asc]]
+              :limit    limit}))
+
+(defn model-ids
+  "Every `{:model … :model_id …}` in `space`, for reconciling a local index against the table."
+  [space]
+  (t2/query {:select [:model :model_id]
+             :from   [:semantic_search_embedding]
+             :where  [:= :embedding_space_id space]}))
+
+(defn rows-for-model-ids
+  "Rows of `space` for the given `[model model-id]` pairs."
+  [space model+ids]
+  (into []
+        (mapcat (fn [[model pairs]]
+                  (t2/select :model/SemanticSearchEmbedding
+                             {:where [:and
+                                      [:= :embedding_space_id space]
+                                      [:= :model model]
+                                      [:in :model_id (map second pairs)]]})))
+        (group-by first model+ids)))

@@ -121,6 +121,7 @@
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/Revision
+    :model/SemanticSearchEmbedding
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret

@@ -113,6 +113,7 @@
     :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
+    :model/SemanticSearchEmbedding
     :model/SemanticSearchTokenTracking
     :model/SourceDimensionDaily
     :model/SourceDimensionProfileDaily
