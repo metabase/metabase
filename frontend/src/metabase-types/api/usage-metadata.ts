@@ -1,4 +1,4 @@
-import type { CardId, CardType } from "./card";
+import type { Card, CardId, CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { Measure } from "./measure";
@@ -144,6 +144,11 @@ export type UsageMetadataCandidateMatch =
       relation: UsageMetadataMatchRelation;
       entity_type: "segment";
       entity: Pick<Segment, "id" | "name" | "description">;
+    }
+  | {
+      relation: UsageMetadataMatchRelation;
+      entity_type: "metric";
+      entity: Pick<Card, "id" | "name" | "description">;
     };
 
 export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {

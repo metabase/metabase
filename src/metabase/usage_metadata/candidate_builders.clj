@@ -383,25 +383,33 @@
   [cards card-index]
   (into [] (keep #(raw-metric-candidate % card-index)) cards))
 
-(defn- existing-metric-definition-signatures
-  "Signatures of every persisted Metric's definition, used to dedup newly mined Metric candidates.
+(defn existing-metric-entities
+  "Every unarchived Metric with the canonical signature of its definition, as comparable to mined Metric candidates.
 
   A card whose definition fails to resolve is skipped (logged at `:warn`, not `:debug`) rather than
   hidden as ordinary mining noise: unlike raw candidate mining, a missed signature here means we've
   lost the ability to recognize that an equivalent Metric already exists, and may go on to suggest
   creating a duplicate."
   []
-  (let [metric-cards (usage-metadata.db/unarchived-metric-cards)
-        card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
-    (into #{}
-          (keep (fn [card]
-                  (some-> (query-utils/ignoring-exceptions
-                           #(prepare-metric-definition card card-index)
-                           #(log/warn % "Failed to prepare existing Metric definition for dedup" {:card-id (:id card)})
-                           (constantly nil))
-                          :definition
-                          candidate-mining/canonical-signature)))
-          metric-cards)))
+  (lib-be/with-metadata-provider-cache
+    (let [metric-cards (usage-metadata.db/unarchived-metric-cards)
+          card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
+      (into []
+            (keep (fn [card]
+                    (when-let [signature (some-> (query-utils/ignoring-exceptions
+                                                  #(prepare-metric-definition card card-index)
+                                                  #(log/warn % "Failed to prepare existing Metric definition"
+                                                             {:card-id (:id card)})
+                                                  (constantly nil))
+                                                 :definition
+                                                 candidate-mining/canonical-signature)]
+                      (assoc (select-keys card [:id :name :description]) :signature signature))))
+            metric-cards))))
+
+(defn- existing-metric-definition-signatures
+  "Signatures of every persisted Metric's definition, used to dedup newly mined Metric candidates."
+  []
+  (into #{} (map :signature) (existing-metric-entities)))
 
 (defn- metric-source-sort-key
   [{source-item ::candidate-mining/source-item}]
@@ -616,17 +624,13 @@
      (let [{:keys [cards model-index]} (load-batch-inputs opts)]
        (cleanup-observations cards model-index include-ineligible?)))))
 
-(defn candidate-analysis-inputs
-  "Load instance-wide inputs reused by every card batch in one materialization run."
-  []
-  (lib-be/with-metadata-provider-cache
-    {:existing-metric-signatures (existing-metric-definition-signatures)}))
-
 (defn candidate-batch-observations
-  "Analyze one selected Card batch once and return every persisted candidate kind."
-  [{:keys [existing-metric-signatures]} {:keys [include-ineligible?] :as opts}]
+  "Analyze one selected Card batch once and return every persisted candidate kind.
+
+  Metrics that already exist are kept: reconciliation marks them modeled rather than hiding them."
+  [{:keys [include-ineligible?] :as opts}]
   (lib-be/with-metadata-provider-cache
     (let [{:keys [cards card-index model-index]} (load-batch-inputs opts)]
       {:cleanup      (cleanup-observations cards model-index include-ineligible?)
        :table-report (table-observations cards model-index)
-       :metrics      (metric-observations cards card-index existing-metric-signatures)})))
+       :metrics      (metric-observations cards card-index #{})})))

@@ -248,9 +248,11 @@
                        table-id (conj [:= :table_id table-id]))}))
 
 (mu/defn unarchived-metric-cards
-  "The id, name, type, Database id, query, and schema of the unarchived metric Cards."
+  "The id, name, description, type, Database id, query, and schema of the unarchived metric Cards."
   []
-  (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema] :type "metric" :archived false))
+  (t2/select [:model/Card :id :name :description :type :database_id :dataset_query :card_schema]
+             :type "metric"
+             :archived false))
 
 ;;; ------------------------------------------------ Candidate sources ------------------------------------------------
 

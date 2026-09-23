@@ -192,11 +192,25 @@
         (mapcat #(usage-metadata.db/published-table-ids (vec %)))
         (partition-all reconciliation-query-batch-size table-ids)))
 
-(defn reconcile-candidates!
-  "Reconcile all Measure and Segment candidates in `run-id` using one indexed Library-entity population.
+(defn- metric-reconciliations
+  "Mark each Metric candidate in `run-id` whose definition an existing Metric already has as modeled by that Metric.
 
-  Existing definitions are selected and normalized once per `[candidate-type table-id]`. Match rows and status updates
-  are written in bounded batches."
+  Unlike Measures and Segments, a Metric does not live on a published Table, so every Metric candidate is compared."
+  [run-id]
+  (when-let [candidates (not-empty (usage-metadata.db/run-candidates [:id :signature] run-id [:metric]))]
+    (let [metrics-by-signature (group-by :signature (candidate-builders/existing-metric-entities))]
+      (mapv (fn [candidate]
+              (let [metrics (metrics-by-signature (:signature candidate))]
+                {:candidate  candidate
+                 :status     (if (seq metrics) :modeled :missing)
+                 :match-rows (mapv #(candidate-repository/candidate-match-row candidate % :exact) metrics)}))
+            candidates))))
+
+(defn reconcile-candidates!
+  "Reconcile all Measure, Segment, and Metric candidates in `run-id` using one indexed Library-entity population.
+
+  Existing definitions are selected and normalized once per `[candidate-type table-id]` (once in all for Metrics).
+  Match rows and status updates are written in bounded batches."
   [run-id]
   (let [candidates          (usage-metadata.db/run-candidates [:id :candidate_type :table_id :signature :definition]
                                                               run-id
@@ -207,12 +221,13 @@
                                         (map (juxt :candidate_type :table_id)))
                                   candidates)
         existing-index      (candidate-repository/existing-entity-index candidate-keys)
-        reconciliations     (mapv (fn [{:keys [candidate_type table_id] :as candidate}]
-                                    (candidate-reconciliation
-                                     candidate
-                                     (contains? published-table-ids table_id)
-                                     (get existing-index [candidate_type table_id] [])))
-                                  candidates)]
+        reconciliations     (into (mapv (fn [{:keys [candidate_type table_id] :as candidate}]
+                                          (candidate-reconciliation
+                                           candidate
+                                           (contains? published-table-ids table_id)
+                                           (get existing-index [candidate_type table_id] [])))
+                                        candidates)
+                                  (metric-reconciliations run-id))]
     (doseq [match-rows (->> reconciliations
                             (mapcat :match-rows)
                             (partition-all reconciliation-write-batch-size))]
@@ -320,13 +335,13 @@
       (update-existing-evidence! updates))))
 
 (defn- persist-card-batch!
-  [run-id analysis-inputs card-ids]
+  [run-id card-ids]
   (let [opts {:card-ids (set card-ids)
               :min-view-count (:minimum-recent-view-count source-config)
               :view-count-window-days (:usage-window-days source-config)
               :include-ineligible? true}
         {:keys [cleanup table-report metrics]}
-        (candidate-builders/candidate-batch-observations analysis-inputs opts)
+        (candidate-builders/candidate-batch-observations opts)
         observations (concat (:measures cleanup)
                              (:segments cleanup)
                              (map table-candidate-observation (:candidates table-report))
@@ -470,12 +485,11 @@
 (defn materialize!
   "Populate `run` and atomically promote it while retiring old snapshot payloads."
   [{run-id :id :as run}]
-  (let [card-ids        (candidate-mining/qualified-card-ids
-                         (:minimum-recent-view-count source-config)
-                         (:usage-window-days source-config))
-        analysis-inputs (candidate-builders/candidate-analysis-inputs)]
+  (let [card-ids (candidate-mining/qualified-card-ids
+                  (:minimum-recent-view-count source-config)
+                  (:usage-window-days source-config))]
     (doseq [batch (partition-all source-card-batch-size card-ids)]
-      (persist-card-batch! run-id analysis-inputs batch))
+      (persist-card-batch! run-id batch))
     (prune-ineligible-candidates! run-id)
     (prune-non-closed-segment-candidates! run-id)
     (prune-non-closed-measure-candidates! run-id)

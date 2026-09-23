@@ -111,7 +111,7 @@
 (mr/def ::candidate-match
   [:map
    [:relation [:enum :exact :same-base :subset :superset :overlap]]
-   [:entity_type [:enum :measure :segment]]
+   [:entity_type [:enum :measure :segment :metric]]
    [:entity [:map
              [:id ms/PositiveInt]
              [:name :string]

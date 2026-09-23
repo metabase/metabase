@@ -640,8 +640,7 @@
                                                            :source_config     {}
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
-    (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])
-                                candidate-builders/candidate-analysis-inputs (constantly {})]
+    (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])]
       (let [run (queued-run!)]
         (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
@@ -720,10 +719,8 @@
                                              (is (= 10 minimum-view-count))
                                              (is (= 90 window-days))
                                              [1])
-       candidate-builders/candidate-analysis-inputs (constantly {:analysis :inputs})
        candidate-builders/candidate-batch-observations
-       (fn [analysis-inputs opts]
-         (is (= {:analysis :inputs} analysis-inputs))
+       (fn [opts]
          (reset! batch-opts opts)
          {:cleanup {:measures [], :segments []}
           :table-report {:candidates [], :unsupported-source-items []}
@@ -764,9 +761,8 @@
                          :view-count 20}]
         (mt/with-dynamic-fn-redefs
           [candidate-mining/qualified-card-ids (constantly [(:id card)])
-           candidate-builders/candidate-analysis-inputs (constantly {})
            candidate-builders/candidate-batch-observations
-           (fn [_analysis-inputs _opts]
+           (fn [_opts]
              {:cleanup {:measures [], :segments []}
               :table-report
               {:candidates
@@ -826,6 +822,38 @@
                     (by-type :table)))
             (is (= (dissoc (lib/normalize definition) :lib/metadata)
                    (:definition (by-type :metric))))))))))
+
+(deftest metric-reconciliation-marks-existing-metrics-modeled-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}}
+                 :model/UsageMetadataCandidate existing-candidate
+                 (assoc (candidate-row (:id run) (mt/id :orders))
+                        :candidate_type :metric
+                        :signature      "existing-metric"
+                        :signature_hash (apply str (repeat 64 "1")))
+                 :model/UsageMetadataCandidate new-candidate
+                 (assoc (candidate-row (:id run) (mt/id :orders))
+                        :candidate_type :metric
+                        :signature      "new-metric"
+                        :signature_hash (apply str (repeat 64 "2")))]
+    (mt/with-dynamic-fn-redefs [candidate-builders/existing-metric-entities
+                                (constantly [{:id 4242, :name "Revenue", :description "Total revenue"
+                                              :signature "existing-metric"}])]
+      (reconcile-candidates! (:id run)))
+    (testing "a Metric candidate an existing Metric already defines is modeled by it"
+      (is (= {(:id existing-candidate) :modeled
+              (:id new-candidate)      :missing}
+             (t2/select-fn->fn :id :modeling_status :model/UsageMetadataCandidate
+                               :id [:in [(:id existing-candidate) (:id new-candidate)]])))
+      (is (=? [{:candidate_id       (:id existing-candidate)
+                :relation           :exact
+                :entity_id          4242
+                :entity_name        "Revenue"
+                :entity_description "Total revenue"}]
+              (t2/select :model/UsageMetadataCandidateMatch
+                         :candidate_id [:in [(:id existing-candidate) (:id new-candidate)]]))))))
 
 (deftest persisted-observations-merge-evidence-in-batches-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running

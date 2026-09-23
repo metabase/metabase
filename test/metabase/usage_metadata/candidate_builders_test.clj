@@ -211,13 +211,13 @@
        (fn [actual-cards actual-card-index existing-signatures]
          (is (= cards actual-cards))
          (is (= card-index actual-card-index))
-         (is (= #{"existing"} existing-signatures))
+         (testing "existing Metrics are kept for reconciliation to mark modeled, not dropped here"
+           (is (= #{} existing-signatures)))
          [])}
       #(is (= {:cleanup {:measures [], :segments []}
                :table-report {:candidates [], :unsupported-source-items []}
                :metrics []}
               (candidate-builders/candidate-batch-observations
-               {:existing-metric-signatures #{"existing"}}
                {:card-ids #{1}, :include-ineligible? true}))))
     (is (= 1 @source-calls))
     (is (= 1 @lineage-calls))))
@@ -679,6 +679,28 @@
         (testing "the complete identical definition is excluded"
           (is (empty? (metric-observations
                        {:card-ids (hash-set card-id)}))))))))
+
+(deftest persisted-metric-observations-keep-existing-metrics-for-reconciliation-test
+  (let [candidate-query (orders-filtered-metric-query 2)]
+    (mt/with-temp [:model/Card {card-id :id} {:name          "candidate metric source"
+                                              :type          :question
+                                              :dataset_query candidate-query
+                                              :view_count    0}
+                   :model/Card {metric-id :id} {:name          "existing identical metric"
+                                                :description   "Already in the Library"
+                                                :type          :metric
+                                                :dataset_query candidate-query}]
+      (let [[metric & more] (:metrics (candidate-builders/candidate-batch-observations
+                                       {:card-ids (hash-set card-id), :include-ineligible? true}))]
+        (testing "the persisted snapshot keeps a Metric that already exists"
+          (is (some? metric))
+          (is (empty? more)))
+        (testing "and it carries the same signature as the existing Metric, so reconciliation can match them"
+          (is (=? [{:id          metric-id
+                    :name        "existing identical metric"
+                    :description "Already in the Library"
+                    :signature   (candidate-mining/canonical-signature (:definition metric))}]
+                  (filter #(= metric-id (:id %)) (candidate-builders/existing-metric-entities)))))))))
 
 (deftest candidate-metrics-keep-different-temporal-grains-distinct-test
   (mt/with-temp [:model/Card {card-id :id} {:name "monthly candidate metric"
