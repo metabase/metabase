@@ -1,5 +1,6 @@
 (ns metabase.jekyll-mode.file-watcher
   (:require
+   [java-time.api :as t]
    [metabase.jekyll-mode.files :as files]
    [metabase.jekyll-mode.load :as load]
    [metabase.jekyll-mode.writeback :as writeback]
@@ -7,7 +8,8 @@
    [metabase.util.log :as log]
    [nextjournal.beholder :as beholder])
   (:import
-   [java.nio.file Files LinkOption]))
+   [java.nio.file Files LinkOption]
+   (java.util.concurrent ArrayBlockingQueue Executors LinkedBlockingDeque ScheduledExecutorService TimeUnit)))
 
 (defonce ^:private watcher (atom nil))
 
@@ -21,6 +23,39 @@
     (reset! watcher nil)))
 
 (defonce ^:private events (atom []))
+(defonce ^:private write-queue (ArrayBlockingQueue. 200))
+
+(defn- writer-thread-fn
+  [cb]
+  (loop [last-ping nil
+         ping-time (.poll write-queue)]
+    (let [now (t/instant)]
+      (cond
+        ping-time
+        (recur ping-time (.poll write-queue))
+
+        (and last-ping
+             (> (t/time-between last-ping now :millis) 1000))
+        (do
+          (try
+            (cb)
+            (catch Exception e
+              (log/error e "Error in write process")))
+          (recur nil (.take write-queue)))
+
+        :else
+        (do
+          (Thread/sleep 5)
+          (recur last-ping (.poll write-queue)))))))
+
+(defn- start-writer-thread
+  [cb]
+  (Thread/startVirtualThread
+   (fn []
+     (#'writer-thread-fn cb))))
+
+(def writer-thread (delay (start-writer-thread
+                           (fn [] (println "TEST")))))
 
 (defn- on-file-event [ev]
   (let [dir? (Files/isDirectory (:path ev) (u/varargs LinkOption))]
