@@ -95,26 +95,37 @@
 
 ;;; State
 
-(defn- server-key
-  "`server` as part of a file name: its host and effective port, such as `10.193.193.227-8765`, with an `https-`
-  prefix for HTTPS. `http://host` and `https://host` are different servers; `https://host:443` is `https://host`."
+(defn- server-origin
+  "`[scheme host effective-port]` of `server`, so `https://host` and `https://host:443` are one server."
   [server]
   (let [uri    (java.net.URI. server)
-        https? (= "https" (some-> (.getScheme uri) str/lower-case))
-        port   (if (pos? (.getPort uri)) (.getPort uri) (if https? 443 80))]
-    (str (when https? "https-") (.getHost uri) "-" port)))
+        scheme (str/lower-case (or (.getScheme uri) "http"))]
+    [scheme (.getHost uri) (if (pos? (.getPort uri)) (.getPort uri) (if (= "https" scheme) 443 80))]))
+
+(defn- server-key
+  "`server` as part of a file name, such as `http-10.193.193.227-8765`. Every key starts with its scheme, so no host
+  name can make two servers share one."
+  [server]
+  (str/join "-" (server-origin server)))
+
+(defn- state-file-path [source key]
+  (str (fs/path u/project-root-directory "local" "papercuts" (str "scan-state." (name source) (some->> key (str ".")) ".edn"))))
 
 (defn default-state-file
   "Progress file for `source` and `server` in the gitignored `local/` directory of this checkout."
   [source server]
   ;; One file per server: a session scanned for one server must still be scanned for another.
-  (str (fs/path u/project-root-directory "local" "papercuts"
-                (str "scan-state." (name source) "." (server-key server) ".edn"))))
+  (state-file-path source (server-key server)))
 
-(defn- legacy-state-file
-  "The single progress file used before there was one per server."
-  [source]
-  (str (fs/path u/project-root-directory "local" "papercuts" (str "scan-state." (name source) ".edn"))))
+(defn earlier-state-files
+  "Where progress for `server` was kept before, newest first: keys without the `http-` prefix or an implied port, and
+  the single file from before there was one per server."
+  [source server]
+  (let [[scheme host port] (server-origin server)
+        explicit-port      (let [p (.getPort (java.net.URI. server))] (when (pos? p) p))]
+    (distinct [(state-file-path source (str (when (= "https" scheme) "https-") host "-" port))
+               (state-file-path source (str host (some->> explicit-port (str "-"))))
+               (state-file-path source nil)])))
 
 (defn- log-file [state-file]
   ;; Only the file name is rewritten, so the log sits beside its state file. A state file named some other way gets
@@ -133,10 +144,19 @@
     {:version 1 :sessions {}}))
 
 (defn starting-state
-  "Saved progress to start from. Progress from before there was a file per server was made against the server then in
-  use, so a default state file that doesn't exist yet starts from `legacy` instead of rescanning everything."
-  [explicit? state-file legacy]
-  (load-state (if (and (not explicit?) (not (fs/exists? state-file)) (fs/exists? legacy)) legacy state-file)))
+  "Saved progress to start from. A default state file that doesn't exist yet takes over the first of `earlier` that
+  does, instead of rescanning everything. Taking over moves the file, so the single pre-server file is used once, not
+  by every server that comes along."
+  [{:keys [explicit? persist?]} state-file earlier]
+  (let [previous (when-not (or explicit? (fs/exists? state-file))
+                   (first (filter fs/exists? earlier)))]
+    (cond
+      (nil? previous) (load-state state-file)
+      ;; A dry run changes nothing, so it reads the earlier file where it is.
+      (not persist?)  (load-state previous)
+      :else           (do (fs/create-dirs (fs/parent state-file))
+                          (fs/move previous state-file {:atomic-move true})
+                          (load-state state-file)))))
 
 (defn- save-state! [file state]
   (fs/create-dirs (fs/parent file))
@@ -236,8 +256,9 @@
       ;; isn't a checkout, whose folder name says nothing about the repository.
       (let [dirs (distinct (concat (->> entries (keep :cwd) frequencies (sort-by val >) (map key))
                                    (some-> (:cwd session) vector)))]
-        (or (some #(repository-name (:repository_url (papercut-git/context {:cwd % :session-git (:git session)})))
-                  dirs)
+        ;; Each directory's own remote first: the URL recorded at session start names only where it began.
+        (or (some #(repository-name (:repository_url (papercut-git/context {:cwd %}))) dirs)
+            (repository-name (get-in session [:git :repository-url]))
             (some-> (first dirs) fs/file-name str not-empty)
             "unknown"))))
 
@@ -509,8 +530,10 @@
                            ;; mise.local.toml as well, like the Jev key.
                            :server     (or (:server options) (bot-env/resolve-env "PAPERCUTS_SERVER") hooks/default-server)
                            :token      (or (:token options) (bot-env/resolve-env "PAPERCUTS_TOKEN"))})
-        state      (atom (cond-> (starting-state (boolean (:state-file options)) state-file
-                                                 (legacy-state-file source))
+        state      (atom (cond-> (starting-state {:explicit? (boolean (:state-file options))
+                                                  :persist?  (not (or (:dry-run options) (:screen-only options)))}
+                                                 state-file
+                                                 (earlier-state-files source (:server opts)))
                            ;; A rescan forgets how far each session was read, but not what it already reported.
                            (:rescan options) (update :sessions update-vals #(select-keys % [:reported]))))
         opts       (assoc opts :known-cache (atom {}))

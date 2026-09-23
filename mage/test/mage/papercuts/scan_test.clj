@@ -24,9 +24,9 @@
   (testing "each server keeps its own progress and log"
     (let [shared (scan/default-state-file :claude "http://10.193.193.227:8765")
           local  (scan/default-state-file :claude "http://127.0.0.1:8766/")]
-      (is (= "scan-state.claude.10.193.193.227-8765.edn" (str (fs/file-name shared))))
-      (is (= "scan-state.claude.127.0.0.1-8766.edn" (str (fs/file-name local))))
-      (is (= "scan-log.claude.10.193.193.227-8765.jsonl" (str (fs/file-name (#'scan/log-file shared)))))
+      (is (= "scan-state.claude.http-10.193.193.227-8765.edn" (str (fs/file-name shared))))
+      (is (= "scan-state.claude.http-127.0.0.1-8766.edn" (str (fs/file-name local))))
+      (is (= "scan-log.claude.http-10.193.193.227-8765.jsonl" (str (fs/file-name (#'scan/log-file shared)))))
       (is (= "scan-state.claude.https-metaouch.dev-443.edn"
              (str (fs/file-name (scan/default-state-file :claude "https://metaouch.dev")))))))
   (testing "the scheme and effective port tell servers apart"
@@ -34,6 +34,14 @@
       (is (not= (file-name "http://example.com") (file-name "https://example.com")))
       (is (= (file-name "https://example.com") (file-name "https://example.com:443/")))
       (is (= (file-name "http://example.com") (file-name "http://example.com:80")))))
+  (testing "no host name makes two servers share a file"
+    (is (not= (fs/file-name (scan/default-state-file :claude "https://example.com"))
+              (fs/file-name (scan/default-state-file :claude "http://https-example.com:443")))))
+  (testing "earlier names for a server are looked for, newest first"
+    (is (= ["scan-state.claude.https-metaouch.dev-443.edn" "scan-state.claude.metaouch.dev.edn" "scan-state.claude.edn"]
+           (map #(str (fs/file-name %)) (scan/earlier-state-files :claude "https://metaouch.dev"))))
+    (is (= ["scan-state.claude.10.193.193.227-8765.edn" "scan-state.claude.edn"]
+           (map #(str (fs/file-name %)) (scan/earlier-state-files :claude "http://10.193.193.227:8765")))))
   (testing "a state file named some other way doesn't have its log written over it"
     (is (= "/tmp/progress.edn.log.jsonl" (#'scan/log-file "/tmp/progress.edn"))))
   (testing "the log goes beside its state file, even when a directory looks like a state file"
@@ -194,6 +202,11 @@
       (testing "the remote of the directory the session used most, not the folder name of its first one"
         (is (= "evals" (#'scan/session-repository {} {:cwd scratch}
                                                   [{:cwd scratch} {:cwd repo} {:cwd repo} {:cwd repo}]))))
+      (testing "the directories' own remotes beat the URL recorded where the session started"
+        (let [started-in-metabase {:cwd scratch :git {:repository-url "git@github.com:metabase/metabase.git"}}]
+          (is (= "evals" (#'scan/session-repository {} started-in-metabase [{:cwd repo} {:cwd repo}])))
+          (testing "which is still used when no directory has a remote"
+            (is (= "metabase" (#'scan/session-repository {} started-in-metabase [{:cwd scratch}]))))))
       (testing "--repository wins"
         (is (= "metabase" (#'scan/session-repository {:repository "metabase"} {:cwd scratch} []))))
       (finally
@@ -202,15 +215,22 @@
 (deftest starting-state-test
   (let [dir    (fs/create-temp-dir {:prefix "papercut-state"})
         legacy (str (fs/path dir "scan-state.claude.edn"))
-        fresh  (str (fs/path dir "scan-state.claude.h-80.edn"))]
+        server-a (str (fs/path dir "scan-state.claude.http-a-80.edn"))
+        server-b (str (fs/path dir "scan-state.claude.http-b-80.edn"))
+        persist {:persist? true}]
     (try
       (spit legacy (pr-str {:version 1 :sessions {"s1" {:line 40}}}))
-      (testing "a default per-server file that doesn't exist yet starts from the old single file"
-        (is (= {"s1" {:line 40}} (:sessions (scan/starting-state false fresh legacy)))))
+      (testing "a dry run reads the earlier file where it is"
+        (is (= {"s1" {:line 40}} (:sessions (scan/starting-state {} server-a [legacy]))))
+        (is (fs/exists? legacy)))
       (testing "an explicit --state-file is taken as given"
-        (is (= {} (:sessions (scan/starting-state true fresh legacy)))))
-      (spit fresh (pr-str {:version 1 :sessions {"s2" {:line 7}}}))
-      (testing "once the per-server file exists, it wins"
-        (is (= {"s2" {:line 7}} (:sessions (scan/starting-state false fresh legacy)))))
+        (is (= {} (:sessions (scan/starting-state {:explicit? true :persist? true} server-a [legacy])))))
+      (testing "the first server takes the earlier file over, and the next one starts empty"
+        (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy]))))
+        (is (not (fs/exists? legacy)))
+        (is (= {} (:sessions (scan/starting-state persist server-b [legacy])))))
+      (testing "once a server's own file exists, it wins"
+        (spit legacy (pr-str {:version 1 :sessions {"s9" {:line 1}}}))
+        (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy])))))
       (finally
         (fs/delete-tree dir)))))
