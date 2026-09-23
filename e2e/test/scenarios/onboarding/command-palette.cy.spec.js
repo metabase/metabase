@@ -139,6 +139,26 @@ describe("command palette", () => {
       );
       cy.findByRole("option", { name: "People" }).should("be.visible");
       cy.findByRole("option", { name: "Reviews" }).should("be.visible");
+
+      cy.log("search results render in the order the API returned them");
+      // Registered here, not at the top of the test: the alias yields the last
+      // matching request, and the searches above would shadow this one.
+      cy.intercept("/api/search?*").as("searchData");
+      H.commandPaletteInput().clear().type("Cou");
+      cy.wait("@searchData");
+      cy.findByText("Loading...").should("not.exist");
+
+      cy.get("@searchData").then(({ response }) => {
+        const results = response.body.data;
+
+        cy.findAllByRole("option")
+          // filter out unrelated items, keep only options with data
+          .invoke("slice", 3, -2)
+          .should("have.length", results.length)
+          .each(($option, index) => {
+            cy.wrap($option).should("contain", results[index].name);
+          });
+      });
     });
 
     cy.log("We can close the command palette using escape");
@@ -192,31 +212,6 @@ describe("command palette", () => {
     H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
-  });
-
-  it("should display search results in the order returned by the API", () => {
-    cy.visit("/");
-
-    cy.findByRole("button", { name: /search/i }).click();
-    cy.intercept("/api/search?*").as("searchData");
-
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().type("Cou");
-      cy.wait("@searchData");
-      cy.findByText("Loading...").should("not.exist");
-
-      cy.get("@searchData").then(({ response }) => {
-        const results = response.body.data;
-
-        cy.findAllByRole("option")
-          // filter out unrelated items, keep only options with data
-          .invoke("slice", 3, -2)
-          .should("have.length", results.length)
-          .each(($option, index) => {
-            cy.wrap($option).should("contain", results[index].name);
-          });
-      });
-    });
   });
 
   it("should render admin links for non-admins that have specific privileges", () => {
