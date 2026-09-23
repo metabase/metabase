@@ -100,10 +100,12 @@ class WebViewTest(StoreCase):
 
     def test_chris_reporter_aliases_share_a_source_and_reporter_count(self):
         papercut_id = self.papercut("Alias", reporter="chris", agent="claude")
-        self.report(title="Alias", fingerprint="Alias", reporter="christruter.claude", agent="claude")
+        alias = self.report(title="Alias", fingerprint="Alias", reporter="christruter.claude", agent="claude")
         self.report(title="Alias", fingerprint="Alias", reporter="christruter", agent="codex")
         self.assertEqual(self.store.sources(), {"person:chris.claude": 1, "person:chris.codex": 1})
         self.assertEqual(self.store.get_papercut(papercut_id)["reporter_count"], 1)
+        stored = next(r for r in self.store.get_papercut(papercut_id)["reports"] if r["id"] == alias["report"]["id"])
+        self.assertEqual((stored["reporter"], stored["payload"]["reporter"]), ("chris", "chris"))
         self.assertEqual([p["id"] for p in self.store.list_papercuts({"source": "person:chris.claude"})["papercuts"]],
                          [papercut_id])
         self.assertEqual([p["id"] for p in self.store.list_papercuts({"source": "person:chris.codex"})["papercuts"]],
@@ -159,6 +161,20 @@ class WebViewTest(StoreCase):
 
 
 class IngestTest(StoreCase):
+    def test_v10_reporter_aliases_are_migrated_and_replay(self):
+        report = self.report(reporter="chris", agent="claude")
+        report_id = report["report"]["id"]
+        with sqlite3.connect(self.store.path) as db:
+            db.execute("""UPDATE reports SET reporter = 'christruter.claude',
+                          payload = json_set(payload, '$.reporter', 'christruter.claude') WHERE id = ?""", (report_id,))
+            db.execute("PRAGMA user_version = 10")
+        migrated = server.Store(self.store.path)
+        stored = migrated.get_papercut(report["papercut"]["id"])["reports"][0]
+        self.assertEqual((stored["reporter"], stored["payload"]["reporter"]), ("chris", "chris"))
+        replay = migrated.ingest({**self.sample, "report_id": stored["report_id"],
+                                  "reporter": "christruter.claude", "agent": "claude"})
+        self.assertEqual((replay["replay"], replay["report"]["id"]), (True, report_id))
+
     def test_replay_and_cross_reporter_counts(self):
         first = self.store.ingest(self.sample)
         self.assertEqual((first["created"], first["replay"], first["papercut"]["report_count"]), (True, False, 1))

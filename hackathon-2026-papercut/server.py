@@ -59,6 +59,16 @@ STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "merged": "resolved", "nee
                          "not_reproducible": "open", "failed": "open"}
 DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log")
 PR_URL = re.compile(r"https://github\.com/metabase/metabase/pull/(\d+)")
+
+
+def canonical_reporter(reporter, agent):
+    """Use one reporter ID for Chris's imported writeups and live scanner reports."""
+    aliases = {"chris", "christruter"}
+    if agent:
+        aliases.update({f"chris.{agent.lower()}", f"christruter.{agent.lower()}"})
+    return "chris" if reporter.lower() in aliases else reporter
+
+
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
@@ -736,9 +746,30 @@ def migrate_to_v10(db):
     db.execute("DELETE FROM relations WHERE source = 'suggested'")
 
 
+def migrate_to_v11(db):
+    """Unify Chris's imported and scanner reporter IDs without losing report replay identities."""
+    rows = db.execute("SELECT id, repository, reporter, agent, report_id, payload FROM reports").fetchall()
+    keys = set()
+    for row in rows:
+        key = (row["repository"], canonical_reporter(row["reporter"], row["agent"]), row["report_id"])
+        if key in keys:
+            raise RuntimeError(f"Canonical reporter would duplicate report ID {row['report_id']}")
+        keys.add(key)
+    for row in rows:
+        reporter = canonical_reporter(row["reporter"], row["agent"])
+        if reporter == row["reporter"]:
+            continue
+        payload = json.loads(row["payload"])
+        for field in ("reporter", "machine_id"):
+            if payload.get(field) == row["reporter"]:
+                payload[field] = reporter
+        db.execute("UPDATE reports SET reporter = ?, payload = ? WHERE id = ?",
+                   (reporter, json.dumps(payload, ensure_ascii=False), row["id"]))
+
+
 # Each entry upgrades the database by one `user_version`.
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
-              migrate_to_v8, migrate_to_v9, migrate_to_v10)
+              migrate_to_v8, migrate_to_v9, migrate_to_v10, migrate_to_v11)
 
 STATS = f"""SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT {REPORT_PERSON}) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -816,6 +847,10 @@ class Store:
         area = text_field(payload, "area") or ""
         machine, agent, session, source_type, source_ref = (
             text_field(payload, key) or None for key in ("machine", "agent", "session", "source_type", "source_ref"))
+        canonical = canonical_reporter(reporter, agent)
+        if canonical != reporter:
+            payload = {**payload, **{key: canonical for key in ("reporter", "machine_id") if key in payload}}
+            reporter = canonical
         submitted_fingerprint = text_field(payload, "fingerprint") or None
         submitted_category = text_field(payload, "category") or None
         if submitted_category and submitted_category not in CATEGORIES:
