@@ -182,7 +182,10 @@ const getYAxisTicksWidth = (
     }
   }
 
-  const goalValue = getGoalLineValue(settings, axisModel.isNormalized ?? false);
+  // Normalized axes are pinned to 0-100%, so a goal can never add a tick
+  const goalValue = axisModel.isNormalized
+    ? null
+    : getGoalLineValue(settings, false);
 
   if (goalValue !== null) {
     valuesToMeasure.push(goalValue);
