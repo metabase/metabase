@@ -148,8 +148,25 @@
      :html-for   (fn [{:keys [type old new]}]
                    (if (= type :del) (get old-html (dec old) "") (get new-html (dec new) "")))}))
 
+(declare clojure-file-body)
+
+(defn- not-shown-note
+  "Why a file's contents aren't shown (only Clojure is), or nil for Clojure files."
+  [path]
+  (cond
+    (git/clojure-file? path)    nil
+    (git/typescript-file? path) "You know how TypeScript works."
+    :else                       "Not clojure"))
+
 (defn- file-body
   "The part of a file's section that changes when it's toggled between views."
+  [idx file view collapse?]
+  (if-let [note (not-shown-note (:path file))]
+    [:div.file-body [:p.note note]]
+    (clojure-file-body idx file view collapse?)))
+
+(defn- clojure-file-body
+  "Diff table for a Clojure file in `view`."
   [idx file view collapse?]
   (let [{:keys [rows fallback? html-for]} (file-rows file view)
         seen      (volatile! #{})
@@ -173,7 +190,7 @@
              [:tbody.hidden (doall (map row rs))])))])]))
 
 (defn- file-section [idx file view collapse?]
-  (let [{:keys [add del]} (diff/stats (diff/diff-rows (:old file) (:new file)))]
+  (let [{:keys [add del]} (if (not-shown-note (:path file)) {:add 0 :del 0} (diff/stats (diff/diff-rows (:old file) (:new file))))]
     [:section.file {:id (str "f" idx) :data-index idx :data-view view}
      [:h2 [:span.status {:class (name (:status file :modified))} (name (:status file :modified))]
       [:span.path (:path file)]
@@ -185,7 +202,7 @@
          (for [[v label] [["readable" "Readable"] ["clj" "Clojure"]]]
            [:button {:type "button" :data-view v :class (when (= v view) "on") :onclick (str "toggleFile(this,'" v "')")}
             label])])
-      (when-not (= :file (:status file))
+      (when-not (or (= :file (:status file)) (not-shown-note (:path file)))
         [:a.raw {:href (str "/file?path=" (URLEncoder/encode ^String (:path file) "UTF-8") "&view=" view)} "full file"])]
      (file-body idx file view collapse?)]))
 

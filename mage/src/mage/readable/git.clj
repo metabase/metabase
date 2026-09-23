@@ -44,6 +44,11 @@
      :path     (last paths)
      :old-path (first paths)}))
 
+(defn typescript-file?
+  "Whether `path` is TypeScript or JavaScript source."
+  [path]
+  (boolean (re-find #"\.(ts|tsx|js|jsx|mjs|cjs)$" path)))
+
 (defn clojure-file?
   "Whether `path` looks like a Clojure source file."
   [path]
@@ -69,11 +74,12 @@
     {:title (str "Local changes on " (sh "git" "rev-parse" "--abbrev-ref" "HEAD") " vs " base
                  " (merge-base " (subs mb 0 10) ")")
      :files (vec (pmap (fn [{:keys [status path old-path]}]
-                         {:path   path
-                          :status status
-                          :old    (when-not (= status :added) (show mb old-path))
-                          :new    (when-not (= status :deleted)
-                                    (let [f (fs/file path)] (when (fs/exists? f) (slurp f))))})
+                         (let [clj? (clojure-file? path)]
+                           {:path   path
+                            :status status
+                            :old    (when (and clj? (not= status :added)) (show mb old-path))
+                            :new    (when (and clj? (not= status :deleted))
+                                      (let [f (fs/file path)] (when (fs/exists? f) (slurp f))))}))
                        (concat tracked untracked)))}))
 
 ;;; ------------------------------------------------ Pull requests ----------------------------------------------
@@ -111,10 +117,12 @@
   "Old/new contents for changed files, read from git in parallel (each read is a `git show` process)."
   [old-rev new-rev changes]
   (vec (pmap (fn [{:keys [status path old-path]}]
-               {:path   path
-                :status status
-                :old    (when-not (= status :added) (show old-rev old-path))
-                :new    (when-not (= status :deleted) (show new-rev path))})
+               (let [clj? (clojure-file? path)]
+                 {:path   path
+                  :status status
+                  ;; only Clojure files are shown, so don't read anything else
+                  :old    (when (and clj? (not= status :added)) (show old-rev old-path))
+                  :new    (when (and clj? (not= status :deleted)) (show new-rev path))}))
              changes)))
 
 (defn pr-changes

@@ -340,3 +340,20 @@
         (is (= fn-line (nth rows out-fn)))
         (is (= (inc fn-line) (nth rows out-note)))
         (is (= (+ fn-line 2) (nth rows out-body)))))))
+
+(deftest ^:parallel typescript-files-not-shown-test
+  (let [html (#'server/changes-page {:title "t"
+                                     :files [{:path "a.clj" :status :modified :old "(def x 1)\n" :new "(def x 2)\n"}
+                                             {:path "frontend/src/thing.tsx" :status :modified :old nil :new nil}
+                                             {:path "resources/x.yaml" :status :modified :old "a: 1\n" :new "a: 2\n"}]}
+                                    "readable")]
+    (testing "non-Clojure files are listed, but their bodies aren't shown"
+      (is (str/includes? html "frontend/src/thing.tsx"))
+      (is (str/includes? html "You know how TypeScript works."))
+      (is (str/includes? html "resources/x.yaml"))
+      (is (str/includes? html "Not clojure"))
+      (is (not (str/includes? html "a: 2"))))
+    (is (git/typescript-file? "frontend/src/thing.tsx"))
+    (is (git/typescript-file? "e2e/support/x.js"))
+    (is (not (git/typescript-file? "src/metabase/a.clj")))
+    (is (not (git/typescript-file? "frontend/src/styles.css")))))
