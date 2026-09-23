@@ -151,6 +151,13 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     // Unjustified type cast. FIXME
     const collection = item as unknown as Collection;
+    // A node that stands for no collection, such as the branch a worktree's collections hang under, brings its
+    // own icon; a real collection's is worked out from the collection, which a tenant user sees differently.
+    const ownIcon = item.nonNavigable
+      ? typeof item.icon === "string"
+        ? { name: item.icon }
+        : item.icon
+      : undefined;
 
     const link = (droppableProps?: DroppableProps) => (
       <SidebarCollectionLink
@@ -158,7 +165,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
         hovered={droppableProps?.hovered ?? false}
         highlighted={droppableProps?.highlighted ?? false}
         collection={collection}
-        icon={typeof item.icon === "string" ? { name: item.icon } : item.icon}
+        icon={ownIcon}
         nonNavigable={item.nonNavigable}
         ref={ref}
       />
