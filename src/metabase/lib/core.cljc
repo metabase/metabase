@@ -4,6 +4,11 @@
   This namespace re-exports or wraps all the functions which are intentionally exported for use outside of
   `metabase.lib.*`. If you need something that this namespace doesn't provide, ask the Querying Platform team.
 
+  A few other `metabase.lib.*` namespaces are public API in their own right and are *not* re-exported here, so call
+  them directly: notably [[metabase.lib.types.isa]] for column type predicates (`numeric?`, `temporal?`, `string?`,
+  etc.; many of these names shadow `clojure.core`). See the `lib` module's `:api` in
+  `.clj-kondo/config/modules/config.edn` for the full list.
+
   ## Purpose
 
   This library exists to encapsulate the myriad details it takes to work with MBQL *correctly*. Queries are plain
