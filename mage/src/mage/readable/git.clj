@@ -63,12 +63,13 @@
                     {:status :added :path p :old-path p})]
     {:title (str "Local changes on " (sh "git" "rev-parse" "--abbrev-ref" "HEAD") " vs " base
                  " (merge-base " (subs mb 0 10) ")")
-     :files (vec (for [{:keys [status path old-path]} (concat tracked untracked)]
-                   {:path   path
-                    :status status
-                    :old    (when-not (= status :added) (show mb old-path))
-                    :new    (when-not (= status :deleted)
-                              (let [f (fs/file path)] (when (fs/exists? f) (slurp f))))}))}))
+     :files (vec (pmap (fn [{:keys [status path old-path]}]
+                         {:path   path
+                          :status status
+                          :old    (when-not (= status :added) (show mb old-path))
+                          :new    (when-not (= status :deleted)
+                                    (let [f (fs/file path)] (when (fs/exists? f) (slurp f))))})
+                       (concat tracked untracked)))}))
 
 ;;; ------------------------------------------------ Pull requests ----------------------------------------------
 
@@ -80,21 +81,49 @@
              second
              parse-long)))
 
+(defn commit-exists?
+  "Is `rev` a commit in the local repository?"
+  [rev]
+  (some? (sh-ok "git" "cat-file" "-e" (str rev "^{commit}"))))
+
+(defn ensure-commits!
+  "Make sure every rev in `revs` exists locally. If one doesn't, fetch `refspecs` from origin (logging that we're
+  doing so); if that fails too, throw with the command to run by hand."
+  [revs refspecs]
+  (when-not (every? commit-exists? revs)
+    (let [cmd (str "git fetch origin " (str/join " " refspecs))]
+      (println (str "Not in the local repository yet; running: " cmd))
+      (try
+        (apply sh "git" "fetch" "--quiet" "origin" refspecs)
+        (catch Exception e
+          (throw (ex-info (str "Couldn't fetch the PR's commits (" (ex-message e) ").\n"
+                               "Run this yourself, then reload:\n\n  " cmd)
+                          {} e))))
+      (when-not (every? commit-exists? revs)
+        (throw (ex-info (str "The PR's commits still aren't available locally after:\n\n  " cmd) {}))))))
+
+(defn- file-versions
+  "Old/new contents for changed files, read from git in parallel (each read is a `git show` process)."
+  [old-rev new-rev changes]
+  (vec (pmap (fn [{:keys [status path old-path]}]
+               {:path   path
+                :status status
+                :old    (when-not (= status :added) (show old-rev old-path))
+                :new    (when-not (= status :deleted) (show new-rev path))})
+             changes)))
+
 (defn pr-changes
-  "Files changed in GitHub PR `n` (fetched from origin), compared against the merge-base with its base branch."
+  "Files changed in GitHub PR `n`, compared against the merge-base with its base branch. The PR's commits are read
+  from the local repository, and only fetched from origin when they aren't there yet."
   [n]
   (let [info   (sh "gh" "pr" "view" (str n) "--json" "baseRefName,headRefOid,title,url" "--template"
                    "{{.baseRefName}}\t{{.headRefOid}}\t{{.url}}\t{{.title}}")
         [base head url title] (str/split info #"\t" 4)]
-    (sh "git" "fetch" "--quiet" "origin" base (str "refs/pull/" n "/head"))
+    (ensure-commits! [head (str "origin/" base)] [base (str "refs/pull/" n "/head")])
     (let [mb (sh "git" "merge-base" (str "origin/" base) head)]
       {:title (str "#" n " " title)
        :url   url
-       :files (vec (for [{:keys [status path old-path]} (name-status (sh "git" "diff" "--name-status" "-M" mb head))]
-                     {:path   path
-                      :status status
-                      :old    (when-not (= status :added) (show mb old-path))
-                      :new    (when-not (= status :deleted) (show head path))}))})))
+       :files (file-versions mb head (name-status (sh "git" "diff" "--name-status" "-M" mb head)))})))
 
 ;;; ------------------------------------------------ Browsing ---------------------------------------------------
 

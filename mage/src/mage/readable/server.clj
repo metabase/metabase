@@ -54,6 +54,37 @@
   [text]
   (map hl/escape (str/split-lines (or text ""))))
 
+;;; ------------------------------------------------ Threads -----------------------------------------------------
+
+(def ^:private big-stack-bytes
+  "Translation recurses deeply through the interpreter, and http-kit's worker threads have small stacks."
+  (long (* 256 1024 1024)))
+
+(defn parallel-map
+  "Like `mapv`, but runs `f` on each item concurrently (at most one thread per CPU), on threads with large stacks.
+  Rethrows the first error."
+  [f coll]
+  (let [sem     (java.util.concurrent.Semaphore. (.availableProcessors (Runtime/getRuntime)))
+        results (mapv (fn [item]
+                        (let [result (promise)]
+                          (.start (Thread. nil
+                                           ^Runnable (fn []
+                                                       (.acquire sem)
+                                                       (try
+                                                         (deliver result [:ok (f item)])
+                                                         (catch Throwable e (deliver result [:error e]))
+                                                         (finally (.release sem))))
+                                           "mage-readable"
+                                           big-stack-bytes))
+                          result))
+                      coll)]
+    (mapv (fn [result] (let [[status v] @result] (if (= status :ok) v (throw v)))) results)))
+
+(defn with-big-stack
+  "Run `f` on a thread with a large stack and return its result."
+  [f]
+  (first (parallel-map (fn [_] (f)) [nil])))
+
 ;;; ------------------------------------------------ Rendering --------------------------------------------------
 
 (def ^:private context-lines 4)
@@ -249,8 +280,9 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
             [:h1 (if url [:a {:href url} title] title)]
             (if (empty? files)
               [:p.note "No changed files."]
-              (for [[i f] (map-indexed vector files)]
-                (file-section i f view true)))]])))
+              ;; files are independent, so translate/diff/highlight them concurrently
+              ;; (a seq, not a vector: hiccup would read a vector as an element)
+              (seq (parallel-map (fn [[i f]] (file-section i f view true)) (map-indexed vector files))))]])))
 
 (defn- file-page [path view]
   (let [path (or (git/repo-file path)
@@ -296,19 +328,6 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
       (= uri "/file")               (html-response (file-page (get params "path") view))
       (= uri "/files")              (html-response (files-page))
       :else                         {:status 404 :body "not found"})))
-
-(defn with-big-stack
-  "Run `f` on a thread with a large stack: translation recurses deeply through the interpreter, and http-kit's worker
-  threads have small stacks."
-  [f]
-  (let [result (promise)
-        t      (Thread. nil
-                        ^Runnable (fn [] (deliver result (try [:ok (f)] (catch Throwable e [:error e]))))
-                        "mage-readable"
-                        (long (* 256 1024 1024)))]
-    (.start t)
-    (let [[status v] @result]
-      (if (= status :ok) v (throw v)))))
 
 (defn- handler [start-path]
   (fn [req]

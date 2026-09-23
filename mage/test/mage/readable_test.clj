@@ -6,7 +6,8 @@
    [mage.readable.core :as readable]
    [mage.readable.diff :as diff]
    [mage.readable.git :as git]
-   [mage.readable.names :as names]))
+   [mage.readable.names :as names]
+   [mage.readable.server :as server]))
 
 (set! *warn-on-reflection* true)
 
@@ -263,3 +264,23 @@
     (is (str/includes? (translate "(defn f [] {:pre 1})") "return { pre: 1 };")))
   (testing "anonymous functions"
     (is (str/includes? (translate "(def f (fn [x] {:pre [(string? x)]} x))") "const f = (x: string) => x;"))))
+
+(deftest ^:parallel commit-exists-test
+  (is (git/commit-exists? "HEAD"))
+  (is (not (git/commit-exists? "0000000000000000000000000000000000000000"))))
+
+(deftest ^:parallel parallel-map-test
+  (testing "results keep input order"
+    (is (= (mapv inc (range 50)) (server/parallel-map inc (range 50)))))
+  (testing "errors are rethrown"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                          (server/parallel-map #(if (= % 3) (throw (ex-info "boom" {})) %) (range 5))))))
+
+(deftest ^:parallel changes-page-test
+  (let [html (#'server/changes-page {:title "t"
+                                     :files [{:path "a.clj" :status :modified :old "(defn f [] 1)\n" :new "(defn f [] 2)\n"}
+                                             {:path "b.clj" :status :added :old nil :new "(def x 1)\n"}]}
+                                    "readable")]
+    (is (str/includes? html "a.clj"))
+    (is (str/includes? html "b.clj"))
+    (is (str/includes? html "<span class=\"hl-kw\">return</span> <span class=\"hl-number\">2</span>;"))))
