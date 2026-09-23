@@ -112,6 +112,8 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     source_readable: true,
+    source_database_id: 1,
+    can_execute: true,
     ...opts,
   };
 }
@@ -243,6 +245,7 @@ export function createMockTransformJob(
     schedule: "0 0 0 * * ? *",
     ui_display_type: "cron/builder",
     active: true,
+    can_execute: true,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     ...opts,

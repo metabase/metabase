@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -22,11 +23,7 @@ type EnterWorktreeModalProps = {
   onClose: VoidFunction;
 };
 
-const ENTER_WORKTREE_SCHEMA = Yup.object({
-  branch: Yup.string().required(Errors.required),
-});
-
-type EnterWorktreeValues = Yup.InferType<typeof ENTER_WORKTREE_SCHEMA>;
+type EnterWorktreeValues = Yup.InferType<ReturnType<typeof getSchema>>;
 
 export function EnterWorktreeModal({
   opened,
@@ -44,6 +41,7 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
   const { data: worktrees = [] } = useListWorktreesQuery();
   const [createWorktree] = useCreateWorktreeMutation();
   const [updateUserWorktree] = useUpdateUserWorktreeMutation();
+  const schema = useMemo(getSchema, []);
   const branches = branchesData?.items ?? [];
 
   const handleSubmit = async ({ branch }: EnterWorktreeValues) => {
@@ -60,7 +58,7 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
   return (
     <FormProvider
       initialValues={{ branch: "" }}
-      validationSchema={ENTER_WORKTREE_SCHEMA}
+      validationSchema={schema}
       onSubmit={handleSubmit}
     >
       <Form>
@@ -86,4 +84,10 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
       </Form>
     </FormProvider>
   );
+}
+
+function getSchema() {
+  return Yup.object({
+    branch: Yup.string().required(Errors.required),
+  });
 }

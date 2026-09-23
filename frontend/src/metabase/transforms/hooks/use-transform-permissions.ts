@@ -5,6 +5,8 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { Transform } from "metabase-types/api";
 
+import { isMissingSourceDatabase } from "../utils";
+
 export const useTransformPermissions = ({
   transform,
 }: {
@@ -25,7 +27,7 @@ export const useTransformPermissions = ({
   );
 
   const permissionsReadOnly = transform
-    ? transform.can_execute === false
+    ? transform.can_execute === false || isMissingSourceDatabase(transform)
     : undefined;
 
   return {

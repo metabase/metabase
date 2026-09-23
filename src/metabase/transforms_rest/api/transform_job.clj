@@ -52,6 +52,7 @@
    [:created_at :any]
    [:updated_at :any]
    [:built_in_type {:optional true} [:maybe :string]]
+   [:can_execute {:optional true} :boolean]
    [:tag_ids {:optional true} [:sequential pos-int?]]
    [:last_run {:optional true} [:maybe LastRunResponse]]
    [:next_run {:optional true} [:maybe NextRunResponse]]])
@@ -248,7 +249,7 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (transforms-rest.db/job job-id))
-      (t2/hydrate :tag_ids :last_run)
+      (t2/hydrate :can_execute :tag_ids :last_run)
       (update :last_run transforms-base.u/present-run)))
 
 (defn- add-next-run
@@ -288,7 +289,7 @@
                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                 (map #(update % :last_run transforms-base.u/present-run))
                 (map #(update % :next_run transforms-base.u/present-run)))
-          (t2/hydrate jobs :tag_ids :last_run))))
+          (t2/hydrate jobs :can_execute :tag_ids :last_run))))
 
 (def ^:private JobRunResponse
   [:map {:closed true}
