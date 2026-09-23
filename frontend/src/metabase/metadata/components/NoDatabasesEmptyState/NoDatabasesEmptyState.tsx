@@ -19,9 +19,9 @@ export const NoDatabasesEmptyState = () => {
       {/* no need to check if user is admin because this page can only be viewed by admins */}
       <Button
         component={Link}
-        size="md"
         to="/admin/databases/create"
-        variant="primary"
+        variant="filled"
+        size="lg"
       >{t`Connect a database`}</Button>
     </Stack>
   );
