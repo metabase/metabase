@@ -11,8 +11,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -316,3 +319,206 @@
   [^bytes blob]
   (let [buffer (.order (ByteBuffer/wrap blob) (ByteOrder/nativeOrder))]
     (into [] (repeatedly (quot (alength blob) 4) #(.getFloat buffer)))))
+
+;;; -------------------------------------------------- Write path --------------------------------------------------
+
+(def ^:dynamic *batch-size*
+  "Documents per write batch: one embedding call and one transaction each."
+  100)
+
+(defn- ->int-bool [b]
+  (when (some? b)
+    (if (semantic.index/to-boolean b) 1 0)))
+
+(defn- ->iso [t]
+  (some-> t semantic.index/to-instant str))
+
+(defn doc->row
+  "The `search_doc` row for a search document (as produced by `metabase.search.ingestion`). `owner-ids` maps
+  collection id -> personal owner id."
+  [owner-ids {:keys [model id collection_id legacy_input] :as doc}]
+  {:model                model
+   :model_id             (str id)
+   :collection_id        collection_id
+   :personal_owner_id    (get owner-ids collection_id)
+   :creator_id           (:creator_id doc)
+   :database_id          (:database_id doc)
+   :last_editor_id       (:last_editor_id doc)
+   :name                 (or (:name doc) "")
+   :content              (or (:embeddable_text doc) "")
+   :display_type         (:display_type doc)
+   :archived             (->int-bool (:archived doc))
+   :official_collection  (->int-bool (:official_collection doc))
+   :pinned               (->int-bool (:pinned doc))
+   :verified             (->int-bool (:verified doc))
+   :collection_type      (:collection_type doc)
+   :root_collection_type (:root_collection_type doc)
+   :data_layer           (:data_layer doc)
+   :data_authority       (:data_authority doc)
+   :curated              (->int-bool (:curated doc))
+   :dashboardcard_count  (:dashboardcard_count doc)
+   :view_count           (:view_count doc)
+   :model_created_at     (->iso (:created_at doc))
+   :model_updated_at     (->iso (:updated_at doc))
+   :last_viewed_at       (->iso (:last_viewed_at doc))
+   ;; ingestion already JSON-encodes legacy_input; tests pass maps
+   :legacy_input         (if (string? legacy_input) legacy_input (json/encode legacy_input))
+   :metadata             (json/encode (dissoc doc :embedding))})
+
+(def ^:private doc-columns
+  (vec (keys (doc->row {} {}))))
+
+(defn- upsert-doc-rows-sql [rows]
+  (sql/format {:insert-into   :search_doc
+               :columns       doc-columns
+               :values        (mapv (apply juxt doc-columns) rows)
+               :on-conflict   [:model :model_id]
+               :do-update-set (vec (remove #{:model :model_id} doc-columns))}
+              {:quoted true}))
+
+(defn- select-by-keys
+  "`{[model model_id] {:id :content}}` for the `search_doc` rows of `row-keys` (`[model model_id]` pairs)."
+  [conn row-keys]
+  (into {}
+        (mapcat (fn [[model model-ids]]
+                  (for [{:keys [id model_id content]}
+                        (jdbc/execute! conn (sql/format {:select [:id :model_id :content]
+                                                         :from   [:search_doc]
+                                                         :where  [:and [:= :model model] [:in :model_id model-ids]]})
+                                       {:builder-fn jdbc.rs/as-unqualified-maps})]
+                    [[model model_id] {:id id :content content}])))
+        (update-vals (group-by first row-keys) #(mapv second %))))
+
+(defn- existing-vector
+  "The stored vector blob for `rowid`, or nil. Selects only `vector`: reading `distance` outside a KNN crashes."
+  ^bytes [conn rowid]
+  (:vector (jdbc/execute-one! conn ["SELECT vector FROM search_vec WHERE rowid = ?" rowid]
+                              {:builder-fn jdbc.rs/as-unqualified-maps})))
+
+(defn- cached-vectors
+  "`{[model model_id] blob}` for rows whose stored content equals the new content: those need no new embedding."
+  [conn rows]
+  (let [existing (select-by-keys conn (map (juxt :model :model_id) rows))]
+    (into {}
+          (keep (fn [{:keys [content] :as row}]
+                  (let [k (juxt :model :model_id)
+                        {:keys [id] stored :content} (existing (k row))]
+                    (when (= stored content)
+                      (when-let [blob (existing-vector conn id)]
+                        [(k row) blob])))))
+          rows)))
+
+(defn- embed
+  "`{text embedding}` for `texts` using `embedding-model`. Texts the provider skips (e.g. over its token budget) are
+  absent."
+  [embedding-model texts]
+  (let [acc (volatile! {})]
+    (semantic.embedding/process-embeddings-streaming embedding-model texts
+                                                     (fn [text->embedding]
+                                                       (vswap! acc into text->embedding)
+                                                       {})
+                                                     {:type :index :record-tokens? true})
+    @acc))
+
+(defn- write-rows!
+  "Upsert `rows` into `search_doc` and replace their vectors (`row-key->blob`) in `search_vec`, in one transaction."
+  [conn rows row-key->blob]
+  (jdbc/with-transaction [tx conn]
+    (jdbc/execute! tx (upsert-doc-rows-sql rows))
+    (let [ids (select-by-keys tx (map (juxt :model :model_id) rows))]
+      (doseq [{:keys [model model_id] :as row} rows
+              :let [id (get-in ids [[model model_id] :id])]]
+        ;; delete + insert, never UPDATE: an UPDATE on a vec1 table crashes the JVM
+        (jdbc/execute! tx ["DELETE FROM search_vec WHERE rowid = ?" id])
+        (jdbc/execute! tx (into [(str "INSERT INTO search_vec (rowid, vector, " (str/join ", " vec-meta-columns) ")"
+                                      " VALUES (?, ?" (str/join (repeat (count vec-meta-columns) ", ?")) ")")
+                                 id (row-key->blob [model model_id])]
+                                (map #(get row (keyword %)) vec-meta-columns)))))))
+
+(defn- upsert-batch!
+  [embedding-model docs]
+  (let [dims      (:vector-dimensions embedding-model)
+        owner-ids (semantic.index/batch-resolve-personal-owner-ids (map :collection_id docs))
+        row-key   (juxt :model :model_id)
+        ;; last one wins for a key given twice: one INSERT ... ON CONFLICT can't touch the same row twice
+        rows      (vec (vals (into {} (map (juxt row-key identity)) (map (partial doc->row owner-ids) docs))))
+        cached    (with-conn [conn] (cached-vectors conn rows))
+        to-embed  (into [] (comp (remove (comp cached row-key)) (map :content) (distinct)) rows)
+        ;; the slow part: outside the lock
+        embedded  (try
+                    (update-vals (embed embedding-model to-embed) ->blob)
+                    (catch Exception e
+                      (log/warnf e "Embedding %d texts failed; skipping a batch of %d documents"
+                                 (count to-embed) (count docs))
+                      ::failed))]
+    (if (= ::failed embedded)
+      {:failed (count docs)}
+      (let [blob-for       (fn [row] (or (cached (row-key row)) (embedded (:content row))))
+            {ok true missing false} (group-by #(some? (blob-for %)) rows)
+            {ok true wrong false}   (group-by #(= (* 4 dims) (alength ^bytes (blob-for %))) ok)]
+        (doseq [row (concat missing wrong)]
+          (log/warnf "No usable embedding for %s %s; not indexed" (:model row) (:model_id row)))
+        (when (seq ok)
+          (with-conn [conn]
+            (write-rows! conn ok (into {} (map (juxt row-key blob-for)) ok))))
+        {:upserted (count ok)
+         :embedded (count to-embed)
+         :reused   (count (filter (comp cached row-key) ok))
+         :skipped  (+ (count missing) (count wrong))}))))
+
+(defn upsert-documents!
+  "Index search `documents` (a reducible of `metabase.search.ingestion` documents) into the open store: embed their
+  `:embeddable_text` with the store's model and insert or replace them. Documents whose content is unchanged reuse
+  their stored vector. A batch whose embedding call fails is skipped. Returns counts: `:upserted`, `:embedded`
+  (distinct texts sent to the provider), `:reused`, `:skipped`, `:failed`."
+  [documents]
+  (let [embedding-model (embedding-model)]
+    (transduce (partition-all *batch-size*)
+               (completing (fn [acc batch]
+                             (merge-with + acc (upsert-batch! embedding-model batch))))
+               {:upserted 0 :embedded 0 :reused 0 :skipped 0 :failed 0}
+               documents)))
+
+(defn delete-documents!
+  "Remove the documents of `model` with `ids` from the store. Returns the number removed."
+  [model ids]
+  (if (empty? ids)
+    0
+    (with-conn [conn]
+      (jdbc/with-transaction [tx conn]
+        (let [rowids (mapv :id (vals (select-by-keys tx (map (fn [id] [model (str id)]) ids))))]
+          (doseq [rowid rowids]
+            (jdbc/execute! tx ["DELETE FROM search_vec WHERE rowid = ?" rowid]))
+          (when (seq rowids)
+            (jdbc/execute! tx (sql/format {:delete-from :search_doc :where [:in :id rowids]})))
+          (count rowids))))))
+
+(defn index-all!
+  "Index every document of `documents` (e.g. `(metabase.search.ingestion/searchable-documents)`), logging progress.
+  Documents already in the store but absent from `documents` are left alone. Returns the [[upsert-documents!]]
+  counts plus `:elapsed-ms`."
+  [documents]
+  (let [timer  (u/start-timer)
+        result (transduce (partition-all *batch-size*)
+                          (completing (fn [acc batch]
+                                        (let [acc (merge-with + acc (upsert-documents! batch))]
+                                          (log/infof "SQLite semantic index: %s" (pr-str acc))
+                                          acc)))
+                          {:upserted 0 :embedded 0 :reused 0 :skipped 0 :failed 0}
+                          documents)]
+    (assoc result :elapsed-ms (long (u/since-ms timer)))))
+
+(defonce ^:private indexing? (atom false))
+
+(defn index-all-async!
+  "[[index-all!]] on a background thread. Returns its future, or nil when a run is already in progress."
+  [documents]
+  (when (compare-and-set! indexing? false true)
+    (future
+      (try
+        (index-all! documents)
+        (catch Throwable t
+          (log/error t "SQLite semantic indexing failed")
+          (throw t))
+        (finally
+          (reset! indexing? false))))))

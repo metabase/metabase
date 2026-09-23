@@ -116,30 +116,33 @@ deletes and recreates the file and re-indexing refills it. 13 tests / 37 asserti
 Tests added: created → existing with data kept; recreated on each of dims / space id / model name / provider;
 recreated on `schema-version` bump; recreated for a foreign file; meta-column pre-filter with k = 1.
 
-## Phase D — write path (3–4 h)
+## Phase D — write path ✅ done 2026-09-23
 
-- [ ] `doc->row` — port of `index.clj` `doc->db-record` without pg bits: no tsvector, no embedding,
-      `legacy_input`/`metadata` as JSON strings (legacy_input is often already a string), booleans → 0/1,
-      instants → ISO strings. Needs `batch-resolve-personal-owner-ids` and `to-instant`/`to-boolean`
-      from `index.clj` — make them public (hackathon) rather than copy.
-- [ ] `upsert-documents!` [docs] — per batch of 100 (`partition-all`):
-  1. `text->docs (group-by :embeddable_text)` — embed each distinct text once.
-  2. Optional cache: texts whose `(model, model_id)` row already has identical `content` skip embedding and
-     only update `search_doc` (makes re-running a full index cheap). Do this if time allows.
-  3. `semantic.embedding/get-embeddings-batch model texts {:type :index :record-tokens? true}` — **outside**
-     the lock; embedding is the slow part.
-  4. Validate each vector length = `vector_dimensions`; skip + log the doc otherwise.
-  5. Inside `with-conn` + one transaction: per doc
-     - upsert `search_doc` (`insert … on conflict(model, model_id) do update set …`),
-     - `select id from search_doc where model = ? and model_id = ?` (avoid relying on RETURNING via JDBC),
-     - `delete from search_vec where rowid = ?`, then `insert into search_vec(rowid, vector, <meta cols>) values (…)`.
-       **Never `UPDATE search_vec`** — it segfaults (Phase A).
-  6. Return `{model count}` frequencies like `pgvector-api/gate-updates!` does.
-- [ ] Embedding failure for a batch → log + skip the batch (no DLQ in the hackathon), keep going.
-- [ ] `delete-documents!` [model ids] — look up `id`s, delete from `search_vec` and `search_doc` in one tx.
-- [ ] `index-all!` [documents-reducible] — `transduce` batches through `upsert-documents!`, log progress every N
-      batches, return totals + elapsed ms. Callers pass `(search.ingestion/searchable-documents)`.
-- [ ] `index-all-async!` — `future` around `index-all!` with a guard atom so only one run at a time.
+In `sqlite.clj`; 18 tests / 70 assertions green (stubbed embeddings). Walkthrough steps 10–15 in
+`dev/src/dev/vec1_store.clj`, verified in the dev REPL with the ai-service model.
+
+- [x] `doc->row` — port of `index.clj` `doc->db-record` minus pg bits: `model_id` as string, booleans 0/1,
+      timestamps ISO strings, `legacy_input` kept if already a string else JSON, `metadata` = JSON of the doc.
+      `to-instant`, `to-boolean`, `batch-resolve-personal-owner-ids` in `index.clj` made public.
+- [x] `upsert-documents!` [docs] — batches of `*batch-size*` 100:
+  1. rows deduped by `(model, model_id)`, last wins (one multi-row `ON CONFLICT` can't touch a row twice);
+  2. **content cache**: a row whose stored `content` equals the new one reuses its stored vector
+     (`SELECT vector FROM search_vec WHERE rowid = ?` — never `distance`);
+  3. the remaining distinct texts are embedded via `semantic.embedding/process-embeddings-streaming`
+     (same provider batching as pgvector), **outside** the lock;
+  4. rows without a vector (provider skipped the text) or with the wrong size → logged, `:skipped`;
+  5. one transaction: multi-row upsert into `search_doc`, look up ids, then per row
+     `DELETE FROM search_vec WHERE rowid = ?` + `INSERT` with the meta columns (never `UPDATE`).
+  - Returns counts `{:upserted :embedded :reused :skipped :failed}` — not `{model n}` as in the plan;
+    counts are what the REPL/log needs.
+- [x] Embedding call throws → whole batch `:failed`, nothing written, next batch continues.
+- [x] `delete-documents!` [model ids] — ids as numbers or strings; unknown ids ignored; returns count removed.
+- [x] `index-all!` — logs cumulative counts per batch, returns counts + `:elapsed-ms`. Does **not** prune docs
+      that disappeared from the instance (that's `repair`'s job; out of scope).
+- [x] `index-all-async!` — future, one run at a time (returns nil while running).
+
+Measured on the dev instance (64 docs, ai-service `snowflake-arctic-embed-l-v2.0`, 1024 dims):
+full index **1.2–1.5 s** (embedding dominated), re-run with nothing changed **~45 ms** (all reused).
 
 ## Phase E — query path: "the index is queryable" (1–2 h)
 
@@ -188,10 +191,10 @@ Raw store queries, not the search engine (that's PLAN_002).
 | A spike | ✅ done |
 | B connection | ✅ done |
 | C schema | ✅ done |
-| D writes | 3–4 h |
+| D writes | ✅ done |
 | E queries | 1–2 h |
 | F REPL + tests | 2–3 h |
-| **Remaining** | **~6–9 h** (D, E, F) |
+| **Remaining** | **~3–5 h** (E, F) |
 
 ## Decisions taken (change here if needed)
 

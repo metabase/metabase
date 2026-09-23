@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.sqlite :as sqlite]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -206,3 +207,148 @@
       (is (= [{:rowid 3}]
              (q ["SELECT rowid FROM search_vec(?, '{k: 1}') WHERE model = 'dashboard' AND archived = 0"
                  (sqlite/->blob [1 0 0 0])]))))))
+
+;;; -------------------------------------------------- Write path --------------------------------------------------
+
+(def ^:private text->vector
+  {"alpha" [1 0 0 0]
+   "beta"  [0 1 0 0]
+   "gamma" [0 0 1 0]
+   "delta" [0 0 0 1]})
+
+(defn- doc [model id text & {:as extra}]
+  (merge {:model model :id id :name (str model " " id) :embeddable_text text :archived false
+          :legacy_input {:id id :model model}}
+         extra))
+
+(defn- do-with-stub-embeddings
+  "Call `(f sent)` with embedding stubbed: `text->vector` (or `[0.5 0.5 0.5 0.5]`), no vector for texts containing
+  `skip`, a thrown exception for texts containing `boom`. `sent` is an atom of the texts sent to the provider."
+  [f]
+  (let [sent (atom [])]
+    (mt/with-dynamic-fn-redefs [semantic.embedding/process-embeddings-streaming
+                                (fn [_model texts process-fn & _]
+                                  (swap! sent into texts)
+                                  (when (some #(str/includes? % "boom") texts)
+                                    (throw (ex-info "provider down" {})))
+                                  (process-fn (into {}
+                                                    (comp (remove #(str/includes? % "skip"))
+                                                          (map (fn [t] [t (text->vector t [0.5 0.5 0.5 0.5])])))
+                                                    texts)))]
+      (f sent))))
+
+(defn- doc-names []
+  (into {} (map (juxt (juxt :model :model_id) :name))
+        (q ["SELECT model, model_id, name FROM search_doc"])))
+
+(defn- nearest
+  "rowid -> [model model_id] of the `k` nearest docs to `v`, optionally only `archived` ones."
+  [v k & [archived]]
+  (let [id->key (into {} (map (juxt :id (juxt :model :model_id))) (q ["SELECT id, model, model_id FROM search_doc"]))]
+    (mapv (comp id->key :rowid)
+          (q (cond-> [(str "SELECT rowid FROM search_vec(?, '{k: " k "}')" (when (some? archived) " WHERE archived = ?")
+                           " ORDER BY distance")
+                      (sqlite/->blob v)]
+               (some? archived) (conj archived))))))
+
+(deftest doc->row-test
+  (let [ts  (java.time.OffsetDateTime/parse "2026-09-23T13:44:03Z")
+        row (sqlite/doc->row {7 42} (doc "card" 3 "alpha" :collection_id 7 :verified 1 :pinned false :created_at ts
+                                         :legacy_input "{\"id\":3}"))]
+    (is (=? {:model "card" :model_id "3" :collection_id 7 :personal_owner_id 42 :name "card 3" :content "alpha"
+             :archived 0 :verified 1 :pinned 0 :official_collection nil :model_created_at "2026-09-23T13:44:03Z"
+             :legacy_input "{\"id\":3}"}
+            row))
+    (testing "a map legacy_input is JSON-encoded"
+      (is (= {:id 3 :model "card"} (json/decode+kw (:legacy_input (sqlite/doc->row {} (doc "card" 3 "alpha")))))))))
+
+(deftest upsert-documents-test
+  (with-store! [_path]
+    (do-with-stub-embeddings
+     (fn [sent]
+       (testing "new documents are embedded and written to both tables"
+         (is (= {:upserted 3 :embedded 3 :reused 0 :skipped 0 :failed 0}
+                (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "beta") (doc "dashboard" 1 "gamma")])))
+         (is (= {["card" "1"] "card 1" ["card" "2"] "card 2" ["dashboard" "1"] "dashboard 1"} (doc-names)))
+         (is (= [["card" "2"]] (nearest [0 1 0 0] 1))))
+       (testing "unchanged content reuses the stored vector"
+         (reset! sent [])
+         (is (= {:upserted 3 :embedded 0 :reused 3 :skipped 0 :failed 0}
+                (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "beta") (doc "dashboard" 1 "gamma")])))
+         (is (= [] @sent)))
+       (testing "changed content is re-embedded and replaces the row and vector in place"
+         (is (=? {:upserted 1 :embedded 1 :reused 0}
+                 (sqlite/upsert-documents! [(doc "card" 1 "delta" :name "renamed")])))
+         (is (= "renamed" (get (doc-names) ["card" "1"])))
+         (is (= 3 (count (doc-names))))
+         (is (= [["card" "1"]] (nearest [0 0 0 1] 1))))
+       (testing "a change to a filter column alone reuses the vector and updates the vec1 meta column"
+         (is (=? {:reused 1 :embedded 0} (sqlite/upsert-documents! [(doc "card" 2 "beta" :archived true)])))
+         (is (= [["card" "2"]] (nearest [0 1 0 0] 1 1)))
+         (is (not (contains? (set (nearest [0 1 0 0] 3 0)) ["card" "2"]))))
+       (testing "identical texts in one batch are embedded once"
+         (reset! sent [])
+         (sqlite/upsert-documents! [(doc "table" 1 "same text") (doc "table" 2 "same text")])
+         (is (= ["same text"] @sent)))
+       (testing "a key given twice in one batch: the last one wins"
+         (sqlite/upsert-documents! [(doc "card" 9 "alpha" :name "first") (doc "card" 9 "beta" :name "second")])
+         (is (= "second" (get (doc-names) ["card" "9"]))))
+       (testing "small batches"
+         (binding [sqlite/*batch-size* 2]
+           (is (=? {:upserted 5}
+                   (sqlite/upsert-documents! (for [i (range 5)] (doc "metric" i (str "metric text " i))))))))))))
+
+(deftest upsert-documents-failures-test
+  (with-store! [_path]
+    (do-with-stub-embeddings
+     (fn [_sent]
+       (testing "a failed embedding call skips the whole batch"
+         (is (= {:upserted 0 :embedded 0 :reused 0 :skipped 0 :failed 2}
+                (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "boom")])))
+         (is (= {} (doc-names))))
+       (testing "a text the provider returns no vector for is skipped, the rest are written"
+         (is (=? {:upserted 1 :skipped 1} (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "skip me")])))
+         (is (= #{["card" "1"]} (set (keys (doc-names))))))))
+    (testing "a vector of the wrong size is skipped"
+      (mt/with-dynamic-fn-redefs [semantic.embedding/process-embeddings-streaming
+                                  (fn [_model texts process-fn & _]
+                                    (process-fn (zipmap texts (repeat [1 0 0]))))]
+        (is (=? {:upserted 0 :skipped 1} (sqlite/upsert-documents! [(doc "card" 3 "three dims")])))))))
+
+(deftest delete-documents-test
+  (with-store! [_path]
+    (do-with-stub-embeddings
+     (fn [_sent]
+       (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "beta") (doc "dashboard" 1 "gamma")])
+       (testing "removes from both tables; unknown ids are ignored"
+         (is (= 1 (sqlite/delete-documents! "card" [1 404])))
+         (is (= #{["card" "2"] ["dashboard" "1"]} (set (keys (doc-names)))))
+         (is (= [{:n 2}] (q ["SELECT count(*) AS n FROM search_vec_base"])))
+         (is (not (contains? (set (nearest [1 0 0 0] 5)) ["card" "1"]))))
+       (testing "ids may be strings; only the given model is touched"
+         (is (= 1 (sqlite/delete-documents! "dashboard" ["1"])))
+         (is (= #{["card" "2"]} (set (keys (doc-names))))))
+       (testing "no ids"
+         (is (= 0 (sqlite/delete-documents! "card" []))))))))
+
+(deftest index-all-test
+  (with-store! [_path]
+    (do-with-stub-embeddings
+     (fn [_sent]
+       (binding [sqlite/*batch-size* 2]
+         (is (=? {:upserted 5 :embedded 5 :elapsed-ms int?}
+                 (sqlite/index-all! (for [i (range 5)] (doc "card" i (str "text " i)))))))
+       (testing "async: one run at a time"
+         (let [started (promise)
+               release (promise)
+               docs    (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (deliver started true)
+                           @release
+                           (rf init (doc "card" 100 "late"))))
+               run     (sqlite/index-all-async! docs)]
+           @started
+           (is (nil? (sqlite/index-all-async! [])))
+           (deliver release true)
+           (is (=? {:upserted 1} @run))
+           (is (future? (sqlite/index-all-async! [])))))))))

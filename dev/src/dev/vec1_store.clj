@@ -1,9 +1,10 @@
 (ns dev.vec1-store
-  "REPL walkthrough for the SQLite vec1 store as of PLAN_001 phase C (`native/vec1/PLAN_001_store.md`):
-  connection, schema, and the embedding-model check. Evaluate the numbered forms in the `comment` one at a time.
+  "REPL walkthrough for the SQLite vec1 store as of PLAN_001 phase D (`native/vec1/PLAN_001_store.md`):
+  connection, schema and embedding-model check (steps 1-9), indexing (steps 10-14). Evaluate the numbered forms in
+  the `comment` one at a time.
 
   Needs the vec1 binary for this machine (`resources/vec1/<platform>/`, see `native/vec1/README.md`) and, for
-  step 7, a configured embedding provider.
+  steps 7 and 10-14, a configured embedding provider.
 
   vec1 bugs crash the JVM rather than throwing (`native/vec1/LIMITATION_001_update_crash.md`). Never
   `UPDATE search_vec`, and never select `distance` outside a KNN call (`search_vec(?, '{k: N}')`)."
@@ -11,6 +12,7 @@
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.sqlite :as sqlite]
+   [metabase.search.ingestion :as search.ingestion]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -70,6 +72,23 @@
               (sqlite/->blob embedding)]
        model (conj model))))
 
+(defn search-text
+  "The `k` nearest docs to `text`, embedded as a search query with the store's model."
+  [text k & [model]]
+  (let [embedding-model (sqlite/embedding-model)]
+    (mapv (juxt :distance :model :name)
+          (knn (semantic.embedding/get-embedding embedding-model
+                                                 (semantic.embedding/prefix-search-query embedding-model text)
+                                                 {:type :query :record-tokens? false})
+               k
+               model))))
+
+(defn doc-row
+  "The `search_doc` row for `model`/`id`, or nil."
+  [model id]
+  (first (q ["SELECT id, model, model_id, name, archived, substr(content, 1, 80) AS content FROM search_doc
+              WHERE model = ? AND model_id = ?" model (str id)])))
+
 (comment
   ;; 1. where the extension comes from, and a clean slate
   [(sqlite/platform) (sqlite/extension-path)]
@@ -124,6 +143,41 @@
       (sqlite/open! db-file {:embedding-model fake-model})
       (summary))
 
-  ;; 10. clean up -> the file is gone
+  ;; --- Phase D: indexing, with the configured model ---
+
+  ;; 10. index every searchable document of this instance into a fresh store
+  ;;     -> :upserted = :embedded = number of docs, :skipped/:failed 0; search_doc = search_vec
+  (do (sqlite/delete-store! db-file)
+      (sqlite/open! db-file)
+      {:run     (sqlite/index-all! (search.ingestion/searchable-documents))
+       :summary (select-keys (summary) [:schema :search_doc :search_vec])
+       :models  (q ["SELECT model, count(*) AS n FROM search_doc GROUP BY model ORDER BY model"])})
+
+  ;; 11. run it again -> :embedded 0, :reused = every doc (unchanged content keeps its vector), much faster
+  (sqlite/index-all! (search.ingestion/searchable-documents))
+
+  ;; 12. search by meaning -> order/sales cards first; with "dashboard", only dashboards (filtered inside the KNN)
+  {:any        (search-text "which marketing channels bring in orders" 5)
+   :dashboards (search-text "which marketing channels bring in orders" 3 "dashboard")}
+
+  ;; 13. update one doc: rename -> :embedded 1, row shows the new name; archive only -> :reused 1, archived 1
+  (do (def a-card (first (filter #(= "card" (:model %)) (into [] (search.ingestion/searchable-documents)))))
+      {:rename  (sqlite/upsert-documents! [(-> a-card
+                                               (assoc :name "Customer churn by cohort")
+                                               (update :embeddable_text str "\nCustomer churn by cohort"))])
+       :row     (doc-row "card" (:id a-card))
+       :churn   (search-text "customer churn" 1)
+       :archive (sqlite/upsert-documents! [(-> a-card
+                                               (assoc :name "Customer churn by cohort" :archived true)
+                                               (update :embeddable_text str "\nCustomer churn by cohort"))])
+       :row'    (doc-row "card" (:id a-card))})
+
+  ;; 14. delete it -> 1 removed, search_doc and search_vec both one fewer, gone from search
+  {:deleted (sqlite/delete-documents! "card" [(:id a-card)])
+   :row     (doc-row "card" (:id a-card))
+   :summary (select-keys (summary) [:search_doc :search_vec])
+   :churn   (search-text "customer churn" 1)}
+
+  ;; 15. clean up -> the file is gone
   (do (sqlite/delete-store! db-file)
       (.exists (java.io.File. db-file))))

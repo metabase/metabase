@@ -103,7 +103,9 @@
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
-(defn- to-instant
+(defn to-instant
+  "Coerce a search document timestamp (ISO-8601 string, `OffsetDateTime`, `ZonedDateTime` or `inst`) to an
+  `Instant`."
   [document-timestamp]
   (cond
     ;; loosey-goosey, but applies to json encoded instants from the gate table
@@ -119,7 +121,7 @@
 
     :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
 
-(defn- to-boolean
+(defn to-boolean
   "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
    real booleans when inserting them into our postgres db"
   [b]
@@ -130,7 +132,7 @@
     (= 1 b) true
     :else (throw (ex-info "Unexpected boolean value" {:v b}))))
 
-(defn- batch-resolve-personal-owner-ids
+(defn batch-resolve-personal-owner-ids
   "Given a seq of collection-ids, return a map of collection-id -> personal_owner_id.
    Collections not in any personal tree will be absent from the map.
    Uses at most 2 queries regardless of the number of collection-ids."
