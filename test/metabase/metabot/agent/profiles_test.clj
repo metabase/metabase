@@ -16,8 +16,15 @@
     (let [baseline (profiles/get-profile :nlq-old)]
       (is (nil? (:routing? baseline)))
       (is (nil? (:prefetch-data-sources? baseline)))
+      (is (nil? (:fast? baseline)))
+      (is (true? (:fast? (profiles/get-profile :nlq))) "the nlq profile asks for fast mode even when served its fallback")
       (is (= "natural-language-querying-fallback.selmer" (:prompt-template baseline)))
-      (is (= (:tools (profiles/get-profile :nlq)) (:tools baseline))))))
+      (is (= (remove #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq))) (:tools baseline)))))
+  (testing "nlq-old never offers explore_table, with or without the library index"
+    (doseq [available? [true false]]
+      (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly available?)]
+        (is (not-any? #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq-old))))
+        (is (some #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq))))))))
 
 (deftest get-profile-test
   (letfn [(tool-names [profile]

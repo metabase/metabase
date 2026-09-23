@@ -1,6 +1,7 @@
 import {
   type ThunkDispatch,
   type UnknownAction,
+  isFulfilled,
   isRejected,
 } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
@@ -85,6 +86,7 @@ export const {
   toolCallEnd,
   toolCallTitled,
   toolCallSearchResults,
+  toolCallExploreIdeas,
   setMetabotReqIdOverride,
   setDebugMode,
   createAgent,
@@ -240,12 +242,81 @@ export const setVisible =
     dispatch(metabot.actions.setVisible(payload));
   };
 
+type SubmitInputPayload = Omit<MetabotUserChatMessage, "id" | "role"> & {
+  context: MetabotChatContext;
+  conversationId: string;
+  metabot_id?: string;
+  profile?: MetabotProfileId;
+  retryMessageId?: string;
+  isFullPageMetabot?: boolean;
+};
+
+export const replayConversation = createAsyncThunk<
+  void,
+  { sourceConversationId: string; input: SubmitInputPayload }
+>(
+  "metabase/metabot/replayConversation",
+  async ({ sourceConversationId, input }, { dispatch, getState }) => {
+    const { data: detail, error } = await dispatch(
+      metabotApi.endpoints.getMetabotConversation.initiate(
+        sourceConversationId,
+        { forceRefetch: true, subscribe: false },
+      ),
+    );
+    if (error || !detail) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "feedback-negative",
+          message: t`Sorry, we couldn't load that conversation.`,
+        }),
+      );
+      return;
+    }
+
+    const prompts = detail.messages
+      .filter((message) => message.role === "user")
+      .flatMap((message) => message.parts)
+      .flatMap((part) => (part.type === "text" ? [part.message] : []))
+      .filter((prompt) => prompt.trim() !== "");
+    if (prompts.length === 0) {
+      dispatch(
+        addUndo({ message: t`That conversation has no prompts to replay.` }),
+      );
+      return;
+    }
+
+    for (const [index, prompt] of prompts.entries()) {
+      // Stop quietly if the user moved on to another conversation mid-replay.
+      if (!getHasConversation(getState(), input.conversationId)) {
+        return;
+      }
+      const action = await dispatch(
+        submitInput({
+          ..._.omit(input, "retryMessageId"),
+          type: "text",
+          message: prompt,
+        }),
+      );
+      // A stopped or failed response ends the replay rather than piling later prompts onto it.
+      if (!isFulfilled(action) || !action.payload.success) {
+        dispatch(
+          addUndo({
+            message: t`Replay stopped at prompt ${index + 1} of ${prompts.length}.`,
+          }),
+        );
+        return;
+      }
+    }
+  },
+);
+
 export const executeSlashCommand = createAsyncThunk<
   void,
-  { command: SlashCommand; conversationId: string }
+  { command: SlashCommand; conversationId: string; input: SubmitInputPayload }
 >(
   "metabase/metabot/executeSlashCommand",
-  async ({ command, conversationId }, { dispatch, getState }) => {
+  async ({ command, conversationId, input }, { dispatch, getState }) => {
     match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
@@ -266,6 +337,16 @@ export const executeSlashCommand = createAsyncThunk<
           dispatch(setMetabotReqIdOverride({ id: args[0], conversationId }));
         } else {
           dispatch(addUndo({ message: "/metabot <name>" }));
+        }
+      })
+      .with({ cmd: "replay" }, ({ args }) => {
+        if (args.length === 1) {
+          // Not awaited: the replay outlives this submission, which frees the input straight away.
+          void dispatch(
+            replayConversation({ sourceConversationId: args[0], input }),
+          );
+        } else {
+          dispatch(addUndo({ message: "/replay <conversation-id>" }));
         }
       })
       .with({ cmd: "debug" }, () => {
@@ -318,14 +399,7 @@ export type MetabotPromptSubmissionResult =
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
-  Omit<MetabotUserChatMessage, "id" | "role"> & {
-    context: MetabotChatContext;
-    conversationId: string;
-    metabot_id?: string;
-    profile?: MetabotProfileId;
-    retryMessageId?: string;
-    isFullPageMetabot?: boolean;
-  }
+  SubmitInputPayload
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
@@ -371,6 +445,7 @@ export const submitInput = createAsyncThunk<
           executeSlashCommand({
             command,
             conversationId,
+            input: payload,
           }),
         );
         return { prompt, success: true };
@@ -615,6 +690,15 @@ export const sendAgentRequest = createAsyncThunk<
                     toolCallId: part.data.tool_call_id,
                     totalCount: part.data.total_count,
                     results: part.data.results,
+                  }),
+                );
+              })
+              .with({ type: "data-explore_ideas" }, (part) => {
+                dispatch(
+                  toolCallExploreIdeas({
+                    conversationId,
+                    toolCallId: part.data.tool_call_id,
+                    ideas: part.data.ideas,
                   }),
                 );
               })

@@ -3,6 +3,7 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
+import type { ExploreIdea } from "metabase/api/ai-streaming/schemas";
 import {
   METABOT_PROFILE_OVERRIDES,
   getToolMessage,
@@ -234,6 +235,17 @@ export const setChainToolSearchResults = (
   const found = findChainToolStep(convo, toolCallId);
   if (found) {
     found.step.searchResults = searchResults;
+  }
+};
+
+export const setChainToolExploreIdeas = (
+  convo: WritableDraft<MetabotConversationState>,
+  toolCallId: string,
+  ideas: ExploreIdea[],
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.exploreIdeas = ideas;
   }
 };
 

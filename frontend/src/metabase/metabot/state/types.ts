@@ -1,4 +1,5 @@
 import type {
+  ExploreIdea,
   KnownDataPart,
   SearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
@@ -15,6 +16,7 @@ export type MetabotDataPart = Exclude<
   | { type: "data-state" }
   | { type: "data-conversation-title" }
   | { type: "data-search_results" }
+  | { type: "data-explore_ideas" }
   | { type: "data-tool_title" }
 >;
 
@@ -148,6 +150,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
+      exploreIdeas?: ExploreIdea[];
       status: "started" | "ended";
       startedAtMs?: number;
     };

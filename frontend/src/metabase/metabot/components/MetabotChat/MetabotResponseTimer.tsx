@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+import { t } from "ttag";
 
-import type { MetabotMessage } from "metabase/metabot/state";
+import {
+  type MetabotMessage,
+  isGeneratedCardPart,
+} from "metabase/metabot/state";
 import { Flex, Text } from "metabase/ui";
 import { formatDurationLong } from "metabase/utils/formatting";
 
@@ -134,7 +138,7 @@ export const MetabotResponseTimer = ({
 
 /**
  * The chat's totals next to its title: response time, and in green the time its responses took to deliver a chart,
- * counting a response that delivered none as zero.
+ * counting a response that delivered none as zero, then that chart time spread over every chart delivered.
  */
 export const MetabotConversationTimer = ({
   messages,
@@ -152,15 +156,24 @@ export const MetabotConversationTimer = ({
     (totalMs, group) => totalMs + (getTimeToFirstChartMs(group, nowMs) ?? 0),
     0,
   );
+  const elapsedMs = getElapsedMs(timings, nowMs);
+  const chartCount = messages
+    .flatMap((message) => message.parts)
+    .filter(isGeneratedCardPart).length;
 
   return (
     <Flex className={Styles.responseTimer} gap="xs">
       <Text c="text-secondary" fz="sm" data-testid="metabot-response-timer">
-        {formatDurationLong(getElapsedMs(timings, nowMs))}
+        {formatDurationLong(elapsedMs)}
       </Text>
       <Text c="success" fz="sm" data-testid="metabot-chart-total-timer">
         {formatDurationLong(chartMs)}
       </Text>
+      {chartCount > 0 && (
+        <Text c="success" fz="sm" data-testid="metabot-chart-average-timer">
+          {t`${formatDurationLong(chartMs / chartCount)} / chart`}
+        </Text>
+      )}
     </Flex>
   );
 };

@@ -75,3 +75,26 @@
                               #{"read_resource" "create_sql_query"}
                               #{:create-sql-query}
                               {}))))
+
+(deftest explore-table-routing-test
+  (let [available ["search" "read_resource" "construct_notebook_query" "create_chart" "explore_table"]]
+    (mt/with-dynamic-fn-redefs [jev/key-present? (constantly true)
+                                jev/ask          (constantly {:ok true
+                                                              :answers (answers {:intent-explore-table 0.9
+                                                                                 :answer-is-the-chart  0.9
+                                                                                 :single-chart-suffices 0.9})})]
+      (is (=? {:intents              [:intent-explore-table]
+               :tools                #{"explore_table" "search" "retrieve_library_entities" "read_resource"
+                                       "create_chart" "construct_notebook_query"}
+               :skills               #{:construct-notebook-query-core :construct-notebook-query-operators
+                                       :construct-notebook-query-advanced}
+               :escalate?            false
+               :chart-is-the-answer? false}
+              (routing/route [{:role :user :content "[Orders](metabase://table/5)"}] {} available))))
+    (testing "an open-ended invitation to explore stays routed"
+      (mt/with-dynamic-fn-redefs [jev/key-present? (constantly true)
+                                  jev/ask          (constantly {:ok true
+                                                                :answers (answers {:intent-explore-table   0.95
+                                                                                   :intent-needs-reasoning 0.38})})]
+        (is (false? (:escalate? (routing/route [{:role :user :content "what's interesting in [Orders](metabase://table/5)?"}]
+                                               {} available))))))))

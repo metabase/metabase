@@ -27,6 +27,10 @@
    agent loop so that tools can adapt their output to the active profile."
   nil)
 
+(def ^:dynamic *request-id*
+  "The current agent turn's request id, so LLM calls a tool makes are tracked under the turn. Nil outside a turn."
+  nil)
+
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."
   []

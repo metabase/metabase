@@ -21,7 +21,7 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
-   (java.util.concurrent Callable Executors ExecutorService)))
+   (java.util.concurrent Callable Executors ExecutorService Future LinkedBlockingQueue TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -191,15 +191,23 @@
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
 
+(def ^:private JSONSchemaScalar
+  [:map {:closed true}
+   [:type        {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
+
 (def ^:private JSONSchemaLeaf
-  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
-  an array-typed leaf."
+  "A leaf JSON Schema node: no `:properties` of its own, one further level of `:items` for an
+  array-typed leaf. Those items may be objects, whose own properties are scalars."
   [:map {:closed true}
    [:type        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:items       {:optional true} [:map {:closed true}
-                                   [:type        {:optional true} [:maybe :string]]
-                                   [:description {:optional true} [:maybe :string]]]]
+                                   [:type                 {:optional true} [:maybe :string]]
+                                   [:description          {:optional true} [:maybe :string]]
+                                   [:properties           {:optional true} [:map-of [:or :string :keyword] JSONSchemaScalar]]
+                                   [:required             {:optional true} [:vector :string]]
+                                   [:additionalProperties {:optional true} :boolean]]]
    [:minimum     {:optional true} number?]
    [:maximum     {:optional true} number?]])
 
@@ -407,6 +415,7 @@
                                       :function  (:toolName chunk)
                                       :arguments (parse-tool-arguments chunks)}
                                pm (assoc :provider-metadata pm)))
+    :data                  chunk
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
@@ -441,7 +450,7 @@
               ;; Self-contained chunk types: flush previous group, emit immediately.
               ;; :tool-output-available shares toolCallId with preceding :tool-input-*
               ;; chunks, so the id-based grouping below would incorrectly merge them.
-              (#{:tool-output-available :start :usage :error} (:type chunk))
+              (#{:tool-output-available :start :usage :error :data} (:type chunk))
               (-> (flush! result)
                   (rf (aisdk-chunks->part [chunk])))
 
@@ -981,6 +990,37 @@
         (mapv (assoc-ms (u/since-ms start-ms))
               results)))))
 
+(def ^:dynamic *tool-progress*
+  "While a tool runs, a fn that streams a `{:type :data ...}` part to the client before the tool returns; nil
+  otherwise. Use [[emit-tool-progress!]]."
+  nil)
+
+(defn emit-tool-progress!
+  "Stream `part` to the client now, a data part labeled with the running tool call. A no-op outside a tool call.
+  Progress never reaches the model."
+  [part]
+  (when *tool-progress*
+    (*tool-progress* part)))
+
+(def ^:private progress-poll-ms 50)
+
+(defn- stream-progress-until-done
+  "Pass `progress` chunks to `rf` as they arrive until every task is done, then drain what is left."
+  [rf result ^LinkedBlockingQueue progress tasks]
+  (let [drain (fn [result]
+                (loop [result result]
+                  (if-let [chunk (.poll progress)]
+                    (let [result (rf result chunk)]
+                      (if (reduced? result) result (recur result)))
+                    result)))]
+    (loop [result result]
+      (cond
+        (reduced? result)                        result
+        (every? #(.isDone ^Future %) tasks)      (drain result)
+        :else (recur (if-let [chunk (.poll progress progress-poll-ms TimeUnit/MILLISECONDS)]
+                       (rf result chunk)
+                       result))))))
+
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
 
@@ -988,12 +1028,14 @@
   - Passes all chunks through unchanged as they arrive
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
-  - At completion, waits for all tools and appends results
+  - At completion, waits for all tools, streaming any [[emit-tool-progress!]] parts as they arrive, then appends
+    results
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active (volatile! {})] ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+          progress (LinkedBlockingQueue.)]
       (fn
         ([result]
          (let [{tasks  true
@@ -1002,7 +1044,10 @@
              (log/warn "Multiple tool calls were not collected fully before stream finish"
                        {:tool-calls (map first chunks)}))
            (if-let [tasks (some->> (seq tasks) (map #(:task (second %))))]
-             (rf (reduce rf result (mapcat deref tasks)))
+             (let [result (stream-progress-until-done rf result progress tasks)]
+               (rf (if (reduced? result)
+                     (unreduced result)
+                     (reduce rf result (mapcat deref tasks)))))
              (rf result))))
 
         ([result {:keys [type toolCallId toolName] :as chunk}]
@@ -1017,8 +1062,12 @@
 
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
+             (let [tool   (get tools toolName)
+                   report (fn [part]
+                            (.offer progress (cond-> part
+                                               (map? (:data part)) (assoc-in [:data :tool_call_id] toolCallId))))
+                   task   (submit-virtual (bound-fn* #(binding [*tool-progress* report]
+                                                        (run-tool toolCallId toolName tool chunks))))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing

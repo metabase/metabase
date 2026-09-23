@@ -317,7 +317,8 @@
   [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
-           (when (= (:type part) :usage)
+           ;; a `:tool-model` part was already reported by the tool's own call
+           (when (and (= (:type part) :usage) (not (:tool-model part)))
              (let [usage           (:usage part)
                    model           (or model (:model part) "unknown")
                    prompt          (:promptTokens usage 0)
@@ -514,7 +515,8 @@
                            log/warn pointing at the caller's source/tag.
 
   `llm-opts` is an optional map of provider-facing call options — see
-  [[parse-provider-model]]'s adapters for what each one honors.
+  [[parse-provider-model]]'s adapters for what each one honors. Its `:fast?`, when present, decides whether to
+  request faster serving in place of the `llm-fast-mode` setting.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip as an
   OTel span and retries transient errors with exponential backoff. Global usage
@@ -523,7 +525,7 @@
   (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice fast?]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
    (or (when-let [limit-msg (usage/check-usage-limits!)]
          (error-reducible limit-msg "ai_usage_limit_reached"))
@@ -536,7 +538,7 @@
                                      :model-name model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
-                                       :fast?       (and (metabot.settings/llm-fast-mode)
+                                       :fast?       (and (if (some? fast?) fast? (metabot.settings/llm-fast-mode))
                                                          (catalog/supports-fast-mode? provider-and-model))}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
@@ -570,6 +572,15 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- report-usage-to-turn-xf
+  "Pass `:usage` parts on to the agent turn this call runs inside, when a tool makes it, so the turn's usage counts
+  the tokens its tools spend. Outside a tool call this does nothing."
+  [provider-and-model]
+  (map (fn [part]
+         (when (= :usage (:type part))
+           (core/emit-tool-progress! {:type :usage :usage (:usage part) :tool-model provider-and-model}))
+         part)))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -584,6 +595,8 @@
   `opts` extends `tracking-opts` and may include:
     :retry?              - When false, attempt the request only once.
     :reasoning?          - When false, suppress optional provider reasoning.
+    :fast?               - When true, request the provider's faster serving where the model supports it,
+                           falling back to standard speed otherwise.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot`, which is always checked.
@@ -620,6 +633,7 @@
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
                          (contains? opts :reasoning?) (assoc :reasoning? (:reasoning? opts))
+                         (:fast? opts)               (assoc :fast? (catalog/supports-fast-mode? provider-and-model))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
@@ -630,7 +644,8 @@
           (let [parts (into []
                             (comp (core/aisdk-xf)
                                   (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
+                                  (report-token-usage-xf tracking-opts)
+                                  (report-usage-to-turn-xf provider-and-model))
                             (stream-fn streaming-opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)

@@ -22,7 +22,7 @@
 (def ^:private parallelism 8)
 (def ^:private startup-delay-seconds 60)
 (def ^:private continuation-delay-seconds 5)
-(def ^:private caught-up-delay-seconds (* 5 60))
+(def ^:private caught-up-delay-seconds 60)
 (def ^:private no-key-retry-delay-seconds (* 60 60))
 
 (def ^:private job-key (jobs/key "metabase.task.jev.conversation-review-backfill.job"))
@@ -51,15 +51,22 @@
                :doc "Review Metabot conversations with Jev, backfilling any without a current review."}
   ConversationReviewBackfill [ctx]
   (let [ctx      ^JobExecutionContext ctx
-        after-id (get (qc/from-job-data ctx) "after-id")]
-    (if-not (jev/key-present?)
-      (do (log/info "Skipping Metabot conversation review: no Jev key is configured.")
-          (schedule-run! (.getScheduler ctx) nil no-key-retry-delay-seconds))
-      (let [{:keys [cursor more?] :as result} (run-page! after-id)]
-        (log/info "Metabot conversation review batch complete" (dissoc result :cursor))
-        (if more?
-          (schedule-run! (.getScheduler ctx) cursor continuation-delay-seconds)
-          (schedule-run! (.getScheduler ctx) nil caught-up-delay-seconds))))))
+        after-id (get (qc/from-job-data ctx) "after-id")
+        ;; The job only runs again because it schedules itself, so a failed pass must still schedule the next one.
+        [cursor delay-seconds]
+        (try
+          (if-not (jev/key-present?)
+            (do (log/info "Skipping Metabot conversation review: no Jev key is configured.")
+                [nil no-key-retry-delay-seconds])
+            (let [{:keys [cursor more?] :as result} (run-page! after-id)]
+              (log/info "Metabot conversation review batch complete" (dissoc result :cursor))
+              (if more?
+                [cursor continuation-delay-seconds]
+                [nil caught-up-delay-seconds])))
+          (catch Throwable e
+            (log/warn e "Metabot conversation review pass failed; retrying from the start")
+            [nil caught-up-delay-seconds]))]
+    (schedule-run! (.getScheduler ctx) cursor delay-seconds)))
 
 (defn- build-job []
   (jobs/build

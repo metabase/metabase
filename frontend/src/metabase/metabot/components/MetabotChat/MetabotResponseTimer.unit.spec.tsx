@@ -1,5 +1,6 @@
 import { act, renderWithProviders, screen } from "__support__/ui";
 import type { MetabotMessage } from "metabase/metabot/state";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import {
   MetabotConversationTimer,
@@ -161,6 +162,48 @@ describe("MetabotConversationTimer", () => {
     expect(screen.getByTestId("metabot-response-timer")).toHaveTextContent(
       "4.5s",
     );
+  });
+
+  it("divides the time to first chart by every chart delivered", () => {
+    const chart = (id: string): MetabotMessage["parts"][number] => ({
+      id,
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "data-generated_entity",
+        data: {
+          type: "card",
+          id,
+          title: id,
+          query: { id, query: createMockStructuredDatasetQuery() },
+        },
+      },
+    });
+    renderWithProviders(
+      <MetabotConversationTimer
+        messages={[
+          userMessage("u1"),
+          { ...agentMessage("a1", 0, 5_000, 1_000), parts: [chart("c1")] },
+          userMessage("u2"),
+          {
+            ...agentMessage("a2", 6_000, 10_000, 7_000),
+            parts: [chart("c2"), chart("c3"), chart("c4"), chart("c5")],
+          },
+        ]}
+      />,
+    );
+
+    // each turn's first chart came 1s in: 2s of chart time across 5 charts
+    expect(screen.getByTestId("metabot-chart-average-timer")).toHaveTextContent(
+      "400ms / chart",
+    );
+  });
+
+  it("leaves out the per-chart time until a chart arrives", () => {
+    renderWithProviders(<MetabotConversationTimer messages={MESSAGES} />);
+    expect(
+      screen.queryByTestId("metabot-chart-average-timer"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders nothing before any response", () => {

@@ -6,7 +6,10 @@ import {
 import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
-import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import type {
+  ExploreIdea,
+  SearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -39,6 +42,7 @@ import {
   pushNewToolCall,
   resetReactionState,
   resetReactionStateForConversation,
+  setChainToolExploreIdeas,
   setChainToolSearchResults,
   setChainToolTitle,
   startAgentMessage,
@@ -305,6 +309,18 @@ export const metabot = createSlice({
       ) => {
         const { toolCallId, totalCount, results } = action.payload;
         setChainToolSearchResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    toolCallExploreIdeas: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          ideas: ExploreIdea[];
+        }>,
+      ) => {
+        const { toolCallId, ideas } = action.payload;
+        setChainToolExploreIdeas(convo, toolCallId, ideas);
       },
     ),
     toolCallTitled: convoReducer(

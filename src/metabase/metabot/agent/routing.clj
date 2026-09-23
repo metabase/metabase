@@ -46,10 +46,15 @@
              {:true  "Example: \"make this a pie chart\", \"change the vertical axis to log\", \"use percentages on the labels\""
               :false "The user wants different data (new filters, groupings, or columns), or there is no existing chart in `state` or `conversation-history`."})
 
+   :intent-explore-table
+   (jev/noul "`prompt` offers a table to explore without asking a specific question about it, or asks for more or more interesting ideas about a table already being explored in `conversation-history`: the user wants ideas for what to look at in it. The table may be a mention link such as `[Orders](metabase://table/5)`, a table named in `prompt`, or the table in `state.viewing`."
+             {:true  "A bare table mention, an open invitation to look around, or a push for more once exploring. Example: \"[Orders](metabase://table/5)\", \"what can I learn from this table?\", \"explore the accounts table\", \"what's interesting in [Orders](metabase://table/5)?\", \"show me something more surprising\", \"dig deeper\""
+              :false "The user asks a concrete question about the table, or about something that isn't a table. Example: \"show me [Orders](metabase://table/5) by month\", \"what columns does the orders table have?\", \"analyze this chart\""})
+
    :intent-needs-reasoning
    (jev/noul "`prompt` is an open-ended or multi-step request that an agent would need to plan through, rather than one direct action on data, a query, or a chart."
              {:true  "Several dependent steps, an ambiguous goal, or something outside querying and charting. Example: \"help me migrate from full app embedding to modular embedding\", \"which tools do you have access to?\""
-              :false "A single clear request to fetch, change, describe, or explain data or a chart. Example: \"show me orders over time\""})
+              :false "A single clear request to fetch, change, describe, or explain data or a chart, or an invitation to explore one table. Example: \"show me orders over time\", \"[Orders](metabase://table/5)\""})
 
    :mentions-sql
    (jev/noul "`prompt` explicitly asks for SQL, a native query, or raw query code, or refers to SQL shown in `state` or `conversation-history`."
@@ -97,20 +102,24 @@
    :intent-read-resource
    :intent-analyze-results
    :intent-update-visualization
+   :intent-explore-table
    :intent-needs-reasoning])
 
 (def ^:private intent->skills
   {:intent-find-or-create-query  #{:read-resource :query-language}
    :intent-modify-previous-query #{:query-language}
    :intent-read-resource         #{:read-resource}
-   :intent-update-visualization  #{:edit-chart}})
+   :intent-update-visualization  #{:edit-chart}
+   :intent-explore-table         #{:query-language}})
 
 (def ^:private intent->tools
   {:intent-find-or-create-query  #{"search" "retrieve_library_entities" "create_chart" :query-language}
    :intent-modify-previous-query #{"create_chart" :query-language}
    :intent-read-resource         #{"search" "retrieve_library_entities" "list_available_data_sources" "list_available_fields"}
    :intent-analyze-results       #{"analyze_chart"}
-   :intent-update-visualization  #{"edit_chart"}})
+   :intent-update-visualization  #{"edit_chart"}
+   ;; The table may be named rather than linked, so its id can take a search; the top ideas are charted right away.
+   :intent-explore-table         #{"explore_table" "search" "retrieve_library_entities" "create_chart" :query-language}})
 
 (defn- yes? [answers k]
   (>= (get-in answers [k :noul] 0) threshold))
@@ -141,7 +150,7 @@
               (or (yes? answers :mentions-sql) sql-editor?)))
     :notebook
 
-    (some #{:intent-find-or-create-query} intents) :new-sql
+    (some #{:intent-find-or-create-query :intent-explore-table} intents) :new-sql
     (yes? answers :rewrites-most-of-query)         :rewrite-sql
     :else                                          :edit-sql))
 
@@ -153,9 +162,11 @@
     (cond-> (disj base :query-language)
       (base :query-language)
       (into (case (query-plan answers intents facts)
-              :notebook    (cond-> [:construct-notebook-query-core]
-                             (yes? answers :needs-calculation)      (conj :construct-notebook-query-operators)
-                             (yes? answers :needs-multiple-sources) (conj :construct-notebook-query-advanced))
+              ;; Exploration ideas group by date and join to related tables, which the prompt alone doesn't show.
+              :notebook    (let [explore? (yes? answers :intent-explore-table)]
+                             (cond-> [:construct-notebook-query-core]
+                               (or explore? (yes? answers :needs-calculation))      (conj :construct-notebook-query-operators)
+                               (or explore? (yes? answers :needs-multiple-sources)) (conj :construct-notebook-query-advanced)))
               :new-sql     [:create-sql-query]
               :rewrite-sql [:replace-sql-query]
               :edit-sql    [:edit-sql-query])))))
@@ -220,7 +231,9 @@
      :skills             (skills-to-load answers facts)
      :tools              tools
      :escalate?          (or (empty? intents)
-                             (yes? answers :intent-needs-reasoning)
+                             ;; Open invitations to explore read as open-ended, but explore_table is their plan.
+                             (and (yes? answers :intent-needs-reasoning)
+                                  (not (yes? answers :intent-explore-table)))
                              (not-any? (disj (set available-tools) "read_resource") tools))
      :needs-data-lookup? (>= (get-in answers [:needs-data-lookup :noul] 0) data-lookup-threshold)
      ;; The turn can stop as soon as it has a chart: no prose is owed, so the closing text-only completion is
@@ -228,6 +241,7 @@
      ;; whole reply — and needs no clarification gate: the turn only ends on a *successful* chart tool call,
      ;; so a turn that has to ask the user something never triggers it.
      :chart-is-the-answer? (and (not (yes? answers :intent-analyze-results))
+                                (not (yes? answers :intent-explore-table))
                                 (or (follow-up-edit? answers)
                                     (and (yes? answers :answer-is-the-chart)
                                          (yes? answers :single-chart-suffices)

@@ -287,7 +287,7 @@
                        :state      {}
                        :profile-id :sql
                        :context    {}}))
-            (is (= {:tool-choice "required"} @captured)))))
+            (is (= {:tool-choice "required" :fast? false} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
@@ -1195,3 +1195,19 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest ^:parallel accumulate-usage-xf-tool-model-test
+  (testing "usage a tool's own LLM call reports is counted under that call's model, not the agent's"
+    (let [usage-atom (atom {})
+          parts      (into [] (#'agent/accumulate-usage-xf usage-atom "openai/agent-model")
+                           [{:type :usage :usage {:promptTokens 10 :completionTokens 1}}
+                            {:type :usage :usage {:promptTokens 5 :completionTokens 2} :tool-model "openai/mini-model"}
+                            {:type :usage :usage {:promptTokens 20 :completionTokens 3}}])]
+      (is (= [["openai/agent-model" {:promptTokens 10 :completionTokens 1}]
+              ["openai/mini-model" {:promptTokens 5 :completionTokens 2}]
+              ["openai/agent-model" {:promptTokens 30 :completionTokens 4}]]
+             (map (juxt :model :usage) parts)))
+      (is (not-any? :tool-model parts))
+      (is (= {"openai/agent-model" {:prompt 30 :completion 4}
+              "openai/mini-model"  {:prompt 5 :completion 2}}
+             (metabot.persistence/extract-usage parts))))))

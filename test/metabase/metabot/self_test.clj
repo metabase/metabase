@@ -204,6 +204,21 @@
             (run! identity (self/call-llm model nil [] {} {:tag "agent"}))
             (is (= expected (:fast? @captured)) model)))))))
 
+(deftest call-llm-fast-mode-option-test
+  (testing "a caller's :fast? decides over the llm-fast-mode setting, still only for fast-capable models"
+    (llm.tu/with-default-connections
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [self/resolve-adapter (fn [_]
+                                                           (fn [opts]
+                                                             (reset! captured opts)
+                                                             []))]
+          (doseq [[setting option model expected] [[false true "openai/gpt-6-astra" true]
+                                                   [true false "openai/gpt-6-astra" false]
+                                                   [false true "openai/gpt-5.4" false]]]
+            (mt/with-temporary-setting-values [llm-fast-mode setting]
+              (run! identity (self/call-llm model nil [] {} {:tag "agent"} {:fast? option}))
+              (is (= expected (:fast? @captured)) [setting option model]))))))))
+
 (deftest call-llm-openai-fast-mode-test
   (llm.tu/with-default-connections
     (mt/with-temporary-setting-values [llm-openai-api-key "sk-test"]
@@ -555,6 +570,33 @@
             "Last two chunks should be tool outputs")
         (is (= #{"call-1" "call-2"}
                (set (map :toolCallId tool-results))))))))
+
+(deftest tool-executor-xf-progress-test
+  (testing "parts a tool emits while running stream before its result, labeled with its call"
+    (let [release (promise)
+          tools   {"slow" {:tool-name "slow"
+                           :schema    [:=> [:cat [:map {:closed true}]] :any]
+                           :fn        (fn [_]
+                                        (self.core/emit-tool-progress! {:type :data :data-type "note" :data {:n 1}})
+                                        (deref release 5000 nil)
+                                        {:output "done"})}}
+          chunks  (test-util/parts->aisdk-chunks
+                   [{:type :tool-input :id "call-1" :function "slow" :arguments {}}])
+          seen    (atom [])
+          rf      (fn ([acc] acc)
+                    ([acc chunk]
+                     (swap! seen conj chunk)
+                     (when (= :data (:type chunk)) (deliver release true))
+                     (conj acc chunk)))
+          result  (transduce (self.core/tool-executor-xf tools) rf [] chunks)]
+      (is (=? [{:type :data :data-type "note" :data {:n 1 :tool_call_id "call-1"}}
+               {:type :tool-output-available :toolCallId "call-1" :result {:output "done"}}]
+              (take-last 2 result)))
+      (testing "the progress part is a self-contained stream part"
+        (is (=? [{:type :data :data-type "note"}]
+                (filter #(= :data (:type %)) (into [] (self.core/aisdk-xf) result)))))))
+  (testing "outside a tool call, progress is a no-op"
+    (is (nil? (self.core/emit-tool-progress! {:type :data :data-type "note" :data {}})))))
 
 (deftest ^:parallel tool-executor-xf-test-4
   (testing "tool-executor-xf handles tools returning reducibles"

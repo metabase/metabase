@@ -25,6 +25,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -273,7 +274,7 @@
         system-msg   (messages/build-system-message context profile tools)
         input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
-        llm-opts     (cond-> {}
+        llm-opts     (cond-> {:fast? (boolean (:fast? profile))}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
       (debug-log! {:iteration iteration
@@ -588,10 +589,13 @@
                   "unknown")]
     (map (fn [part]
            (if (= (:type part) :usage)
-             (assoc part
-                    :model model
-                    :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
-                               (get model)))
+             ;; usage a tool's own LLM call reported keeps that call's model
+             (let [model (or (some-> (:tool-model part) llm.provider/strip-managed-prefix) model)]
+               (-> part
+                   (dissoc :tool-model)
+                   (assoc :model model
+                          :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
+                                     (get model)))))
              part)))))
 
 (defn- loop-step
@@ -620,7 +624,8 @@
                                                  :ai/model     (:model profile)}
                                (let [llm-call       (call-llm memory context profile tools iteration
                                                               tracking-opts link-registry-atom)
-                                     reduced-result (reduce (xf rf) result llm-call)]
+                                     reduced-result (binding [shared/*request-id* (:request-id tracking-opts)]
+                                                      (reduce (xf rf) result llm-call))]
                                  (when (ait/capture-active?)
                                    (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
                                                  :ai/tool-io     (summarize-tool-ios @parts-atom)

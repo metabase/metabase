@@ -403,6 +403,21 @@
          (group-by :table_id)
          (into {} (map (fn [[table-id rows]] [table-id (mapv :name rows)]))))))
 
+(defn table-field-summaries
+  "Active, non-sensitive fields for each of `table-ids`, as a map of table id to a vector of
+  `{:name :base_type :semantic_type}` in column order."
+  [table-ids]
+  (when (seq table-ids)
+    (->> (t2/query {:select   [:table_id :name :base_type :semantic_type]
+                    :from     [:metabase_field]
+                    :where    [:and
+                               [:in :table_id table-ids]
+                               [:= :active true]
+                               [:not-in :visibility_type ["sensitive" "retired"]]]
+                    :order-by [:table_id :position]})
+         (group-by :table_id)
+         (into {} (map (fn [[table-id rows]] [table-id (mapv #(dissoc % :table_id) rows)]))))))
+
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
   [rows :- [:sequential [:map {:closed true}

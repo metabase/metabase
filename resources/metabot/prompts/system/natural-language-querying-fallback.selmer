@@ -26,6 +26,10 @@ So: start from `search` to find the best entity for the user's intent, then dril
 
 {% include "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer" %}
 
+{% if has_explore_table %}
+{% include "metabot/prompts/shared/prompt_snippets/explore-table.selmer" %}
+{% endif %}
+
 {% include "metabot/prompts/shared/prompt_snippets/communication.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
