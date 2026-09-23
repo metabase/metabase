@@ -458,6 +458,13 @@ describe("shortcuts", () => {
       ],
     }).then((dashboard) => H.visitDashboard(dashboard.id));
 
+    // The o shortcut is registered by the header's bookmark toggle, and
+    // visitDashboard only waits for the dashcard queries, so the keystroke can
+    // land before that component has mounted and be dropped.
+    H.dashboardHeader()
+      .findByRole("button", { name: "Bookmark" })
+      .should("be.visible");
+
     // The second press reads whether the dashboard is bookmarked from the
     // refetched bookmark list, so each toggle waits for its write to land and
     // for the sidebar to catch up before the next press.
