@@ -35,7 +35,7 @@
 (deftest claude-entries-test
   (let [file (write-jsonl
               [{:type "file-history-snapshot"}
-               {:type "user" :timestamp "2026-09-01T10:00:00Z" :message {:content "run the tests"}}
+               {:type "user" :timestamp "2026-09-01T10:00:00Z" :gitBranch "fix-x" :cwd "/w/metabase" :message {:content "run the tests"}}
                {:type "user" :isMeta true :timestamp "2026-09-01T10:00:01Z" :message {:content "caveat"}}
                "not json"
                {:type      "assistant"
@@ -45,7 +45,7 @@
                {:type      "user"
                 :timestamp "2026-09-01T10:00:03Z"
                 :message   {:content [{:type "tool_result" :is_error true :content [{:type "text" :text "boom"}]}]}}])]
-    (is (= [{:line 2 :ts "2026-09-01T10:00:00Z" :tag "USER" :text "run the tests"}
+    (is (= [{:line 2 :ts "2026-09-01T10:00:00Z" :tag "USER" :text "run the tests" :branch "fix-x" :cwd "/w/metabase"}
             {:line 5 :ts "2026-09-01T10:00:02Z" :tag "ASSISTANT" :text "Running them."}
             {:line 5 :ts "2026-09-01T10:00:02Z" :tag "TOOL Bash" :text "./bin/test-agent"}
             {:line 6 :ts "2026-09-01T10:00:03Z" :tag "RESULT ERROR" :text "boom"}]
@@ -84,4 +84,7 @@
                         [:id :cwd :subagent :guardian :non-interactive])))
     (is (:guardian (session {:id "b" :source {:subagent {:other "guardian"}} :thread_source "guardian_review"})))
     (is (:subagent (session {:id "c" :source {:subagent {:thread_spawn {:parent_thread_id "a"}}}})))
-    (is (:non-interactive (session {:id "d" :originator "codex_exec" :source "exec"})))))
+    (is (:non-interactive (session {:id "d" :originator "codex_exec" :source "exec"})))
+    (is (= {:branch "fix-x" :sha "b8f3e87" :repository-url "git@github.com:metabase/metabase.git"}
+           (:git (session {:id "e" :git {:branch "fix-x" :commit_hash "b8f3e87"
+                                         :repository_url "git@github.com:metabase/metabase.git"}}))))))

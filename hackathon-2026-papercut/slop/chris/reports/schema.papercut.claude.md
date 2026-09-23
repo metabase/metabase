@@ -143,6 +143,12 @@ occurrences:
     date: 2026-08-25          # ISO date; approximate dates are written as a range
     outcome: [false-conclusion, wasted-time]   # this occurrence's cost, a subset of the case outcome
     docs_existed: false       # true | false | unknown: was the trap documented when this hit
+    git:                      # where the hit happened, at the first anchor; omit what can't be worked out
+      repository_url: git@github.com:metabase/metabase.git
+      branch: fix/app-db-rollback-only
+      commit_sha: 70a3d8cb4a7...        # full sha
+      commit_source: reflog             # exact | reflog | before-timestamp | session-start
+      cwd: /Users/me/workspace/metabase/metabase.fix-app-db-rollback-only
     screen:                   # optional pointer into the screening ledger, not a label
       ledger: pipeline/output/scores.jsonl
       scores: {misleading_signal: 0.87, codebase_trap: 0.92}
@@ -160,6 +166,14 @@ occurrences:
 
 - **Anchor identity:** each anchor's `(transcript, line)` must be unique within a case.
 - **Occurrence identity:** an occurrence is identified by `(session, first anchor line)`. The importer builds the stable server `report_id` from this.
+- **Git context:** the branch and commit tell a trap in shared code apart from one in code the agent had just written on its own branch, and let a current-state check compare against where the hit happened.
+  - Transcripts rarely record the commit, so it is usually reconstructed, and `commit_source` says how:
+    - `exact`: the reporter read the commit at the time, for example from a hook.
+    - `reflog`: the branch's reflog at the first anchor's time. Correct as far as the reflog goes back.
+    - `session-start`: the commit Codex recorded when the session began. Later commits in the session aren't reflected.
+    - `before-timestamp`: the last commit on the branch, or its remote-tracking ref, made before that time. Approximate after a rebase.
+  - Claude transcripts record the branch and working directory on every record, but no commit. Codex records branch, commit and remote once, at session start.
+  - A worktree deleted since the session is looked up in the checkout it was made from, since the two share branch reflogs.
 
 ## Body
 
@@ -193,6 +207,7 @@ A consolidation script should reject a case that breaks any of these rules:
 8. Every occurrence has ≥ 1 anchor. `verification ≥ transcript` ⇒ every occurrence has ≥ 2 anchors.
 9. The case `outcome` is the union of all occurrence outcomes.
 10. The file must pass a secrets scan: no tokens, keys, credentials or env var values.
+11. `git.commit_sha` is set ⇔ `git.commit_source` is set.
 
 ## Server mapping
 
@@ -209,6 +224,7 @@ A consolidation script should reject a case that breaks any of these rules:
 | `path` | `area[0]` |
 | `category` | Derived from `kind`: `codebase-trap` → `code-smell`, `doc-gap` → `documentation`, `misleading-signal` and `agent-behaviour` → `agent-trap`, the rest → `tooling` |
 | `observed_at` | `date` |
+| `branch`, `commit_sha`, `commit_source`, `repository_url` | `git` (the server validates the sha and the source, and filters papercuts by `branch`) |
 | `payload` (new) | The whole occurrence, plus `label`, `scope`, `owner`, `outcome`, `severity`, `verification`, `status` |
 
 - **Triage status:** `status.state: fixed | wontfix` sets the issue's triage status to `resolved` or `wontfix` after import, as today.
@@ -248,6 +264,11 @@ occurrences:
     date: 2026-08-25
     outcome: [false-conclusion, wasted-time]
     docs_existed: false
+    git:
+      repository_url: git@github.com:metabase/metabase.git
+      branch: fix/app-db-rollback-only
+      cwd: /Users/christruter/workspace/metabase/metabase.fix-app-db-rollback-only
+      # No commit: the worktree, local branch and remote-tracking ref are all gone.
     anchors:
       - {line: 2051, role: tool-output, proves: "grep for the rollback warning returned 0"}
       - {line: 2061, role: agent, proves: "agent dropped the correct hypothesis"}

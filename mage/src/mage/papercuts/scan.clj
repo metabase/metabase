@@ -22,6 +22,7 @@
    [mage.bot.env :as bot-env]
    [mage.color :as c]
    [mage.papercuts.drill :as drill]
+   [mage.papercuts.git :as papercut-git]
    [mage.papercuts.jev :as jev]
    [mage.papercuts.transcript :as transcript]
    [mage.util :as u])
@@ -215,8 +216,9 @@
 ;;; Reports
 
 (defn report
-  "The server report for one positive papercut found in `session`, filed under `fingerprint`."
-  [{:keys [reporter repository machine]} session papercut fingerprint entries scores]
+  "The server report for one positive papercut found in `session`, filed under `fingerprint`. `git` holds the branch
+  and commit it was hit on, as far as they could be worked out."
+  [{:keys [reporter repository machine]} session papercut fingerprint git entries scores]
   (let [ts-by-line  (into {} (map (juxt :line :ts)) entries)
         lines       (sort (map :line (:anchors papercut)))
         line        (first lines)
@@ -252,7 +254,23 @@
                            :affordance (:affordance papercut)
                            :detection  (:detection papercut)
                            :screen     scores}}
-      machine (assoc :machine machine))))
+      machine (assoc :machine machine)
+      git     (merge git))))
+
+(defn- anchor-entry
+  "The entry at a papercut's first anchor, or the last one before it when the agent cited a line with no entry."
+  [entries papercut]
+  (let [line (apply min (map :line (:anchors papercut)))]
+    (last (filter #(<= (:line %) line) entries))))
+
+(defn- git-for
+  "Branch and commit for a papercut, looked up at its first anchor."
+  [session entries papercut]
+  (let [e (anchor-entry entries papercut)]
+    (papercut-git/context {:cwd         (or (:cwd e) (:cwd session))
+                           :branch      (:branch e)
+                           :ts          (:ts e)
+                           :session-git (:git session)})))
 
 (defn reportable
   "Positive papercuts from a drill-down that have an anchor in the new stretch and whose slug this session has not
@@ -297,7 +315,8 @@
                     (drill/drill! opts (assoc chunk :session session :existing known)))
         reported  (into #{} (map :fingerprint) (:reported state))
         reports   (->> (reportable found chunk (:reported state))
-                       (map #(report opts session % (fingerprint-for opts %) (:entries chunk) scores))
+                       (map #(report opts session % (fingerprint-for opts %) (git-for session (:entries chunk) %)
+                                     (:entries chunk) scores))
                        ;; One report per papercut per session, even when two findings resolve to the same one.
                        (remove #(reported (:fingerprint %)))
                        (reduce (fn [acc r] (cond-> acc (not-any? #(= (:fingerprint %) (:fingerprint r)) acc) (conj r)))

@@ -38,7 +38,11 @@ SORTS = {
 # so a reporter can spot a misspelled field.
 REPORT_FIELDS = {"repository", "reporter", "machine_id", "machine", "report_id", "fingerprint", "category", "title",
                  "description", "path", "area", "agent", "session", "cost_minutes", "observed_at", "source_type",
-                 "source_ref"}
+                 "source_ref", "branch", "commit_sha", "commit_source", "repository_url"}
+# How a reporter knows the commit a papercut was hit on. Anything but `exact` is reconstructed after the fact:
+# from the branch reflog at the observed time, the last commit on the branch before it, or the commit the
+# session started on.
+COMMIT_SOURCES = ("exact", "reflog", "before-timestamp", "session-start")
 MAX_BODY = 64 * 1024
 MAX_FIELD = 10_000
 # A reporter's clock may run a little ahead of the server's.
@@ -119,6 +123,22 @@ def text_field(payload, key, required=False):
     if required and not value.strip():
         raise ValueError(f"{key} must be a nonempty string")
     return value.strip()
+
+
+def git_fields(payload):
+    """The branch and commit a report was hit on, validated. Missing fields are None."""
+    branch, commit_sha, commit_source, repository_url = (
+        text_field(payload, key) or None for key in ("branch", "commit_sha", "commit_source", "repository_url"))
+    if commit_sha:
+        commit_sha = commit_sha.lower()
+        if not re.fullmatch(r"[0-9a-f]{7,40}", commit_sha):
+            raise ValueError("commit_sha must be 7 to 40 hex characters")
+    if commit_source and commit_source not in COMMIT_SOURCES:
+        raise ValueError(f"commit_source must be one of: {', '.join(COMMIT_SOURCES)}")
+    if commit_source and not commit_sha:
+        raise ValueError("commit_source needs a commit_sha")
+    return {"branch": branch, "commit_sha": commit_sha, "commit_source": commit_source,
+            "repository_url": repository_url}
 
 
 def int_param(params, key, default, low, high=None):
@@ -420,8 +440,33 @@ def migrate_to_v3(db):
         db.execute(f"DROP TABLE v2_{table}")
 
 
+def migrate_to_v4(db):
+    """Record the git branch and commit each report was hit on.
+
+    Earlier servers kept these fields only in the stored request body, so they are copied from there when sent.
+    """
+    sources = ", ".join(f"'{source}'" for source in COMMIT_SOURCES)
+    run_script(db, f"""
+        ALTER TABLE reports ADD COLUMN branch TEXT;
+        ALTER TABLE reports ADD COLUMN commit_sha TEXT
+            CHECK (commit_sha IS NULL OR (length(commit_sha) BETWEEN 7 AND 40 AND commit_sha NOT GLOB '*[^0-9a-f]*'));
+        ALTER TABLE reports ADD COLUMN commit_source TEXT CHECK (commit_source IN ({sources}));
+        ALTER TABLE reports ADD COLUMN repository_url TEXT;
+        CREATE INDEX reports_branch ON reports (branch);
+    """)
+    for row in db.execute("SELECT id, payload FROM reports WHERE payload IS NOT NULL").fetchall():
+        payload = json.loads(row["payload"])
+        try:
+            git = git_fields(payload)
+        except ValueError:
+            continue
+        if any(git.values()):
+            db.execute("UPDATE reports SET branch = ?, commit_sha = ?, commit_source = ?, repository_url = ? WHERE id = ?",
+                       (*git.values(), row["id"]))
+
+
 # Each entry upgrades the database by one `user_version`.
-MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3)
+MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COALESCE(SUM(cost_minutes), 0) AS cost_minutes
@@ -505,6 +550,7 @@ class Store:
         if cost is not None and (type(cost) not in (int, float) or not 0 <= cost <= 100_000):
             raise ValueError("cost_minutes must be a number from 0 to 100000")
         observed_at = parse_observed_at(text_field(payload, "observed_at"))
+        git = git_fields(payload)
         fingerprint = submitted_fingerprint or computed_fingerprint(title, path)
 
         with self.connect(write=True) as db:
@@ -550,11 +596,13 @@ class Store:
                 """INSERT INTO reports
                    (papercut_id, repository, reporter, machine, agent, session, report_id, fingerprint,
                     submitted_fingerprint, submitted_category, title, description, path, area, cost_minutes,
-                    source_type, source_ref, payload, received_at, observed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    source_type, source_ref, payload, received_at, observed_at,
+                    branch, commit_sha, commit_source, repository_url)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (papercut_id, repository, reporter, machine, agent, session, report_id, fingerprint,
                  submitted_fingerprint, submitted_category, title, description, path, area, cost,
-                 source_type, source_ref, json.dumps(payload, ensure_ascii=False), received_at, observed_at),
+                 source_type, source_ref, json.dumps(payload, ensure_ascii=False), received_at, observed_at,
+                 *git.values()),
             ).lastrowid
             if created:
                 self._suggest_relations(db, papercut_id, stamp)
@@ -593,6 +641,9 @@ class Store:
         if filters.get("fingerprint"):
             clauses.append("EXISTS (SELECT 1 FROM papercut_fingerprints f WHERE f.papercut_id = p.id AND f.fingerprint = ?)")
             params.append(filters["fingerprint"])
+        if filters.get("branch"):
+            clauses.append("EXISTS (SELECT 1 FROM reports r WHERE r.papercut_id = p.id AND r.branch = ?)")
+            params.append(filters["branch"])
         # A change feed must also say which papercuts were merged away, so clients can drop them.
         if filters.get("since"):
             clauses.append("p.updated_at > ?")
@@ -1001,6 +1052,18 @@ def papercut_list_html(result, filters):
                              f"<p>{shown}{result['total']} papercuts</p>{cards}<p>{' · '.join(pages)}</p>")
 
 
+def git_label(report):
+    """` · on branch @ abc1234 (reflog)`, naming how the commit was worked out unless the reporter knew it."""
+    if not (report["branch"] or report["commit_sha"]):
+        return ""
+    label = " · on " + html.escape(report["branch"] or "?")
+    if report["commit_sha"]:
+        label += " @ " + html.escape(report["commit_sha"][:10])
+        if report["commit_source"] and report["commit_source"] != "exact":
+            label += f" ({html.escape(report['commit_source'])})"
+    return label
+
+
 def papercut_html(papercut):
     esc = html.escape
     reports = "".join(
@@ -1009,6 +1072,7 @@ def papercut_html(papercut):
         f"<span class='muted'>{esc(r['observed_at'] or r['received_at'])}"
         f"{' · ' + esc(r['source_ref']) if r['source_ref'] else ''}"
         f"{' · session ' + esc(r['session']) if r['session'] else ''}"
+        f"{git_label(r)}"
         f"{cost(r['cost_minutes'])}</span>"
         f"<p>{esc(r['title'])}</p><pre>{esc(r['description'])}</pre></div>"
         for r in papercut["reports"]

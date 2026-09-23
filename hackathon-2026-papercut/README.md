@@ -47,6 +47,12 @@ curl -sS http://127.0.0.1:8765/api/reports \
 - **Cost and time:** `cost_minutes` is the time lost, if known. `observed_at` (ISO
   8601, not in the future) is when the papercut was hit; it sets first and last
   seen instead of the time the server received the report.
+- **Git:** `branch`, `commit_sha` (7 to 40 hex characters) and `repository_url`
+  say which code the papercut was hit on. It matters whether the trap was in shared
+  code or in code the agent had just written on its own branch. `commit_source`
+  says how the reporter knows the commit: `exact`, or reconstructed from the branch
+  `reflog`, the `session-start` commit, or the last commit `before-timestamp`.
+  `GET /api/papercuts?branch=...` lists papercuts hit on a branch.
 - **Category:** `category` is the reporter's guess: `agent-trap`, `code-smell`,
   `flaky-test`, `tooling`, `documentation` or `other`. A papercut takes the first
   category a report sends and stays unclassified until then. Later guesses are

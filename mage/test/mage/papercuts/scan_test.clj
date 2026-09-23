@@ -65,7 +65,9 @@
   (let [session {:source :claude :id "31b066ea" :path "/t/31b066ea.jsonl"}
         entries [{:line 12 :ts "2026-08-25T10:00:00Z"} {:line 14 :ts "2026-08-25T10:01:00Z"}]
         opts    {:reporter "chris.claude" :repository "metabase" :machine "laptop"}
-        report  (scan/report opts session papercut "papercut:console-hides-warnings" entries {:misleading_signal 0.9})]
+        report  (scan/report opts session papercut "papercut:console-hides-warnings"
+                             {:branch "fix-rollback" :commit_sha "70a3d8cb4a7" :commit_source "reflog"}
+                             entries {:misleading_signal 0.9})]
     (is (= {:repository  "metabase"
             :reporter    "chris.claude"
             :machine     "laptop"
@@ -78,7 +80,10 @@
             :session     "31b066ea"
             :observed_at "2026-08-25T10:00:00Z"
             :source_type "transcript-scan"
-            :source_ref  "/t/31b066ea.jsonl#L12"}
+            :source_ref  "/t/31b066ea.jsonl#L12"
+            :branch      "fix-rollback"
+            :commit_sha  "70a3d8cb4a7"
+            :commit_source "reflog"}
            (dissoc report :title :description :details)))
     (is (= "Trap.\n\nMechanism.\n\nSuggested fix: Fix.\n\nTranscript: /t/31b066ea.jsonl#L12" (:description report)))
     (is (= {:lines [12 14] :slug "console-hides-warnings" :kind "misleading-signal" :screen {:misleading_signal 0.9}}

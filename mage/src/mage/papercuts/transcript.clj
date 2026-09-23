@@ -108,9 +108,15 @@
             nil))))))
 
 (defn claude-entries
-  "Entries for a Claude Code transcript."
+  "Entries for a Claude Code transcript.
+  Every record names the git branch and working directory it ran in, so entries also carry `:branch` and `:cwd`."
   [path]
-  (into [] (comp (mapcat (fn [[line record]] (claude-record-entries line record))) (remove nil?))
+  (into []
+        (mapcat (fn [[line {:keys [gitBranch cwd] :as record}]]
+                  (for [e (claude-record-entries line record) :when e]
+                    (cond-> e
+                      (not-empty gitBranch) (assoc :branch gitBranch)
+                      (not-empty cwd)       (assoc :cwd cwd)))))
         (read-records path)))
 
 (defn claude-session
@@ -186,7 +192,11 @@
      :project       (:cwd meta)
      :subagent      (map? source)
      :guardian      (= "guardian_review" (:thread_source meta))
-     :non-interactive (= "codex_exec" (:originator meta))}))
+     :non-interactive (= "codex_exec" (:originator meta))
+     ;; The commit is where the session started, not where any later message was sent.
+     :git           {:branch         (get-in meta [:git :branch])
+                     :sha            (get-in meta [:git :commit_hash])
+                     :repository-url (get-in meta [:git :repository_url])}}))
 
 ;;; Rendering
 

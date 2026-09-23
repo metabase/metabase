@@ -99,6 +99,24 @@ class IngestTest(StoreCase):
         self.assertEqual(papercut["reports"][0]["payload"], submitted)
         self.assertEqual((papercut["cost_minutes"], papercut["agent_count"]), (12.5, 1))
 
+    def test_report_records_git_context(self):
+        result = self.report(branch="fix-rollback", commit_sha="70A3D8CB4A7", commit_source="reflog",
+                             repository_url="git@github.com:metabase/metabase.git")
+        self.assertEqual(result["extra_fields"], [])
+        self.report(branch="master")
+        report = self.store.get_papercut(result["papercut"]["id"])["reports"][-1]
+        self.assertEqual({key: report[key] for key in ("branch", "commit_sha", "commit_source", "repository_url")},
+                         {"branch": "fix-rollback", "commit_sha": "70a3d8cb4a7", "commit_source": "reflog",
+                          "repository_url": "git@github.com:metabase/metabase.git"})
+        self.assertEqual(self.store.list_papercuts({"branch": "fix-rollback"})["total"], 1)
+        self.assertEqual(self.store.list_papercuts({"branch": "no-such-branch"})["total"], 0)
+
+    def test_rejects_malformed_git_context(self):
+        for changes in ({"commit_sha": "not-a-sha"}, {"commit_sha": "abc"},
+                        {"commit_sha": "70a3d8cb4a7", "commit_source": "guess"}, {"commit_source": "reflog"}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                self.report(**changes)
+
     def test_category_is_unclassified_until_a_report_or_triage_sets_it(self):
         papercut_id = self.store.ingest(self.sample)["papercut"]["id"]
         self.assertIsNone(self.store.get_papercut(papercut_id)["category"])
@@ -396,6 +414,27 @@ class MigrationTest(unittest.TestCase):
         guessed, sent = store.get_papercut(1), store.get_papercut(2)
         self.assertEqual((guessed["category"], sent["category"]), (None, "tooling"))
         self.assertEqual((guessed["reports"][0]["session"], guessed["reports"][0]["agent"]), ("abc", "codex"))
+
+    def test_v3_git_fields_are_copied_from_the_stored_request(self):
+        db = sqlite3.connect(self.path, isolation_level=None)
+        db.row_factory = sqlite3.Row
+        for step in server.MIGRATIONS[:3]:
+            step(db)
+        db.execute("PRAGMA user_version = 3")
+        db.execute("""INSERT INTO papercuts (id, repository, title, description, path, first_seen, last_seen, updated_at)
+                      VALUES (1, 'metabase', 'T', '', '', '2026-09-01', '2026-09-01', '2026-09-01')""")
+        payloads = [{"branch": "fix-x", "commit_sha": "abcdef1", "commit_source": "session-start"},
+                    {"commit_sha": "not-a-sha"},
+                    {}]
+        for id_, payload in enumerate(payloads, 1):
+            db.execute("""INSERT INTO reports (id, papercut_id, repository, reporter, report_id, fingerprint, title,
+                          description, path, payload, received_at) VALUES (?, 1, 'metabase', 'r', ?, 'f', 'T', '', '', ?,
+                          '2026-09-01')""", (id_, f"r{id_}", json.dumps(payload)))
+        db.close()
+        reports = server.Store(self.path).get_papercut(1)["reports"]
+        self.assertEqual({r["report_id"]: (r["branch"], r["commit_sha"], r["commit_source"]) for r in reports},
+                         {"r1": ("fix-x", "abcdef1", "session-start"), "r2": (None, None, None),
+                          "r3": (None, None, None)})
 
     def test_migration_runs_once(self):
         self.build_v1()
