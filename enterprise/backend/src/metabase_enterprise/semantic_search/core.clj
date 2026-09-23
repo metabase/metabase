@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.lucene.core :as lucene.core]
+   [metabase-enterprise.semantic-search.lucene.query :as lucene.query]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
@@ -100,9 +101,11 @@
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
       (let [{:keys [results raw-count]}
-            (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
-                                         (semantic.env/get-index-metadata)
-                                         search-ctx)
+            (if (semantic.util/lucene-backend?)
+              (lucene.query/query search-ctx)
+              (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                           (semantic.env/get-index-metadata)
+                                           search-ctx))
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
         (if (or (>= final-count threshold)
@@ -179,11 +182,13 @@
   "Enterprise implementation of the semantic search engine-owned diagnostic stages."
   :feature :semantic-search
   [search-ctx expected-model expected-id]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      {:type :missing-from-index :details {:reason :no-active-index}}
-      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
+  (if (semantic.util/lucene-backend?)
+    (lucene.query/diagnose search-ctx expected-model expected-id)
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        {:type :missing-from-index :details {:reason :no-active-index}}
+        (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id)))))
 
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means

@@ -25,6 +25,11 @@
   "When true the test provider throws, standing in for an embedding service that is down."
   false)
 
+(def ^:dynamic *embed-fn*
+  "Function from text to a vector, overriding the [[*embeddings*]] lookup. Use it when the exact text a document
+  embeds is awkward to predict, e.g. the `embeddable_text` search ingestion builds for a card."
+  nil)
+
 (def ^:private default-vector [0.01 0.02 0.03 0.04])
 
 (embeddings.provider/register-provider!
@@ -37,10 +42,10 @@
                              (throw (ex-info "Embedding service is down" {})))
                            (when *embedded-texts*
                              (swap! *embedded-texts* into texts))
-                           (let [dims (:vector-dimensions model)]
+                           (let [dims   (:vector-dimensions model)
+                                 lookup (or *embed-fn* #(get *embeddings* % default-vector))]
                              (mapv (fn [text]
-                                     (let [v (get *embeddings* text default-vector)]
-                                       (vec (take dims (concat v (repeat 0.0))))))
+                                     (vec (take dims (concat (lookup text) (repeat 0.0)))))
                                    texts)))})
 
 (defn embedded-texts

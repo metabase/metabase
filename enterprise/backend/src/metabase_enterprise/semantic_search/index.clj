@@ -977,7 +977,7 @@
   Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
-(defn- filter-read-permitted
+(defn filter-read-permitted
   "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
   (let [timer (u/start-timer)
@@ -1027,7 +1027,7 @@
                          (str/starts-with? (:location collection) (str "/" collection-id "/")))))))
              docs)))
 
-(defn- apply-collection-id-filter
+(defn apply-collection-id-filter
   "Apply collection ID filtering with logging."
   [search-context docs]
   (let [collection-id (:collection search-context)]
