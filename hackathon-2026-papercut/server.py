@@ -2389,10 +2389,14 @@ class Handler(BaseHTTPRequestHandler):
         return hmac.compare_digest(given.encode(), f"Bearer {self.token}".encode())
 
     def claim(self, papercut_id):
-        """Claim for the signed-in user, else the body's `claimant`, else whoever runs this server's machine."""
+        """Claim for the signed-in user, else the body's `claimant`. Only a server without sign-in, which runs on its
+        user's own machine, falls back to that machine's user."""
         payload = self.input_json(optional=True)
-        claimant = (signed_in_email() or (payload.get("claimant") if isinstance(payload, dict) else None)
-                    or os.environ.get("PAPERCUTS_LOCAL_CLAIMANT") or f"{getpass.getuser()}@{socket.gethostname()}")
+        claimant = signed_in_email() or (payload.get("claimant") if isinstance(payload, dict) else None)
+        if not claimant and self.sign_in:
+            raise ValueError("Send claimant, or sign in to claim as yourself")
+        claimant = (claimant or os.environ.get("PAPERCUTS_LOCAL_CLAIMANT")
+                    or f"{getpass.getuser()}@{socket.gethostname()}")
         return self.store.claim(papercut_id, payload, claimant)
 
     def redirect_if_merged(self, papercut_id, prefix, query):

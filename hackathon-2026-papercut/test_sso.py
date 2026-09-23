@@ -45,6 +45,13 @@ class SignInTest(HttpCase):
         self.assertIn("claimed by Ada", page)
         self.assertIn(f"data-release='{claim['id']}'>Release</button>", page)
 
+    def test_a_claim_without_a_session_must_name_its_claimant(self):
+        self.report("r1")
+        status, body, _ = self.call("POST", "/api/papercuts/1/claim", {})
+        self.assertEqual((status, body["error"]), (400, "Send claimant, or sign in to claim as yourself"))
+        status, claim, _ = self.call("POST", "/api/papercuts/1/claim", {"claimant": "tyler@metabase.com"})
+        self.assertEqual((status, claim["actor"]), (201, "tyler@metabase.com"))
+
     def test_settings_come_from_the_environment(self):
         self.assertIsNone(sso.from_env({"PAPERCUTS_PUBLIC_URL": "https://metaouch.dev"}))
         with self.assertRaisesRegex(SystemExit, "needs GOOGLE_OAUTH_CLIENT_SECRET, PAPERCUTS_SESSION_SECRET$"):
