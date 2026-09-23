@@ -21,6 +21,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -255,14 +256,16 @@
   (hydrate-permission k transforms transform-writable?))
 
 (defn- transform-executable?
-  "Whether the current user can run `instance`. Running writes to the warehouse the main app shares, which a
-  worktree may not do, so a worktree runs nothing for now."
+  "Whether the current user can run `instance`. Running writes to the warehouse the main app shares, so a worktree
+  runs nothing unless [[transforms.settings/workspaces-enabled]] is on."
   [instance & args]
-  (and (nil? (mdb.worktree/worktree-id))
+  (and (or (nil? (mdb.worktree/worktree-id))
+           (transforms.settings/workspaces-enabled))
        (apply transform-writable? instance args)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
-  "Add can_execute to transforms. Executing a transform requires write permission, and the main app."
+  "Add can_execute to transforms. Executing a transform requires write permission, and the main app or a worktree
+  with workspaces enabled."
   [_model k transforms]
   (hydrate-permission k transforms transform-executable?))
 

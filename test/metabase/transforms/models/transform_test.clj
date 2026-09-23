@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,6 +13,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.transforms.settings :as transforms.settings]
    [toucan2.core :as t2]))
 
 (deftest source-database-id-set-test
@@ -275,3 +277,21 @@
                     (is (mi/can-read? stored))
                     (is (mi/can-write? stored))
                     (is (mi/can-create? :model/Transform body))))))))))))
+
+(deftest worktree-can-execute-test
+  (testing "a worktree can run a transform only with workspaces enabled"
+    (let [executable? #'metabase.transforms.models.transform/transform-executable?
+          transform   {:source {:type :query :query {:database (mt/id)}}
+                       :target {:type :table :database (mt/id)}}]
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/with-test-user :crowberto
+          (doseq [[workspaces-enabled? worktree-id expected] [[false nil true]
+                                                               [false 1   false]
+                                                               [true  nil true]
+                                                               [true  1   true]]]
+            (mt/with-temporary-setting-values [transforms.settings/transforms-enabled true
+                                               transforms.settings/workspaces-enabled workspaces-enabled?]
+              (testing (pr-str {:workspaces-enabled workspaces-enabled? :worktree-id worktree-id})
+                (is (= expected
+                       (mdb.worktree/with-worktree worktree-id
+                         (executable? transform))))))))))))

@@ -64,6 +64,13 @@
               v
               (cloud-enabled-transforms?))))
 
+(setting/defsetting workspaces-enabled
+  (deferred-tru "Whether transforms can be run inside a worktree.")
+  :type       :boolean
+  :visibility :admin
+  :export?    false
+  :default    false)
+
 (setting/defsetting transforms-setup-complete
   (deferred-tru "Whether transforms setup is complete.")
   :type       :boolean
