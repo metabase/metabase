@@ -122,6 +122,8 @@
    (GET "/livez" [] livez-handler)
    ;; ^/api/upgrade -> automatic upgrade
    (POST "/api/upgrade" [] upgrade/handler)
+   ;; ^/api/upgrade/health -> status of upgrade in progress, if applicable
+   (GET "/api/upgrade/health" [] upgrade/health)
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
