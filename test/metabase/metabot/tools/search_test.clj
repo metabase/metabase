@@ -712,7 +712,7 @@
             (mt/with-test-user :rasta
               (is (empty? (search/entity-refs->search-results refs))))))))))
 
-(deftest enrich-with-metric-base-tables-test
+(deftest enrich-with-metric-sources-base-table-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate read_resource call. We look up\n"
                 "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
@@ -744,7 +744,7 @@
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
 
-(deftest enrich-with-metric-base-tables-respects-table-permissions-test
+(deftest enrich-with-metric-sources-respects-table-permissions-test
   (testing "a readable metric does not reveal metadata for an unreadable base table"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
@@ -999,13 +999,27 @@
                         :table_id (mt/id :orders)
                         :dataset_query {:database (mt/id) :type :query
                                         :query {:source-table (mt/id :orders)
+                                                :aggregation  [[:count]]}}}
+                       :model/Card {multi-metric-id :id}
+                       {:name "MixedSources MultiStageCardMetric" :type :metric :database_id (mt/id)
+                        :table_id (mt/id :orders)
+                        :dataset_query {:database (mt/id) :type :query
+                                        :query {:source-query {:source-table (str "card__" question-id)}
                                                 :aggregation  [[:count]]}}}]
           (let [results (search/search {:term-queries ["MixedSources"]})
                 by-id   (into {} (map (juxt :id identity)) results)
                 card-m  (get by-id card-metric-id)
-                table-m (get by-id table-metric-id)]
+                table-m (get by-id table-metric-id)
+                multi-m (get by-id multi-metric-id)]
             (is (some? card-m) "card-based metric should appear")
             (is (some? table-m) "table-based metric should appear")
+            (is (some? multi-m) "multi-stage card-based metric should appear")
+            (testing (str "the multi-stage card-based one carries base-table fields: its definition names a card "
+                          "in stage 0, but its last stage does not, so the QP only accepts the base table")
+              (is (=? {:base_table_id (mt/id :orders)} multi-m))
+              (is (not-any? #(contains? multi-m %)
+                            [:source_card_id :source_card_name :source_card_portable_entity_id
+                             :source_unavailable])))
             (testing "the card-based one carries only source-card fields"
               (is (=? {:source_card_id                 question-id
                        :source_card_portable_entity_id question-eid}
@@ -1021,3 +1035,26 @@
               (is (not-any? #(contains? table-m %)
                             [:source_card_id :source_card_name :source_card_portable_entity_id
                              :source_unavailable])))))))))
+
+(deftest enrich-with-metric-sources-marks-unreadable-base-table-unavailable-test
+  (testing (str "The `source_unavailable` marker is symmetric across both source kinds. A table-based metric whose\n"
+                "base table the user cannot read is exactly as sourceless as an unreadable source card, and\n"
+                "absence alone reads to the LLM as 'look it up elsewhere' -- the guess-a-source behaviour this\n"
+                "enrichment exists to prevent. Must agree with `metric-details`, which describes the same metric\n"
+                "on the other surface.")
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {metric-id :id}
+                         {:name "Unreadable Base Table Metric" :type :metric :database_id (mt/id)
+                          :table_id (mt/id :orders)
+                          :dataset_query {:database (mt/id) :type :query
+                                          :query {:source-table (mt/id :orders)
+                                                  :aggregation  [[:count]]}}}]
+            (let [results (search/search {:term-queries ["Unreadable Base Table Metric"]})
+                  metric  (first (filter #(= metric-id (:id %)) results))]
+              (is (some? metric) "the metric is still readable via its collection")
+              (is (not-any? #(contains? metric %)
+                            [:base_table_id :base_table_name :base_table_schema :base_table_portable_fk]))
+              (testing "and it says so positively rather than just omitting the source"
+                (is (true? (:source_unavailable metric)))))))))))

@@ -24,6 +24,8 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.resources :as resources]
+   [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
@@ -1704,10 +1706,13 @@
 ;;; Metric/source compatibility
 ;;; ============================================================
 
-(defn- products-source-table-fk []
+(defn- table-source-table-fk [table-id]
   (let [db (t2/select-one-fn :name :model/Database :id (mt/id))
-        t  (t2/select-one [:model/Table :schema :name] :id (mt/id :products))]
+        t  (t2/select-one [:model/Table :schema :name] :id table-id)]
     [db (:schema t) (:name t)]))
+
+(defn- products-source-table-fk [] (table-source-table-fk (mt/id :products)))
+(defn- orders-source-table-fk [] (table-source-table-fk (mt/id :orders)))
 
 (defn- metric-query-data [source metric-eid]
   (query-data
@@ -1814,6 +1819,98 @@
             (is (str/includes? (ex-message e) "base table as source-table:")
                 "and it is told to use the base table, which is the edit that works")))))))
 
+(deftest multi-stage-card-based-metric-is-pinned-to-base-table-test
+  (testing (str "The mirror image of the multi-stage table-based case, and the one `report_card.source_card_id`\n"
+                "cannot see. That column is `lib/primary-source-card-id` -- stage 0 -- while the QP reads the\n"
+                "metric's LAST stage. For a definition that starts from a card and then aggregates, the last stage\n"
+                "carries no `:source-card`, so the QP demands a bare `source-table:` on the BASE table and rejects\n"
+                "the source card. Keying off the column inverts the gate: it blocks the pairing that works and\n"
+                "passes the one that 500s. Both halves are asserted against the real QP below.")
+    (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Multi-stage card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "precondition: stage 0 names the card, but the definition is multi-stage"
+          (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+                metric (lib.metadata/card mp metric-id)]
+            (is (= question-id (:source-card-id metric))
+                "the column that the old gate keyed off points at the source card")
+            (is (= 2 (lib/stage-count (lib/query mp (:dataset-query metric)))))
+            (is (= (mt/id :products) (:table-id metric)))))
+        (testing "on its base table it is accepted, and the query the LLM gets back runs"
+          (let [query (-> (construct/execute-representations-query
+                           (metric-query-data {"source-table" (products-source-table-fk)} metric-eid))
+                          (get-in [:structured-output :query]))]
+            (is (= (mt/id :products) (get-in query [:stages 0 :source-table])))
+            (is (= [[200]] (mt/rows (qp/process-query query)))
+                "the QP really does accept this pairing -- pinning behaviour, not our reading of it")))
+        (testing "on the card it names it is rejected here rather than 500ing in the QP"
+          (let [e (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo #"Multi-stage card metric"
+                       (construct/execute-representations-query
+                        (metric-query-data {"source-card" question-eid} metric-eid))))]
+            (is (=? {:agent-error? true, :error :incompatible-metric} (ex-data e)))
+            (is (str/includes? (ex-message e) "base table as source-table:")
+                "and it is told to use the base table, which is the edit that works")))))))
+
+(deftest multi-stage-card-based-metric-really-does-500-on-its-source-card-test
+  (testing (str "The other half of the gate's contract: the pairing it now rejects is one the QP genuinely refuses.\n"
+                "Without this, a gate that simply rejected everything would look correct. Built by hand rather than\n"
+                "through `construct`, precisely because `construct` is what we are testing.")
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Products question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)}}}
+                   :model/Card {metric-id :id}
+                   {:name "Multi-stage card metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:count]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp    (lib-be/application-database-metadata-provider (mt/id))
+              query (-> (lib/query mp (lib.metadata/card mp question-id))
+                        (lib/aggregate (lib.metadata/metric mp metric-id)))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"Incompatible metric"
+               (qp/process-query query))))))))
+
+(deftest multi-stage-card-based-metric-with-column-aggregation-executes-on-base-table-test
+  (testing (str "Passing the compatibility gate is not the same as compiling. A metric that aggregates a COLUMN\n"
+                "(rather than a bare count) is spliced onto the base table, so that column has to exist there. If\n"
+                "it did not, advertising the base table would trade `Incompatible metric` for a different 500.")
+    (mt/with-temp [:model/Card {question-id :id}
+                   {:name "Orders question" :type :question
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)}}}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Multi-stage sum metric" :type :metric
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-query {:source-table (str "card__" question-id)}
+                                               :aggregation  [[:sum [:field (mt/id :orders :total) nil]]]}}}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+          (is (= {:kind :table, :table-id (mt/id :orders), :bare-table-only? true}
+                 (metabot.tools.util/metric-required-source (lib.metadata/card mp metric-id)))))
+        (let [query (-> (construct/execute-representations-query
+                         (metric-query-data {"source-table" (orders-source-table-fk)} metric-eid))
+                        (get-in [:structured-output :query]))
+              rows  (mt/rows (qp/process-query query))]
+          (is (= 1 (count rows)))
+          (is (number? (ffirst rows))
+              "the advertised source does not just pass the gate, it compiles and returns a number"))))))
+
 (deftest gate-does-not-reject-metrics-that-are-merely-unavailable-test
   (testing (str "Report a mismatch only when the sources actually differ. An archived metric on its own table is\n"
                 "not one -- telling the LLM to change the source to the one it has leaves no edit that satisfies\n"
@@ -1849,13 +1946,37 @@
                                                :aggregation  [[:count]]}}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
       (mt/with-current-user (mt/user->id :rasta)
-        (let [mp  (lib-be/application-database-metadata-provider (mt/id))
-              msg (#'construct/incompatible-metric-explanation mp [metric-id])]
+        (let [msg (#'construct/incompatible-metric-explanation
+                   {metric-id {:kind :card, :card-id question-id}})]
           (is (str/includes? msg "Metric on secret question")
-              "the metric itself is readable, so naming it is fine")
+              "the metric itself is readable to this user, so naming it is fine")
           (is (not (str/includes? msg question-eid))
               "but the source card's portable entity id must not leak")
           (is (str/includes? msg "do not have access")))))))
+
+(deftest incompatible-metric-message-does-not-disclose-unreadable-metric-name-test
+  (testing (str "The metric's own name is gated the same way its source card's is. The gate runs before\n"
+                "`export-query`, whose permission-aware content store is what read-checks entity-id lookups, and\n"
+                "`check-source-table-query-permissions!` covers stage sources but not aggregation metric refs -- so\n"
+                "a caller holding a metric's entity id would otherwise get its name back off the un-permission-aware\n"
+                "metadata provider regardless of collection access.")
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Private"}
+                   :model/Card {metric-id :id}
+                   {:name          "Secret metric"
+                    :type          :metric
+                    :collection_id coll-id
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]}}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [msg (#'construct/incompatible-metric-explanation
+                   {metric-id {:kind :table, :table-id (mt/id :products), :bare-table-only? false}})]
+          (is (not (str/includes? msg "Secret metric"))
+              "the name of a metric this user cannot read must not come back")
+          (is (str/includes? msg (str metric-id))
+              "it falls back to the numeric id, which the caller already had"))))))
 
 (deftest card-based-metric-pinned-to-its-own-card-test
   (testing (str "A card-based metric is pinned to the exact card it was defined on -- a different card over the same\n"
@@ -1921,12 +2042,13 @@
               (is (= [[0 67] [1 3443]]
                      (take 2 (mt/rows (qp/process-query query))))))))))))
 
-(deftest source-card-stage-does-not-reject-unreachable-dimensions-test
-  (testing (str "On a `source-table:` stage an unreachable target table is a hard `:no-fk-path` error. A\n"
-                "`source-card:` stage must not inherit that: the pass keys off the card's *base* table, but a card\n"
-                "also returns columns it reached through its own explicit joins, and those have no FK from the base\n"
-                "table. Erroring there would reject queries that resolve fine today, so the pass fills in what it\n"
-                "can and leaves the rest to the resolver.")
+(deftest source-card-stage-rejects-unreachable-dimensions-like-source-table-test
+  (testing (str "An unreachable target table is a hard `:no-fk-path` error on a `source-card:` stage too. This\n"
+                "used to be softened to 'leave the clause alone', on the theory that a card can return columns its\n"
+                "base table has no FK to. It can -- but that case is already handled earlier, by the check for\n"
+                "columns the card RETURNS. By the time we get here the card demonstrably does not expose the\n"
+                "column, so the bare clause is known-broken: it compiles to `__mb_source.<COLUMN>` and dies at\n"
+                "execution. Softening traded a crisp retryable 400 for that.")
     (mt/with-temp [:model/Card {question-eid :entity_id}
                    {:name "Reviews question" :type :question
                     :dataset_query (mt/mbql-query reviews)}]
@@ -1946,10 +2068,133 @@
                            :no-throw
                            (catch clojure.lang.ExceptionInfo e
                              (:error (ex-data e)))))]
-          (testing "the source-card stage is not rejected by the implicit-join pass"
-            (is (not= :no-fk-path (run {"source-card" question-eid}))))
-          (testing "while the same reference on a source-table stage still errors"
+          (testing "the source-card stage errors, giving the LLM something it can act on"
+            (is (= :no-fk-path (run {"source-card" question-eid}))))
+          (testing "exactly as the same reference on a source-table stage does"
             (is (= :no-fk-path (run {"source-table" [db-name "PUBLIC" "REVIEWS"]})))))))))
+
+(deftest aggregating-source-card-implicit-join-executes-test
+  (testing (str "An aggregating card still exposes FK columns -- a breakout keeps its `:id` and\n"
+                "`:fk-target-field-id` across the stage boundary, and is physically present in `__mb_source`. So\n"
+                "this repair is real and the query runs. Deriving candidates from the card's RETURNED columns gets\n"
+                "this right for the same reason it rejects the case below.")
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders count by user" :type :question
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]
+                                                          :breakout    [$user_id]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "breakout"    [["field" {} [db-name "PUBLIC" "PEOPLE" "SOURCE"]]]
+                                          "aggregation" [["count" {}]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (= (mt/id :orders :user_id)
+                 (:source-field (get-in query [:stages 0 :breakout 0 1])))
+              "wired to the FK column the card actually returns")
+          (is (seq (mt/rows (qp/process-query query)))
+              "and the query the LLM gets back executes"))))))
+
+(deftest aggregating-source-card-rejects-fk-it-does-not-return-test
+  (testing (str "The reported bug. The card aggregates over ORDERS, so ORDERS.PRODUCT_ID is NOT among its returned\n"
+                "columns -- only the breakout is. Keying off the card's BASE TABLE found PRODUCT_ID anyway and\n"
+                "stamped it, producing `__mb_source.PRODUCT_ID`, which does not exist. Every downstream gate passed\n"
+                "it and the query died at execution. Now it is a retryable agent error instead.")
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders count by user" :type :question
+                    :dataset_query (mt/mbql-query orders {:aggregation [[:count]]
+                                                          :breakout    [$user_id]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              e (is (thrown? clojure.lang.ExceptionInfo
+                             (construct/execute-representations-query
+                              (query-data
+                               {"lib/type" "mbql/query"
+                                "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                             "source-card" question-eid
+                                             "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                             "aggregation" [["count" {}]]}]}))))]
+          (is (=? {:agent-error? true, :error :no-fk-path} (ex-data e)))
+          (is (str/includes? (ex-message e) "Orders count by user")
+              "and it names the card, not a base table the LLM never mentioned"))))))
+
+(deftest source-card-with-restricted-fields-rejects-column-it-does-not-return-test
+  (testing (str "The base-table equality short-circuit used to fire before the returned-columns check, so a\n"
+                "reference to a base-table column the card does not project was left as a bare ref -- again\n"
+                "`__mb_source.<COLUMN>`. On a card stage there is no 'field is on the source table' shortcut to\n"
+                "take: what matters is only what the card returns.")
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Orders id and total" :type :question
+                    :dataset_query (mt/mbql-query orders {:fields [$id $total]})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              run!    (fn [fk]
+                        (construct/execute-representations-query
+                         (query-data
+                          {"lib/type" "mbql/query"
+                           "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                        "source-card" question-eid
+                                        "breakout"    [["field" {} fk]]
+                                        "aggregation" [["count" {}]]}]})))]
+          (testing (str "a column on a table the card READS but does not project is rejected with advice that fits: "
+                        "pick a projected column. The generic no-FK-path text would tell the agent to add a "
+                        "`joins:` entry joining ORDERS to itself, and `:agent-error?` relays it verbatim.")
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (run! [db-name "PUBLIC" "ORDERS" "QUANTITY"])))]
+              (is (=? {:agent-error? true, :error :column-not-returned} (ex-data e)))
+              (is (str/includes? (ex-message e) "does not return"))
+              (is (not (str/includes? (ex-message e) "read_resource"))
+                  "the shared pipeline's message stays surface-neutral; the lookup advice is v1's hint")
+              (testing "and the resource URI v1's hint hands the agent actually resolves"
+                (let [uri (second (re-find #"`(metabase://[^`]+)`" (v1-hints/recovery-hint (ex-data e))))]
+                  (is (some? uri))
+                  (is (not (str/starts-with? uri "metabase://card/"))
+                      "there is no card URI type -- the dispatcher matches model/question only")
+                  (let [out (:structured-output (resources/read-resource {:uris [uri]}))]
+                    (is (not (str/includes? (str out) "Unsupported URI"))
+                        (str "the agent is sent to " uri)))))
+              (is (not (str/includes? (ex-message e) "joins:"))
+                  "specifically not told to build a self-join")))
+          (testing "while a genuinely unreachable table still gets the no-FK-path advice"
+            (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                 (run! [db-name "PUBLIC" "PRODUCTS" "CATEGORY"])))]
+              (is (=? {:agent-error? true, :error :no-fk-path} (ex-data e)))
+              (is (str/includes? (ex-message e) "joins:"))))
+          (testing "while a column it does return is left alone and runs"
+            (let [query (-> (construct/execute-representations-query
+                             (query-data
+                              {"lib/type" "mbql/query"
+                               "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                            "source-card" question-eid
+                                            "breakout"    [["field" {} [db-name "PUBLIC" "ORDERS" "TOTAL"]]]}]}))
+                            (get-in [:structured-output :query]))]
+              (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
+              (is (seq (mt/rows (qp/process-query query)))))))))))
+
+(deftest native-source-card-stage-leaves-clauses-alone-test
+  (testing (str "When we cannot work out what a card exposes, the pass must fail CLOSED -- leave the clause alone.\n"
+                "A native card is the reachable case: its columns carry no field ids. The old code resolved the\n"
+                "returned-column set to an EMPTY set on failure, and that set is consulted as a *skip* condition,\n"
+                "so empty meant 'skip nothing' -- a column the card really returns could be wired to an implicit\n"
+                "join and answer from a different join path, silently changing the rows with no error.")
+    (mt/with-temp [:model/Card {question-eid :entity_id}
+                   {:name "Native orders" :type :question
+                    :dataset_query (mt/native-query {:query "SELECT ID, PRODUCT_ID FROM ORDERS"})}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              query   (-> (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                          "source-card" question-eid
+                                          "breakout"    [["field" {} [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                          "aggregation" [["count" {}]]}]}))
+                          (get-in [:structured-output :query]))]
+          (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field))
+              "no implicit join is guessed for a source we could not inspect"))))))
 
 (deftest source-card-stage-keeps-columns-the-card-already-returns-test
   (testing (str "The implicit-join pass keys off the source card's *base* table, so a column the card reached\n"
@@ -2013,6 +2258,6 @@
                                lib/append-stage
                                (assoc-in [:stages 1 :aggregation] metric-agg))]
           (testing "precondition: this metric really is incompatible with a products source"
-            (is (= #{metric-id} (#'construct/incompatible-metric-ids provider first-stage))))
+            (is (= [metric-id] (keys (#'construct/incompatible-metrics provider first-stage)))))
           (testing "the same reference one stage later is not reported"
-            (is (nil? (#'construct/incompatible-metric-ids provider second-stage)))))))))
+            (is (nil? (#'construct/incompatible-metrics provider second-stage)))))))))

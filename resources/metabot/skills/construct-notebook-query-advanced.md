@@ -202,11 +202,12 @@ Card-based metric — `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
 ```json
 {"lib/type": "mbql.stage/mbql",
  "source-card": "T4wA_GPFwGb6R4FxIDGTo",
- "filters": [[">", {}, ["field", {}, "total"], 0]],
+ "filters": [[">", {}, ["field", {},
+                        ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 0]],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-A card-based metric has a base table underneath it, but that table is **not** a valid source for it — sourcing the table instead of the card fails with an `Incompatible metric` error. If a `<metric>` tag carries `source_card_portable_entity_id`, use `source-card`, even when you know the underlying table.
+When a `<metric>` tag carries `source_card_portable_entity_id`, the card underneath it has a base table too — but that table is **not** a valid source for this metric, and sourcing it instead of the card fails with an `Incompatible metric` error. Use whichever attribute the tag carries, even when you know the underlying table. (Not every metric defined over a card carries that attribute: some are only usable on their base table, and those carry `base_table_fully_qualified_name` instead. The tag is always the authority.)
 
 Metrics are aggregations, **not sources** — never put a *metric's* own `portable_entity_id` in `source-table` or `source-card`. (`source_card_portable_entity_id` is a different id: the card the metric sits on, which is exactly what belongs in `source-card`.) The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
 

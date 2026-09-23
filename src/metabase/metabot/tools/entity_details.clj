@@ -319,26 +319,52 @@
                               :dimensions   dims}))))
                  explicit-joins)))))))
 
-(defn- metric-card-shape-get
-  "Read a key off either card shape `metric-details` accepts: `kebab-k` on a lib metadata map, `snake-k` on a t2 row.
+(def ^:private ^:dynamic *card-read-verdicts*
+  "`{card-id -> boolean}` of read checks the *calling code* has already performed, letting [[metric-details]] skip
+  the per-metric `can-read?` on a metric's source card (the pk arity costs a full-row select apiece).
 
-  Dispatches on `:lib/type` rather than probing both with `or`: a lib metadata map is a `SnakeHatingMap` that throws
-  a deprecation error on a snake_case read, so the fallback arm must be unreachable for that shape. Every key read
-  through here is legitimately nil on some cards, which is exactly when an `or` would reach it."
-  [card kebab-k snake-k]
-  (if (:lib/type card)
-    (get card kebab-k)
-    (get card snake-k)))
+  Records the NEGATIVE verdicts too, not just the readable ids: a metric whose source card is unreadable is exactly
+  the case a readable-ids set cannot answer, so it would fall through and pay the very select the batch exists to
+  avoid. An id that was checked but is absent from the app DB belongs here as `false` -- the pk arity of `can-read?`
+  throws outright on a row that is gone, which would turn a 400 into a 500.
 
-(defn- metric-source-card-id
-  "The id of the saved question or model a metric must be consumed from, or nil when it is defined directly on a table.
+  A permission-check bypass, so it is deliberately NOT an entry in the `options` map: the tool entry points forward
+  their `arguments` -- an LLM-authored JSON payload -- into that map, and the only thing standing between it and a
+  skipped permission check would be a `:closed` Malli schema declared in another namespace. As a dynamic var bound
+  only by trusted callers here, it cannot be expressed in a tool call at all.
 
-  A metric only splices into a query built on the source it was defined on. Callers must not offer the base table
-  whenever this returns non-nil -- `report_card.table_id` points at the source card's *underlying* table, and a query
-  on that table is rejected by the QP with `Incompatible metric`. That holds even when the source card turns out to
-  be unreadable: the base table is not a usable source either way."
-  [card]
-  (metric-card-shape-get card :source-card-id :source_card_id))
+  Bind it only to verdicts you established yourself."
+  {})
+
+(defn- card-read-verdicts-for-metrics
+  "One column-restricted read check covering every source card the metrics in `metric-cards` are pinned to, as
+  `{card-id -> boolean}` for [[*card-read-verdicts*]]; nil when none of them is pinned to a card.
+
+  Batches what would otherwise be a per-metric `can-read?` on the pk arity -- a full-row select apiece. Reads the
+  requirement through [[metabase.metabot.tools.util/metric-required-source]] rather than the raw `:source_card_id`
+  column: a multi-stage card-based metric names a source card it must NOT be consumed from, so read-checking that
+  card would be wasted work. Every candidate gets a verdict, `false` included -- see [[*card-read-verdicts*]]."
+  [metric-cards]
+  (let [source-card-ids (into #{}
+                              (keep #(let [r (metabot.tools.u/metric-required-source %)]
+                                       (when (= :card (:kind r)) (:card-id r))))
+                              metric-cards)]
+    (when (seq source-card-ids)
+      (let [readable (metabot.tools.u/readable-source-cards source-card-ids)]
+        (into {} (map (juxt identity #(contains? readable %))) source-card-ids)))))
+
+(defn- card-readable?
+  "Whether the current user may read the card with `card-id`, consulting [[*card-read-verdicts*]] first.
+
+  Falls back to the same row-based check the batch uses rather than `(mi/can-read? :model/Card card-id)`: the pk
+  arity resolves the row itself and throws outright when it is gone (`No method in multimethod 'can-read?' for
+  dispatch value: null`), which carries no `:agent-error?` and so 500s the whole turn. A metric whose source
+  question was permanently deleted while its `dataset_query` still names it is exactly that case, and it must read
+  as unreadable, not as an exception."
+  [card-id]
+  (if (contains? *card-read-verdicts* card-id)
+    (get *card-read-verdicts* card-id)
+    (contains? (metabot.tools.u/readable-source-cards #{card-id}) card-id)))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -347,15 +373,11 @@
    (when-let [card (metabot.tools.u/get-card id)]
      (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?
-                                   with-segments? known-readable-card-ids]
+                                   with-segments?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
                                    with-queryable-dimensions?      true
-                                   with-segments?                  false
-                                   ;; Card ids the caller has *already* read-checked, skipping the per-metric
-                                   ;; `can-read?` (a full-row select apiece). A permission-check bypass: only pass
-                                   ;; ids whose readability you established yourself.
-                                   known-readable-card-ids         #{}}}]
+                                   with-segments?                  false}}]
    (let [id (:id card)
          ;; Database metadata so the LLM can build portable FKs — metrics are always
          ;; referenced from a query targeting a specific database, and the LLM needs the
@@ -363,45 +385,40 @@
          database (lib.metadata/database metadata-provider)
          database-id (:id database)
          database-name (:name database)
-         ;; Base table of the metric — the metric is an aggregation defined on top of a
-         ;; specific table. To use the metric, the LLM has to put that table in
-         ;; `source-table:` and reference the metric in `aggregation:`.
+         ;; The one source this metric can be consumed from. `report_card.table_id` is NOT it for every
+         ;; metric: see [[metabase.metabot.tools.util/metric-required-source]], which mirrors the QP's rule.
+         ;; Offering the wrong one is a QP `Incompatible metric` throw -- a 500 to the user.
          ;;
          ;; This arity takes two shapes of `card`: the t2 row from `get-card` (via the single-arg
-         ;; `metric-details`), and a `lib.metadata/card` map forwarded by `convert-metric`. `metric-card-shape-get`
-         ;; tells them apart. `report_card.table_id` / metadata `:table-id` already points to the metric's base
-         ;; table and is kept in sync, so we use it verbatim instead of digging through `:dataset_query`.
-         ;; Reading the metric Card is collection-based and does not imply permission to
-         ;; reveal metadata for this physical Table.
-         source-table-id (metric-card-shape-get card :table-id :table_id)
+         ;; `metric-details`), and a `lib.metadata/card` map forwarded by `convert-metric`; the predicate
+         ;; handles both. Reading the metric Card is collection-based and does not imply permission to reveal
+         ;; its source, so each kind is gated separately below.
+         required (metabot.tools.u/metric-required-source card)
+         source-table-id (when (= :table (:kind required)) (:table-id required))
+         source-card-id (when (= :card (:kind required)) (:card-id required))
          source-table (when (and source-table-id
                                  (mi/can-query? :model/Table source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
-         ;; A card-based metric is consumed from its source card, never the base table below it. The two gates
-         ;; differ on purpose: the base table is withheld whenever a source card *exists*, readable or not, since
-         ;; it is not a usable source either way; the source card is surfaced only when the user may read it.
-         ;; Conflating them hands back the base table for an unreadable source card -- the pairing that crashes.
-         source-card-id (metric-source-card-id card)
          source-card (when (and source-card-id
-                                (or (contains? known-readable-card-ids source-card-id)
-                                    ;; Reading the metric is collection-based and does not imply permission to read
-                                    ;; its source card.
-                                    (mi/can-read? :model/Card source-card-id)))
+                                ;; Reading the metric is collection-based and does not imply permission to read
+                                ;; its source card.
+                                (card-readable? source-card-id))
                        (lib.metadata/card metadata-provider source-card-id))
-         base-table-portable-fk (when (and database-name source-table (not source-card-id))
+         base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
          ;; No source can be offered, so the LLM is told to skip the metric (`:source_unavailable` below).
          ;; Describing its dimensions would contradict that in the same tag, and they are the costly part here.
-         ;; Covers more than "may not read it": the card can also be absent from `metadata-provider` (different
-         ;; database). The flag says no source is available, not why.
-         source-unavailable? (and source-card-id (not source-card))
-         ;; Gated on having *a* usable source, not a readable base table specifically: the metric query below is
-         ;; built from the metric card, and `source-table` feeds only the `base_table_*` fields. Gating on it would
-         ;; leave a metric over a native question (`table_id` nil) with a source to build on but no dimensions, so
-         ;; the LLM invents column names. `source-card` is the card-path equivalent of the `can-query?` gate, and
-         ;; columns are permission-filtered again below.
-         query-needed? (and (or source-table source-card)
-                            (not source-unavailable?)
+         ;; Symmetric across both kinds on purpose: a table-based metric whose base table fails `can-query?` is
+         ;; just as sourceless as an unreadable source card, and absence alone reads to the LLM as "look it up
+         ;; elsewhere" -- the guess-a-source behaviour this enrichment exists to prevent. Covers more than "may
+         ;; not read it": the source can also be absent from `metadata-provider` (different database), or the
+         ;; definition unreadable. The flag says no source is available, not why.
+         source-unavailable? (and (nil? source-table) (nil? source-card))
+         ;; Gated on having *a* usable source: the metric query below is built from the metric card, and
+         ;; `source-table` feeds only the `base_table_*` fields. Gating on the base table alone would leave a
+         ;; card-based metric with a source to build on but no dimensions, so the LLM invents column names.
+         ;; Columns are permission-filtered again below.
+         query-needed? (and (not source-unavailable?)
                             (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?))
          metric-card (when query-needed?
                        (lib.metadata/card metadata-provider id))
@@ -428,12 +445,14 @@
                                (set (keep :id base-filterable-cols))))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
-                             permission-filter-columns
-                             (map #(metabot.tools.u/add-table-reference base-query %))))
+                             permission-filter-columns))
+         ;; Matched against the bare columns and annotated afterwards: `find-matching-column` validates its
+         ;; candidates as lib column metadata, which rejects the string `:table-reference` annotation.
          default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
-                                     (->> breakouts
-                                          (map #(lib/find-matching-column % visible-cols))
-                                          (m/find-first lib.types.isa/temporal?)))
+                                     (some->> breakouts
+                                              (map #(lib/find-matching-column % visible-cols))
+                                              (m/find-first lib.types.isa/temporal?)
+                                              (metabot.tools.u/add-table-reference base-query)))
          queryable-columns (when (and query-needed? with-queryable-dimensions?)
                              (field-values-fn base-filterable-cols))]
      (cond-> {:id id
@@ -445,14 +464,14 @@
               :database_name database-name
               ;; Portable entity id — the string the LLM must copy verbatim into a
               ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
-              ;; Same two shapes as `source-table-id` above.
-              :portable_entity_id (metric-card-shape-get card :entity-id :entity_id)
+              ;; Same two card shapes as `required` above.
+              :portable_entity_id (metabot.tools.u/metric-card-shape-get card :entity-id :entity_id)
               :verified (verified-review? id "card")}
        ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
        ;; verbatim as `source-table:` in the query that consumes the metric. These fields
-       ;; are added only when the base Table is readable, and only for a table-based metric --
-       ;; for a card-based one the base table is not a usable source (see `source-card-id` above).
-       (and source-table (not source-card-id))
+       ;; are added only when the base Table is readable. Whether the base table is the right source at all
+       ;; was already decided by `required` above.
+       source-table
        (assoc :base_table_id source-table-id
               :base_table_name (:name source-table)
               :base_table_portable_fk base-table-portable-fk)
@@ -469,10 +488,15 @@
        source-unavailable?
        (assoc :source_unavailable true)
 
+       ;; Both the id and the name: the id is what `read_resource` addresses the dimension by, the name is what
+       ;; renders in the `<metric>` tag. Deriving the name downstream by scanning `:queryable-dimensions` fails for
+       ;; every caller that asks for the breakout but not the dimensions -- `convert-metric` being the main one --
+       ;; and for a temporal breakout that is not a filterable column.
        (and query-needed? with-default-temporal-breakout?)
-       (assoc :default_time_dimension_field_id (some-> default-temporal-breakout
-                                                       (->> (metabot.tools.u/->result-column metric-query))
-                                                       :field_id))
+       (merge (when-let [col (some->> default-temporal-breakout
+                                      (metabot.tools.u/->result-column metric-query))]
+                {:default_time_dimension_field_id   (:field_id col)
+                 :default_time_dimension_field_name (:name col)}))
 
        (and query-needed? with-queryable-dimensions?)
        (assoc :queryable-dimensions (into []
@@ -496,7 +520,8 @@
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
        ;; Keep the DB-name / source / portable_entity_id fields so callers (incl. `metric->xml`)
        ;; can surface them to the LLM without a second round-trip.
-       (select-keys [:id :type :name :description :default_time_dimension_field_id
+       (select-keys [:id :type :name :description
+                     :default_time_dimension_field_id :default_time_dimension_field_name
                      :database_id :database_name :portable_entity_id
                      :base_table_id :base_table_name :base_table_portable_fk
                      :source_card_id :source_card_name :source_card_portable_entity_id
@@ -574,9 +599,16 @@
             ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
             :portable_fk (when db-name [db-name (:schema base) (:name base)])}
            (m/assoc-some :description (:description base)
+                         ;; `available-metrics` on a table query selects by `table_id`, which for a
+                         ;; single-stage card-based metric is its source card's base table -- so this path does
+                         ;; reach metrics that need a source-card read check, and without the batch each one
+                         ;; costs a full-row select on the hottest entity-details path.
                          :metrics (when with-metrics?
-                                    (not-empty (mapv #(convert-metric % mp options)
-                                                     (lib/available-metrics table-query))))
+                                    (let [metrics (lib/available-metrics table-query)]
+                                      (binding [*card-read-verdicts*
+                                                (merge *card-read-verdicts*
+                                                       (card-read-verdicts-for-metrics metrics))]
+                                        (not-empty (mapv #(convert-metric % mp options) metrics)))))
                          :measures (when with-measures?
                                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                                       (lib/available-measures table-query))))
@@ -747,12 +779,13 @@
                          metadata-provider
                          query
                          shared.content-store/default-store))
-          ;; Every metric here has this card as its source, and `card-details`' callers read-check it, so
-          ;; `metric-details` need not re-check per metric.
+          ;; `lib/available-metrics` resolves a card-sourced query's metrics via its source card, so every metric
+          ;; here that needs a source card needs *this* one -- which `card-details` is already returning in full.
+          ;; Skipping the re-check therefore discloses nothing the caller is not already getting.
           :metrics (when with-metrics?
-                     (not-empty (mapv #(convert-metric % metadata-provider
-                                                       (update options :known-readable-card-ids (fnil conj #{}) id))
-                                      (lib/available-metrics card-query))))
+                     (binding [*card-read-verdicts* (assoc *card-read-verdicts* id true)]
+                       (not-empty (mapv #(convert-metric % metadata-provider options)
+                                        (lib/available-metrics card-query)))))
           :measures (when with-measures?
                       (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                        (lib/available-measures card-query))))
@@ -771,16 +804,15 @@
                       :metric metric-details
                       :model card-details
                       :question card-details)
-          ;; `metric-details` read-checks each card-based metric's source card, and the pk arity of `can-read?`
-          ;; costs a full-row select apiece. Batch that into one column-restricted query up front; this path fans
-          ;; out per metric already (`answer-sources`, suggested prompts). Metrics only: on the question/model
-          ;; paths `:source_card_id` is the card's OWN source, which nothing downstream asks about.
-          source-card-ids (when (= card-type :metric)
-                            (into #{} (keep :source_card_id) cards))
-          readable-source-card-ids (if (seq source-card-ids)
-                                     (into #{} (comp (filter mi/can-read?) (map :id))
-                                           (metabot.db/card-source-rows source-card-ids))
-                                     #{})]
+          ;; `metric-details` read-checks each metric's source card, and the pk arity of `can-read?` costs a
+          ;; full-row select apiece. Batch that into one column-restricted query up front; this path fans out per
+          ;; metric already (`answer-sources`, suggested prompts). Metrics only: on the question/model paths
+          ;; `:source_card_id` is the card's OWN source, which nothing downstream asks about. Read through the
+          ;; predicate, not the raw column -- a multi-stage card-based metric names a source card it must NOT be
+          ;; consumed from, and read-checking it would be wasted work.
+          card-read-verdicts (when (= card-type :metric)
+                               (card-read-verdicts-for-metrics cards))
+          readable-source-card-ids (into #{} (keep (fn [[id readable?]] (when readable? id))) card-read-verdicts)]
       ;; The source cards go in alongside the cards themselves: `metric-details` fetches each one to read its
       ;; name and entity id, so leaving them out trades the `can-read?` N+1 batched above for a metadata-provider
       ;; N+1 in its place.
@@ -788,12 +820,11 @@
       ;; Realized eagerly (not `map`) so every detail-fn call -- and the metabot.perms lookups it
       ;; triggers -- runs inside this with-cache binding. A lazy seq would only be walked by the
       ;; caller, after the binding above has already unwound, defeating the cache.
-      (mapv #(-> (detail-fn % mp (-> options
-                                     (u/assoc-default :field-values-fn identity)
-                                     (update :known-readable-card-ids
-                                             (fnil into #{}) readable-source-card-ids)))
-                 (assoc :type card-type))
-            cards))))
+      ;; Merged, not replaced, so this agrees with `card-details`' binding below if the two ever nest.
+      (binding [*card-read-verdicts* (merge *card-read-verdicts* card-read-verdicts)]
+        (mapv #(-> (detail-fn % mp (u/assoc-default options :field-values-fn identity))
+                   (assoc :type card-type))
+              cards)))))
 
 (defn answer-sources
   "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
@@ -820,12 +851,11 @@
 (defn- arguments->options
   "The detail-fn options for a tool call's `arguments` map.
 
-  Strips `:known-readable-card-ids`, which skips [[metric-details]]'s `can-read?` on a metric's source card. The
-  entry points below forward `arguments` -- the tool-call payload -- verbatim, so without the strip the only thing
-  between LLM-authored input and a skipped permission check is the `:closed` Malli schema on each tool, declared in
-  another namespace. Fail closed here instead."
+  Nothing here filters the map for safety: the read-verdict bypass lives in [[*card-read-verdicts*]], a dynamic var
+  that is not part of `options` at all, so no `arguments` key can reach it. Blocklisting one key name would only
+  suggest otherwise."
   [arguments]
-  (cond-> (dissoc arguments :known-readable-card-ids)
+  (cond-> arguments
     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity)))
 
 (defn get-table-details

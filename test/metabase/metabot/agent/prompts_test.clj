@@ -51,6 +51,13 @@
           ;; Positive assertion: checking that old wording is absent goes vacuous the first time anyone
           ;; rephrases it, and would pass on a surface teaching the base table unconditionally in other words.
           (is (str/includes? doc "only works on the source it was defined on")))))
+    (testing "the discovery snippet does not send the agent to the base table unconditionally"
+      ;; Not one of the surfaces above -- it is a shared prompt snippet, and it kept the pre-fix wording
+      ;; ("reference it ... on its base table") through the change that made that wrong for card-based metrics.
+      (let [doc (slurp (io/resource "metabot/prompts/shared/prompt_snippets/data-sources.selmer"))]
+        (is (str/includes? doc "base_table_fully_qualified_name"))
+        (is (str/includes? doc "source_card_portable_entity_id"))
+        (is (str/includes? doc "only works on the source it was defined on"))))
     (testing "the aggregation catalogs describe the metric clause the same way"
       (doseq [path ["metabot/prompts/tools/construct_notebook_query.md"
                     "metabot/skills/construct-notebook-query-operators.md"]]

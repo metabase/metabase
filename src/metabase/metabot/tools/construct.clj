@@ -25,7 +25,6 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
@@ -659,48 +658,32 @@
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
       (me/humanize explanation))))
 
-(defn- metric-required-source
-  "The source a metric was defined on: `{:card <id-or-nil> :table <id-or-nil> :multi-stage? <boolean>}`, or nil if its
-  card cannot be resolved.
-
-  `:multi-stage?` is whether the metric's definition has more than one stage -- an extra QP restriction on top of
-  the source table, see [[incompatible-metric-ids]]. Defaults to false (what the query builder produces) when the
-  definition cannot be read."
-  [mp metric-id]
-  (when-let [card (lib.metadata/card mp metric-id)]
-    {:card         (:source-card-id card)
-     :table        (:table-id card)
-     :multi-stage? (boolean (try
-                              (when-let [definition (:dataset-query card)]
-                                (> (lib/stage-count (lib/query mp definition)) 1))
-                              (catch Exception _ false)))}))
-
-(defn- incompatible-metric-ids
-  "Ids of metrics referenced in `query`'s first stage that its source cannot splice them into, or nil.
+(defn- incompatible-metrics
+  "`{metric-id -> required-source}` for metrics referenced in `query`'s first stage that its source cannot splice
+  them into, sorted by id, or nil when they all fit.
 
   A metric only splices into a query built on the source it was defined on. The QP otherwise throws
   `Incompatible metric`, which surfaces as a 500; catching it here gives the LLM a retryable agent error.
 
-  Mirrors both halves of the QP rule (see [[metabase.query-processor.middleware.metrics]]):
+  The rule itself lives in [[metabase.metabot.tools.util/metric-required-source]], which mirrors
+  [[metabase.query-processor.middleware.metrics]]. Two things worth knowing at this call site:
 
-  1. Primary source *tables* must match, compared after source-card resolution. A table-based metric is therefore
-     fine on any card built on its table; only a card-based metric is pinned to one exact card.
-  2. The metric's last stage and the stage using it must agree on whether they came from a source card, unless the
-     metric definition is a single stage. This is why a table-based metric with a multi-stage definition is rejected
-     on a `source-card:` stage even though the tables match.
+  - The QP's second conjunct compares source-card *ids*, not a boolean. That is why a single-stage card-based metric
+    is pinned to one exact card: a different card over the same table has a different id.
+  - A metric whose definition cannot be read is left alone rather than rejected. Same for
+    [[metabase.lib.core/available-metrics]]' other exclusions (archived, and so on): reporting those would tell the
+    LLM to change the source to the one it already has.
 
-  Narrower than [[metabase.lib.core/available-metrics]], which also excludes metrics for non-source reasons such as
-  being archived. Reporting those would tell the LLM to change the source to the one it already has, so they pass
-  through to the QP.
-
-  First stage only -- that is where a source is chosen. Later stages, refs inside `:joins`, and metrics whose card
-  will not resolve are left alone; incompatibility is claimed only when both sources are known and differ."
+  This reduces the 500s, it does not eliminate them. Only stage 0 is inspected -- that is where a source is chosen --
+  so a metric ref in a later stage, inside a `:joins` subtree, or outside `:aggregation` still reaches the QP. The
+  last of those surfaces as a differently-shaped `Failed to replace metric` error rather than `Incompatible metric`."
   [mp query]
   (let [referenced (into #{}
                          (match/match-many (lib/aggregations query 0)
                            [:metric _ (id :guard pos-int?)]
                            id))]
     (when (seq referenced)
+      (lib.metadata/bulk-metadata mp :metadata/card referenced)
       (let [stage-card-id (lib.util/source-card-id query)
             ;; The QP compares the resolved table. `::unresolved` rather than nil so an unresolvable card does not
             ;; compare equal to a table-based metric whose own `:table-id` is nil, which would reject every
@@ -709,44 +692,54 @@
                              (or (:table-id (lib.metadata/card mp stage-card-id)) ::unresolved)
                              (lib.util/source-table-id query))]
         (not-empty
-         (into (sorted-set)
-               (remove (fn [metric-id]
-                         (let [{:keys [card table multi-stage?]} (metric-required-source mp metric-id)]
-                           (cond
-                             ;; card cannot be resolved -- leave it alone
-                             (and (nil? card) (nil? table)) true
-                             ;; card-based: only that exact card will do
-                             card                          (= card stage-card-id)
-                             ;; table-based: any source resolving to the same table, except that a multi-stage
-                             ;; definition additionally pins the stage to a bare `source-table:` (the QP's second
-                             ;; conjunct -- see the docstring).
-                             :else                         (and (= table stage-table-id)
-                                                                (or (not multi-stage?)
-                                                                    (nil? stage-card-id)))))))
+         (into (sorted-map)
+               (keep (fn [metric-id]
+                       (let [required   (tools.u/metric-required-source (lib.metadata/card mp metric-id))
+                             ;; no readable definition -- leave it alone rather than claim a mismatch
+                             compatible? (or (nil? required)
+                                             (tools.u/metric-compatible-with-stage?
+                                              required
+                                              {:stage-card-id  stage-card-id
+                                               :stage-table-id stage-table-id}))]
+                         (when-not compatible?
+                           [metric-id required]))))
                referenced))))))
 
 (defn- incompatible-metric-explanation
-  "An LLM-facing message naming each metric in `metric-ids` and the source it must be used on."
-  [mp metric-ids]
-  (let [describe (fn [metric-id]
-                   ;; One whole `tru` per branch rather than a fragment glued into a `str` -- word order is the
-                   ;; translator's.
-                   (let [card (lib.metadata/card mp metric-id)
-                         metric-name (pr-str (or (:name card) metric-id))
-                         source-card-id (:source-card-id card)
-                         source-card (when source-card-id (lib.metadata/card mp source-card-id))]
-                     (cond
-                       (nil? source-card-id)
-                       (tru "{0} (needs its base table as source-table:)" metric-name)
+  "An LLM-facing message naming each metric in `required-by-metric-id` and the source it must be used on. Takes the
+  classification [[incompatible-metrics]] already made rather than redoing it, so the two cannot drift."
+  [required-by-metric-id]
+  (let [metric-ids   (keys required-by-metric-id)
+        source-cards (into #{} (keep (fn [[_ r]] (when (= :card (:kind r)) (:card-id r))))
+                           required-by-metric-id)
+        ;; One column-restricted select covering the metrics AND their source cards, for readability *and* entity
+        ;; id -- every name and id below comes from here, never from the metadata provider, which is not
+        ;; permission-aware. This gate runs before `export-query`, whose permission-aware content store is the
+        ;; thing that read-checks entity-id lookups, and `check-source-table-query-permissions!` covers only stage
+        ;; sources, not aggregation metric refs. The pk arity of `can-read?` would also throw outright on a card
+        ;; that has since been deleted, turning this 400 into a 500; a card that is gone is simply absent here.
+        readable     (tools.u/readable-source-cards (into (set metric-ids) source-cards))
+        describe     (fn [metric-id]
+                       ;; One whole `tru` per branch rather than a fragment glued into a `str` -- word order is the
+                       ;; translator's.
+                       (let [metric-name (pr-str (or (:name (get readable metric-id)) metric-id))
+                             r           (get required-by-metric-id metric-id)
+                             eid         (when (= :card (:kind r))
+                                           (:entity_id (get readable (:card-id r))))]
+                         (cond
+                           ;; A multi-stage metric over a native source card: `:kind :table` with nothing to name.
+                           ;; Saying "use its base table" leaves no edit that satisfies the error.
+                           (and (= :table (:kind r)) (nil? (:table-id r)))
+                           (tru "{0} (has no usable source)" metric-name)
 
-                       ;; `mp` is not permission-aware, so naming the card unconditionally would leak a source
-                       ;; `metric-details` and `search` withhold. It may also not carry the card at all (different
-                       ;; database), leaving no entity id to give.
-                       (and (mi/can-read? :model/Card source-card-id) (:entity-id source-card))
-                       (tru "{0} (needs source-card: {1})" metric-name (pr-str (:entity-id source-card)))
+                           (= :table (:kind r))
+                           (tru "{0} (needs its base table as source-table:)" metric-name)
 
-                       :else
-                       (tru "{0} (defined on a source you do not have access to)" metric-name))))]
+                           eid
+                           (tru "{0} (needs source-card: {1})" metric-name (pr-str eid))
+
+                           :else
+                           (tru "{0} (defined on a source you do not have access to)" metric-name))))]
     (tru "These metrics cannot be used on this stage''s source: {0}. A metric only works on the source it was defined on, so the stage must use that source. Either change the stage''s source-table:/source-card: to the one shown for each metric, or drop the metric and express the aggregation directly."
          (str/join ", " (map describe metric-ids)))))
 
@@ -840,11 +833,11 @@
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
             ;; Metric/source compatibility. After the schema gates so it only inspects a well-formed query,
             ;; before execution so a bad pairing is a retryable agent error rather than a QP 500.
-            _metrics-ok   (when-let [bad (incompatible-metric-ids mp pmbql-query)]
-                            (throw (ex-info (incompatible-metric-explanation mp bad)
+            _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
+                            (throw (ex-info (incompatible-metric-explanation bad)
                                             {:agent-error? true
                                              :error        :incompatible-metric
-                                             :metric-ids   (vec bad)
+                                             :metric-ids   (vec (keys bad))
                                              :status-code  400})))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
