@@ -1020,7 +1020,6 @@
            lib.be
            lib.metric
            lib.schema
-           lib.types
            metrics
            models
            mq
@@ -1130,7 +1129,10 @@
   interestingness
   {:team "UX West"
    :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
-   :uses #{lib.be util}}
+   :uses #{lib
+           lib.be
+           lib.types
+           util}}
 
   lib
   {:team "Querying Platform"
@@ -1777,6 +1779,9 @@
            driver
            embedding
            events
+           interestingness
+           lib
+           lib.be
            lib.schema
            metabot
            models

@@ -29,7 +29,7 @@ export const AlertMetabotSendGate = ({ sendPrompt, onChange }: Props) => {
         maxLength={SEND_PROMPT_MAX_LENGTH}
         minRows={2}
         autosize
-        placeholder={t`For example: skip it if the dip matches previous weekends`}
+        placeholder={t`For example: only if the drop is over 10% and isn't a weekend dip`}
         // an empty box means no gate at all; only the emptiness check is trimmed, so spaces
         // stay typeable
         onChange={(event) => {
@@ -38,7 +38,7 @@ export const AlertMetabotSendGate = ({ sendPrompt, onChange }: Props) => {
         }}
       />
       <Text size="sm" c="text-secondary">
-        {t`Checked only after the condition above fires. If ${metabotName} is unavailable or unsure, the alert still sends.`}
+        {t`Describe when you do want it sent. Checked only after the condition above fires, and if ${metabotName} is unavailable or unsure the alert still sends.`}
       </Text>
     </Stack>
   );

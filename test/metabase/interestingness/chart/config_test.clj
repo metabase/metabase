@@ -1,7 +1,7 @@
-(ns metabase.explorations.interestingness-test
+(ns metabase.interestingness.chart.config-test
   (:require
    [clojure.test :refer :all]
-   [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.interestingness.core :as interestingness]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]))
 
@@ -19,7 +19,7 @@
 
 (deftest temporal-x-numeric-y-test
   (testing "datetime x + numeric y produces a single-series chart-config"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "month" :base-type :type/DateTime :display-name "Month"})
                 (lib-col {:name "count" :base-type :type/Integer :display-name "Count"})]
@@ -36,7 +36,7 @@
 
 (defn- dow-x-values [loc]
   (binding [i18n/*user-locale* loc]
-    (-> (explorations.interestingness/chart-config
+    (-> (interestingness/chart-config
          (query "bar")
          [(lib-col {:name "survey_date" :base-type :type/Integer :lib/temporal-unit :day-of-week})
           (lib-col {:name "total" :base-type :type/Integer :display-name "Sum of Total Catch"})]
@@ -59,7 +59,7 @@
 (deftest hour-of-day-extraction-is-labeled-test
   (testing "An :hour-of-day extraction column is treated as the dimension and labeled with a localized time"
     (let [hcfg (fn [loc] (binding [i18n/*user-locale* loc]
-                           (-> (explorations.interestingness/chart-config
+                           (-> (interestingness/chart-config
                                 (query "bar")
                                 [(lib-col {:name "h" :base-type :type/Integer :lib/temporal-unit :hour-of-day})
                                  (lib-col {:name "n" :base-type :type/Integer})]
@@ -75,7 +75,7 @@
 
 (deftest truncation-unit-day-stays-temporal-test
   (testing "A :day truncation unit (real date) is unaffected — still datetime, not labeled"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "d" :base-type :type/DateTime :lib/temporal-unit :day})
                 (lib-col {:name "n" :base-type :type/Integer})]
@@ -85,7 +85,7 @@
       (is (= ["2026-01-01T00:00" "2026-01-02T00:00"] (:x_values s))))))
 
 (deftest categorical-x-integer-y-test
-  (let [cfg (explorations.interestingness/chart-config
+  (let [cfg (interestingness/chart-config
              (query "bar")
              [(lib-col {:name "category" :base-type :type/Text})
               (lib-col {:name "total"    :base-type :type/Integer})]
@@ -95,14 +95,14 @@
 
 (deftest date-vs-datetime-test
   (testing ":type/Date maps to \"date\""
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "d" :base-type :type/Date})
                 (lib-col {:name "n" :base-type :type/Float})]
                [["2026-01-01" 1.0]])]
       (is (= "date" (-> cfg :series vals first :x :type)))))
   (testing ":type/DateTime maps to \"datetime\""
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "d" :base-type :type/DateTime})
                 (lib-col {:name "n" :base-type :type/Float})]
@@ -110,7 +110,7 @@
       (is (= "datetime" (-> cfg :series vals first :x :type))))))
 
 (deftest boolean-x-test
-  (let [cfg (explorations.interestingness/chart-config
+  (let [cfg (interestingness/chart-config
              (query "bar")
              [(lib-col {:name "b" :base-type :type/Boolean})
               (lib-col {:name "n" :base-type :type/Integer})]
@@ -119,7 +119,7 @@
 
 (deftest effective-type-wins-over-base-type-test
   (testing "When effective-type and base-type disagree, effective-type drives the chart-type"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "iso" :base-type :type/Text :effective-type :type/DateTime})
                 (lib-col {:name "n"   :base-type :type/Integer})]
@@ -128,7 +128,7 @@
 
 (deftest nil-filtering-preserves-alignment-test
   (testing "Rows with nil metric value are dropped; surviving x and y stay aligned"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "d" :base-type :type/Date})
                 (lib-col {:name "n" :base-type :type/Integer})]
@@ -138,14 +138,14 @@
       (is (= [1 3 5] (:y_values s))))))
 
 (deftest empty-rows-returns-nil-test
-  (is (nil? (explorations.interestingness/chart-config
+  (is (nil? (interestingness/chart-config
              (query "line")
              [(lib-col {:name "d" :base-type :type/Date})
               (lib-col {:name "n" :base-type :type/Integer})]
              []))))
 
 (deftest no-numeric-column-returns-nil-test
-  (is (nil? (explorations.interestingness/chart-config
+  (is (nil? (interestingness/chart-config
              (query "bar")
              [(lib-col {:name "a" :base-type :type/Text})
               (lib-col {:name "b" :base-type :type/Text})]
@@ -153,7 +153,7 @@
 
 (deftest all-rows-non-numeric-y-returns-nil-test
   (testing "Numeric-typed col but every row's value is nil → nothing to score"
-    (is (nil? (explorations.interestingness/chart-config
+    (is (nil? (interestingness/chart-config
                (query "line")
                [(lib-col {:name "d" :base-type :type/Date})
                 (lib-col {:name "n" :base-type :type/Integer})]
@@ -161,14 +161,14 @@
 
 (deftest display-fallback-test
   (testing "Nil display falls back to \"line\" for temporal x"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query nil)
                [(lib-col {:name "d" :base-type :type/Date})
                 (lib-col {:name "n" :base-type :type/Integer})]
                [["2026-01-01" 1]])]
       (is (= "line" (:display_type cfg)))))
   (testing "Nil display falls back to \"bar\" for categorical x"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query nil)
                [(lib-col {:name "c" :base-type :type/Text})
                 (lib-col {:name "n" :base-type :type/Integer})]
@@ -176,7 +176,7 @@
       (is (= "bar" (:display_type cfg)))))
   (testing "\"table\" and \"scalar\" are also overridden"
     (doseq [d ["table" "scalar" "smartscalar"]]
-      (let [cfg (explorations.interestingness/chart-config
+      (let [cfg (interestingness/chart-config
                  (query d)
                  [(lib-col {:name "d" :base-type :type/DateTime})
                   (lib-col {:name "n" :base-type :type/Integer})]
@@ -185,7 +185,7 @@
             (str "display=" d " should fall back to line for temporal x"))))))
 
 (deftest series-keys-are-strings-test
-  (let [cfg (explorations.interestingness/chart-config
+  (let [cfg (interestingness/chart-config
              (query "bar")
              [(lib-col {:name "c" :base-type :type/Text})
               (lib-col {:name "n" :base-type :type/Integer})]
@@ -194,7 +194,7 @@
 
 (deftest three-col-faceted-line-test
   (testing "categorical + temporal + numeric produces one line series per category, with display=line"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "segment" :base-type :type/Text     :display-name "Segment"})
                 (lib-col {:name "month"   :base-type :type/DateTime :display-name "Month"})
@@ -221,7 +221,7 @@
   (testing "a numeric dimension (breakout) before a numeric metric (aggregation) must NOT transpose
             the axes: the aggregation column is the metric even though it is not the *first* numeric
             column (QP results order breakouts before aggregations)"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "bar")
                [(lib-col {:name "price_bin" :base-type :type/Integer :display-name "Price"
                           :lib/breakout? true})
@@ -237,7 +237,7 @@
 (deftest numeric-dimension-not-transposed-3col-test
   (testing "a numeric dimension in a 3-col faceted result splits the series, with the aggregation on
             y and the temporal breakout on x — the numeric dim must not be mistaken for the metric"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "bin" :base-type :type/Integer :display-name "Bin"
                           :lib/breakout? true})
@@ -258,7 +258,7 @@
 
 (deftest three-col-nil-category-collapses-test
   (testing "nil categorical values collapse into a single \"(empty)\" series"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "segment" :base-type :type/Text})
                 (lib-col {:name "month"   :base-type :type/DateTime})
@@ -272,7 +272,7 @@
 
 (deftest three-col-non-temporal-second-col-returns-nil-test
   (testing "3-col result without a temporal column can't be faceted-over-time → nil"
-    (is (nil? (explorations.interestingness/chart-config
+    (is (nil? (interestingness/chart-config
                (query "line")
                [(lib-col {:name "a" :base-type :type/Text})
                 (lib-col {:name "b" :base-type :type/Text})
@@ -281,7 +281,7 @@
 
 (deftest three-col-non-numeric-rows-dropped-test
   (testing "rows with non-numeric metric values are dropped before grouping"
-    (let [cfg (explorations.interestingness/chart-config
+    (let [cfg (interestingness/chart-config
                (query "line")
                [(lib-col {:name "segment" :base-type :type/Text})
                 (lib-col {:name "month"   :base-type :type/DateTime})
@@ -295,7 +295,7 @@
 
 (deftest four-or-more-cols-returns-nil-test
   (testing "4+ columns aren't supported"
-    (is (nil? (explorations.interestingness/chart-config
+    (is (nil? (interestingness/chart-config
                (query "line")
                [(lib-col {:name "a" :base-type :type/Text})
                 (lib-col {:name "b" :base-type :type/DateTime})

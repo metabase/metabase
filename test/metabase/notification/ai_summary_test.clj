@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.interestingness.core :as interestingness]
    [metabase.notification.ai-summary :as ai-summary]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [metabase.util :as u]))
@@ -40,6 +41,46 @@
                     (deref [_] [["should never be read"]]))]
       (is (nil? (ai-summary/result->excerpt {:data {:cols [{:display_name "Date"}]
                                                     :rows on-disk}}))))))
+
+(defn- chart-result
+  "A monthly-revenue result shaped like real QP output: a temporal breakout and an aggregation."
+  []
+  {:data {:cols [{:name "CREATED_AT" :display_name "Created At: Month" :base_type :type/DateTime
+                  :unit :month :source :breakout}
+                 {:name "sum" :display_name "Sum of Total" :base_type :type/Float :source :aggregation}]
+          :rows (mapv (fn [i] [(format "2026-%02d-01" (inc i)) (double (+ 100 (* 10 i)))])
+                      (range 6))}})
+
+(deftest result->chart-analysis-test
+  (testing "a breakout-by-aggregation result is described with the interestingness engine's chart stats"
+    (let [analysis (ai-summary/result->chart-analysis {:name "Monthly Revenue" :display "line"} (chart-result))]
+      (is (str/includes? analysis "## Series: Sum of Total"))
+      (is (str/includes? analysis "**Trend**"))))
+  (testing "nil when the result has no chartable shape"
+    (is (nil? (ai-summary/result->chart-analysis {:name "Revenue" :display "table"} (result ["N"] [[1]]))))
+    (is (nil? (ai-summary/result->chart-analysis {:name "Revenue" :display "table"} (result ["A" "B"] [["x" "y"]])))))
+  (testing "nil when rows were spilled to disk, so stats never pull a large result into memory"
+    (let [on-disk (reify clojure.lang.IDeref (deref [_] [["never read"]]))]
+      (is (nil? (ai-summary/result->chart-analysis {:name "Revenue" :display "line"}
+                                                   (assoc-in (chart-result) [:data :rows] on-disk))))))
+  (testing "a stats failure yields nil rather than breaking the notification"
+    (with-dynamic-fn-redefs [interestingness/compute-chart-stats (fn [& _] (throw (ex-info "stats exploded" {})))]
+      (is (nil? (ai-summary/result->chart-analysis {:name "Monthly Revenue" :display "line"} (chart-result)))))))
+
+(deftest chart-analysis-reaches-the-model-test
+  (doseq [[desc call] [["summarize"    #(ai-summary/summarize {:prompt "What's going on?" :card-name "Monthly Revenue"
+                                                               :display "line" :result (chart-result)})]
+                       ["should-send?" #(ai-summary/should-send? {:send-prompt "only real drops" :card-name "Monthly Revenue"
+                                                                  :display "line" :result (chart-result)})]]]
+    (testing (str desc " shows the model the chart stats alongside the raw rows")
+      (let [captured (atom nil)]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+                                                        (reset! captured messages)
+                                                        {:summary "ok" :should_send true :reason "ok"})]
+          (call)
+          (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)]
+            (is (str/includes? user-content "**Trend**"))
+            (is (str/includes? user-content "2026-01-01\t100.0"))))))))
 
 (deftest summarize-skips-without-work-test
   (testing "no prompt means no LLM call and no summary"
@@ -176,3 +217,40 @@
           (is (nil? (ai-summary/should-send? {:send-prompt "only real drops"
                                               :card-name   "Revenue"
                                               :result      {:data {:cols [{:display_name "N"}] :rows on-disk}}}))))))))
+
+(deftest send-gate-gets-the-current-date-test
+  (testing "the model is told today's date, so a rule like \"only on Sundays\" is answerable
+            without it guessing from dates in the result rows"
+    (let [captured (atom nil)]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+                                                      (reset! captured messages)
+                                                      {:should_send true :reason "ok"})]
+        (ai-summary/should-send? {:send-prompt       "only if it's sunday"
+                                  :card-name         "Revenue"
+                                  :timezone-id       "UTC"
+                                  :first-day-of-week "monday"
+                                  :result            (result ["N"] [[1]])})
+        (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)]
+          (is (str/includes? user-content "current date and time"))
+          (is (str/includes? user-content "UTC"))
+          (is (str/includes? user-content (str (.getYear (java.time.LocalDate/now)))))
+          (is (str/includes? user-content "never infer today's date from the result rows"))
+          (testing "and the instance's week start, so \"end of the week\" is not ambiguous"
+            (is (str/includes? user-content "Weeks in this instance start on monday"))))))))
+
+(deftest send-gate-reads-the-rule-as-a-send-condition-test
+  (testing "the prompt frames the sender's rule as when to SEND, not when to stay quiet - a rule
+            like \"only if it's wednesday\" must not be read as \"stay quiet on wednesday\""
+    (let [captured (atom nil)]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+                                                      (reset! captured messages)
+                                                      {:should_send true :reason "ok"})]
+        (ai-summary/should-send? {:send-prompt "only if it's wednesday"
+                                  :card-name   "Revenue"
+                                  :timezone-id "UTC"
+                                  :result      (result ["N"] [[1]])})
+        (let [system-content (->> @captured (filter #(= "system" (:role %))) first :content)
+              user-content   (->> @captured (filter #(= "user" (:role %))) first :content)]
+          (is (str/includes? user-content "when they want it sent"))
+          (is (not (str/includes? user-content "when to stay quiet")))
+          (is (str/includes? system-content "condition for SENDING, not for staying quiet")))))))

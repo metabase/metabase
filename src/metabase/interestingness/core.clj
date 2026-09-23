@@ -6,11 +6,13 @@
   implementation namespaces. If you need scorers, weight profiles, or the
   composition machinery, depend on the specific namespace directly:
 
-  - [[metabase.interestingness.chart]]     — chart-level scoring + stats helpers
+  - [[metabase.interestingness.chart]]        — chart-level scoring + stats helpers
+  - [[metabase.interestingness.chart.config]] — build a chart-config from a query result
   - [[metabase.interestingness.dimension]] — dimension scorers + canonical weights
   - [[metabase.interestingness.impl]]      — shared composition machinery (internal)"
   (:require
    [metabase.interestingness.chart]
+   [metabase.interestingness.chart.config]
    [metabase.interestingness.chart.repr]
    [metabase.interestingness.chart.stats]
    [metabase.interestingness.dimension]
@@ -19,6 +21,8 @@
 (p/import-vars
  [metabase.interestingness.chart
   chart-interestingness]
+ [metabase.interestingness.chart.config
+  chart-config]
  [metabase.interestingness.dimension
   dimension-interestingness]
  [metabase.interestingness.chart.repr

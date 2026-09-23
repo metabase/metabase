@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.notification.ai-summary :as ai-summary]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
@@ -66,11 +67,17 @@
       ;; Both LLM calls run as the alert's creator, so Metabot permissions and AI usage limits are
       ;; charged to the same person whose permissions ran the query.
       (let [condition-skip (condition-skip-reason payload part)
+            ;; same zone the email renders timestamps in, so the model and the recipient agree on
+            ;; what day it is; week start so "end of the week" matches a GUI query's notion
+            ai-context     {:card-name         (:name card)
+                            :display           (:display card)
+                            :timezone-id       (channel.render/defaulted-timezone card)
+                            :first-day-of-week (some-> (lib-be/start-of-week) name)
+                            :result            card-result}
             gate           (when-not condition-skip
                              (request/with-current-user creator_id
-                               (ai-summary/should-send? {:send-prompt (:send_prompt payload)
-                                                         :card-name   (:name card)
-                                                         :result      card-result})))
+                               (ai-summary/should-send?
+                                (assoc ai-context :send-prompt (:send_prompt payload)))))
             ;; nil from the gate means "no decision", which sends. Only an explicit false suppresses.
             ai-skip        (when (and gate (not (:send? gate))) :ai-declined)
             skip-reason    (or condition-skip ai-skip)]
@@ -83,9 +90,8 @@
          ;; No point narrating an alert nobody will receive.
          :ai_summary        (when-not skip-reason
                               (request/with-current-user creator_id
-                                (ai-summary/summarize {:prompt    (:prompt payload)
-                                                       :card-name (:name card)
-                                                       :result    card-result})))
+                                (ai-summary/summarize
+                                 (assoc ai-context :prompt (:prompt payload)))))
          :style             {:color_text_dark   channel.render/color-text-dark
                              :color_text_light  channel.render/color-text-light
                              :color_text_medium channel.render/color-text-medium}
