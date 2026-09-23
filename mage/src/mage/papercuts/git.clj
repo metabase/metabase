@@ -51,6 +51,16 @@
   (let [{:keys [ok out]} (git dir "rev-list" "-1" (str "--before=" ts) ref "--")]
     (when ok (sha out))))
 
+(defn- remote-url
+  "The URL of the checkout's `origin` remote, else `upstream`, else its first remote. Not every checkout calls its
+  GitHub remote `origin`."
+  [dir]
+  (let [{:keys [ok out]} (git dir "remote")
+        remotes          (when ok (remove str/blank? (str/split-lines out)))]
+    (when-let [remote (or (some #{"origin"} remotes) (some #{"upstream"} remotes) (first remotes))]
+      (let [{:keys [ok out]} (git dir "remote" "get-url" remote)]
+        (when ok (not-empty out))))))
+
 (defn context
   "`{:branch :commit_sha :commit_source :repository_url}` for a papercut observed at `ts` in `cwd` on `branch`,
   leaving out what can't be worked out. `session-git` is what the transcript recorded at session start, if any."
@@ -68,9 +78,7 @@
                           (when (not= "HEAD" ref) (commit-before dir (str "origin/" ref) ts)))
                       (vector "before-timestamp"))))
         url    (some-> (or (:repository-url session-git)
-                           (when dir
-                             (let [{:keys [ok out]} (git dir "remote" "get-url" "origin")]
-                               (when ok (not-empty out)))))
+                           (some-> dir remote-url))
                        public-url)]
     (cond-> {}
       branch (assoc :branch branch)

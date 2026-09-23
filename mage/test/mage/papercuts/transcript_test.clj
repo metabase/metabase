@@ -96,10 +96,25 @@
                 :payload {:type "custom_tool_call_output"
                           :output (json/write-str [{:type "input_text" :text "Output:\nfound"}])}}
                {:type    "event_msg" :timestamp "2026-09-02T09:00:04Z" :payload {:type "token_count"}}])]
-    (is (= [{:line 3 :ts "2026-09-02T09:00:01Z" :tag "USER" :text "fix the flaky test"}
-            {:line 4 :ts "2026-09-02T09:00:02Z" :tag "TOOL exec_command" :text "rg flaky"}
-            {:line 5 :ts "2026-09-02T09:00:03Z" :tag "RESULT" :text "Output:\nfound"}]
+    (is (= [{:line 3 :ts "2026-09-02T09:00:01Z" :tag "USER" :text "fix the flaky test" :cwd "/w/metabase"}
+            {:line 4 :ts "2026-09-02T09:00:02Z" :tag "TOOL exec_command" :text "rg flaky" :cwd "/w/metabase"}
+            {:line 5 :ts "2026-09-02T09:00:03Z" :tag "RESULT" :text "Output:\nfound" :cwd "/w/metabase"}]
            (transcript/codex-entries file)))))
+
+(deftest codex-entries-follow-the-working-directory-test
+  (let [user (fn [text] {:type    "response_item"
+                         :payload {:type "message" :role "user" :content [{:type "input_text" :text text}]}})
+        file (write-jsonl
+              [{:type "session_meta" :payload {:id "01a0" :cwd "/w/metabase"}}
+               (user "start here")
+               {:type "turn_context" :payload {:cwd "/w/metabase-private"}}
+               (user "now in the private checkout")
+               {:type "turn_context" :payload {:cwd "/w/metabase"}}
+               {:type    "response_item"
+                :payload {:type "function_call" :name "exec_command"
+                          :arguments (json/write-str {:cmd "git log" :workdir "/w/metabase-private.fix-x"})}}])]
+    (is (= ["/w/metabase" "/w/metabase-private" "/w/metabase-private.fix-x"]
+           (map :cwd (transcript/codex-entries file))))))
 
 (deftest codex-session-test
   (let [session (fn [payload] (transcript/codex-session (write-jsonl [{:type "session_meta" :payload payload}])))]

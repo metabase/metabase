@@ -399,7 +399,10 @@ def relate(server, jev, thresholds, since=None, repository=None, ids=None, judge
         print(f"#{papercut['id']} {papercut['title'][:70]} | {len(candidates)} candidates: {found}", file=out, flush=True)
         if not dry_run:
             server.request("POST", f"/api/papercuts/{papercut['id']}/suggestions",
-                           {"model": model, "actor": ACTOR, "suggestions": suggestions})
+                           {"model": model, "actor": ACTOR, "suggestions": suggestions,
+                            # Only pairs with the candidates judged here are replaced, not ones another papercut's
+                            # run suggested.
+                            "judged": [candidate["id"] for candidate in candidates]})
             judged[str(papercut["id"])] = digest
     return None if failed else cursor, judged
 

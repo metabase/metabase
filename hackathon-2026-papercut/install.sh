@@ -26,7 +26,8 @@ Papercut scan for Claude Code and Codex
 
 This will:
 - fetch the scanner into ~/.papercuts (1 to 2 minutes the first time)
-- scan your Claude Code and Codex sessions from the last 7 days, at most 20 sessions each
+- scan your Claude Code and Codex sessions from the metabase repo only, from the last 7 days,
+  at most 20 sessions each
 - send transcript chunks to TypeSafe Jev for screening. Keys, tokens and passwords are
   redacted first, and sessions that mention embargoed security work are skipped whole
 - have your local claude or codex CLI drill into anything Jev flags
@@ -77,8 +78,8 @@ EOF
   git -C "$REPO" sparse-checkout set --no-cone /bb.edn /bin/mage /bin/mage.bb /mage/
 
   for agent in $agents; do
-    TYPESAFE_API_KEY=$TYPESAFE_API_KEY "$REPO/bin/mage" "papercuts-scan-$agent" --since 7d --limit 20 --verbose \
-      --server "$SERVER" 2>&1 || true
+    TYPESAFE_API_KEY=$TYPESAFE_API_KEY "$REPO/bin/mage" "papercuts-scan-$agent" --project metabase --since 7d --limit 20 \
+      --verbose --server "$SERVER" 2>&1 || true
   done | awk '
     function status() { printf "\r\033[K  %s: %d of %d sessions screened, %d flagged, %d submitted", agent, screened, total, f, n; fflush() }
     { gsub(/\033\[[0-9;]*m/, "") }

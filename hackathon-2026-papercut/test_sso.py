@@ -155,5 +155,25 @@ class SignInTest(HttpCase):
                          [("comment", "ada@metabase.com"), ("absorbed", "ada@metabase.com")])
 
 
+    def test_writes_that_leave_out_the_actor_are_still_attributed(self):
+        self.report("r1")
+        self.report("r2", "Other trap")
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        self.call("POST", "/api/papercuts/1/comments", {"body": "Seen it"}, headers)
+        self.call("PATCH", "/api/papercuts/1", {"status": "investigating"}, headers)
+        self.call("POST", "/api/papercuts/1/related", {"papercut_id": 2}, headers)
+        self.call("DELETE", "/api/papercuts/1/related/2", None, headers)
+        events = self.handler.store.get_papercut(1)["events"]
+        self.assertEqual({e["actor"] for e in events}, {"ada@metabase.com"})
+
+    def test_signed_in_writes_need_no_token(self):
+        self.report("r1")
+        self.handler.token = "secret"
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"body": "Seen it"}, headers)[0], 201)
+        # From the private network, where sign-in doesn't apply, a write still needs the token.
+        self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"body": "Seen it"})[0], 401)
+
+
 if __name__ == "__main__":
     unittest.main()
