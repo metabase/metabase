@@ -1733,6 +1733,11 @@ async function refreshPage(url = window.location.href) {
       window.location.reload();
       return;
     }
+    const [source, nextSource] = [document.getElementById('source'), next.getElementById('source')];
+    if (source && nextSource && source.innerHTML !== nextSource.innerHTML) {
+      source.innerHTML = nextSource.innerHTML;
+      source.rebuild?.();
+    }
     for (const card of nextMain.querySelectorAll('[data-report]')) {
       const details = currentMain.querySelector(`[data-report="${card.dataset.report}"] details`);
       if (details) card.querySelector('details').open = details.open;
@@ -1821,8 +1826,8 @@ UI_STYLE = """<style>
 .header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
 .theme-switch:is(:hover, :focus-within) button[aria-pressed=true] {color: var(--text); background: var(--pill)}
 @media (min-width: 931px) {
-  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
-  .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(190px, 1.4fr) auto}
+  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
+  .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(120px, 1fr)) minmax(190px, 1.4fr) auto}
 }
 .dropdown {position: relative}
 .dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
@@ -1834,6 +1839,8 @@ UI_STYLE = """<style>
                        border-radius: 8px; background: none; text-align: left; white-space: nowrap}
 .dropdown-menu button:hover {background: var(--hover)}
 .dropdown-menu button[aria-selected=true] {font-weight: 700}
+.dropdown-menu .group {padding: .55rem .6rem .25rem; color: var(--muted); font-size: .7rem; font-weight: 750; letter-spacing: .1em;
+                       text-transform: uppercase; white-space: nowrap}
 .dropdown-menu button[aria-selected=true]::after {content: "✓"; color: var(--accent)}
 .chips {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1.3rem}
 .chips .eyebrow {margin-right: .3rem}
@@ -1957,25 +1964,39 @@ UI_SCRIPT = """<script>
     dropdown.innerHTML = `<button type='button' class='dropdown-button' id='${select.id}-menu'><span></span>CHEVRON</button>` +
       "<div class='dropdown-menu' role='listbox'></div>";
     const [button, menu] = dropdown.children;
-    const labels = [...new Set([...select.options].reverse().map((option) => option.textContent))].reverse();
-    for (const label of labels) {
+    const addItem = (option) => {
       const item = document.createElement('button');
       item.type = 'button';
       item.setAttribute('role', 'option');
-      item.textContent = label;
+      item.dataset.value = option.value;
+      item.textContent = option.textContent;
       item.addEventListener('click', () => {
-        select.value = [...select.options].find((option) => option.textContent === label).value;
+        select.value = option.value;
         select.dispatchEvent(new Event('change', {bubbles: true}));
         dropdown.classList.remove('open');
         show();
       });
       menu.append(item);
-    }
+    };
+    select.rebuild = () => {
+      menu.replaceChildren();
+      for (const child of select.children) {
+        if (child.tagName !== 'OPTGROUP') addItem(child);
+        else {
+          const heading = document.createElement('div');
+          heading.className = 'group';
+          heading.textContent = child.label;
+          menu.append(heading);
+          [...child.children].forEach(addItem);
+        }
+      }
+      show();
+    };
     function show() {
-      const chosen = select.selectedOptions[0]?.textContent ?? '';
-      button.firstChild.textContent = chosen;
-      for (const item of menu.children) item.setAttribute('aria-selected', item.textContent === chosen);
+      button.firstChild.textContent = select.selectedOptions[0]?.textContent ?? '';
+      for (const item of menu.querySelectorAll('button')) item.setAttribute('aria-selected', item.dataset.value === select.value);
     }
+    select.rebuild();
     button.addEventListener('click', () => {
       close(dropdown);
       dropdown.classList.toggle('open');
@@ -2106,6 +2127,18 @@ def source_label(source):
     if kind == "instance":
         return name
     return " · ".join(part.capitalize() for part in name.split(".", 1))
+
+
+def source_select(sources, counts, chosen):
+    """All sources, then each Metabase instance and each person, with how many papercuts they reported."""
+    def options(keys):
+        return "".join(f"<option value='{html.escape(key, quote=True)}'{' selected' if key == chosen else ''}>"
+                       f"{html.escape(source_label(key))} ({counts.get(key, 0)})</option>" for key in sorted(keys))
+    instances = [key for key in sources if key.startswith("instance:")]
+    people = [key for key in sources if not key.startswith("instance:")]
+    return ("<select id='source' name='source'><option value=''>All sources</option>"
+            + (f"<optgroup label='Metabase instances'>{options(instances)}</optgroup>" if instances else "")
+            + (f"<optgroup label='People'>{options(people)}</optgroup>" if people else "") + "</select>")
 
 
 def chips(name, label, values, chosen, counts, text=str):
@@ -2429,8 +2462,8 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None, s
                                select("repository", available_repositories, filters.get("repository"), "All repositories"))
                   if show_repository else "")
     status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All statuses"))
-    category = "".join(f"<input type='hidden' name='{name}' value='{esc(filters.get(name, ''), quote=True)}'>"
-                       for name in ("category", "source"))
+    category = f"<input type='hidden' name='category' value='{esc(filters.get('category', ''), quote=True)}'>"
+    source = filter_field("source", "Source", source_select(sources, source_counts or {}, filters.get("source", "")))
     counts = category_counts or Counter(p["category"] or "unclassified" for p in result["papercuts"])
     sort = filter_field("sort", "Sort by", "<select id='sort' name='sort'>" + "".join(
         f"<option value='{'' if key == 'important' else key}'{' selected' if filters.get('sort') == key else ''}>{label}</option>"
@@ -2442,10 +2475,9 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None, s
         cards = "<div class='empty'><strong>No papercuts found</strong><p>Try clearing a filter or changing the search.</p></div>"
     body = ("<div class='intro'><span class='eyebrow'>Issue tracker</span><h1>Papercuts</h1>"
             "<p>Small friction, collected across reports and agents.</p></div>"
-            f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}"
+            f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{source}{status}{category}{sort}"
             "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
             f"<div id='results'>{chips('category', 'Category', (*CATEGORIES, 'unclassified'), filters.get('category', ''), counts)}"
-            f"{chips('source', 'Source', sorted(sources), filters.get('source', ''), source_counts or {}, source_label) if sources else ''}"
             f"<div class='results-heading'><h2>{result['total']} "
             f"{'papercut' if result['total'] == 1 else 'papercuts'}</h2></div>{cards}</div>")
     return page("Papercuts", body)

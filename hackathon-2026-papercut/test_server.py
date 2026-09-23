@@ -95,8 +95,10 @@ class WebViewTest(StoreCase):
                                                 "instance:stats": 1})
         page = server.papercut_list_html(self.store.list_papercuts(), {"source": "instance:stats"}, (), None,
                                          self.store.sources(), self.store.sources())
-        self.assertIn("data-value='instance:stats' aria-pressed='true'>stats<span class='count'>1</span>", page)
-        self.assertIn("data-value='person:chris.claude' aria-pressed='false'>Chris · Claude<span class='count'>2</span>", page)
+        self.assertIn("<optgroup label='Metabase instances'><option value='instance:stats' selected>stats (1)</option></optgroup>",
+                      page)
+        self.assertIn("<option value='person:chris.claude'>Chris · Claude (2)</option>", page)
+        self.assertNotIn("data-name='source'", page)
 
     def test_list_previews_are_plain_text(self):
         self.papercut("Markdown preview", description="Intro `code` and **bold**.\n\n## Links\n\n- [Conversation](http://x) here")
