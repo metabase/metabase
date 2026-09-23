@@ -47,3 +47,19 @@
         (is (str/includes? (slurp (str codex)) "session_scan_hook.py")))
       (finally
         (fs/delete-tree home)))))
+
+(deftest install-at-symlinked-config-test
+  (let [home (fs/create-temp-dir {:prefix "papercut-hooks-test"})]
+    (try
+      (let [target (fs/path home "dotfiles" "settings.json")
+            link   (fs/path home ".claude" "settings.json")]
+        (fs/create-dirs (fs/parent target))
+        (fs/create-dirs (fs/parent link))
+        (spit (str target) (json/write-str {"model" "opus"}))
+        (fs/create-sym-link link target)
+        (hooks/install-at! home ["claude"])
+        (testing "a dotfile-managed config stays a link, and its target gets the hooks"
+          (is (fs/sym-link? link))
+          (is (= 1 (count (get-in (json/read-str (slurp (str target)) {:key-fn identity}) ["hooks" "Stop"]))))))
+      (finally
+        (fs/delete-tree home)))))

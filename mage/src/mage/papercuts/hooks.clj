@@ -67,7 +67,9 @@
 
 (defn- write-config! [path config]
   (fs/create-dirs (fs/parent path))
-  (let [temp (fs/create-temp-file {:dir (fs/parent path)
+  ;; Moving over a symlink would replace the link, so a dotfile-managed config would stop being managed.
+  (let [path (if (fs/sym-link? path) (str (fs/real-path path)) path)
+        temp (fs/create-temp-file {:dir (fs/parent path)
                                    :prefix (str (fs/file-name path) ".tmp.")
                                    :posix-file-permissions "rw-------"})]
     (try
