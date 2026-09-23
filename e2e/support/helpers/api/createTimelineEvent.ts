@@ -3,6 +3,10 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+/** Everything the API takes, with defaults filled in by this helper — a test only has to name the timeline. */
+export type TimelineEventDetails = Partial<CreateTimelineEventRequest> &
+  Pick<CreateTimelineEventRequest, "timeline_id">;
+
 export const createTimelineEvent = ({
   name = "Event",
   icon = "star",
@@ -11,8 +15,7 @@ export const createTimelineEvent = ({
   timezone = "UTC",
   archived = false,
   ...params
-}: Partial<CreateTimelineEventRequest> &
-  Pick<CreateTimelineEventRequest, "timeline_id">): Cypress.Chainable<
+}: TimelineEventDetails): Cypress.Chainable<
   Cypress.Response<TimelineEvent>
 > => {
   return cy.request("POST", "/api/timeline-event", {
