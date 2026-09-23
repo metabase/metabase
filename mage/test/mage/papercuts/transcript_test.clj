@@ -31,6 +31,8 @@
   (testing "EDN secrets, as printed from .lein-env"
     (is (= "{:mb-db-pass \"<REDACTED>\" :mb-encryption-secret-key \"<REDACTED>\" :mb-db-type \"h2\"}"
            (transcript/redact "{:mb-db-pass \"hunter22\" :mb-encryption-secret-key \"k3y\" :mb-db-type \"h2\"}"))))
+  (is (= ":db/password \"<REDACTED>\" ::api-token \"<REDACTED>\""
+         (transcript/redact ":db/password \"hunter22\" ::api-token \"t0ken\"")))
   (testing "bare hex of secret-like length, but not a 40-character git SHA"
     (let [sha (apply str (repeat 40 "a"))]
       (is (= (str "key <REDACTED-HEX> commit " sha)

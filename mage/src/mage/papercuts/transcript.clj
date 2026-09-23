@@ -24,7 +24,7 @@
    [#"(?m)^[A-Za-z0-9+/]{60,}={0,2}$" "<REDACTED-KEY-LINE>"]
    [(re-pattern (str "(?i)\\b(" sensitive-name ")(\\s*[=:]\\s*|\"\\s*:\\s*\")([^\\s\"',;]+)")) "$1$2<REDACTED>"]
    ;; EDN, as in `.lein-env`: `:mb-db-pass "..."`.
-   [#"(?i)(:[\w.*+!?-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""
+   [#"(?i)(::?[\w.*+!?/-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""
     "$1$2\"<REDACTED>\""]
    [#"(?i)(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{12,}" "$1 <REDACTED>"]
    [#"(?i)(x-api-key|x-metabase-session|authorization)(\"?\s*[:=]\s*\"?)[^\s\"']+" "$1$2<REDACTED>"]

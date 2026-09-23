@@ -9,7 +9,7 @@ PATTERNS = [
   (re.compile(r"^[A-Za-z0-9+/]{60,}={0,2}$", re.M), "<REDACTED-KEY-LINE>"),
   (re.compile(r"(?i)\b(" + SENS + r")(\s*[=:]\s*|\"\s*:\s*\")([^\s\"',;]+)"), r"\1\2<REDACTED>"),
   # EDN, as in `.lein-env`: `:mb-db-pass "..."`.
-  (re.compile(r"(?i)(:[\w.*+!?-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""), r'\1\2"<REDACTED>"'),
+  (re.compile(r"(?i)(::?[\w.*+!?/-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""), r'\1\2"<REDACTED>"'),
   (re.compile(r"(?i)(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{12,}"), r"\1 <REDACTED>"),
   (re.compile(r"(?i)(x-api-key|x-metabase-session|authorization)(\"?\s*[:=]\s*\"?)[^\s\"']+"), r"\1\2<REDACTED>"),
   (re.compile(r"\b(sk-[A-Za-z0-9_-]{16,}|sk-ant-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|lin_api_[A-Za-z0-9]{20,}|mb_[A-Za-z0-9+/=]{20,})"), "<REDACTED-TOKEN>"),
