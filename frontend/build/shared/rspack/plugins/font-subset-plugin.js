@@ -19,6 +19,17 @@ const PLUGIN = "FontSubsetPlugin";
 // renders nothing.
 const MIN_USEFUL_CHUNK_BYTES = 3000;
 
+const SUBSET_OPTIONS = { targetFormat: "woff2" };
+
+// Chunks are cached under the hash of their source, so everything else that
+// decides their contents belongs in that hash. Without this, editing a range
+// leaves every warm tree serving the chunks built from the old one.
+const RECIPE = JSON.stringify([
+  LATIN_UNICODE_RANGE,
+  REST_UNICODE_RANGE,
+  SUBSET_OPTIONS,
+]);
+
 /**
  * Splits each bundled face into a latin chunk and a chunk holding everything
  * else, then rewrites the stylesheet so both are declared with a
@@ -26,7 +37,7 @@ const MIN_USEFUL_CHUNK_BYTES = 3000;
  * unchanged because the browser fetches the second chunk on demand.
  *
  * Subsetting a face costs around 100ms, so chunks are cached on disk under the
- * hash of their source. A cold build pays about ten seconds, later builds
+ * hash of their source. A cold build pays about sixteen seconds, later builds
  * nothing.
  */
 class FontSubsetPlugin {
@@ -98,7 +109,12 @@ class FontSubsetPlugin {
 
   async chunksFor(rel, subsetFont) {
     const buf = fs.readFileSync(path.join(this.fontsDir, rel));
-    const key = crypto.createHash("sha1").update(buf).digest("hex").slice(0, 12);
+    const key = crypto
+      .createHash("sha1")
+      .update(buf)
+      .update(RECIPE)
+      .digest("hex")
+      .slice(0, 12);
     const dir = path.dirname(rel);
     fs.mkdirSync(path.join(this.outputDir, dir), { recursive: true });
 
@@ -111,7 +127,7 @@ class FontSubsetPlugin {
       const chunkRel = path.join(dir, `${base}.${key}.${name}.woff2`);
       const chunkPath = path.join(this.outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
-        const subset = await subsetFont(buf, characters, { targetFormat: "woff2" });
+        const subset = await subsetFont(buf, characters, SUBSET_OPTIONS);
         if (name === "rest" && subset.length < MIN_USEFUL_CHUNK_BYTES) {
           made.rest = undefined;
           continue;
