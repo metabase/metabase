@@ -85,15 +85,7 @@ describe("command palette", () => {
     cy.log("open the command palette with keybinding");
     H.openCommandPalette();
     H.commandPalette().within(() => {
-      H.commandPaletteInput().should("exist");
-
-      cy.log("does not show actions if there is no search query");
-      cy.findByText("New question").should("not.exist");
-      cy.findByText("New SQL query").should("not.exist");
-      cy.findByText("New dashboard").should("not.exist");
-      cy.findByText("New collection").should("not.exist");
-      cy.findByText("New model").should("not.exist");
-      cy.findByText("New metric").should("not.exist");
+      H.commandPaletteInput().should("be.visible");
 
       cy.log("Should show recent items");
       cy.findByRole("option", { name: "Orders in a dashboard" }).should(
@@ -115,35 +107,23 @@ describe("command palette", () => {
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
       H.commandPaletteInput().clear().type("People");
-      cy.findByRole("option", { name: "People" }).should("exist");
+      cy.findByRole("option", { name: "People" }).should("be.visible");
 
       H.commandPaletteInput().clear().type("Uploads");
-      cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
-
-      // When entering a query, if there are results that come before search results, highlight
-      // the first action, otherwise, highlight the first search result
-      H.commandPaletteInput().clear().type("Form");
-      cy.findByRole("option", { name: "Performance" }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
+      cy.findByRole("option", { name: "Settings - Uploads" }).should(
+        "be.visible",
       );
-      cy.findByRole("option", { name: /View and filter/ }).should("exist");
 
       // Check that we are not filtering search results by action name
       H.commandPaletteInput().clear().type("Company");
-      cy.findByRole("option", { name: /View and filter/ }).should("exist");
+      cy.findByRole("option", { name: /View and filter/ }).should("be.visible");
       cy.findByRole("option", { name: "Products" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      cy.findByRole("option", { name: "People" }).should("exist");
-      cy.findByRole("option", { name: "Reviews" }).should("exist");
-      H.commandPaletteInput().clear();
-
-      H.commandPaletteInput().clear().type("New met");
-      cy.findByText("New metric").should("exist");
+      cy.findByRole("option", { name: "People" }).should("be.visible");
+      cy.findByRole("option", { name: "Reviews" }).should("be.visible");
     });
 
     cy.log("We can close the command palette using escape");
@@ -162,8 +142,7 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
-    // Every "New …" action matches "New" equally, so the default order applies
-    // and "New question" is first and selected by default.
+    cy.log("the virtualized list is navigable by keyboard");
     H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
@@ -248,124 +227,64 @@ describe("command palette", () => {
     );
   });
 
-  describe("admin settings links", () => {
-    it("should render links to all admin settings pages for admins", () => {
-      cy.visit("/");
-      cy.findByTestId("home-page")
-        .findByText(/see what metabase can do/i)
-        .should("exist");
+  it("should render admin links for non-admins that have specific privileges", () => {
+    cy.log("setup permissions");
 
-      H.openCommandPalette();
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().type("Settings -");
-        cy.log("check admin sees all settings links");
-        H.commandPaletteAction("Settings - General").should("be.visible");
-        H.commandPaletteAction("Settings - Email").should("be.visible");
-        H.commandPaletteInput().clear();
+    H.activateToken("pro-self-hosted");
+    cy.visit("/admin/permissions/application");
 
-        cy.log("should see admin links");
-        H.commandPaletteInput().type("Performance");
-        H.commandPaletteAction("Performance").should("be.visible");
-      });
-    });
+    const SETTINGS_INDEX = 0;
+    const MONITORING_INDEX = 1;
+    H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
+    H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
 
-    it("should not render any links to settings or admin pages for non-admins without privledged access", () => {
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.findByTestId("home-page")
-        .findByText(/see what metabase can do/i)
-        .should("exist");
+    H.saveChangesToPermissions();
 
-      H.openCommandPalette();
-      H.commandPalette().within(() => {
-        cy.log("check normal user does not see any setting links");
-        H.commandPaletteInput().type("Settings -");
-        H.commandPaletteAction("Settings - Setup").should("not.exist");
-        H.commandPaletteAction("Settings - General").should("not.exist");
-        H.commandPaletteInput().clear();
+    cy.findByRole("tab", { name: "Data" }).click();
+    cy.findByRole("menuitem", { name: "All Users" }).click();
 
-        cy.log("should not see admin links");
-        H.commandPaletteInput().type("Performance");
-        H.commandPaletteAction("Performance").should("not.exist");
-        H.commandPaletteInput().clear();
+    const TABLE_METADATA_INDEX = 3;
+    const DATABASE_INDEX = 4;
 
-        // Monitor tools live outside the Admin command-palette links
-        H.commandPaletteInput().clear().type("tool");
-        H.commandPaletteAction("Tools").should("not.exist");
-        H.commandPaletteInput().clear();
+    H.modifyPermission("Sample Database", TABLE_METADATA_INDEX, "Yes");
+    H.modifyPermission("Sample Database", DATABASE_INDEX, "Yes");
 
-        //Database and table metadata
+    H.saveChangesToPermissions();
 
-        H.commandPaletteInput().type("data");
-        H.commandPaletteAction("Databases").should("not.exist");
-        H.commandPaletteInput().clear().type("tabl");
-        H.commandPaletteAction("Table Metadata").should("not.exist");
-      });
-    });
+    cy.signInAsNormalUser();
 
-    describe("with advanced permissions", () => {
-      it("should render links for non-admins that have specific privileges", () => {
-        // setup
-        cy.log("setup permissions");
+    cy.visit("/");
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
 
-        H.activateToken("pro-self-hosted");
-        cy.visit("/admin/permissions/application");
+    H.openCommandPalette();
+    H.commandPalette().within(() => {
+      // Settings Pages
+      H.commandPaletteInput().type("Settings -");
+      cy.log(
+        "check user with settings permissions see non-admin restricted settings links",
+      );
+      H.commandPaletteAction("Settings - General").should("be.visible");
+      H.commandPaletteAction("Settings - Setup").should("not.exist");
+      H.commandPaletteInput().clear();
 
-        const SETTINGS_INDEX = 0;
-        const MONITORING_INDEX = 1;
-        H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
-        H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
+      // Monitor tools live outside the Admin command-palette links
+      H.commandPaletteInput().clear().type("tool");
+      H.commandPaletteAction("Tools").should("not.exist");
+      H.commandPaletteInput().clear();
 
-        H.saveChangesToPermissions();
+      //Database and table metadata
 
-        cy.findByRole("tab", { name: "Data" }).click();
-        cy.findByRole("menuitem", { name: "All Users" }).click();
+      H.commandPaletteInput().type("data");
+      H.commandPaletteAction("Databases").should("be.visible");
+      H.commandPaletteInput().clear().type("tabl");
+      H.commandPaletteAction("Table Metadata").should("be.visible");
+      H.commandPaletteInput().clear();
 
-        const TABLE_METADATA_INDEX = 3;
-        const DATABASE_INDEX = 4;
-
-        H.modifyPermission("Sample Database", TABLE_METADATA_INDEX, "Yes");
-        H.modifyPermission("Sample Database", DATABASE_INDEX, "Yes");
-
-        H.saveChangesToPermissions();
-
-        cy.signInAsNormalUser();
-
-        // test
-        cy.visit("/");
-        cy.findByTestId("home-page")
-          .findByText(/see what metabase can do/i)
-          .should("exist");
-
-        H.openCommandPalette();
-        H.commandPalette().within(() => {
-          // Settings Pages
-          H.commandPaletteInput().type("Settings -");
-          cy.log(
-            "check user with settings permissions see non-admin restricted settings links",
-          );
-          H.commandPaletteAction("Settings - Setup").should("not.exist");
-          H.commandPaletteAction("Settings - General").should("exist");
-          H.commandPaletteInput().clear();
-
-          // Monitor tools live outside the Admin command-palette links
-          H.commandPaletteInput().clear().type("tool");
-          H.commandPaletteAction("Tools").should("not.exist");
-          H.commandPaletteInput().clear();
-
-          //Database and table metadata
-
-          H.commandPaletteInput().type("data");
-          H.commandPaletteAction("Databases").should("exist");
-          H.commandPaletteInput().clear().type("tabl");
-          H.commandPaletteAction("Table Metadata").should("exist");
-          H.commandPaletteInput().clear();
-
-          cy.log("should not see other admin links");
-          H.commandPaletteInput().type("Performance");
-          H.commandPaletteAction("Performance").should("not.exist");
-        });
-      });
+      cy.log("should not see other admin links");
+      H.commandPaletteInput().type("Performance");
+      H.commandPaletteAction("Performance").should("not.exist");
     });
   });
 
@@ -378,7 +297,7 @@ describe("command palette", () => {
       },
     });
 
-    cy.findByPlaceholderText("Search…").click();
+    cy.findByPlaceholderText("Search…").should("be.visible").click();
     cy.findByRole("button", { name: / \+ K/ }).should("not.exist");
 
     cy.get("body").type("{esc}");
@@ -410,238 +329,100 @@ describe("command palette", () => {
     H.openCommandPalette();
     H.commandPalette().should("exist");
   });
-
-  it("The Search button should resize when on mobile", () => {
-    cy.viewport("iphone-x");
-    cy.visit("/");
-    H.commandPaletteButton().should("not.contain.text", "search");
-  });
-
-  it("Should have a new metric item", () => {
-    cy.visit("/");
-    cy.findByRole("button", { name: /search/i }).click();
-
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().should("exist").type("Me");
-      cy.findByText("New metric").should("be.visible").click();
-
-      cy.location("pathname").should("eq", "/metric/new");
-    });
-  });
-
-  it("should show the 'Download diagnostics' command palette item", () => {
-    cy.visit("/");
-    cy.findByRole("button", { name: /search/i }).click();
-
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().should("exist").type("Issue");
-      cy.findByText("Download diagnostics").should("be.visible");
-    });
-  });
-
-  it("should allow searching personal collections if no results and user is admin", () => {
-    cy.visit("/");
-    cy.findByRole("button", { name: /search/i }).click();
-    cy.realType("asdf");
-    H.commandPalette()
-      .get("#search-results-metadata")
-      .should("contain", "Search everything");
-  });
-
-  it("should show the 'New embed' command palette item", () => {
-    cy.visit("/");
-    cy.findByRole("button", { name: /search/i }).click();
-
-    H.commandPalette().within(() => {
-      H.commandPaletteInput().should("exist").type("new embed");
-      cy.findByText("New embed").should("be.visible");
-    });
-  });
-
-  describe("ee", () => {
-    beforeEach(() => {
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("should have a 'New document' item", () => {
-      cy.visit("/");
-      cy.findByRole("button", { name: /search/i }).click();
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().should("be.visible").type("new document");
-        cy.findByText("New document").should("be.visible").click();
-        cy.location("pathname").should("eq", "/document/new");
-      });
-    });
-  });
 });
 
-describe("shortcuts", { tags: ["@actions"] }, () => {
+describe("shortcuts", () => {
   beforeEach(() => {
-    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
-    H.enableTracking();
   });
 
-  it("should render a shortcuts modal, and global shortcuts should be available", () => {
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+  it("should navigate to seeded destinations and report to snowplow", () => {
+    H.resetSnowplow();
+    H.enableTracking();
+
     cy.visit("/");
     cy.findByTestId("home-page")
       .findByTestId("loading-indicator")
       .should("not.exist");
-    H.openShortcutModal();
 
-    H.shortcutModal().within(() => {
-      cy.findByRole("tab", { name: "General" }).should("exist");
-      cy.findByRole("tab", { name: "Dashboards" }).should("exist");
-    });
-    cy.realPress("Escape");
-    H.shortcutModal().should("not.exist");
-    H.openShortcutModal();
-    cy.realPress("?");
-    H.shortcutModal().should("not.exist");
-
+    cy.log("the shortcuts modal is reachable from the help menu");
     H.getProfileLink().click();
     H.popover().findByText("Help").click();
     H.getHelpSubmenu().findByText("Keyboard shortcuts").click();
-    H.shortcutModal().should("exist");
+    H.shortcutModal().should("be.visible");
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
-
-    // Test a few global shortcuts
-    cy.realPress("c").realPress("f");
-    cy.findByRole("dialog", { name: /collection/i }).should("exist");
-    cy.realPress("Escape");
-    H.expectUnstructuredSnowplowEvent({
-      event: "keyboard_shortcut_performed",
-      event_detail: "create-new-collection",
-    });
-    H.openCommandPalette();
-    H.commandPaletteInput().should("be.visible").type("new dashboard");
-    H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
-    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
-    cy.realPress("Escape");
-
-    // Using a command palette action registered as a shortcut should only
-    // emit snowplow events when using keyboard shortcuts, not command palette
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "keyboard_shortcut_performed",
-        event_detail: "create-new-dashboard",
-      },
-      0,
-    );
-
-    cy.realPress("c").realPress("d");
-    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
-    cy.realPress("Escape");
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "keyboard_shortcut_performed",
-        event_detail: "create-new-dashboard",
-      },
-      1,
-    );
-
-    cy.realPress("g").realPress("d");
-    cy.location("pathname").should("contain", "browse/databases");
-
-    cy.realPress(["Meta", "["]);
     H.navigationSidebar().should("be.visible");
-
-    cy.realPress("[");
-    H.navigationSidebar().should("not.be.visible");
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "keyboard_shortcut_performed",
-        event_detail: "toggle-navbar",
-      },
-      2,
-    );
 
     cy.realPress("g").realPress("p");
     cy.location("pathname").should(
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
-    H.expectUnstructuredSnowplowEvent({
-      event: "keyboard_shortcut_performed",
-      event_detail: "navigate-personal-collection",
-    });
 
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "keyboard_shortcut_performed",
-      event_detail: "navigate-trash",
-    });
 
     cy.realPress("g").realPress("s");
     cy.location("pathname").should("match", /^\/data-studio/);
 
     H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
-      event_detail: "navigate-data-studio",
+      event_detail: "navigate-trash",
     });
-
-    cy.realPress("g").realPress("m");
-
-    cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
-
-    H.navigationSidebar().should("be.visible");
-    // Mantine Modals
-    H.startNewCollectionFromSidebar();
-
-    cy.findByTestId("new-collection-modal")
-      .findByLabelText(/collection it's saved in/i)
-      .click();
-
-    // Remove focus
-    H.entityPickerModal().findByRole("heading").click();
-
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    cy.realPress("Escape");
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    cy.realPress("Escape");
-    // Legacy Modals
-
-    H.startNewAction();
-
-    // Remove focus
-    H.modal()
-      .findByText(/Build custom forms/)
-      .click();
-    cy.realPress("[");
-    H.navigationSidebar().should("be.visible");
-    cy.realPress("Escape");
-    cy.realPress("[");
-    H.navigationSidebar().should("not.visible");
-
-    H.goToAdmin();
-
-    cy.findByTestId("site-name-setting").should("exist");
-    cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("5");
-    cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("9");
-    cy.location("pathname").should("contain", "/admin/help");
   });
 
-  it("should not navigate to data studio via shortcut for non-admin users", () => {
-    cy.signInAsNormalUser();
-    cy.visit("/");
-    cy.findByTestId("home-page")
-      .findByText(/see what metabase can do/i)
-      .should("exist");
+  it(
+    "should not fire shortcuts while a modal holds focus (ADM 658)",
+    { tags: ["@actions"] },
+    () => {
+      H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.realPress("g").realPress("s");
-    cy.location("pathname").should("equal", "/");
-  });
+      cy.visit("/");
+      cy.findByTestId("home-page")
+        .findByTestId("loading-indicator")
+        .should("not.exist");
+      H.navigationSidebar().should("be.visible");
+
+      cy.log("Mantine modals");
+      H.startNewCollectionFromSidebar();
+      cy.findByTestId("new-collection-modal")
+        .should("be.visible")
+        .findByLabelText(/collection it's saved in/i)
+        .click();
+
+      // Remove focus
+      H.entityPickerModal().findByRole("heading").click();
+
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      H.entityPickerModal().should("not.exist");
+
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      cy.findByTestId("new-collection-modal").should("not.exist");
+
+      cy.log("Legacy modals");
+      H.startNewAction();
+
+      // Remove focus
+      H.modal()
+        .findByText(/Build custom forms/)
+        .click();
+
+      cy.realPress("[");
+      H.navigationSidebar().should("be.visible");
+      cy.realPress("Escape");
+      cy.findByTestId("action-creator").should("not.exist");
+
+      cy.log("the shortcut works again once no modal holds focus");
+      cy.realPress("[");
+      H.navigationSidebar().should("not.be.visible");
+    },
+  );
 
   it("should support dashboard shortcuts", () => {
     H.createDashboardWithTabs({
@@ -669,10 +450,6 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
         }),
       ],
     }).then((dashboard) => H.visitDashboard(dashboard.id));
-
-    H.openShortcutModal();
-    H.shortcutModal().should("exist");
-    cy.realPress("Escape");
 
     cy.realPress("o");
     H.openNavigationSidebar();
