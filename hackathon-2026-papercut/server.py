@@ -1572,10 +1572,6 @@ UI_STYLE = """<style>
 @media (min-width: 931px) {
   .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
   .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(190px, 1.4fr) auto}
-  .chips {flex-wrap: nowrap; gap: .35rem; overflow-x: auto; padding: .2rem; margin-inline: -.2rem}
-  .chips .eyebrow {display: none}
-  .chip {flex: none; gap: .3rem; padding: 0 .55rem; font-size: .82rem; white-space: nowrap}
-  .chips .link, .chips .muted {flex: none}
 }
 .dropdown {position: relative}
 .dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
@@ -1604,6 +1600,12 @@ UI_STYLE = """<style>
 .chip[data-value=tooling] {--dot: #14a3a3}
 .chip[data-value=documentation] {--dot: #4f86e0}
 .chips .link {min-height: 0; padding: 0 .2rem; border: 0; background: none; color: var(--link)}
+@media (min-width: 931px) {
+  .chips {flex-wrap: nowrap; gap: .35rem; overflow-x: auto; padding: .2rem; margin-inline: -.2rem}
+  .chips .eyebrow {display: none}
+  .chip {flex: none; gap: .3rem; padding: 0 .55rem; font-size: .82rem; white-space: nowrap}
+  .chips .link, .chips .muted {flex: none}
+}
 .issue-card.important {border-left: 4px solid var(--important)}
 .issue-card {position: relative}
 .issue-card h3 a::after {content: ""; position: absolute; inset: 0}

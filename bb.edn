@@ -144,7 +144,7 @@ the claude CLI, and submits each papercut once."
               :validate [#{"claude" "codex"} "must be claude or codex"]]
              [nil "--drill-model MODEL" "Model for the drill-down agent"]
              [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "http://127.0.0.1:8765") :default-desc "$PAPERCUTS_SERVER or http://127.0.0.1:8765"]
-             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.claude)"]
              [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.claude.edn)"]
@@ -162,10 +162,12 @@ This is opt-in: running this task enables future automatic scans. Transcript chu
 chunks go to a drill-down agent, and findings go to the configured papercuts server. Existing hooks are preserved."
    :examples [["./bin/mage papercuts-install-hooks" "Install for every detected agent (claude and/or codex)"]
               ["./bin/mage papercuts-install-hooks --agent claude" "Install only the Claude hook"]
-              ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]]
+              ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]
+              ["./bin/mage papercuts-install-hooks --uninstall" "Remove the hooks again, keeping every other hook"]]
    :requires [[mage.papercuts.hooks :as papercuts-hooks]]
    :options [[nil "--agent AGENT" "Install for claude, codex, or both (default: every agent on PATH)"
-              :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]]
+              :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]
+             [nil "--uninstall" "Remove this installer's hooks (for both agents unless --agent is given)"]]
    :task (task! (papercuts-hooks/install! parsed))}
 
   papercuts-scan-codex
@@ -192,7 +194,7 @@ CLI, and submits each papercut once."
               :validate [#{"claude" "codex"} "must be claude or codex"]]
              [nil "--drill-model MODEL" "Model for the drill-down agent"]
              [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "http://127.0.0.1:8765") :default-desc "$PAPERCUTS_SERVER or http://127.0.0.1:8765"]
-             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.codex)"]
              [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.codex.edn)"]

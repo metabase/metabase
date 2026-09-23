@@ -191,6 +191,27 @@
         "reasoning"               [(entry line timestamp "THINKING" (truncate (block-text summary) 500))]
         nil))))
 
+(defn injected-record?
+  "Whether a parsed transcript record is context the harness injected rather than something the session did: Claude
+  attachments (memory, CLAUDE.md, skill listings) and meta records, and Codex session metadata, turn context,
+  developer messages and the instruction blocks it sends in the user's name."
+  [{:keys [type isMeta payload]}]
+  (boolean
+   (or (= "attachment" type)
+       isMeta
+       (#{"session_meta" "turn_context"} type)
+       (and (= "response_item" type)
+            (= "message" (:type payload))
+            (or (= "developer" (:role payload))
+                (and (= "user" (:role payload))
+                     (let [text (str/triml (codex-content-text (:content payload)))]
+                       (some #(str/starts-with? text %) codex-injected-prefixes))))))))
+
+(defn strip-system-reminders
+  "`raw` without the `<system-reminder>` blocks the harness splices into user turns."
+  [raw]
+  (str/replace raw #"<system-reminder>.*?</system-reminder>" ""))
+
 (defn codex-entries
   "Entries for a Codex rollout transcript."
   [path]
