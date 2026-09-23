@@ -189,3 +189,34 @@
         t (index-by-key theirs)]
     (assoc (merge-indexed b o t)
            :force-push-casualties (casualties-indexed b o t))))
+
+(defn- theirs-changed-keys
+  "Identity keys whose remote (`t`) value differs from the base (`b`): added, removed or edited remotely."
+  [b t]
+  (into #{}
+        (remove (fn [k] (same? (get b k) (get t k))))
+        (concat (keys b) (keys t))))
+
+(defn preview-with-casualties
+  "The `:conflicts`, `:summary` and `:force-push-casualties` of [[merge-with-casualties]], without `:merged`, while
+  computing `ours` only for the entities the remote changed since `base`.
+
+  Every one of those outputs is decided by entities the remote changed: a conflict and a summary entry need
+  `theirs` to differ from `base`, and so does a force-push casualty. An entity the remote left alone contributes
+  nothing whatever `ours` holds for it, so `ours` is needed only for the changed ones.
+
+  `ours-for` is called once with the serdes paths (`[{:model :id} ...]`) of the remote-changed entities and returns
+  `{:path :content}` specs. It may return more than those entities (extra ones change nothing) but must return
+  every local entity that serializes to one of those paths; an entity it leaves out reads as absent locally."
+  [base theirs ours-for]
+  (let [b       (index-by-key base)
+        t       (index-by-key theirs)
+        changed (theirs-changed-keys b t)
+        paths   (into []
+                      (comp (remove (fn [k] (= ::by-path (first k))))
+                            (map (fn [k] (mapv (fn [[model id]] {:model model :id id}) k))))
+                      changed)
+        o       (index-by-key (ours-for paths))]
+    (-> (merge-indexed b o t)
+        (dissoc :merged)
+        (assoc :force-push-casualties (casualties-indexed b o t)))))

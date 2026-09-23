@@ -89,7 +89,7 @@
         (is (= ["d/a" "d/a-b"] (source/paths->children ["d/a-b" "d/a/x"] "d")))))))
 
 (deftest preview-merge-clean-test
-  (testing "preview-merge reports a clean merge and summary without writing"
+  (testing "preview-merge-changes reports a clean merge and summary without writing"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [written     (atom nil)
             base        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
@@ -99,14 +99,14 @@
                          (create-test-entity "D" "d" "Card")]
             base-snap   (entities->snapshot base task-id (atom nil))
             remote-snap (entities->snapshot theirs task-id written)
-            result      (source/preview-merge ours remote-snap base-snap nil)]
+            result      (source/preview-merge-changes (constantly ours) remote-snap base-snap)]
         (is (true? (:clean? result)))
         (is (empty? (:conflicts result)))
         (is (= {:added 1 :updated 0 :removed 0} (:summary result)))
         (is (nil? @written) "preview must not write")))))
 
 (deftest preview-merge-conflict-test
-  (testing "preview-merge reports conflicts (with labels) without writing"
+  (testing "preview-merge-changes reports conflicts (with labels) without writing"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [written     (atom nil)
             base        [(create-test-entity "A" "a" "Card")]
@@ -114,7 +114,7 @@
             theirs      [(create-test-entity* "A" "a" "Card" "theirs")]
             base-snap   (entities->snapshot base task-id (atom nil))
             remote-snap (entities->snapshot theirs task-id written)
-            result      (source/preview-merge ours remote-snap base-snap nil)]
+            result      (source/preview-merge-changes (constantly ours) remote-snap base-snap)]
         (is (false? (:clean? result)))
         (is (= 1 (count (:conflicts result))))
         (is (every? string? (:conflicts result)))

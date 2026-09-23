@@ -20,7 +20,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -1234,6 +1235,39 @@
   [[extract-entities-for-export]] yields, suitable for progress reporting."
   [targets]
   (transduce (map count) + 0 (vals targets)))
+
+(defn targets-for-paths
+  "The part of `targets` (a map as returned by [[exportable-entities]]) whose extraction includes every exported
+  entity that serializes to one of `serdes-paths`, so a caller that needs only those entities doesn't extract the
+  rest.
+
+  Each path is resolved to its local row with `serdes/load-find-local`. A row that is not among `targets` isn't
+  exported, so it needs nothing. A path that resolves to no row (or whose lookup fails) keeps every target of its
+  model: the entity may be absent locally or keyed in a way the lookup doesn't see, and full extraction of that
+  model tells the two apart exactly as a full export would."
+  [targets serdes-paths]
+  (let [target-sets (update-vals targets set)
+        wanted      (reduce (fn [acc path]
+                              (let [model (:model (last path))
+                                    ids   (get target-sets model)]
+                                (if (or (empty? ids) (= ::all (get acc model)))
+                                  acc
+                                  (let [local (try
+                                                (serdes/load-find-local path)
+                                                (catch Exception e
+                                                  (log/debugf e "Could not resolve %s locally; extracting all %s targets"
+                                                              (pr-str path) model)
+                                                  nil))
+                                        pk    (when local (get local (serdes/primary-key model)))]
+                                    (cond
+                                      (nil? pk)          (assoc acc model ::all)
+                                      (contains? ids pk) (update acc model (fnil conj #{}) pk)
+                                      :else              acc)))))
+                            {}
+                            serdes-paths)]
+    (into {}
+          (map (fn [[model ids]] [model (if (= ::all ids) (get targets model) (vec ids))]))
+          wanted)))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
