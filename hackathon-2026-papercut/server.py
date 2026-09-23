@@ -1567,10 +1567,27 @@ showTheme();
 
 LIVE_REFRESH = """<script>
 const liveStatus = document.getElementById('live-status');
+const accountButton = document.querySelector('.account-menu .account');
+if (accountButton) {
+  const accountMenu = accountButton.nextElementSibling;
+  const openAccount = (open) => {
+    accountMenu.hidden = !open;
+    accountButton.setAttribute('aria-expanded', String(open));
+    if (open) accountMenu.querySelector('a').focus();
+  };
+  accountButton.addEventListener('click', () => openAccount(accountMenu.hidden));
+  document.addEventListener('click', (event) => { if (!event.target.closest('.account-menu')) openAccount(false); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !accountMenu.hidden) {
+      openAccount(false);
+      accountButton.focus();
+    }
+  });
+}
 function showLive(connected) {
   const label = connected ? 'Connected' : 'Reconnecting…';
   liveStatus.classList.toggle('lost', !connected);
-  liveStatus.title = label;
+  liveStatus.dataset.tip = label;
   liveStatus.setAttribute('aria-label', label);
 }
 const filterForm = document.getElementById('filters');
@@ -1736,6 +1753,20 @@ UI_STYLE = """<style>
 #live-status.led {display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22a06b;
                   box-shadow: 0 0 0 3px rgba(34, 160, 107, .18)}
 #live-status.led.lost {background: #d9480f; box-shadow: 0 0 0 3px rgba(217, 72, 15, .2)}
+#live-status.led {position: relative; outline-offset: 3px}
+#live-status.led::after {content: attr(data-tip); position: absolute; top: calc(100% + 10px); right: -10px; z-index: 20; display: none;
+                         padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 7px; background: var(--surface);
+                         color: var(--text); font-size: .8rem; white-space: nowrap; box-shadow: 0 6px 18px rgba(16, 24, 32, .16)}
+#live-status.led:is(:hover, :focus-visible)::after {display: block}
+.account-menu {position: relative}
+.header-actions .account-menu .account {min-height: 32px; padding: 0 .6rem; border: 0; background: none; color: var(--muted);
+                                        font-size: .9rem}
+.header-actions .account-menu .account:hover, .account-menu .account[aria-expanded=true] {color: var(--text); background: var(--hover)}
+.account-menu .menu {position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 150px; padding: 6px;
+                     border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+                     box-shadow: 0 12px 32px rgba(16, 24, 32, .18)}
+.account-menu .menu a {display: block; padding: .45rem .6rem; border-radius: 8px; color: var(--text)}
+.account-menu .menu a:hover, .account-menu .menu a:focus-visible {background: var(--hover); text-decoration: none}
 .header-actions .account {color: var(--muted); font-size: .9rem}
 .header-actions .account:hover {color: var(--text)}
 .pill.important {display: inline-flex; align-items: center; gap: .3rem; color: var(--important); background: none; box-shadow: inset 0 0 0 1px currentColor}
@@ -1922,7 +1953,9 @@ def category_chips(chosen, counts):
 
 def account_link():
     email = signed_in_email()
-    return f"<a class='account' href='/auth/logout' title='Sign out'>{html.escape(email)}</a>" if email else ""
+    return (f"<div class='account-menu'><button type='button' class='account' aria-haspopup='menu' aria-expanded='false'>"
+            f"{html.escape(email)}</button><div class='menu' role='menu' hidden>"
+            "<a role='menuitem' href='/auth/logout'>Sign out</a></div></div>") if email else ""
 
 
 def page(title, body):
@@ -1931,7 +1964,7 @@ def page(title, body):
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
-            f"{account_link()}<span id='live-status' class='led' role='status' title='Connected' aria-label='Connected'></span>"
+            f"{account_link()}<span id='live-status' class='led' role='status' tabindex='0' data-tip='Connected' aria-label='Connected'></span>"
             f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 

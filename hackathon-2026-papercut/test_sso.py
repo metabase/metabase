@@ -100,7 +100,8 @@ class SignInTest(HttpCase):
                                  r"SameSite=Lax; Secure$")
         status, page, _ = self.call("GET", "/", headers={**PROXIED, "Cookie": cookie.split(";")[0]})
         self.assertEqual(status, 200)
-        self.assertIn("<a class='account' href='/auth/logout' title='Sign out'>ada@metabase.com</a>", page)
+        self.assertIn("aria-haspopup='menu' aria-expanded='false'>ada@metabase.com</button>", page)
+        self.assertIn("<a role='menuitem' href='/auth/logout'>Sign out</a>", page)
         _, _, response = self.call("GET", "/auth/logout", headers=PROXIED)
         self.assertTrue(response.getheader("Set-Cookie").startswith("papercuts_session=; Max-Age=0; Path=/;"))
 
