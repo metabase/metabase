@@ -105,3 +105,11 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 ;; * bin/build.sh
 ;; * ./supervisor.sh
 ;; * curl -XPOST http://localhost:8088/api/upgrade
+
+;; supervisor.sh:
+
+;; #!/bin/bash
+;; MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar MB_JETTY_PORT=8088 java -jar target/uberjar/metabase.jar
+;; sleep 2 # give the user a chance to ctrl-c out of it
+;; exec $0
+
