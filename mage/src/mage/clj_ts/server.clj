@@ -244,7 +244,10 @@ button, .btn { padding:5px 10px; border:1px solid var(--border); border-radius:6
 .layout { display:flex; }
 nav.files { width:300px; flex:none; position:sticky; top:49px; height:calc(100vh - 49px); overflow:auto; padding:12px;
   border-right:1px solid var(--border); font-size:12px; }
-nav.files a { display:block; padding:3px 4px; color:var(--fg); text-decoration:none; overflow-wrap:anywhere; border-radius:4px; }
+nav.files .dir { font-weight:600; margin:10px 0 2px; overflow-wrap:anywhere; }
+nav.files .dir:first-child { margin-top:0; }
+nav.files a { display:block; padding:2px 4px 2px 12px; color:var(--fg); text-decoration:none; overflow-wrap:anywhere; border-radius:4px; }
+nav.files a.other { color:var(--muted); }
 nav.files a:hover { background:var(--panel); }
 nav.files .add { color:var(--add-sign); } nav.files .del { color:var(--del-sign); }
 main { flex:1; min-width:0; padding:16px; }
@@ -343,12 +346,26 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
 (defn- sort-files [files]
   (vec (sort-by (juxt (comp not git/clojure-file? :path) :path) files)))
 
+(defn- file-nav
+  "The sidebar: changed files grouped under bold directory headers, each listed by its file name and linking to its
+  section. Non-Clojure files are dimmed."
+  [files]
+  (let [split   (fn [path] (let [i (str/last-index-of path "/")]
+                             (if i [(subs path 0 (inc i)) (subs path (inc i))] ["" path])))
+        entries (for [[i f] (map-indexed vector files)
+                      :let [[dir file-name] (split (:path f))]]
+                  {:idx i :dir dir :name file-name :clj? (git/clojure-file? (:path f))})]
+    [:nav.files
+     (for [[dir es] (sort-by key (group-by :dir entries))]
+       (list
+        [:div.dir (if (str/blank? dir) "./" dir)]
+        (for [{:keys [idx name clj?]} (sort-by :name es)]
+          [:a (cond-> {:href (str "#f" idx) :title (str dir name)} (not clj?) (assoc :class "other")) name])))]))
+
 (defn- changes-page [{:keys [title url files]} view]
   (page {:title title}
         [:div.layout
-         [:nav.files
-          (for [[i f] (map-indexed vector files)]
-            [:a {:href (str "#f" i)} (:path f)])]
+         (file-nav files)
          [:main
           [:h1 (if url [:a {:href url} title] title)]
           (if (empty? files)

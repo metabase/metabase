@@ -357,3 +357,24 @@
     (is (git/typescript-file? "e2e/support/x.js"))
     (is (not (git/typescript-file? "src/metabase/a.clj")))
     (is (not (git/typescript-file? "frontend/src/styles.css")))))
+
+(deftest ^:parallel nav-groups-files-by-directory-test
+  (let [html (#'server/changes-page {:title "t"
+                                     :files (#'server/sort-files
+                                             [{:path "src/metabase/a/core.clj" :status :modified :old "(def x 1)\n" :new "(def x 2)\n"}
+                                              {:path "src/metabase/a/api.clj" :status :added :old nil :new "(def y 1)\n"}
+                                              {:path "test/metabase/a/core_test.clj" :status :added :old nil :new "(def z 1)\n"}
+                                              {:path "frontend/src/thing.tsx" :status :modified :old nil :new nil}])}
+                                    "ts")
+        nav  (re-find #"(?s)<nav class=\"files\">.*?</nav>" html)]
+    (testing "directories are headers, files are listed by name and link to their section"
+      (is (str/includes? nav "<div class=\"dir\">src/metabase/a/</div>"))
+      (is (str/includes? nav "<div class=\"dir\">test/metabase/a/</div>"))
+      (is (re-find #"<a href=\"#f\d+\"[^>]*>api\.clj</a>" nav))
+      (is (re-find #"<a href=\"#f\d+\"[^>]*>core\.clj</a>" nav))
+      (is (not (str/includes? nav ">src/metabase/a/core.clj<"))))
+    (testing "directories are in path order, and each appears once"
+      (is (= ["frontend/src/" "src/metabase/a/" "test/metabase/a/"]
+             (map second (re-seq #"<div class=\"dir\">([^<]*)</div>" nav)))))
+    (testing "non-Clojure files are dimmed"
+      (is (re-find #"class=\"other\"[^>]*>thing\.tsx<" nav)))))
