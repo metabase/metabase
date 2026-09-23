@@ -54,6 +54,11 @@ class WebViewTest(StoreCase):
         self.assertIn("setTimeout(applyFilters, event.target.matches('input') ? 300 : 0)", page)
         self.assertIn("setInterval(refreshPage, 15000)", page)
 
+    def test_list_previews_are_plain_text(self):
+        self.papercut("Markdown preview", description="Intro `code` and **bold**.\n\n## Links\n\n- [Conversation](http://x) here")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("<p class='issue-summary'>Intro code and bold. Conversation here</p>", page)
+
     def test_description_fields_and_safe_markdown(self):
         narrative, fix, facts = server.description_parts(
             "Uses `zsh` and **fails**.\n\nSuggested fix: Check *flags*.\n\n"

@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
 import sso
 
@@ -1434,6 +1434,23 @@ def icon(name):
     return f"<svg class='icon' viewBox='0 0 24 24' aria-hidden='true'>{ICONS[name]}</svg>"
 
 
+def papercut_mark(attributes="", style=""):
+    return (f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'{attributes}>{style}"
+            "<g class='o' stroke='#2B2F3A' stroke-width='5' stroke-linejoin='round'>"
+            "<path fill='#FFFFFF' d='M28 12H68L100 44V116H28Z'/><path fill='#DDE3EA' d='M68 12V44H100Z'/></g>"
+            "<path fill='#E5383B' d='M80 72C84.2 79.2 92 86.4 92 96A12 12 0 0 1 68 96C68 86.4 75.8 79.2 80 72Z'/>"
+            "<g transform='rotate(-35 60 66)'>"
+            "<rect class='o' x='18' y='50' width='84' height='32' rx='16' fill='#F2B27A' stroke='#2B2F3A' stroke-width='5'/>"
+            "<rect x='46' y='54' width='28' height='24' rx='4' fill='#FBD9B4'/><g fill='#D48A52'>"
+            "<circle cx='30' cy='60' r='2.5'/><circle cx='30' cy='72' r='2.5'/><circle cx='38' cy='66' r='2.5'/>"
+            "<circle cx='90' cy='60' r='2.5'/><circle cx='90' cy='72' r='2.5'/><circle cx='82' cy='66' r='2.5'/>"
+            "</g></g></svg>")
+
+
+BRAND_MARK = papercut_mark(" class='brand-mark' aria-hidden='true'")
+FAVICON = "data:image/svg+xml," + quote(papercut_mark(
+    style="<style>@media (prefers-color-scheme: dark) {.o {stroke: #C9D3DD}}</style>"))
+
 THEME_SWITCH = ("<div class='theme-switch' role='group' aria-label='Color theme'>" + "".join(
     f"<button type='button' data-theme-choice='{theme}' title='{label}' aria-label='{label}'>{icon(theme)}</button>"
     for theme, label in (("system", "Theme follows your OS"), ("light", "Light theme"), ("dark", "Dark theme"))) + "</div>")
@@ -1548,11 +1565,11 @@ setInterval(refreshPage, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPage(); });
 </script>"""
 
-DARK_STATES = ("--important: #fb923c; --danger-bg: #5a2727; --danger-text: #ffc9c9; --warning-bg: #5b431b; --warning-text: #ffe0a1; "
+DARK_STATES = ("--mark-outline: #c9d3dd; --important: #fb923c; --danger-bg: #5a2727; --danger-text: #ffc9c9; --warning-bg: #5b431b; --warning-text: #ffe0a1; "
                "--success-bg: #214a35; --success-text: #baf0ca; --info-bg: #2b416a; --info-text: #c9dcff")
 
 UI_STYLE = """<style>
-:root {--important: #c2410c; --danger-bg: #fde7e7; --danger-text: #9f1d1d; --warning-bg: #fff0d7; --warning-text: #805100;
+:root {--mark-outline: #2b2f3a; --important: #c2410c; --danger-bg: #fde7e7; --danger-text: #9f1d1d; --warning-bg: #fff0d7; --warning-text: #805100;
        --success-bg: #e7f4ec; --success-text: #175d32; --info-bg: #e7edfa; --info-text: #294d91}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {""" + DARK_STATES + """}
@@ -1562,6 +1579,9 @@ UI_STYLE = """<style>
   :root:not([data-theme="light"]) .status-wontfix {background: #493750; color: #e8c6f2}
 }
 :root[data-theme="dark"] {""" + DARK_STATES + """}
+.brand {display: inline-flex; align-items: center; gap: .55rem}
+.brand-mark {width: 30px; height: 30px; flex: none}
+.brand-mark .o {stroke: var(--mark-outline)}
 .icon {width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round}
 .theme-switch {display: inline-flex; padding: 3px; border: 1px solid transparent; border-radius: 10px;
                transition: border-color .15s, background-color .15s}
@@ -1785,10 +1805,10 @@ def category_chips(chosen, counts):
 
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
-            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            f"<meta name='viewport' content='width=device-width, initial-scale=1'><link rel='icon' href='{FAVICON}'>"
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
-            "<a class='brand' href='/'>✳ Papercuts</a><div class='header-actions'>"
+            f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
             "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
             "<details class='token-control'><summary>API token</summary>"
             "<input id='api-token' type='password' autocomplete='off' placeholder='Bearer token for dispatching'></details>"
@@ -2018,6 +2038,13 @@ def excerpt(value, length=220):
     return value[:length].rsplit(" ", 1)[0] + "…"
 
 
+def plain_text(markdown):
+    """Markdown as plain prose for a preview: no headings, list or quote markers, link syntax or code ticks."""
+    lines = [re.sub(r"^\s*(?:[-*+]|\d+\.|>)\s+", "", line) for line in markdown.splitlines()
+             if not re.match(r"\s*#{1,6}\s", line)]
+    return re.sub(r"\*\*|`", "", re.sub(r"\[([^\]\n]+)\]\([^)\n]*\)", r"\1", "\n".join(lines)))
+
+
 def short_title(title):
     for separator in (": ", " — ", " -- ", "; "):
         if separator in title:
@@ -2040,7 +2067,7 @@ def list_card_html(p):
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
             f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}</div>"
-            f"<p class='issue-summary'>{esc(excerpt(description))}</p>"
+            f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
             f"{esc(excerpt(p['path'] or p['area'] or 'No location recorded', 150))}</p>"
