@@ -95,26 +95,20 @@
         "boolean"            "boolean"
         nil))))
 
-(defn- template-tag-name-from-target
-  "Returns the template-tag name referenced by an action parameter target."
-  [target]
-  (when (sequential? target)
-    (let [[op inner] target]
-      (when (and (or (= op :variable) (= op "variable"))
-                 (sequential? inner))
-        (let [[tag-op tag-name] inner]
-          (when (or (= tag-op :template-tag) (= tag-op "template-tag"))
-            (cond
-              (string? tag-name)  tag-name
-              (keyword? tag-name) (clojure.core/name tag-name)
-              :else               nil)))))))
+(defn- template-tag-value-type
+  "Returns the type a template tag's values carry: a field filter's `:type` is always `:dimension`, so its
+  `:widget-type` (e.g. `:date/single`) is what tells us the value type."
+  [{:keys [type widget-type]}]
+  (if (= type :dimension)
+    widget-type
+    type))
 
 (defn- query-action-template-tag-types
-  "Returns template-tag types for query action parameters, or nil when the action has no usable query."
+  "Returns template-tag value types for query action parameters, or nil when the action has no usable query."
   [{:keys [type dataset_query]}]
   (when (= (lib.schema.common/normalize-keyword type) :query)
     ;; a stored query that failed to deserialize comes back as {}, which Lib rejects
-    (some-> dataset_query not-empty lib/all-template-tags-map (update-vals :type))))
+    (some-> dataset_query not-empty lib/all-template-tags-map (update-vals template-tag-value-type))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."
@@ -147,7 +141,7 @@
         resolved-type (or (param-type->js-type type)
                           (param-type->js-type
                            (get tag-types
-                                (template-tag-name-from-target target)))
+                                (some-> target lib/parameter-target-template-tag-name)))
                           "unknown")]
     (m/assoc-some
      {:slug resolved-slug
@@ -175,7 +169,7 @@
   "Returns action details from the actions module, preserving lookup error context."
   [model]
   (try
-    (actions/select-actions-non-http-for-models nil #{(:id model)})
+    (actions/select-actions-non-http-for-models [model] #{(:id model)})
     (catch Exception exception
       (throw (ex-info (model-action-error-message model (ex-message exception))
                       (error-data-with-cause-message

@@ -41,6 +41,31 @@
                 (get-in (schema.model/model-schema model)
                         [:actions "updateBird" :parameters])))))))
 
+(deftest model-schema-resolves-field-filter-widget-type-test
+  (testing "a field filter's value type comes from its widget type, through a :dimension parameter target"
+    (let [mp           (mt/metadata-provider)
+          action-query (-> (lib/native-query mp "UPDATE birds SET name = 'x' WHERE {{created_at}}")
+                           (lib/with-template-tags
+                             {"created_at" {:name         "created_at"
+                                            :display-name "Created At"
+                                            :type         :dimension
+                                            :widget-type  :date/single
+                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}}))]
+      (mt/with-actions [model {:name          "Bird model"
+                               :type          :model
+                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                        {action-id :action-id} {:name          "Update bird"
+                                                :database_id   (mt/id)
+                                                :dataset_query action-query
+                                                :parameters    [{:id     "created_at"
+                                                                 :name   "Created At"
+                                                                 :type   :category
+                                                                 :target [:dimension [:template-tag "created_at"]]}]}]
+        (is (= :dimension (get-in (actions/select-action :id action-id) [:dataset_query :stages 0 :template-tags 0 :type])))
+        (is (=? [{:slug "created_at", :displayName "Created At", :jsType "Date"}]
+                (get-in (schema.model/model-schema model)
+                        [:actions "updateBird" :parameters])))))))
+
 (deftest model-schema-tolerates-empty-action-query-test
   (testing "an action whose stored query degraded to {} still builds instead of failing the whole model"
     (mt/with-actions [model {:name          "Bird model"
@@ -120,9 +145,9 @@
                                {:id 43 :name "Broken model"}])
                   ;; bulk lookup blows up for the whole batch
                   actions/select-actions-non-http-for-models
-                  (fn [known-models model-ids]
+                  (fn [_known-models model-ids]
                     (cond
-                      (seq known-models)
+                      (< 1 (count model-ids))
                       (throw (ex-info "bulk lookup exploded" {}))
 
                       (= model-ids #{42})
