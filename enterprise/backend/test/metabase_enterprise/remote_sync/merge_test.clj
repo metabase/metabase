@@ -256,3 +256,22 @@
       (is (every? #(= "Card" (:model (last %))) @asked))
       (is (= (dissoc full :merged) result))
       (is (= 1 (count (:conflicts result))) "local delete of C vs remote edit of C"))))
+
+(deftest ^:parallel preview-with-casualties-non-serdes-file-test
+  (testing "a non-serdes file the remote edited is compared against our full export, not read as deleted locally"
+    (let [readme-base   {:path "README.md" :content "hello\n"}
+          readme-theirs {:path "README.md" :content "hello, edited remotely\n"}
+          base          [(card "A" "a") readme-base]
+          ours          [(card "A" "a") readme-base]
+          theirs        [(card "A" "a") readme-theirs]
+          full          (remote-sync.merge/merge-with-casualties base ours theirs)
+          result        (remote-sync.merge/preview-with-casualties
+                         base theirs
+                         (fn [paths]
+                           (if (= :all paths)
+                             ours
+                             (let [wanted (into #{} (map (comp :id last)) paths)]
+                               (filter #(wanted (second (re-find #"id: (\w+)" (:content %)))) ours)))))]
+      (is (= (dissoc full :merged) result))
+      (is (empty? (:conflicts result)) "a clean remote update, not an edit-vs-delete conflict")
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))
