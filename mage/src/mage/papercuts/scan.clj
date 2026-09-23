@@ -501,7 +501,8 @@
                      (when error (throw error)))
                    (catch Exception e
                      (swap! failures inc)
-                     (say session (c/red "failed, will retry next run:") (ex-message e)
+                     ;; Some exceptions have no message, a refused connection among them; the class still says what failed.
+                     (say session (c/red "failed, will retry next run:") (or (ex-message e) (.getName (class e)))
                           (some-> (ex-data e) pr-str)))))))
     (.shutdown pool)
     (.awaitTermination pool Long/MAX_VALUE TimeUnit/SECONDS)
