@@ -69,7 +69,7 @@ class StoreTest(unittest.TestCase):
         malicious = {**self.sample, "report_id": "report-3", "title": "<script>alert(1)</script>"}
         issue, _, _ = self.store.ingest(malicious)
         rendered = server.issue_html(issue)
-        self.assertNotIn("<script>", rendered)
+        self.assertNotIn("<script>alert(1)</script>", rendered)
         self.assertIn("&lt;script&gt;", rendered)
 
     def test_observed_at_sets_seen_window(self):

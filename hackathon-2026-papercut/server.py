@@ -277,16 +277,92 @@ class Store:
 
 
 STYLE = """<style>
-body {font: 16px system-ui; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; color: #263238; background: #f7f8fa}
-a {color: #1453a6} header {display:flex; justify-content:space-between; align-items:baseline}
-.card {background:white; border:1px solid #dce2e8; border-radius:8px; padding:1rem; margin:.7rem 0}
-.muted {color:#637381} .pill {display:inline-block; background:#e8eef5; border-radius:1rem; padding:.15rem .6rem; margin-right:.3rem}
-input, select, button {font:inherit; padding:.35rem; margin:.2rem} pre {white-space:pre-wrap; overflow-wrap:anywhere}
+:root {
+  color-scheme: light;
+  --background: #f7f8fa;
+  --surface: #fff;
+  --text: #263238;
+  --muted: #526170;
+  --link: #1453a6;
+  --border: #dce2e8;
+  --control-border: #a9b4be;
+  --pill: #e8eef5;
+  --hover: #e8eef5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #111820;
+    --surface: #1d2731;
+    --text: #e8edf2;
+    --muted: #aab7c4;
+    --link: #8bbcff;
+    --border: #354454;
+    --control-border: #64778a;
+    --pill: #2d3d4d;
+    --hover: #354454;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #111820;
+  --surface: #1d2731;
+  --text: #e8edf2;
+  --muted: #aab7c4;
+  --link: #8bbcff;
+  --border: #354454;
+  --control-border: #64778a;
+  --pill: #2d3d4d;
+  --hover: #354454;
+}
+body {font: 16px system-ui; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; color: var(--text); background: var(--background)}
+a {color: var(--link)}
+header {display: flex; justify-content: space-between; align-items: center; gap: 1rem}
+header .actions {display: flex; align-items: center; gap: .75rem}
+.card {background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: .7rem 0}
+.muted {color: var(--muted)}
+.pill {display: inline-block; background: var(--pill); border-radius: 1rem; padding: .15rem .6rem; margin-right: .3rem}
+input, select, button {font: inherit; padding: .35rem; margin: .2rem; color: var(--text); background: var(--surface); border: 1px solid var(--control-border); border-radius: 4px}
+button {cursor: pointer}
+button:hover {background: var(--hover)}
+pre {white-space: pre-wrap; overflow-wrap: anywhere}
+@media (max-width: 600px) {header {align-items: flex-start} header .actions {flex-wrap: wrap; justify-content: flex-end}}
 </style>"""
+
+THEME_INIT = """<script>
+try {
+  const theme = localStorage.getItem('papercuts-theme');
+  if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+} catch (_) {}
+</script>"""
+
+THEME_CONTROL = """<script>
+const themeToggle = document.getElementById('theme-toggle');
+const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+function darkThemeActive() {
+  const chosen = document.documentElement.dataset.theme;
+  return chosen === 'dark' || (!chosen && systemTheme.matches);
+}
+function updateThemeToggle() {
+  themeToggle.textContent = darkThemeActive() ? 'Light mode' : 'Dark mode';
+}
+themeToggle.addEventListener('click', () => {
+  const theme = darkThemeActive() ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('papercuts-theme', theme); } catch (_) {}
+  updateThemeToggle();
+});
+systemTheme.addEventListener('change', updateThemeToggle);
+updateThemeToggle();
+</script>"""
 
 
 def page(title, body):
-    return f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>{STYLE}</head><body><header><h1><a href='/'>Papercuts</a></h1><span class='muted'>SQLite inbox</span></header>{body}</body></html>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
+            f"{THEME_INIT}{STYLE}</head><body><header><h1><a href='/'>Papercuts</a></h1>"
+            "<div class='actions'><span class='muted'>SQLite inbox</span>"
+            "<button id='theme-toggle' type='button' aria-label='Toggle color theme'>Dark mode</button></div>"
+            f"</header>{body}{THEME_CONTROL}</body></html>")
 
 
 def issue_list_html(issues, filters):
