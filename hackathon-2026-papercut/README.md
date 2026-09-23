@@ -290,7 +290,8 @@ nothing changes.
   it signs everyone out.
 - `PAPERCUTS_ALLOWED_DOMAIN` is the Workspace domain, `metabase.com` by default.
 - `PAPERCUTS_SSO_PROXY_ONLY=1` asks for a session only on requests that came through a
-  reverse proxy, recognized by their `X-Forwarded-Proto` header, and trusts the rest. The
+  reverse proxy, recognized by their `X-Forwarded-Proto` header. API calls that came any
+  other way are trusted, and pages are redirected to the public URL to sign in. The
   proxy must set that header on every request, as nginx does with
   `proxy_set_header X-Forwarded-Proto $scheme;`, and the server's own port must only be
   reachable from a private network.

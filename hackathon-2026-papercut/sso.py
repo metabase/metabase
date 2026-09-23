@@ -65,9 +65,12 @@ class GoogleSignIn:
         if handler.command == "GET" and url.path in routes:
             routes[url.path](handler, {key: values[0] for key, values in parse_qs(url.query).items()})
             return True
-        # The reverse proxy sets X-Forwarded-Proto on every request; the rest come from the private network.
+        # Requests without X-Forwarded-Proto, which the reverse proxy always sets, come from the private network.
         if self.proxy_only and "X-Forwarded-Proto" not in handler.headers:
-            return False
+            if url.path.startswith(("/api/", "/auth/")):
+                return False
+            handler.respond(302, "", "text/plain", {"Location": self.origin + handler.path})
+            return True
         session = self.unsign(SESSION, self.cookie(handler, SESSION))
         if session is None:
             if url.path.startswith("/api/"):

@@ -68,9 +68,15 @@ class SignInTest(HttpCase):
         self.assertEqual(self.call("GET", "/papercuts/1", headers=PROXIED)[0], 200)
         self.assertEqual(self.call("GET", "/auth/login", headers=PROXIED)[0], 404)
 
-    def test_proxied_requests_need_a_session(self):
+    def test_direct_requests_keep_the_api_and_send_pages_to_the_public_url(self):
         self.assertEqual(self.report("r1")[0], 201)
         self.assertEqual(self.call("GET", "/api/papercuts/1")[0], 200)
+        for path in ("/", "/papercuts/1?reports_limit=1"):
+            with self.subTest(path):
+                status, _, response = self.call("GET", path)
+                self.assertEqual((status, response.getheader("Location")), (302, "https://metaouch.dev" + path))
+
+    def test_proxied_requests_need_a_session(self):
         status, _, response = self.call("GET", "/papercuts/1?reports_limit=1", headers=PROXIED)
         self.assertEqual((status, response.getheader("Location")),
                          (302, "/auth/login?next=%2Fpapercuts%2F1%3Freports_limit%3D1"))
