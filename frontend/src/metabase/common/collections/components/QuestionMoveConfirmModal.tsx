@@ -161,7 +161,7 @@ export const QuestionMoveConfirmModal = ({
             <Flex justify="space-between" mt="1rem">
               <Text c="feedback-negative">{errorMessage}</Text>
               <Flex justify="end" gap="1rem">
-                <Button variant="subtle" onClick={onClose}>
+                <Button variant="subtle" color="neutral" onClick={onClose}>
                   {t`Cancel`}
                 </Button>
                 <Button variant="filled" onClick={onConfirm}>

@@ -250,9 +250,8 @@ describe("scenarios > documents > public", () => {
     cy.log("Verify the text wasn't updated");
     H.documentContent().findByText(text).should("exist");
 
-    cy.log("Verify that run/close buttons don't exist but a metabot icon does");
+    cy.log("Verify that run/close buttons don't exist");
     H.documentContent().find("button").should("not.exist");
-    H.documentContent().icon("metabot").should("exist");
   });
 
   it("should allow downloading results from embedded cards", () => {

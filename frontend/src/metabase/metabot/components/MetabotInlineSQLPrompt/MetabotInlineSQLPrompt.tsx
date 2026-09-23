@@ -133,33 +133,31 @@ export const MetabotInlineSQLPrompt = ({
           {canUseSqlGeneration && (
             <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
               <Button
-                className={S.submitButton}
                 data-testid="metabot-inline-sql-generate"
-                size="xs"
                 variant="filled"
                 px="0"
-                w="1.875rem"
-                styles={{ label: { display: "flex" } }}
+                w="2rem"
+                leftSection={
+                  isLoading ? (
+                    <Loader
+                      size="xs"
+                      color="text-disabled"
+                      data-testid="metabot-inline-sql-generating"
+                    />
+                  ) : (
+                    <Icon name="send" />
+                  )
+                }
                 onClick={handleSubmit}
                 disabled={isSubmitDisabled}
-              >
-                {isLoading ? (
-                  <Loader
-                    size="xs"
-                    color="text-disabled"
-                    data-testid="metabot-inline-sql-generating"
-                  />
-                ) : (
-                  <Icon name="send" />
-                )}
-              </Button>
+              />
             </Tooltip>
           )}
           <Button
             className={S.cancelButton}
             data-testid="metabot-inline-sql-cancel"
-            size="xs"
             variant="subtle"
+            color="neutral"
             onClick={handleClose}
           >
             {t`Cancel`}

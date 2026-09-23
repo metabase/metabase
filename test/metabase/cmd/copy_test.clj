@@ -9,7 +9,14 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
    [metabase.cmd.copy :as copy]
+   [metabase.config.core :as config]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel transform-testing-tables-are-ee-only-test
+  (let [entities (set copy/entities)]
+    (doseq [model [:model/TransformTest :model/TransformTestRun]]
+      (is (= config/ee-available? (contains? entities model))))
+    (is (not-any? entities [:transform_test :transform_test_run]))))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -119,8 +126,6 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
-    ;; copied by table name instead, since its model is EE-only
-    :model/TransformTest
     :model/Undo
     :model/UserKeyValue})
 

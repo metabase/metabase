@@ -38,6 +38,11 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest default-schema-test
+  (mt/test-driver :sqlserver
+    (is (= "dbo"
+           (driver.sql/default-schema :sqlserver (mt/db))))))
+
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
                 "fields referenced by name from a source query, #75193) should use TIMEFROMPARTS and "
