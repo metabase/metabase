@@ -495,6 +495,16 @@
    model-id   :- ModelId]
   (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
+(mu/defn tracked-ids-among :- [:set ModelId]
+  "The ids among `model-ids` of the entities of `model-type` that have a RemoteSyncObject. Callers bound the number of
+  `model-ids`."
+  [model-type :- :string
+   model-ids  :- [:sequential ModelId]]
+  (if (empty? model-ids)
+    #{}
+    (or (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids])
+        #{})))
+
 (mu/defn rso-of-type-exists?
   "Whether any entity of `model-type` has a RemoteSyncObject."
   [model-type :- :string]

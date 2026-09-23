@@ -30,7 +30,7 @@
     (impl/handle-task-result! result task)
     result))
 
-(defn- push-cost
+(defn- push-cost!
   "Creates `n` cards in a synced collection, and with `dashboards?` also `n` dashboards each showing one of the cards,
   loads them, edits all of them locally, then counts app-DB activity during the incremental push. Returns the counts,
   with the export result under `:result`."
@@ -65,13 +65,13 @@
             (db-activity/with-db-activity
               (run-task! "export" #(impl/export! (source.p/snapshot src) % "push" :source src)))))))))
 
-(defn- statements-per-extra-entity
+(defn- statements-per-extra-entity!
   "Pushes 10 and then 20 edited cards (with `dashboards?`, also as many edited dashboards) and returns the extra
   statements per extra dirty entity."
   [dashboards?]
   (let [per-card (if dashboards? 2 1)
-        small    (push-cost 10 dashboards?)
-        large    (push-cost 20 dashboards?)]
+        small    (push-cost! 10 dashboards?)
+        large    (push-cost! 20 dashboards?)]
     (testing "both pushes take the incremental path and write every edited entity"
       (is (= {:kind "pushed" :count (* 10 per-card)} (select-keys (:outcome (:result small)) [:kind :count])))
       (is (= {:kind "pushed" :count (* 20 per-card)} (select-keys (:outcome (:result large)) [:kind :count]))))
@@ -79,13 +79,13 @@
 
 (deftest incremental-push-closure-walk-does-not-scale-with-dirty-cards-test
   (testing "with only cards dirty, the closure walk is the only per-entity app-DB work in the push"
-    (let [per-entity (statements-per-extra-entity false)]
+    (let [per-entity (statements-per-extra-entity! false)]
       (testing (format "statements per extra dirty card: %s" per-entity)
         (is (<= per-entity 0.2))))))
 
 (deftest incremental-push-closure-walk-does-not-scale-with-dirty-dashboards-test
   (testing "with cards and dashboards dirty (the dashboards' closures reach the cards)"
-    (let [per-entity (statements-per-extra-entity true)]
+    (let [per-entity (statements-per-extra-entity! true)]
       (testing (format "statements per extra dirty entity: %s" per-entity)
         ;; extracting a dashboard still costs about two statements of its own, apart from the closure walk: with one
         ;; card per dashboard that is about one statement per dirty entity. The per-row closure walk added three more.
