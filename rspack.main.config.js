@@ -27,7 +27,11 @@ const {
 const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
-const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
+const {
+  FONT_FACES_RULE,
+  FONT_FACES_VIRTUAL_MODULE,
+  fontAssetName,
+} = require("./frontend/build/shared/rspack/fonts");
 const {
   DropStylesEntryScriptPlugin,
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
@@ -248,27 +252,11 @@ const config = {
         include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
+          /** @param {{ filename: string }} pathData */
           filename: (pathData) => fontAssetName(pathData, "fonts"),
         },
       },
-      {
-        // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
-        // loader, so css-loader sees the rewritten stylesheet and resolves its
-        // url() against the generated chunks.
-        test: /[\\/]css[\\/]core[\\/]fonts\.css$/,
-        enforce: "pre",
-        use: [
-          {
-            loader:
-              __dirname +
-              "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
-            options: {
-              fontsDir: __dirname + "/frontend/fonts",
-              outputDir: __dirname + "/node_modules/.cache/font-subsets",
-            },
-          },
-        ],
-      },
+      FONT_FACES_RULE,
       {
         test: /\.css$/,
         use: [
@@ -367,6 +355,7 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin(FONT_FACES_VIRTUAL_MODULE),
     ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
