@@ -28,10 +28,16 @@
     (keyword? (second source)) [(first source) (second source)]
     :else                      [(first source) (first source)]))
 
+(defn- sources
+  "The tables `query` reads or writes, as a sequence. Honey SQL takes a lone table on its own or in a vector."
+  [query]
+  (let [clause (or (:from query) (:update query) (:delete-from query))]
+    (if (sequential? clause) clause [clause])))
+
 (defn- worktree-column
   "The `worktree_id` column to restrict `query` by, or nil when it does not read `model`'s own table."
   [model query]
-  (let [sources (or (:from query) (some-> (:update query) vector) (some-> (:delete-from query) vector))]
+  (let [sources (sources query)]
     (when (= (count sources) 1)
       (when-some [[table alias] (table-and-alias (first sources))]
         (when (= (name table) (name (t2.model/table-name model)))

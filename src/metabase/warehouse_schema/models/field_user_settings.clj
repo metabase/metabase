@@ -105,6 +105,9 @@
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
+;; a settings row's own id is a surrogate; serialization and remote sync name it by the Field it describes
+(defmethod serdes/primary-key "FieldUserSettings" [_model-name] :field_id)
+
 (defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))

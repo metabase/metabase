@@ -24,7 +24,7 @@
          (is (t2/exists? :model/Collection :id collection-id))
          (is (some? (t2/select-one :model/Collection :id collection-id))))))))
 
-(deftest ^:parallel a-worktree-writes-only-to-its-own-world-test
+(deftest a-worktree-writes-only-to-its-own-world-test
   (mt/with-temp [:model/Collection {collection-id :id} {:name "Worktree scope"}]
     (worktree/with-worktree Integer/MAX_VALUE
       (is (zero? (t2/update! :model/Collection collection-id {:name "Renamed from a worktree"})))

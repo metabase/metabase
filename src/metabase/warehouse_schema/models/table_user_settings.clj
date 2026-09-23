@@ -156,6 +156,9 @@
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
+;; a settings row's own id is a surrogate; serialization and remote sync name it by the Table it describes
+(defmethod serdes/primary-key "TableUserSettings" [_model-name] :table_id)
+
 (defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]
   (conj (serdes/table->path (serdes/*export-table-fk* table_id))
         {:model "TableUserSettings" :id "1"}))
@@ -204,7 +207,6 @@
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
                :fields        (serdes/nested :model/FieldUserSettings :table_id
                                              {:sort-by          :field_name
-                                              :parent-key       :table_id
                                               :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")

@@ -341,7 +341,7 @@
               (warehouse-schema.db/field edited-id)))
       (is (=? {:id plain-id :display_name "Plain"} (warehouse-schema.db/field plain-id))))
     (testing "a flag left false means the sync value shows, even next to a user value"
-      (t2/update! :model/FieldUserSettings edited-id {:description_set false})
+      (t2/update! :model/FieldUserSettings :field_id edited-id {:description_set false})
       (is (= "sync description" (:description (warehouse-schema.db/field edited-id)))))
     (testing "coercion_strategy follows the user's effective_type, so a cleared coercion shows as cleared"
       (t2/update! :model/Field edited-id {:effective_type :type/Number :coercion_strategy :Coercion/String->Number})

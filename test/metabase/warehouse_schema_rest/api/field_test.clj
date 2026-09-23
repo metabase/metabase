@@ -527,7 +527,9 @@
   (-> (t2/select-one :model/Field :id field-id)
       (t2/hydrate :dimensions)
       :dimensions
-      first))
+      first
+      ;; which world a dimension lives in is not what these tests are about
+      (some-> (dissoc :worktree_id))))
 
 (defn- create-dimension-via-API!
   [field-id map-to-post & {:keys [expected-status-code]

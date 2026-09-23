@@ -339,8 +339,13 @@
     (assert (contains? m k2)
             (format "Transform must define one of %s or %s" k1 k2))))
 
-(defn primary-key
-  "The primary key column of `model-name`'s model; serialization keys every model by one column."
+(defmulti primary-key
+  "The column `model-name`'s model is keyed by for serialization -- the column an exported id names. Its primary key,
+  unless the model overrides this because that key is a surrogate."
+  {:arglists '([model-name])}
+  identity)
+
+(defmethod primary-key :default
   [model-name]
   (first (t2/primary-keys (keyword "model" model-name))))
 
@@ -407,16 +412,9 @@
   (eduction (map (partial log-and-extract-one model opts))
             (extract-query model opts)))
 
-(defn- nested-parent-key
-  "The column of the parent the nested entities point at with their backward foreign key: its primary key, unless
-  the spec names another one -- a row whose primary key is a surrogate is still nested under what it describes."
-  [transform batch]
-  (or (:parent-key transform)
-      (primary-key (name (t2/model (first batch))))))
-
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
-        pk          (nested-parent-key transform batch)
+        pk          (primary-key (name (t2/model (first batch))))
         entities    (-> (extract-query (name (:model transform))
                                        (assoc opts
                                               :filter-column backward-fk
@@ -426,12 +424,12 @@
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (*make-spec* model-name opts)]
+  (let [spec (*make-spec* model-name opts)
+        pk   (primary-key model-name)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
-                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch)
-                                                    (nested-parent-key transform batch))))
+                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch) pk)))
                batch
                (:transform spec))))
 
@@ -1833,18 +1831,15 @@
                                        :import #(*import-fk* % model)))))
 
 (defn nested
-  "Nested entities; `opts` may give `:sort-by`, `:key-field`, `:parent-key` and `:delete-children!`, a fn of the
-  parent id."
+  "Nested entities; `opts` may give `:sort-by`, `:key-field` and `:delete-children!`, a fn of the parent id."
   [model backward-fk opts]
   (let [model-name       (name model)
         sorter           (:sort-by opts :created_at)
         key-field        (:key-field opts :entity_id)
-        parent-key       (:parent-key opts)
         delete-children! (:delete-children! opts #(models.db/delete-children! model backward-fk %))]
     {::nested             true
      :model               model
      :backward-fk         backward-fk
-     :parent-key          (:parent-key opts)
      :opts                opts
      :export-with-context (fn [current _ data]
                             (assert (every? #(t2/instance-of? model %) data)
@@ -1860,8 +1855,7 @@
                                                  :parent-id (some->> (t2/model current) name primary-key (get current))}
                                                 e)))))
      :import-with-context (fn [current _ lst]
-                            (let [parent-id (get current (or parent-key
-                                                             (primary-key (name (t2/model current)))))
+                            (let [parent-id (get current (primary-key (name (t2/model current))))
                                   first-eid (some->> (first lst)
                                                      (entity-id model-name))
                                   enrich    (fn [ingested]
