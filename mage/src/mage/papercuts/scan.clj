@@ -24,6 +24,7 @@
    [mage.color :as c]
    [mage.papercuts.drill :as drill]
    [mage.papercuts.git :as papercut-git]
+   [mage.papercuts.hooks :as hooks]
    [mage.papercuts.jev :as jev]
    [mage.papercuts.transcript :as transcript]
    [mage.util :as u])
@@ -463,7 +464,11 @@
                            :reporter   (or (:reporter options) (str (System/getProperty "user.name") "." (name source)))
                            :machine    (.getHostName (java.net.InetAddress/getLocalHost))
                            :log        (log-file state-file)
-                           :api-key    (api-key!)})
+                           :api-key    (api-key!)
+                           ;; Hook scans run in the agent's environment, so these are read from .env and
+                           ;; mise.local.toml as well, like the Jev key.
+                           :server     (or (:server options) (bot-env/resolve-env "PAPERCUTS_SERVER") hooks/default-server)
+                           :token      (or (:token options) (bot-env/resolve-env "PAPERCUTS_TOKEN"))})
         state      (atom (cond-> (load-state state-file)
                            ;; A rescan forgets how far each session was read, but not what it already reported.
                            (:rescan options) (update :sessions update-vals #(select-keys % [:reported]))))

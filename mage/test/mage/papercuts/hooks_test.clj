@@ -26,11 +26,11 @@
     (is (= 2 (count (get-in updated ["hooks" "SessionEnd"]))))
     (is (= 1 (count (get-in updated ["hooks" "Stop"]))))
     (is (str/includes? (get-in updated ["hooks" "Stop" 0 "hooks" 0 "command"])
-                       "--server 'https://metaouch.dev'"))
+                       "--server 'http://10.193.193.227:8765'"))
     (is (= updated (hooks/updated-config updated "claude")))))
 
 (deftest server-option-test
-  (is (= "https://metaouch.dev" (hooks/normalize-server "https://metaouch.dev/")))
+  (is (= "http://10.193.193.227:8765" (hooks/normalize-server "http://10.193.193.227:8765/")))
   (is (= "http://127.0.0.1:8766" (hooks/normalize-server "http://127.0.0.1:8766")))
   (doseq [server ["" "ftp://example.com" "https://example.com/api" "https://example.com?x=1"
                   "https://user:password@example.com" "http://localhost:0"]]

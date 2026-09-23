@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "local" / "papercuts"
 SESSION_ID = re.compile(r"^[0-9a-fA-F-]{36}$")
 EVENTS = {"Stop", "SessionEnd"}
-DEFAULT_SERVER = "https://metaouch.dev"
+# The shared server on coredev, reached over Tailscale. metaouch.dev stays closed to scripts until Google sign-in is live.
+DEFAULT_SERVER = "http://10.193.193.227:8765"
 
 
 def normalize_server(server):

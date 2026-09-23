@@ -11,7 +11,10 @@
 
 (def ^:private agents ["claude" "codex"])
 (def ^:private events ["Stop" "SessionEnd"])
-(def default-server "https://metaouch.dev")
+(def default-server
+  "The shared server on coredev, reached over Tailscale. metaouch.dev serves the same data but stays closed to scripts
+  until Google sign-in is live."
+  "http://10.193.193.227:8765")
 
 (defn normalize-server
   "Accept an HTTP(S) origin, optionally with a port. The scanner appends /api routes to it."

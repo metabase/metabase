@@ -19,7 +19,7 @@ class SessionScanHookTest(unittest.TestCase):
         command = hook.scan_command("codex", session_id, "SessionEnd")
         self.assertEqual(command[1:], ["papercuts-scan-codex", "--session", session_id,
                                         "--min-idle", "0", "--no-subagents", "--jobs", "1",
-                                        "--server", "https://metaouch.dev"])
+                                        "--server", "http://10.193.193.227:8765"])
         # A session can go on after Stop, so a short last stretch waits for the next turn.
         self.assertEqual(hook.scan_command("codex", session_id, "Stop"), command + ["--hold-short-tail"])
         with self.assertRaises(ValueError):
@@ -44,7 +44,7 @@ class SessionScanHookTest(unittest.TestCase):
             self.assertTrue(hook.launch("claude", payload))
             self.assertTrue(popen.call_args.kwargs["start_new_session"])
             self.assertEqual(popen.call_args.args[0][-4:], ["claude", session_id, "Stop",
-                                                            "https://metaouch.dev"])
+                                                            "http://10.193.193.227:8765"])
             self.assertFalse(hook.launch("claude", {**payload, "hook_event_name": "SessionStart"}))
             with mock.patch.dict(hook.os.environ, {"PAPERCUTS_SCAN_HOOK": "1"}):
                 self.assertFalse(hook.launch("claude", payload))
