@@ -562,13 +562,23 @@
                                   eid (when model-key (remote-sync.db/entity-id model-key model_id))]
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id})
+        ;; Deleting a Dashboard or Document cascades (by foreign key) to the Cards that belong to it. Those Cards
+        ;; are ledger rows of their own, usually deleted by the same pull; when the remote kept a child's file,
+        ;; delete it here too, so its ledger row and search entry go as they do in the full import. Looked up
+        ;; after the load, so a child the pull moved out of its parent is not included.
+        deleted-ids   (fn [model-type] (into [] (keep #(when (= model-type (:model_type %)) (:model_id %))) deletes))
+        cascaded      (into #{}
+                            (map (fn [card-id] {:model_type "Card" :model_id card-id}))
+                            (remote-sync.db/child-card-ids (deleted-ids "Dashboard") (deleted-ids "Document")))
+        deletes       (distinct (concat deletes cascaded))
         model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
         ;; Deleted in the same dependency order as the full import's [[remove-unsynced!]]: contents before the
         ;; Collection that holds them. (Deleting a Collection cascades to its contents anyway.)
         deletion-rank (into {} (map-indexed (fn [i [model-key _]] [model-key i])) (spec/specs-for-deletion))
         deletes-by-key (sort-by (fn [[model-key _]] (deletion-rank model-key Long/MAX_VALUE))
                                 (group-by model-key-of deletes))
-        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)
+        sync-rows     (into [] (remove #(cascaded (select-keys % [:model_type :model_id])))
+                            (spec/sync-all-entities! sync-timestamp imported-data))
         cascaded-search-ids (atom {})]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
