@@ -361,7 +361,7 @@
             values, which the ledger doesn't track; like the full import, it must drop them from search"
     (search.tu/with-appdb-search-if-available*
       (do-with-bench!
-       (fn [f0]
+       (fn [_f0]
          (let [bench (bench-collection)]
            (mt/with-temp [:model/Card {model-id :id} {:name "Bench Model" :type :model :collection_id (:id bench)}
                           :model/Action {action-id :id} {:name "Zebra action" :type :http :model_id model-id}
