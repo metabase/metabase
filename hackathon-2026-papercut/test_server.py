@@ -56,6 +56,48 @@ class WebViewTest(StoreCase):
         self.assertIn("setTimeout(applyFilters, event.target.matches('input') ? 300 : 0)", page)
         self.assertIn("setInterval(refreshPage, 15000)", page)
 
+    def seed_sources(self):
+        """Four papercuts with distinct counts, costs, dates, sources and claims."""
+        for title, reports in (
+                ("Alpha", [("chris", "claude", None, 5, "2026-09-01"), ("tyler", "codex", None, 70, "2026-09-10")]),
+                ("Bravo", [("chris", "codex", None, 1, "2026-09-05")]),
+                ("Charlie", [("andreis.metabot", "metabot", "stats", 0.2, f"2026-09-1{day}") for day in (2, 3, 4)]),
+                ("Delta", [("chris", "claude", None, 30, "2026-08-20")])):
+            for reporter, agent, machine, cost, observed in reports:
+                self.report(title=title, fingerprint=title, description=f"{title} happens", reporter=reporter,
+                            agent=agent, machine=machine, cost_minutes=cost, observed_at=observed)
+        for papercut_id, claimant in ((2, "tyler"), (4, "chris")):
+            self.store.claim(papercut_id, {}, claimant)
+
+    def test_every_sort_orders_the_list(self):
+        self.seed_sources()
+        expected = {"important": ["Charlie", "Alpha", "Bravo", "Delta"],
+                    "oldest-claim-first": ["Bravo", "Delta", "Charlie", "Alpha"],
+                    "recent": ["Charlie", "Alpha", "Bravo", "Delta"],
+                    "oldest": ["Delta", "Alpha", "Bravo", "Charlie"],
+                    "reports": ["Charlie", "Alpha", "Bravo", "Delta"],
+                    "reporters": ["Alpha", "Charlie", "Delta", "Bravo"],
+                    "agents": ["Alpha", "Charlie", "Delta", "Bravo"],
+                    "cost": ["Alpha", "Delta", "Bravo", "Charlie"],
+                    "updated": ["Delta", "Bravo", "Charlie", "Alpha"]}
+        self.assertEqual(set(expected), set(server.SORTS))
+        for sort, titles in expected.items():
+            with self.subTest(sort):
+                self.assertEqual([p["title"] for p in self.store.list_papercuts({"sort": sort})["papercuts"]], titles)
+
+    def test_source_filter_and_chips(self):
+        self.seed_sources()
+        for source, titles in (("instance:stats", ["Charlie"]), ("person:chris.claude", ["Alpha", "Delta"]),
+                               ("person:tyler.codex,instance:stats", ["Charlie", "Alpha"]), ("none", [])):
+            with self.subTest(source):
+                self.assertEqual([p["title"] for p in self.store.list_papercuts({"source": source})["papercuts"]], titles)
+        self.assertEqual(self.store.sources(), {"person:chris.claude": 2, "person:tyler.codex": 1, "person:chris.codex": 1,
+                                                "instance:stats": 1})
+        page = server.papercut_list_html(self.store.list_papercuts(), {"source": "instance:stats"}, (), None,
+                                         self.store.sources(), self.store.sources())
+        self.assertIn("data-value='instance:stats' aria-pressed='true'>stats<span class='count'>1</span>", page)
+        self.assertIn("data-value='person:chris.claude' aria-pressed='false'>Chris · Claude<span class='count'>2</span>", page)
+
     def test_list_previews_are_plain_text(self):
         self.papercut("Markdown preview", description="Intro `code` and **bold**.\n\n## Links\n\n- [Conversation](http://x) here")
         page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())

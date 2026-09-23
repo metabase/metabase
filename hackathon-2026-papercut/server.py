@@ -58,9 +58,17 @@ PR_URL = re.compile(r"https://github\.com/metabase/metabase/pull/(\d+)")
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
+# Where a report came from: a Metabase instance (Metabot names it in `machine`), or a person and their agent.
+REPORT_SOURCE = """CASE WHEN r.agent = 'metabot' THEN 'instance:' || COALESCE(NULLIF(r.machine, ''), 'metabot')
+                        WHEN r.agent IS NULL OR r.agent = '' OR r.reporter LIKE '%.' || r.agent THEN 'person:' || r.reporter
+                        ELSE 'person:' || r.reporter || '.' || r.agent END"""
 # When the papercut's claim in progress started, or NULL when nobody is working on it.
 CLAIMED_AT = f"""(SELECT MIN(d.created_at) FROM dispatches d WHERE d.papercut_id = p.id
                   AND d.state IN ({', '.join(f"'{state}'" for state in ACTIVE_DISPATCH_STATES)}))"""
+# Each sort's label on the page, in menu order.
+SORT_LABELS = {"important": "Important first", "oldest-claim-first": "Oldest claim first", "recent": "Newest",
+               "oldest": "Oldest", "reports": "Most reports", "reporters": "Most reporters", "agents": "Most agents",
+               "cost": "Most time lost", "updated": "Recently updated"}
 SORTS = {
     "important": f"{IMPORTANT} DESC, p.last_seen DESC, p.id DESC",
     "oldest-claim-first": f"{CLAIMED_AT} IS NULL, {CLAIMED_AT}, p.last_seen DESC, p.id DESC",
@@ -887,6 +895,12 @@ class Store:
                 either.append("p.category IS NULL")
             clauses.append(f"({' OR '.join(either)})")
             params.extend(named)
+        # A comma-separated list of report sources; a papercut matches when any of its reports came from one.
+        if filters.get("source"):
+            sources = filters["source"].split(",")
+            clauses.append(f"EXISTS (SELECT 1 FROM reports r WHERE r.papercut_id = p.id "
+                           f"AND ({REPORT_SOURCE}) IN ({', '.join('?' * len(sources))}))")
+            params.extend(sources)
         if filters.get("q"):
             clauses.append("(p.title LIKE ? OR p.description LIKE ? OR p.path LIKE ? OR p.area LIKE ?)")
             params.extend([f"%{filters['q']}%"] * 4)
@@ -938,6 +952,14 @@ class Store:
                                   "dispatch": json.loads(row["dispatch"]) if row["dispatch"] else None} for row in rows]
         return {"papercuts": papercuts, "total": total, "limit": limit if limit > 0 else None, "offset": offset,
                 "next_offset": offset + limit if 0 < offset + limit < total else None, "cursor": cursor}
+
+    def sources(self, papercut_ids=None):
+        """How many papercuts each report source reported, over `papercut_ids` or every live papercut."""
+        with self.connect() as db:
+            rows = db.execute(f"""SELECT DISTINCT r.papercut_id, {REPORT_SOURCE} AS source FROM reports r
+                                  JOIN papercuts p ON p.id = r.papercut_id WHERE p.merged_into IS NULL""").fetchall()
+        wanted = None if papercut_ids is None else set(papercut_ids)
+        return Counter(row["source"] for row in rows if wanted is None or row["papercut_id"] in wanted)
 
     def repositories(self):
         with self.connect() as db:
@@ -1760,6 +1782,8 @@ UI_STYLE = """<style>
 .chip[data-value=flaky-test] {--dot: #e25c5c}
 .chip[data-value=tooling] {--dot: #14a3a3}
 .chip[data-value=documentation] {--dot: #4f86e0}
+.chip[data-value^="instance:"] {--dot: #14a3a3}
+.chip[data-value^="person:"] {--dot: #8b5cf6}
 .chips .link {min-height: 0; padding: 0 .2rem; border: 0; background: none; color: var(--link)}
 @media (min-width: 931px) {
   .chips {flex-wrap: nowrap; gap: .35rem; overflow-x: auto; padding: .2rem; margin-inline: -.2rem}
@@ -1888,19 +1912,19 @@ UI_SCRIPT = """<script>
     if (event.key === 'Escape') close();
   });
 
-  const category = form.elements.category;
   document.addEventListener('click', (event) => {
     const target = event.target.closest('.chip, [data-chips]');
-    if (!target || !category) return;
-    const chips = [...document.querySelectorAll('.chip')];
+    const input = target && form.elements[target.closest('.chips').dataset.name];
+    if (!input) return;
+    const chips = [...target.closest('.chips').querySelectorAll('.chip')];
     const chosen = new Set(chips.filter((chip) => chip.getAttribute('aria-pressed') === 'true').map((chip) => chip.dataset.value));
     if (target.dataset.chips === 'all') chips.forEach((chip) => chosen.add(chip.dataset.value));
     else if (target.dataset.chips === 'none') chosen.clear();
     else if (chosen.has(target.dataset.value)) chosen.delete(target.dataset.value);
     else chosen.add(target.dataset.value);
     for (const chip of chips) chip.setAttribute('aria-pressed', chosen.has(chip.dataset.value));
-    category.value = chosen.size === chips.length ? '' : [...chosen].join(',') || 'none';
-    category.dispatchEvent(new Event('change', {bubbles: true}));
+    input.value = chosen.size === chips.length ? '' : [...chosen].join(',') || 'none';
+    input.dispatchEvent(new Event('change', {bubbles: true}));
   });
 })();
 </script>""".replace("CHEVRON", icon("chevron"))
@@ -1963,15 +1987,24 @@ def important_pill(papercut):
             "important</span>") if papercut["important"] else ""
 
 
-def category_chips(chosen, counts):
-    categories = (*CATEGORIES, "unclassified")
-    picked = set(chosen.split(",")) if chosen else set(categories)
-    chips = "".join(
-        f"<button type='button' class='chip{'' if counts.get(category) else ' none'}' data-value='{category}' "
-        f"aria-pressed='{str(category in picked).lower()}'>{category}<span class='count'>{counts.get(category, 0)}</span></button>"
-        for category in categories)
-    return (f"<div class='chips' role='group' aria-label='Category'><span class='eyebrow'>Category</span>{chips}"
-            "<button type='button' class='link' data-chips='all'>All</button><span class='muted'>·</span>"
+def source_label(source):
+    """`stats` for a Metabase instance, `Chris · Claude` for a person and their agent."""
+    kind, _, name = source.partition(":")
+    if kind == "instance":
+        return name
+    return " · ".join(part.capitalize() for part in name.split(".", 1))
+
+
+def chips(name, label, values, chosen, counts, text=str):
+    """Toggle chips for one filter, each with its count, plus All and None. `chosen` is the filter's comma list."""
+    picked = set(chosen.split(",")) if chosen else set(values)
+    buttons = "".join(
+        f"<button type='button' class='chip{'' if counts.get(value) else ' none'}' data-value='{html.escape(value, quote=True)}' "
+        f"aria-pressed='{str(value in picked).lower()}'>{html.escape(text(value))}"
+        f"<span class='count'>{counts.get(value, 0)}</span></button>"
+        for value in values)
+    return (f"<div class='chips' data-name='{name}' role='group' aria-label='{label}'><span class='eyebrow'>{label}</span>"
+            f"{buttons}<button type='button' class='link' data-chips='all'>All</button><span class='muted'>·</span>"
             "<button type='button' class='link' data-chips='none'>None</button></div>")
 
 
@@ -2256,7 +2289,7 @@ def list_card_html(p):
             f"{dispatch_control(p, p['dispatch'])}</article></li>")
 
 
-def papercut_list_html(result, filters, repositories=(), category_counts=None):
+def papercut_list_html(result, filters, repositories=(), category_counts=None, source_counts=None, sources=()):
     esc = html.escape
     search = filter_field("q", "Search terms", f"<input id='q' type='search' name='q' placeholder='Search terms…' value='{esc(filters.get('q', ''), quote=True)}'>")
     available_repositories = list(repositories)
@@ -2267,10 +2300,12 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None):
                                select("repository", available_repositories, filters.get("repository"), "All repositories"))
                   if show_repository else "")
     status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All statuses"))
-    category = f"<input type='hidden' name='category' value='{esc(filters.get('category', ''), quote=True)}'>"
+    category = "".join(f"<input type='hidden' name='{name}' value='{esc(filters.get(name, ''), quote=True)}'>"
+                       for name in ("category", "source"))
     counts = category_counts or Counter(p["category"] or "unclassified" for p in result["papercuts"])
-    sort = filter_field("sort", "Sort by", select("sort", [key for key in SORTS if key != "important"], filters.get("sort"),
-                                                  "Important first"))
+    sort = filter_field("sort", "Sort by", "<select id='sort' name='sort'>" + "".join(
+        f"<option value='{'' if key == 'important' else key}'{' selected' if filters.get('sort') == key else ''}>{label}</option>"
+        for key, label in SORT_LABELS.items()) + "</select>")
     cards = "".join(list_card_html(p) for p in result["papercuts"])
     if cards:
         cards = f"<ol class='issue-list'>{cards}</ol>"
@@ -2280,7 +2315,8 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None):
             "<p>Small friction, collected across reports and agents.</p></div>"
             f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}"
             "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
-            f"<div id='results'>{category_chips(filters.get('category', ''), counts)}"
+            f"<div id='results'>{chips('category', 'Category', (*CATEGORIES, 'unclassified'), filters.get('category', ''), counts)}"
+            f"{chips('source', 'Source', sorted(sources), filters.get('source', ''), source_counts or {}, source_label) if sources else ''}"
             f"<div class='results-heading'><h2>{result['total']} "
             f"{'papercut' if result['total'] == 1 else 'papercuts'}</h2></div>{cards}</div>")
     return page("Papercuts", body)
@@ -2311,6 +2347,10 @@ def dispatch_links(dispatch):
         number = dispatch["pr_url"].rstrip("/").rsplit("/", 1)[-1]
         links.append(external_link(dispatch["pr_url"], f"PR #{number}" if number.isdigit() else "Draft PR"))
     return "".join(f"<span class='dispatch-link'>{link}</span>" for link in links)
+
+
+def pick(mapping, *keys):
+    return {key: mapping[key] for key in keys if mapping.get(key)}
 
 
 def signed_in_email():
@@ -2609,12 +2649,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
             # The page lists live papercuts; a change feed is for API clients.
-            filters = {key: params[key] for key in ("repository", "status", "category", "q", "sort") if key in params}
+            filters = {key: params[key] for key in ("repository", "status", "category", "source", "q", "sort") if key in params}
             others = {key: filters[key] for key in ("q", "status", "repository") if filters.get(key)}
-            counted = self.store.list_papercuts({**others, "limit": sys.maxsize}, max_limit=sys.maxsize)["papercuts"]
-            counts = Counter(p["category"] or "unclassified" for p in counted)
+            every = {"limit": sys.maxsize}
+            by_category = self.store.list_papercuts({**others, **pick(filters, "source"), **every}, max_limit=sys.maxsize)
+            counts = Counter(p["category"] or "unclassified" for p in by_category["papercuts"])
+            by_source = self.store.list_papercuts({**others, **pick(filters, "category"), **every}, max_limit=sys.maxsize)
+            source_counts = self.store.sources([p["id"] for p in by_source["papercuts"]])
             everything = self.store.list_papercuts({"sort": "important", **filters, "limit": sys.maxsize}, max_limit=sys.maxsize)
-            return self.respond(200, papercut_list_html(everything, filters, self.store.repositories(), counts), "text/html")
+            return self.respond(200, papercut_list_html(everything, filters, self.store.repositories(), counts, source_counts,
+                                                        self.store.sources()), "text/html")
         if command == "GET" and html_match:
             if self.redirect_if_merged(int(html_match[1]), "/papercuts", url.query):
                 return None
