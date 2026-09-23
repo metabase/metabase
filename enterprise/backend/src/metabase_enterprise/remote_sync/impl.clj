@@ -1678,7 +1678,9 @@
               ;; only the entities the remote changed decide the preview, so extract and serialize just those
               (assoc (source/preview-merge-changes
                       (fn [changed-paths]
-                        (spec/extract-entities-for-export (spec/targets-for-paths targets changed-paths)))
+                        (spec/extract-entities-for-export (if (= :all changed-paths)
+                                                            targets
+                                                            (spec/targets-for-paths targets changed-paths))))
                       snapshot base-snapshot)
                      :diverged? true)
               (assoc no-changes :diverged? true))))

@@ -207,15 +207,18 @@
 
   `ours-for` is called once with the serdes paths (`[{:model :id} ...]`) of the remote-changed entities and returns
   `{:path :content}` specs. It may return more than those entities (extra ones change nothing) but must return
-  every local entity that serializes to one of those paths; an entity it leaves out reads as absent locally."
+  every local entity that serializes to one of those paths; an entity it leaves out reads as absent locally.
+
+  A remote-changed file with no serdes identity (keyed by its path) can't be narrowed to an entity to look up, so
+  when there is one, `ours-for` is called with `:all` instead and must return every local spec, as the full merge
+  would see it."
   [base theirs ours-for]
   (let [b       (index-by-key base)
         t       (index-by-key theirs)
         changed (theirs-changed-keys b t)
-        paths   (into []
-                      (comp (remove (fn [k] (= ::by-path (first k))))
-                            (map (fn [k] (mapv (fn [[model id]] {:model model :id id}) k))))
-                      changed)
+        paths   (if (some (fn [k] (= ::by-path (first k))) changed)
+                  :all
+                  (mapv (fn [k] (mapv (fn [[model id]] {:model model :id id}) k)) changed))
         o       (index-by-key (ours-for paths))]
     (-> (merge-indexed b o t)
         (dissoc :merged)

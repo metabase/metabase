@@ -190,7 +190,8 @@
     :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote content a
   force push (rather than a merge) would discard. `extract-for` is called once with the serdes paths of the remote-changed
   entities and returns a stream of extracted entities that includes every local entity serializing to one of those
-  paths (see [[remote-sync.merge/preview-with-casualties]])."
+  paths, or with `:all` when a remote-changed file has no serdes identity, in which case it returns every exported
+  entity (see [[remote-sync.merge/preview-with-casualties]])."
   [extract-for snapshot base-snapshot]
   (let [{:keys [conflicts summary force-push-casualties]}
         (remote-sync.merge/preview-with-casualties (snapshot->specs base-snapshot)
