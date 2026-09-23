@@ -156,8 +156,8 @@
       (mapv parse-double (str/split s #",")))))
 
 (api.macros/defendpoint :get "/projection" :- projection-response
-  "Return every non-archived document in the active semantic search index with its raw embedding vector, capped at
-  5000 rows. Administrators only.
+  "Return every non-archived saved question in the active semantic search index with its raw embedding vector, capped
+  at 5000 rows. Administrators only.
 
   Returns {:points []} when no pgvector database is configured or no index is active."
   []
@@ -175,7 +175,9 @@
                                   (semantic.index/sql-format-quoted
                                    {:select [:model :model_id :name :embedding]
                                     :from   [(keyword table-name)]
-                                    :where  [:= :archived false]
+                                    :where  [:and
+                                             [:= :archived false]
+                                             [:= :model "card"]]
                                     :limit  5000})
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
           {:points (mapv (fn [row]

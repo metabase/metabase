@@ -18,17 +18,17 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import type { EChartsEventHandler } from "metabase/viz-core";
 import { useGetEmbeddingProjectionQuery } from "metabase-enterprise/api";
 import type { EmbeddingProjectionPoint } from "metabase-types/api";
 
-import { registerLegendComponent } from "./echarts-legend";
-
-registerLegendComponent();
-
 const RANDOM_SEED = 42;
+// Neighborhood size drives how much UMAP separates clusters: too many
+// neighbors on a small collection connects every question to questions
+// outside its natural topic, and the topics blend into one uniform sheet.
+// Scale with the collection size, staying within UMAP's useful range.
+const MIN_NEIGHBORS = 5;
 const MAX_NEIGHBORS = 15;
 const MIN_POINTS_FOR_UMAP = 4;
 
@@ -40,7 +40,6 @@ type ProjectedPoint = EmbeddingProjectionPoint & {
 type ScatterDatum = {
   value: [number, number];
   name: string;
-  model: string;
   modelId: string;
 };
 
@@ -67,29 +66,14 @@ function cosineDistance(a: number[], b: number[]): number {
   return denominator === 0 ? 1 : 1 - dot / denominator;
 }
 
-function getEntityUrl(model: string, modelId: string): string | null {
-  switch (model) {
-    case "card":
-    case "question":
-      return `/question/${modelId}`;
-    case "dataset":
-    case "model":
-      return `/model/${modelId}`;
-    case "metric":
-      return `/metric/${modelId}`;
-    case "dashboard":
-      return `/dashboard/${modelId}`;
-    case "table":
-      return Urls.dataStudioTable(Number(modelId));
-    case "collection":
-      return `/collection/${modelId}`;
-    case "database":
-      return `/browse/databases/${modelId}`;
-    case "document":
-      return `/document/${modelId}`;
-    default:
-      return null;
-  }
+function getNeighborCount(pointCount: number): number {
+  return Math.min(
+    pointCount - 1,
+    Math.max(
+      MIN_NEIGHBORS,
+      Math.min(MAX_NEIGHBORS, Math.round(pointCount / 10)),
+    ),
+  );
 }
 
 function useProjection(points: EmbeddingProjectionPoint[] | undefined) {
@@ -113,7 +97,7 @@ function useProjection(points: EmbeddingProjectionPoint[] | undefined) {
 
     const umap = new UMAP({
       nComponents: 2,
-      nNeighbors: Math.min(MAX_NEIGHBORS, points.length - 1),
+      nNeighbors: getNeighborCount(points.length),
       minDist: 0.1,
       distanceFn: cosineDistance,
       random: mulberry32(RANDOM_SEED),
@@ -153,19 +137,15 @@ function useProjection(points: EmbeddingProjectionPoint[] | undefined) {
 }
 
 function getChartOption(projection: ProjectedPoint[]): EChartsCoreOption {
-  const pointsByModel = _.groupBy(projection, (point) => point.model);
-  const models = Object.keys(pointsByModel).sort();
-
   return {
     animation: false,
-    legend: { top: 0, type: "scroll" },
-    grid: { left: 16, right: 44, top: 40, bottom: 44 },
+    grid: { left: 16, right: 44, top: 16, bottom: 44 },
     xAxis: { type: "value", show: false, scale: true },
     yAxis: { type: "value", show: false, scale: true },
     tooltip: {
       trigger: "item",
       formatter: (params: { data: ScatterDatum }) =>
-        `<b>${_.escape(params.data.name)}</b><br/>${_.escape(params.data.model)}`,
+        `<b>${_.escape(params.data.name)}</b>`,
     },
     dataZoom: [
       { type: "inside", xAxisIndex: 0, filterMode: "none" },
@@ -189,19 +169,19 @@ function getChartOption(projection: ProjectedPoint[]): EChartsCoreOption {
         brushSelect: false,
       },
     ],
-    series: models.map((model) => ({
-      name: model,
-      type: "scatter",
-      symbolSize: 7,
-      data: pointsByModel[model].map(
-        (point): ScatterDatum => ({
-          value: [point.x, point.y],
-          name: point.name,
-          model: point.model,
-          modelId: point.model_id,
-        }),
-      ),
-    })),
+    series: [
+      {
+        type: "scatter",
+        symbolSize: 7,
+        data: projection.map(
+          (point): ScatterDatum => ({
+            value: [point.x, point.y],
+            name: point.name,
+            modelId: point.model_id,
+          }),
+        ),
+      },
+    ],
   };
 }
 
@@ -280,12 +260,8 @@ export function EmbeddingMapPage() {
       {
         eventName: "click",
         handler: (event: { data?: ScatterDatum }) => {
-          if (event.data == null) {
-            return;
-          }
-          const url = getEntityUrl(event.data.model, event.data.modelId);
-          if (url != null) {
-            navigate(url);
+          if (event.data != null) {
+            navigate(`/question/${event.data.modelId}`);
           }
         },
       },
@@ -329,7 +305,7 @@ export function EmbeddingMapPage() {
               eventHandlers={eventHandlers}
               onInit={handleChartInit}
             />
-            <Stack pos="absolute" top={48} left={12} gap="xs">
+            <Stack pos="absolute" top={16} left={12} gap="xs">
               <Tooltip label={t`Zoom in`} position="right">
                 <ActionIcon
                   variant="default"
