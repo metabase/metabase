@@ -22,7 +22,6 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
 
@@ -33,8 +32,6 @@ import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import S from "./ManageApiKeys.module.css";
 import { formatMaskedKey } from "./utils";
-
-const { fontFamilyMonospace } = getThemeOverrides();
 
 type Modal = null | "create" | "edit" | "delete";
 
@@ -128,7 +125,7 @@ function useApiKeyColumns({
         enableSorting: false,
         accessorFn: (apiKey) => apiKey.masked_key,
         cell: ({ row }) => (
-          <Text ff={fontFamilyMonospace}>
+          <Text ff={"var(--mb-default-monospace-font-family)"}>
             {formatMaskedKey(row.original.masked_key)}
           </Text>
         ),
