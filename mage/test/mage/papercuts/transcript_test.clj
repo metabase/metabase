@@ -118,3 +118,12 @@
   (is (= "/h/.codex" (transcript/agent-dir {"CODEX_HOME" ""} "/h" :codex)))
   (is (= "/c" (transcript/agent-dir {"CLAUDE_CONFIG_DIR" "/c"} "/h" "claude")))
   (is (= "/x" (transcript/agent-dir {"CODEX_HOME" "/x"} "/h" "codex"))))
+
+(deftest claude-entries-leave-out-system-reminders-test
+  (let [file (write-jsonl
+              [{:type "user" :timestamp "2026-09-01T10:00:00Z"
+                :message {:content "<system-reminder>\nmemory: embargoed PRs\n</system-reminder>run the tests"}}
+               {:type "user" :timestamp "2026-09-01T10:00:01Z"
+                :message {:content [{:type "tool_result" :content "ok<system-reminder>skills list</system-reminder>"}
+                                    {:type "text" :text "and <system-reminder>note</system-reminder>again"}]}}])]
+    (is (= ["run the tests" "ok" "and again"] (map :text (transcript/claude-entries file))))))

@@ -110,8 +110,14 @@
     (str/join "\n" (keep #(when (map? %) (:text %)) content))
     (str content)))
 
+(defn strip-system-reminders
+  "`s` without the `<system-reminder>` blocks the harness splices into user turns and tool results."
+  [s]
+  (str/replace s #"(?s)<system-reminder>.*?</system-reminder>" ""))
+
 (defn- claude-record-entries [line {:keys [type message timestamp isMeta]}]
-  (let [content (:content message)]
+  ;; Reminders are injected context, not the session's work, and would otherwise reach Jev.
+  (let [content (cond-> (:content message) (string? (:content message)) strip-system-reminders)]
     (when (#{"user" "assistant"} type)
       (if (string? content)
         (cond
@@ -121,11 +127,11 @@
         (for [{block-type :type :as block} content]
           (case block-type
             "text"        (entry line timestamp (if (= type "user") "USER" "ASSISTANT")
-                                 (truncate (:text block "") (if (= type "user") 2500 1500)))
+                                 (truncate (strip-system-reminders (:text block "")) (if (= type "user") 2500 1500)))
             "thinking"    (entry line timestamp "THINKING" (truncate (:thinking block "") 500))
             "tool_use"    (entry line timestamp (str "TOOL " (:name block)) (claude-tool-input (:name block) (:input block)))
             "tool_result" (entry line timestamp (if (:is_error block) "RESULT ERROR" "RESULT")
-                                 (truncate (block-text (:content block)) 700))
+                                 (truncate (strip-system-reminders (block-text (:content block))) 700))
             nil))))))
 
 (defn claude-entries
@@ -159,7 +165,7 @@
 (def ^:private codex-injected-prefixes
   "User-role messages that Codex injects rather than the person typing them."
   ["# AGENTS.md instructions" "<environment_context>" "<user_instructions>" "<INSTRUCTIONS>" "<model_switch>"
-   "<permissions" "<turn_aborted>"])
+   "<permissions" "<turn_aborted>" "<recommended_plugins>"])
 
 (defn- codex-content-text [content]
   (cond
@@ -206,11 +212,6 @@
                 (and (= "user" (:role payload))
                      (let [text (str/triml (codex-content-text (:content payload)))]
                        (some #(str/starts-with? text %) codex-injected-prefixes))))))))
-
-(defn strip-system-reminders
-  "`raw` without the `<system-reminder>` blocks the harness splices into user turns."
-  [raw]
-  (str/replace raw #"<system-reminder>.*?</system-reminder>" ""))
 
 (defn codex-entries
   "Entries for a Codex rollout transcript."

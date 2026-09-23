@@ -387,11 +387,18 @@
                                   :line        (first (get-in r [:details :lines]))
                                   :report_id   (:report_id r)})))))
 
+(defn- security-dir?
+  "Whether a directory or project name is a checkout for security work: a worktree named after a SEC issue
+  (`metabase.sec-1172-...`), or the private repository itself."
+  [s]
+  (boolean (re-find #"(?i)(?:^|[-/.])sec-\d|(?:^|[-/.])metabase-private(?:$|[-/.])" (str s))))
+
 (defn security-worktree?
-  "Whether the session ran in a worktree for security work, named after a SEC issue (`metabase.sec-1172-...`).
-  Such a session can be under embargo without ever saying so."
-  [{:keys [project cwd path]}]
-  (boolean (some #(re-find #"(?i)(?:^|[-/.])sec-\d" (str %)) [project cwd path])))
+  "Whether the session ran in a checkout for security work, at its start or in any of `entries`. Such a session can
+  be under embargo without ever saying so, and later commands may use relative paths."
+  ([session] (security-worktree? session []))
+  ([{:keys [project cwd path]} entries]
+   (boolean (some security-dir? (concat [project cwd path] (map :cwd entries))))))
 
 (defn mentions-embargo?
   "Whether the raw transcript at `path` mentions embargoed work. Rendered entries are truncated and redacted, which can
@@ -419,7 +426,7 @@
       (empty? fresh)
       state
 
-      (or (security-worktree? session) (mentions-embargo? (:path session)))
+      (or (security-worktree? session entries) (mentions-embargo? (:path session)))
       (do (say session (c/yellow "skipped: mentions embargoed work"))
           (assoc state :line (:line (peek fresh)) :until (:ts (peek fresh)) :skipped "embargo"))
 

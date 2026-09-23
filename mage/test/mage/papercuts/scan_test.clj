@@ -95,7 +95,14 @@
   (is (scan/security-worktree? {:project "-Users-me-workspace-metabase-metabase-sec-1172-a-settings-manager"}))
   (is (scan/security-worktree? {:cwd "/Users/me/workspace/metabase/metabase.sec-1218-slack-bot"}))
   (is (not (scan/security-worktree? {:project "-Users-me-workspace-metabase-metabase-search-sweep"
-                                     :cwd     "/Users/me/workspace/metabase/metabase"}))))
+                                     :cwd     "/Users/me/workspace/metabase/metabase"})))
+  (testing "the private repository itself, at the start or after a cd"
+    (is (scan/security-worktree? {:cwd "/Users/me/workspace/metabase/metabase-private"}))
+    (is (scan/security-worktree? {:project "-Users-me-workspace-metabase-metabase-private"}))
+    (is (scan/security-worktree? {:cwd "/Users/me/workspace/metabase/metabase"}
+                                 [{:cwd "/Users/me/workspace/metabase/metabase"}
+                                  {:cwd "/Users/me/workspace/metabase/metabase-private.fix-x"}])))
+  (is (not (scan/security-worktree? {:cwd "/Users/me/workspace/metabase/metabase-privatey"}))))
 
 (deftest mentions-embargo-test
   (let [dir (fs/create-temp-dir {:prefix "papercut-embargo"})]
@@ -115,6 +122,8 @@
                  "{\"type\":\"user\",\"message\":{\"content\":\"<system-reminder>notes: embargoed PRs</system-reminder>run the tests\"}}"
                  "codex-meta.jsonl"
                  "{\"type\":\"session_meta\",\"payload\":{\"base_instructions\":\"never mention embargoed work\"}}"
+                 "codex-plugins.jsonl"
+                 "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"<recommended_plugins>x</recommended_plugins>\\n# AGENTS.md instructions: embargoed PRs\"}]}}"
                  "codex-agents.jsonl"
                  "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"# AGENTS.md instructions: embargoed PRs live on metabase-private\"}]}}"}]
           (let [path (fs/path dir file)]
