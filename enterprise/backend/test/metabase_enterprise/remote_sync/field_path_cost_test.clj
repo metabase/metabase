@@ -54,6 +54,9 @@
                                                     :filter      [:> $price i]})}))
           (let [src (rs.test/versioned-source :trees {"v0" (synced-tree)} :current "v0")]
             (is (= :success (:status (import-at! src "v0"))) "baseline load")
+            ;; A reload keeps the stored hash of any entity whose file hashes to it, skipping re-serialization, so
+            ;; clear the hashes to make the reload re-serialize (and look up field paths for) every card.
+            (t2/update! :model/RemoteSyncObject {} {:content_hash nil})
             (let [calls (atom 0)
                   real  (mt/original-fn #'models.db/field-hierarchy-rows)]
               (mt/with-dynamic-fn-redefs [models.db/field-hierarchy-rows (fn [& args] (swap! calls inc) (apply real args))]

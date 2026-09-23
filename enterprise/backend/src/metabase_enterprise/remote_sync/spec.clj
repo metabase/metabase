@@ -1242,24 +1242,32 @@
   rest.
 
   Each path is resolved to its local row with `serdes/load-find-local`. A row that is not among `targets` isn't
-  exported, so it needs nothing. A path that resolves to no row (or whose lookup fails) keeps every target of its
+  exported, so it needs nothing. Neither does an entity_id that the default lookup (by `entity_id`) finds no row
+  for: a local entity serializes under its own entity_id, so none serializes to that path; this is what a remote
+  addition looks like. Any other path that resolves to no row (or whose lookup fails) keeps every target of its
   model: the entity may be absent locally or keyed in a way the lookup doesn't see, and full extraction of that
   model tells the two apart exactly as a full export would."
   [targets serdes-paths]
   (let [target-sets (update-vals targets set)
+        default-find (get-method serdes/load-find-local :default)
+        absent?     (fn [model path]
+                      ;; no local row can serialize to this path
+                      (and (identical? default-find (get-method serdes/load-find-local model))
+                           (serdes/entity-id? (:id (last path)))))
         wanted      (reduce (fn [acc path]
                               (let [model (:model (last path))
                                     ids   (get target-sets model)]
                                 (if (or (empty? ids) (= ::all (get acc model)))
                                   acc
-                                  (let [local (try
-                                                (serdes/load-find-local path)
-                                                (catch Exception e
-                                                  (log/debugf e "Could not resolve %s locally; extracting all %s targets"
-                                                              (pr-str path) model)
-                                                  nil))
+                                  (let [[found? local] (try
+                                                         [true (serdes/load-find-local path)]
+                                                         (catch Exception e
+                                                           (log/debugf e "Could not resolve %s locally; extracting all %s targets"
+                                                                       (pr-str path) model)
+                                                           [false nil]))
                                         pk    (when local (get local (serdes/primary-key model)))]
                                     (cond
+                                      (and (nil? local) found? (absent? model path)) acc
                                       (nil? pk)          (assoc acc model ::all)
                                       (contains? ids pk) (update acc model (fnil conj #{}) pk)
                                       :else              acc)))))

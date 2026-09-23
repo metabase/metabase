@@ -205,6 +205,19 @@
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
+(defn compute-merge-changes
+  "What [[compute-merge]] returns except `:merged` (`:conflicts`, `:summary` and `:force-push-casualties`), serializing
+  only the local entities the remote changed since the merge base: an entity the remote left alone can neither
+  conflict nor appear in the summary (see [[remote-sync.merge/preview-with-casualties]]). `extract-for` is called
+  once with the serdes paths of the remote-changed entities and returns a stream of extracted entities that includes
+  every local entity serializing to one of those paths, or with `:all` when a remote-changed file has no serdes
+  identity, in which case it returns every exported entity. `:synced-hashes` is as for [[compute-merge]]."
+  [extract-for snapshot base-snapshot & {:keys [synced-hashes]}]
+  (remote-sync.merge/preview-with-casualties (snapshot->specs base-snapshot)
+                                             (snapshot->specs snapshot)
+                                             (fn [paths] (serialize-specs (extract-for paths) nil))
+                                             :unchanged-locally? (unchanged-since-sync-fn synced-hashes)))
+
 (defn preview-merge-changes
   "Dry-run of the export merge: computes what a 3-way merge would do without writing anything, serializing only the
   local entities the remote changed since the merge base. Returns
@@ -216,10 +229,7 @@
   entity (see [[remote-sync.merge/preview-with-casualties]]). `:synced-hashes` is as for [[compute-merge]]."
   [extract-for snapshot base-snapshot & {:keys [synced-hashes]}]
   (let [{:keys [conflicts summary force-push-casualties]}
-        (remote-sync.merge/preview-with-casualties (snapshot->specs base-snapshot)
-                                                   (snapshot->specs snapshot)
-                                                   (fn [paths] (serialize-specs (extract-for paths) nil))
-                                                   :unchanged-locally? (unchanged-since-sync-fn synced-hashes))]
+        (compute-merge-changes extract-for snapshot base-snapshot :synced-hashes synced-hashes)]
     {:clean?                 (empty? conflicts)
      :conflicts             (mapv remote-sync.merge/conflict-label conflicts)
      :summary               summary
