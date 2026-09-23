@@ -87,15 +87,69 @@
             (is (= 2 (count @calls)))))))))
 
 (deftest reranker-down-is-null-test
+  (with-conn! [conn]
+    (with-vibes (fn [& _] nil)
+      (let [rows (q conn canonical "best" 20)]
+        (is (every? nil? (map :vibe rows)))
+        (testing "tiebreak order (the original one) survives"
+          (is (= (map #(str "item " %) (range 1 21)) (map :name rows))))))))
+
+(deftest reranker-down-is-not-cached-test
   (let [calls (atom 0)]
     (with-conn! [conn]
       (with-vibes (fn [& _] (swap! calls inc) nil)
-        (let [rows (q conn canonical "best" 20)]
-          (is (every? nil? (map :vibe rows)))
-          (testing "tiebreak order (the original one) survives"
-            (is (= (map #(str "item " %) (range 1 21)) (map :name rows))))
-          (testing "the failure is remembered: not one call per row"
-            (is (= 1 @calls))))))))
+        (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")
+        (testing "the rows of one RERANK statement share the failed attempt"
+          (is (= 1 @calls)))
+        (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")
+        (testing "the next statement asks Jev again"
+          (is (= 2 @calls)))
+        (is (=? {:failures 2 :entries 0} (vibes.sqlite/info)))))))
+
+(deftest reranker-down-without-nonce-test
+  (let [calls (atom 0)]
+    (with-conn! [conn]
+      (with-vibes (fn [& _] (swap! calls inc) nil)
+        (testing "a hand-written 3-argument vibes() has no statement to share a failure with: one attempt per row"
+          (q conn canonical "best" 20)
+          (is (= 20 @calls)))))))
+
+(deftest recovery-after-failure-test
+  (let [down? (atom true)]
+    (with-conn! [conn]
+      (with-vibes (fn [prompt roster opts]
+                    (when-not @down? ((stub-scores (atom [])) prompt roster opts)))
+        (is (= [{:name "item 1"}] (q conn "SELECT name FROM t RERANK BASED ON VIBES('best') LIMIT 1")))
+        (reset! down? false)
+        (testing "once Jev is back, the same statement is scored right away"
+          (is (= [{:name "item 20"}] (q conn "SELECT name FROM t RERANK BASED ON VIBES('best') LIMIT 1"))))))))
+
+(deftest partial-scoring-is-not-cached-test
+  (let [calls (atom 0)]
+    (with-conn! [conn]
+      (with-vibes (fn [_ roster _]
+                    (swap! calls inc)
+                    (with-meta (select-keys (update-vals roster (constantly 0.5)) ["1"]) {::jev/incomplete true}))
+        (testing "the scores that did come back are used"
+          (is (= "item 1" (:name (first (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")))))
+          (is (= 1 @calls)))
+        (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")
+        (testing "but not cached"
+          (is (= 2 @calls)))))))
+
+(deftest question-kind-per-connection-test
+  (let [questions (atom [])
+        stub      (fn [_ roster opts] (swap! questions conj (:question opts)) (update-vals roster (constantly 0.5)))]
+    (with-conn! [conn]
+      (with-vibes stub
+        (q conn "SELECT vibes('p', 'x') AS v")
+        (testing "installed connections ask the :rows question by default"
+          (is (= [:rows] @questions)))
+        (with-open [raw (DriverManager/getConnection "jdbc:sqlite::memory:")]
+          (let [search-conn (vibes.sqlite/install! raw :question :search)]
+            (q search-conn "SELECT vibes('p', 'x') AS v")
+            (testing "the search store's connection asks the :search question, cached separately"
+              (is (= [:rows :search] @questions)))))))))
 
 (deftest reranker-throws-is-null-test
   (with-conn! [conn]
@@ -163,7 +217,7 @@
   (with-conn! [conn]
     (with-vibes (fn [_ roster _] (update-vals roster (constantly 0.5)))
       (q conn canonical "best" 3)
-      (is (=? {:enabled true :model "jev-latest" :version "v1" :entries 1 :calls 1 :misses 1 :hits 19}
+      (is (=? {:enabled true :model "jev-latest" :version "v2" :entries 1 :calls 1 :misses 1 :hits 19 :failures 0}
               (json/decode+kw (:i (first (q conn "SELECT vibes_info() AS i")))))))))
 
 (deftest rerank-clause-through-the-connection-test

@@ -44,7 +44,22 @@
                                             :false (str "The candidate only shares a keyword or general topic with the "
                                                         "search query, or covers different data, a different metric or "
                                                         "an unrelated grouping.")}}}}
-         (jev/request-body "jev-latest" "monthly revenue by product category" roster))))
+         (jev/request-body "jev-latest" :search "monthly revenue by product category" roster))))
+
+(deftest ^:parallel request-body-rows-test
+  (testing "vibes on query rows: the prompt is a free-form vibe, not a search"
+    (is (=? {:model     "jev-latest"
+             :state     {:vibe "a raccoon just got a corporate credit card"}
+             :questions {"31" {:type         "noul"
+                               :instructions {:candidate {"type" "dashboard" "name" "Ops"}
+                                              :question  (str "`candidate` is one row of a query result. Does it fit "
+                                                              "the vibe described by `vibe`?")}
+                               :criteria     {:true  (str "The row embodies `vibe`: someone who read the phrase "
+                                                          "would say this row fits it, literally, by association, "
+                                                          "or in spirit, including jokes and hyperbole.")
+                                              :false (str "The row has little to do with `vibe`, or fits it no "
+                                                          "better than an ordinary, unrelated row would.")}}}}
+            (jev/request-body "jev-latest" :rows "a raccoon just got a corporate credit card" roster)))))
 
 (deftest ^:parallel sanitize-text-test
   (is (= "Monthly sum of totals" (prompt/sanitize-text "<p>Monthly   sum</p> of\n totals")))
@@ -69,6 +84,43 @@
                 :body {:model "jev-latest" :state {:search_query "q"}}
                 :opts {:api-key "key" :timeout-ms 2000}}]
               @posted)))))
+
+(deftest score-candidates-question-test
+  (let [posted (atom [])]
+    (mt/with-dynamic-fn-redefs [jev/post! (fn [_ body _]
+                                            (swap! posted conj body)
+                                            (ok-response {"812" {:type "noul" :noul 0.5}}))]
+      (jev/score-candidates! "q" roster (assoc opts :question :rows))
+      (is (=? [{:state {:vibe "q"}}] @posted)))))
+
+(deftest score-candidates-complete-test
+  (mt/with-dynamic-fn-redefs [jev/post! (fn [_ _ _] (ok-response {"812" {:type "noul" :noul 0.5}}))]
+    (testing "an id Jev didn't answer still makes a complete scoring"
+      (is (false? (jev/incomplete? (jev/score-candidates! "q" roster opts)))))))
+
+(deftest score-candidates-failed-chunk-is-incomplete-test
+  (let [big (into {} (map (fn [i] [(str i) {"name" (str "item " i)}])) (range 150))
+        n   (atom 0)]
+    (mt/with-dynamic-fn-redefs [jev/post! (fn [_ body _]
+                                            (if (= 1 (swap! n inc))
+                                              (ok-response (update-vals (:questions body) (constantly {:type "noul" :noul 0.5})))
+                                              {:status 500 :headers {} :body "down"}))]
+      (let [scores (jev/score-candidates! "q" big opts)]
+        (is (= 100 (count scores)))
+        (is (true? (jev/incomplete? scores)))))))
+
+(deftest score-candidates-out-of-time-is-incomplete-test
+  (let [big (into {} (map (fn [i] [(str i) {"name" (str "item " i)}])) (range 150))
+        n   (atom 0)]
+    (mt/with-dynamic-fn-redefs [jev/post! (fn [_ body _]
+                                            (swap! n inc)
+                                            (Thread/sleep 60)
+                                            (ok-response (update-vals (:questions body) (constantly {:type "noul" :noul 0.5}))))]
+      (let [scores (jev/score-candidates! "q" big (assoc opts :timeout-ms 50))]
+        (testing "the second chunk is never sent once the budget is spent"
+          (is (= 1 @n)))
+        (is (= 100 (count scores)))
+        (is (true? (jev/incomplete? scores)))))))
 
 (deftest score-candidates-missing-id-test
   (mt/with-dynamic-fn-redefs [jev/post! (fn [_ _ _] (ok-response {"812" {:type "noul" :noul 0.5}}))]

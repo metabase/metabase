@@ -34,8 +34,14 @@ ORDER BY vibes('this meeting could have been an email', description) DESC;
 ```
 
 Here `meetings` represents your table (or the CTE above). This form makes a separate request for each distinct
-description on a cold cache. Both forms use the same five-minute score cache. Failed scoring returns `NULL`.
-Use `SELECT vibes_info()` to check the enabled flag, model, and cache statistics.
+description on a cold cache. Both forms use the same five-minute score cache. Failed scoring returns `NULL` and
+is never cached, so running the query again asks Jev again. Within one `RERANK` statement the rows share a single
+attempt; a hand-written `ORDER BY vibes(...)` retries once per row when Jev is failing. Jev can take tens of
+seconds on a cold start, so raise `MB_VIBES_TIMEOUT_MS` (default 2000) if scores keep coming back `NULL`.
+Use `SELECT vibes_info()` to check the enabled flag, model, and cache statistics, including `failures`.
+
+Warehouse queries ask Jev whether each row fits the prompt's vibe. The semantic search store asks a different
+question: whether a search result is what someone searching for the prompt would open.
 
 When disabled, fresh warehouse connections get neither the functions nor the rewrite. Functions already
 registered on a pooled connection remain present but return `NULL` for scoring while disabled. The internal

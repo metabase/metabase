@@ -1,7 +1,8 @@
 (ns metabase-enterprise.semantic-search.vibes.sqlite
   "The `vibes` SQLite functions and the `RERANK BASED ON VIBES` connection hook.
 
-      vibes(prompt, candidate_id, roster_json) -> REAL   P(candidate matches prompt), batched: one Jev call per
+      vibes(prompt, candidate_id, roster_json [, statement_nonce])
+                                               -> REAL   P(candidate matches prompt), batched: one Jev call per
                                                          distinct (prompt, roster), then a lookup per row
       vibes(prompt, candidate_text)            -> REAL   pointwise, one Jev call per distinct (prompt, text)
       vibes_info()                             -> TEXT   JSON: enabled flag, model, cache stats
@@ -9,6 +10,8 @@
 
   `roster_json` is a JSON object keyed by candidate id. Every failure (disabled, no key, Jev down, malformed roster,
   id not answered) is NULL, never an error, so `ORDER BY vibes(...) DESC, distance` degrades to vector order.
+  Successful scorings are cached for five minutes; failed or partial ones never are, so re-running a statement
+  asks Jev again. Which Jev question `vibes` asks (`prompt`'s `:rows` or `:search`) is fixed per connection.
 
   Everything is per-connection: [[install!]] registers the functions on a raw sqlite-jdbc connection and returns it
   wrapped so statements ending in `RERANK BASED ON VIBES` are rewritten (see `vibes.rewrite`)."
@@ -36,21 +39,24 @@
   "How long a scored roster stays valid."
   (* 5 60 1000))
 
-(def ^:private failure-ttl-ms
-  "How long a failed scoring (nil) is remembered, so the rows of one statement -- and immediate retries -- don't each
-  wait out the Jev timeout."
-  (* 30 1000))
-
 (def ^:private max-entries 256)
 
 (defonce ^:private cache
-  ;; {:entries {key {:scores {id noul}|nil, :at ms}}, :stats {:hits n :misses n :calls n}}
-  (atom {:entries {} :stats {:hits 0 :misses 0 :calls 0}}))
+  ;; {:entries {key {:scores {id noul}, :at ms}}, :stats {:hits n :misses n :calls n :failures n}}
+  (atom {:entries {} :stats {:hits 0 :misses 0 :calls 0 :failures 0}}))
+
+(def ^:private max-statement-entries 64)
+
+(defonce ^:private statement-results
+  ;; {[cache-key statement-nonce] scores-or-nil}: failed or incomplete scorings, seen only by the rest of the
+  ;; statement that made them.
+  (atom {}))
 
 (defn reset-cache!
   "Forget every cached score and zero the stats."
   []
-  (reset! cache {:entries {} :stats {:hits 0 :misses 0 :calls 0}}))
+  (reset! statement-results {})
+  (reset! cache {:entries {} :stats {:hits 0 :misses 0 :calls 0 :failures 0}}))
 
 (defn- now-ms
   ;; not primitive-hinted: tests redefine it
@@ -61,12 +67,12 @@
   (let [digest (.digest (MessageDigest/getInstance "SHA-1") (.getBytes s "UTF-8"))]
     (str/join (map #(format "%02x" %) digest))))
 
-(defn- cache-key [model prompt roster-json]
-  [model prompt/question-version (sha1 prompt) (sha1 roster-json)])
+(defn- cache-key [model question prompt roster-json]
+  [model prompt/question-version question (sha1 prompt) (sha1 roster-json)])
 
 (defn- live?
-  [{:keys [scores at]} now]
-  (< (- now at) (if (nil? scores) failure-ttl-ms ttl-ms)))
+  [{:keys [at]} now]
+  (< (- now at) ttl-ms))
 
 (defn- evict
   "`entries` without expired ones, and without the oldest when still at capacity."
@@ -87,21 +93,33 @@
       (do (swap! cache update-in [:stats :misses] inc)
           [false nil]))))
 
-(defn- remember! [k scores]
-  (let [now (now-ms)]
-    (swap! cache (fn [c]
-                   (-> c
-                       (update :entries evict now)
-                       (assoc-in [:entries k] {:scores scores :at now}))))
-    scores))
+(defn- failed? [scores]
+  (or (nil? scores) (jev/incomplete? scores)))
+
+(defn- remember!
+  "Cache `scores` under `k` and return them. A failed (nil) or [[jev/incomplete?]] scoring is not cached; with a
+  `nonce` it is kept for the other rows of that statement only, so they don't each wait out the Jev timeout, while
+  the next statement asks Jev again."
+  [k nonce scores]
+  (if (failed? scores)
+    (do (swap! cache update-in [:stats :failures] inc)
+        (when nonce
+          (swap! statement-results #(assoc (if (< (count %) max-statement-entries) % {}) [k nonce] scores))))
+    (let [now (now-ms)]
+      (swap! cache (fn [c]
+                     (-> c
+                         (update :entries evict now)
+                         (assoc-in [:entries k] {:scores scores :at now}))))))
+  scores)
 
 ;;; ---------------------------------------------------- Scoring ----------------------------------------------------
 
-(defn- jev-opts []
+(defn- jev-opts [question]
   {:url        (vibes.settings/vibes-api-url)
    :api-key    (vibes.settings/vibes-api-key)
    :model      (vibes.settings/vibes-model)
-   :timeout-ms (vibes.settings/vibes-timeout-ms)})
+   :timeout-ms (vibes.settings/vibes-timeout-ms)
+   :question   question})
 
 (defn- parse-roster
   "The roster as `{id-string candidate-map}`, or nil (with a warning) when it isn't a JSON object of objects."
@@ -116,18 +134,28 @@
           nil))))
 
 (defn score-roster
-  "`{id-string noul}` for the candidates of `roster-json` against `prompt`, from the cache or one Jev call; nil when
-  vibes are disabled or scoring failed."
-  [prompt roster-json]
-  (when (and (vibes.settings/vibes-enabled) (string? prompt) (string? roster-json))
-    (let [{:keys [model] :as opts} (jev-opts)
-          k (cache-key model prompt roster-json)
-          [found? scores] (cached-scores k)]
-      (if found?
-        scores
-        (do (swap! cache update-in [:stats :calls] inc)
-            (remember! k (some-> (parse-roster roster-json)
-                                 (as-> roster (jev/score-candidates! prompt roster opts)))))))))
+  "`{id-string noul}` for the candidates of `roster-json` against `prompt`, asking the `question` kind (see
+  `prompt`), from the cache or one Jev call; nil when vibes are disabled or scoring failed. `nonce` identifies the
+  calling statement: see [[remember!]]."
+  ([question prompt roster-json]
+   (score-roster question prompt roster-json nil))
+  ([question prompt roster-json nonce]
+   (when (and (vibes.settings/vibes-enabled) (string? prompt) (string? roster-json))
+     (let [{:keys [model] :as opts} (jev-opts question)
+           k (cache-key model question prompt roster-json)
+           [found? scores] (cached-scores k)
+           statement-k [k nonce]]
+       (cond
+         found?
+         scores
+
+         (and nonce (contains? @statement-results statement-k))
+         (get @statement-results statement-k)
+
+         :else
+         (do (swap! cache update-in [:stats :calls] inc)
+             (remember! k nonce (some-> (parse-roster roster-json)
+                                        (as-> roster (jev/score-candidates! prompt roster opts))))))))))
 
 (defn- id-key
   "Roster keys are JSON object keys, i.e. strings; an INTEGER id argument must match `\"12\"`."
@@ -137,19 +165,29 @@
     (number? id) (str (long id))
     :else        (str id)))
 
-(defn vibes
-  "The `vibes` scalar: `(prompt id roster-json)` batched, or `(prompt text)` pointwise. Never throws."
-  ([prompt text]
-   (when (some? text)
-     (vibes prompt "0" (json/encode {"0" {"text" (str text)}}))))
-  ([prompt id roster-json]
-   (try
-     (when (some? id)
-       (some-> (score-roster prompt roster-json)
-               (get (id-key id))))
-     (catch Throwable t
-       (log/warn t "vibes: scoring failed")
-       nil))))
+(defn- vibes-fn
+  "The `vibes` scalar asking the `question` kind: `(prompt id roster-json [statement-nonce])` batched, or
+  `(prompt text)` pointwise. Never throws. The generated rerank SQL passes a per-statement random `statement-nonce`
+  so the statement's rows share one failed attempt (see [[remember!]])."
+  [question]
+  (fn score
+    ([prompt text]
+     (when (some? text)
+       (score prompt "0" (json/encode {"0" {"text" (str text)}}))))
+    ([prompt id roster-json]
+     (score prompt id roster-json nil))
+    ([prompt id roster-json nonce]
+     (try
+       (when (some? id)
+         (some-> (score-roster question prompt roster-json nonce)
+                 (get (id-key id))))
+       (catch Throwable t
+         (log/warn t "vibes: scoring failed")
+         nil)))))
+
+(def ^{:arglists '([prompt text] [prompt id roster-json] [prompt id roster-json statement-nonce])} vibes
+  "The `vibes` scalar for rows of a user's query (the `:rows` question). See [[vibes-fn]]."
+  (vibes-fn :rows))
 
 (defn info
   "Enabled flag, model and cache stats, as a map."
@@ -227,9 +265,10 @@
                   (invoke-target target method args)))))
 
 (defn register-vibes!
-  "Register `vibes`, `vibes_info` and `vibes_rewrite` on `conn`, a raw sqlite-jdbc connection."
-  [^Connection conn]
-  (sqlite-functions/register! conn "vibes" vibes)
+  "Register `vibes` (asking the `question` kind), `vibes_info` and `vibes_rewrite` on `conn`, a raw sqlite-jdbc
+  connection."
+  [^Connection conn question]
+  (sqlite-functions/register! conn "vibes" (vibes-fn question))
   (sqlite-functions/register! conn "vibes_info" #(json/encode (info)))
   (sqlite-functions/register! conn "vibes_rewrite" (fn [sql]
                                                      (when sql
@@ -240,9 +279,10 @@
 
 (defn install!
   "Register functions on the underlying SQLite connection, then wrap `conn` for rewriting. Keep any pool wrapper
-  so closing the returned connection returns it to its pool rather than closing the physical connection."
-  ^Connection [^Connection conn]
-  (register-vibes! (.unwrap conn SQLiteConnection))
+  so closing the returned connection returns it to its pool rather than closing the physical connection.
+  `:question` is the `prompt` question kind `vibes()` asks: `:rows` (the default, user queries) or `:search`."
+  ^Connection [^Connection conn & {:keys [question] :or {question :rows}}]
+  (register-vibes! (.unwrap conn SQLiteConnection) question)
   (wrap-connection conn))
 
 (defenterprise install-vibes-if-enabled!

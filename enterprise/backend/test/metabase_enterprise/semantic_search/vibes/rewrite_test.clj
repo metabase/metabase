@@ -25,16 +25,16 @@
 (deftest ^:parallel plain-select-test
   (is (= (squash (str "WITH __vibes_cand AS MATERIALIZED (SELECT row_number() OVER () AS __vibes_id, * FROM (SELECT * FROM t)), "
                       "__vibes_roster AS MATERIALIZED (SELECT json_group_object(__vibes_id, json_object('id', \"id\", 'name', \"name\", "
-                      "'description', \"description\")) AS j FROM __vibes_cand) "
+                      "'description', \"description\")) AS j, random() AS n FROM __vibes_cand) "
                       "SELECT \"id\", \"name\", \"description\" FROM __vibes_cand, __vibes_roster "
-                      "ORDER BY vibes(?, __vibes_id, __vibes_roster.j) DESC, __vibes_id ASC"))
+                      "ORDER BY vibes(?, __vibes_id, __vibes_roster.j, __vibes_roster.n) DESC, __vibes_id ASC"))
          (squash (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?)")))))
 
 (deftest ^:parallel with-clause-splice-test
   (let [out (rewrite "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y) SELECT * FROM a, b RERANK BASED ON VIBES('q')")]
     (is (str/starts-with? out "WITH a AS (SELECT 1 AS x), b AS (SELECT 2 AS y),"))
     (is (str/includes? out "FROM (SELECT * FROM a, b)"))
-    (is (str/includes? out "ORDER BY vibes('q', __vibes_id, __vibes_roster.j) DESC"))))
+    (is (str/includes? out "ORDER BY vibes('q', __vibes_id, __vibes_roster.j, __vibes_roster.n) DESC"))))
 
 (deftest ^:parallel with-recursive-test
   (let [out (rewrite "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 5) SELECT x FROM n RERANK BASED ON VIBES(?)")]
@@ -49,15 +49,15 @@
 
 (deftest ^:parallel bare-vibes-uses-user-prompt-test
   (let [out (rewrite "WITH user_prompt AS (SELECT 'monthly revenue' AS prompt) SELECT * FROM t RERANK BASED ON VIBES")]
-    (is (str/includes? out "ORDER BY vibes((SELECT prompt FROM user_prompt), __vibes_id, __vibes_roster.j) DESC"))))
+    (is (str/includes? out "ORDER BY vibes((SELECT prompt FROM user_prompt), __vibes_id, __vibes_roster.j, __vibes_roster.n) DESC"))))
 
 (deftest ^:parallel direction-test
   (testing "default DESC"
-    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?)") "__vibes_roster.j) DESC, __vibes_id ASC")))
+    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?)") "__vibes_roster.j, __vibes_roster.n) DESC, __vibes_id ASC")))
   (testing "ASC"
-    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?) asc") "__vibes_roster.j) ASC, __vibes_id ASC")))
+    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?) asc") "__vibes_roster.j, __vibes_roster.n) ASC, __vibes_id ASC")))
   (testing "DESC"
-    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?) DESC") "__vibes_roster.j) DESC, __vibes_id ASC"))))
+    (is (str/includes? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?) DESC") "__vibes_roster.j, __vibes_roster.n) DESC, __vibes_id ASC"))))
 
 (deftest ^:parallel limit-offset-passthrough-test
   (is (str/ends-with? (rewrite "SELECT * FROM t RERANK BASED ON VIBES(?) DESC LIMIT 5 OFFSET 10") "\nLIMIT 5 OFFSET 10"))

@@ -186,12 +186,12 @@
 
 (defn- do-with-vibes-stub!
   "Run `f` with vibes enabled and Jev replaced by `stub`, a `(fn [prompt roster opts])` returning `{id noul}` or nil.
-  `calls` collects `[prompt roster]` per call. The score cache is cleared first."
+  `calls` collects `[prompt roster question]` per call. The score cache is cleared first."
   [stub calls f]
   (vibes.sqlite/reset-cache!)
   (mt/with-temporary-setting-values [vibes-enabled true vibes-api-key "test-key" vibes-rerank-k 10]
     (mt/with-dynamic-fn-redefs [jev/score-candidates! (fn [prompt roster opts]
-                                                        (swap! calls conj [prompt roster])
+                                                        (swap! calls conj [prompt roster (:question opts)])
                                                         (stub prompt roster opts))]
       (f))))
 
@@ -219,7 +219,9 @@
                 (is (= 1 (count @calls)))
                 (is (= "q" (ffirst @calls)))
                 (is (= #{"card" "dashboard"} (set (map #(get % "type") (vals (second (first @calls)))))))
-                (is (every? #(contains? % "content") (vals (second (first @calls)))))))
+                (is (every? #(contains? % "content") (vals (second (first @calls))))))
+              (testing "the search question is asked, not the query-rows one"
+                (is (= :search (nth (first @calls) 2)))))
             (testing "a :vibes-prompt overrides the search string as the judged prompt"
               (sqlite/query (ctx :vibes true :vibes-prompt "income by kind of merchandise"))
               (is (= "income by kind of merchandise" (first (last @calls))))))))))))
@@ -239,7 +241,10 @@
                        (map (juxt :model :id) results)))
                 (is (every? #(= 0.0 (vibe-score %)) results)))
               (testing "one attempt, not one per row"
-                (is (= 1 (count @calls))))))))))))
+                (is (= 1 (count @calls)))))
+            (testing "the failure isn't cached: the next search asks Jev again"
+              (sqlite/query (ctx :vibes true))
+              (is (= 2 (count @calls)))))))))))
 
 (deftest query-vibes-disabled-test
   (when (sqlite-test-extension-available?)

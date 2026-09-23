@@ -946,6 +946,11 @@
   ;;   overrides the address for the containerized dev app, where the published port is the boundary.
   :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"127.0.0.1\",:port,50505,:accept,clojure.core.server/repl}"]}
 
+  ;; - run SQLite on the patched library from native/sqlite-vibes/build.sh, which parses RERANK BASED ON VIBES itself
+  ;;   (Apple silicon). sqlite-jdbc falls back to its bundled library when the file isn't there.
+  :sqlite-vibes {:jvm-opts ["-Dorg.sqlite.lib.path=native/sqlite-vibes/out/darwin-aarch64"
+                            "-Dorg.sqlite.lib.name=libsqlitejdbc.dylib"]}
+
   ;; Liquibase CLI:
   ;;
   ;;    clojure -M:liquibase <command>

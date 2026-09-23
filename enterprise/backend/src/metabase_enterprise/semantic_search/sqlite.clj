@@ -189,7 +189,7 @@
     (try
       (jdbc/execute-one! conn ["SELECT load_extension(?)" (extension-path)])
       ;; `vibes()` and the RERANK BASED ON VIBES rewrite ride on the same connection as vec1
-      (vibes.sqlite/install! conn)
+      (vibes.sqlite/install! conn :question :search)
       (catch Throwable t
         (.close conn)
         (throw t)))))
@@ -618,10 +618,11 @@
             (when where (str " WHERE " where))
             " ORDER BY v.distance),"
             " roster AS MATERIALIZED ("
-            " SELECT json_group_object(id, json_object('type', model, 'name', name, 'content', content)) AS j"
+            " SELECT json_group_object(id, json_object('type', model, 'name', name, 'content', content)) AS j,"
+            " random() AS n"
             " FROM cand)"
             " SELECT cand.id, cand.model, cand.model_id, cand.name, cand.collection_id, cand.legacy_input,"
-            " cand.distance, vibes(?, cand.id, roster.j) AS vibe"
+            " cand.distance, vibes(?, cand.id, roster.j, roster.n) AS vibe"
             " FROM cand, roster"
             " ORDER BY vibe DESC, cand.distance ASC")
        (->blob query-vector)]

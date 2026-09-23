@@ -8,10 +8,13 @@
 
       WITH <original CTEs,>
            __vibes_cand   AS MATERIALIZED (SELECT row_number() OVER () AS __vibes_id, * FROM (<select body>)),
-           __vibes_roster AS MATERIALIZED (SELECT json_group_object(__vibes_id, json_object('c1', \"c1\", ...)) AS j
+           __vibes_roster AS MATERIALIZED (SELECT json_group_object(__vibes_id, json_object('c1', \"c1\", ...)) AS j,
+                                                  random() AS n
                                            FROM __vibes_cand)
       SELECT \"c1\", ... FROM __vibes_cand, __vibes_roster
-      ORDER BY vibes(<prompt-expr>, __vibes_id, __vibes_roster.j) DESC, __vibes_id ASC [LIMIT ...]
+      ORDER BY vibes(<prompt-expr>, __vibes_id, __vibes_roster.j, __vibes_roster.n) DESC, __vibes_id ASC [LIMIT ...]
+
+  `n` is a per-execution nonce: it lets the rows of one statement share a failed Jev attempt without caching it.
 
   Bare `VIBES` (no prompt expression) means `(SELECT prompt FROM user_prompt)`. Bind parameters keep their
   order: the select's `?`s come first, then the prompt's."
@@ -205,8 +208,8 @@
       (str "WITH " (when ctes (str ctes ",\n     "))
            "__vibes_cand AS MATERIALIZED (SELECT row_number() OVER () AS __vibes_id, * FROM (" body ")),\n"
            "     __vibes_roster AS MATERIALIZED (SELECT json_group_object(__vibes_id, " (roster-object labels)
-           ") AS j FROM __vibes_cand)\n"
+           ") AS j, random() AS n FROM __vibes_cand)\n"
            "SELECT " (str/join ", " quoted) "\n"
            "FROM __vibes_cand, __vibes_roster\n"
-           "ORDER BY vibes(" prompt-expr ", __vibes_id, __vibes_roster.j) " direction ", __vibes_id ASC"
+           "ORDER BY vibes(" prompt-expr ", __vibes_id, __vibes_roster.j, __vibes_roster.n) " direction ", __vibes_id ASC"
            (when limit (str "\n" limit))))))

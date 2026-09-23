@@ -9,7 +9,7 @@
 
 (def question-version
   "Bump when the question wording, criteria or candidate shaping changes: it is part of the score cache key."
-  "v1")
+  "v2")
 
 (def ^:private max-text-length 300)
 
@@ -38,30 +38,38 @@
                     [(name k) v]))))
         candidate))
 
+(def ^:private questions-by-kind
+  "Per question kind: the `state` key holding the user's prompt, and the Noul question text and criteria.
+  `:search` judges Metabot search candidates; `:rows` judges rows of a user's SQL query against a free-form vibe."
+  {:search {:state-key :search_query
+            :question  (str "`candidate` is one row of a search result. Is it the item a user searching for "
+                            "`search_query` would want to open?")
+            :criteria  {:true  (str "The candidate's name, description or content describe the same data, metric or "
+                                    "analysis the search query asks for, at the same or a close grain.")
+                        :false (str "The candidate only shares a keyword or general topic with the search query, or "
+                                    "covers different data, a different metric or an unrelated grouping.")}}
+   :rows   {:state-key :vibe
+            :question  "`candidate` is one row of a query result. Does it fit the vibe described by `vibe`?"
+            :criteria  {:true  (str "The row embodies `vibe`: someone who read the phrase would say this row fits it, "
+                                    "literally, by association, or in spirit, including jokes and hyperbole.")
+                        :false (str "The row has little to do with `vibe`, or fits it no better than an ordinary, "
+                                    "unrelated row would.")}}})
+
 (defn state
-  "The Jev `state` shared by every question of one request."
-  [prompt]
-  {:search_query prompt})
-
-(def ^:private question-text
-  (str "`candidate` is one row of a search result. Is it the item a user searching for `search_query` would want "
-       "to open?"))
-
-(def ^:private criteria
-  {:true  (str "The candidate's name, description or content describe the same data, metric or analysis the search "
-               "query asks for, at the same or a close grain.")
-   :false (str "The candidate only shares a keyword or general topic with the search query, or covers different data, "
-               "a different metric or an unrelated grouping.")})
+  "The Jev `state` shared by every question of one request of `kind`."
+  [kind prompt]
+  {(get-in questions-by-kind [kind :state-key]) prompt})
 
 (defn question
-  "The Noul question for one candidate."
-  [candidate]
-  {:type         "noul"
-   :instructions {:candidate (sanitize-candidate candidate)
-                  :question  question-text}
-   :criteria     criteria})
+  "The Noul question of `kind` for one candidate."
+  [kind candidate]
+  (let [{:keys [question criteria]} (questions-by-kind kind)]
+    {:type         "noul"
+     :instructions {:candidate (sanitize-candidate candidate)
+                    :question  question}
+     :criteria     criteria}))
 
 (defn questions
-  "`{id question}` for a `roster` (`{id candidate}`)."
-  [roster]
-  (update-vals roster question))
+  "`{id question}` of `kind` for a `roster` (`{id candidate}`)."
+  [kind roster]
+  (update-vals roster (partial question kind)))

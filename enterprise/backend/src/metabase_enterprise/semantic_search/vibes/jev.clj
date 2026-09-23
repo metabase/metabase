@@ -17,11 +17,12 @@
   100)
 
 (defn request-body
-  "The System One request for `roster` (`{id candidate}`) against `prompt` with `model`."
-  [model prompt roster]
+  "The System One request asking the `question` kind (see `prompt`) of `roster` (`{id candidate}`) against `prompt`
+  with `model`."
+  [model question prompt roster]
   {:model     model
-   :state     (prompt/state prompt)
-   :questions (prompt/questions roster)})
+   :state     (prompt/state question prompt)
+   :questions (prompt/questions question roster)})
 
 (defn post!
   "POST `body` (a map) to `url` with the bearer `api-key`. Returns `{:status :headers :body}` with the body as a
@@ -73,9 +74,9 @@
 
 (defn- score-chunk!
   "`{id noul}` for one roster chunk, or nil on any failure."
-  [prompt roster {:keys [url model] :as opts} deadline]
+  [prompt roster {:keys [url model question] :as opts} deadline]
   (let [timer    (u/start-timer)
-        response (post-with-retry! url (request-body model prompt roster) opts deadline)
+        response (post-with-retry! url (request-body model question prompt roster) opts deadline)
         status   (:status response)]
     (cond
       (nil? response)
@@ -96,11 +97,17 @@
                       (count roster) (u/since-ms timer) (pr-str (get body "usage")) (get body "model"))
           (parse-answers body))))))
 
+(defn incomplete?
+  "Is `scores` (from [[score-candidates!]]) missing chunks that failed or ran out of time?"
+  [scores]
+  (boolean (::incomplete (meta scores))))
+
 (defn score-candidates!
   "Score every candidate of `roster` (`{id candidate-map}`) against `prompt` with one Jev request per
   [[chunk-size]] candidates. Returns `{id noul}` (ids that Jev didn't answer are absent), or nil when nothing could
-  be scored. `opts`: `:url`, `:api-key`, `:model`, `:timeout-ms` (the budget for the whole call)."
-  [prompt roster {:keys [api-key timeout-ms] :as opts}]
+  be scored; see [[incomplete?]] when only some chunks were. `opts`: `:url`, `:api-key`, `:model`, `:timeout-ms`
+  (the budget for the whole call), `:question` (the `prompt` question kind, default `:search`)."
+  [prompt roster {:keys [api-key timeout-ms question] :or {question :search} :as opts}]
   (cond
     (str/blank? api-key)
     (do (log/warn "vibes: no API key configured (vibes-api-key / MB_VIBES_API_KEY)")
@@ -110,13 +117,16 @@
     {}
 
     :else
-    (let [deadline (+ (System/currentTimeMillis) (long timeout-ms))
-          scored   (reduce (fn [acc chunk]
+    (let [opts     (assoc opts :question question)
+          deadline (+ (System/currentTimeMillis) (long timeout-ms))
+          chunks   (partition-all chunk-size roster)
+          results  (reduce (fn [acc chunk]
                              (if (<= (- deadline (System/currentTimeMillis)) 0)
                                (reduced acc)
-                               (if-let [scores (score-chunk! prompt (into {} chunk) opts deadline)]
-                                 (merge acc scores)
-                                 acc)))
-                           nil
-                           (partition-all chunk-size roster))]
-      scored)))
+                               (conj acc (score-chunk! prompt (into {} chunk) opts deadline))))
+                           []
+                           chunks)
+          scored   (apply merge results)]
+      (cond-> scored
+        (and scored (or (< (count results) (count chunks)) (some nil? results)))
+        (vary-meta assoc ::incomplete true)))))
