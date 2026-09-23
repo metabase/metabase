@@ -122,8 +122,11 @@ describe("SdkThemeProvider", () => {
   });
 
   describe("brand ramp", () => {
-    const OCEAN_TEXT_HOVER = getBaseColorsForThemeDefinitionOnly().ocean[60];
-    const OCEAN_TEXT_BRAND = getBaseColorsForThemeDefinitionOnly().ocean[50];
+    const { ocean } = getBaseColorsForThemeDefinitionOnly();
+
+    // Light defines `text-hover`/`text-brand` off brand[60]/[50], dark off brand[30]/[40]
+    const LIGHT_OCEAN = { textHover: ocean[60], textBrand: ocean[50] };
+    const DARK_OCEAN = { textHover: ocean[30], textBrand: ocean[40] };
 
     // Read what the provider actually rendered rather than calling the emitter again,
     // so the flag it decides on is part of what we assert
@@ -151,6 +154,10 @@ describe("SdkThemeProvider", () => {
       // A V2 theme addresses it as `brand` until GDGT-2536 removes the compatibility
       // assignment in `deriveFullMetabaseTheme` that overwrites `core-brand` with it
       ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
+      [
+        "a dark V1 theme",
+        { preset: "dark" as const, colors: { brand: "#DF75E9" } },
+      ],
     ])("tracks a brand color from %s", async (_name, theme) => {
       const cssVariable = await setup(theme);
 
@@ -169,23 +176,59 @@ describe("SdkThemeProvider", () => {
       );
     });
 
-    it("tracks a whitelabel brand color when the theme sets none", async () => {
-      const cssVariable = await setup(undefined, { brand: "#DF75E9" });
+    it.each([
+      ["no theme", undefined],
+      [
+        "a theme that sets a different color",
+        { colors: { border: "#3B3F3F" } },
+      ],
+    ])("tracks a whitelabel brand color given %s", async (_name, theme) => {
+      const cssVariable = await setup(theme, { brand: "#DF75E9" });
 
       expect(cssVariable("--mb-color-text-hover")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+      expect(cssVariable("--mb-color-text-brand")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+    });
+
+    it("keeps the SDK theme brand when whitelabel also sets one", async () => {
+      const cssVariable = await setup(
+        { colors: { brand: "#DF75E9" } },
+        {
+          brand: "#00FF00",
+        },
+      );
+
+      expect(cssVariable("--mb-color-core-brand")).toBe("#DF75E9");
+      expect(cssVariable("--mb-color-text-brand")).toContain(
         "var(--mb-color-core-brand)",
       );
     });
 
     it.each([
-      ["no theme", undefined],
-      ["a theme without a brand", { colors: { "text-primary": "#111111" } }],
-    ])("replaces the brand ramp with Ocean given %s", async (_name, theme) => {
-      const cssVariable = await setup(theme);
+      ["no theme", undefined, LIGHT_OCEAN],
+      [
+        "a V1 theme without a brand",
+        { colors: { "text-primary": "#111111" } },
+        LIGHT_OCEAN,
+      ],
+      [
+        "a V2 theme without a brand",
+        { version: 2 as const, colors: { "text-primary": "#111111" } },
+        LIGHT_OCEAN,
+      ],
+      ["a dark theme without a brand", { preset: "dark" as const }, DARK_OCEAN],
+    ])(
+      "replaces the brand ramp with Ocean given %s",
+      async (_name, theme, expected) => {
+        const cssVariable = await setup(theme);
 
-      expect(cssVariable("--mb-color-text-hover")).toBe(OCEAN_TEXT_HOVER);
-      expect(cssVariable("--mb-color-text-brand")).toBe(OCEAN_TEXT_BRAND);
-    });
+        expect(cssVariable("--mb-color-text-hover")).toBe(expected.textHover);
+        expect(cssVariable("--mb-color-text-brand")).toBe(expected.textBrand);
+      },
+    );
   });
 
   it.each(THEME_CASES)(
