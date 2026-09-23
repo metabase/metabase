@@ -1,0 +1,95 @@
+name: 'What we embed: describing undocumented cards'
+description: |-
+  Does giving cards a description improve search? Gain in ranking quality over the catalogue as written (none), on the 24 held-out questions nobody tuned on. mech-fill-empty writes a description from the SQL by rules, only where missing; llm-fill-all has a local LLM describe every card; context-sql embeds the raw SQL instead. Vector-only engine, so the gain is the embedding's, not keyword matching. Pinned: northwind-sql-v1, held-out questions, engine semantic-vector, both models. Source runs are listed on the Text strategy tab; write-up in research/embedding-text-recommendation.md.
+
+  **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+
+  **none**: Text strategy: the catalogue's descriptions as they are.
+
+  **mech-fill-empty**: Text strategy: cards with no description get a rule-based, no-AI translation of their query into English (e.g. what it counts, filters and groups by). Described cards are untouched.
+
+  **llm-fill-all**: Text strategy: the same AI-written sentences, appended to every card's description.
+
+  **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+  **semantic-vector**: semantic with both its keyword part and the appdb top-up switched off: pure vector search over its own index. The reference for how much of semantic comes from embeddings alone.
+
+  **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+entity_id: UKmPLGqD_BQtAGelrokTd
+created_at: '2026-09-23T20:15:05.22726Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH s AS (
+      WITH src AS (
+        SELECT CASE WHEN embedding_text = 'context-sql' THEN 'embed the SQL (context-sql)' WHEN text_strategy = 'none' THEN 'none' ELSE text_strategy END AS arm, embedder AS pair, scenario_id, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = 'northwind-sql-v1' AND metric = 'ndcg@10' AND engine = 'semantic-vector'
+          AND 'split-heldout' = ANY (tags)
+          AND ((embedding_text = 'baseline') OR (embedding_text = 'context-sql' AND text_strategy = 'none'))
+      ), d AS (
+        SELECT a.arm, a.pair, a.value, a.value - r.value AS delta
+        FROM src a JOIN src r ON r.arm = 'none' AND r.pair = a.pair AND r.scenario_id = a.scenario_id
+        WHERE a.arm <> 'none'
+      )
+      SELECT arm, pair, count(*) AS n, avg(value) AS v, avg(delta) AS mean, 1.96 * stddev_samp(delta) / sqrt(count(*)) AS ci
+      FROM d GROUP BY 1, 2
+      )
+      SELECT arm AS "Text", split_part(pair, '/', 2) AS "Embedder", round(mean::numeric, 3) AS "Gain in nDCG@10"
+      FROM s
+      ORDER BY avg(mean) OVER (PARTITION BY arm), pair
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Text
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Text
+  - base-type: type/Text
+  name: Text
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Gain in nDCG@10
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - Gain in nDCG@10
+  - base-type: type/Decimal
+  name: Gain in nDCG@10
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Text
+  - Embedder
+  graph.metrics:
+  - Gain in nDCG@10
+  graph.show_values: true
+card_schema: 24
+serdes/meta:
+- id: UKmPLGqD_BQtAGelrokTd
+  label: what_we_embed__describing_undocumented_cards
+  model: Card
+type: question

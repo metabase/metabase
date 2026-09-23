@@ -1,0 +1,101 @@
+name: Zero-result rate by engine
+description: |-
+  How often does an engine come back empty when there is a right answer? Lower is better. This is the silent failure a user sees as an empty result list. Share of scenarios that *have* a right answer where the engine returned nothing. For semantic, the usual cause is the 0.7 cosine cutoff. semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **Zero-result rate**: The share of questions that have a right answer where the engine returned nothing at all. Lower is better.
+
+  **Cosine cutoff (0.7)**: semantic drops matches that are too far in meaning (cosine distance above 0.7). If everything is too far, it finds nothing.
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+
+  **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+entity_id: ji0GqLo725fwofJhDC-Gd
+created_at: '2026-09-23T14:18:20.523204Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH x AS (
+        SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder", avg(value) AS "Zero-result rate"
+        FROM harness_scenario_metric
+        WHERE corpus_id = {{corpus}} AND metric = 'zero_result_rate'
+          AND embedding_text = {{variant}}
+          AND text_strategy = {{strategy}}
+          [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+        GROUP BY 1, 2
+      )
+      SELECT * FROM x
+      ORDER BY 1, 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/Float
+  database_type: float8
+  display_name: Zero-result rate
+  field_ref:
+  - field
+  - Zero-result rate
+  - base-type: type/Float
+  name: Zero-result rate
+  semantic_type: type/Share
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedder
+  graph.metrics:
+  - Zero-result rate
+  graph.show_values: true
+  graph.y_axis.auto_range: false
+  graph.y_axis.max: 1
+card_schema: 24
+serdes/meta:
+- id: ji0GqLo725fwofJhDC-Gd
+  label: zero_result_rate_by_engine
+  model: Card
+type: question

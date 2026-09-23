@@ -1,0 +1,10 @@
+{
+  "name": "harness-metrics",
+  "private": true,
+  "type": "module",
+  "description": "Search harness metrics: pure functions, rankings and labels in, numbers out. No runtime dependencies; runs on Node >= 22.18 (native TS type stripping, no build step).",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,22 @@
+/* Big, sparse slides: legible from the back of the room. */
+.reveal { font-size: 36px; }
+.reveal h1, .reveal h2 { text-transform: none; }
+.reveal table { font-size: 0.6em; margin: 0 auto; }
+.reveal table th, .reveal table td { padding: 0.3em 0.6em; }
+.reveal .tbd { color: #c0392b; font-weight: bold; }
+.reveal .muted { color: #888; font-size: 0.7em; }
+.reveal .badge { display: inline-block; padding: 0.1em 0.5em; border-radius: 0.3em;
+                 background: #f5b041; color: #222; font-size: 0.5em; vertical-align: middle; }
+.reveal .cols { display: flex; gap: 2em; justify-content: center; text-align: left; }
+.reveal .cols > div { flex: 1; }
+.reveal .cols ol { font-size: 0.75em; }
+.reveal .mermaid-diagram svg { max-width: 100%; max-height: 520px; }
+.reveal .cols > div { flex: 1 1 0; min-width: 0; }
+.reveal .cols code { font-size: 0.8em; word-break: break-all; }
+.reveal .org .boss { display: inline-block; border: 3px solid #2a76dd; border-radius: 0.3em; padding: 0.2em 0.8em; margin-bottom: 0.8em; }
+.reveal .org .team { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4em; font-size: 0.6em; }
+.reveal .org .team > div { border: 2px solid #bbb; border-radius: 0.3em; padding: 0.4em 0.2em; }
+.reveal .org .team b { color: #2a76dd; }
+.reveal .cols > div.wide { flex: 1.8 1 0; }
+.reveal .cols ul { font-size: 0.7em; }
+.reveal .cols em { color: #888; font-size: 0.7em; }

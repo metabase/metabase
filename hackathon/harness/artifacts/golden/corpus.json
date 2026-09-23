@@ -1,0 +1,2203 @@
+{
+  "corpusId": "northwind-golden-v1",
+  "comment": "Golden corpus source. Hand-written. Stable keys are \"<model>/<slug>\"; scenarios reference them. Only name+description are embedded (collections: name; documents: name — body is keyword-only). Cards query `table` (default: collectionDefaultTable[collection]).",
+  "database": {
+    "key": "database/northwind-warehouse",
+    "name": "Northwind Warehouse"
+  },
+  "schema": "analytics",
+  "tables": [
+    {
+      "key": "table/fct-orders-v2",
+      "name": "fct_orders_v2",
+      "displayName": "Orders (v2)",
+      "description": "Order line facts, one row per order line. Includes net amount after discounts and refunds, channel, currency and FX-converted EUR amount. Replaced fct_orders in 2025.",
+      "columns": [
+        {
+          "name": "order_line_id",
+          "type": "bigint"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "channel",
+          "type": "text"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "quantity",
+          "type": "int"
+        },
+        {
+          "name": "net_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "net_amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "discount_code",
+          "type": "text"
+        },
+        {
+          "name": "ordered_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-orders",
+      "name": "fct_orders",
+      "displayName": "Orders (deprecated)",
+      "description": "DEPRECATED. Legacy order header table, gross amounts only. Use fct_orders_v2.",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "gross_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-customer",
+      "name": "dim_customer",
+      "displayName": "Customers",
+      "description": "One row per customer account, with signup date, country, acquisition channel and lifetime order count.",
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "email_hash",
+          "type": "text"
+        },
+        {
+          "name": "country",
+          "type": "text"
+        },
+        {
+          "name": "acquisition_channel",
+          "type": "text"
+        },
+        {
+          "name": "signup_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "lifetime_orders",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-product",
+      "name": "dim_product",
+      "displayName": "Products",
+      "description": "Product catalog: SKU, category, season, cost price and list price.",
+      "columns": [
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "season",
+          "type": "text"
+        },
+        {
+          "name": "cost_price",
+          "type": "numeric(10,2)"
+        },
+        {
+          "name": "list_price",
+          "type": "numeric(10,2)"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-returns",
+      "name": "fct_returns",
+      "displayName": "Returns",
+      "description": "Returned order lines with RMA number, return reason code and refund amount.",
+      "columns": [
+        {
+          "name": "rma_number",
+          "type": "text"
+        },
+        {
+          "name": "order_line_id",
+          "type": "bigint"
+        },
+        {
+          "name": "reason_code",
+          "type": "text"
+        },
+        {
+          "name": "refund_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "returned_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-web-sessions",
+      "name": "fct_web_sessions",
+      "displayName": "Web sessions",
+      "description": "Clickstream sessions from the web shop, with landing page, UTM source and whether the session converted.",
+      "columns": [
+        {
+          "name": "session_id",
+          "type": "text"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "landing_page",
+          "type": "text"
+        },
+        {
+          "name": "utm_source",
+          "type": "text"
+        },
+        {
+          "name": "device",
+          "type": "text"
+        },
+        {
+          "name": "converted",
+          "type": "boolean"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-marketing-spend",
+      "name": "fct_marketing_spend",
+      "displayName": "Marketing spend",
+      "description": "Daily paid media spend by channel and campaign (Google, Meta, TikTok, affiliates).",
+      "columns": [
+        {
+          "name": "spend_date",
+          "type": "date"
+        },
+        {
+          "name": "channel",
+          "type": "text"
+        },
+        {
+          "name": "campaign",
+          "type": "text"
+        },
+        {
+          "name": "spend_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "impressions",
+          "type": "bigint"
+        },
+        {
+          "name": "clicks",
+          "type": "bigint"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-support-tickets",
+      "name": "fct_support_tickets",
+      "displayName": "Support tickets",
+      "description": "Zendesk tickets with category, priority, first response time and resolution time.",
+      "columns": [
+        {
+          "name": "ticket_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "priority",
+          "type": "text"
+        },
+        {
+          "name": "first_response_minutes",
+          "type": "int"
+        },
+        {
+          "name": "resolution_minutes",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-shipments",
+      "name": "fct_shipments",
+      "displayName": "Shipments",
+      "description": "Parcels handed to carriers (DHL, InPost, Yamato, UPS) with promised and actual delivery dates.",
+      "columns": [
+        {
+          "name": "shipment_id",
+          "type": "bigint"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "carrier",
+          "type": "text"
+        },
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "promised_date",
+          "type": "date"
+        },
+        {
+          "name": "delivered_date",
+          "type": "date"
+        },
+        {
+          "name": "cost_eur",
+          "type": "numeric(10,2)"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-warehouse",
+      "name": "dim_warehouse",
+      "displayName": "Warehouses",
+      "description": "Distribution centres: Poznań, Rotterdam, Reno and Chiba.",
+      "columns": [
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "city",
+          "type": "text"
+        },
+        {
+          "name": "country",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-inventory-snapshot",
+      "name": "fct_inventory_snapshot",
+      "displayName": "Inventory snapshot",
+      "description": "Daily on-hand stock per SKU per warehouse.",
+      "columns": [
+        {
+          "name": "snapshot_date",
+          "type": "date"
+        },
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "on_hand_units",
+          "type": "int"
+        },
+        {
+          "name": "inbound_units",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-subscriptions",
+      "name": "fct_subscriptions",
+      "displayName": "Trail Club subscriptions",
+      "description": "Trail Club membership subscriptions: start, cancel date, plan and monthly price.",
+      "columns": [
+        {
+          "name": "subscription_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "plan",
+          "type": "text"
+        },
+        {
+          "name": "monthly_price_eur",
+          "type": "numeric(8,2)"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "cancelled_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "cancel_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/hr-employees",
+      "name": "hr_employees",
+      "displayName": "Employees",
+      "description": "Employee roster from the HRIS: department, location, start date, manager.",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "int"
+        },
+        {
+          "name": "department",
+          "type": "text"
+        },
+        {
+          "name": "location",
+          "type": "text"
+        },
+        {
+          "name": "manager_id",
+          "type": "int"
+        },
+        {
+          "name": "start_date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "key": "table/hr-terminations",
+      "name": "hr_terminations",
+      "displayName": "Employee terminations",
+      "description": "Leavers with termination date and voluntary or involuntary flag.",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "int"
+        },
+        {
+          "name": "termination_date",
+          "type": "date"
+        },
+        {
+          "name": "voluntary",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-payments",
+      "name": "fct_payments",
+      "displayName": "Payments",
+      "description": "Card and wallet payments captured through Adyen, including chargebacks and payment method.",
+      "columns": [
+        {
+          "name": "payment_id",
+          "type": "text"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "method",
+          "type": "text"
+        },
+        {
+          "name": "amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "fee_eur",
+          "type": "numeric(10,4)"
+        },
+        {
+          "name": "is_chargeback",
+          "type": "boolean"
+        },
+        {
+          "name": "captured_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/stg-adyen-settlements",
+      "name": "stg_adyen_settlements",
+      "displayName": "Adyen settlements (staging)",
+      "description": "Raw Adyen settlement report rows, loaded nightly. Not for reporting.",
+      "columns": [
+        {
+          "name": "psp_reference",
+          "type": "text"
+        },
+        {
+          "name": "merchant_reference",
+          "type": "text"
+        },
+        {
+          "name": "gross",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "commission",
+          "type": "numeric(10,4)"
+        },
+        {
+          "name": "settled_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-wholesale-account",
+      "name": "dim_wholesale_account",
+      "displayName": "Wholesale accounts",
+      "description": "B2B retail partners, their tier, credit limit and account manager.",
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "int"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "tier",
+          "type": "text"
+        },
+        {
+          "name": "credit_limit_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "account_manager",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-wholesale-orders",
+      "name": "fct_wholesale_orders",
+      "displayName": "Wholesale orders",
+      "description": "Purchase orders from retail partners, with PO number and requested ship window.",
+      "columns": [
+        {
+          "name": "po_number",
+          "type": "text"
+        },
+        {
+          "name": "account_id",
+          "type": "int"
+        },
+        {
+          "name": "amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "ship_window_start",
+          "type": "date"
+        },
+        {
+          "name": "ship_window_end",
+          "type": "date"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/gdpr-dsr-requests",
+      "name": "gdpr_dsr_requests",
+      "displayName": "GDPR DSR requests",
+      "description": "Data subject requests (access, erasure, rectification) and their SLA status.",
+      "columns": [
+        {
+          "name": "request_id",
+          "type": "text"
+        },
+        {
+          "name": "request_type",
+          "type": "text"
+        },
+        {
+          "name": "received_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-nps-responses",
+      "name": "fct_nps_responses",
+      "displayName": "NPS responses",
+      "description": "Post-purchase survey responses with 0-10 score and free-text comment.",
+      "columns": [
+        {
+          "name": "response_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "score",
+          "type": "int"
+        },
+        {
+          "name": "comment",
+          "type": "text"
+        },
+        {
+          "name": "responded_at",
+          "type": "timestamptz"
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "key": "collection/finance",
+      "name": "Finance"
+    },
+    {
+      "key": "collection/sales",
+      "name": "Sales"
+    },
+    {
+      "key": "collection/wholesale",
+      "name": "Wholesale & B2B",
+      "parent": "collection/sales"
+    },
+    {
+      "key": "collection/marketing",
+      "name": "Marketing"
+    },
+    {
+      "key": "collection/product",
+      "name": "Product & Merchandising"
+    },
+    {
+      "key": "collection/support",
+      "name": "Customer Support"
+    },
+    {
+      "key": "collection/logistics",
+      "name": "Logistics & Fulfilment"
+    },
+    {
+      "key": "collection/people",
+      "name": "People & HR"
+    },
+    {
+      "key": "collection/data-eng",
+      "name": "Data Engineering"
+    },
+    {
+      "key": "collection/exec",
+      "name": "Executive"
+    },
+    {
+      "key": "collection/exec-comp",
+      "name": "Executive Compensation",
+      "parent": "collection/exec",
+      "restricted": true
+    },
+    {
+      "key": "collection/membership",
+      "name": "Trail Club"
+    },
+    {
+      "key": "collection/legal",
+      "name": "Legal & Compliance"
+    },
+    {
+      "key": "collection/legacy",
+      "name": "Legacy reports (do not use)"
+    },
+    {
+      "key": "collection/polska",
+      "name": "Polska"
+    },
+    {
+      "key": "collection/japan",
+      "name": "日本"
+    }
+  ],
+  "entities": [
+    {
+      "key": "card/revenue",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Revenue",
+      "description": "Gross revenue per month, all channels, in EUR.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/net-revenue-by-channel",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Net revenue by channel, last 12 months",
+      "description": "Monthly net revenue after refunds and discounts, split into web shop, marketplaces and wholesale.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/revenue-by-region",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Revenue by region",
+      "description": "EU, North America and Japan, converted to EUR at month-end rates.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/gross-margin-by-category",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Gross margin by product category",
+      "description": "Net revenue minus landed cost of goods, as a percentage, per category.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/refunds-issued-weekly",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Refunds issued per week",
+      "description": "Value of refunds processed, including partial refunds for damaged items.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/chargebacks-by-method",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Chargebacks by payment method",
+      "description": "Disputed card payments reported by Adyen, grouped by card scheme and wallet.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/adyen-fees-monthly",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Adyen processing fees, monthly",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/fx-impact",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "FX impact on reported revenue",
+      "description": "Difference between constant-currency and reported revenue, driven mostly by JPY and USD.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/aov-by-country",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Average order value by country",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/cash-collected-vs-invoiced",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Cash collected vs invoiced (wholesale)",
+      "description": "Outstanding receivables from retail partners, ageing buckets 0-30, 31-60, 61-90, 90+ days.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/budget-vs-actual-opex",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "Budget vs actual — operating expenses",
+      "description": "Opex by cost centre against the FY budget.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/kpi-017-contribution-margin",
+      "model": "card",
+      "collection": "collection/finance",
+      "name": "KPI-017 Contribution margin per order",
+      "description": "Board KPI. Net revenue minus COGS, shipping, payment fees and returns cost, per order.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/orders-per-day",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Orders per day",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/orders-by-channel",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Orders by channel",
+      "description": "Web shop, Amazon, Zalando and wholesale order counts.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/top-products-by-units",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Top 20 products by units sold",
+      "description": "Best sellers for the selected period.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/new-vs-returning-customers",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "New vs returning customers",
+      "description": "Share of orders placed by first-time buyers versus repeat buyers.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/customers-by-country",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Customers by country",
+      "description": "Count of customer accounts with at least one order, per shipping country.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/repeat-purchase-rate",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Repeat purchase rate within 180 days",
+      "description": "Share of first-time buyers who order again within six months.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/basket-size",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Items per basket",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/discount-code-usage",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Discount code usage",
+      "description": "Orders using a promo code and the revenue given away, by code.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/black-friday-2025",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Black Friday 2025 — hourly orders",
+      "description": "Hour-by-hour order volume during the Black Friday weekend sale.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/customer-lifetime-value",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Customer lifetime value by acquisition cohort",
+      "description": "Cumulative net revenue per customer, grouped by the month they first ordered.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/sales-by-weekday-hour",
+      "model": "card",
+      "collection": "collection/sales",
+      "name": "Sales heatmap by weekday and hour",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/wholesale-revenue-by-account",
+      "model": "card",
+      "collection": "collection/wholesale",
+      "name": "Wholesale revenue by account",
+      "description": "Invoiced revenue from each retail partner, year to date.",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "card/open-purchase-orders",
+      "model": "card",
+      "collection": "collection/wholesale",
+      "name": "Open purchase orders",
+      "description": "Retail partner POs not yet fully shipped, with requested ship window.",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "card/po-88213-status",
+      "model": "card",
+      "collection": "collection/wholesale",
+      "name": "PO-88213 fulfilment status",
+      "description": "Tracking the delayed spring order from Bergsport Müller.",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "card/wholesale-sell-through",
+      "model": "card",
+      "collection": "collection/wholesale",
+      "name": "Sell-through at retail partners",
+      "description": "Units sold by partners to end consumers versus units we shipped to them.",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "card/account-manager-book",
+      "model": "card",
+      "collection": "collection/wholesale",
+      "name": "Account manager book of business",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "card/roas-by-channel",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "ROAS by paid channel",
+      "description": "Return on ad spend: attributed revenue divided by spend, per channel, last 30 days.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/cac-by-channel",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Customer acquisition cost by channel",
+      "description": "Paid media spend divided by new customers acquired.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/cac-payback",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "CAC payback period",
+      "description": "Months of contribution margin needed to recover acquisition cost.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/web-conversion-rate",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Web shop conversion rate",
+      "description": "Share of sessions that end in an order, by device.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/sessions-by-utm-source",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Sessions by UTM source",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/email-campaign-performance",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Newsletter campaign performance",
+      "description": "Open rate, click rate and revenue per send for Klaviyo campaigns.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/influencer-codes",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Influencer affiliate codes — orders and payout",
+      "description": "Orders attributed to creator discount codes and the commission owed.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/landing-page-bounce",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Landing page bounce rate",
+      "description": "Single-page sessions by landing page, to spot broken campaign pages.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/spend-daily",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Daily ad spend",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/brand-search-share",
+      "model": "card",
+      "collection": "collection/marketing",
+      "name": "Branded vs non-branded search traffic",
+      "description": "How much of our Google traffic comes from people already searching for Northwind.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "card/return-rate-by-category",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Return rate by category",
+      "description": "Returned units as a share of units sold, per product category.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/return-reasons",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Top return reasons",
+      "description": "Breakdown of return reason codes: wrong size, damaged, not as described, changed mind.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/sku-4471-returns",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "SKU-4471 Alpine 2P tent — return spike",
+      "description": "Investigation into the jump in returns for the two-person Alpine tent after the pole supplier change.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/sizing-issues-footwear",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Footwear fit complaints",
+      "description": "Returns and reviews mentioning 'runs small' or 'too narrow' for hiking boots.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/sell-through-by-season",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Sell-through by season collection",
+      "description": "Share of each season's buy that sold at full price.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/slow-movers",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Slow-moving stock",
+      "description": "SKUs with more than 180 days of cover at the current sales rate. Candidates for markdown.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/markdown-effectiveness",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Markdown effectiveness",
+      "description": "Units sold before and after a price reduction, per SKU.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/product-reviews-avg",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Average review rating by product",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/new-launches-first-30d",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "New product launches — first 30 days",
+      "description": "Units, revenue and return rate for products launched this year, in their first month.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/stockouts",
+      "model": "card",
+      "collection": "collection/product",
+      "name": "Out-of-stock days by SKU",
+      "description": "Days a SKU was unavailable on the web shop, and estimated lost sales.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "card/tickets-by-category",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "Support tickets by category",
+      "description": "Where is my order, returns, product questions, payment problems, complaints.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/first-response-time",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "First response time, median and p90",
+      "description": "How long customers wait for the first human reply, per channel.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/csat-weekly",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "CSAT weekly",
+      "description": "Customer satisfaction score from post-ticket surveys.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/nps-trend",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "NPS trend",
+      "description": "Net Promoter Score by month from the post-purchase survey.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/nps-detractor-comments",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "Detractor comments",
+      "description": "Free-text comments from customers who scored us 0 to 6.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/wismo-tickets",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "WISMO ticket volume",
+      "description": "Where-is-my-order contacts per 100 shipments, by carrier.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/agent-productivity",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "Agent productivity",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/ticket-backlog",
+      "model": "card",
+      "collection": "collection/support",
+      "name": "Open ticket backlog",
+      "description": "Unresolved tickets by age.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "card/on-time-delivery",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "On-time delivery rate by carrier",
+      "description": "Share of parcels delivered by the promised date: DHL, InPost, Yamato, UPS.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/shipping-cost-per-order",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Shipping cost per order",
+      "description": "Carrier cost divided by orders shipped, per destination country.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/pick-pack-time",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Pick and pack time by warehouse",
+      "description": "Hours from order placed to parcel handed to carrier.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/inventory-on-hand",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Inventory on hand by warehouse",
+      "description": "Units and cost value of stock in Poznań, Rotterdam, Reno and Chiba.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/stock-cover-days",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Days of stock cover",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/damaged-in-transit",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Parcels damaged in transit",
+      "description": "Carrier damage claims and their resolution.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/inbound-container-eta",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Inbound container ETAs",
+      "description": "Sea freight from Vietnam and Bangladesh suppliers, expected arrival at port.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/split-shipments",
+      "model": "card",
+      "collection": "collection/logistics",
+      "name": "Split shipment rate",
+      "description": "Orders shipped in more than one parcel because items sat in different warehouses.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "card/employee-churn",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Employee churn by department",
+      "description": "Voluntary and involuntary leavers as a share of average headcount, rolling 12 months.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/headcount-by-location",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Headcount by location",
+      "description": "Employees in Kraków, Amsterdam, Denver and Tokyo offices plus warehouse staff.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/time-to-hire",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Time to hire",
+      "description": "Days from job posting to accepted offer, by department.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/talent-acquisition-funnel",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Talent acquisition funnel",
+      "description": "Applicants, interviews, offers and hires for open roles.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/employee-retention-cohort",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "New hire retention after 12 months",
+      "description": "Share of each hiring cohort still employed a year later.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/sick-leave",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Sick leave days per employee",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/engagement-survey",
+      "model": "card",
+      "collection": "collection/people",
+      "name": "Engagement survey results",
+      "description": "Twice-yearly employee engagement survey, by team.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/exec-bonus-pool",
+      "model": "card",
+      "collection": "collection/exec-comp",
+      "name": "Executive bonus pool",
+      "description": "Bonus accrual for the leadership team against targets.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/exec-salary-bands",
+      "model": "card",
+      "collection": "collection/exec-comp",
+      "name": "Leadership salary bands",
+      "description": "Base salary and equity by executive role.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "card/customer-churn-rate",
+      "model": "card",
+      "collection": "collection/membership",
+      "name": "Trail Club churn rate",
+      "description": "Monthly share of members who cancel their membership.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "card/membership-cancellation-reasons",
+      "model": "card",
+      "collection": "collection/membership",
+      "name": "Why members cancel",
+      "description": "Cancellation survey answers: too expensive, not using the perks, moved abroad.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "card/active-members",
+      "model": "card",
+      "collection": "collection/membership",
+      "name": "Active members",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "card/member-vs-nonmember-spend",
+      "model": "card",
+      "collection": "collection/membership",
+      "name": "Member vs non-member annual spend",
+      "description": "Do Trail Club members buy more? Average yearly net revenue per customer.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "card/trial-conversion",
+      "model": "card",
+      "collection": "collection/membership",
+      "name": "Free trial to paid conversion",
+      "description": "Share of 30-day trial members who become paying members.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "card/gdpr-dsr-sla",
+      "model": "card",
+      "collection": "collection/legal",
+      "name": "GDPR-DSR requests past SLA",
+      "description": "Data subject requests not completed within 30 days.",
+      "table": "table/gdpr-dsr-requests"
+    },
+    {
+      "key": "card/erasure-requests-monthly",
+      "model": "card",
+      "collection": "collection/legal",
+      "name": "Right-to-be-forgotten requests per month",
+      "description": "Account deletion requests received under GDPR article 17.",
+      "table": "table/gdpr-dsr-requests"
+    },
+    {
+      "key": "card/vat-oss-by-country",
+      "model": "card",
+      "collection": "collection/legal",
+      "name": "VAT OSS return by member state",
+      "description": "EU One-Stop-Shop VAT due on cross-border consumer sales, per country, per quarter.",
+      "table": "table/gdpr-dsr-requests"
+    },
+    {
+      "key": "card/pipeline-freshness",
+      "model": "card",
+      "collection": "collection/data-eng",
+      "name": "dbt model freshness",
+      "description": "Hours since last successful run of each dbt model feeding the warehouse.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/row-count-drift",
+      "model": "card",
+      "collection": "collection/data-eng",
+      "name": "Row count drift on fct_orders_v2",
+      "description": "Daily row counts against the 28-day average, to catch broken loads.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/adyen-settlement-reconciliation",
+      "model": "card",
+      "collection": "collection/data-eng",
+      "name": "stg_adyen_settlements vs fct_payments reconciliation",
+      "description": "Payments captured but missing from settlement files, and vice versa.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/warehouse-query-costs",
+      "model": "card",
+      "collection": "collection/data-eng",
+      "name": "Warehouse query cost by user",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/revenue-old",
+      "model": "card",
+      "collection": "collection/legacy",
+      "name": "Revenue (old)",
+      "description": "Built on fct_orders. Gross amounts, no refunds. Kept for audit only.",
+      "table": "table/fct-orders"
+    },
+    {
+      "key": "card/revenue-copy",
+      "model": "card",
+      "collection": "collection/legacy",
+      "name": "Copy of Revenue",
+      "table": "table/fct-orders"
+    },
+    {
+      "key": "card/orders-dashboard-2022",
+      "model": "card",
+      "collection": "collection/legacy",
+      "name": "Orders 2022 (frozen)",
+      "description": "Snapshot of 2022 orders for the audit.",
+      "table": "table/fct-orders"
+    },
+    {
+      "key": "card/old-cac",
+      "model": "card",
+      "collection": "collection/legacy",
+      "name": "CAC (pre-attribution-change)",
+      "description": "Customer acquisition cost before the switch to data-driven attribution in 2024.",
+      "table": "table/fct-orders"
+    },
+    {
+      "key": "card/pl-sprzedaz-wojewodztwa",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Sprzedaż w Polsce według województw",
+      "description": "Przychód netto ze sklepu internetowego w podziale na województwa, ostatnie 12 miesięcy.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-zwroty-kategorie",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Zwroty według kategorii produktu",
+      "description": "Odsetek zwróconych sztuk w każdej kategorii dla zamówień z Polski.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-inpost-paczkomaty",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Dostawy do paczkomatów InPost",
+      "description": "Udział zamówień odbieranych w paczkomatach i średni czas dostawy.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-blik-platnosci",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Płatności BLIK i Przelewy24",
+      "description": "Liczba i wartość płatności według metody płatności w Polsce.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-nowi-klienci",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Nowi klienci miesięcznie",
+      "description": "Liczba klientów, którzy złożyli pierwsze zamówienie w danym miesiącu.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-magazyn-poznan",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Stany magazynowe — Poznań",
+      "description": "Dzienny stan zapasów w centrum dystrybucyjnym w Poznaniu.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-reklamacje",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Reklamacje klientów",
+      "description": "Zgłoszenia reklamacyjne z tytułu rękojmi i gwarancji, czas rozpatrzenia.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-marza-brutto",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Marża brutto na rynku polskim",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-rotacja-pracownikow",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Rotacja pracowników — biuro w Krakowie",
+      "description": "Odejścia pracowników jako odsetek średniego zatrudnienia.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/pl-koszt-pozyskania",
+      "model": "card",
+      "collection": "collection/polska",
+      "name": "Koszt pozyskania klienta",
+      "description": "Wydatki na reklamę podzielone przez liczbę nowych klientów, według kanału.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-monthly-sales",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "日本の月次売上",
+      "description": "楽天市場と自社ECサイトの月別売上（税抜・円建て）。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-return-rate",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "カテゴリ別返品率",
+      "description": "日本向け注文における商品カテゴリごとの返品率。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-yamato-delivery",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "ヤマト運輸 配達遅延",
+      "description": "お届け予定日を過ぎた配送の件数と地域別の内訳。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-rakuten-ranking",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "楽天 売れ筋ランキング",
+      "description": "楽天市場で販売数量が多い上位商品。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-customer-reviews",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "商品レビュー平均評価",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-chiba-inventory",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "千葉倉庫 在庫状況",
+      "description": "千葉物流センターのSKU別在庫数と在庫日数。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-new-customers",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "新規顧客数の推移",
+      "description": "初回購入した顧客の月別人数。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-inquiries",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "お問い合わせ件数",
+      "description": "カスタマーサポートへの問い合わせ件数をカテゴリ別に集計。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-fx-yen",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "為替影響（円安）",
+      "description": "円安がユーロ換算の売上に与えた影響。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "card/ja-summer-campaign",
+      "model": "card",
+      "collection": "collection/japan",
+      "name": "夏のキャンペーン効果",
+      "description": "2025年夏のセールによる売上と新規顧客の増加。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dataset/customer-360",
+      "model": "dataset",
+      "collection": "collection/data-eng",
+      "name": "Customer 360",
+      "description": "One row per customer joining orders, returns, tickets, membership and marketing touchpoints. Start here for any customer question.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dataset/orders-enriched",
+      "model": "dataset",
+      "collection": "collection/data-eng",
+      "name": "Orders enriched",
+      "description": "fct_orders_v2 joined with product, customer and shipment details. The default source for order analysis.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dataset/order-lines-returns",
+      "model": "dataset",
+      "collection": "collection/product",
+      "name": "Order lines with returns",
+      "description": "Every order line with its return status, reason and refund, for return-rate analysis.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "dataset/marketing-attribution",
+      "model": "dataset",
+      "collection": "collection/marketing",
+      "name": "Marketing attribution",
+      "description": "Orders with first-touch and data-driven attributed channel and campaign.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "dataset/support-tickets-clean",
+      "model": "dataset",
+      "collection": "collection/support",
+      "name": "Support tickets (clean)",
+      "description": "Deduplicated Zendesk tickets with order and customer ids attached.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "dataset/inventory-daily",
+      "model": "dataset",
+      "collection": "collection/logistics",
+      "name": "Inventory daily",
+      "description": "Stock on hand per SKU per warehouse per day, with inbound quantities.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "dataset/shipments-delivery",
+      "model": "dataset",
+      "collection": "collection/logistics",
+      "name": "Shipments with delivery performance",
+      "description": "Parcel-level promised vs actual delivery, carrier and destination.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "dataset/wholesale-ledger",
+      "model": "dataset",
+      "collection": "collection/wholesale",
+      "name": "Wholesale ledger",
+      "description": "Purchase orders, invoices and payments per retail partner.",
+      "table": "table/fct-wholesale-orders"
+    },
+    {
+      "key": "dataset/membership-lifecycle",
+      "model": "dataset",
+      "collection": "collection/membership",
+      "name": "Membership lifecycle",
+      "description": "Trail Club members with trial, conversion, renewal and cancellation events.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "dataset/employee-roster",
+      "model": "dataset",
+      "collection": "collection/people",
+      "name": "Employee roster",
+      "description": "Current and former employees with department, manager and tenure.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "dataset/payments-reconciled",
+      "model": "dataset",
+      "collection": "collection/finance",
+      "name": "Payments reconciled",
+      "description": "Adyen payments matched to orders and settlements, with fees.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dataset/web-funnel",
+      "model": "dataset",
+      "collection": "collection/marketing",
+      "name": "Web funnel",
+      "description": "Session to product view to add-to-cart to checkout to order.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "dataset/pl-zamowienia",
+      "model": "dataset",
+      "collection": "collection/polska",
+      "name": "Zamówienia — Polska",
+      "description": "Zamówienia z polskiego sklepu z danymi klienta, dostawy i płatności.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dataset/ja-orders",
+      "model": "dataset",
+      "collection": "collection/japan",
+      "name": "日本 注文データ",
+      "description": "日本向け注文に顧客・配送・決済情報を結合したデータセット。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/net-revenue",
+      "model": "metric",
+      "collection": "collection/finance",
+      "name": "Net revenue",
+      "description": "Order value after discounts, refunds and VAT. The company's official revenue number.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/gross-margin-pct",
+      "model": "metric",
+      "collection": "collection/finance",
+      "name": "Gross margin %",
+      "description": "(Net revenue − landed COGS) / net revenue.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/mrr",
+      "model": "metric",
+      "collection": "collection/membership",
+      "name": "MRR",
+      "description": "Monthly recurring revenue from Trail Club memberships.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "metric/active-customers",
+      "model": "metric",
+      "collection": "collection/sales",
+      "name": "Active customers",
+      "description": "Customers with at least one order in the last 365 days.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/aov",
+      "model": "metric",
+      "collection": "collection/sales",
+      "name": "Average order value",
+      "description": "Net revenue divided by number of orders.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/return-rate",
+      "model": "metric",
+      "collection": "collection/product",
+      "name": "Return rate",
+      "description": "Returned units divided by shipped units.",
+      "table": "table/fct-returns"
+    },
+    {
+      "key": "metric/cac",
+      "model": "metric",
+      "collection": "collection/marketing",
+      "name": "CAC",
+      "description": "Paid marketing spend divided by new customers.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "metric/roas",
+      "model": "metric",
+      "collection": "collection/marketing",
+      "name": "ROAS",
+      "description": "Attributed revenue divided by ad spend.",
+      "table": "table/fct-marketing-spend"
+    },
+    {
+      "key": "metric/on-time-delivery",
+      "model": "metric",
+      "collection": "collection/logistics",
+      "name": "On-time delivery %",
+      "description": "Parcels delivered on or before the promised date.",
+      "table": "table/fct-shipments"
+    },
+    {
+      "key": "metric/nps",
+      "model": "metric",
+      "collection": "collection/support",
+      "name": "NPS",
+      "description": "Promoters minus detractors, from the post-purchase survey.",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "metric/csat",
+      "model": "metric",
+      "collection": "collection/support",
+      "name": "CSAT",
+      "table": "table/fct-support-tickets"
+    },
+    {
+      "key": "metric/member-churn",
+      "model": "metric",
+      "collection": "collection/membership",
+      "name": "Member churn rate",
+      "description": "Cancelled memberships divided by members at start of month.",
+      "table": "table/fct-subscriptions"
+    },
+    {
+      "key": "metric/employee-attrition",
+      "model": "metric",
+      "collection": "collection/people",
+      "name": "Employee attrition",
+      "description": "Leavers in the last 12 months divided by average headcount.",
+      "table": "table/hr-employees"
+    },
+    {
+      "key": "metric/contribution-margin",
+      "model": "metric",
+      "collection": "collection/finance",
+      "name": "Contribution margin",
+      "description": "Net revenue minus all variable costs: COGS, shipping, payment fees, returns handling.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/pl-przychod",
+      "model": "metric",
+      "collection": "collection/polska",
+      "name": "Przychód netto (PL)",
+      "description": "Przychód ze sprzedaży w Polsce po rabatach i zwrotach.",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "metric/ja-uriage",
+      "model": "metric",
+      "collection": "collection/japan",
+      "name": "売上高（日本）",
+      "description": "日本市場の純売上高。",
+      "table": "table/fct-orders-v2"
+    },
+    {
+      "key": "dashboard/weekly-exec-pulse",
+      "model": "dashboard",
+      "collection": "collection/exec",
+      "name": "Weekly exec pulse",
+      "description": "The Monday-morning view for the leadership team: revenue, margin, orders, NPS, cash."
+    },
+    {
+      "key": "dashboard/board-pack",
+      "model": "dashboard",
+      "collection": "collection/exec",
+      "name": "Board pack — quarterly KPIs",
+      "description": "KPI-001 to KPI-020 as presented to the board."
+    },
+    {
+      "key": "dashboard/finance-overview",
+      "model": "dashboard",
+      "collection": "collection/finance",
+      "name": "Finance overview",
+      "description": "Revenue, margin, refunds and payment costs in one place."
+    },
+    {
+      "key": "dashboard/cash-and-receivables",
+      "model": "dashboard",
+      "collection": "collection/finance",
+      "name": "Cash and receivables"
+    },
+    {
+      "key": "dashboard/sales-daily",
+      "model": "dashboard",
+      "collection": "collection/sales",
+      "name": "Daily sales",
+      "description": "Today's orders, revenue and conversion against the same day last year."
+    },
+    {
+      "key": "dashboard/customer-insights",
+      "model": "dashboard",
+      "collection": "collection/sales",
+      "name": "Customer insights",
+      "description": "Who our customers are, where they live, how often they come back and what they are worth."
+    },
+    {
+      "key": "dashboard/wholesale-accounts",
+      "model": "dashboard",
+      "collection": "collection/wholesale",
+      "name": "Wholesale account health",
+      "description": "Revenue, open POs, overdue invoices and sell-through per retail partner."
+    },
+    {
+      "key": "dashboard/marketing-performance",
+      "model": "dashboard",
+      "collection": "collection/marketing",
+      "name": "Paid marketing performance",
+      "description": "Spend, ROAS, CAC and new customers by channel and campaign."
+    },
+    {
+      "key": "dashboard/web-funnel",
+      "model": "dashboard",
+      "collection": "collection/marketing",
+      "name": "Web shop funnel"
+    },
+    {
+      "key": "dashboard/returns-deep-dive",
+      "model": "dashboard",
+      "collection": "collection/product",
+      "name": "Returns deep-dive",
+      "description": "Return rates, reasons and refund cost by category, SKU and country."
+    },
+    {
+      "key": "dashboard/merchandising",
+      "model": "dashboard",
+      "collection": "collection/product",
+      "name": "Merchandising & assortment",
+      "description": "Sell-through, slow movers, markdowns and stockouts for the buying team."
+    },
+    {
+      "key": "dashboard/support-ops",
+      "model": "dashboard",
+      "collection": "collection/support",
+      "name": "Support operations",
+      "description": "Ticket volume, response times, backlog and agent productivity."
+    },
+    {
+      "key": "dashboard/voice-of-customer",
+      "model": "dashboard",
+      "collection": "collection/support",
+      "name": "Voice of the customer",
+      "description": "NPS, CSAT, review ratings and what customers say in their comments."
+    },
+    {
+      "key": "dashboard/fulfilment",
+      "model": "dashboard",
+      "collection": "collection/logistics",
+      "name": "Fulfilment & delivery",
+      "description": "Pick-pack times, carrier on-time rates, shipping cost and damage claims."
+    },
+    {
+      "key": "dashboard/inventory-planning",
+      "model": "dashboard",
+      "collection": "collection/logistics",
+      "name": "Inventory planning",
+      "description": "Stock cover, inbound containers and reorder alerts per warehouse."
+    },
+    {
+      "key": "dashboard/people-overview",
+      "model": "dashboard",
+      "collection": "collection/people",
+      "name": "People overview",
+      "description": "Headcount, hiring, attrition and engagement."
+    },
+    {
+      "key": "dashboard/hr-churn",
+      "model": "dashboard",
+      "collection": "collection/people",
+      "name": "Churn",
+      "description": "Staff turnover by team and tenure band."
+    },
+    {
+      "key": "dashboard/trail-club",
+      "model": "dashboard",
+      "collection": "collection/membership",
+      "name": "Trail Club membership",
+      "description": "Members, MRR, trial conversion and cancellations."
+    },
+    {
+      "key": "dashboard/compliance",
+      "model": "dashboard",
+      "collection": "collection/legal",
+      "name": "Privacy & compliance",
+      "description": "GDPR requests, SLA breaches and VAT filings."
+    },
+    {
+      "key": "dashboard/data-health",
+      "model": "dashboard",
+      "collection": "collection/data-eng",
+      "name": "Data platform health",
+      "description": "Pipeline freshness, load failures and warehouse cost."
+    },
+    {
+      "key": "dashboard/black-friday-war-room",
+      "model": "dashboard",
+      "collection": "collection/sales",
+      "name": "Black Friday war room",
+      "description": "Live orders, site conversion, stockouts and carrier capacity during the peak sale weekend."
+    },
+    {
+      "key": "dashboard/exec-comp-review",
+      "model": "dashboard",
+      "collection": "collection/exec-comp",
+      "name": "Compensation review",
+      "description": "Annual leadership compensation review."
+    },
+    {
+      "key": "dashboard/legacy-kpis",
+      "model": "dashboard",
+      "collection": "collection/legacy",
+      "name": "KPIs (old)",
+      "description": "Pre-2024 KPI dashboard. Numbers do not match finance."
+    },
+    {
+      "key": "dashboard/pl-przeglad",
+      "model": "dashboard",
+      "collection": "collection/polska",
+      "name": "Przegląd rynku polskiego",
+      "description": "Sprzedaż, zwroty, dostawy i płatności w Polsce na jednym pulpicie."
+    },
+    {
+      "key": "dashboard/pl-logistyka",
+      "model": "dashboard",
+      "collection": "collection/polska",
+      "name": "Logistyka — magazyn Poznań",
+      "description": "Czas kompletacji zamówień, stany magazynowe i terminowość dostaw."
+    },
+    {
+      "key": "dashboard/ja-overview",
+      "model": "dashboard",
+      "collection": "collection/japan",
+      "name": "日本市場ダッシュボード",
+      "description": "売上、返品、配送、在庫をまとめた日本事業の概要。"
+    },
+    {
+      "key": "dashboard/ja-support",
+      "model": "dashboard",
+      "collection": "collection/japan",
+      "name": "カスタマーサポート状況",
+      "description": "問い合わせ件数、初回応答時間、顧客満足度。"
+    },
+    {
+      "key": "document/metric-definitions",
+      "model": "document",
+      "collection": "collection/finance",
+      "name": "Metric definitions",
+      "body": "How we define net revenue, gross margin, contribution margin, AOV and active customers. Net revenue excludes VAT and is reported after refunds."
+    },
+    {
+      "key": "document/revenue-recognition",
+      "model": "document",
+      "collection": "collection/finance",
+      "name": "Revenue recognition policy",
+      "body": "Web shop revenue is recognised at dispatch. Wholesale revenue is recognised on delivery to the partner. Trail Club fees are recognised monthly."
+    },
+    {
+      "key": "document/returns-policy",
+      "model": "document",
+      "collection": "collection/product",
+      "name": "Returns handling runbook",
+      "body": "Customers have 30 days to return. The warehouse grades each item A/B/C. Grade C goes to the outlet. RMA numbers start with RMA-."
+    },
+    {
+      "key": "document/attribution-change-2024",
+      "model": "document",
+      "collection": "collection/marketing",
+      "name": "Why CAC changed in 2024",
+      "body": "We moved from last-click to data-driven attribution in March 2024. CAC figures before and after are not comparable."
+    },
+    {
+      "key": "document/on-call-data",
+      "model": "document",
+      "collection": "collection/data-eng",
+      "name": "Data on-call runbook",
+      "body": "If fct_orders_v2 row counts drop by more than 20%, check the Shopify extractor first, then the dbt run log. Page the on-call via PagerDuty."
+    },
+    {
+      "key": "document/fct-orders-migration",
+      "model": "document",
+      "collection": "collection/data-eng",
+      "name": "Migrating from fct_orders to fct_orders_v2",
+      "body": "fct_orders is frozen. fct_orders_v2 has one row per order line, net amounts and currency conversion. Update any question built on the old table."
+    },
+    {
+      "key": "document/carrier-sla",
+      "model": "document",
+      "collection": "collection/logistics",
+      "name": "Carrier SLAs",
+      "body": "DHL Paket 2 days in DE, InPost next day in PL, Yamato next day in Kanto, UPS Ground 3-5 days in the US."
+    },
+    {
+      "key": "document/dsr-process",
+      "model": "document",
+      "collection": "collection/legal",
+      "name": "Handling data subject requests",
+      "body": "GDPR-DSR tickets must be completed within 30 days. Erasure requests also go to Klaviyo, Zendesk and Adyen."
+    },
+    {
+      "key": "document/onboarding-analysts",
+      "model": "document",
+      "collection": "collection/data-eng",
+      "name": "Start here: onboarding for new analysts",
+      "body": "Use the Customer 360 and Orders enriched models. Avoid anything in Legacy reports."
+    },
+    {
+      "key": "document/support-macros",
+      "model": "document",
+      "collection": "collection/support",
+      "name": "Support macros and tone of voice",
+      "body": "Template replies for WISMO, damaged item and refund status questions."
+    },
+    {
+      "key": "document/bf-2025-retro",
+      "model": "document",
+      "collection": "collection/sales",
+      "name": "Black Friday 2025 retrospective",
+      "body": "Site held up. InPost capacity ran out on Saturday. SKU-4471 sold out in six hours."
+    },
+    {
+      "key": "document/pl-slownik",
+      "model": "document",
+      "collection": "collection/polska",
+      "name": "Słownik pojęć biznesowych",
+      "body": "Przychód netto, marża brutto, koszt pozyskania klienta, wskaźnik zwrotów — definicje używane w raportach."
+    },
+    {
+      "key": "document/ja-glossary",
+      "model": "document",
+      "collection": "collection/japan",
+      "name": "用語集",
+      "body": "純売上高、粗利益率、返品率、顧客獲得コストの定義。"
+    },
+    {
+      "key": "document/hr-leave-policy",
+      "model": "document",
+      "collection": "collection/people",
+      "name": "Leave and absence policy",
+      "body": "Holiday allowance, sick leave reporting and parental leave by country."
+    },
+    {
+      "key": "segment/vip-customers",
+      "model": "segment",
+      "table": "table/dim-customer",
+      "name": "VIP customers",
+      "description": "Customers with more than 2,000 EUR lifetime net revenue."
+    },
+    {
+      "key": "segment/lapsed-customers",
+      "model": "segment",
+      "table": "table/dim-customer",
+      "name": "Lapsed customers",
+      "description": "No order in the last 365 days after at least two earlier orders."
+    },
+    {
+      "key": "segment/eu-customers",
+      "model": "segment",
+      "table": "table/dim-customer",
+      "name": "EU customers"
+    },
+    {
+      "key": "segment/web-orders",
+      "model": "segment",
+      "table": "table/fct-orders-v2",
+      "name": "Web shop orders",
+      "description": "Orders placed on northwind.com, excluding marketplaces and wholesale."
+    },
+    {
+      "key": "segment/discounted-orders",
+      "model": "segment",
+      "table": "table/fct-orders-v2",
+      "name": "Orders with a promo code"
+    },
+    {
+      "key": "segment/damaged-returns",
+      "model": "segment",
+      "table": "table/fct-returns",
+      "name": "Damaged on arrival",
+      "description": "Returns with reason code DMG."
+    },
+    {
+      "key": "segment/voluntary-leavers",
+      "model": "segment",
+      "table": "table/hr-terminations",
+      "name": "Voluntary leavers",
+      "description": "Employees who resigned."
+    },
+    {
+      "key": "segment/late-shipments",
+      "model": "segment",
+      "table": "table/fct-shipments",
+      "name": "Late deliveries",
+      "description": "Delivered after the promised date."
+    },
+    {
+      "key": "segment/high-priority-tickets",
+      "model": "segment",
+      "table": "table/fct-support-tickets",
+      "name": "Urgent tickets",
+      "description": "Priority P1 or tagged as complaint."
+    },
+    {
+      "key": "segment/pl-klienci",
+      "model": "segment",
+      "table": "table/dim-customer",
+      "name": "Klienci z Polski",
+      "description": "Klienci z adresem dostawy w Polsce."
+    },
+    {
+      "key": "measure/net-sales",
+      "model": "measure",
+      "table": "table/fct-orders-v2",
+      "name": "Net sales",
+      "description": "Sum of net line amount in EUR."
+    },
+    {
+      "key": "measure/units-sold",
+      "model": "measure",
+      "table": "table/fct-orders-v2",
+      "name": "Units sold"
+    },
+    {
+      "key": "measure/refund-amount",
+      "model": "measure",
+      "table": "table/fct-returns",
+      "name": "Refund amount",
+      "description": "Sum of refunds paid to customers."
+    },
+    {
+      "key": "measure/ad-spend",
+      "model": "measure",
+      "table": "table/fct-marketing-spend",
+      "name": "Ad spend",
+      "description": "Sum of daily paid media spend."
+    },
+    {
+      "key": "measure/tickets-opened",
+      "model": "measure",
+      "table": "table/fct-support-tickets",
+      "name": "Tickets opened"
+    },
+    {
+      "key": "measure/stock-units",
+      "model": "measure",
+      "table": "table/fct-inventory-snapshot",
+      "name": "Units on hand",
+      "description": "Sum of on-hand units."
+    },
+    {
+      "key": "measure/headcount",
+      "model": "measure",
+      "table": "table/hr-employees",
+      "name": "Headcount",
+      "description": "Count of active employees."
+    },
+    {
+      "key": "measure/chargeback-value",
+      "model": "measure",
+      "table": "table/fct-payments",
+      "name": "Chargeback value",
+      "description": "Sum of disputed payment amounts."
+    }
+  ]
+}

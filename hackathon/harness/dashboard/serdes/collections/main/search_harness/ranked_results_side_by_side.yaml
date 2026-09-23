@@ -1,0 +1,142 @@
+name: Ranked results side by side
+description: |-
+  What did each engine actually return? One column per engine, its top 10 down the page. ✓✓ / ✓ = a right answer, ∅ = returned nothing. The number after · is the engine's own score: not comparable across engines, and n/a when the engine reported no score for this question (in-place never does). ✓✓ highly relevant, ✓ relevant, ∅ the engine returned nothing. Number = the engine's score (not comparable across engines; n/a = the engine reported none). semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **Grade**: How right an answer is: 2 = highly relevant (✓✓), 1 = relevant (✓).
+
+  **Score**: The engine's own relevance number for a result. Every engine uses its own scale, so don't compare scores across engines.
+
+  **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+
+  **appdb**: Metabase's regular keyword search index in the app DB. On H2 (as here) its text-match part can't tell good matches from weak ones, so its ranking leans on the other signals (recency, popularity). That's why it can differ slightly between two runs of the same questions. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+
+  **in-place**: Simple keyword search with no index. It orders results its own way but reports no score, so its score shows as n/a. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+entity_id: wSYo6EwvxAceYE3Kz-Ry_
+created_at: '2026-09-23T14:18:20.671472Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH r AS (
+        SELECT coalesce(rank, 1) AS rank, engine,
+               CASE WHEN rank IS NULL THEN '∅ no results'
+                    ELSE CASE grade WHEN 2 THEN '✓✓ ' WHEN 1 THEN '✓ ' ELSE '' END
+                         || coalesce(name, model || ' ' || entity_id) || '  ·'
+                         -- n/a, not 0, when the engine reported no non-zero score for this question (in-place): BL-24
+                         || CASE WHEN bool_or(score <> 0) OVER (PARTITION BY engine) THEN round(score::numeric, 2)::text ELSE 'n/a' END
+               END AS result
+        FROM harness_ranked_result
+        WHERE corpus_id = {{corpus}} AND scenario_id = {{scenario}} AND (rank IS NULL OR rank <= 10)
+          AND embedding_text = {{variant}}
+          AND text_strategy = {{strategy}}
+          [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+          [[AND embedder = {{embedder}}]]
+      )
+      SELECT rank AS "Rank",
+             max(result) FILTER (WHERE engine = 'semantic') AS "semantic",
+             max(result) FILTER (WHERE engine = 'semantic-pure') AS "semantic-pure",
+             max(result) FILTER (WHERE engine = 'semantic-vector') AS "semantic-vector",
+             max(result) FILTER (WHERE engine = 'sqlite-vec1') AS "sqlite-vec1",
+             max(result) FILTER (WHERE engine = 'sqlite-vec1-pure') AS "sqlite-vec1-pure",
+             max(result) FILTER (WHERE engine = 'lucene') AS "lucene",
+             max(result) FILTER (WHERE engine = 'lucene-pure') AS "lucene-pure",
+             max(result) FILTER (WHERE engine = 'appdb') AS "appdb",
+             max(result) FILTER (WHERE engine = 'in-place') AS "in-place"
+      FROM r
+      GROUP BY 1
+      ORDER BY 1
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    - display-name: Scenario
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000004
+      name: scenario
+      required: false
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - color: '#84BB4C'
+    columns:
+    - semantic
+    - semantic-pure
+    - semantic-vector
+    - sqlite-vec1
+    - sqlite-vec1-pure
+    - lucene
+    - lucene-pure
+    - appdb
+    - in-place
+    highlight_row: false
+    operator: starts-with
+    type: single
+    value: ✓✓
+  - color: '#C4E0A5'
+    columns:
+    - semantic
+    - semantic-pure
+    - semantic-vector
+    - sqlite-vec1
+    - sqlite-vec1-pure
+    - lucene
+    - lucene-pure
+    - appdb
+    - in-place
+    highlight_row: false
+    operator: starts-with
+    type: single
+    value: ✓
+  - color: '#F4A5A5'
+    columns:
+    - semantic
+    - semantic-pure
+    - semantic-vector
+    - sqlite-vec1
+    - sqlite-vec1-pure
+    - lucene
+    - lucene-pure
+    - appdb
+    - in-place
+    highlight_row: false
+    operator: starts-with
+    type: single
+    value: ∅
+card_schema: 24
+serdes/meta:
+- id: wSYo6EwvxAceYE3Kz-Ry_
+  label: ranked_results_side_by_side
+  model: Card
+type: question

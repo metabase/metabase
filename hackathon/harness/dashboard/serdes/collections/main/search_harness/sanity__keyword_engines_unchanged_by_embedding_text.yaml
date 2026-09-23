@@ -1,0 +1,107 @@
+name: 'Sanity: keyword engines unchanged by embedding text'
+description: |-
+  Were the variant runs comparable? Keyword engines never see embeddings, so Top-10 differs must be 0. Anything else means: don't trust this tab. Keyword engines never see embeddings, so their top-10 must match baseline exactly. Anything non-zero means the runs are not comparable.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+
+  **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+  **Baseline**: The reference setup everything else is compared against.
+entity_id: d6BCRY6hsbCJ70FOaFW7S
+created_at: '2026-09-23T14:33:01.840162Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT l.engine AS "Engine", l.embedding_text AS "Embedding text", count(*) AS "Scenarios",
+             count(*) FILTER (WHERE l.top10 IS DISTINCT FROM b.top10) AS "Top-10 differs"
+      FROM harness_latest_list l
+      JOIN harness_latest_list b
+        ON b.corpus_id = l.corpus_id AND b.data_scale IS NOT DISTINCT FROM l.data_scale AND b.embedder = l.embedder
+       AND b.text_strategy = l.text_strategy
+       AND b.engine = l.engine AND b.scenario_id = l.scenario_id AND b.embedding_text = 'baseline'
+      WHERE l.corpus_id = {{corpus}} AND l.embedding_text <> 'baseline' AND l.engine IN ('appdb', 'in-place')
+        [[AND (l.data_scale = {{scale}} OR l.data_scale IS NULL)]]
+        [[AND l.embedder = {{embedder}}]]
+        AND l.text_strategy = {{strategy}}
+      GROUP BY 1, 2
+      ORDER BY 1, 2
+    template-tags:
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedding text
+  field_ref:
+  - field
+  - Embedding text
+  - base-type: type/Text
+  name: Embedding text
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: Scenarios
+  field_ref:
+  - field
+  - Scenarios
+  - base-type: type/BigInteger
+  name: Scenarios
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: Top-10 differs
+  field_ref:
+  - field
+  - Top-10 differs
+  - base-type: type/BigInteger
+  name: Top-10 differs
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - color: '#ED6E6E'
+    columns:
+    - Top-10 differs
+    highlight_row: true
+    operator: '>'
+    type: single
+    value: 0
+card_schema: 24
+serdes/meta:
+- id: d6BCRY6hsbCJ70FOaFW7S
+  label: sanity__keyword_engines_unchanged_by_embedding_text
+  model: Card
+type: question

@@ -1,0 +1,450 @@
+{
+  "card/query-17": {
+    "kind": "sql-vague",
+    "intent": "Refund amount per customer country over the last full quarter"
+  },
+  "card/copy-of-revenue-v2": {
+    "kind": "sql-vague",
+    "intent": "Monthly net revenue from full-price orders only (orders with no discount code), by sales channel"
+  },
+  "card/tmp-jan": {
+    "kind": "sql-vague",
+    "intent": "How many orders used each discount code in January, and the revenue they brought"
+  },
+  "card/bens-q": {
+    "kind": "sql-vague",
+    "intent": "Share of repeat customers (more than one lifetime order) for each acquisition channel"
+  },
+  "card/query-3": {
+    "kind": "sql-vague",
+    "intent": "Percentage of shipments delivered late (after the promised date), per carrier"
+  },
+  "card/query-8": {
+    "kind": "sql-vague",
+    "intent": "Average shipping cost per order, split by the country of the warehouse that shipped it"
+  },
+  "card/untitled-1": {
+    "kind": "sql-vague",
+    "intent": "Chargeback rate for each payment method"
+  },
+  "card/export-for-marta": {
+    "kind": "sql-vague",
+    "intent": "Payment processing fees as a percentage of the amount paid, by payment method, per month"
+  },
+  "card/query-21": {
+    "kind": "sql-vague",
+    "intent": "Trail Club members who cancelled within 30 days of joining, per plan"
+  },
+  "card/sub-stuff": {
+    "kind": "sql-vague",
+    "intent": "Monthly recurring revenue from Trail Club subscriptions that are still active, per plan"
+  },
+  "card/q-final-final": {
+    "kind": "sql-vague",
+    "intent": "Employee leavers in the last 12 months per department, split into voluntary resignations and involuntary departures"
+  },
+  "card/headcount-thing": {
+    "kind": "sql-vague",
+    "intent": "Current number of employees at each office location (excluding people who have left)"
+  },
+  "card/query-44": {
+    "kind": "sql-vague",
+    "intent": "Support tickets whose first response took longer than one hour, per ticket priority"
+  },
+  "card/zendesk-pull": {
+    "kind": "sql-vague",
+    "intent": "Median time to resolve a support ticket for each ticket category"
+  },
+  "card/query-5": {
+    "kind": "sql-vague",
+    "intent": "Net Promoter Score per month (share of promoters minus share of detractors)"
+  },
+  "card/nps-comments": {
+    "kind": "sql-vague",
+    "intent": "Unhappy customer survey comments that complain about late or slow delivery"
+  },
+  "card/query-12": {
+    "kind": "sql-vague",
+    "intent": "Products that are out of stock in the latest inventory snapshot, per warehouse"
+  },
+  "card/inv-v3": {
+    "kind": "sql-vague",
+    "intent": "Days of stock cover per product category: units on hand divided by average daily units sold over the last 28 days"
+  },
+  "card/query-30": {
+    "kind": "sql-vague",
+    "intent": "Wholesale purchase orders past their shipping window that still have not shipped, per account manager"
+  },
+  "card/b2b": {
+    "kind": "sql-vague",
+    "intent": "Wholesale accounts whose open orders exceed their credit limit"
+  },
+  "card/query-9": {
+    "kind": "sql-vague",
+    "intent": "Privacy data-subject requests that took longer than the 30-day legal deadline to complete, per request type"
+  },
+  "card/dsr": {
+    "kind": "sql-vague",
+    "intent": "Number of right-to-be-forgotten (data erasure) requests received each month"
+  },
+  "card/query-33": {
+    "kind": "sql-vague",
+    "intent": "Cost per click for each campaign over the last 30 days"
+  },
+  "card/mkt-tmp": {
+    "kind": "sql-vague",
+    "intent": "Return on ad spend per marketing channel: revenue from converted visits divided by the money spent on that channel"
+  },
+  "card/query-2": {
+    "kind": "sql-vague",
+    "intent": "Website conversion rate by device type over the last 7 days"
+  },
+  "card/landing": {
+    "kind": "sql-vague",
+    "intent": "Which website landing pages convert best for visitors coming from paid campaigns"
+  },
+  "card/query-19": {
+    "kind": "sql-vague",
+    "intent": "Gross margin per product category: net sales minus the cost of the goods sold"
+  },
+  "card/price-check": {
+    "kind": "sql-vague",
+    "intent": "Order lines where the product was sold for less than it cost us"
+  },
+  "card/query-40": {
+    "kind": "sql-vague",
+    "intent": "Footwear returns grouped into reason buckets (sizing, damaged, changed mind, other)"
+  },
+  "card/reconcile": {
+    "kind": "sql-vague",
+    "intent": "Adyen settlements that cannot be matched to any payment in our records (payment reconciliation gaps)"
+  },
+  "card/query-50": {
+    "kind": "sql-vague",
+    "intent": "Customer retention by signup-month cohort: share of customers who ordered again three months after signing up"
+  },
+  "card/old-orders": {
+    "kind": "sql-vague",
+    "intent": "Yearly gross sales before 2023 from the old, deprecated orders table"
+  },
+  "card/refunds-v2-final": {
+    "kind": "sql-half",
+    "intent": "Weekly refunds by reason code, leaving out size-related returns"
+  },
+  "card/de-numbers": {
+    "kind": "sql-half",
+    "intent": "Monthly net revenue from customers in Germany"
+  },
+  "card/carrier-stuff": {
+    "kind": "sql-half",
+    "intent": "Average cost per shipment for each delivery carrier over the last quarter"
+  },
+  "card/churn-new-def": {
+    "kind": "sql-half",
+    "intent": "Monthly Trail Club churn counting only members who chose to leave (failed payments excluded)"
+  },
+  "card/tickets-wk": {
+    "kind": "sql-half",
+    "intent": "Number of new support tickets each week by ticket category"
+  },
+  "card/pl-orders": {
+    "kind": "sql-half",
+    "intent": "Polish orders paid with BLIK mobile payments, per month"
+  },
+  "card/margin-check-q3": {
+    "kind": "sql-half",
+    "intent": "Gross margin by product season for the third quarter"
+  },
+  "card/adyen-fees": {
+    "kind": "sql-half",
+    "intent": "Monthly commission paid to the Adyen payment provider"
+  },
+  "card/spend-recon": {
+    "kind": "sql-half",
+    "intent": "Daily TikTok advertising spend"
+  },
+  "card/hr-dash-src": {
+    "kind": "sql-half",
+    "intent": "Number of new hires per month by department"
+  },
+  "card/wholesale-pipeline": {
+    "kind": "sql-half",
+    "intent": "Value of open wholesale orders by account tier"
+  },
+  "card/inventory-inbound": {
+    "kind": "sql-half",
+    "intent": "Units currently on their way to each warehouse (inbound stock)"
+  },
+  "card/refunds-by-product-category": {
+    "kind": "sql-described",
+    "intent": "Total refunded amount per product category, all time."
+  },
+  "card/discount-revenue-share": {
+    "kind": "sql-described",
+    "intent": "Share of monthly net revenue that came from orders using a discount code."
+  },
+  "card/on-time-delivery-by-warehouse": {
+    "kind": "sql-described",
+    "intent": "Share of shipments delivered on or before the promised date, per warehouse."
+  },
+  "card/payment-method-mix": {
+    "kind": "sql-described",
+    "intent": "Share of the total amount paid through each payment method."
+  },
+  "card/trail-club-active-members": {
+    "kind": "sql-described",
+    "intent": "Number of Trail Club members with an active subscription, per plan."
+  },
+  "card/headcount-by-department": {
+    "kind": "sql-described",
+    "intent": "Current employees per department, excluding leavers."
+  },
+  "card/first-response-by-priority": {
+    "kind": "sql-described",
+    "intent": "Average minutes until the first reply to a support ticket, per priority."
+  },
+  "card/nps-responses-per-month": {
+    "kind": "sql-described",
+    "intent": "How many customers answered the NPS survey each month."
+  },
+  "card/inventory-on-hand-by-warehouse": {
+    "kind": "sql-described",
+    "intent": "Units in stock per warehouse on the latest snapshot date."
+  },
+  "card/wholesale-revenue-by-tier": {
+    "kind": "sql-described",
+    "intent": "Shipped wholesale order value per account tier."
+  },
+  "card/gdpr-open-requests": {
+    "kind": "sql-described",
+    "intent": "Data-subject requests that are still open, by request type."
+  },
+  "card/ctr-by-campaign": {
+    "kind": "sql-described",
+    "intent": "Clicks divided by impressions for each marketing campaign."
+  },
+  "card/sessions-by-device-and-source": {
+    "kind": "sql-described",
+    "intent": "Number of website sessions per device type and UTM source."
+  },
+  "card/aov-by-channel": {
+    "kind": "sql-described",
+    "intent": "Average net order value in EUR per sales channel."
+  },
+  "card/returns-by-reason": {
+    "kind": "sql-described",
+    "intent": "Number of returned items per return reason code."
+  },
+  "card/adyen-settlement-volume": {
+    "kind": "sql-described",
+    "intent": "Gross amount settled by Adyen each day."
+  },
+  "card/new-customers-by-country": {
+    "kind": "sql-described",
+    "intent": "Customer signups per month, split by country."
+  },
+  "card/cancellations-by-reason": {
+    "kind": "sql-described",
+    "intent": "Trail Club cancellations per stated cancel reason."
+  },
+  "card/shipments-by-carrier": {
+    "kind": "sql-described",
+    "intent": "Number of shipments handled by each carrier per month."
+  },
+  "card/list-price-by-category": {
+    "kind": "sql-described",
+    "intent": "Average catalogue list price per product category."
+  },
+  "card/new-question": {
+    "kind": "mbql-vague",
+    "intent": "Refunds for damaged goods, summed per month"
+  },
+  "card/question-7": {
+    "kind": "mbql-vague",
+    "intent": "Number of chargebacks for each payment method"
+  },
+  "card/orders-filtered": {
+    "kind": "mbql-vague",
+    "intent": "Quarterly net revenue from the marketplace sales channel"
+  },
+  "card/copy-of-question-7": {
+    "kind": "mbql-vague",
+    "intent": "Payment processing fees paid per month"
+  },
+  "card/test": {
+    "kind": "mbql-vague",
+    "intent": "Cancellations of annual Trail Club plans per month"
+  },
+  "card/question-12": {
+    "kind": "mbql-vague",
+    "intent": "Average resolution time of urgent support tickets per ticket category"
+  },
+  "card/hr-q": {
+    "kind": "mbql-vague",
+    "intent": "Involuntary employee departures (dismissals, layoffs) per quarter"
+  },
+  "card/question-3": {
+    "kind": "mbql-vague",
+    "intent": "Shipping cost per carrier for shipments promised in the last 30 days"
+  },
+  "card/mkt": {
+    "kind": "mbql-vague",
+    "intent": "TikTok ad impressions per campaign"
+  },
+  "card/new-question-2": {
+    "kind": "mbql-vague",
+    "intent": "Weekly number of converting website visits on mobile phones"
+  },
+  "card/inv": {
+    "kind": "mbql-vague",
+    "intent": "Count of low-stock items (5 units or fewer on hand) per warehouse"
+  },
+  "card/question-20": {
+    "kind": "mbql-vague",
+    "intent": "Average NPS survey score per month"
+  },
+  "card/gdpr": {
+    "kind": "mbql-vague",
+    "intent": "Data portability requests received per month"
+  },
+  "card/question-31": {
+    "kind": "mbql-vague",
+    "intent": "Customers who came through referrals, per country"
+  },
+  "card/wh": {
+    "kind": "mbql-vague",
+    "intent": "Value of cancelled wholesale orders per account"
+  },
+  "card/question-9b": {
+    "kind": "mbql-vague",
+    "intent": "Average list price of winter-season products per category"
+  },
+  "card/monthly-refund-amount": {
+    "kind": "mbql-named",
+    "intent": "Total refunds issued per month, all reasons."
+  },
+  "card/chargebacks-by-month": {
+    "kind": "mbql-named",
+    "intent": "Number of payments disputed as chargebacks each month."
+  },
+  "card/revenue-by-channel-quarter": {
+    "kind": "mbql-named",
+    "intent": "Net revenue in EUR per sales channel and quarter."
+  },
+  "card/tickets-by-priority": {
+    "kind": "mbql-named",
+    "intent": "Ticket count per priority level."
+  },
+  "card/voluntary-terminations": {
+    "kind": "mbql-named",
+    "intent": "Employees who resigned of their own accord, per quarter."
+  },
+  "card/impressions-by-channel": {
+    "kind": "mbql-named",
+    "intent": "Paid media impressions per marketing channel."
+  },
+  "card/sessions-by-device": {
+    "kind": "mbql-named",
+    "intent": "Website sessions per device type."
+  },
+  "card/customers-by-acquisition": {
+    "kind": "mbql-named",
+    "intent": "Number of customers per acquisition channel."
+  },
+  "card/revenue-overview": {
+    "kind": "distractor",
+    "intent": "All order lines with net revenue."
+  },
+  "card/customer-list": {
+    "kind": "distractor",
+    "intent": "Every customer with country and signup date."
+  },
+  "card/product-catalogue": {
+    "kind": "distractor",
+    "intent": "All products with prices."
+  },
+  "card/shipments-overview": {
+    "kind": "distractor",
+    "intent": "All shipments with carrier and dates."
+  },
+  "card/tickets-overview": {
+    "kind": "distractor",
+    "intent": "All support tickets."
+  },
+  "card/employee-directory": {
+    "kind": "distractor",
+    "intent": "All employees with department and location."
+  },
+  "card/campaign-list": {
+    "kind": "distractor",
+    "intent": "Daily spend rows per campaign."
+  },
+  "card/payments-overview": {
+    "kind": "distractor",
+    "intent": "All captured payments."
+  },
+  "card/returns-overview": {
+    "kind": "distractor",
+    "intent": "All return merchandise authorisations."
+  },
+  "card/wholesale-accounts": {
+    "kind": "distractor",
+    "intent": "Wholesale customers and their tiers."
+  },
+  "card/warehouse-list": {
+    "kind": "distractor",
+    "intent": "Our warehouses and their locations."
+  },
+  "card/subscriptions-overview": {
+    "kind": "distractor",
+    "intent": "All Trail Club subscriptions."
+  },
+  "metric/orders-count": {
+    "kind": "distractor",
+    "intent": "Count of order lines."
+  },
+  "metric/tickets-count": {
+    "kind": "distractor",
+    "intent": "Count of support tickets."
+  },
+  "metric/shipments-count": {
+    "kind": "distractor",
+    "intent": "Count of shipments."
+  },
+  "metric/returns-count": {
+    "kind": "distractor",
+    "intent": "Count of returned items."
+  },
+  "dashboard/finance-overview": {
+    "kind": "distractor",
+    "intent": "Headline finance numbers."
+  },
+  "dashboard/marketing-overview": {
+    "kind": "distractor",
+    "intent": "Spend, sessions and conversion."
+  },
+  "dashboard/logistics-overview": {
+    "kind": "distractor",
+    "intent": "Shipping and stock at a glance."
+  },
+  "dashboard/support-overview": {
+    "kind": "distractor",
+    "intent": "Ticket volumes and response times."
+  },
+  "dashboard/people-overview": {
+    "kind": "distractor",
+    "intent": "Headcount and hiring."
+  },
+  "dashboard/trail-club-overview": {
+    "kind": "distractor",
+    "intent": "Membership health."
+  },
+  "dashboard/wholesale-overview": {
+    "kind": "distractor",
+    "intent": "B2B orders and accounts."
+  },
+  "dashboard/compliance-overview": {
+    "kind": "distractor",
+    "intent": "Privacy request handling."
+  }
+}

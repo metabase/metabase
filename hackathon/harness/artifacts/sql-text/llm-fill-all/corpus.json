@@ -1,0 +1,2075 @@
+{
+  "corpusId": "northwind-sql-v1",
+  "comment": "Agent I's SQL-bearing corpus (research/embedding-text.md). Standalone: golden warehouse tables and collections, none of the golden entities. Cards carry native SQL or MBQL; many have vague names and no description, so their meaning is only in the query. Hand-written; authored with a script, but this JSON is the source of truth. Derived by embedtext/derive.ts: text strategy llm-fill-all.",
+  "database": {
+    "key": "database/northwind-warehouse",
+    "name": "Northwind Warehouse"
+  },
+  "schema": "analytics",
+  "tables": [
+    {
+      "key": "table/fct-orders-v2",
+      "name": "fct_orders_v2",
+      "displayName": "Orders (v2)",
+      "description": "Order line facts, one row per order line. Includes net amount after discounts and refunds, channel, currency and FX-converted EUR amount. Replaced fct_orders in 2025.",
+      "columns": [
+        {
+          "name": "order_line_id",
+          "type": "bigint"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "channel",
+          "type": "text"
+        },
+        {
+          "name": "currency",
+          "type": "text"
+        },
+        {
+          "name": "quantity",
+          "type": "int"
+        },
+        {
+          "name": "net_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "net_amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "discount_code",
+          "type": "text"
+        },
+        {
+          "name": "ordered_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-orders",
+      "name": "fct_orders",
+      "displayName": "Orders (deprecated)",
+      "description": "DEPRECATED. Legacy order header table, gross amounts only. Use fct_orders_v2.",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "gross_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-customer",
+      "name": "dim_customer",
+      "displayName": "Customers",
+      "description": "One row per customer account, with signup date, country, acquisition channel and lifetime order count.",
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "email_hash",
+          "type": "text"
+        },
+        {
+          "name": "country",
+          "type": "text"
+        },
+        {
+          "name": "acquisition_channel",
+          "type": "text"
+        },
+        {
+          "name": "signup_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "lifetime_orders",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-product",
+      "name": "dim_product",
+      "displayName": "Products",
+      "description": "Product catalog: SKU, category, season, cost price and list price.",
+      "columns": [
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "season",
+          "type": "text"
+        },
+        {
+          "name": "cost_price",
+          "type": "numeric(10,2)"
+        },
+        {
+          "name": "list_price",
+          "type": "numeric(10,2)"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-returns",
+      "name": "fct_returns",
+      "displayName": "Returns",
+      "description": "Returned order lines with RMA number, return reason code and refund amount.",
+      "columns": [
+        {
+          "name": "rma_number",
+          "type": "text"
+        },
+        {
+          "name": "order_line_id",
+          "type": "bigint"
+        },
+        {
+          "name": "reason_code",
+          "type": "text"
+        },
+        {
+          "name": "refund_amount",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "returned_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-web-sessions",
+      "name": "fct_web_sessions",
+      "displayName": "Web sessions",
+      "description": "Clickstream sessions from the web shop, with landing page, UTM source and whether the session converted.",
+      "columns": [
+        {
+          "name": "session_id",
+          "type": "text"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "landing_page",
+          "type": "text"
+        },
+        {
+          "name": "utm_source",
+          "type": "text"
+        },
+        {
+          "name": "device",
+          "type": "text"
+        },
+        {
+          "name": "converted",
+          "type": "boolean"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-marketing-spend",
+      "name": "fct_marketing_spend",
+      "displayName": "Marketing spend",
+      "description": "Daily paid media spend by channel and campaign (Google, Meta, TikTok, affiliates).",
+      "columns": [
+        {
+          "name": "spend_date",
+          "type": "date"
+        },
+        {
+          "name": "channel",
+          "type": "text"
+        },
+        {
+          "name": "campaign",
+          "type": "text"
+        },
+        {
+          "name": "spend_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "impressions",
+          "type": "bigint"
+        },
+        {
+          "name": "clicks",
+          "type": "bigint"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-support-tickets",
+      "name": "fct_support_tickets",
+      "displayName": "Support tickets",
+      "description": "Zendesk tickets with category, priority, first response time and resolution time.",
+      "columns": [
+        {
+          "name": "ticket_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "category",
+          "type": "text"
+        },
+        {
+          "name": "priority",
+          "type": "text"
+        },
+        {
+          "name": "first_response_minutes",
+          "type": "int"
+        },
+        {
+          "name": "resolution_minutes",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-shipments",
+      "name": "fct_shipments",
+      "displayName": "Shipments",
+      "description": "Parcels handed to carriers (DHL, InPost, Yamato, UPS) with promised and actual delivery dates.",
+      "columns": [
+        {
+          "name": "shipment_id",
+          "type": "bigint"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "carrier",
+          "type": "text"
+        },
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "promised_date",
+          "type": "date"
+        },
+        {
+          "name": "delivered_date",
+          "type": "date"
+        },
+        {
+          "name": "cost_eur",
+          "type": "numeric(10,2)"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-warehouse",
+      "name": "dim_warehouse",
+      "displayName": "Warehouses",
+      "description": "Distribution centres: Poznań, Rotterdam, Reno and Chiba.",
+      "columns": [
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "city",
+          "type": "text"
+        },
+        {
+          "name": "country",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-inventory-snapshot",
+      "name": "fct_inventory_snapshot",
+      "displayName": "Inventory snapshot",
+      "description": "Daily on-hand stock per SKU per warehouse.",
+      "columns": [
+        {
+          "name": "snapshot_date",
+          "type": "date"
+        },
+        {
+          "name": "sku",
+          "type": "text"
+        },
+        {
+          "name": "warehouse_id",
+          "type": "int"
+        },
+        {
+          "name": "on_hand_units",
+          "type": "int"
+        },
+        {
+          "name": "inbound_units",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-subscriptions",
+      "name": "fct_subscriptions",
+      "displayName": "Trail Club subscriptions",
+      "description": "Trail Club membership subscriptions: start, cancel date, plan and monthly price.",
+      "columns": [
+        {
+          "name": "subscription_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "plan",
+          "type": "text"
+        },
+        {
+          "name": "monthly_price_eur",
+          "type": "numeric(8,2)"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "cancelled_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "cancel_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/hr-employees",
+      "name": "hr_employees",
+      "displayName": "Employees",
+      "description": "Employee roster from the HRIS: department, location, start date, manager.",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "int"
+        },
+        {
+          "name": "department",
+          "type": "text"
+        },
+        {
+          "name": "location",
+          "type": "text"
+        },
+        {
+          "name": "manager_id",
+          "type": "int"
+        },
+        {
+          "name": "start_date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "key": "table/hr-terminations",
+      "name": "hr_terminations",
+      "displayName": "Employee terminations",
+      "description": "Leavers with termination date and voluntary or involuntary flag.",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "int"
+        },
+        {
+          "name": "termination_date",
+          "type": "date"
+        },
+        {
+          "name": "voluntary",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-payments",
+      "name": "fct_payments",
+      "displayName": "Payments",
+      "description": "Card and wallet payments captured through Adyen, including chargebacks and payment method.",
+      "columns": [
+        {
+          "name": "payment_id",
+          "type": "text"
+        },
+        {
+          "name": "order_id",
+          "type": "bigint"
+        },
+        {
+          "name": "method",
+          "type": "text"
+        },
+        {
+          "name": "amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "fee_eur",
+          "type": "numeric(10,4)"
+        },
+        {
+          "name": "is_chargeback",
+          "type": "boolean"
+        },
+        {
+          "name": "captured_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/stg-adyen-settlements",
+      "name": "stg_adyen_settlements",
+      "displayName": "Adyen settlements (staging)",
+      "description": "Raw Adyen settlement report rows, loaded nightly. Not for reporting.",
+      "columns": [
+        {
+          "name": "psp_reference",
+          "type": "text"
+        },
+        {
+          "name": "merchant_reference",
+          "type": "text"
+        },
+        {
+          "name": "gross",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "commission",
+          "type": "numeric(10,4)"
+        },
+        {
+          "name": "settled_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/dim-wholesale-account",
+      "name": "dim_wholesale_account",
+      "displayName": "Wholesale accounts",
+      "description": "B2B retail partners, their tier, credit limit and account manager.",
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "int"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "tier",
+          "type": "text"
+        },
+        {
+          "name": "credit_limit_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "account_manager",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-wholesale-orders",
+      "name": "fct_wholesale_orders",
+      "displayName": "Wholesale orders",
+      "description": "Purchase orders from retail partners, with PO number and requested ship window.",
+      "columns": [
+        {
+          "name": "po_number",
+          "type": "text"
+        },
+        {
+          "name": "account_id",
+          "type": "int"
+        },
+        {
+          "name": "amount_eur",
+          "type": "numeric(12,2)"
+        },
+        {
+          "name": "ship_window_start",
+          "type": "date"
+        },
+        {
+          "name": "ship_window_end",
+          "type": "date"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "table/gdpr-dsr-requests",
+      "name": "gdpr_dsr_requests",
+      "displayName": "GDPR DSR requests",
+      "description": "Data subject requests (access, erasure, rectification) and their SLA status.",
+      "columns": [
+        {
+          "name": "request_id",
+          "type": "text"
+        },
+        {
+          "name": "request_type",
+          "type": "text"
+        },
+        {
+          "name": "received_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "key": "table/fct-nps-responses",
+      "name": "fct_nps_responses",
+      "displayName": "NPS responses",
+      "description": "Post-purchase survey responses with 0-10 score and free-text comment.",
+      "columns": [
+        {
+          "name": "response_id",
+          "type": "bigint"
+        },
+        {
+          "name": "customer_id",
+          "type": "bigint"
+        },
+        {
+          "name": "score",
+          "type": "int"
+        },
+        {
+          "name": "comment",
+          "type": "text"
+        },
+        {
+          "name": "responded_at",
+          "type": "timestamptz"
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "key": "collection/finance",
+      "name": "Finance"
+    },
+    {
+      "key": "collection/sales",
+      "name": "Sales"
+    },
+    {
+      "key": "collection/wholesale",
+      "name": "Wholesale & B2B",
+      "parent": "collection/sales"
+    },
+    {
+      "key": "collection/marketing",
+      "name": "Marketing"
+    },
+    {
+      "key": "collection/product",
+      "name": "Product & Merchandising"
+    },
+    {
+      "key": "collection/support",
+      "name": "Customer Support"
+    },
+    {
+      "key": "collection/logistics",
+      "name": "Logistics & Fulfilment"
+    },
+    {
+      "key": "collection/people",
+      "name": "People & HR"
+    },
+    {
+      "key": "collection/membership",
+      "name": "Trail Club"
+    },
+    {
+      "key": "collection/legal",
+      "name": "Legal & Compliance"
+    },
+    {
+      "key": "collection/legacy",
+      "name": "Legacy reports (do not use)"
+    },
+    {
+      "key": "collection/polska",
+      "name": "Polska"
+    }
+  ],
+  "entities": [
+    {
+      "key": "card/query-17",
+      "model": "card",
+      "name": "Query 17",
+      "collection": "collection/finance",
+      "table": "table/fct-returns",
+      "sql": "select c.country, count(distinct r.rma_number) as refunds, sum(r.refund_amount) as refunded\nfrom analytics.fct_returns r\njoin analytics.fct_orders_v2 o on o.order_line_id = r.order_line_id\njoin analytics.dim_customer c on c.customer_id = o.customer_id\nwhere r.returned_at >= date_trunc('quarter', now()) - interval '3 months'\n  and r.returned_at < date_trunc('quarter', now())\ngroup by 1 order by 3 desc\n",
+      "description": "How many refunds were issued in the last quarter, by country, showing the number of refunds and total refund amount per country."
+    },
+    {
+      "key": "card/copy-of-revenue-v2",
+      "model": "card",
+      "name": "copy of revenue v2",
+      "collection": "collection/finance",
+      "table": "table/fct-orders-v2",
+      "sql": "select date_trunc('month', ordered_at) as month, channel, sum(net_amount_eur) as revenue_eur\nfrom analytics.fct_orders_v2\nwhere discount_code is null\ngroup by 1, 2 order by 1, 2\n",
+      "description": "This chart shows the monthly revenue by channel, excluding discounted orders, providing a clear view of revenue performance across different sales channels over time."
+    },
+    {
+      "key": "card/tmp-jan",
+      "model": "card",
+      "name": "tmp jan",
+      "collection": "collection/marketing",
+      "table": "table/fct-orders-v2",
+      "sql": "select discount_code, count(distinct order_id) as orders, sum(net_amount_eur) as revenue\nfrom analytics.fct_orders_v2\nwhere discount_code is not null and extract(month from ordered_at) = 1\ngroup by 1 order by 2 desc\n",
+      "description": "This chart shows the top discount codes by number of orders and revenue in January, highlighting which codes drove the most sales during that month."
+    },
+    {
+      "key": "card/bens-q",
+      "model": "card",
+      "name": "Ben's q",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "sql": "select acquisition_channel,\n       avg(case when lifetime_orders > 1 then 1.0 else 0 end) as repeat_share,\n       count(*) as customers\nfrom analytics.dim_customer group by 1 order by 2 desc\n",
+      "description": "For Ben's query, the chart shows the percentage of customers who made more than one purchase by acquisition channel, ordered by repeat purchase rate, highlighting which channels drive repeat buyers."
+    },
+    {
+      "key": "card/query-3",
+      "model": "card",
+      "name": "Query 3",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "sql": "select carrier,\n       100.0 * sum(case when delivered_date > promised_date then 1 else 0 end) / count(*) as pct_late\nfrom analytics.fct_shipments where delivered_date is not null\ngroup by 1 order by 2 desc\n",
+      "description": "Which carriers have the highest percentage of late deliveries, measured as the ratio of late shipments to total shipments, filtered to include only delivered shipments."
+    },
+    {
+      "key": "card/query-8",
+      "model": "card",
+      "name": "Query 8",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "sql": "select w.country, sum(s.cost_eur) / count(distinct s.order_id) as avg_cost_per_order\nfrom analytics.fct_shipments s join analytics.dim_warehouse w using (warehouse_id)\ngroup by 1\n",
+      "description": "What is the average cost per order by country, calculated from shipment data across all warehouses over the entire time period?"
+    },
+    {
+      "key": "card/untitled-1",
+      "model": "card",
+      "name": "untitled (1)",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "sql": "select method, avg(case when is_chargeback then 1.0 else 0 end) as chargeback_rate, count(*) as payments\nfrom analytics.fct_payments group by 1 order by 2 desc\n",
+      "description": "What is the chargeback rate by payment method, showing the percentage of chargebacks among all payments, ordered by highest rate."
+    },
+    {
+      "key": "card/export-for-marta",
+      "model": "card",
+      "name": "export for Marta",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "sql": "select date_trunc('month', captured_at) as month, method,\n       100 * sum(fee_eur) / nullif(sum(amount_eur), 0) as fee_pct\nfrom analytics.fct_payments group by 1, 2 order by 1, 2\n",
+      "description": "What percentage of payment amounts were fees for Marta, by month and payment method, showing the ratio of fees to total payments over time."
+    },
+    {
+      "key": "card/query-21",
+      "model": "card",
+      "name": "Query 21",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "sql": "select plan, count(*) as early_cancellations\nfrom analytics.fct_subscriptions\nwhere cancelled_at is not null and cancelled_at < started_at + interval '30 days'\ngroup by 1\n",
+      "description": "How many Trail Club subscriptions cancelled within the first 30 days after starting, grouped by subscription plan."
+    },
+    {
+      "key": "card/sub-stuff",
+      "model": "card",
+      "name": "sub stuff",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "sql": "select plan, sum(monthly_price_eur) as mrr_eur, count(*) as active_subs\nfrom analytics.fct_subscriptions where cancelled_at is null\ngroup by 1\n",
+      "description": "For the Trail Club, this chart shows total monthly recurring revenue and active subscriptions by plan, focusing on non-cancelled subscriptions."
+    },
+    {
+      "key": "card/q-final-final",
+      "model": "card",
+      "name": "q_final_final",
+      "collection": "collection/people",
+      "table": "table/hr-terminations",
+      "sql": "select e.department,\n       sum(case when t.voluntary then 1 else 0 end) as resigned,\n       sum(case when not t.voluntary then 1 else 0 end) as let_go\nfrom analytics.hr_terminations t join analytics.hr_employees e using (employee_id)\nwhere t.termination_date >= current_date - interval '12 months'\ngroup by 1\n",
+      "description": "This chart shows the number of voluntary and involuntary terminations by department over the past year."
+    },
+    {
+      "key": "card/headcount-thing",
+      "model": "card",
+      "name": "headcount thing",
+      "collection": "collection/people",
+      "table": "table/hr-employees",
+      "sql": "select e.location, count(*) as employees\nfrom analytics.hr_employees e\nleft join analytics.hr_terminations t using (employee_id)\nwhere t.employee_id is null\ngroup by 1 order by 2 desc\n",
+      "description": "How many employees are currently active in each location, sorted by location with the most employees?"
+    },
+    {
+      "key": "card/query-44",
+      "model": "card",
+      "name": "Query 44",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "sql": "select priority, count(*) filter (where first_response_minutes > 60) as sla_breaches, count(*) as tickets\nfrom analytics.fct_support_tickets group by 1\n",
+      "description": "How many support tickets had first response times over 60 minutes, broken down by priority."
+    },
+    {
+      "key": "card/zendesk-pull",
+      "model": "card",
+      "name": "zendesk pull",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "sql": "select category, percentile_cont(0.5) within group (order by resolution_minutes) / 60.0 as median_hours\nfrom analytics.fct_support_tickets where resolution_minutes is not null\ngroup by 1 order by 2 desc\n",
+      "description": "What is the median resolution time in hours for each support ticket category, ordered from highest to lowest?"
+    },
+    {
+      "key": "card/query-5",
+      "model": "card",
+      "name": "Query 5",
+      "collection": "collection/support",
+      "table": "table/fct-nps-responses",
+      "sql": "select date_trunc('month', responded_at) as month,\n       100.0 * (avg(case when score >= 9 then 1.0 else 0 end) - avg(case when score <= 6 then 1.0 else 0 end)) as nps\nfrom analytics.fct_nps_responses group by 1 order by 1\n",
+      "description": "This chart shows the monthly Net Promoter Score, calculated by the percentage difference between promoters and detractors from NPS responses, grouped by month."
+    },
+    {
+      "key": "card/nps-comments",
+      "model": "card",
+      "name": "nps comments",
+      "collection": "collection/support",
+      "table": "table/fct-nps-responses",
+      "sql": "select responded_at, score, comment\nfrom analytics.fct_nps_responses\nwhere score <= 6 and (comment ilike '%late%' or comment ilike '%delivery%' or comment ilike '%slow%')\norder by responded_at desc\n",
+      "description": "This chart shows recent negative NPS comments mentioning late, delivery, or slow issues, highlighting key pain points driving low scores."
+    },
+    {
+      "key": "card/query-12",
+      "model": "card",
+      "name": "Query 12",
+      "collection": "collection/logistics",
+      "table": "table/fct-inventory-snapshot",
+      "sql": "select w.name as warehouse, i.sku\nfrom analytics.fct_inventory_snapshot i join analytics.dim_warehouse w using (warehouse_id)\nwhere i.snapshot_date = (select max(snapshot_date) from analytics.fct_inventory_snapshot) and i.on_hand_units = 0\norder by 1, 2\n",
+      "description": "Which warehouses have zero on-hand units for the most recent inventory snapshot, showing their names and the SKUs with no stock."
+    },
+    {
+      "key": "card/inv-v3",
+      "model": "card",
+      "name": "inv v3",
+      "collection": "collection/product",
+      "table": "table/fct-inventory-snapshot",
+      "sql": "with sold as (\n  select p.category, sum(o.quantity) / 28.0 as daily_units\n  from analytics.fct_orders_v2 o join analytics.dim_product p using (sku)\n  where o.ordered_at >= now() - interval '28 days' group by 1),\nstock as (\n  select p.category, sum(i.on_hand_units) as on_hand\n  from analytics.fct_inventory_snapshot i join analytics.dim_product p using (sku)\n  where i.snapshot_date = (select max(snapshot_date) from analytics.fct_inventory_snapshot) group by 1)\nselect stock.category, on_hand / nullif(daily_units, 0) as days_of_cover\nfrom stock left join sold using (category)\n",
+      "description": "What is the average number of days of inventory cover per product category, based on the latest inventory levels and 28 days of sales data?"
+    },
+    {
+      "key": "card/query-30",
+      "model": "card",
+      "name": "Query 30",
+      "collection": "collection/wholesale",
+      "table": "table/fct-wholesale-orders",
+      "sql": "select a.account_manager, count(*) as overdue_pos, sum(o.amount_eur) as overdue_value\nfrom analytics.fct_wholesale_orders o join analytics.dim_wholesale_account a using (account_id)\nwhere o.ship_window_end < current_date and o.status not in ('shipped', 'cancelled')\ngroup by 1 order by 3 desc\n",
+      "description": "Which account managers have the highest overdue order value, measured by the count of overdue orders and their total value, filtered to those not yet shipped or cancelled."
+    },
+    {
+      "key": "card/b2b",
+      "model": "card",
+      "name": "b2b",
+      "collection": "collection/wholesale",
+      "table": "table/dim-wholesale-account",
+      "sql": "select a.name, a.credit_limit_eur, sum(o.amount_eur) as open_value\nfrom analytics.dim_wholesale_account a join analytics.fct_wholesale_orders o using (account_id)\nwhere o.status in ('open', 'confirmed')\ngroup by 1, 2 having sum(o.amount_eur) > a.credit_limit_eur\n",
+      "description": "Which B2B wholesale accounts have open or confirmed orders exceeding their credit limit? The chart shows the account name, credit limit, and open order value, filtered to those where open value exceeds credit limit."
+    },
+    {
+      "key": "card/query-9",
+      "model": "card",
+      "name": "Query 9",
+      "collection": "collection/legal",
+      "table": "table/gdpr-dsr-requests",
+      "sql": "select request_type, count(*) as late_requests\nfrom analytics.gdpr_dsr_requests\nwhere completed_at > received_at + interval '30 days'\ngroup by 1\n",
+      "description": "How many GDPR DSR requests were completed more than 30 days after they were received, by request type."
+    },
+    {
+      "key": "card/dsr",
+      "model": "card",
+      "name": "dsr",
+      "collection": "collection/legal",
+      "table": "table/gdpr-dsr-requests",
+      "sql": "select date_trunc('month', received_at) as month, count(*) as erasure_requests\nfrom analytics.gdpr_dsr_requests where request_type = 'erasure'\ngroup by 1 order by 1\n",
+      "description": "This chart shows the number of erasure requests received each month, grouped by the month they were received."
+    },
+    {
+      "key": "card/query-33",
+      "model": "card",
+      "name": "Query 33",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "sql": "select campaign, sum(spend_eur) / nullif(sum(clicks), 0) as cpc_eur\nfrom analytics.fct_marketing_spend\nwhere spend_date >= current_date - 30\ngroup by 1 order by 2 desc\n",
+      "description": "What is the average cost per click for marketing campaigns over the last 30 days, sorted by highest cost per click."
+    },
+    {
+      "key": "card/mkt-tmp",
+      "model": "card",
+      "name": "mkt tmp",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "sql": "with rev as (\n  select s.utm_source as channel, sum(o.net_amount_eur) as revenue\n  from analytics.fct_web_sessions s join analytics.fct_orders_v2 o on o.customer_id = s.customer_id\n   and o.ordered_at between s.started_at and s.started_at + interval '1 day'\n  where s.converted group by 1),\nspend as (select channel, sum(spend_eur) as spend from analytics.fct_marketing_spend group by 1)\nselect spend.channel, rev.revenue / nullif(spend.spend, 0) as roas\nfrom spend left join rev using (channel)\n",
+      "description": "What is the return on ad spend (ROAS) by marketing channel, showing revenue divided by spend, filtered to only include converted sessions within one day of the session start."
+    },
+    {
+      "key": "card/query-2",
+      "model": "card",
+      "name": "Query 2",
+      "collection": "collection/marketing",
+      "table": "table/fct-web-sessions",
+      "sql": "select device, avg(case when converted then 1.0 else 0 end) as conversion_rate\nfrom analytics.fct_web_sessions where started_at >= now() - interval '7 days'\ngroup by 1\n",
+      "description": "What is the average conversion rate by device type for web sessions started in the last seven days?"
+    },
+    {
+      "key": "card/landing",
+      "model": "card",
+      "name": "landing",
+      "collection": "collection/marketing",
+      "table": "table/fct-web-sessions",
+      "sql": "select landing_page, count(*) as sessions, avg(case when converted then 1.0 else 0 end) as cr\nfrom analytics.fct_web_sessions\nwhere utm_source is not null\ngroup by 1 having count(*) > 100 order by 3 desc limit 20\n",
+      "description": "Which landing pages drove the highest number of sessions with conversion rates, focusing on pages with over 100 sessions, sorted by conversion rate descending."
+    },
+    {
+      "key": "card/query-19",
+      "model": "card",
+      "name": "Query 19",
+      "collection": "collection/product",
+      "table": "table/fct-orders-v2",
+      "sql": "select p.category, sum(o.net_amount_eur) - sum(o.quantity * p.cost_price) as gross_margin_eur\nfrom analytics.fct_orders_v2 o join analytics.dim_product p using (sku)\ngroup by 1 order by 2 desc\n",
+      "description": "What is the gross margin by product category, showing the total revenue minus cost for each category across all orders?"
+    },
+    {
+      "key": "card/price-check",
+      "model": "card",
+      "name": "price check",
+      "collection": "collection/product",
+      "table": "table/dim-product",
+      "sql": "select o.order_id, p.name, o.net_amount_eur / nullif(o.quantity, 0) as unit_price, p.cost_price\nfrom analytics.fct_orders_v2 o join analytics.dim_product p using (sku)\nwhere o.net_amount_eur / nullif(o.quantity, 0) < p.cost_price\n",
+      "description": "Which products are being sold at a price lower than their cost, based on recent order data? The query compares actual unit prices from orders to product cost prices, filtering for instances where the sold price is below cost."
+    },
+    {
+      "key": "card/query-40",
+      "model": "card",
+      "name": "Query 40",
+      "collection": "collection/product",
+      "table": "table/fct-returns",
+      "sql": "select case when r.reason_code like 'SIZE%' then 'sizing'\n            when r.reason_code in ('DAMAGED', 'DEFECT') then 'damaged'\n            when r.reason_code = 'CHANGED_MIND' then 'changed mind' else 'other' end as bucket,\n       count(*) as returns\nfrom analytics.fct_returns r\njoin analytics.fct_orders_v2 o using (order_line_id)\njoin analytics.dim_product p using (sku)\nwhere p.category = 'Footwear'\ngroup by 1 order by 2 desc\n",
+      "description": "How many returns occurred in the Footwear category, broken down by reason, showing the top reasons for returns."
+    },
+    {
+      "key": "card/reconcile",
+      "model": "card",
+      "name": "reconcile",
+      "collection": "collection/finance",
+      "table": "table/stg-adyen-settlements",
+      "sql": "select s.psp_reference, s.merchant_reference, s.gross, s.settled_at\nfrom analytics.stg_adyen_settlements s\nleft join analytics.fct_payments p on p.payment_id = s.merchant_reference\nwhere p.payment_id is null\n",
+      "description": "This chart shows which Adyen settlements lack corresponding payment records, highlighting their references, amounts, and settlement dates."
+    },
+    {
+      "key": "card/query-50",
+      "model": "card",
+      "name": "Query 50",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "sql": "with c as (select customer_id, date_trunc('month', signup_at) as cohort from analytics.dim_customer)\nselect c.cohort,\n       count(distinct o.customer_id)::numeric / count(distinct c.customer_id) as m3_retention\nfrom c left join analytics.fct_orders_v2 o on o.customer_id = c.customer_id\n and date_trunc('month', o.ordered_at) = c.cohort + interval '3 months'\ngroup by 1 order by 1\n",
+      "description": "What is the 3-month retention rate of customers by their signup month, showing how many customers returned to place orders within three months of signing up."
+    },
+    {
+      "key": "card/old-orders",
+      "model": "card",
+      "name": "old orders",
+      "collection": "collection/legacy",
+      "table": "table/fct-orders",
+      "sql": "select extract(year from created_at) as year, sum(gross_amount) as gross\nfrom analytics.fct_orders where created_at < '2023-01-01'\ngroup by 1 order by 1\n",
+      "description": "This chart shows the total gross revenue from orders placed before 2023, broken down by calendar year."
+    },
+    {
+      "key": "card/refunds-v2-final",
+      "model": "card",
+      "name": "Refunds v2 FINAL",
+      "collection": "collection/finance",
+      "table": "table/fct-returns",
+      "sql": "select date_trunc('week', returned_at) as week, reason_code, sum(refund_amount) as refunded\nfrom analytics.fct_returns where reason_code not like 'SIZE%'\ngroup by 1, 2 order by 1\n",
+      "description": "This chart shows total refunds by week and reason code, excluding size-related reasons, to track refund trends and identify major causes."
+    },
+    {
+      "key": "card/de-numbers",
+      "model": "card",
+      "name": "DE numbers",
+      "collection": "collection/sales",
+      "table": "table/fct-orders-v2",
+      "sql": "select date_trunc('month', o.ordered_at) as month, sum(o.net_amount_eur) as revenue\nfrom analytics.fct_orders_v2 o join analytics.dim_customer c using (customer_id)\nwhere c.country = 'DE' group by 1 order by 1\n",
+      "description": "This chart shows the monthly revenue from orders placed by customers in Germany, aggregated by calendar month."
+    },
+    {
+      "key": "card/carrier-stuff",
+      "model": "card",
+      "name": "carrier stuff",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "sql": "select carrier, avg(cost_eur) as avg_cost, count(*) as shipments\nfrom analytics.fct_shipments where promised_date >= current_date - 90\ngroup by 1 order by 2 desc\n",
+      "description": "What is the average cost and volume of shipments by carrier for the last 90 days, sorted by highest average cost."
+    },
+    {
+      "key": "card/churn-new-def",
+      "model": "card",
+      "name": "churn (new def)",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "sql": "select date_trunc('month', cancelled_at) as month, count(*) as voluntary_cancellations\nfrom analytics.fct_subscriptions\nwhere cancelled_at is not null and coalesce(cancel_reason, '') <> 'payment_failed'\ngroup by 1 order by 1\n",
+      "description": "This chart answers how many Trail Club subscriptions ended voluntarily each month, excluding those cancelled due to payment failures."
+    },
+    {
+      "key": "card/tickets-wk",
+      "model": "card",
+      "name": "tickets wk",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "sql": "select date_trunc('week', created_at) as week, category, count(*) as tickets\nfrom analytics.fct_support_tickets group by 1, 2 order by 1\n",
+      "description": "How many support tickets were opened each week by category, showing weekly totals for each ticket type."
+    },
+    {
+      "key": "card/pl-orders",
+      "model": "card",
+      "name": "PL orders",
+      "collection": "collection/polska",
+      "table": "table/fct-payments",
+      "sql": "select date_trunc('month', p.captured_at) as month, count(*) as blik_payments, sum(p.amount_eur) as amount\nfrom analytics.fct_payments p\njoin analytics.fct_orders_v2 o on o.order_id = p.order_id\njoin analytics.dim_customer c on c.customer_id = o.customer_id\nwhere c.country = 'PL' and p.method = 'blik'\ngroup by 1 order by 1\n",
+      "description": "How many and how much in PL orders paid via Blik were processed each month, grouped by month."
+    },
+    {
+      "key": "card/margin-check-q3",
+      "model": "card",
+      "name": "margin check Q3",
+      "collection": "collection/product",
+      "table": "table/dim-product",
+      "sql": "select p.season, sum(o.net_amount_eur - o.quantity * p.cost_price) as margin\nfrom analytics.fct_orders_v2 o join analytics.dim_product p using (sku)\nwhere extract(quarter from o.ordered_at) = 3\ngroup by 1\n",
+      "description": "What is the total margin by season for Q3 orders, calculated as revenue minus cost, grouped by product season."
+    },
+    {
+      "key": "card/adyen-fees",
+      "model": "card",
+      "name": "Adyen fees",
+      "collection": "collection/finance",
+      "table": "table/stg-adyen-settlements",
+      "sql": "select date_trunc('month', settled_at) as month, sum(commission) as commission\nfrom analytics.stg_adyen_settlements group by 1 order by 1\n",
+      "description": "This chart shows total commission fees collected by Adyen each month, aggregated by month and summed across all transactions."
+    },
+    {
+      "key": "card/spend-recon",
+      "model": "card",
+      "name": "spend recon",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "sql": "select spend_date, sum(spend_eur) as spend\nfrom analytics.fct_marketing_spend where channel = 'TikTok'\ngroup by 1 order by 1\n",
+      "description": "This chart shows total TikTok marketing spend by date, summarizing daily spend amounts to track spending trends over time."
+    },
+    {
+      "key": "card/hr-dash-src",
+      "model": "card",
+      "name": "hr dash src",
+      "collection": "collection/people",
+      "table": "table/hr-employees",
+      "sql": "select date_trunc('month', start_date) as month, department, count(*) as hires\nfrom analytics.hr_employees group by 1, 2 order by 1\n",
+      "description": "This chart shows the number of hires each month by department, tracking how many new employees were added in each month across different departments."
+    },
+    {
+      "key": "card/wholesale-pipeline",
+      "model": "card",
+      "name": "wholesale pipeline",
+      "collection": "collection/wholesale",
+      "table": "table/fct-wholesale-orders",
+      "sql": "select a.tier, sum(o.amount_eur) as open_value\nfrom analytics.fct_wholesale_orders o join analytics.dim_wholesale_account a using (account_id)\nwhere o.status in ('open', 'confirmed') group by 1\n",
+      "description": "What is the total open value of confirmed and open wholesale orders grouped by account tier?"
+    },
+    {
+      "key": "card/inventory-inbound",
+      "model": "card",
+      "name": "inventory inbound",
+      "collection": "collection/logistics",
+      "table": "table/fct-inventory-snapshot",
+      "sql": "select w.name, sum(i.inbound_units) as inbound\nfrom analytics.fct_inventory_snapshot i join analytics.dim_warehouse w using (warehouse_id)\nwhere i.snapshot_date = (select max(snapshot_date) from analytics.fct_inventory_snapshot)\ngroup by 1\n",
+      "description": "What is the total inbound units by warehouse for the most recent inventory snapshot date?"
+    },
+    {
+      "key": "card/refunds-by-product-category",
+      "model": "card",
+      "name": "Refunds by product category",
+      "collection": "collection/product",
+      "table": "table/fct-returns",
+      "description": "Total refunded amount per product category, all time. What total refunds were generated by product category, sorted by refund amount in descending order?",
+      "sql": "select p.category, sum(r.refund_amount) as refunded\nfrom analytics.fct_returns r join analytics.fct_orders_v2 o using (order_line_id) join analytics.dim_product p using (sku)\ngroup by 1 order by 2 desc\n"
+    },
+    {
+      "key": "card/discount-revenue-share",
+      "model": "card",
+      "name": "Discount code revenue share by month",
+      "collection": "collection/marketing",
+      "table": "table/fct-orders-v2",
+      "description": "Share of monthly net revenue that came from orders using a discount code. What proportion of monthly revenue comes from orders using discount codes, shown by month.",
+      "sql": "select date_trunc('month', ordered_at) as month,\n       sum(net_amount_eur) filter (where discount_code is not null) / sum(net_amount_eur) as discounted_share\nfrom analytics.fct_orders_v2 group by 1 order by 1\n"
+    },
+    {
+      "key": "card/on-time-delivery-by-warehouse",
+      "model": "card",
+      "name": "On-time delivery rate by warehouse",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "description": "Share of shipments delivered on or before the promised date, per warehouse. What is the on-time delivery rate for each warehouse, calculated as the average of shipments delivered by their promised date, grouped by warehouse.",
+      "sql": "select w.name, avg(case when s.delivered_date <= s.promised_date then 1.0 else 0 end) as on_time_rate\nfrom analytics.fct_shipments s join analytics.dim_warehouse w using (warehouse_id)\ngroup by 1\n"
+    },
+    {
+      "key": "card/payment-method-mix",
+      "model": "card",
+      "name": "Payment method mix",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "description": "Share of the total amount paid through each payment method. What proportion of total payments came from each payment method across all time? The chart shows the share of total payment amounts by method.",
+      "sql": "select method, sum(amount_eur) / sum(sum(amount_eur)) over () as share\nfrom analytics.fct_payments group by 1\n"
+    },
+    {
+      "key": "card/trail-club-active-members",
+      "model": "card",
+      "name": "Trail Club active members by plan",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "description": "Number of Trail Club members with an active subscription, per plan. How many Trail Club active members are enrolled in each plan, counted distinctly by customer, across all time.",
+      "sql": "select plan, count(distinct customer_id) as members\nfrom analytics.fct_subscriptions where cancelled_at is null group by 1\n"
+    },
+    {
+      "key": "card/headcount-by-department",
+      "model": "card",
+      "name": "Employee headcount by department",
+      "collection": "collection/people",
+      "table": "table/hr-employees",
+      "description": "Current employees per department, excluding leavers. How many employees are currently working in each department, excluding those who have left the company.",
+      "sql": "select e.department, count(*) as headcount\nfrom analytics.hr_employees e left join analytics.hr_terminations t using (employee_id)\nwhere t.employee_id is null group by 1\n"
+    },
+    {
+      "key": "card/first-response-by-priority",
+      "model": "card",
+      "name": "Average first response time by priority",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "description": "Average minutes until the first reply to a support ticket, per priority. What is the average first response time for support tickets grouped by their priority level?",
+      "sql": "select priority, avg(first_response_minutes) as avg_first_response\nfrom analytics.fct_support_tickets group by 1\n"
+    },
+    {
+      "key": "card/nps-responses-per-month",
+      "model": "card",
+      "name": "NPS survey responses per month",
+      "collection": "collection/support",
+      "table": "table/fct-nps-responses",
+      "description": "How many customers answered the NPS survey each month. This chart shows the number of Net Promoter Score responses received each month, grouped by the month they were received.",
+      "sql": "select date_trunc('month', responded_at) as month, count(*) as responses\nfrom analytics.fct_nps_responses group by 1 order by 1\n"
+    },
+    {
+      "key": "card/inventory-on-hand-by-warehouse",
+      "model": "card",
+      "name": "Inventory on hand by warehouse",
+      "collection": "collection/logistics",
+      "table": "table/fct-inventory-snapshot",
+      "description": "Units in stock per warehouse on the latest snapshot date. This chart answers: What is the total inventory on hand in each warehouse as of the most recent snapshot date.",
+      "sql": "select w.name, sum(i.on_hand_units) as on_hand\nfrom analytics.fct_inventory_snapshot i join analytics.dim_warehouse w using (warehouse_id)\nwhere i.snapshot_date = (select max(snapshot_date) from analytics.fct_inventory_snapshot) group by 1\n"
+    },
+    {
+      "key": "card/wholesale-revenue-by-tier",
+      "model": "card",
+      "name": "Wholesale revenue by account tier",
+      "collection": "collection/wholesale",
+      "table": "table/fct-wholesale-orders",
+      "description": "Shipped wholesale order value per account tier. This chart shows total shipped wholesale revenue grouped by account tier, measuring revenue per tier from orders that have been shipped.",
+      "sql": "select a.tier, sum(o.amount_eur) as revenue\nfrom analytics.fct_wholesale_orders o join analytics.dim_wholesale_account a using (account_id)\nwhere o.status = 'shipped' group by 1\n"
+    },
+    {
+      "key": "card/gdpr-open-requests",
+      "model": "card",
+      "name": "GDPR requests backlog",
+      "collection": "collection/legal",
+      "table": "table/gdpr-dsr-requests",
+      "description": "Data-subject requests that are still open, by request type. How many open GDPR DSR requests are pending by request type, showing counts for each type without completed records.",
+      "sql": "select request_type, count(*) as open_requests\nfrom analytics.gdpr_dsr_requests where completed_at is null group by 1\n"
+    },
+    {
+      "key": "card/ctr-by-campaign",
+      "model": "card",
+      "name": "Click-through rate by campaign",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "description": "Clicks divided by impressions for each marketing campaign. This chart shows the click-through rate for each marketing campaign, sorted by performance, measuring the ratio of clicks to impressions across all campaigns.",
+      "sql": "select campaign, sum(clicks)::numeric / nullif(sum(impressions), 0) as ctr\nfrom analytics.fct_marketing_spend group by 1 order by 2 desc\n"
+    },
+    {
+      "key": "card/sessions-by-device-and-source",
+      "model": "card",
+      "name": "Web sessions by device and traffic source",
+      "collection": "collection/marketing",
+      "table": "table/fct-web-sessions",
+      "description": "Number of website sessions per device type and UTM source. This chart answers how web sessions are distributed by device type and traffic source, showing the count of sessions for each combination, excluding unspecified traffic sources.",
+      "sql": "select device, coalesce(utm_source, 'direct') as source, count(*) as sessions\nfrom analytics.fct_web_sessions group by 1, 2\n"
+    },
+    {
+      "key": "card/aov-by-channel",
+      "model": "card",
+      "name": "Average order value by channel",
+      "collection": "collection/sales",
+      "table": "table/fct-orders-v2",
+      "description": "Average net order value in EUR per sales channel. What is the average order value by customer channel, calculated as total net sales divided by number of orders, across all orders.",
+      "sql": "select channel, sum(net_amount_eur) / count(distinct order_id) as aov\nfrom analytics.fct_orders_v2 group by 1\n"
+    },
+    {
+      "key": "card/returns-by-reason",
+      "model": "card",
+      "name": "Returns by reason code",
+      "collection": "collection/product",
+      "table": "table/fct-returns",
+      "description": "Number of returned items per return reason code. This chart shows the top reasons for returns, measured by the number of returns, grouped by reason code.",
+      "sql": "select reason_code, count(*) as returns from analytics.fct_returns group by 1 order by 2 desc\n"
+    },
+    {
+      "key": "card/adyen-settlement-volume",
+      "model": "card",
+      "name": "Adyen settlement volume by day",
+      "collection": "collection/finance",
+      "table": "table/stg-adyen-settlements",
+      "description": "Gross amount settled by Adyen each day. What is the total gross settlement volume processed by Adyen each day, aggregated and ordered by date.",
+      "sql": "select settled_at::date as day, sum(gross) as gross from analytics.stg_adyen_settlements group by 1 order by 1\n"
+    },
+    {
+      "key": "card/new-customers-by-country",
+      "model": "card",
+      "name": "New customers by signup month and country",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "description": "Customer signups per month, split by country. This chart shows the number of new customers acquired each month by country, tracking signups over time.",
+      "sql": "select date_trunc('month', signup_at) as month, country, count(*) as signups\nfrom analytics.dim_customer group by 1, 2 order by 1\n"
+    },
+    {
+      "key": "card/cancellations-by-reason",
+      "model": "card",
+      "name": "Subscription cancellations by reason",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "description": "Trail Club cancellations per stated cancel reason. This chart shows the number of subscription cancellations by reason, ordered by the highest count, focusing on active cancellations.",
+      "sql": "select cancel_reason, count(*) as cancellations\nfrom analytics.fct_subscriptions where cancelled_at is not null group by 1 order by 2 desc\n"
+    },
+    {
+      "key": "card/shipments-by-carrier",
+      "model": "card",
+      "name": "Shipment volume by carrier",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "description": "Number of shipments handled by each carrier per month. This chart shows monthly shipment volumes by carrier, counting all shipments per month, grouped by carrier.",
+      "sql": "select date_trunc('month', promised_date) as month, carrier, count(*) as shipments\nfrom analytics.fct_shipments group by 1, 2\n"
+    },
+    {
+      "key": "card/list-price-by-category",
+      "model": "card",
+      "name": "List price by product category",
+      "collection": "collection/product",
+      "table": "table/dim-product",
+      "description": "Average catalogue list price per product category. What is the average list price for each product category? The chart shows average list prices grouped by product category from the Products table.",
+      "sql": "select category, avg(list_price) as avg_list_price from analytics.dim_product group by 1\n"
+    },
+    {
+      "key": "card/new-question",
+      "model": "card",
+      "name": "New question",
+      "collection": "collection/finance",
+      "table": "table/fct-returns",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "refund_amount"
+          ]
+        ],
+        "breakout": [
+          [
+            "returned_at",
+            "month"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "reason_code",
+            "DAMAGED"
+          ]
+        ]
+      },
+      "description": "What is the total refund amount for damaged items returned each month? The chart sums refund amounts filtered by damaged reason codes, broken down by month of return."
+    },
+    {
+      "key": "card/question-7",
+      "model": "card",
+      "name": "Question 7",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "method"
+        ],
+        "filter": [
+          [
+            "=",
+            "is_chargeback",
+            true
+          ]
+        ]
+      },
+      "description": "How many payments were chargebacks by payment method in the last 30 days?"
+    },
+    {
+      "key": "card/orders-filtered",
+      "model": "card",
+      "name": "orders filtered",
+      "collection": "collection/sales",
+      "table": "table/fct-orders-v2",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "net_amount_eur"
+          ]
+        ],
+        "breakout": [
+          [
+            "ordered_at",
+            "quarter"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "channel",
+            "marketplace"
+          ]
+        ]
+      },
+      "description": "How much revenue did marketplace orders generate each quarter, summed by quarter?"
+    },
+    {
+      "key": "card/copy-of-question-7",
+      "model": "card",
+      "name": "Copy of Question 7",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "fee_eur"
+          ]
+        ],
+        "breakout": [
+          [
+            "captured_at",
+            "month"
+          ]
+        ]
+      },
+      "description": "What is the total fee revenue by month, summing all fees in euros for each month in the payments data."
+    },
+    {
+      "key": "card/test",
+      "model": "card",
+      "name": "test",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "cancelled_at",
+            "month"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "plan",
+            "annual"
+          ],
+          [
+            "not-null",
+            "cancelled_at"
+          ]
+        ]
+      },
+      "description": "How many annual Trail Club subscriptions were cancelled each month? The chart counts cancellations by month for annual plans."
+    },
+    {
+      "key": "card/question-12",
+      "model": "card",
+      "name": "Question 12",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "mbql": {
+        "aggregation": [
+          [
+            "avg",
+            "resolution_minutes"
+          ]
+        ],
+        "breakout": [
+          "category"
+        ],
+        "filter": [
+          [
+            "=",
+            "priority",
+            "urgent"
+          ]
+        ]
+      },
+      "description": "What is the average resolution time for urgent support tickets by category?"
+    },
+    {
+      "key": "card/hr-q",
+      "model": "card",
+      "name": "hr q",
+      "collection": "collection/people",
+      "table": "table/hr-terminations",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "termination_date",
+            "quarter"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "voluntary",
+            false
+          ]
+        ]
+      },
+      "description": "How many involuntary terminations occurred each quarter, broken down by quarter?"
+    },
+    {
+      "key": "card/question-3",
+      "model": "card",
+      "name": "Question 3",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "cost_eur"
+          ]
+        ],
+        "breakout": [
+          "carrier"
+        ],
+        "filter": [
+          [
+            "time-interval",
+            "promised_date",
+            -30,
+            "day"
+          ]
+        ]
+      },
+      "description": "What is the total shipping cost by carrier for shipments that arrived within the last 30 days?"
+    },
+    {
+      "key": "card/mkt",
+      "model": "card",
+      "name": "mkt",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "impressions"
+          ]
+        ],
+        "breakout": [
+          "campaign"
+        ],
+        "filter": [
+          [
+            "=",
+            "channel",
+            "TikTok"
+          ]
+        ]
+      },
+      "description": "What is the total number of impressions generated by TikTok campaigns, broken down by campaign?"
+    },
+    {
+      "key": "card/new-question-2",
+      "model": "card",
+      "name": "New question (2)",
+      "collection": "collection/marketing",
+      "table": "table/fct-web-sessions",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "started_at",
+            "week"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "converted",
+            true
+          ],
+          [
+            "=",
+            "device",
+            "mobile"
+          ]
+        ]
+      },
+      "description": "How many mobile users converted each week, based on web session data."
+    },
+    {
+      "key": "card/inv",
+      "model": "card",
+      "name": "inv",
+      "collection": "collection/logistics",
+      "table": "table/fct-inventory-snapshot",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "warehouse_id"
+        ],
+        "filter": [
+          [
+            "<=",
+            "on_hand_units",
+            5
+          ]
+        ]
+      },
+      "description": "How many inventory items are in each warehouse with on-hand units of five or fewer?"
+    },
+    {
+      "key": "card/question-20",
+      "model": "card",
+      "name": "Question 20",
+      "collection": "collection/support",
+      "table": "table/fct-nps-responses",
+      "mbql": {
+        "aggregation": [
+          [
+            "avg",
+            "score"
+          ]
+        ],
+        "breakout": [
+          [
+            "responded_at",
+            "month"
+          ]
+        ]
+      },
+      "description": "What is the average NPS score by month, showing how it varies across different months in the data?"
+    },
+    {
+      "key": "card/gdpr",
+      "model": "card",
+      "name": "gdpr",
+      "collection": "collection/legal",
+      "table": "table/gdpr-dsr-requests",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "received_at",
+            "month"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "request_type",
+            "portability"
+          ]
+        ]
+      },
+      "description": "How many GDPR portability requests were received each month, counted by the month they were received."
+    },
+    {
+      "key": "card/question-31",
+      "model": "card",
+      "name": "Question 31",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "country"
+        ],
+        "filter": [
+          [
+            "=",
+            "acquisition_channel",
+            "referral"
+          ]
+        ]
+      },
+      "description": "How many customers were acquired through referral by country? The chart counts customers acquired via referral, broken down by country."
+    },
+    {
+      "key": "card/wh",
+      "model": "card",
+      "name": "wh",
+      "collection": "collection/wholesale",
+      "table": "table/fct-wholesale-orders",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "amount_eur"
+          ]
+        ],
+        "breakout": [
+          "account_id"
+        ],
+        "filter": [
+          [
+            "=",
+            "status",
+            "cancelled"
+          ]
+        ]
+      },
+      "description": "What is the total amount of cancelled wholesale orders by account? The chart sums the amount in euros for cancelled orders, broken down by account ID."
+    },
+    {
+      "key": "card/question-9b",
+      "model": "card",
+      "name": "Question 9b",
+      "collection": "collection/product",
+      "table": "table/dim-product",
+      "mbql": {
+        "aggregation": [
+          [
+            "avg",
+            "list_price"
+          ]
+        ],
+        "breakout": [
+          "category"
+        ],
+        "filter": [
+          [
+            "=",
+            "season",
+            "winter"
+          ]
+        ]
+      },
+      "description": "What is the average list price of winter products by category? The chart shows average list prices grouped by product category, filtered to include only winter season items."
+    },
+    {
+      "key": "card/monthly-refund-amount",
+      "model": "card",
+      "name": "Monthly refund amount",
+      "collection": "collection/finance",
+      "table": "table/fct-returns",
+      "description": "Total refunds issued per month, all reasons. What is the total refund amount by month? The chart sums refund amounts and breaks them down by the month of the return.",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "refund_amount"
+          ]
+        ],
+        "breakout": [
+          [
+            "returned_at",
+            "month"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "card/chargebacks-by-month",
+      "model": "card",
+      "name": "Chargebacks by month",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "description": "Number of payments disputed as chargebacks each month. How many chargebacks occurred each month, counted by the month of the captured payment.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "captured_at",
+            "month"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "is_chargeback",
+            true
+          ]
+        ]
+      }
+    },
+    {
+      "key": "card/revenue-by-channel-quarter",
+      "model": "card",
+      "name": "Revenue by channel and quarter",
+      "collection": "collection/sales",
+      "table": "table/fct-orders-v2",
+      "description": "Net revenue in EUR per sales channel and quarter. This chart shows total revenue by sales channel and quarter, summing net amounts in euros for each channel across each quarter.",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "net_amount_eur"
+          ]
+        ],
+        "breakout": [
+          "channel",
+          [
+            "ordered_at",
+            "quarter"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "card/tickets-by-priority",
+      "model": "card",
+      "name": "Support tickets by priority",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "description": "Ticket count per priority level. How many support tickets were opened by priority level within the last quarter?",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "priority"
+        ]
+      }
+    },
+    {
+      "key": "card/voluntary-terminations",
+      "model": "card",
+      "name": "Voluntary resignations by quarter",
+      "collection": "collection/people",
+      "table": "table/hr-terminations",
+      "description": "Employees who resigned of their own accord, per quarter. How many voluntary resignations occurred each quarter, counted by the quarter of the termination date.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          [
+            "termination_date",
+            "quarter"
+          ]
+        ],
+        "filter": [
+          [
+            "=",
+            "voluntary",
+            true
+          ]
+        ]
+      }
+    },
+    {
+      "key": "card/impressions-by-channel",
+      "model": "card",
+      "name": "Ad impressions by channel",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "description": "Paid media impressions per marketing channel. This chart shows total ad impressions by marketing channel, summing impressions for each channel.",
+      "mbql": {
+        "aggregation": [
+          [
+            "sum",
+            "impressions"
+          ]
+        ],
+        "breakout": [
+          "channel"
+        ]
+      }
+    },
+    {
+      "key": "card/sessions-by-device",
+      "model": "card",
+      "name": "Web sessions by device",
+      "collection": "collection/marketing",
+      "table": "table/fct-web-sessions",
+      "description": "Website sessions per device type. How many web sessions occurred on each device type? The chart counts sessions by device category.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "device"
+        ]
+      }
+    },
+    {
+      "key": "card/customers-by-acquisition",
+      "model": "card",
+      "name": "Customers by acquisition channel",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "description": "Number of customers per acquisition channel. How many customers were acquired through each channel? The chart counts customers by their acquisition channel.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
+        "breakout": [
+          "acquisition_channel"
+        ]
+      }
+    },
+    {
+      "key": "card/revenue-overview",
+      "model": "card",
+      "name": "Revenue overview",
+      "collection": "collection/finance",
+      "table": "table/fct-orders-v2",
+      "description": "All order lines with net revenue. This chart lists all order records from the Orders (v2) table without filters or aggregation, showing every transaction's revenue as recorded in the system."
+    },
+    {
+      "key": "card/customer-list",
+      "model": "card",
+      "name": "Customer list",
+      "collection": "collection/sales",
+      "table": "table/dim-customer",
+      "description": "Every customer with country and signup date. This chart lists all customer records from the Customers table without any filters or aggregation, providing a complete inventory of customer data as it exists in the system."
+    },
+    {
+      "key": "card/product-catalogue",
+      "model": "card",
+      "name": "Product catalogue",
+      "collection": "collection/product",
+      "table": "table/dim-product",
+      "description": "All products with prices. This chart lists all products in the catalogue without filters or aggregation, showing each product's details as they exist in the product dimension table."
+    },
+    {
+      "key": "card/shipments-overview",
+      "model": "card",
+      "name": "Shipments overview",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "description": "All shipments with carrier and dates. This chart lists all shipment records from the Shipments table without filters or aggregation, showing each shipment's details as they occurred."
+    },
+    {
+      "key": "card/tickets-overview",
+      "model": "card",
+      "name": "Support tickets overview",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "description": "All support tickets. This chart lists all support tickets in their raw form, showing each ticket's details without any filtering or aggregation."
+    },
+    {
+      "key": "card/employee-directory",
+      "model": "card",
+      "name": "Employee directory",
+      "collection": "collection/people",
+      "table": "table/hr-employees",
+      "description": "All employees with department and location. This chart lists all employees in the directory, showing each individual's details without any filters or time limits."
+    },
+    {
+      "key": "card/campaign-list",
+      "model": "card",
+      "name": "Marketing campaigns",
+      "collection": "collection/marketing",
+      "table": "table/fct-marketing-spend",
+      "description": "Daily spend rows per campaign. This chart lists all marketing spend records without filters or aggregation, showing every campaign's spend amount, channel, and date as recorded in the Marketing spend table."
+    },
+    {
+      "key": "card/payments-overview",
+      "model": "card",
+      "name": "Payments overview",
+      "collection": "collection/finance",
+      "table": "table/fct-payments",
+      "description": "All captured payments. This chart lists all payment records without filters or aggregation, showing each transaction's details as they occurred in the Payments table."
+    },
+    {
+      "key": "card/returns-overview",
+      "model": "card",
+      "name": "Returns overview",
+      "collection": "collection/product",
+      "table": "table/fct-returns",
+      "description": "All return merchandise authorisations. This chart lists all return records from the Returns table, showing each individual return event without any filtering or aggregation."
+    },
+    {
+      "key": "card/wholesale-accounts",
+      "model": "card",
+      "name": "Wholesale accounts list",
+      "collection": "collection/wholesale",
+      "table": "table/dim-wholesale-account",
+      "description": "Wholesale customers and their tiers. This chart lists all wholesale accounts without filters or aggregation, showing each account's full details as recorded in the Wholesale accounts table."
+    },
+    {
+      "key": "card/warehouse-list",
+      "model": "card",
+      "name": "Warehouse list",
+      "collection": "collection/logistics",
+      "table": "table/dim-warehouse",
+      "description": "Our warehouses and their locations. This chart lists all warehouses in the system, showing each one's details without any filters or time limits."
+    },
+    {
+      "key": "card/subscriptions-overview",
+      "model": "card",
+      "name": "Trail Club subscriptions overview",
+      "collection": "collection/membership",
+      "table": "table/fct-subscriptions",
+      "description": "All Trail Club subscriptions. This chart lists all Trail Club subscriptions without filters or aggregation, showing each subscription's details as recorded in the analytics database."
+    },
+    {
+      "key": "metric/orders-count",
+      "model": "metric",
+      "name": "Orders",
+      "collection": "collection/sales",
+      "table": "table/fct-orders-v2",
+      "description": "Count of order lines. How many orders were placed during the time period specified in the query? The chart counts all order records in the Orders table within the selected timeframe.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "metric/tickets-count",
+      "model": "metric",
+      "name": "Tickets",
+      "collection": "collection/support",
+      "table": "table/fct-support-tickets",
+      "description": "Count of support tickets. How many support tickets were opened in the last 30 days? The chart counts all tickets in the Support tickets table within the specified time window.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "metric/shipments-count",
+      "model": "metric",
+      "name": "Shipments",
+      "collection": "collection/logistics",
+      "table": "table/fct-shipments",
+      "description": "Count of shipments. How many shipments were made, without filtering by any specific criteria or time period.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "metric/returns-count",
+      "model": "metric",
+      "name": "Returns",
+      "collection": "collection/product",
+      "table": "table/fct-returns",
+      "description": "Count of returned items. How many returns occurred within the specified time period, aggregated as a total count without further breakdown or filtering.",
+      "mbql": {
+        "aggregation": [
+          [
+            "count"
+          ]
+        ]
+      }
+    },
+    {
+      "key": "dashboard/finance-overview",
+      "model": "dashboard",
+      "name": "Finance overview",
+      "description": "Headline finance numbers.",
+      "collection": "collection/finance"
+    },
+    {
+      "key": "dashboard/marketing-overview",
+      "model": "dashboard",
+      "name": "Marketing overview",
+      "description": "Spend, sessions and conversion.",
+      "collection": "collection/marketing"
+    },
+    {
+      "key": "dashboard/logistics-overview",
+      "model": "dashboard",
+      "name": "Logistics overview",
+      "description": "Shipping and stock at a glance.",
+      "collection": "collection/logistics"
+    },
+    {
+      "key": "dashboard/support-overview",
+      "model": "dashboard",
+      "name": "Support overview",
+      "description": "Ticket volumes and response times.",
+      "collection": "collection/support"
+    },
+    {
+      "key": "dashboard/people-overview",
+      "model": "dashboard",
+      "name": "People overview",
+      "description": "Headcount and hiring.",
+      "collection": "collection/people"
+    },
+    {
+      "key": "dashboard/trail-club-overview",
+      "model": "dashboard",
+      "name": "Trail Club overview",
+      "description": "Membership health.",
+      "collection": "collection/membership"
+    },
+    {
+      "key": "dashboard/wholesale-overview",
+      "model": "dashboard",
+      "name": "Wholesale overview",
+      "description": "B2B orders and accounts.",
+      "collection": "collection/wholesale"
+    },
+    {
+      "key": "dashboard/compliance-overview",
+      "model": "dashboard",
+      "name": "Compliance overview",
+      "description": "Privacy request handling.",
+      "collection": "collection/legal"
+    }
+  ]
+}

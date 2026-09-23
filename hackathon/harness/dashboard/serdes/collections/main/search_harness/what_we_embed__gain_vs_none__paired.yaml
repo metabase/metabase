@@ -1,0 +1,150 @@
+name: 'What we embed: gain vs none, paired'
+description: |-
+  Is each text strategy proven better than leaving cards undescribed? nDCG@10 before (none) and after, and the paired gain with its 95% range, held-out questions only. Pinned as the chart next to it.
+
+  **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+
+  **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+
+  **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+entity_id: 0Ex_K11C-bdykjtAIvKN1
+created_at: '2026-09-23T20:15:05.248689Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH s AS (
+      WITH src AS (
+        SELECT CASE WHEN embedding_text = 'context-sql' THEN 'embed the SQL (context-sql)' WHEN text_strategy = 'none' THEN 'none' ELSE text_strategy END AS arm, embedder AS pair, scenario_id, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = 'northwind-sql-v1' AND metric = 'ndcg@10' AND engine = 'semantic-vector'
+          AND 'split-heldout' = ANY (tags)
+          AND ((embedding_text = 'baseline') OR (embedding_text = 'context-sql' AND text_strategy = 'none'))
+      ), d AS (
+        SELECT a.arm, a.pair, a.value, a.value - r.value AS delta
+        FROM src a JOIN src r ON r.arm = 'none' AND r.pair = a.pair AND r.scenario_id = a.scenario_id
+        WHERE a.arm <> 'none'
+      )
+      SELECT arm, pair, count(*) AS n, avg(value) AS v, avg(delta) AS mean, 1.96 * stddev_samp(delta) / sqrt(count(*)) AS ci
+      FROM d GROUP BY 1, 2
+      )
+      SELECT arm AS "Text", split_part(pair, '/', 2) AS "Embedder",
+             round((v - mean)::numeric, 3) AS "nDCG@10 none", round(v::numeric, 3) AS "nDCG@10 with",
+             round(mean::numeric, 3) AS "Δ vs none", round(ci::numeric, 3) AS "± 95% CI",
+             CASE WHEN n < 5 THEN 'too few questions'
+                  WHEN mean - ci > 0 THEN 'better'
+                  WHEN mean + ci < 0 THEN 'worse'
+                  ELSE 'no proven difference' END AS "Verdict",
+             n AS "n questions"
+      FROM s
+      ORDER BY pair, mean DESC
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Text
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Text
+  - base-type: type/Text
+  name: Text
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: nDCG@10 none
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - nDCG@10 none
+  - base-type: type/Decimal
+  name: nDCG@10 none
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: nDCG@10 with
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - nDCG@10 with
+  - base-type: type/Decimal
+  name: nDCG@10 with
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Δ vs none
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - Δ vs none
+  - base-type: type/Decimal
+  name: Δ vs none
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: ± 95% CI
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - ± 95% CI
+  - base-type: type/Decimal
+  name: ± 95% CI
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Verdict
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Verdict
+  - base-type: type/Text
+  name: Verdict
+  semantic_type: null
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n questions
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - n questions
+  - base-type: type/BigInteger
+  name: n questions
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#ED6E6E'
+    - '#FFFFFF'
+    - '#84BB4C'
+    columns:
+    - Δ vs none
+    max_type: custom
+    max_value: 0.6
+    min_type: custom
+    min_value: -0.6
+    type: range
+card_schema: 24
+serdes/meta:
+- id: 0Ex_K11C-bdykjtAIvKN1
+  label: what_we_embed__gain_vs_none__paired
+  model: Card
+type: question

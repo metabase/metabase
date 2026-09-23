@@ -1,0 +1,10 @@
+{
+  "name": "harness-embedtext",
+  "private": true,
+  "type": "module",
+  "description": "Agent I: embedding-text strategies. Generates text per card (mechanical SQL→English, product MBQL summaries, local-LLM summaries) and writes derived corpus files. Zero dependencies.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test sql2text.test.ts"
+  }
+}

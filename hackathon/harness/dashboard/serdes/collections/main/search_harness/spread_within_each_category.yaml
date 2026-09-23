@@ -1,0 +1,156 @@
+name: Spread within each category
+description: |-
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. Higher is better.
+
+  **Category**: The kind of question a scenario tests. There are 8, listed below.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+
+  **Mean / median**: The average / the middle value.
+
+  **p25 / p75**: A quarter of questions score below p25 and a quarter above p75; the middle half sits between.
+
+  **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+entity_id: FpcIWckTurQwEMrKxmpgs
+created_at: '2026-09-23T14:18:20.414668Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT tag AS "Category", engine AS "Engine", count(*) AS "n",
+             round(avg(value)::numeric, 2) AS "Mean",
+             round(min(value)::numeric, 2) AS "Min",
+             round(percentile_cont(0.25) WITHIN GROUP (ORDER BY value)::numeric, 2) AS "p25",
+             round(percentile_cont(0.5)  WITHIN GROUP (ORDER BY value)::numeric, 2) AS "Median",
+             round(percentile_cont(0.75) WITHIN GROUP (ORDER BY value)::numeric, 2) AS "p75",
+             round(max(value)::numeric, 2) AS "Max"
+      FROM harness_tag_metric
+      WHERE corpus_id = {{corpus}} AND metric = 'ndcg@10'
+        AND embedding_text = {{variant}}
+        [[AND data_scale = {{scale}}]]
+        [[AND embedder = {{embedder}}]]
+      GROUP BY 1, 2
+      ORDER BY 1, 4 DESC
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Category
+  field_ref:
+  - field
+  - Category
+  - base-type: type/Text
+  name: Category
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n
+  field_ref:
+  - field
+  - n
+  - base-type: type/BigInteger
+  name: n
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Mean
+  field_ref:
+  - field
+  - Mean
+  - base-type: type/Decimal
+  name: Mean
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Min
+  field_ref:
+  - field
+  - Min
+  - base-type: type/Decimal
+  name: Min
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: p25
+  field_ref:
+  - field
+  - p25
+  - base-type: type/Decimal
+  name: p25
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Median
+  field_ref:
+  - field
+  - Median
+  - base-type: type/Decimal
+  name: Median
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: p75
+  field_ref:
+  - field
+  - p75
+  - base-type: type/Decimal
+  name: p75
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Max
+  field_ref:
+  - field
+  - Max
+  - base-type: type/Decimal
+  name: Max
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#FFFFFF'
+    - '#509EE3'
+    columns:
+    - Mean
+    - Median
+    max_type: custom
+    max_value: 1
+    min_type: custom
+    min_value: 0
+    type: range
+card_schema: 24
+serdes/meta:
+- id: FpcIWckTurQwEMrKxmpgs
+  label: spread_within_each_category
+  model: Card
+type: question

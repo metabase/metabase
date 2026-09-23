@@ -1,0 +1,8 @@
+[
+  { "id": "smoke-exact-orders", "query": "orders", "tags": ["smoke", "exact-name"], "lang": "en", "expected": [] },
+  { "id": "smoke-paraphrase-revenue", "query": "how much money did we bring in", "tags": ["smoke", "paraphrase"], "lang": "en", "expected": [] },
+  { "id": "smoke-paraphrase-customers", "query": "who buys our stuff", "tags": ["smoke", "paraphrase"], "lang": "en", "expected": [] },
+  { "id": "smoke-typo", "query": "custmer revenu", "tags": ["smoke", "typo"], "lang": "en", "expected": [] },
+  { "id": "smoke-rare-token", "query": "PRODUCT_ID", "tags": ["smoke", "rare-token"], "lang": "en", "expected": [] },
+  { "id": "smoke-cross-lingual", "query": "zamówienia klientów", "tags": ["smoke", "cross-lingual"], "lang": "pl", "expected": [] }
+]

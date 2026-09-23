@@ -1,0 +1,82 @@
+name: Where quality variance comes from
+description: |-
+  Main-effect sums of squares over vector engines only (keyword engines ignore the embedder). Approximate when cells are missing.
+
+  **Variance share**: How much of the ups and downs in scores comes from each choice (engine, embedder, which question). Needs ≥2 engines and ≥2 embedders to mean anything.
+
+  **Main effect / interaction**: Main effect: what one choice changes on its own. Interaction: what only shows up in combination (e.g. an English-only model on Polish questions).
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. Higher is better.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings. A keyword engine (appdb, in-place) matches words.
+
+  **Embedder**: The model that makes embeddings. Today `all-minilm`; `snowflake-arctic-embed2` is coming.
+entity_id: pRBwOzaGM5UhYEj7D4WxZ
+created_at: '2026-09-23T14:18:20.441549Z'
+creator_id: dev@metabase.local
+display: row
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT source || '  (' || n_scenarios || ' scenarios)' AS "Source",
+             round((100 * share)::numeric, 1) AS "% of nDCG@10 variance"
+      FROM harness_variance_share
+      WHERE corpus_id = {{corpus}} AND metric = 'ndcg@10'
+        AND embedding_text = {{variant}}
+        [[AND data_scale = {{scale}}]]
+      ORDER BY ord
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Source
+  field_ref:
+  - field
+  - Source
+  - base-type: type/Text
+  name: Source
+  semantic_type: type/Source
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: '% of nDCG@10 variance'
+  field_ref:
+  - field
+  - '% of nDCG@10 variance'
+  - base-type: type/Decimal
+  name: '% of nDCG@10 variance'
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Source
+  graph.metrics:
+  - '% of nDCG@10 variance'
+  graph.show_values: true
+card_schema: 24
+serdes/meta:
+- id: pRBwOzaGM5UhYEj7D4WxZ
+  label: where_quality_variance_comes_from
+  model: Card
+type: question

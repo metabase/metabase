@@ -1,0 +1,97 @@
+name: nDCG@10 distribution by engine and embedder
+description: |-
+  Is an engine's average carried by a few questions? Each point is one question. A tall box means uneven: great on some questions, useless on others. One point per scenario. Scenarios with no expected results are excluded (nDCG is undefined there). semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+
+  **@10**: Only the first 10 results count, like the first page of search results.
+
+  **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+
+  **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+
+  **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+entity_id: MWmmD_wYN7lP8elD_I7wj
+created_at: '2026-09-23T14:18:20.305457Z'
+creator_id: dev@metabase.local
+display: boxplot
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder", value AS "nDCG@10"
+      FROM harness_scenario_metric
+      WHERE corpus_id = {{corpus}} AND metric = 'ndcg@10'
+        AND embedding_text = {{variant}}
+        AND text_strategy = {{strategy}}
+        [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+      ORDER BY 1, 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/Float
+  database_type: float8
+  display_name: nDCG@10
+  field_ref:
+  - field
+  - nDCG@10
+  - base-type: type/Float
+  name: nDCG@10
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedder
+  graph.metrics:
+  - nDCG@10
+card_schema: 24
+serdes/meta:
+- id: MWmmD_wYN7lP8elD_I7wj
+  label: ndcg_10_distribution_by_engine_and_embedder
+  model: Card
+type: question

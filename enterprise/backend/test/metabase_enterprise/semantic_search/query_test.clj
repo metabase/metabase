@@ -140,6 +140,31 @@
                           (index-of-name name)
                           expected-index?)))))))))))
 
+(deftest keyword-arm-setting-test
+  (testing "semantic-search-keyword-arm-enabled"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (semantic.tu/with-only-semantic-weights
+            (let [search         #(semantic.tu/query-index {:search-string          %
+                                                            :search-native-query    true
+                                                            :vector-search-strategy :brute-force})
+                  distance-score (fn [result]
+                                   (some #(when (= :semantic-distance (:name %)) (:score %)) (:all-scores result)))
+                  not-top-10?    #(or (nil? %) (< 10 %))]
+              (testing "on (the default): a keyword-only match ranks first"
+                (is (zero? (index-of-name (search "AVG(tricks)") "Dog Training Guide"))))
+              (mt/with-temporary-setting-values [semantic-search-keyword-arm-enabled false]
+                (testing "off: the keyword-only match is gone"
+                  (is (not-top-10? (index-of-name (search "AVG(tricks)") "Dog Training Guide"))))
+                (testing "off: vector matches still rank first"
+                  (is (= "Dog Training Guide" (-> (search "puppy") semantic.tu/filter-for-mock-embeddings first :name))))
+                (testing "off: every result has a vector distance (keyword-only hits score 0)"
+                  (doseq [search-string ["AVG(tricks)" "puppy" "Training"]
+                          :let [results (search search-string)]]
+                    (testing search-string
+                      (is (every? (comp pos? distance-score) results)))))))))))))
+
 (deftest model-filtering-test
   (testing "Filter results by model type"
     (mt/with-premium-features #{:semantic-search}

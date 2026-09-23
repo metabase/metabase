@@ -916,6 +916,20 @@
                     :limit (semantic-settings/semantic-search-results-limit)}]
     full-query))
 
+(defn- vector-only-search-query
+  "Like [[hybrid-search-query]] but without the keyword arm: vector matches only, projected with the same columns
+  (`keyword_rank` is always NULL)."
+  [index embedding search-context]
+  {:with   [[:vector_results (semantic-search-query index embedding search-context)]]
+   :select (into (mapv (fn [[col-name col-alias]] [(keyword (str "v." (name col-name))) col-alias])
+                       common-search-columns)
+                 [[:v.semantic_rank :semantic_rank]
+                  [:v.semantic_distance :semantic_distance]
+                  ;; typed like the keyword arm's row_number(), so the rrf scorer's arithmetic still resolves
+                  [[:cast nil :bigint] :keyword_rank]])
+   :from   [[:vector_results :v]]
+   :limit  (semantic-settings/semantic-search-results-limit)})
+
 (defn- scored-search-query
   "Build a hybrid search query with additional `scorers`"
   [index embedding search-context scorers]
@@ -926,7 +940,9 @@
   ;; We flatten the nested CTEs because PostgreSQL doesn't support nested WITH clauses.
   ;; The hybrid-query contains nested :with clauses from semantic-search-query and keyword-search-query,
   ;; which we extract and place at the top level.
-  (let [hybrid-query (hybrid-search-query index embedding search-context)
+  (let [hybrid-query (if (semantic-settings/semantic-search-keyword-arm-enabled)
+                       (hybrid-search-query index embedding search-context)
+                       (vector-only-search-query index embedding search-context))
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes

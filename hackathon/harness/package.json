@@ -1,0 +1,22 @@
+{
+  "name": "search-harness",
+  "private": true,
+  "type": "module",
+  "description": "Search comparison harness: results store + data app (results), metrics (metrics), matrix runner (runner). Node >= 22.18, native TS type stripping, no build step.",
+  "workspaces": [
+    "results",
+    "metrics",
+    "runner",
+    "corpus-gen",
+    "embedtext"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0"
+  }
+}

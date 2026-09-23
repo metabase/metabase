@@ -1,0 +1,1174 @@
+{
+  "corpusId": "northwind-sql-v1",
+  "comment": "Agent I's SQL-bearing scenario set. Queries were written by a separate blind subagent that saw only a one-line intent per card (never the SQL, the card names except for exact-name slots, or any strategy text). Slots, split and labels are frozen in sql-slots.json. SPLIT RULE (frozen 2026-09-23 before any question text, strategy text or measurement existed): slots are grouped into 7 strata by id prefix (sqlc, sqlp, sqlr, mbql, desc, exact, fam); within a stratum slots are numbered 1..n in the listed order; slot n goes to HELD-OUT iff n mod 5 is 2 or 4, else DEV. Result: 24 held-out / 36 dev (40%). Held-out numbers are the headline; dev is for iterating. The split is carried as tags split-dev / split-heldout. LABELS: grades were assigned from the corpus alone before any question text was seen: target = 2, cards answering substantially the same need = 1; near-miss siblings are deliberately unlabelled (they count as not relevant).",
+  "scenarios": [
+    {
+      "id": "sql-sqlc-01",
+      "query": "trail club mrr by plan",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/sub-stuff",
+          "grade": 2
+        },
+        {
+          "ref": "card/trail-club-active-members",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-02",
+      "query": "monthly NPS",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-5",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-20",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-03",
+      "query": "three month cohort retention",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-50",
+          "grade": 2
+        },
+        {
+          "ref": "card/bens-q",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-04",
+      "query": "ROAS by channel",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/mkt-tmp",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-05",
+      "query": "gross margin by category",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-19",
+          "grade": 2
+        },
+        {
+          "ref": "card/margin-check-q3",
+          "grade": 1
+        },
+        {
+          "ref": "card/price-check",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-06",
+      "query": "days of stock cover",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/inv-v3",
+          "grade": 2
+        },
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-07",
+      "query": "payment reconciliation gaps",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/reconcile",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-08",
+      "query": "DSR SLA breaches",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-9",
+          "grade": 2
+        },
+        {
+          "ref": "card/gdpr-open-requests",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-09",
+      "query": "accounts over credit limit",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/b2b",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-10",
+      "query": "first response SLA breaches",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-44",
+          "grade": 2
+        },
+        {
+          "ref": "card/first-response-by-priority",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-11",
+      "query": "employee turnover by department",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/q-final-final",
+          "grade": 2
+        },
+        {
+          "ref": "card/hr-q",
+          "grade": 1
+        },
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-12",
+      "query": "early trail club churn",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-21",
+          "grade": 2
+        },
+        {
+          "ref": "card/churn-new-def",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-13",
+      "query": "negative margin orders",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/price-check",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-19",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlc-14",
+      "query": "voluntary churn rate",
+      "tags": [
+        "concept",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/churn-new-def",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-21",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        },
+        {
+          "ref": "card/test",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-01",
+      "query": "refunds by country last quarter",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-17",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-02",
+      "query": "monthly full price revenue by channel",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/copy-of-revenue-v2",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-03",
+      "query": "orders per promo code in january",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/tmp-jan",
+          "grade": 2
+        },
+        {
+          "ref": "card/discount-revenue-share",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-04",
+      "query": "repeat customer rate by channel",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/bens-q",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-05",
+      "query": "which carriers deliver late most often",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-3",
+          "grade": 2
+        },
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-06",
+      "query": "average shipping cost by warehouse country",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-8",
+          "grade": 2
+        },
+        {
+          "ref": "card/carrier-stuff",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-07",
+      "query": "chargeback rate by payment method",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/untitled-1",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-7",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-08",
+      "query": "monthly processing fee percentage by method",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/export-for-marta",
+          "grade": 2
+        },
+        {
+          "ref": "card/copy-of-question-7",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-09",
+      "query": "headcount by office location",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/headcount-thing",
+          "grade": 2
+        },
+        {
+          "ref": "card/headcount-by-department",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-10",
+      "query": "median ticket resolution time by category",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/zendesk-pull",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-12",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-11",
+      "query": "which products are out of stock by warehouse",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-12",
+          "grade": 2
+        },
+        {
+          "ref": "card/inv",
+          "grade": 1
+        },
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlp-12",
+      "query": "overdue wholesale orders by account manager",
+      "tags": [
+        "paraphrase",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-30",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlr-01",
+      "query": "monthly BLIK payments in Poland",
+      "tags": [
+        "rare-token",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/pl-orders",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlr-02",
+      "query": "daily TikTok ad spend",
+      "tags": [
+        "rare-token",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/spend-recon",
+          "grade": 2
+        },
+        {
+          "ref": "card/mkt",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlr-03",
+      "query": "footwear returns by reason",
+      "tags": [
+        "rare-token",
+        "sql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-40",
+          "grade": 2
+        },
+        {
+          "ref": "card/returns-by-reason",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-sqlr-04",
+      "query": "monthly data erasure requests",
+      "tags": [
+        "rare-token",
+        "sql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/dsr",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-01",
+      "query": "monthly refunds for damaged items",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/new-question",
+          "grade": 2
+        },
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-02",
+      "query": "chargeback count by payment method",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/question-7",
+          "grade": 2
+        },
+        {
+          "ref": "card/untitled-1",
+          "grade": 1
+        },
+        {
+          "ref": "card/chargebacks-by-month",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-03",
+      "query": "quarterly marketplace revenue",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/orders-filtered",
+          "grade": 2
+        },
+        {
+          "ref": "card/revenue-by-channel-quarter",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-04",
+      "query": "involuntary terminations by quarter",
+      "tags": [
+        "concept",
+        "mbql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/hr-q",
+          "grade": 2
+        },
+        {
+          "ref": "card/q-final-final",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-05",
+      "query": "average resolution time for urgent tickets by category",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/question-12",
+          "grade": 2
+        },
+        {
+          "ref": "card/zendesk-pull",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-06",
+      "query": "weekly mobile conversions",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/new-question-2",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-2",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-07",
+      "query": "data portability requests",
+      "tags": [
+        "concept",
+        "mbql-only",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/gdpr",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-mbql-08",
+      "query": "referral customers by country",
+      "tags": [
+        "paraphrase",
+        "mbql-only",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/question-31",
+          "grade": 2
+        },
+        {
+          "ref": "card/customers-by-acquisition",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-01",
+      "query": "total refunds by product category",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/refunds-by-product-category",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-02",
+      "query": "on time delivery rate by warehouse",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-3",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-03",
+      "query": "share of payments by method",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/payment-method-mix",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-04",
+      "query": "current headcount by department",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/headcount-by-department",
+          "grade": 2
+        },
+        {
+          "ref": "card/headcount-thing",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-05",
+      "query": "average first response time by priority",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/first-response-by-priority",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-44",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-06",
+      "query": "click through rate by campaign",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/ctr-by-campaign",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-07",
+      "query": "average order value in euros by channel",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/aov-by-channel",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-desc-08",
+      "query": "trail club cancellations by reason",
+      "tags": [
+        "paraphrase",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-01",
+      "query": "Discount code revenue share by month",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/discount-revenue-share",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-02",
+      "query": "Trail Club active members by plan",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/trail-club-active-members",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-03",
+      "query": "Inventory on hand by warehouse",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-04",
+      "query": "GDPR requests backlog",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/gdpr-open-requests",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-05",
+      "query": "Returns by reason code",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/returns-by-reason",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-06",
+      "query": "New customers by signup month and country",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/new-customers-by-country",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-07",
+      "query": "Monthly refund amount",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-exact-08",
+      "query": "Voluntary resignations by quarter",
+      "tags": [
+        "exact-name",
+        "described",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-01",
+      "query": "refunds",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-17",
+          "grade": 1
+        },
+        {
+          "ref": "card/refunds-v2-final",
+          "grade": 1
+        },
+        {
+          "ref": "card/refunds-by-product-category",
+          "grade": 1
+        },
+        {
+          "ref": "card/new-question",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-02",
+      "query": "late deliveries",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-3",
+          "grade": 2
+        },
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-03",
+      "query": "cancellations",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/churn-new-def",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-21",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        },
+        {
+          "ref": "card/test",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-04",
+      "query": "chargebacks",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-heldout"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/untitled-1",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-7",
+          "grade": 2
+        },
+        {
+          "ref": "card/chargebacks-by-month",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-05",
+      "query": "profit margins",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/query-19",
+          "grade": 2
+        },
+        {
+          "ref": "card/margin-check-q3",
+          "grade": 2
+        },
+        {
+          "ref": "card/price-check",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sql-fam-06",
+      "query": "turnover",
+      "tags": [
+        "ambiguous",
+        "near-miss",
+        "split-dev"
+      ],
+      "lang": "en",
+      "expected": [
+        {
+          "ref": "card/q-final-final",
+          "grade": 2
+        },
+        {
+          "ref": "card/hr-q",
+          "grade": 1
+        },
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 1
+        }
+      ]
+    }
+  ]
+}

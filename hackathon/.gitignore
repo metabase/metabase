@@ -1,0 +1,6 @@
+# Regenerable or runtime-only; see hackathon/README.md
+harness/node_modules/
+harness/artifacts/scale-*/
+harness/runner/queue/
+deck/vendor/
+**/__pycache__/

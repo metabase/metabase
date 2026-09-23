@@ -1,0 +1,98 @@
+name: Scenario
+description: |-
+  What was asked, and what are the right answers? Pick a question in the Scenario filter. It lists every corpus's questions (golden ids look like concept-01, the SQL corpus's start with sql-), so pick one from the corpus you selected, or this tab stays empty. Grade 2 = highly relevant, 1 = relevant. The query and its right answers. Answers are shown by catalogue reference, which is the same on every Metabase instance (item ids are not: engines measured in separate runs ran on separate instances).
+
+  **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+
+  **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+
+  **Answer key (expected, labelled answers)**: The items a person marked as right answers for a question.
+
+  **Grade**: How right an answer is: 2 = highly relevant (✓✓), 1 = relevant (✓).
+
+  **Run**: One pass of every question through every engine, under one combination of settings. Cards read the latest finished run for each combination and engine.
+entity_id: _zbbIp6l7-VNeRNHCNRVi
+created_at: '2026-09-23T14:18:20.646232Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH runs AS (
+        SELECT DISTINCT run_id FROM harness_latest_engine_run
+        WHERE corpus_id = {{corpus}}
+          AND embedding_text = {{variant}}
+          AND text_strategy = {{strategy}}
+          [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+          [[AND embedder = {{embedder}}]]
+      ), names AS (
+        -- Display names as the engines returned them, matched by id within the same run (ids differ per instance).
+        SELECT l.run_id, x ->> 'model' AS model, x ->> 'id' AS id, max(x ->> 'name') AS name
+        FROM harness_latest_list l
+        CROSS JOIN LATERAL jsonb_array_elements(l.returned) x
+        WHERE l.scenario_id = {{scenario}} AND l.run_id IN (SELECT run_id FROM runs)
+        GROUP BY 1, 2, 3
+      ), a AS (
+        SELECT s.scenario_id, s.query, s.tags, s.lang, s.notes,
+               -- Fixture runs predate refs; they run on a single instance, so model/id is unambiguous there.
+               coalesce(e ->> 'ref', (e ->> 'model') || '/' || (e ->> 'id')) AS ref, (e ->> 'grade')::int AS grade, n.name
+        FROM harness_scenario s
+        JOIN runs USING (run_id)
+        LEFT JOIN LATERAL jsonb_array_elements(s.expected) e ON true
+        LEFT JOIN names n ON n.run_id = s.run_id AND n.model = e ->> 'model' AND n.id = e ->> 'id'
+        WHERE s.scenario_id = {{scenario}}
+      )
+      SELECT scenario_id AS "Scenario", query AS "Query", array_to_string(tags, ', ') AS "Tags", lang AS "Lang",
+             ref AS "Right answer", coalesce(max(name), '(no engine returned it)') AS "Name as shown in results", grade AS "Grade",
+             notes AS "Why this question is tricky"
+      FROM a
+      GROUP BY scenario_id, query, tags, lang, notes, ref, grade
+      ORDER BY "Grade" DESC NULLS LAST, "Right answer"
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    - display-name: Scenario
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000004
+      name: scenario
+      required: false
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+card_schema: 24
+serdes/meta:
+- id: _zbbIp6l7-VNeRNHCNRVi
+  label: scenario
+  model: Card
+type: question

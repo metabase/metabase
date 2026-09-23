@@ -70,3 +70,22 @@
   :encryption :when-encryption-key-set
   :default    nil
   :type       :string)
+
+(def embedding-text-variants
+  "Allowed values of [[search-embedding-text-variant]], from least to most text embedded."
+  #{:baseline :context :context-sql})
+
+(defsetting search-embedding-text-variant
+  (i18n/deferred-tru "Experimental. Which fields semantic search embeds for each item: `baseline` (name and description), `context` (adds collection, database, table and chart type), or `context-sql` (also adds the SQL of native questions). Takes effect for items indexed after the change; re-initialize the search index to apply it everywhere.")
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :default    :baseline
+  :type       :keyword
+  :setter     (fn [new-value]
+                (let [variant (some-> new-value keyword)]
+                  (when-not (or (nil? variant) (embedding-text-variants variant))
+                    (throw (ex-info (i18n/tru "Unknown embedding text variant: {0}" new-value)
+                                    {:status-code 400 :allowed embedding-text-variants})))
+                  (setting/set-value-of-type! :keyword :search-embedding-text-variant variant)))
+  :doc        false)

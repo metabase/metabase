@@ -1,0 +1,31 @@
+name: '_values: embedding text'
+entity_id: DJjn2XrjnjczkCHPwr0Fn
+created_at: '2026-09-23T14:33:01.211799Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: SELECT DISTINCT embedding_text FROM harness_run ORDER BY 1
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: embedding_text
+  field_ref:
+  - field
+  - embedding_text
+  - base-type: type/Text
+  name: embedding_text
+visualization_settings:
+  column_settings: null
+card_schema: 24
+serdes/meta:
+- id: DJjn2XrjnjczkCHPwr0Fn
+  label: _values__embedding_text
+  model: Card
+type: question

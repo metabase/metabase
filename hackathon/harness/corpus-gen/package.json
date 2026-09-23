@@ -1,0 +1,9 @@
+{
+  "name": "harness-corpus-gen",
+  "private": true,
+  "type": "module",
+  "description": "Zero-dependency corpus generator/applier. Run files directly with node >= 22.18.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

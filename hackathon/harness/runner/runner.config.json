@@ -1,0 +1,16 @@
+{
+  "baseUrl": "http://localhost:3002",
+  "admin": { "username": "dev@metabase.local", "password": "devdev1234" },
+  "user": { "username": "harness@metabase.local", "password": "harness-runner-1" },
+  "engines": [
+    { "id": "semantic", "corpusProbe": { "kind": "pgvector", "url": "postgres://postgres:postgres@localhost:55432/mb_semantic_search" } },
+    { "id": "appdb" },
+    { "id": "in-place" }
+  ],
+  "scenarios": "smoke-scenarios.json",
+  "corpusId": "runner-smoke",
+  "iterations": 5,
+  "warmup": 2,
+  "limit": 10,
+  "dataScale": null
+}

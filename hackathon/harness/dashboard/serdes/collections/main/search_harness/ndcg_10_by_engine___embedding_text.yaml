@@ -1,0 +1,92 @@
+name: nDCG@10 by engine × embedding text
+description: |-
+  Does embedding more of each item's text change quality? One box per engine and variant. Keyword engines should look identical across variants. One point per scenario. Keyword engines should be identical across variants.
+
+  **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+
+  **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+entity_id: nJV0RLVu39plQ07HqLuVy
+created_at: '2026-09-23T14:33:01.743628Z'
+creator_id: dev@metabase.local
+display: boxplot
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT engine AS "Engine", embedding_text AS "Embedding text", value AS "nDCG@10"
+      FROM harness_scenario_metric
+      WHERE corpus_id = {{corpus}} AND metric = 'ndcg@10'
+        [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+        [[AND embedder = {{embedder}}]]
+        AND text_strategy = {{strategy}}
+      ORDER BY 1, 2
+    template-tags:
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedding text
+  field_ref:
+  - field
+  - Embedding text
+  - base-type: type/Text
+  name: Embedding text
+- base_type: type/Float
+  database_type: float8
+  display_name: nDCG@10
+  field_ref:
+  - field
+  - nDCG@10
+  - base-type: type/Float
+  name: nDCG@10
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedding text
+  graph.metrics:
+  - nDCG@10
+card_schema: 24
+serdes/meta:
+- id: nJV0RLVu39plQ07HqLuVy
+  label: ndcg_10_by_engine_×_embedding_text
+  model: Card
+type: question

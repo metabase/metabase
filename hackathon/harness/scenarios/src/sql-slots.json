@@ -1,0 +1,1124 @@
+{
+  "corpusId": "northwind-sql-v1",
+  "comment": "SPLIT RULE (frozen 2026-09-23 before any question text, strategy text or measurement existed): slots are grouped into 7 strata by id prefix (sqlc, sqlp, sqlr, mbql, desc, exact, fam); within a stratum slots are numbered 1..n in the listed order; slot n goes to HELD-OUT iff n mod 5 is 2 or 4, else DEV. Result: 24 held-out / 36 dev (40%). Held-out numbers are the headline; dev is for iterating. The split is carried as tags split-dev / split-heldout. LABELS: grades were assigned from the corpus alone before any question text was seen: target = 2, cards answering substantially the same need = 1; near-miss siblings are deliberately unlabelled (they count as not relevant).",
+  "slots": [
+    {
+      "id": "sqlc-01",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/sub-stuff",
+      "expected": [
+        {
+          "ref": "card/sub-stuff",
+          "grade": 2
+        },
+        {
+          "ref": "card/trail-club-active-members",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-02",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-5",
+      "expected": [
+        {
+          "ref": "card/query-5",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-20",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-03",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-50",
+      "expected": [
+        {
+          "ref": "card/query-50",
+          "grade": 2
+        },
+        {
+          "ref": "card/bens-q",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-04",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/mkt-tmp",
+      "expected": [
+        {
+          "ref": "card/mkt-tmp",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlc-05",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-19",
+      "expected": [
+        {
+          "ref": "card/query-19",
+          "grade": 2
+        },
+        {
+          "ref": "card/margin-check-q3",
+          "grade": 1
+        },
+        {
+          "ref": "card/price-check",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-06",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/inv-v3",
+      "expected": [
+        {
+          "ref": "card/inv-v3",
+          "grade": 2
+        },
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-07",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/reconcile",
+      "expected": [
+        {
+          "ref": "card/reconcile",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlc-08",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-9",
+      "expected": [
+        {
+          "ref": "card/query-9",
+          "grade": 2
+        },
+        {
+          "ref": "card/gdpr-open-requests",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-09",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/b2b",
+      "expected": [
+        {
+          "ref": "card/b2b",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlc-10",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-44",
+      "expected": [
+        {
+          "ref": "card/query-44",
+          "grade": 2
+        },
+        {
+          "ref": "card/first-response-by-priority",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-11",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/q-final-final",
+      "expected": [
+        {
+          "ref": "card/q-final-final",
+          "grade": 2
+        },
+        {
+          "ref": "card/hr-q",
+          "grade": 1
+        },
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-12",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/query-21",
+      "expected": [
+        {
+          "ref": "card/query-21",
+          "grade": 2
+        },
+        {
+          "ref": "card/churn-new-def",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-13",
+      "split": "dev",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/price-check",
+      "expected": [
+        {
+          "ref": "card/price-check",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-19",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlc-14",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "sql-only"
+      ],
+      "target": "card/churn-new-def",
+      "expected": [
+        {
+          "ref": "card/churn-new-def",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-21",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        },
+        {
+          "ref": "card/test",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-01",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/query-17",
+      "expected": [
+        {
+          "ref": "card/query-17",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlp-02",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/copy-of-revenue-v2",
+      "expected": [
+        {
+          "ref": "card/copy-of-revenue-v2",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlp-03",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/tmp-jan",
+      "expected": [
+        {
+          "ref": "card/tmp-jan",
+          "grade": 2
+        },
+        {
+          "ref": "card/discount-revenue-share",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-04",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/bens-q",
+      "expected": [
+        {
+          "ref": "card/bens-q",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlp-05",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/query-3",
+      "expected": [
+        {
+          "ref": "card/query-3",
+          "grade": 2
+        },
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-06",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/query-8",
+      "expected": [
+        {
+          "ref": "card/query-8",
+          "grade": 2
+        },
+        {
+          "ref": "card/carrier-stuff",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-07",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/untitled-1",
+      "expected": [
+        {
+          "ref": "card/untitled-1",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-7",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-08",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/export-for-marta",
+      "expected": [
+        {
+          "ref": "card/export-for-marta",
+          "grade": 2
+        },
+        {
+          "ref": "card/copy-of-question-7",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-09",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/headcount-thing",
+      "expected": [
+        {
+          "ref": "card/headcount-thing",
+          "grade": 2
+        },
+        {
+          "ref": "card/headcount-by-department",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-10",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/zendesk-pull",
+      "expected": [
+        {
+          "ref": "card/zendesk-pull",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-12",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-11",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/query-12",
+      "expected": [
+        {
+          "ref": "card/query-12",
+          "grade": 2
+        },
+        {
+          "ref": "card/inv",
+          "grade": 1
+        },
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlp-12",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "sql-only"
+      ],
+      "target": "card/query-30",
+      "expected": [
+        {
+          "ref": "card/query-30",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlr-01",
+      "split": "dev",
+      "tags": [
+        "rare-token",
+        "sql-only"
+      ],
+      "target": "card/pl-orders",
+      "token": "BLIK",
+      "expected": [
+        {
+          "ref": "card/pl-orders",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "sqlr-02",
+      "split": "heldout",
+      "tags": [
+        "rare-token",
+        "sql-only"
+      ],
+      "target": "card/spend-recon",
+      "token": "TikTok",
+      "expected": [
+        {
+          "ref": "card/spend-recon",
+          "grade": 2
+        },
+        {
+          "ref": "card/mkt",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlr-03",
+      "split": "dev",
+      "tags": [
+        "rare-token",
+        "sql-only"
+      ],
+      "target": "card/query-40",
+      "token": "footwear",
+      "expected": [
+        {
+          "ref": "card/query-40",
+          "grade": 2
+        },
+        {
+          "ref": "card/returns-by-reason",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "sqlr-04",
+      "split": "heldout",
+      "tags": [
+        "rare-token",
+        "sql-only"
+      ],
+      "target": "card/dsr",
+      "token": "erasure",
+      "expected": [
+        {
+          "ref": "card/dsr",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "mbql-01",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/new-question",
+      "expected": [
+        {
+          "ref": "card/new-question",
+          "grade": 2
+        },
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-02",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/question-7",
+      "expected": [
+        {
+          "ref": "card/question-7",
+          "grade": 2
+        },
+        {
+          "ref": "card/untitled-1",
+          "grade": 1
+        },
+        {
+          "ref": "card/chargebacks-by-month",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-03",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/orders-filtered",
+      "expected": [
+        {
+          "ref": "card/orders-filtered",
+          "grade": 2
+        },
+        {
+          "ref": "card/revenue-by-channel-quarter",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-04",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "mbql-only"
+      ],
+      "target": "card/hr-q",
+      "expected": [
+        {
+          "ref": "card/hr-q",
+          "grade": 2
+        },
+        {
+          "ref": "card/q-final-final",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-05",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/question-12",
+      "expected": [
+        {
+          "ref": "card/question-12",
+          "grade": 2
+        },
+        {
+          "ref": "card/zendesk-pull",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-06",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/new-question-2",
+      "expected": [
+        {
+          "ref": "card/new-question-2",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-2",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "mbql-07",
+      "split": "heldout",
+      "tags": [
+        "concept",
+        "mbql-only"
+      ],
+      "target": "card/gdpr",
+      "expected": [
+        {
+          "ref": "card/gdpr",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "mbql-08",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "mbql-only"
+      ],
+      "target": "card/question-31",
+      "expected": [
+        {
+          "ref": "card/question-31",
+          "grade": 2
+        },
+        {
+          "ref": "card/customers-by-acquisition",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "desc-01",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/refunds-by-product-category",
+      "expected": [
+        {
+          "ref": "card/refunds-by-product-category",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "desc-02",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/on-time-delivery-by-warehouse",
+      "expected": [
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-3",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "desc-03",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/payment-method-mix",
+      "expected": [
+        {
+          "ref": "card/payment-method-mix",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "desc-04",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/headcount-by-department",
+      "expected": [
+        {
+          "ref": "card/headcount-by-department",
+          "grade": 2
+        },
+        {
+          "ref": "card/headcount-thing",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "desc-05",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/first-response-by-priority",
+      "expected": [
+        {
+          "ref": "card/first-response-by-priority",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-44",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "desc-06",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/ctr-by-campaign",
+      "expected": [
+        {
+          "ref": "card/ctr-by-campaign",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "desc-07",
+      "split": "heldout",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/aov-by-channel",
+      "expected": [
+        {
+          "ref": "card/aov-by-channel",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "desc-08",
+      "split": "dev",
+      "tags": [
+        "paraphrase",
+        "described"
+      ],
+      "target": "card/cancellations-by-reason",
+      "expected": [
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-01",
+      "split": "dev",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/discount-revenue-share",
+      "expected": [
+        {
+          "ref": "card/discount-revenue-share",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-02",
+      "split": "heldout",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/trail-club-active-members",
+      "expected": [
+        {
+          "ref": "card/trail-club-active-members",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-03",
+      "split": "dev",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/inventory-on-hand-by-warehouse",
+      "expected": [
+        {
+          "ref": "card/inventory-on-hand-by-warehouse",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-04",
+      "split": "heldout",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/gdpr-open-requests",
+      "expected": [
+        {
+          "ref": "card/gdpr-open-requests",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-05",
+      "split": "dev",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/returns-by-reason",
+      "expected": [
+        {
+          "ref": "card/returns-by-reason",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-06",
+      "split": "dev",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/new-customers-by-country",
+      "expected": [
+        {
+          "ref": "card/new-customers-by-country",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-07",
+      "split": "heldout",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/monthly-refund-amount",
+      "expected": [
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "exact-08",
+      "split": "dev",
+      "tags": [
+        "exact-name",
+        "described"
+      ],
+      "target": "card/voluntary-terminations",
+      "expected": [
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "fam-01",
+      "split": "dev",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "refunds",
+      "theme": "Refunds in general (several cards look at refunds from different angles)",
+      "expected": [
+        {
+          "ref": "card/monthly-refund-amount",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-17",
+          "grade": 1
+        },
+        {
+          "ref": "card/refunds-v2-final",
+          "grade": 1
+        },
+        {
+          "ref": "card/refunds-by-product-category",
+          "grade": 1
+        },
+        {
+          "ref": "card/new-question",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "fam-02",
+      "split": "heldout",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "late-deliveries",
+      "theme": "Deliveries arriving late vs on time (several cards measure delivery punctuality differently)",
+      "expected": [
+        {
+          "ref": "card/query-3",
+          "grade": 2
+        },
+        {
+          "ref": "card/on-time-delivery-by-warehouse",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "fam-03",
+      "split": "dev",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "membership-churn",
+      "theme": "Trail Club members cancelling their membership (several cards measure it differently)",
+      "expected": [
+        {
+          "ref": "card/churn-new-def",
+          "grade": 2
+        },
+        {
+          "ref": "card/query-21",
+          "grade": 1
+        },
+        {
+          "ref": "card/cancellations-by-reason",
+          "grade": 1
+        },
+        {
+          "ref": "card/test",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "fam-04",
+      "split": "heldout",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "chargebacks",
+      "theme": "Payment chargebacks / disputed payments (several cards)",
+      "expected": [
+        {
+          "ref": "card/untitled-1",
+          "grade": 2
+        },
+        {
+          "ref": "card/question-7",
+          "grade": 2
+        },
+        {
+          "ref": "card/chargebacks-by-month",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "id": "fam-05",
+      "split": "dev",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "margin",
+      "theme": "Profit margin on products (several cards)",
+      "expected": [
+        {
+          "ref": "card/query-19",
+          "grade": 2
+        },
+        {
+          "ref": "card/margin-check-q3",
+          "grade": 2
+        },
+        {
+          "ref": "card/price-check",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "id": "fam-06",
+      "split": "dev",
+      "tags": [
+        "ambiguous",
+        "near-miss"
+      ],
+      "family": "employee-departures",
+      "theme": "Employees leaving the company (several cards: resignations, dismissals)",
+      "expected": [
+        {
+          "ref": "card/q-final-final",
+          "grade": 2
+        },
+        {
+          "ref": "card/hr-q",
+          "grade": 1
+        },
+        {
+          "ref": "card/voluntary-terminations",
+          "grade": 1
+        }
+      ]
+    }
+  ]
+}

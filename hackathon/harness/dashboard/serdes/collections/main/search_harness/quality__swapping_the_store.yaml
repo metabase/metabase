@@ -1,0 +1,73 @@
+name: 'Quality: swapping the store'
+description: |-
+  Does search get worse if pgvector is replaced by another store? Ranking quality per store on the same 56 golden questions. Vector-only variants (-vector, -pure) compare the stores themselves; semantic, sqlite-vec1 and lucene also mix in keyword hits. The keyword engines are the floor. Pinned: northwind-golden-v1, all-minilm, baseline text. semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+
+  **semantic**: Metabase's shipping semantic search. It is hybrid: its own index (pgvector, a separate Postgres, not the app DB) matches both by meaning and by words, and merges the two. On top of that it tops up with appdb keyword hits when it finds too few.
+
+  **semantic-pure**: semantic with the appdb top-up switched off. Still hybrid (meaning + words in its own index), so it is not pure vector search: semantic-vector is.
+
+  **semantic-vector**: semantic with both its keyword part and the appdb top-up switched off: pure vector search over its own index. The reference for how much of semantic comes from embeddings alone.
+
+  **sqlite-vec1**: Libor's engine: vector-only search (no keyword part) stored in SQLite (sqlite-vec1), no pgvector needed. Like semantic, it tops up with appdb keyword hits; sqlite-vec1-pure has the top-up off.
+
+  **lucene**: Paolo's engine: a Lucene index. Its vector part uses an approximate (HNSW) index; its keyword part is the appdb keyword search, which ran on H2 in our runs. lucene-pure has the appdb top-up off.
+
+  **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+entity_id: l0HgqHjZJgo_jXU8LTReV
+created_at: '2026-09-23T20:15:05.112109Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT engine AS "Engine", round(avg(value)::numeric, 3) AS "nDCG@10"
+      FROM harness_scenario_metric
+      WHERE corpus_id = 'northwind-golden-v1' AND metric = 'ndcg@10' AND embedder = 'ollama/all-minilm' AND embedding_text = 'baseline' AND text_strategy = 'none'
+      GROUP BY engine
+      ORDER BY array_position(ARRAY['semantic', 'semantic-pure', 'semantic-vector', 'sqlite-vec1', 'sqlite-vec1-pure', 'lucene', 'lucene-pure', 'appdb', 'in-place'], engine)
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: nDCG@10
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - nDCG@10
+  - base-type: type/Decimal
+  name: nDCG@10
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  graph.metrics:
+  - nDCG@10
+  graph.show_values: true
+  graph.y_axis.auto_range: false
+  graph.y_axis.max: 1
+card_schema: 24
+serdes/meta:
+- id: l0HgqHjZJgo_jXU8LTReV
+  label: quality__swapping_the_store
+  model: Card
+type: question

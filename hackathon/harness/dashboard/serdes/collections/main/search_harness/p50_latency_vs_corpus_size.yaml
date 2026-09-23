@@ -1,0 +1,102 @@
+name: p50 latency vs corpus size
+description: |-
+  How does the typical search time grow as the catalogue grows? One line per engine; left to right = bigger catalogue: the golden set (235 items), then generated catalogues of 1k and 10k items. A line that climbs steeply won't scale. Each size is its own run, so trust big jumps along a line (over ~2×), not small ones. An engine shown as a single point was only run on the golden set, not "fine at scale". Compare latency only within one run: different runs used different Metabase instances, so across runs (semantic vs semantic-pure, all-minilm vs arctic) a difference under ~2× may be the machine, not the engine. Runs that overlapped another run are left out (Overlapped column in Runs in view).
+
+  **Latency**: Time from sending a search to getting results back, in milliseconds (ms). Lower is better.
+
+  **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+
+  **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+
+  **Log scale**: Each gridline is 10× the one below; use it to compare growth rates, not absolute gaps.
+entity_id: KecwqthzIjX7NJLzMsHlC
+created_at: '2026-09-23T14:18:20.221335Z'
+creator_id: dev@metabase.local
+display: line
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT CASE WHEN data_scale IS NULL THEN '235 (golden)' WHEN data_scale >= 1000 THEN (data_scale / 1000) || 'k'
+                  ELSE data_scale::text END AS "Corpus size",
+             engine AS "Engine",
+             percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms) AS "p50 latency (ms)"
+      FROM harness_latest_observation
+      WHERE (corpus_id = {{corpus}} OR corpus_id LIKE 'scale-%') AND run_id NOT IN (SELECT run_id FROM harness_run_concurrency WHERE overlapped) AND error IS NULL
+        AND embedding_text = {{variant}}
+        AND text_strategy = {{strategy}}
+        [[AND embedder = {{embedder}}]]
+      GROUP BY data_scale, 1, 2
+      ORDER BY coalesce(data_scale, 235), 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Corpus size
+  field_ref:
+  - field
+  - Corpus size
+  - base-type: type/Text
+  name: Corpus size
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Float
+  database_type: float8
+  display_name: p50 latency (ms)
+  field_ref:
+  - field
+  - p50 latency (ms)
+  - base-type: type/Float
+  name: p50 latency (ms)
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Corpus size
+  - Engine
+  graph.metrics:
+  - p50 latency (ms)
+  graph.show_values: true
+  graph.x_axis.scale: ordinal
+  graph.x_axis.title_text: Corpus size (entities; tiers are ×10 apart)
+  graph.y_axis.scale: log
+  graph.y_axis.title_text: p50 ms (log)
+card_schema: 24
+serdes/meta:
+- id: KecwqthzIjX7NJLzMsHlC
+  label: p50_latency_vs_corpus_size
+  model: Card
+type: question

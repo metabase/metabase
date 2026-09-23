@@ -1,0 +1,94 @@
+name: Swap the embedder vs swap the engine
+description: |-
+  Same scenarios, same vector engines. The spread of each group is how much that choice moves quality.
+
+  **Embedder**: The model that makes embeddings. Today `all-minilm`; `snowflake-arctic-embed2` is coming.
+
+  **Engine**: One search implementation under test. Every engine gets the same questions over the same catalogue.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings. A keyword engine (appdb, in-place) matches words.
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. Higher is better.
+
+  **Mean / median**: The average / the middle value.
+entity_id: GRH7Kj9n9tkWUCL43gi0F
+created_at: '2026-09-23T14:18:20.471444Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH d AS (
+        SELECT engine, embedder, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = {{corpus}} AND metric = 'ndcg@10' AND engine NOT IN ('appdb', 'in-place')
+          AND embedding_text = {{variant}}
+          [[AND data_scale = {{scale}}]]
+      )
+      SELECT 'Change the embedder' AS "Factor", split_part(embedder, '/', 2) AS "Level", avg(value) AS "Mean nDCG@10" FROM d GROUP BY 2
+      UNION ALL
+      SELECT 'Change the engine', engine, avg(value) FROM d GROUP BY 2
+      ORDER BY 1, 3
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Factor
+  field_ref:
+  - field
+  - Factor
+  - base-type: type/Text
+  name: Factor
+- base_type: type/Text
+  database_type: text
+  display_name: Level
+  field_ref:
+  - field
+  - Level
+  - base-type: type/Text
+  name: Level
+- base_type: type/Float
+  database_type: float8
+  display_name: Mean nDCG@10
+  field_ref:
+  - field
+  - Mean nDCG@10
+  - base-type: type/Float
+  name: Mean nDCG@10
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Factor
+  - Level
+  graph.metrics:
+  - Mean nDCG@10
+  graph.show_values: true
+card_schema: 24
+serdes/meta:
+- id: GRH7Kj9n9tkWUCL43gi0F
+  label: swap_the_embedder_vs_swap_the_engine
+  model: Card
+type: question

@@ -1,0 +1,90 @@
+name: Recall@10 distribution by engine and embedder
+description: |-
+  semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **Recall@10 (share found)**: 0 to 1: the share of right answers that appear in the first 10 results. Higher is better.
+
+  **@10**: Only the first 10 results count, like the first page of search results.
+
+  **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+
+  **Scenario**: One test question plus its answer key. The golden corpus has 56.
+
+  **Embedder**: The model that makes embeddings. Today `all-minilm`; `snowflake-arctic-embed2` is coming.
+
+  **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results, it fills the list with appdb keyword hits. So "semantic" is not pure vector search; semantic-pure (top-up off) shows how much that matters.
+entity_id: VHkumcZ6wlnqNf5yhnxty
+created_at: '2026-09-23T14:18:20.332018Z'
+creator_id: dev@metabase.local
+display: boxplot
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder", value AS "Recall@10"
+      FROM harness_scenario_metric
+      WHERE corpus_id = {{corpus}} AND metric = 'recall@10'
+        AND embedding_text = {{variant}}
+        [[AND data_scale = {{scale}}]]
+      ORDER BY 1, 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/Float
+  database_type: float8
+  display_name: Recall@10
+  field_ref:
+  - field
+  - Recall@10
+  - base-type: type/Float
+  name: Recall@10
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedder
+  graph.metrics:
+  - Recall@10
+card_schema: 24
+serdes/meta:
+- id: VHkumcZ6wlnqNf5yhnxty
+  label: recall_10_distribution_by_engine_and_embedder
+  model: Card
+type: question

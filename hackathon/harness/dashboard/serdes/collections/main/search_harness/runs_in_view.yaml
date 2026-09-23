@@ -1,0 +1,135 @@
+name: Runs in view
+description: |-
+  Which runs is this dashboard showing? One row per run. If a run here is newer than the ones the Start-here verdict names, the verdict text may be out of date; the cards themselves are always live. Latest finished run per (corpus, scale, embedder, embedding text, engine) — the runs every other card reads. Engines measured in separate runs (e.g. semantic-pure) show as separate rows.
+
+  **Run**: One pass of every question through every engine, under one combination of settings. Cards read the latest finished run for each combination and engine.
+
+  **Corpus**: The fixed catalogue of Metabase items (cards, dashboards, tables…) every engine searches, with its questions. `northwind-golden-v1`: 235 items, 56 hand-labelled questions. `northwind-sql-v1`: 60 labelled questions about SQL cards (36 dev + 24 held-out; the dashboard pools both). `scale-1000-seed-42` / `scale-10000-seed-42`: generated catalogues used only to time searches, no right answers.
+
+  **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+
+  **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+  **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+entity_id: upXW6DkKMBj2EZaF7apQn
+created_at: '2026-09-23T14:18:20.162244Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT lr.corpus_id AS "Corpus", lr.data_scale AS "Scale", lr.embedder AS "Embedder", lr.embedding_text AS "Embedding text",
+             lr.text_strategy AS "Text strategy",
+             string_agg(lr.engine, ', ' ORDER BY array_position(ARRAY['semantic', 'semantic-pure', 'semantic-vector', 'sqlite-vec1', 'sqlite-vec1-pure', 'lucene', 'lucene-pure', 'appdb', 'in-place'], lr.engine)) AS "Engines", lr.run_id AS "Run",
+             r.finished_at AS "Finished", r.git_sha AS "Git SHA",
+             CASE WHEN c.overlapped THEN 'yes: left out of latency cards' ELSE 'no' END AS "Overlapped"
+      FROM harness_latest_engine_run lr
+      JOIN harness_run r USING (run_id)
+      LEFT JOIN harness_run_concurrency c USING (run_id)
+      WHERE (lr.corpus_id = {{corpus}} OR lr.corpus_id LIKE 'scale-%')
+      GROUP BY 1, 2, 3, 4, 5, 7, 8, 9, 10
+      ORDER BY 2, 3, 4, 5, 8
+    template-tags:
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Corpus
+  field_ref:
+  - field
+  - Corpus
+  - base-type: type/Text
+  name: Corpus
+- base_type: type/Integer
+  database_type: int4
+  display_name: Scale
+  field_ref:
+  - field
+  - Scale
+  - base-type: type/Integer
+  name: Scale
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/Text
+  database_type: text
+  display_name: Embedding text
+  field_ref:
+  - field
+  - Embedding text
+  - base-type: type/Text
+  name: Embedding text
+- base_type: type/Text
+  database_type: text
+  display_name: Text strategy
+  field_ref:
+  - field
+  - Text strategy
+  - base-type: type/Text
+  name: Text strategy
+- base_type: type/Text
+  database_type: text
+  display_name: Engines
+  field_ref:
+  - field
+  - Engines
+  - base-type: type/Text
+  name: Engines
+- base_type: type/Text
+  database_type: text
+  display_name: Run
+  field_ref:
+  - field
+  - Run
+  - base-type: type/Text
+  name: Run
+- base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Finished
+  field_ref:
+  - field
+  - Finished
+  - base-type: type/DateTimeWithLocalTZ
+  name: Finished
+- base_type: type/Text
+  database_type: text
+  display_name: Git SHA
+  field_ref:
+  - field
+  - Git SHA
+  - base-type: type/Text
+  name: Git SHA
+- base_type: type/Text
+  database_type: text
+  display_name: Overlapped
+  field_ref:
+  - field
+  - Overlapped
+  - base-type: type/Text
+  name: Overlapped
+visualization_settings:
+  column_settings: null
+card_schema: 24
+serdes/meta:
+- id: upXW6DkKMBj2EZaF7apQn
+  label: runs_in_view
+  model: Card
+type: question

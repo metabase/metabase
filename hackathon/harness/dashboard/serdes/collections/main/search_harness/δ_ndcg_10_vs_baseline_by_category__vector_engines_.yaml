@@ -1,0 +1,126 @@
+name: Δ nDCG@10 vs baseline by category (vector engines)
+description: |-
+  For which kinds of question does a variant help or hurt? Green = better than baseline, red = worse. Vector engines only. Mean paired change over the vector engines. Expect paraphrase/concept to move with context, rare-token with context-sql.
+
+  **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+
+  **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+
+  **Baseline**: The reference setup everything else is compared against.
+
+  **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+
+  **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+
+  **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+entity_id: t5U2uY372HnXmSlLf2Gw8
+created_at: '2026-09-23T14:33:01.791955Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH t AS (
+        SELECT * FROM (
+        SELECT m.tag, m.embedding_text, m.scenario_id, m.value - b.value AS value
+        FROM harness_tag_metric m
+        JOIN harness_tag_metric b
+          ON b.corpus_id = m.corpus_id AND b.data_scale IS NOT DISTINCT FROM m.data_scale AND b.embedder = m.embedder
+         AND b.text_strategy = m.text_strategy
+         AND b.embedding_text = 'baseline' AND b.metric = m.metric
+         AND b.tag = m.tag AND b.engine = m.engine AND b.scenario_id = m.scenario_id
+        WHERE m.corpus_id = {{corpus}} AND m.metric = 'ndcg@10' AND m.engine NOT IN ('appdb', 'in-place')
+          AND m.embedding_text <> 'baseline'
+          [[AND (m.data_scale = {{scale}} OR m.data_scale IS NULL)]]
+          [[AND m.embedder = {{embedder}}]]
+          AND m.text_strategy = {{strategy}}
+        ) s WHERE tag IN ('paraphrase', 'concept', 'exact-name', 'rare-token', 'typo', 'cross-lingual', 'ambiguous', 'empty-expected')
+      ), n AS (SELECT tag, count(DISTINCT scenario_id) AS n FROM t GROUP BY tag),
+      a AS (
+        SELECT t.tag, t.tag || '  (n=' || n.n || ')' AS category, t.embedding_text AS pivot, round(avg(t.value)::numeric, 2) AS v
+        FROM t JOIN n USING (tag)
+        GROUP BY 1, 2, 3
+      )
+      SELECT category AS "Category",
+             max(v) FILTER (WHERE pivot = 'context') AS "context",
+             max(v) FILTER (WHERE pivot = 'context-sql') AS "context-sql"
+      FROM a
+      GROUP BY tag, category
+      ORDER BY array_position(ARRAY['paraphrase', 'concept', 'exact-name', 'rare-token', 'typo', 'cross-lingual', 'ambiguous', 'empty-expected'], tag)
+    template-tags:
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    - display-name: Embedder
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000003
+      name: embedder
+      required: false
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Category
+  field_ref:
+  - field
+  - Category
+  - base-type: type/Text
+  name: Category
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: context
+  field_ref:
+  - field
+  - context
+  - base-type: type/Decimal
+  name: context
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: context-sql
+  field_ref:
+  - field
+  - context-sql
+  - base-type: type/Decimal
+  name: context-sql
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#ED6E6E'
+    - '#FFFFFF'
+    - '#84BB4C'
+    columns:
+    - context
+    - context-sql
+    max_type: custom
+    max_value: 0.3
+    min_type: custom
+    min_value: -0.3
+    type: range
+card_schema: 24
+serdes/meta:
+- id: t5U2uY372HnXmSlLf2Gw8
+  label: δ_ndcg_10_vs_baseline_by_category__vector_engines_
+  model: Card
+type: question

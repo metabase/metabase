@@ -1,6 +1,7 @@
 (ns metabase.search.ingestion-test
   (:require
    [clojure.core.cache :as cache]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -11,6 +12,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.ingestion.query :as search.ingestion.query]
+   [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -104,6 +106,44 @@
         (is (= "Q3 Planning the full document body"
                (#'search.ingestion/searchable-text record))
             "Excluded fields remain in full-text searchable-text")))))
+
+(deftest embeddable-text-variant-test
+  (let [spec-fn (constantly {:search-terms [:name :description]})
+        record  {:model           "card"
+                 :name            "Revenue"
+                 :description     "Revenue"
+                 :collection_name "Finance"
+                 :display         "line"
+                 :database_name   "Revenue"
+                 :native_query    (apply str "SELECT sum(total) FROM orders" (repeat 2000 " "))}]
+    (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
+      (testing ":baseline is the pre-variant text, including repeated values"
+        (is (= "[card]\nname: Revenue\ndescription: Revenue"
+               (#'search.ingestion/embeddable-text record :baseline))))
+      (testing ":context appends context lines, dropping values already present"
+        (is (= "[card]\nname: Revenue\ndescription: Revenue\ncollection: Finance\nchart: line"
+               (#'search.ingestion/embeddable-text record :context))))
+      (testing ":context-sql also appends the SQL, trimmed and cut to a bounded length"
+        (is (= "[card]\nname: Revenue\ndescription: Revenue\ncollection: Finance\nchart: line\nsql: SELECT sum(total) FROM orders"
+               (#'search.ingestion/embeddable-text record :context-sql)))
+        (is (= (+ (count "sql: ") @#'search.ingestion/embedding-sql-max-length)
+               (-> (#'search.ingestion/embeddable-text
+                    (assoc record :native_query (apply str (repeat 5000 "x"))) :context-sql)
+                   (str/split #"\n")
+                   last
+                   count))))
+      (testing "the one-arity form follows the setting"
+        (mt/with-temporary-setting-values [search-embedding-text-variant :context]
+          (is (= (#'search.ingestion/embeddable-text record :context)
+                 (#'search.ingestion/embeddable-text record))))))))
+
+(deftest search-embedding-text-variant-setting-test
+  (mt/with-temporary-setting-values [search-embedding-text-variant nil]
+    (is (= :baseline (search.settings/search-embedding-text-variant)))
+    (search.settings/search-embedding-text-variant! "context-sql")
+    (is (= :context-sql (search.settings/search-embedding-text-variant)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown embedding text variant"
+                          (search.settings/search-embedding-text-variant! "everything")))))
 
 (deftest execute-all-function-attrs-test
   (testing "function-attr result is written under the snake_case attr-key"

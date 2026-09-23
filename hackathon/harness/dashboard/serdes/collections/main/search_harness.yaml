@@ -1,0 +1,9 @@
+name: Search Harness
+description: Search engine comparison harness — hackathon/harness/.
+entity_id: gjR5SGM1RGd2H2jxbW8g3
+slug: search_harness
+created_at: '2026-09-23T14:18:19.888754Z'
+serdes/meta:
+- id: gjR5SGM1RGd2H2jxbW8g3
+  label: search_harness
+  model: Collection

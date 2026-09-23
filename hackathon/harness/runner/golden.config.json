@@ -1,0 +1,17 @@
+{
+  "baseUrl": "http://localhost:3003",
+  "admin": { "username": "dev@metabase.local", "password": "devdev1234" },
+  "user": { "username": "from-manifest", "password": "from-manifest" },
+  "engines": [
+    { "id": "semantic", "corpusProbe": { "kind": "pgvector", "url": "postgres://postgres:postgres@localhost:55432/mb_ss_golden" } },
+    { "id": "appdb" },
+    { "id": "in-place" }
+  ],
+  "manifest": "../artifacts/golden/manifest.json",
+  "scenarios": "../scenarios/northwind-golden-v1.json",
+  "corpusId": "from-manifest",
+  "iterations": 5,
+  "warmup": 2,
+  "limit": 10,
+  "dataScale": null
+}

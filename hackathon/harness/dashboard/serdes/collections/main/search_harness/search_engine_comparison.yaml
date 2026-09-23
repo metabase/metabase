@@ -1,0 +1,2596 @@
+name: Search engine comparison
+description: Evaluating Metabase search, using Metabase.
+entity_id: dvPWhPiz6it31jVFx0WuO
+created_at: '2026-09-23T14:18:20.111098Z'
+creator_id: dev@metabase.local
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters:
+- default:
+  - northwind-golden-v1
+  id: corpus
+  name: Corpus
+  position: 0
+  required: true
+  slug: corpus
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    card_id: -ya6nCr83ZFP2dWi0BEqO
+    value_field:
+    - field
+    - corpus_id
+    - base-type: type/Text
+  values_source_type: card
+- default:
+  - ollama/all-minilm
+  id: embedder
+  name: Embedder
+  position: 2
+  required: false
+  slug: embedder
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    card_id: dXPQ5nJ7Q80S1-iUdoSCL
+    value_field:
+    - field
+    - embedder
+    - base-type: type/Text
+  values_source_type: card
+- id: scale
+  name: Scale
+  position: 1
+  required: false
+  slug: scale
+  type: number/=
+  values_query_type: list
+  values_source_config:
+    card_id: 4ZPyz96eaRbHaekoiDmjh
+    value_field:
+    - field
+    - data_scale
+    - base-type: type/Integer
+  values_source_type: card
+- default:
+  - concept-01
+  id: scenario
+  name: Scenario
+  position: 5
+  required: false
+  slug: scenario
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    card_id: drnTq7VXKonaoaJlyEQLn
+    label_field:
+    - field
+    - label
+    - base-type: type/Text
+    value_field:
+    - field
+    - scenario_id
+    - base-type: type/Text
+  values_source_type: card
+- default:
+  - none
+  id: strategy
+  name: Text strategy
+  position: 4
+  required: true
+  slug: text_strategy
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    card_id: R9IiJpgNyDwu88LJtD_sG
+    value_field:
+    - field
+    - text_strategy
+    - base-type: type/Text
+  values_source_type: card
+- default:
+  - baseline
+  id: variant
+  name: Embedding text
+  position: 3
+  required: true
+  slug: embedding_text
+  type: string/=
+  values_query_type: list
+  values_source_config:
+    card_id: DJjn2XrjnjczkCHPwr0Fn
+    value_field:
+    - field
+    - embedding_text
+    - base-type: type/Text
+  values_source_type: card
+serdes/meta:
+- id: dvPWhPiz6it31jVFx0WuO
+  label: search_engine_comparison
+  model: Dashboard
+dashcards:
+- entity_id: y7CmfDt9-RYZGKXowiXem
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 15
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Speed: the same queries against every store**: How fast does each store answer the same questions as the catalogue grows? Median time per search, end to end over HTTP, including embedding the query (all-minilm). Bars are grouped by store; colours are catalogue size. Latency is not the point of the project — it shows every store ran the identical workload. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **Speed: median and p95 by store and size**: What are the exact numbers behind the speed chart? p95 is the slowest 5% of searches; tails are noisy on a laptop. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **Quality: swapping the store**: Does search get worse if pgvector is replaced by another store? Ranking quality per store on the same 56 golden questions. Vector-only variants (-vector, -pure) compare the stores themselves; semantic, sqlite-vec1 and lucene also mix in keyword hits. The keyword engines are the floor. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **Quality: each store vs its pgvector counterpart, paired**: Is any store proven better or worse than pgvector, compared like for like? Each store against the pgvector engine with the same parts switched on, same questions. "Vector only" is the fair store comparison; "as shipped" adds each engine's keyword part and top-up. "no proven difference" means the 95% range crosses 0 — a tie at this sample size. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **Embedding model: all-minilm vs arctic**: How much does a stronger embedding model help? Ranking quality per engine with each model, same 56 golden questions. Keyword engines do not embed, so their bars should not move — they are the sanity check. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **Embedding model: arctic vs all-minilm, paired**: Is the stronger model proven better, per engine? arctic minus all-minilm on the same questions. Keyword engines should show 0. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **What we embed: describing undocumented cards**: Does giving cards a description improve search? Gain in ranking quality over the catalogue as written (none), on the 24 held-out questions nobody tuned on. mech-fill-empty writes a description from the SQL by rules, only where missing; llm-fill-all has a local LLM describe every card; context-sql embeds the raw SQL instead. Vector-only engine, so the gain is the embedding's, not keyword matching. *Shows: every embedding model, as separate rows or series, every size tier.*
+      - **What we embed: gain vs none, paired**: Is each text strategy proven better than leaving cards undescribed? nDCG@10 before (none) and after, and the paired gain with its 95% range, held-out questions only. *Shows: every embedding model, as separate rows or series, every size tier.*
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: y7CmfDt9-RYZGKXowiXem
+    model: DashboardCard
+- entity_id: LsHycWFP6KIUs9_rTlgSC
+  card_id: GFomN1F1vvx_dJ0HCIX8F
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 0
+  size_x: 14
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: LsHycWFP6KIUs9_rTlgSC
+    model: DashboardCard
+- entity_id: 4iZCqr34zugZn2ednYGl1
+  card_id: 2p_5TcgXELW5z-zrIAmnb
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 14
+  size_x: 10
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: 4iZCqr34zugZn2ednYGl1
+    model: DashboardCard
+- entity_id: lIREabQVH6fxcXK6FlYxN
+  card_id: l0HgqHjZJgo_jXU8LTReV
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 22
+  col: 0
+  size_x: 14
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: lIREabQVH6fxcXK6FlYxN
+    model: DashboardCard
+- entity_id: 4hWZ6j-6Jf25JkzODqBRV
+  card_id: -r8OfcBg-elfYVTP8hJkD
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 22
+  col: 14
+  size_x: 10
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: 4hWZ6j-6Jf25JkzODqBRV
+    model: DashboardCard
+- entity_id: _hLt8a0zcsigsBspkFWLU
+  card_id: uRCB-40mzNrigVKUD2crs
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 29
+  col: 0
+  size_x: 14
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: _hLt8a0zcsigsBspkFWLU
+    model: DashboardCard
+- entity_id: zOMZGZ_3IPOL6RG-Z3Iqt
+  card_id: ofep-BEBw6d6OLHa196Dc
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 29
+  col: 14
+  size_x: 10
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: zOMZGZ_3IPOL6RG-Z3Iqt
+    model: DashboardCard
+- entity_id: gUScbiiqmFkpGfuJQ8gHb
+  card_id: UKmPLGqD_BQtAGelrokTd
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 36
+  col: 0
+  size_x: 14
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: gUScbiiqmFkpGfuJQ8gHb
+    model: DashboardCard
+- entity_id: DYbz_ipMnJQ0q9QZE3eVp
+  card_id: 0Ex_K11C-bdykjtAIvKN1
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 36
+  col: 14
+  size_x: 10
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: DYbz_ipMnJQ0q9QZE3eVp
+    model: DashboardCard
+- entity_id: z3n0yew56sKLuO_BTQZ92
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 43
+  col: 0
+  size_x: 24
+  size_y: 27
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - LYSw3rTVNh2LPNPOndLcw
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Latency**: Time from sending a search to getting results back, in milliseconds (ms). Lower is better.
+      - **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+      - **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+      - **Engine**: One search implementation under test. Every engine gets the same questions over the same catalogue.
+      - **semantic**: Metabase's shipping semantic search. It is hybrid: its own index (pgvector, a separate Postgres, not the app DB) matches both by meaning and by words, and merges the two. On top of that it tops up with appdb keyword hits when it finds too few.
+      - **semantic-vector**: semantic with both its keyword part and the appdb top-up switched off: pure vector search over its own index. The reference for how much of semantic comes from embeddings alone.
+      - **sqlite-vec1**: Libor's engine: vector-only search (no keyword part) stored in SQLite (sqlite-vec1), no pgvector needed. Like semantic, it tops up with appdb keyword hits; sqlite-vec1-pure has the top-up off.
+      - **lucene**: Paolo's engine: a Lucene index. Its vector part uses an approximate (HNSW) index; its keyword part is the appdb keyword search, which ran on H2 in our runs. lucene-pure has the appdb top-up off.
+      - **appdb**: Metabase's regular keyword search index in the app DB. On H2 (as here) its text-match part can't tell good matches from weak ones, so its ranking leans on the other signals (recency, popularity). That's why it can differ slightly between two runs of the same questions. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **in-place**: Simple keyword search with no index. It orders results its own way but reports no score, so its score shows as n/a. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **semantic-pure**: semantic with the appdb top-up switched off. Still hybrid (meaning + words in its own index), so it is not pure vector search: semantic-vector is.
+      - **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+      - **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **all-minilm**: Small, English-focused embedding model: 384 numbers per text, and it reads at most about 512 tokens (a few hundred words); the rest is cut off.
+      - **snowflake-arctic-embed2**: Larger, multilingual embedding model: 1,024 numbers per text, and it reads long text (up to 8,192 tokens). That's why it handles questions in other languages. Adding the 'query: ' prefix it expects (runs labelled +qprefix) didn't help here: golden no difference (−0.03 ± 0.05), SQL corpus slightly worse (−0.07 ± 0.05).
+      - **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+      - **none**: Text strategy: the catalogue's descriptions as they are.
+      - **mech-fill-empty**: Text strategy: cards with no description get a rule-based, no-AI translation of their query into English (e.g. what it counts, filters and groups by). Described cards are untouched.
+      - **llm-fill-all**: Text strategy: the same AI-written sentences, appended to every card's description.
+      - **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+  - id: z3n0yew56sKLuO_BTQZ92
+    model: DashboardCard
+- entity_id: k984uzYvyFz8Dm5tTRsHP
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 13
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      # Search engine comparison: start here
+
+      **What this is.** We run several search engines inside one Metabase instance. Each searches the same hand-made
+      catalogue of 235 Metabase items (cards, dashboards, tables, metrics… for a made-up outdoor retailer) and gets the same
+      56 questions. For every question a person decided in advance which items are the right answers, and how right they are.
+      We record what each engine returned and how fast, and score it. Every card on this dashboard is computed live from
+      those recordings.
+
+      **How to use it.** Read the verdict below, then open the tab for the question you're asked:
+      **Latency**: how fast is each engine, and how does that grow with catalogue size? · **Quality**: which engine finds the right answers, and is the gap real? ·
+      **By category**: which kinds of question does each engine handle or fail? · **Model vs engine**: does the embedding
+      model matter? · **Agreement & zeros**: do engines find the same things, and how often do they come back empty? ·
+      **Embedding text**: does embedding more of each item's text help? · **Text strategy**: does rewriting the catalogue's descriptions help? · **Drill-down**: one question, every engine's
+      actual results side by side. If a number surprises you, look there first.
+      Every tab opens with *How to read this tab* and ends with the terms it uses; the **Glossary** tab has them all.
+
+      **Filters.** *Corpus*: `northwind-golden-v1` is the hand-labelled test set this verdict is about; `northwind-sql-v1` asks
+      60 questions about SQL cards; the `scale-*` catalogues are timing-only (see the Glossary for each).
+      *Embedder*, *Embedding text* and *Text strategy* pick which runs to show. *Scale* narrows quality cards to one size tier (the golden set has
+      no tier and always shows); the Latency tab always shows every size.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: k984uzYvyFz8Dm5tTRsHP
+    model: DashboardCard
+- entity_id: qBR6nxXAwsGTPxC9J0JX_
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 13
+  col: 0
+  size_x: 24
+  size_y: 24
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ## The verdict
+
+      *Numbers quoted here are from runs 20260923-154430-7f2163 (all-minilm), 20260923-155004-12e37a (arctic),
+      20260923-154059-044bd9 (semantic-pure), 20260923-180253-b809c0 (semantic-vector), 20260923-202630-5b5dc1 (sqlite-vec1),
+      20260923-191515-da3f42 (lucene), 20260923-154552-0f1b87 (context text), 20260923-155756-94d8c0 (1k items),
+      20260923-175722-e82939 (10k items, clean re-time), 20260923-174357-3004e3 and 20260923-203908-4e3f15 (10k, sqlite-vec1 and lucene). The cards are live: if*
+      Runs in view *(bottom of this tab) lists newer runs, trust the cards over this text.*
+
+      1. **semantic is the best engine we have on these questions.** Question by question it beats appdb by a wide margin
+         (+0.29 on the 0–1 ranking score) and in-place by a smaller one (+0.11). Both gaps hold across the 95% range, but
+         in-place still wins 14 of the 52 questions, so "better on balance", not "better everywhere". See the card below.
+      2. **appdb fails silently when the words don't match.** It returns nothing for about half the questions that have
+         a right answer: paraphrases, typos, other languages (*Agreement & zeros*).
+      3. **semantic's lead comes almost entirely from its embeddings.** Switching the appdb top-up off (semantic-pure)
+         makes no measurable difference here, and switching its keyword part off as well (semantic-vector) changes ranking
+         quality by only −0.03 ± 0.02 (3 better, 42 same, 7 worse; run 20260923-180253-b809c0).
+      4. **Of the things we can change inside semantic, the embedding model matters most, but only for questions in
+         another language.** snowflake-arctic-embed2 lifts those from 0.17 to 0.68, a proven gain. Typos look better too
+         (0.59 → 0.78), but 5 questions can't prove it. Everywhere else the two models are indistinguishable, so overall the
+         gain isn't proven. arctic also returns something on no-answer questions more often (*Model vs engine*). It looked
+         slower too, but it ran on a separate instance, so that isn't proven.
+      5. **Embedding more context (collection, table, chart type) didn't help** (*Embedding text*).
+      6. **At our size speed barely matters; at 10,000 items it does, and semantic (pgvector) is the slowest at the median.** On the golden set
+         (235 items) appdb is about 2.5× faster than semantic and in-place in the same run, but every engine answers a
+         typical search in under 40 ms. At 1,000 items typical searches stay under 50 ms, though semantic's slow ones (p95)
+         reach 160 ms. At 10,000 items a typical semantic search takes about 290 ms and the slow ones 870 ms, against
+         appdb's 67 / 161 ms and in-place's 163 / 382 ms (*Latency*; a clean run with nothing else on the machine). From 1k
+         to 10k items semantic's typical search got about 6× slower; each size ran on its own instance, but a 6× jump is far
+         beyond what the machine alone explains. semantic's time includes its appdb top-up, so part of it may be appdb's.
+         The other stores at 10k (typical / slow, exclusive runs): lucene 238 / 953 ms (run 20260923-203908-4e3f15) and
+         sqlite-vec1 222 / 1,084 ms (run 20260923-174357-3004e3), against pgvector's 292 / 866 ms. lucene uses an approximate
+         (HNSW) index; the other two are exact. Store against store, vector-only, sqlite-vec1 is about 27% faster at the median
+         on verified identical candidate sets (overlap 1.000 at limit 1000); the slow tails are within noise. Index size at 10k:
+         lucene 50 MB, pgvector 117 MB, sqlite-vec1 156 MB.
+      7. **The three stores tie on quality; pgvector's small edge is its keyword part.** On the golden set (all-minilm,
+         nDCG@10): semantic on pgvector 0.601, sqlite-vec1 0.581, lucene 0.579 (lucene-pure identical, run
+         20260923-200842-0f90cf). Vector-only, the stores are indistinguishable: semantic-vector vs sqlite-vec1-pure
+         −0.002 ± 0.032, vs lucene −0.004 ± 0.030. pgvector's +0.025 ± 0.023 over its own vector-only mode is its Postgres
+         keyword part; lucene's keyword part ran on H2 here, so it is probably understated.
+      8. **The biggest lever isn't the engine: describe undocumented cards.** Writing a one-sentence description into cards
+         that have none took semantic search on held-out questions from 0.40 to 0.93–0.97 nDCG@10 (+0.43 to +0.54), with
+         the keyword part off as well, so it's a gain in the embeddings; keyword search improves almost as much. A no-AI
+         version (Metabase's own query description plus rule-based SQL → English) gets 87–94% of the gain. Details and runs:
+         research/embedding-text-recommendation.md (Agent I).
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: qBR6nxXAwsGTPxC9J0JX_
+    model: DashboardCard
+- entity_id: QzYrDRPl12W35KVQQKlft
+  card_id: aGa-CVWnBwGTlVYaCRMhV
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 37
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: QzYrDRPl12W35KVQQKlft
+    model: DashboardCard
+- entity_id: NlKKObxyJ0fHt_bW9G0l2
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 44
+  col: 0
+  size_x: 12
+  size_y: 17
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Caveats you'll be asked about
+
+      - **Small test set.** 56 hand-written questions, 52 of them with a right answer; a question type holds 4–13.
+        Per-type differences are hints; the ± ranges on the paired cards say how sure we are.
+      - **One catalogue, one theme, 235 items.** Real instances are bigger and messier.
+      - **appdb runs on H2 here**, where its text matching can't tell good matches from weak ones. On a Postgres app DB it
+        might do better; we haven't measured that, so read appdb as a floor.
+      - **Some checks rest on very few questions**: permission leaks on 1, no-answer behaviour on 4.
+      - **Two embedding models; three vector stores** (pgvector, sqlite-vec1, lucene), measured on one catalogue.
+      - **Real data: a silent semantic→appdb fallback was found (BL-44); results pending.**
+      - **semantic is hybrid by default; semantic-vector is the vector-only reference.**
+      - **No engine searched SQL text.** The harness never sets search_native_query, so keyword matching (appdb, in-place,
+        semantic's keyword side) looked at names and descriptions only, never at the SQL of native questions.
+      - **Adding arctic's expected 'query: ' prefix didn't help here:** golden no difference (−0.03 ± 0.05), SQL corpus
+        slightly worse (−0.07 ± 0.05); runs 175015-9b2660 / 175021-7f6f47.
+      - **The 1k and 10k catalogues are generated and only timed.** They have no right answers, so quality at 10k items
+        is unmeasured, and they were run with all-minilm only.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: NlKKObxyJ0fHt_bW9G0l2
+    model: DashboardCard
+- entity_id: ZhMhnTarkiH896YYTdKiP
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 44
+  col: 12
+  size_x: 12
+  size_y: 11
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### What would change the verdict, and where it will show
+
+      - **Answered: sqlite-vec1 and lucene** → they're in (verdicts 6 and 7). Store against store, compare semantic-vector
+        with sqlite-vec1-pure / lucene-pure, not semantic with sqlite-vec1 (hybrid vs vector-only). With no proven quality
+        difference, a store can be chosen for deployability.
+      - **Real-data (Stats) results** → pending the corrected run after the BL-44 fallback fix.
+      - **semantic-pure or arctic at 1k / 10k items** → the *Latency* tab lines: they show whether the top-up or the model
+        drives semantic's slowdown at 10k.
+      - **Another embedding model** → *Model vs engine*: read the cross-lingual and typo rows first.
+      - **More embedding-text variants** (e.g. adding the query's SQL) → *Embedding text*: read the rare-token row first.
+      - **More questions** → the ± ranges shrink, and some "no proven difference" rows may turn into verdicts.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: ZhMhnTarkiH896YYTdKiP
+    model: DashboardCard
+- entity_id: NImFKsyQryYser_mcCOzt
+  card_id: YuAJgqJryRfsFUPkgOePQ
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 61
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: YuAJgqJryRfsFUPkgOePQ
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: YuAJgqJryRfsFUPkgOePQ
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: YuAJgqJryRfsFUPkgOePQ
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: YuAJgqJryRfsFUPkgOePQ
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: NImFKsyQryYser_mcCOzt
+    model: DashboardCard
+- entity_id: Tle92uRjlmravaNs170cL
+  card_id: upXW6DkKMBj2EZaF7apQn
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 69
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: upXW6DkKMBj2EZaF7apQn
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: Tle92uRjlmravaNs170cL
+    model: DashboardCard
+- entity_id: CNsvNnBmkKh__oJeAYLTu
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 76
+  col: 0
+  size_x: 24
+  size_y: 20
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - RDE_93fq5ZLR8-yA2uXG8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Wins / ties / losses**: On how many questions one engine scored higher / the same / lower than the other.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+      - **Permission leak**: The engine showed an item the user is not allowed to see. Must be 0; if not, that engine's other numbers can't be trusted.
+      - **Must-not-read items (expectedAbsent)**: Items the test user has no permission to see. They must never appear in results.
+      - **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **Run**: One pass of every question through every engine, under one combination of settings. Cards read the latest finished run for each combination and engine.
+      - **Corpus**: The fixed catalogue of Metabase items (cards, dashboards, tables…) every engine searches, with its questions. `northwind-golden-v1`: 235 items, 56 hand-labelled questions. `northwind-sql-v1`: 60 labelled questions about SQL cards (36 dev + 24 held-out; the dashboard pools both). `scale-1000-seed-42` / `scale-10000-seed-42`: generated catalogues used only to time searches, no right answers.
+      - **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+      - **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+      - **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+  - id: CNsvNnBmkKh__oJeAYLTu
+    model: DashboardCard
+- entity_id: JNGp3utQSwN7clYGfWyX_
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 63
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - Mew6cU1-qoCNumJQGf09H
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      # Glossary
+
+      Every term on this dashboard, in one line. Each tab also ends with the terms its cards use.
+
+      ### What we compare
+
+      - **Engine**: One search implementation under test. Every engine gets the same questions over the same catalogue.
+      - **semantic**: Metabase's shipping semantic search. It is hybrid: its own index (pgvector, a separate Postgres, not the app DB) matches both by meaning and by words, and merges the two. On top of that it tops up with appdb keyword hits when it finds too few.
+      - **semantic-pure**: semantic with the appdb top-up switched off. Still hybrid (meaning + words in its own index), so it is not pure vector search: semantic-vector is.
+      - **semantic-vector**: semantic with both its keyword part and the appdb top-up switched off: pure vector search over its own index. The reference for how much of semantic comes from embeddings alone.
+      - **appdb**: Metabase's regular keyword search index in the app DB. On H2 (as here) its text-match part can't tell good matches from weak ones, so its ranking leans on the other signals (recency, popularity). That's why it can differ slightly between two runs of the same questions. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **in-place**: Simple keyword search with no index. It orders results its own way but reports no score, so its score shows as n/a. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **sqlite-vec1**: Libor's engine: vector-only search (no keyword part) stored in SQLite (sqlite-vec1), no pgvector needed. Like semantic, it tops up with appdb keyword hits; sqlite-vec1-pure has the top-up off.
+      - **lucene**: Paolo's engine: a Lucene index. Its vector part uses an approximate (HNSW) index; its keyword part is the appdb keyword search, which ran on H2 in our runs. lucene-pure has the appdb top-up off.
+      - **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+      - **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **Cosine cutoff (0.7)**: semantic drops matches that are too far in meaning (cosine distance above 0.7). If everything is too far, it finds nothing.
+
+      ### The test set
+
+      - **Corpus**: The fixed catalogue of Metabase items (cards, dashboards, tables…) every engine searches, with its questions. `northwind-golden-v1`: 235 items, 56 hand-labelled questions. `northwind-sql-v1`: 60 labelled questions about SQL cards (36 dev + 24 held-out; the dashboard pools both). `scale-1000-seed-42` / `scale-10000-seed-42`: generated catalogues used only to time searches, no right answers.
+      - **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+      - **Answer key (expected, labelled answers)**: The items a person marked as right answers for a question.
+      - **Grade**: How right an answer is: 2 = highly relevant (✓✓), 1 = relevant (✓).
+      - **Must-not-read items (expectedAbsent)**: Items the test user has no permission to see. They must never appear in results.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+      - **paraphrase**: Asks in different words than the item's name ("how much money did we bring in").
+      - **concept**: Asks about a topic rather than a name ("customer churn").
+      - **exact-name**: Types the item's name as it is.
+      - **rare-token**: Contains an unusual code or word that few items mention ("SKU-4471").
+      - **typo**: Misspelled ("retrun rate").
+      - **cross-lingual**: Asks in another language than the item is written in (Polish question, English item).
+      - **ambiguous**: Could mean several things ("Revenue"), with look-alike wrong answers.
+      - **empty-expected**: Nothing in the catalogue should match. The right response is no results.
+
+      ### Settings we vary
+
+      - **Embedding**: A text turned into a list of numbers, so that similar meanings get similar numbers.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **all-minilm**: Small, English-focused embedding model: 384 numbers per text, and it reads at most about 512 tokens (a few hundred words); the rest is cut off.
+      - **snowflake-arctic-embed2**: Larger, multilingual embedding model: 1,024 numbers per text, and it reads long text (up to 8,192 tokens). That's why it handles questions in other languages. Adding the 'query: ' prefix it expects (runs labelled +qprefix) didn't help here: golden no difference (−0.03 ± 0.05), SQL corpus slightly worse (−0.07 ± 0.05).
+      - **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+      - **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+      - **none**: Text strategy: the catalogue's descriptions as they are.
+      - **mech-fill-empty**: Text strategy: cards with no description get a rule-based, no-AI translation of their query into English (e.g. what it counts, filters and groups by). Described cards are untouched.
+      - **mech-fill-all**: Text strategy: the same rule-based translation, appended to every card's description, to see whether it hurts cards that were already described.
+      - **llm-fill-empty**: Text strategy: cards with no description get one or two sentences written by a small local AI model (qwen3:8b) from the card's name, query and tables.
+      - **llm-fill-all**: Text strategy: the same AI-written sentences, appended to every card's description.
+      - **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+      - **Run**: One pass of every question through every engine, under one combination of settings. Cards read the latest finished run for each combination and engine.
+
+      ### Quality metrics
+
+      - **@10**: Only the first 10 results count, like the first page of search results.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **Recall@10 (share found)**: 0 to 1: the share of right answers that appear in the first 10 results. Higher is better.
+      - **MRR (first right answer)**: 1 if the first result is right, ½ if the second, ⅓ if the third…, 0 if none; averaged over questions. Higher is better.
+      - **Zero-result rate**: The share of questions that have a right answer where the engine returned nothing at all. Lower is better.
+      - **False-positive rate**: The share of no-answer questions where the engine returned something anyway. Lower is better.
+      - **Permission leak**: The engine showed an item the user is not allowed to see. Must be 0; if not, that engine's other numbers can't be trusted.
+      - **Jaccard@10 (overlap)**: The share of top-10 results two engines have in common: 1 = identical lists, 0 = nothing shared. Says nothing about which one is right.
+      - **Unscored**: The share of questions where every attempt errored, so the engine has no score for them and they're left out of its averages. Blank = not measured for these runs (the metric is newer than they are). Lower is better.
+      - **Score**: The engine's own relevance number for a result. Every engine uses its own scale, so don't compare scores across engines.
+
+      ### Speed
+
+      - **Latency**: Time from sending a search to getting results back, in milliseconds (ms). Lower is better.
+      - **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+      - **Iteration**: Each question is sent 5 times to time it (after unmeasured warm-up repeats); latency counts every timed repeat. So n = questions × 5.
+      - **Log scale**: Each gridline is 10× the one below; use it to compare growth rates, not absolute gaps.
+      - **Stages (Embed / Store / Filter / Other)**: Where the time goes: turning the question into an embedding, looking it up, permission filtering, everything else. Real runs only see total time, shown as Other.
+
+      ### Reading the statistics
+
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Mean / median**: The average / the middle value.
+      - **p25 / p75**: A quarter of questions score below p25 and a quarter above p75; the middle half sits between.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **Wins / ties / losses**: On how many questions one engine scored higher / the same / lower than the other.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Baseline**: The reference setup everything else is compared against.
+      - **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+      - **Variance share**: How much of the ups and downs in scores comes from each choice (engine, embedder, which question). Needs ≥2 engines and ≥2 embedders to mean anything.
+      - **Main effect / interaction**: Main effect: what one choice changes on its own. Interaction: what only shows up in combination (e.g. an English-only model on Polish questions).
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: Mew6cU1-qoCNumJQGf09H
+    model: DashboardTab
+  - id: JNGp3utQSwN7clYGfWyX_
+    model: DashboardCard
+- entity_id: Cb839msZijHEuKBPKltkw
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 13
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - gWmWa464kJhq2p6VkZqTf
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **p95 latency vs corpus size**: How does the slow-end search time grow as the catalogue grows? One line per engine; left to right = bigger catalogue: the golden set (235 items), then generated catalogues of 1k and 10k items. A line that climbs steeply won't scale. Each size is its own run, so trust big jumps along a line (over ~2×), not small ones. An engine shown as a single point was only run on the golden set, not "fine at scale". Compare latency only within one run: different runs used different Metabase instances, so across runs (semantic vs semantic-pure, all-minilm vs arctic) a difference under ~2× may be the machine, not the engine. Runs that overlapped another run are left out (Overlapped column in Runs in view). *Shows: the model picked in the Embedder filter, every size tier.*
+      - **p50 latency vs corpus size**: How does the typical search time grow as the catalogue grows? One line per engine; left to right = bigger catalogue: the golden set (235 items), then generated catalogues of 1k and 10k items. A line that climbs steeply won't scale. Each size is its own run, so trust big jumps along a line (over ~2×), not small ones. An engine shown as a single point was only run on the golden set, not "fine at scale". Compare latency only within one run: different runs used different Metabase instances, so across runs (semantic vs semantic-pure, all-minilm vs arctic) a difference under ~2× may be the machine, not the engine. Runs that overlapped another run are left out (Overlapped column in Runs in view). *Shows: the model picked in the Embedder filter, every size tier.*
+      - **Latency by engine, embedder and scale**: How fast is each engine right now? p50 = a typical search, p95 = the slow ones. Compare engines within the same corpus size. Compare latency only within one run: different runs used different Metabase instances, so across runs (semantic vs semantic-pure, all-minilm vs arctic) a difference under ~2× may be the machine, not the engine. Runs that overlapped another run are left out (Overlapped column in Runs in view). *Shows: every embedding model, as separate rows or series, every size tier.*
+
+      **Hidden for now** (they come back when the data exists):
+
+      - *Where the time goes*: Real runs time each search from outside, over HTTP, so this always shows 100% Other.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+  - id: Cb839msZijHEuKBPKltkw
+    model: DashboardCard
+- entity_id: yNUMcACJFauPrNW7o5_7e
+  card_id: IZI3PAy8hLjRyrCsQ6Upy
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - gWmWa464kJhq2p6VkZqTf
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: IZI3PAy8hLjRyrCsQ6Upy
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: IZI3PAy8hLjRyrCsQ6Upy
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: IZI3PAy8hLjRyrCsQ6Upy
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: IZI3PAy8hLjRyrCsQ6Upy
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+  - id: yNUMcACJFauPrNW7o5_7e
+    model: DashboardCard
+- entity_id: r2sAm-nAIeMs0hBoQErBB
+  card_id: KecwqthzIjX7NJLzMsHlC
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 13
+  col: 12
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - gWmWa464kJhq2p6VkZqTf
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: KecwqthzIjX7NJLzMsHlC
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: KecwqthzIjX7NJLzMsHlC
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: KecwqthzIjX7NJLzMsHlC
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: KecwqthzIjX7NJLzMsHlC
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+  - id: r2sAm-nAIeMs0hBoQErBB
+    model: DashboardCard
+- entity_id: OYgWsShafM8jGczyvxwGI
+  card_id: Rgw493L0WxZSq-O6YGxkT
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 19
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - gWmWa464kJhq2p6VkZqTf
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: Rgw493L0WxZSq-O6YGxkT
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: Rgw493L0WxZSq-O6YGxkT
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: Rgw493L0WxZSq-O6YGxkT
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+  - id: OYgWsShafM8jGczyvxwGI
+    model: DashboardCard
+- entity_id: FwyOCXjxOVtg3WkW0zAtc
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 27
+  col: 0
+  size_x: 24
+  size_y: 10
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - gWmWa464kJhq2p6VkZqTf
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Latency**: Time from sending a search to getting results back, in milliseconds (ms). Lower is better.
+      - **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+      - **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+      - **Log scale**: Each gridline is 10× the one below; use it to compare growth rates, not absolute gaps.
+      - **Iteration**: Each question is sent 5 times to time it (after unmeasured warm-up repeats); latency counts every timed repeat. So n = questions × 5.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+  - id: FwyOCXjxOVtg3WkW0zAtc
+    model: DashboardCard
+- entity_id: tvDbr9kcchETFsSnoRoOm
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - hUOG9aBXFVsYIyc7tIy9v
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Is semantic really better? Paired, question by question**: Is semantic really better than each other engine, or is it luck? One row per rival engine, compared on the same questions. Read the Verdict column: "semantic better" only when the difference holds across the whole 95% range. Better / Tie / Worse count questions. *Shows: every embedding model, as separate rows or series.*
+      - **nDCG@10 distribution by engine and embedder**: Is an engine's average carried by a few questions? Each point is one question. A tall box means uneven: great on some questions, useless on others. *Shows: every embedding model, as separate rows or series.*
+      - **Quality summary**: How good is each engine on average? Higher is better, except Zero-result rate and Unscored. Use it to see how big a gap is; whether the gap is real is on the paired card. *Shows: every embedding model, as separate rows or series.*
+
+      **Hidden for now** (they come back when the data exists):
+
+      - *Recall@10 distribution by engine and embedder*: It tells the same story as the nDCG@10 box plot next to it.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+  - id: tvDbr9kcchETFsSnoRoOm
+    model: DashboardCard
+- entity_id: 3lERlXVyLzSA-0-sapMYm
+  card_id: aGa-CVWnBwGTlVYaCRMhV
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 8
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - hUOG9aBXFVsYIyc7tIy9v
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: aGa-CVWnBwGTlVYaCRMhV
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+  - id: 3lERlXVyLzSA-0-sapMYm
+    model: DashboardCard
+- entity_id: 0k-WU8KOqkEJuoFdILeLH
+  card_id: MWmmD_wYN7lP8elD_I7wj
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 0
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - hUOG9aBXFVsYIyc7tIy9v
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: MWmmD_wYN7lP8elD_I7wj
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: MWmmD_wYN7lP8elD_I7wj
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: MWmmD_wYN7lP8elD_I7wj
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: MWmmD_wYN7lP8elD_I7wj
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+  - id: 0k-WU8KOqkEJuoFdILeLH
+    model: DashboardCard
+- entity_id: p09T-flnvl_jvqruCMg51
+  card_id: ByawvOrcK22_llNkNnWgq
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 21
+  col: 0
+  size_x: 24
+  size_y: 9
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - hUOG9aBXFVsYIyc7tIy9v
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: ByawvOrcK22_llNkNnWgq
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: ByawvOrcK22_llNkNnWgq
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: ByawvOrcK22_llNkNnWgq
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: ByawvOrcK22_llNkNnWgq
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+  - id: p09T-flnvl_jvqruCMg51
+    model: DashboardCard
+- entity_id: UIcN9i0g3YRDcLNIaxlB0
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 30
+  col: 0
+  size_x: 24
+  size_y: 17
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - hUOG9aBXFVsYIyc7tIy9v
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Wins / ties / losses**: On how many questions one engine scored higher / the same / lower than the other.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+      - **@10**: Only the first 10 results count, like the first page of search results.
+      - **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+      - **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **Recall@10 (share found)**: 0 to 1: the share of right answers that appear in the first 10 results. Higher is better.
+      - **MRR (first right answer)**: 1 if the first result is right, ½ if the second, ⅓ if the third…, 0 if none; averaged over questions. Higher is better.
+      - **Zero-result rate**: The share of questions that have a right answer where the engine returned nothing at all. Lower is better.
+      - **Unscored**: The share of questions where every attempt errored, so the engine has no score for them and they're left out of its averages. Blank = not measured for these runs (the metric is newer than they are). Lower is better.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+  - id: UIcN9i0g3YRDcLNIaxlB0
+    model: DashboardCard
+- entity_id: ER4UP6FK9-JzWU6E5lcfh
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - bjQXAVz_n_-5RJKbNhQYm
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **nDCG@10 by query category × engine**: Which kinds of question does each engine handle, and which does it fail? Rows = question types, columns = engines, darker = better. Expected winner is what we predicted before running: mismatches are the interesting part. Rows with n below ~5 are anecdotes. *Shows: the model picked in the Embedder filter.*
+
+      **Hidden for now** (they come back when the data exists):
+
+      - *Spread within each category*: It repeats the category heatmap with more columns; the heatmap is enough.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: bjQXAVz_n_-5RJKbNhQYm
+    model: DashboardTab
+  - id: ER4UP6FK9-JzWU6E5lcfh
+    model: DashboardCard
+- entity_id: ZocTKxnXWF06xW2m5lW-O
+  card_id: BnVzdKaZa1CbRzrld389X
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 7
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - bjQXAVz_n_-5RJKbNhQYm
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: BnVzdKaZa1CbRzrld389X
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: BnVzdKaZa1CbRzrld389X
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: BnVzdKaZa1CbRzrld389X
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: BnVzdKaZa1CbRzrld389X
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: BnVzdKaZa1CbRzrld389X
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: bjQXAVz_n_-5RJKbNhQYm
+    model: DashboardTab
+  - id: ZocTKxnXWF06xW2m5lW-O
+    model: DashboardCard
+- entity_id: YyNt8yXNZnriaXltTb7ym
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 0
+  size_x: 24
+  size_y: 10
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - bjQXAVz_n_-5RJKbNhQYm
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: bjQXAVz_n_-5RJKbNhQYm
+    model: DashboardTab
+  - id: YyNt8yXNZnriaXltTb7ym
+    model: DashboardCard
+- entity_id: Nvhyl3dE_2sBdykSTpnAf
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - aGUWhkRqINjlhJhSYqduz
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Does the embedding model matter? Paired, by question type**: Does switching the embedding model change quality, and for which kinds of question? Each other model against all-minilm (today's model), on the same questions, per vector engine. The first row is all questions; below it, one row per question type. The verdict works as on the Quality tab, and says "too few questions" below 5. *Shows: every embedding model, as separate rows or series.*
+
+      **Hidden for now** (they come back when the data exists):
+
+      - *Where quality variance comes from*: It needs at least 2 vector engines each measured with at least 2 embedding models. Today only semantic has both; it fills in when sqlite-vec1 or lucene land.
+      - *Swap the embedder vs swap the engine*: Its engine side today only compares semantic with semantic-pure (the top-up switch), which is not an engine choice. It fills in when sqlite-vec1 or lucene land.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: aGUWhkRqINjlhJhSYqduz
+    model: DashboardTab
+  - id: Nvhyl3dE_2sBdykSTpnAf
+    model: DashboardCard
+- entity_id: _1RX1fsC1T3q1FR9t6Bma
+  card_id: -Fyhm-y0BhJqu4p4s2LMM
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 8
+  col: 0
+  size_x: 24
+  size_y: 9
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - aGUWhkRqINjlhJhSYqduz
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: -Fyhm-y0BhJqu4p4s2LMM
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: -Fyhm-y0BhJqu4p4s2LMM
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: -Fyhm-y0BhJqu4p4s2LMM
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: -Fyhm-y0BhJqu4p4s2LMM
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: aGUWhkRqINjlhJhSYqduz
+    model: DashboardTab
+  - id: _1RX1fsC1T3q1FR9t6Bma
+    model: DashboardCard
+- entity_id: e3pn-ymZj11l2DMiAAxPf
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 17
+  col: 0
+  size_x: 24
+  size_y: 13
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - aGUWhkRqINjlhJhSYqduz
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **all-minilm**: Small, English-focused embedding model: 384 numbers per text, and it reads at most about 512 tokens (a few hundred words); the rest is cut off.
+      - **snowflake-arctic-embed2**: Larger, multilingual embedding model: 1,024 numbers per text, and it reads long text (up to 8,192 tokens). That's why it handles questions in other languages. Adding the 'query: ' prefix it expects (runs labelled +qprefix) didn't help here: golden no difference (−0.03 ± 0.05), SQL corpus slightly worse (−0.07 ± 0.05).
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Wins / ties / losses**: On how many questions one engine scored higher / the same / lower than the other.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: aGUWhkRqINjlhJhSYqduz
+    model: DashboardTab
+  - id: e3pn-ymZj11l2DMiAAxPf
+    model: DashboardCard
+- entity_id: c1dFn2R6fBqZ3_qU2oD-t
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Agreement: Jaccard@10 between engines**: Do the engines find the same things? Share of top-10 results two engines have in common (1 = identical). Low overlap with similar quality means the engines complement each other. *Shows: the model picked in the Embedder filter.*
+      - **Zero-result rate by engine**: How often does an engine come back empty when there is a right answer? Lower is better. This is the silent failure a user sees as an empty result list. *Shows: every embedding model, as separate rows or series.*
+      - **Zero-result rate by category × engine**: On which kinds of question does each engine come back empty? Rows = question types, redder = more often empty. *Shows: the model picked in the Embedder filter.*
+      - **False-positive rate on no-answer queries**: Does an engine return results when it should return nothing? Lower is better, but only a few questions have no answer (see n), so treat it as a hint. Empty = this corpus has no no-answer questions. It's the flip side of the zero-result rate: an engine that never comes back empty scores badly here. *Shows: every embedding model, as separate rows or series.*
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: c1dFn2R6fBqZ3_qU2oD-t
+    model: DashboardCard
+- entity_id: BE-Y1jDHib-A4C-owJqWH
+  card_id: XBh72mv9m9-2lbcKGaz_X
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 8
+  col: 0
+  size_x: 12
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: XBh72mv9m9-2lbcKGaz_X
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: XBh72mv9m9-2lbcKGaz_X
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: XBh72mv9m9-2lbcKGaz_X
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: XBh72mv9m9-2lbcKGaz_X
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: XBh72mv9m9-2lbcKGaz_X
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: BE-Y1jDHib-A4C-owJqWH
+    model: DashboardCard
+- entity_id: e3zbnQvgPWVVWoyv5aDFL
+  card_id: ji0GqLo725fwofJhDC-Gd
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 8
+  col: 12
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: ji0GqLo725fwofJhDC-Gd
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: ji0GqLo725fwofJhDC-Gd
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: ji0GqLo725fwofJhDC-Gd
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: ji0GqLo725fwofJhDC-Gd
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: e3zbnQvgPWVVWoyv5aDFL
+    model: DashboardCard
+- entity_id: J_KKie5RCGnosYqbGQeuM
+  card_id: uLHcZ9Um9B6WkeDTDJkCF
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 0
+  size_x: 12
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: uLHcZ9Um9B6WkeDTDJkCF
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: uLHcZ9Um9B6WkeDTDJkCF
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: uLHcZ9Um9B6WkeDTDJkCF
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: uLHcZ9Um9B6WkeDTDJkCF
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: uLHcZ9Um9B6WkeDTDJkCF
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: J_KKie5RCGnosYqbGQeuM
+    model: DashboardCard
+- entity_id: BvzlP-w6IUz6k3KIJAWhO
+  card_id: nwMhlw76-s2S3N103krs8
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 15
+  col: 12
+  size_x: 12
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: nwMhlw76-s2S3N103krs8
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: nwMhlw76-s2S3N103krs8
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: nwMhlw76-s2S3N103krs8
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: nwMhlw76-s2S3N103krs8
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: BvzlP-w6IUz6k3KIJAWhO
+    model: DashboardCard
+- entity_id: XZpRDVDiRl3EN5OiKqYen
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 23
+  col: 0
+  size_x: 24
+  size_y: 12
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - 1wJ0JsCiFRk0KEt3__DFQ
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Jaccard@10 (overlap)**: The share of top-10 results two engines have in common: 1 = identical lists, 0 = nothing shared. Says nothing about which one is right.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+      - **Zero-result rate**: The share of questions that have a right answer where the engine returned nothing at all. Lower is better.
+      - **Cosine cutoff (0.7)**: semantic drops matches that are too far in meaning (cosine distance above 0.7). If everything is too far, it finds nothing.
+      - **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **False-positive rate**: The share of no-answer questions where the engine returned something anyway. Lower is better.
+      - **empty-expected**: Nothing in the catalogue should match. The right response is no results.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+  - id: XZpRDVDiRl3EN5OiKqYen
+    model: DashboardCard
+- entity_id: EW0Sm6dk8V6gc20WHv7nJ
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **nDCG@10 by engine × embedding text**: Does embedding more of each item's text change quality? One box per engine and variant. Keyword engines should look identical across variants. *Shows: the model picked in the Embedder filter.*
+      - **Change vs baseline embedding text**: Is the change from each embedding-text variant real? Δ = variant minus baseline on the same questions. If the ± 95% CI is larger than the Δ, there's no proven change. *Shows: the model picked in the Embedder filter.*
+      - **Δ nDCG@10 vs baseline by category (vector engines)**: For which kinds of question does a variant help or hurt? Green = better than baseline, red = worse. Vector engines only. *Shows: the model picked in the Embedder filter.*
+      - **Sanity: keyword engines unchanged by embedding text**: Were the variant runs comparable? Keyword engines never see embeddings, so Top-10 differs must be 0. Anything else means: don't trust this tab. *Shows: the model picked in the Embedder filter.*
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: EW0Sm6dk8V6gc20WHv7nJ
+    model: DashboardCard
+- entity_id: yRO1M4WpwCXMR1LMLukZr
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 7
+  col: 0
+  size_x: 24
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### What this tab compares
+
+      semantic turns each item's text into an embedding. **baseline** embeds the item type, name and description;
+      **context** also adds its collection, table and chart type; **context-sql** also adds the item's SQL. Each variant is a
+      separate run of the same questions, compared question by question. Keyword engines never see embeddings, so their
+      numbers must not change between variants: the *Sanity* card checks that. Empty cards here mean this corpus has no variant run yet.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: yRO1M4WpwCXMR1LMLukZr
+    model: DashboardCard
+- entity_id: 2yGmDide_Vl4LZHogFteY
+  card_id: nJV0RLVu39plQ07HqLuVy
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 13
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: nJV0RLVu39plQ07HqLuVy
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: nJV0RLVu39plQ07HqLuVy
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: nJV0RLVu39plQ07HqLuVy
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: nJV0RLVu39plQ07HqLuVy
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: 2yGmDide_Vl4LZHogFteY
+    model: DashboardCard
+- entity_id: Zcke2k3p2xNv56j-xDr_2
+  card_id: vku4qKFDzLRLDIM66GEWB
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 20
+  col: 0
+  size_x: 24
+  size_y: 12
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: vku4qKFDzLRLDIM66GEWB
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: vku4qKFDzLRLDIM66GEWB
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: vku4qKFDzLRLDIM66GEWB
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: vku4qKFDzLRLDIM66GEWB
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: Zcke2k3p2xNv56j-xDr_2
+    model: DashboardCard
+- entity_id: mkkpmsIs9lFHOFz-As31A
+  card_id: t5U2uY372HnXmSlLf2Gw8
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 32
+  col: 0
+  size_x: 14
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: t5U2uY372HnXmSlLf2Gw8
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: t5U2uY372HnXmSlLf2Gw8
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: t5U2uY372HnXmSlLf2Gw8
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: t5U2uY372HnXmSlLf2Gw8
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: mkkpmsIs9lFHOFz-As31A
+    model: DashboardCard
+- entity_id: -Mk_6tSiJ3HZxw0BGSxa-
+  card_id: d6BCRY6hsbCJ70FOaFW7S
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 32
+  col: 14
+  size_x: 10
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: d6BCRY6hsbCJ70FOaFW7S
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: d6BCRY6hsbCJ70FOaFW7S
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: d6BCRY6hsbCJ70FOaFW7S
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: d6BCRY6hsbCJ70FOaFW7S
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: -Mk_6tSiJ3HZxw0BGSxa-
+    model: DashboardCard
+- entity_id: CgLLhdXpRl0uKhUEzguZ0
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 40
+  col: 0
+  size_x: 24
+  size_y: 13
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - U1b09NSoBFyvTAbUxaRB5
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Embedding text**: Which fields of an item get embedded. baseline = item type + name + description; context = + collection, table, chart type; context-sql = + the query's SQL.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **Box plot**: The box holds the middle half of the questions, the line inside is the median, whiskers show the range, dots are outliers.
+      - **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Baseline**: The reference setup everything else is compared against.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **Recall@10 (share found)**: 0 to 1: the share of right answers that appear in the first 10 results. Higher is better.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **Heatmap**: Cell colour tracks the value: stronger colour = higher. In red-to-green tables, green = better than baseline, red = worse. A red row flags something that should be 0.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+  - id: CgLLhdXpRl0uKhUEzguZ0
+    model: DashboardCard
+- entity_id: px_eceZPpnJxi-bqx7pm8
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 5
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - pY0XHfgpnVv-wNE33ts5S
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Change vs text strategy 'none'**: Does rewriting the catalogue's descriptions change quality? One row per strategy and engine, compared with the same catalogue under 'none' on the same questions. The 'none' rows are the reference (Δ 0). Read the Verdict column; it ignores the Text strategy filter so every strategy shows. *Shows: the model picked in the Embedder filter.*
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: pY0XHfgpnVv-wNE33ts5S
+    model: DashboardTab
+  - id: px_eceZPpnJxi-bqx7pm8
+    model: DashboardCard
+- entity_id: x16K_c_yB4g4UpsX-TEnN
+  card_id: bMoYxRJEIYRU1FGKq81p_
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 5
+  col: 0
+  size_x: 24
+  size_y: 8
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - pY0XHfgpnVv-wNE33ts5S
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: bMoYxRJEIYRU1FGKq81p_
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: bMoYxRJEIYRU1FGKq81p_
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: bMoYxRJEIYRU1FGKq81p_
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: bMoYxRJEIYRU1FGKq81p_
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: pY0XHfgpnVv-wNE33ts5S
+    model: DashboardTab
+  - id: x16K_c_yB4g4UpsX-TEnN
+    model: DashboardCard
+- entity_id: WsQ9Ag3KrkX4QS1P1fu_p
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 13
+  col: 0
+  size_x: 24
+  size_y: 13
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - pY0XHfgpnVv-wNE33ts5S
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Text strategy**: What was written into the catalogue items' descriptions before the run. Each strategy is its own run; the filter picks one so runs never mix. The added text is also visible to keyword search, not only to embeddings.
+      - **none**: Text strategy: the catalogue's descriptions as they are.
+      - **mech-fill-empty**: Text strategy: cards with no description get a rule-based, no-AI translation of their query into English (e.g. what it counts, filters and groups by). Described cards are untouched.
+      - **mech-fill-all**: Text strategy: the same rule-based translation, appended to every card's description, to see whether it hurts cards that were already described.
+      - **llm-fill-empty**: Text strategy: cards with no description get one or two sentences written by a small local AI model (qwen3:8b) from the card's name, query and tables.
+      - **llm-fill-all**: Text strategy: the same AI-written sentences, appended to every card's description.
+      - **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+      - **Wins / ties / losses**: On how many questions one engine scored higher / the same / lower than the other.
+      - **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+      - **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+      - **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: pY0XHfgpnVv-wNE33ts5S
+    model: DashboardTab
+  - id: WsQ9Ag3KrkX4QS1P1fu_p
+    model: DashboardCard
+- entity_id: ldq63hL-woZL41jHaqEcP
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - z_uYPKRnD5SzM5utWxvo8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### How to read this tab
+
+      - **Scenario**: What was asked, and what are the right answers? Pick a question in the Scenario filter. It lists every corpus's questions (golden ids look like concept-01, the SQL corpus's start with sql-), so pick one from the corpus you selected, or this tab stays empty. Grade 2 = highly relevant, 1 = relevant. *Shows: the model picked in the Embedder filter.*
+      - **Ranked results side by side**: What did each engine actually return? One column per engine, its top 10 down the page. ✓✓ / ✓ = a right answer, ∅ = returned nothing. The number after · is the engine's own score: not comparable across engines, and n/a when the engine reported no score for this question (in-place never does). *Shows: the model picked in the Embedder filter.*
+      - **This scenario, per engine**: How did each engine score on this one question? The Quality tab's metrics, for the question picked in the Scenario filter. *Shows: the model picked in the Embedder filter.*
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+  - id: ldq63hL-woZL41jHaqEcP
+    model: DashboardCard
+- entity_id: APN_2gLVLORpfXtNzoEwh
+  card_id: _zbbIp6l7-VNeRNHCNRVi
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 7
+  col: 0
+  size_x: 24
+  size_y: 7
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - z_uYPKRnD5SzM5utWxvo8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: scenario
+    target:
+    - variable
+    - - template-tag
+      - scenario
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: _zbbIp6l7-VNeRNHCNRVi
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+  - id: APN_2gLVLORpfXtNzoEwh
+    model: DashboardCard
+- entity_id: cJQ4UfSabWoJgbdsBB0jE
+  card_id: wSYo6EwvxAceYE3Kz-Ry_
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 14
+  col: 0
+  size_x: 24
+  size_y: 11
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - z_uYPKRnD5SzM5utWxvo8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: scenario
+    target:
+    - variable
+    - - template-tag
+      - scenario
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: wSYo6EwvxAceYE3Kz-Ry_
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+  - id: cJQ4UfSabWoJgbdsBB0jE
+    model: DashboardCard
+- entity_id: BaMW9bjWim9LAGiK673Tv
+  card_id: XxxJF-Sd9gHEBDbFAFwN_
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 25
+  col: 0
+  size_x: 24
+  size_y: 6
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - z_uYPKRnD5SzM5utWxvo8
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: corpus
+    target:
+    - variable
+    - - template-tag
+      - corpus
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: embedder
+    target:
+    - variable
+    - - template-tag
+      - embedder
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: scale
+    target:
+    - variable
+    - - template-tag
+      - scale
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: scenario
+    target:
+    - variable
+    - - template-tag
+      - scenario
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: strategy
+    target:
+    - variable
+    - - template-tag
+      - strategy
+  - card_id: XxxJF-Sd9gHEBDbFAFwN_
+    parameter_id: variant
+    target:
+    - variable
+    - - template-tag
+      - variant
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+  - id: BaMW9bjWim9LAGiK673Tv
+    model: DashboardCard
+- entity_id: dJ-7XS0q5AaFWDKcnsmAY
+  created_at: '2026-09-23T20:46:23.05441Z'
+  row: 31
+  col: 0
+  size_x: 24
+  size_y: 16
+  dashboard_tab_id:
+  - dvPWhPiz6it31jVFx0WuO
+  - z_uYPKRnD5SzM5utWxvo8
+  inline_parameters: []
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    text: |-
+      ### Terms on this tab
+
+      - **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+      - **Category**: The kind of question a scenario tests. There are 8: paraphrase, concept, exact-name, rare-token, typo, cross-lingual, ambiguous, empty-expected. A question can have two (exact-07 is exact-name and ambiguous), so category counts add up to 53, not 52. empty-expected questions have no ranking score.
+      - **Answer key (expected, labelled answers)**: The items a person marked as right answers for a question.
+      - **Grade**: How right an answer is: 2 = highly relevant (✓✓), 1 = relevant (✓).
+      - **Run**: One pass of every question through every engine, under one combination of settings. Cards read the latest finished run for each combination and engine.
+      - **Score**: The engine's own relevance number for a result. Every engine uses its own scale, so don't compare scores across engines.
+      - **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+      - **appdb**: Metabase's regular keyword search index in the app DB. On H2 (as here) its text-match part can't tell good matches from weak ones, so its ranking leans on the other signals (recency, popularity). That's why it can differ slightly between two runs of the same questions. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **in-place**: Simple keyword search with no index. It orders results its own way but reports no score, so its score shows as n/a. It never searched the text of SQL questions here: the harness doesn't set search_native_query, so SQL text went unsearched in every run.
+      - **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+      - **Recall@10 (share found)**: 0 to 1: the share of right answers that appear in the first 10 results. Higher is better.
+      - **MRR (first right answer)**: 1 if the first result is right, ½ if the second, ⅓ if the third…, 0 if none; averaged over questions. Higher is better.
+      - **False-positive rate**: The share of no-answer questions where the engine returned something anyway. Lower is better.
+      - **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+
+      All terms: **Glossary** tab.
+    virtual_card:
+      archived: false
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+  - id: dJ-7XS0q5AaFWDKcnsmAY
+    model: DashboardCard
+tabs:
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: LYSw3rTVNh2LPNPOndLcw
+  name: Headline
+  position: 0
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: LYSw3rTVNh2LPNPOndLcw
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: RDE_93fq5ZLR8-yA2uXG8
+  name: Start here
+  position: 1
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: RDE_93fq5ZLR8-yA2uXG8
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: Mew6cU1-qoCNumJQGf09H
+  name: Glossary
+  position: 2
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: Mew6cU1-qoCNumJQGf09H
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: gWmWa464kJhq2p6VkZqTf
+  name: Latency
+  position: 3
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: gWmWa464kJhq2p6VkZqTf
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: hUOG9aBXFVsYIyc7tIy9v
+  name: Quality
+  position: 4
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: hUOG9aBXFVsYIyc7tIy9v
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: bjQXAVz_n_-5RJKbNhQYm
+  name: By category
+  position: 5
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: bjQXAVz_n_-5RJKbNhQYm
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: aGUWhkRqINjlhJhSYqduz
+  name: Model vs engine
+  position: 6
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: aGUWhkRqINjlhJhSYqduz
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: 1wJ0JsCiFRk0KEt3__DFQ
+  name: Agreement & zeros
+  position: 7
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: 1wJ0JsCiFRk0KEt3__DFQ
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: U1b09NSoBFyvTAbUxaRB5
+  name: Embedding text
+  position: 8
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: U1b09NSoBFyvTAbUxaRB5
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: pY0XHfgpnVv-wNE33ts5S
+  name: Text strategy
+  position: 9
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: pY0XHfgpnVv-wNE33ts5S
+    model: DashboardTab
+- created_at: '2026-09-23T20:46:23.05441Z'
+  entity_id: z_uYPKRnD5SzM5utWxvo8
+  name: Drill-down
+  position: 10
+  serdes/meta:
+  - id: dvPWhPiz6it31jVFx0WuO
+    model: Dashboard
+  - id: z_uYPKRnD5SzM5utWxvo8
+    model: DashboardTab
+width: fixed

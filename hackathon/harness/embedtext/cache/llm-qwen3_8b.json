@@ -1,0 +1,1354 @@
+{
+  "b215c638976334b6": {
+    "key": "card/query-17",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 528,
+    "text": "How many refunds were issued in the last quarter, by country, showing the number of refunds and total refund amount per country."
+  },
+  "95318853c7db6481": {
+    "key": "card/copy-of-revenue-v2",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 468,
+    "text": "This chart shows the monthly revenue by channel, excluding discounted orders, providing a clear view of revenue performance across different sales channels over time."
+  },
+  "a79a482154422710": {
+    "key": "card/tmp-jan",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 462,
+    "text": "This chart shows the top discount codes by number of orders and revenue in January, highlighting which codes drove the most sales during that month."
+  },
+  "7072074d7137bbbd": {
+    "key": "card/bens-q",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 569,
+    "text": "For Ben's query, the chart shows the percentage of customers who made more than one purchase by acquisition channel, ordered by repeat purchase rate, highlighting which channels drive repeat buyers."
+  },
+  "eb81192ab340226c": {
+    "key": "card/query-3",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 466,
+    "text": "Which carriers have the highest percentage of late deliveries, measured as the ratio of late shipments to total shipments, filtered to include only delivered shipments."
+  },
+  "1acdff8c24c7f32b": {
+    "key": "card/query-8",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 403,
+    "text": "What is the average cost per order by country, calculated from shipment data across all warehouses over the entire time period?"
+  },
+  "9470d83edff21c03": {
+    "key": "card/untitled-1",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 417,
+    "text": "What is the chargeback rate by payment method, showing the percentage of chargebacks among all payments, ordered by highest rate."
+  },
+  "e78575522261720c": {
+    "key": "card/export-for-marta",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 468,
+    "text": "What percentage of payment amounts were fees for Marta, by month and payment method, showing the ratio of fees to total payments over time."
+  },
+  "abe9dc3bc9505d1e": {
+    "key": "card/query-21",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 371,
+    "text": "How many Trail Club subscriptions cancelled within the first 30 days after starting, grouped by subscription plan."
+  },
+  "34b0c8c9972d2418": {
+    "key": "card/sub-stuff",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 414,
+    "text": "For the Trail Club, this chart shows total monthly recurring revenue and active subscriptions by plan, focusing on non-cancelled subscriptions."
+  },
+  "ec6bb9ad138166a5": {
+    "key": "card/q-final-final",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 326,
+    "text": "This chart shows the number of voluntary and involuntary terminations by department over the past year."
+  },
+  "fc17b51c8b1a52bc": {
+    "key": "card/headcount-thing",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 326,
+    "text": "How many employees are currently active in each location, sorted by location with the most employees?"
+  },
+  "a9d7ea24839aed4e": {
+    "key": "card/query-44",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 338,
+    "text": "How many support tickets had first response times over 60 minutes, broken down by priority."
+  },
+  "fbef938926113ca7": {
+    "key": "card/zendesk-pull",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 350,
+    "text": "What is the median resolution time in hours for each support ticket category, ordered from highest to lowest?"
+  },
+  "8e544239deb73335": {
+    "key": "card/query-5",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 480,
+    "text": "This chart shows the monthly Net Promoter Score, calculated by the percentage difference between promoters and detractors from NPS responses, grouped by month."
+  },
+  "26649a9dc1ed23c4": {
+    "key": "card/nps-comments",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 424,
+    "text": "This chart shows recent negative NPS comments mentioning late, delivery, or slow issues, highlighting key pain points driving low scores."
+  },
+  "e400c109713d4ab2": {
+    "key": "card/query-12",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 423,
+    "text": "Which warehouses have zero on-hand units for the most recent inventory snapshot, showing their names and the SKUs with no stock."
+  },
+  "f206deaa62db4df2": {
+    "key": "card/inv-v3",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 520,
+    "text": "What is the average number of days of inventory cover per product category, based on the latest inventory levels and 28 days of sales data?"
+  },
+  "1c263c527c1a1fc3": {
+    "key": "card/query-30",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 516,
+    "text": "Which account managers have the highest overdue order value, measured by the count of overdue orders and their total value, filtered to those not yet shipped or cancelled."
+  },
+  "ea655b265968ffa5": {
+    "key": "card/b2b",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 641,
+    "text": "Which B2B wholesale accounts have open or confirmed orders exceeding their credit limit? The chart shows the account name, credit limit, and open order value, filtered to those where open value exceeds credit limit."
+  },
+  "bdb7cdc7249230ee": {
+    "key": "card/query-9",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 397,
+    "text": "How many GDPR DSR requests were completed more than 30 days after they were received, by request type."
+  },
+  "dd7a8125899a6c90": {
+    "key": "card/dsr",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 361,
+    "text": "This chart shows the number of erasure requests received each month, grouped by the month they were received."
+  },
+  "5f6cd89ef3f3309b": {
+    "key": "card/query-33",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 429,
+    "text": "What is the average cost per click for marketing campaigns over the last 30 days, sorted by highest cost per click."
+  },
+  "8bc5f7bfec8ade84": {
+    "key": "card/mkt-tmp",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 600,
+    "text": "What is the return on ad spend (ROAS) by marketing channel, showing revenue divided by spend, filtered to only include converted sessions within one day of the session start."
+  },
+  "852a49303d966d06": {
+    "key": "card/query-2",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 345,
+    "text": "What is the average conversion rate by device type for web sessions started in the last seven days?"
+  },
+  "ccf2e3f20e14ecfd": {
+    "key": "card/landing",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 501,
+    "text": "Which landing pages drove the highest number of sessions with conversion rates, focusing on pages with over 100 sessions, sorted by conversion rate descending."
+  },
+  "d8e96da6fa0b06ea": {
+    "key": "card/query-19",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 389,
+    "text": "What is the gross margin by product category, showing the total revenue minus cost for each category across all orders?"
+  },
+  "95511f1c77ca61a0": {
+    "key": "card/price-check",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 678,
+    "text": "Which products are being sold at a price lower than their cost, based on recent order data? The query compares actual unit prices from orders to product cost prices, filtering for instances where the sold price is below cost."
+  },
+  "1905021e8269de52": {
+    "key": "card/query-40",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 426,
+    "text": "How many returns occurred in the Footwear category, broken down by reason, showing the top reasons for returns."
+  },
+  "2735be33bf19ca48": {
+    "key": "card/reconcile",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 387,
+    "text": "This chart shows which Adyen settlements lack corresponding payment records, highlighting their references, amounts, and settlement dates."
+  },
+  "767a99c2140ee3a3": {
+    "key": "card/query-50",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 526,
+    "text": "What is the 3-month retention rate of customers by their signup month, showing how many customers returned to place orders within three months of signing up."
+  },
+  "1799bae8ee98a259": {
+    "key": "card/old-orders",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 392,
+    "text": "This chart shows the total gross revenue from orders placed before 2023, broken down by calendar year."
+  },
+  "d8e4bd58a9574428": {
+    "key": "card/refunds-v2-final",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 419,
+    "text": "This chart shows total refunds by week and reason code, excluding size-related reasons, to track refund trends and identify major causes."
+  },
+  "5e5e1935bd1f0ed9": {
+    "key": "card/de-numbers",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 342,
+    "text": "This chart shows the monthly revenue from orders placed by customers in Germany, aggregated by calendar month."
+  },
+  "2de0a7c86caee14b": {
+    "key": "card/carrier-stuff",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 422,
+    "text": "What is the average cost and volume of shipments by carrier for the last 90 days, sorted by highest average cost."
+  },
+  "d54d8c622d1c009d": {
+    "key": "card/churn-new-def",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 365,
+    "text": "This chart answers how many Trail Club subscriptions ended voluntarily each month, excluding those cancelled due to payment failures."
+  },
+  "1abdcde2325f313c": {
+    "key": "card/tickets-wk",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 338,
+    "text": "How many support tickets were opened each week by category, showing weekly totals for each ticket type."
+  },
+  "634d3c64350b528d": {
+    "key": "card/pl-orders",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 374,
+    "text": "How many and how much in PL orders paid via Blik were processed each month, grouped by month."
+  },
+  "f67673c3f22422a3": {
+    "key": "card/margin-check-q3",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 405,
+    "text": "What is the total margin by season for Q3 orders, calculated as revenue minus cost, grouped by product season."
+  },
+  "6c4568e7c47739bf": {
+    "key": "card/adyen-fees",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 384,
+    "text": "This chart shows total commission fees collected by Adyen each month, aggregated by month and summed across all transactions."
+  },
+  "f7e863ac29b66bc4": {
+    "key": "card/spend-recon",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 402,
+    "text": "This chart shows total TikTok marketing spend by date, summarizing daily spend amounts to track spending trends over time."
+  },
+  "d9dbcaffc6a62764": {
+    "key": "card/hr-dash-src",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 436,
+    "text": "This chart shows the number of hires each month by department, tracking how many new employees were added in each month across different departments."
+  },
+  "ae2279eb5810f24f": {
+    "key": "card/wholesale-pipeline",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 313,
+    "text": "What is the total open value of confirmed and open wholesale orders grouped by account tier?"
+  },
+  "95dfd17506161fd8": {
+    "key": "card/inventory-inbound",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 302,
+    "text": "What is the total inbound units by warehouse for the most recent inventory snapshot date?"
+  },
+  "aaa1fef53aafc767": {
+    "key": "card/refunds-by-product-category",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 316,
+    "text": "What total refunds were generated by product category, sorted by refund amount in descending order?"
+  },
+  "543cb23d2dc862a9": {
+    "key": "card/discount-revenue-share",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 305,
+    "text": "What proportion of monthly revenue comes from orders using discount codes, shown by month."
+  },
+  "c83235290a8b578e": {
+    "key": "card/on-time-delivery-by-warehouse",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 464,
+    "text": "What is the on-time delivery rate for each warehouse, calculated as the average of shipments delivered by their promised date, grouped by warehouse."
+  },
+  "55283f9e6f74e903": {
+    "key": "card/payment-method-mix",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 438,
+    "text": "What proportion of total payments came from each payment method across all time? The chart shows the share of total payment amounts by method."
+  },
+  "aca9fd329c1d2381": {
+    "key": "card/trail-club-active-members",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 367,
+    "text": "How many Trail Club active members are enrolled in each plan, counted distinctly by customer, across all time."
+  },
+  "b08dd5c805f7c236": {
+    "key": "card/headcount-by-department",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 334,
+    "text": "How many employees are currently working in each department, excluding those who have left the company."
+  },
+  "7ec701403f779bcf": {
+    "key": "card/first-response-by-priority",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 315,
+    "text": "What is the average first response time for support tickets grouped by their priority level?"
+  },
+  "6b59333f25c7b929": {
+    "key": "card/nps-responses-per-month",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 414,
+    "text": "This chart shows the number of Net Promoter Score responses received each month, grouped by the month they were received."
+  },
+  "a2286d1ac13eeed7": {
+    "key": "card/inventory-on-hand-by-warehouse",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 408,
+    "text": "This chart answers: What is the total inventory on hand in each warehouse as of the most recent snapshot date."
+  },
+  "e1fc9426b8a08d32": {
+    "key": "card/wholesale-revenue-by-tier",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 436,
+    "text": "This chart shows total shipped wholesale revenue grouped by account tier, measuring revenue per tier from orders that have been shipped."
+  },
+  "2333c771f6855c46": {
+    "key": "card/gdpr-open-requests",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 419,
+    "text": "How many open GDPR DSR requests are pending by request type, showing counts for each type without completed records."
+  },
+  "25b50ea226b71cd7": {
+    "key": "card/ctr-by-campaign",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 462,
+    "text": "This chart shows the click-through rate for each marketing campaign, sorted by performance, measuring the ratio of clicks to impressions across all campaigns."
+  },
+  "7241b25007f2e3f4": {
+    "key": "card/sessions-by-device-and-source",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 478,
+    "text": "This chart answers how web sessions are distributed by device type and traffic source, showing the count of sessions for each combination, excluding unspecified traffic sources."
+  },
+  "06046e731971d6c4": {
+    "key": "card/aov-by-channel",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 434,
+    "text": "What is the average order value by customer channel, calculated as total net sales divided by number of orders, across all orders."
+  },
+  "6b8a9ad6b0eb7db8": {
+    "key": "card/returns-by-reason",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 363,
+    "text": "This chart shows the top reasons for returns, measured by the number of returns, grouped by reason code."
+  },
+  "dcbd0a2fec0e2b18": {
+    "key": "card/adyen-settlement-volume",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 348,
+    "text": "What is the total gross settlement volume processed by Adyen each day, aggregated and ordered by date."
+  },
+  "b0ef3983ffff35e3": {
+    "key": "card/new-customers-by-country",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 355,
+    "text": "This chart shows the number of new customers acquired each month by country, tracking signups over time."
+  },
+  "2cf972e9a613c074": {
+    "key": "card/cancellations-by-reason",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 401,
+    "text": "This chart shows the number of subscription cancellations by reason, ordered by the highest count, focusing on active cancellations."
+  },
+  "ada16a69ab9885bb": {
+    "key": "card/shipments-by-carrier",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 345,
+    "text": "This chart shows monthly shipment volumes by carrier, counting all shipments per month, grouped by carrier."
+  },
+  "509ec981cd24df6c": {
+    "key": "card/list-price-by-category",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 476,
+    "text": "What is the average list price for each product category? The chart shows average list prices grouped by product category from the Products table."
+  },
+  "1e57a6ad3bc046c1": {
+    "key": "card/new-question",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 508,
+    "text": "What is the total refund amount for damaged items returned each month? The chart sums refund amounts filtered by damaged reason codes, broken down by month of return."
+  },
+  "4bddd7705d322481": {
+    "key": "card/question-7",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 313,
+    "text": "How many payments were chargebacks by payment method in the last 30 days?"
+  },
+  "28751a2ecbb0dfc1": {
+    "key": "card/orders-filtered",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 273,
+    "text": "How much revenue did marketplace orders generate each quarter, summed by quarter?"
+  },
+  "ab25219c4f228b87": {
+    "key": "card/copy-of-question-7",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 388,
+    "text": "What is the total fee revenue by month, summing all fees in euros for each month in the payments data."
+  },
+  "8831525247adb494": {
+    "key": "card/test",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 376,
+    "text": "How many annual Trail Club subscriptions were cancelled each month? The chart counts cancellations by month for annual plans."
+  },
+  "686c4cbbe8334baa": {
+    "key": "card/question-12",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 256,
+    "text": "What is the average resolution time for urgent support tickets by category?"
+  },
+  "a6a532e63c16932c": {
+    "key": "card/hr-q",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 268,
+    "text": "How many involuntary terminations occurred each quarter, broken down by quarter?"
+  },
+  "20f1ae438d4d5185": {
+    "key": "card/question-3",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 350,
+    "text": "What is the total shipping cost by carrier for shipments that arrived within the last 30 days?"
+  },
+  "c9325886c4fcd8ed": {
+    "key": "card/mkt",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 324,
+    "text": "What is the total number of impressions generated by TikTok campaigns, broken down by campaign?"
+  },
+  "81aaa507be98f9b1": {
+    "key": "card/new-question-2",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 268,
+    "text": "How many mobile users converted each week, based on web session data."
+  },
+  "44bd5e7754a5a986": {
+    "key": "card/inv",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 305,
+    "text": "How many inventory items are in each warehouse with on-hand units of five or fewer?"
+  },
+  "32792310c4c33262": {
+    "key": "card/question-20",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 383,
+    "text": "What is the average NPS score by month, showing how it varies across different months in the data?"
+  },
+  "d9582e0b905b8484": {
+    "key": "card/gdpr",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 338,
+    "text": "How many GDPR portability requests were received each month, counted by the month they were received."
+  },
+  "95fb3e9237107789": {
+    "key": "card/question-31",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 386,
+    "text": "How many customers were acquired through referral by country? The chart counts customers acquired via referral, broken down by country."
+  },
+  "d69ae7a07fefd4fa": {
+    "key": "card/wh",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 471,
+    "text": "What is the total amount of cancelled wholesale orders by account? The chart sums the amount in euros for cancelled orders, broken down by account ID."
+  },
+  "a1a20d468625fcf5": {
+    "key": "card/question-9b",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 503,
+    "text": "What is the average list price of winter products by category? The chart shows average list prices grouped by product category, filtered to include only winter season items."
+  },
+  "1f051d3e9181a725": {
+    "key": "card/monthly-refund-amount",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 436,
+    "text": "What is the total refund amount by month? The chart sums refund amounts and breaks them down by the month of the return."
+  },
+  "db86cd4fe66667f5": {
+    "key": "card/chargebacks-by-month",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 327,
+    "text": "How many chargebacks occurred each month, counted by the month of the captured payment."
+  },
+  "aeeb1885617a5035": {
+    "key": "card/revenue-by-channel-quarter",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 408,
+    "text": "This chart shows total revenue by sales channel and quarter, summing net amounts in euros for each channel across each quarter."
+  },
+  "fb9d4701988fef01": {
+    "key": "card/tickets-by-priority",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 266,
+    "text": "How many support tickets were opened by priority level within the last quarter?"
+  },
+  "bef328e86873b89a": {
+    "key": "card/voluntary-terminations",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 322,
+    "text": "How many voluntary resignations occurred each quarter, counted by the quarter of the termination date."
+  },
+  "fd2478ef377cfdc5": {
+    "key": "card/impressions-by-channel",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 309,
+    "text": "This chart shows total ad impressions by marketing channel, summing impressions for each channel."
+  },
+  "ace03f90b3ea40e0": {
+    "key": "card/sessions-by-device",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 317,
+    "text": "How many web sessions occurred on each device type? The chart counts sessions by device category."
+  },
+  "ee3f6bb674cea53c": {
+    "key": "card/customers-by-acquisition",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 318,
+    "text": "How many customers were acquired through each channel? The chart counts customers by their acquisition channel."
+  },
+  "3a9bb2e31e72b04f": {
+    "key": "card/revenue-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 498,
+    "text": "This chart lists all order records from the Orders (v2) table without filters or aggregation, showing every transaction's revenue as recorded in the system."
+  },
+  "d79bd13e2b7617a2": {
+    "key": "card/customer-list",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 494,
+    "text": "This chart lists all customer records from the Customers table without any filters or aggregation, providing a complete inventory of customer data as it exists in the system."
+  },
+  "db086cbcb7328cc5": {
+    "key": "card/product-catalogue",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 435,
+    "text": "This chart lists all products in the catalogue without filters or aggregation, showing each product's details as they exist in the product dimension table."
+  },
+  "455bff3df9af360a": {
+    "key": "card/shipments-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 413,
+    "text": "This chart lists all shipment records from the Shipments table without filters or aggregation, showing each shipment's details as they occurred."
+  },
+  "19f55cc1b542ecd3": {
+    "key": "card/tickets-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 371,
+    "text": "This chart lists all support tickets in their raw form, showing each ticket's details without any filtering or aggregation."
+  },
+  "67abfbd0bee5df72": {
+    "key": "card/employee-directory",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 357,
+    "text": "This chart lists all employees in the directory, showing each individual's details without any filters or time limits."
+  },
+  "ee9c8b8cf8165fef": {
+    "key": "card/campaign-list",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 494,
+    "text": "This chart lists all marketing spend records without filters or aggregation, showing every campaign's spend amount, channel, and date as recorded in the Marketing spend table."
+  },
+  "558ec4299767cb48": {
+    "key": "card/payments-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 398,
+    "text": "This chart lists all payment records without filters or aggregation, showing each transaction's details as they occurred in the Payments table."
+  },
+  "53a0eb172a96f7dc": {
+    "key": "card/returns-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 372,
+    "text": "This chart lists all return records from the Returns table, showing each individual return event without any filtering or aggregation."
+  },
+  "e8698aac6f00ceff": {
+    "key": "card/wholesale-accounts",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 410,
+    "text": "This chart lists all wholesale accounts without filters or aggregation, showing each account's full details as recorded in the Wholesale accounts table."
+  },
+  "86df7a273a5d7160": {
+    "key": "card/warehouse-list",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 358,
+    "text": "This chart lists all warehouses in the system, showing each one's details without any filters or time limits."
+  },
+  "cf7f612fca84d8b8": {
+    "key": "card/subscriptions-overview",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 400,
+    "text": "This chart lists all Trail Club subscriptions without filters or aggregation, showing each subscription's details as recorded in the analytics database."
+  },
+  "28ec219df8f37d08": {
+    "key": "metric/orders-count",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 466,
+    "text": "How many orders were placed during the time period specified in the query? The chart counts all order records in the Orders table within the selected timeframe."
+  },
+  "64f0b6b9ff6a0bc1": {
+    "key": "metric/tickets-count",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 477,
+    "text": "How many support tickets were opened in the last 30 days? The chart counts all tickets in the Support tickets table within the specified time window."
+  },
+  "60561f19f54cc2f4": {
+    "key": "metric/shipments-count",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 289,
+    "text": "How many shipments were made, without filtering by any specific criteria or time period."
+  },
+  "ca79c72d8a7ff459": {
+    "key": "metric/returns-count",
+    "model": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "promptVersion": "v2",
+    "options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 120
+    },
+    "ms": 375,
+    "text": "How many returns occurred within the specified time period, aggregated as a total count without further breakdown or filtering."
+  }
+}

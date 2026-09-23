@@ -1,0 +1,15 @@
+{
+  "name": "harness-runner",
+  "private": true,
+  "type": "module",
+  "description": "Search harness matrix runner: queries /api/search per engine from outside Metabase, times it, writes observations via ../results. Node >= 22.18 (native TS type stripping, no build step).",
+  "scripts": {
+    "setup": "node src/setup.ts",
+    "preflight": "node src/preflight.ts",
+    "run": "node src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

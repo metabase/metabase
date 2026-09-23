@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Semantic search without pgvector</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- reveal.js 5.2.1 and mermaid 11.4.1 are vendored in ./vendor so the deck runs offline -->
+  <link rel="stylesheet" href="vendor/reveal.js/dist/reset.css">
+  <link rel="stylesheet" href="vendor/reveal.js/dist/reveal.css">
+  <link rel="stylesheet" href="vendor/reveal.js/dist/theme/white.css">
+  <link rel="stylesheet" href="deck.css">
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <section data-markdown="slides.md"
+               data-separator="^\r?\n---\r?\n$"
+               data-separator-vertical="^\r?\n--\r?\n$"
+               data-separator-notes="^Note:"></section>
+    </div>
+  </div>
+
+  <script src="vendor/reveal.js/dist/reveal.js"></script>
+  <script src="vendor/reveal.js/plugin/markdown/markdown.js"></script>
+  <script src="vendor/reveal.js/plugin/notes/notes.js"></script>
+  <script src="vendor/reveal.js/plugin/highlight/highlight.js"></script>
+  <script src="vendor/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: "neutral", fontSize: 20 });
+
+    // Render ```mermaid blocks once reveal has turned slides.md into slides.
+    async function renderMermaid() {
+      const blocks = document.querySelectorAll(".reveal pre code.language-mermaid, .reveal pre code.mermaid");
+      let i = 0;
+      for (const code of blocks) {
+        const pre = code.parentElement;
+        const { svg } = await mermaid.render(`mmd-${i++}`, code.textContent);
+        const div = document.createElement("div");
+        div.className = "mermaid-diagram";
+        div.innerHTML = svg;
+        pre.replaceWith(div);
+      }
+    }
+
+    Reveal.initialize({
+      hash: true,
+      slideNumber: "c/t",
+      width: 1280,
+      height: 720,
+      plugins: [RevealMarkdown, RevealNotes, RevealHighlight],
+    }).then(async () => {
+      await renderMermaid();
+      Reveal.layout();
+    });
+  </script>
+</body>
+</html>

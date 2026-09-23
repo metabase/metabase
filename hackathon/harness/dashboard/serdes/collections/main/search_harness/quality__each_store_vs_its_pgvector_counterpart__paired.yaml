@@ -1,0 +1,139 @@
+name: 'Quality: each store vs its pgvector counterpart, paired'
+description: |-
+  Is any store proven better or worse than pgvector, compared like for like? Each store against the pgvector engine with the same parts switched on, same questions. "Vector only" is the fair store comparison; "as shipped" adds each engine's keyword part and top-up. "no proven difference" means the 95% range crosses 0 — a tie at this sample size. Pinned as the chart next to it. semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+
+  **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+
+  **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+
+  **semantic-vector**: semantic with both its keyword part and the appdb top-up switched off: pure vector search over its own index. The reference for how much of semantic comes from embeddings alone.
+
+  **Hybrid**: Search that matches both by meaning (embeddings) and by words, then merges the two rankings (reciprocal rank fusion: an item near the top of either list ends up near the top). semantic, semantic-pure and lucene are hybrid; sqlite-vec1 and semantic-vector are vector-only.
+entity_id: -r8OfcBg-elfYVTP8hJkD
+created_at: '2026-09-23T20:17:30.821079Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH pairs(section, arm, ref) AS (VALUES
+        ('1 vector only (the store comparison)', 'sqlite-vec1-pure', 'semantic-vector'),
+        ('1 vector only (the store comparison)', 'lucene-pure', 'semantic-vector'),
+        ('2 as shipped', 'semantic-pure', 'semantic'),
+        ('2 as shipped', 'sqlite-vec1', 'semantic'),
+        ('2 as shipped', 'lucene', 'semantic'),
+        ('3 keyword floor', 'appdb', 'semantic'),
+        ('3 keyword floor', 'in-place', 'semantic')
+      ), m AS (
+        SELECT engine, scenario_id, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = 'northwind-golden-v1' AND metric = 'ndcg@10' AND embedder = 'ollama/all-minilm' AND embedding_text = 'baseline' AND text_strategy = 'none'
+      ), d AS (
+        SELECT p.section, p.arm, p.ref, a.value - r.value AS delta
+        FROM pairs p
+        JOIN m a ON a.engine = p.arm
+        JOIN m r ON r.engine = p.ref AND r.scenario_id = a.scenario_id
+      ), s AS (
+        SELECT section, arm, ref, count(*) AS n, avg(delta) AS mean, 1.96 * stddev_samp(delta) / sqrt(count(*)) AS ci
+        FROM d GROUP BY 1, 2, 3
+      )
+      SELECT substr(section, 3) AS "Comparison", arm || ' vs ' || ref AS "Engines",
+             round(mean::numeric, 3) AS "Δ", round(ci::numeric, 3) AS "± 95% CI",
+             CASE WHEN n < 5 THEN 'too few questions'
+                  WHEN mean - ci > 0 THEN 'better'
+                  WHEN mean + ci < 0 THEN 'worse'
+                  ELSE 'no proven difference' END AS "Verdict",
+             n AS "n questions"
+      FROM s
+      ORDER BY section, array_position(ARRAY['semantic', 'semantic-pure', 'semantic-vector', 'sqlite-vec1', 'sqlite-vec1-pure', 'lucene', 'lucene-pure', 'appdb', 'in-place'], arm)
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Comparison
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Comparison
+  - base-type: type/Text
+  name: Comparison
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Engines
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Engines
+  - base-type: type/Text
+  name: Engines
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Δ
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - Δ
+  - base-type: type/Decimal
+  name: Δ
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: ± 95% CI
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - ± 95% CI
+  - base-type: type/Decimal
+  name: ± 95% CI
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Verdict
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Verdict
+  - base-type: type/Text
+  name: Verdict
+  semantic_type: null
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n questions
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - n questions
+  - base-type: type/BigInteger
+  name: n questions
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#ED6E6E'
+    - '#FFFFFF'
+    - '#84BB4C'
+    columns:
+    - Δ
+    max_type: custom
+    max_value: 0.3
+    min_type: custom
+    min_value: -0.3
+    type: range
+card_schema: 24
+serdes/meta:
+- id: -r8OfcBg-elfYVTP8hJkD
+  label: quality__each_store_vs_its_pgvector_counterpart__paired
+  model: Card
+type: question

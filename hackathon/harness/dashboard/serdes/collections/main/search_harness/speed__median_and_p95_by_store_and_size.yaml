@@ -1,0 +1,101 @@
+name: 'Speed: median and p95 by store and size'
+description: |-
+  What are the exact numbers behind the speed chart? p95 is the slowest 5% of searches; tails are noisy on a laptop. Pinned as the chart next to it.
+
+  **p50 / p95 / p99**: Half / 95% / 99% of searches are faster than this. p50 is the typical search; p95 and p99 are the slow ones users notice. Lower is better.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+
+  **Scale**: Catalogue size tier. The golden set (235 items) has none; generated catalogues of 1k and 10k items are used only to time searches (they have no right answers).
+entity_id: 2p_5TcgXELW5z-zrIAmnb
+created_at: '2026-09-23T20:15:05.083712Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      SELECT engine AS "Engine", CASE WHEN data_scale IS NULL THEN '235 (golden)' WHEN data_scale >= 1000 THEN (data_scale / 1000) || 'k' ELSE data_scale::text END AS "Size",
+             round(percentile_cont(0.5)  WITHIN GROUP (ORDER BY latency_ms)::numeric) AS "Median ms",
+             round(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)::numeric) AS "p95 ms",
+             count(*) AS "n searches"
+      FROM harness_latest_observation
+      WHERE (corpus_id = 'northwind-golden-v1' OR corpus_id LIKE 'scale-%') AND error IS NULL
+        AND embedder = 'ollama/all-minilm' AND embedding_text = 'baseline' AND text_strategy = 'none'
+      GROUP BY engine, data_scale
+      ORDER BY data_scale NULLS FIRST, 3
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Size
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Size
+  - base-type: type/Text
+  name: Size
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Median ms
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - Median ms
+  - base-type: type/Decimal
+  name: Median ms
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: p95 ms
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - p95 ms
+  - base-type: type/Decimal
+  name: p95 ms
+  semantic_type: null
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n searches
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - n searches
+  - base-type: type/BigInteger
+  name: n searches
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#FFFFFF'
+    - '#509EE3'
+    columns:
+    - Median ms
+    max_type: custom
+    max_value: 400
+    min_type: custom
+    min_value: 0
+    type: range
+card_schema: 24
+serdes/meta:
+- id: 2p_5TcgXELW5z-zrIAmnb
+  label: speed__median_and_p95_by_store_and_size
+  model: Card
+type: question

@@ -1,0 +1,17 @@
+{
+  "name": "harness-results",
+  "private": true,
+  "type": "module",
+  "description": "Search harness results store: writer, fixture generator, schema tooling. Runs on Node >= 22.18 (native TS type stripping, no build step).",
+  "scripts": {
+    "schema": "node src/schema.ts",
+    "fixtures": "node src/fixtures.ts",
+    "dashboard": "node src/dashboard.ts",
+    "typecheck": "tsc --noEmit",
+    "serdes": "node src/serdes.ts",
+    "check": "node src/check.ts"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

@@ -1,0 +1,83 @@
+name: 'Embedding model: all-minilm vs arctic'
+description: |-
+  How much does a stronger embedding model help? Ranking quality per engine with each model, same 56 golden questions. Keyword engines do not embed, so their bars should not move — they are the sanity check. Pinned: northwind-golden-v1, baseline text. Only engines measured with both models are shown. semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+
+  **all-minilm**: Small, English-focused embedding model: 384 numbers per text, and it reads at most about 512 tokens (a few hundred words); the rest is cut off.
+
+  **snowflake-arctic-embed2**: Larger, multilingual embedding model: 1,024 numbers per text, and it reads long text (up to 8,192 tokens). That's why it handles questions in other languages. Adding the 'query: ' prefix it expects (runs labelled +qprefix) didn't help here: golden no difference (−0.03 ± 0.05), SQL corpus slightly worse (−0.07 ± 0.05).
+
+  **nDCG@10 (ranking quality)**: 0 to 1: how well the engine put the right answers near the top of its first 10 results. A grade-2 answer counts twice as much as a grade-1 answer. Higher is better.
+
+  **Vector vs keyword engine**: A vector engine matches by meaning, using embeddings (semantic is hybrid: meaning and words). A keyword engine (appdb, in-place) matches words only.
+entity_id: uRCB-40mzNrigVKUD2crs
+created_at: '2026-09-23T20:15:05.187246Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH m AS (
+        SELECT engine, embedder, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = 'northwind-golden-v1' AND metric = 'ndcg@10' AND embedding_text = 'baseline' AND text_strategy = 'none'
+          AND embedder IN ('ollama/all-minilm', 'ollama/snowflake-arctic-embed2')
+      ), both_models AS (SELECT engine FROM m GROUP BY engine HAVING count(DISTINCT embedder) = 2)
+      SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder", round(avg(value)::numeric, 3) AS "nDCG@10"
+      FROM m JOIN both_models USING (engine)
+      GROUP BY engine, embedder
+      ORDER BY array_position(ARRAY['semantic', 'semantic-pure', 'semantic-vector', 'sqlite-vec1', 'sqlite-vec1-pure', 'lucene', 'lucene-pure', 'appdb', 'in-place'], engine), embedder
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: nDCG@10
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - nDCG@10
+  - base-type: type/Decimal
+  name: nDCG@10
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedder
+  graph.metrics:
+  - nDCG@10
+  graph.show_values: true
+  graph.y_axis.auto_range: false
+  graph.y_axis.max: 1
+card_schema: 24
+serdes/meta:
+- id: uRCB-40mzNrigVKUD2crs
+  label: embedding_model__all_minilm_vs_arctic
+  model: Card
+type: question

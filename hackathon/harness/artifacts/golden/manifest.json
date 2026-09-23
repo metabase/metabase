@@ -1,0 +1,968 @@
+{
+  "corpusId": "northwind-golden-v1",
+  "metabaseUrl": "http://localhost:3003",
+  "appliedAt": "2026-09-23T14:40:38.106Z",
+  "databaseId": 1,
+  "harnessUser": {
+    "email": "harness+northwind-golden-v1@example.com",
+    "password": "harness-Readonly-2026",
+    "id": 2,
+    "groupId": 5
+  },
+  "timingsMs": {
+    "database": 149,
+    "sync": 3071,
+    "tables": 125,
+    "collections": 243,
+    "card": 1120,
+    "dataset": 100,
+    "metric": 108,
+    "dashboard": 113,
+    "document": 95,
+    "segment": 69,
+    "measure": 45,
+    "permissions": 204
+  },
+  "entities": {
+    "table/fct-orders-v2": {
+      "model": "table",
+      "id": 202
+    },
+    "table/fct-orders": {
+      "model": "table",
+      "id": 201
+    },
+    "table/dim-customer": {
+      "model": "table",
+      "id": 194
+    },
+    "table/dim-product": {
+      "model": "table",
+      "id": 195
+    },
+    "table/fct-returns": {
+      "model": "table",
+      "id": 204
+    },
+    "table/fct-web-sessions": {
+      "model": "table",
+      "id": 208
+    },
+    "table/fct-marketing-spend": {
+      "model": "table",
+      "id": 199
+    },
+    "table/fct-support-tickets": {
+      "model": "table",
+      "id": 207
+    },
+    "table/fct-shipments": {
+      "model": "table",
+      "id": 205
+    },
+    "table/dim-warehouse": {
+      "model": "table",
+      "id": 196
+    },
+    "table/fct-inventory-snapshot": {
+      "model": "table",
+      "id": 198
+    },
+    "table/fct-subscriptions": {
+      "model": "table",
+      "id": 206
+    },
+    "table/hr-employees": {
+      "model": "table",
+      "id": 211
+    },
+    "table/hr-terminations": {
+      "model": "table",
+      "id": 212
+    },
+    "table/fct-payments": {
+      "model": "table",
+      "id": 203
+    },
+    "table/stg-adyen-settlements": {
+      "model": "table",
+      "id": 213
+    },
+    "table/dim-wholesale-account": {
+      "model": "table",
+      "id": 197
+    },
+    "table/fct-wholesale-orders": {
+      "model": "table",
+      "id": 209
+    },
+    "table/gdpr-dsr-requests": {
+      "model": "table",
+      "id": 210
+    },
+    "table/fct-nps-responses": {
+      "model": "table",
+      "id": 200
+    },
+    "collection/finance": {
+      "model": "collection",
+      "id": 5
+    },
+    "collection/sales": {
+      "model": "collection",
+      "id": 6
+    },
+    "collection/marketing": {
+      "model": "collection",
+      "id": 7
+    },
+    "collection/product": {
+      "model": "collection",
+      "id": 8
+    },
+    "collection/support": {
+      "model": "collection",
+      "id": 9
+    },
+    "collection/logistics": {
+      "model": "collection",
+      "id": 10
+    },
+    "collection/people": {
+      "model": "collection",
+      "id": 11
+    },
+    "collection/data-eng": {
+      "model": "collection",
+      "id": 12
+    },
+    "collection/exec": {
+      "model": "collection",
+      "id": 13
+    },
+    "collection/membership": {
+      "model": "collection",
+      "id": 14
+    },
+    "collection/legal": {
+      "model": "collection",
+      "id": 15
+    },
+    "collection/legacy": {
+      "model": "collection",
+      "id": 16
+    },
+    "collection/polska": {
+      "model": "collection",
+      "id": 17
+    },
+    "collection/japan": {
+      "model": "collection",
+      "id": 18
+    },
+    "collection/wholesale": {
+      "model": "collection",
+      "id": 19
+    },
+    "collection/exec-comp": {
+      "model": "collection",
+      "id": 20
+    },
+    "card/chargebacks-by-method": {
+      "model": "card",
+      "id": 101
+    },
+    "card/revenue": {
+      "model": "card",
+      "id": 97
+    },
+    "card/revenue-by-region": {
+      "model": "card",
+      "id": 99
+    },
+    "card/gross-margin-by-category": {
+      "model": "card",
+      "id": 98
+    },
+    "card/fx-impact": {
+      "model": "card",
+      "id": 94
+    },
+    "card/net-revenue-by-channel": {
+      "model": "card",
+      "id": 96
+    },
+    "card/refunds-issued-weekly": {
+      "model": "card",
+      "id": 95
+    },
+    "card/adyen-fees-monthly": {
+      "model": "card",
+      "id": 100
+    },
+    "card/orders-per-day": {
+      "model": "card",
+      "id": 104
+    },
+    "card/top-products-by-units": {
+      "model": "card",
+      "id": 102
+    },
+    "card/budget-vs-actual-opex": {
+      "model": "card",
+      "id": 105
+    },
+    "card/cash-collected-vs-invoiced": {
+      "model": "card",
+      "id": 103
+    },
+    "card/aov-by-country": {
+      "model": "card",
+      "id": 106
+    },
+    "card/new-vs-returning-customers": {
+      "model": "card",
+      "id": 108
+    },
+    "card/kpi-017-contribution-margin": {
+      "model": "card",
+      "id": 107
+    },
+    "card/orders-by-channel": {
+      "model": "card",
+      "id": 109
+    },
+    "card/customers-by-country": {
+      "model": "card",
+      "id": 110
+    },
+    "card/discount-code-usage": {
+      "model": "card",
+      "id": 111
+    },
+    "card/repeat-purchase-rate": {
+      "model": "card",
+      "id": 112
+    },
+    "card/basket-size": {
+      "model": "card",
+      "id": 113
+    },
+    "card/black-friday-2025": {
+      "model": "card",
+      "id": 116
+    },
+    "card/wholesale-revenue-by-account": {
+      "model": "card",
+      "id": 114
+    },
+    "card/customer-lifetime-value": {
+      "model": "card",
+      "id": 115
+    },
+    "card/sales-by-weekday-hour": {
+      "model": "card",
+      "id": 117
+    },
+    "card/account-manager-book": {
+      "model": "card",
+      "id": 120
+    },
+    "card/po-88213-status": {
+      "model": "card",
+      "id": 119
+    },
+    "card/wholesale-sell-through": {
+      "model": "card",
+      "id": 118
+    },
+    "card/open-purchase-orders": {
+      "model": "card",
+      "id": 121
+    },
+    "card/cac-payback": {
+      "model": "card",
+      "id": 122
+    },
+    "card/web-conversion-rate": {
+      "model": "card",
+      "id": 124
+    },
+    "card/cac-by-channel": {
+      "model": "card",
+      "id": 125
+    },
+    "card/roas-by-channel": {
+      "model": "card",
+      "id": 123
+    },
+    "card/influencer-codes": {
+      "model": "card",
+      "id": 126
+    },
+    "card/spend-daily": {
+      "model": "card",
+      "id": 133
+    },
+    "card/return-rate-by-category": {
+      "model": "card",
+      "id": 129
+    },
+    "card/sessions-by-utm-source": {
+      "model": "card",
+      "id": 127
+    },
+    "card/return-reasons": {
+      "model": "card",
+      "id": 132
+    },
+    "card/landing-page-bounce": {
+      "model": "card",
+      "id": 130
+    },
+    "card/email-campaign-performance": {
+      "model": "card",
+      "id": 128
+    },
+    "card/brand-search-share": {
+      "model": "card",
+      "id": 131
+    },
+    "card/slow-movers": {
+      "model": "card",
+      "id": 136
+    },
+    "card/markdown-effectiveness": {
+      "model": "card",
+      "id": 138
+    },
+    "card/sell-through-by-season": {
+      "model": "card",
+      "id": 140
+    },
+    "card/product-reviews-avg": {
+      "model": "card",
+      "id": 135
+    },
+    "card/sku-4471-returns": {
+      "model": "card",
+      "id": 139
+    },
+    "card/stockouts": {
+      "model": "card",
+      "id": 141
+    },
+    "card/new-launches-first-30d": {
+      "model": "card",
+      "id": 134
+    },
+    "card/sizing-issues-footwear": {
+      "model": "card",
+      "id": 137
+    },
+    "card/nps-trend": {
+      "model": "card",
+      "id": 144
+    },
+    "card/nps-detractor-comments": {
+      "model": "card",
+      "id": 143
+    },
+    "card/first-response-time": {
+      "model": "card",
+      "id": 147
+    },
+    "card/agent-productivity": {
+      "model": "card",
+      "id": 148
+    },
+    "card/csat-weekly": {
+      "model": "card",
+      "id": 145
+    },
+    "card/ticket-backlog": {
+      "model": "card",
+      "id": 142
+    },
+    "card/wismo-tickets": {
+      "model": "card",
+      "id": 146
+    },
+    "card/tickets-by-category": {
+      "model": "card",
+      "id": 149
+    },
+    "card/pick-pack-time": {
+      "model": "card",
+      "id": 152
+    },
+    "card/inbound-container-eta": {
+      "model": "card",
+      "id": 153
+    },
+    "card/on-time-delivery": {
+      "model": "card",
+      "id": 150
+    },
+    "card/damaged-in-transit": {
+      "model": "card",
+      "id": 151
+    },
+    "card/stock-cover-days": {
+      "model": "card",
+      "id": 156
+    },
+    "card/inventory-on-hand": {
+      "model": "card",
+      "id": 154
+    },
+    "card/shipping-cost-per-order": {
+      "model": "card",
+      "id": 155
+    },
+    "card/split-shipments": {
+      "model": "card",
+      "id": 157
+    },
+    "card/engagement-survey": {
+      "model": "card",
+      "id": 160
+    },
+    "card/time-to-hire": {
+      "model": "card",
+      "id": 159
+    },
+    "card/employee-churn": {
+      "model": "card",
+      "id": 162
+    },
+    "card/talent-acquisition-funnel": {
+      "model": "card",
+      "id": 161
+    },
+    "card/headcount-by-location": {
+      "model": "card",
+      "id": 158
+    },
+    "card/sick-leave": {
+      "model": "card",
+      "id": 165
+    },
+    "card/exec-bonus-pool": {
+      "model": "card",
+      "id": 163
+    },
+    "card/employee-retention-cohort": {
+      "model": "card",
+      "id": 164
+    },
+    "card/membership-cancellation-reasons": {
+      "model": "card",
+      "id": 166
+    },
+    "card/member-vs-nonmember-spend": {
+      "model": "card",
+      "id": 171
+    },
+    "card/gdpr-dsr-sla": {
+      "model": "card",
+      "id": 170
+    },
+    "card/exec-salary-bands": {
+      "model": "card",
+      "id": 167
+    },
+    "card/customer-churn-rate": {
+      "model": "card",
+      "id": 169
+    },
+    "card/active-members": {
+      "model": "card",
+      "id": 168
+    },
+    "card/erasure-requests-monthly": {
+      "model": "card",
+      "id": 172
+    },
+    "card/trial-conversion": {
+      "model": "card",
+      "id": 173
+    },
+    "card/revenue-old": {
+      "model": "card",
+      "id": 174
+    },
+    "card/orders-dashboard-2022": {
+      "model": "card",
+      "id": 175
+    },
+    "card/revenue-copy": {
+      "model": "card",
+      "id": 176
+    },
+    "card/vat-oss-by-country": {
+      "model": "card",
+      "id": 177
+    },
+    "card/row-count-drift": {
+      "model": "card",
+      "id": 178
+    },
+    "card/pipeline-freshness": {
+      "model": "card",
+      "id": 179
+    },
+    "card/adyen-settlement-reconciliation": {
+      "model": "card",
+      "id": 180
+    },
+    "card/warehouse-query-costs": {
+      "model": "card",
+      "id": 181
+    },
+    "card/old-cac": {
+      "model": "card",
+      "id": 182
+    },
+    "card/pl-sprzedaz-wojewodztwa": {
+      "model": "card",
+      "id": 183
+    },
+    "card/pl-inpost-paczkomaty": {
+      "model": "card",
+      "id": 184
+    },
+    "card/pl-nowi-klienci": {
+      "model": "card",
+      "id": 186
+    },
+    "card/pl-zwroty-kategorie": {
+      "model": "card",
+      "id": 185
+    },
+    "card/pl-magazyn-poznan": {
+      "model": "card",
+      "id": 187
+    },
+    "card/pl-blik-platnosci": {
+      "model": "card",
+      "id": 188
+    },
+    "card/pl-reklamacje": {
+      "model": "card",
+      "id": 189
+    },
+    "card/pl-marza-brutto": {
+      "model": "card",
+      "id": 190
+    },
+    "card/pl-koszt-pozyskania": {
+      "model": "card",
+      "id": 191
+    },
+    "card/ja-monthly-sales": {
+      "model": "card",
+      "id": 193
+    },
+    "card/ja-yamato-delivery": {
+      "model": "card",
+      "id": 192
+    },
+    "card/pl-rotacja-pracownikow": {
+      "model": "card",
+      "id": 195
+    },
+    "card/ja-return-rate": {
+      "model": "card",
+      "id": 194
+    },
+    "card/ja-rakuten-ranking": {
+      "model": "card",
+      "id": 197
+    },
+    "card/ja-customer-reviews": {
+      "model": "card",
+      "id": 196
+    },
+    "card/ja-chiba-inventory": {
+      "model": "card",
+      "id": 198
+    },
+    "card/ja-inquiries": {
+      "model": "card",
+      "id": 199
+    },
+    "card/ja-summer-campaign": {
+      "model": "card",
+      "id": 200
+    },
+    "card/ja-new-customers": {
+      "model": "card",
+      "id": 201
+    },
+    "card/ja-fx-yen": {
+      "model": "card",
+      "id": 202
+    },
+    "dataset/order-lines-returns": {
+      "model": "dataset",
+      "id": 203
+    },
+    "dataset/inventory-daily": {
+      "model": "dataset",
+      "id": 208
+    },
+    "dataset/customer-360": {
+      "model": "dataset",
+      "id": 209
+    },
+    "dataset/shipments-delivery": {
+      "model": "dataset",
+      "id": 205
+    },
+    "dataset/wholesale-ledger": {
+      "model": "dataset",
+      "id": 206
+    },
+    "dataset/support-tickets-clean": {
+      "model": "dataset",
+      "id": 207
+    },
+    "dataset/orders-enriched": {
+      "model": "dataset",
+      "id": 210
+    },
+    "dataset/marketing-attribution": {
+      "model": "dataset",
+      "id": 204
+    },
+    "dataset/employee-roster": {
+      "model": "dataset",
+      "id": 211
+    },
+    "dataset/membership-lifecycle": {
+      "model": "dataset",
+      "id": 212
+    },
+    "dataset/web-funnel": {
+      "model": "dataset",
+      "id": 213
+    },
+    "dataset/payments-reconciled": {
+      "model": "dataset",
+      "id": 215
+    },
+    "dataset/ja-orders": {
+      "model": "dataset",
+      "id": 214
+    },
+    "dataset/pl-zamowienia": {
+      "model": "dataset",
+      "id": 216
+    },
+    "metric/mrr": {
+      "model": "metric",
+      "id": 217
+    },
+    "metric/roas": {
+      "model": "metric",
+      "id": 221
+    },
+    "metric/aov": {
+      "model": "metric",
+      "id": 220
+    },
+    "metric/return-rate": {
+      "model": "metric",
+      "id": 222
+    },
+    "metric/active-customers": {
+      "model": "metric",
+      "id": 223
+    },
+    "metric/cac": {
+      "model": "metric",
+      "id": 224
+    },
+    "metric/gross-margin-pct": {
+      "model": "metric",
+      "id": 219
+    },
+    "metric/net-revenue": {
+      "model": "metric",
+      "id": 218
+    },
+    "metric/pl-przychod": {
+      "model": "metric",
+      "id": 231
+    },
+    "metric/member-churn": {
+      "model": "metric",
+      "id": 230
+    },
+    "metric/csat": {
+      "model": "metric",
+      "id": 227
+    },
+    "metric/employee-attrition": {
+      "model": "metric",
+      "id": 232
+    },
+    "metric/contribution-margin": {
+      "model": "metric",
+      "id": 226
+    },
+    "metric/ja-uriage": {
+      "model": "metric",
+      "id": 228
+    },
+    "metric/on-time-delivery": {
+      "model": "metric",
+      "id": 225
+    },
+    "metric/nps": {
+      "model": "metric",
+      "id": 229
+    },
+    "dashboard/wholesale-accounts": {
+      "model": "dashboard",
+      "id": 14
+    },
+    "dashboard/sales-daily": {
+      "model": "dashboard",
+      "id": 12
+    },
+    "dashboard/marketing-performance": {
+      "model": "dashboard",
+      "id": 16
+    },
+    "dashboard/customer-insights": {
+      "model": "dashboard",
+      "id": 15
+    },
+    "dashboard/board-pack": {
+      "model": "dashboard",
+      "id": 17
+    },
+    "dashboard/finance-overview": {
+      "model": "dashboard",
+      "id": 13
+    },
+    "dashboard/weekly-exec-pulse": {
+      "model": "dashboard",
+      "id": 10
+    },
+    "dashboard/cash-and-receivables": {
+      "model": "dashboard",
+      "id": 11
+    },
+    "dashboard/fulfilment": {
+      "model": "dashboard",
+      "id": 23
+    },
+    "dashboard/merchandising": {
+      "model": "dashboard",
+      "id": 20
+    },
+    "dashboard/voice-of-customer": {
+      "model": "dashboard",
+      "id": 22
+    },
+    "dashboard/people-overview": {
+      "model": "dashboard",
+      "id": 24
+    },
+    "dashboard/support-ops": {
+      "model": "dashboard",
+      "id": 18
+    },
+    "dashboard/web-funnel": {
+      "model": "dashboard",
+      "id": 21
+    },
+    "dashboard/returns-deep-dive": {
+      "model": "dashboard",
+      "id": 19
+    },
+    "dashboard/inventory-planning": {
+      "model": "dashboard",
+      "id": 25
+    },
+    "dashboard/black-friday-war-room": {
+      "model": "dashboard",
+      "id": 28
+    },
+    "dashboard/hr-churn": {
+      "model": "dashboard",
+      "id": 30
+    },
+    "dashboard/data-health": {
+      "model": "dashboard",
+      "id": 29
+    },
+    "dashboard/compliance": {
+      "model": "dashboard",
+      "id": 31
+    },
+    "dashboard/legacy-kpis": {
+      "model": "dashboard",
+      "id": 26
+    },
+    "dashboard/trail-club": {
+      "model": "dashboard",
+      "id": 27
+    },
+    "dashboard/exec-comp-review": {
+      "model": "dashboard",
+      "id": 32
+    },
+    "dashboard/pl-przeglad": {
+      "model": "dashboard",
+      "id": 33
+    },
+    "dashboard/ja-support": {
+      "model": "dashboard",
+      "id": 36
+    },
+    "dashboard/ja-overview": {
+      "model": "dashboard",
+      "id": 35
+    },
+    "dashboard/pl-logistyka": {
+      "model": "dashboard",
+      "id": 34
+    },
+    "document/fct-orders-migration": {
+      "model": "document",
+      "id": 2
+    },
+    "document/metric-definitions": {
+      "model": "document",
+      "id": 7
+    },
+    "document/revenue-recognition": {
+      "model": "document",
+      "id": 1
+    },
+    "document/on-call-data": {
+      "model": "document",
+      "id": 8
+    },
+    "document/attribution-change-2024": {
+      "model": "document",
+      "id": 6
+    },
+    "document/dsr-process": {
+      "model": "document",
+      "id": 3
+    },
+    "document/carrier-sla": {
+      "model": "document",
+      "id": 4
+    },
+    "document/returns-policy": {
+      "model": "document",
+      "id": 5
+    },
+    "document/onboarding-analysts": {
+      "model": "document",
+      "id": 9
+    },
+    "document/bf-2025-retro": {
+      "model": "document",
+      "id": 11
+    },
+    "document/support-macros": {
+      "model": "document",
+      "id": 10
+    },
+    "document/pl-slownik": {
+      "model": "document",
+      "id": 13
+    },
+    "document/ja-glossary": {
+      "model": "document",
+      "id": 14
+    },
+    "document/hr-leave-policy": {
+      "model": "document",
+      "id": 12
+    },
+    "segment/damaged-returns": {
+      "model": "segment",
+      "id": 4
+    },
+    "segment/voluntary-leavers": {
+      "model": "segment",
+      "id": 7
+    },
+    "segment/web-orders": {
+      "model": "segment",
+      "id": 2
+    },
+    "segment/vip-customers": {
+      "model": "segment",
+      "id": 1
+    },
+    "segment/lapsed-customers": {
+      "model": "segment",
+      "id": 3
+    },
+    "segment/eu-customers": {
+      "model": "segment",
+      "id": 5
+    },
+    "segment/discounted-orders": {
+      "model": "segment",
+      "id": 6
+    },
+    "segment/late-shipments": {
+      "model": "segment",
+      "id": 8
+    },
+    "segment/high-priority-tickets": {
+      "model": "segment",
+      "id": 9
+    },
+    "segment/pl-klienci": {
+      "model": "segment",
+      "id": 10
+    },
+    "measure/units-sold": {
+      "model": "measure",
+      "id": 5
+    },
+    "measure/ad-spend": {
+      "model": "measure",
+      "id": 8
+    },
+    "measure/refund-amount": {
+      "model": "measure",
+      "id": 6
+    },
+    "measure/chargeback-value": {
+      "model": "measure",
+      "id": 3
+    },
+    "measure/tickets-opened": {
+      "model": "measure",
+      "id": 1
+    },
+    "measure/net-sales": {
+      "model": "measure",
+      "id": 7
+    },
+    "measure/stock-units": {
+      "model": "measure",
+      "id": 2
+    },
+    "measure/headcount": {
+      "model": "measure",
+      "id": 4
+    },
+    "database/northwind-warehouse": {
+      "model": "database",
+      "id": 1
+    }
+  }
+}

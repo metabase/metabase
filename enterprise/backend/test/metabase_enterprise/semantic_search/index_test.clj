@@ -86,6 +86,44 @@
   (testing ":hnsw hoists a plain CTE binding with no opts"
     (is (= 2 (count (flattened-vector-candidates-cte :hnsw))))))
 
+(defn- scored-query-sql
+  "SQL of the full scored semantic query for a fixed index and context. Uses a constant scorer: the real ones read
+  the index table, and only the query's structure matters here."
+  []
+  (let [index {:table-name "idx_tbl"}
+        ctx   {:search-string "pasta" :archived? false :vector-search-strategy :brute-force}]
+    (first (semantic.index/sql-format-quoted
+            (#'semantic.index/scored-search-query index [0.1 0.2 0.3] ctx {:model [:inline 1]})))))
+
+(deftest keyword-arm-setting-test
+  (testing "by default the scored query is built from the unchanged hybrid (vector + keyword) query"
+    (let [orig  @#'semantic.index/hybrid-search-query
+          calls (atom 0)
+          sql   (mt/with-dynamic-fn-redefs [semantic.index/hybrid-search-query
+                                            (fn [& args] (swap! calls inc) (apply orig args))
+                                            semantic.index/vector-only-search-query
+                                            (fn [& _] (throw (ex-info "vector-only query used by default" {})))]
+                  (scored-query-sql))]
+      (is (true? (semantic.settings/semantic-search-keyword-arm-enabled)))
+      (is (= 1 @calls))
+      (is (str/includes? sql "text_results"))
+      (is (str/includes? sql "FULL JOIN"))
+      (mt/with-temporary-setting-values [semantic.settings/semantic-search-keyword-arm-enabled true]
+        (is (= sql (scored-query-sql))))))
+  (testing "with the keyword arm off, the query has no keyword search but projects the same columns"
+    (mt/with-temporary-setting-values [semantic.settings/semantic-search-keyword-arm-enabled false]
+      (let [sql (scored-query-sql)]
+        (is (not (str/includes? sql "text_results")))
+        (is (not (str/includes? sql "FULL JOIN")))
+        (is (not (str/includes? sql "to_tsquery")))
+        (is (str/includes? sql "vector_results"))
+        (is (str/includes? sql "CAST(NULL AS BIGINT) AS \"keyword_rank\""))))
+    (let [index   {:table-name "idx_tbl"}
+          ctx     {:search-string "pasta" :archived? false}
+          aliases #(mapv second (:select %))]
+      (is (= (aliases (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx))
+             (aliases (#'semantic.index/vector-only-search-query index [0.1 0.2 0.3] ctx)))))))
+
 (deftest semantic-search-vector-strategy-setting-test
   (testing "the setting rejects an unknown strategy"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"

@@ -1,0 +1,121 @@
+name: Permission leaks
+description: |-
+  Did any engine show a user something they may not see? Every row should read 0 leaks. A red row means that engine's other numbers can't be trusted. Scenarios whose must-not-read items (expectedAbsent) appeared in an engine's results. Any non-zero row is an engine permission-filtering bug — the run's quality numbers for that engine are not trustworthy until it is fixed. Empty = no scenario in this corpus has expectedAbsent.
+
+  **Permission leak**: The engine showed an item the user is not allowed to see. Must be 0; if not, that engine's other numbers can't be trusted.
+
+  **Must-not-read items (expectedAbsent)**: Items the test user has no permission to see. They must never appear in results.
+
+  **Scenario**: One test question plus its answer key. The golden corpus has 56; the SQL corpus 60.
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+entity_id: YuAJgqJryRfsFUPkgOePQ
+created_at: '2026-09-23T14:45:11.658618Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH x AS (
+        SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder",
+               count(*) AS "Scenarios checked", sum(value)::int AS "Leaks",
+               string_agg(scenario_id, ', ') FILTER (WHERE value > 0) AS "Leaking scenarios"
+        FROM harness_scenario_metric
+        WHERE corpus_id = {{corpus}} AND metric = 'permission_leak'
+          AND embedding_text = {{variant}}
+          AND text_strategy = {{strategy}}
+          [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+        GROUP BY 1, 2
+      )
+      SELECT * FROM x
+      -- Say why the card is empty rather than showing nothing: some corpora have no leak-check questions.
+      UNION ALL
+      SELECT 'this corpus has no leak-check questions', NULL, 0, NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM x)
+      ORDER BY 4 DESC NULLS LAST, 1, 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: Scenarios checked
+  field_ref:
+  - field
+  - Scenarios checked
+  - base-type: type/BigInteger
+  name: Scenarios checked
+- base_type: type/Integer
+  database_type: int4
+  display_name: Leaks
+  field_ref:
+  - field
+  - Leaks
+  - base-type: type/Integer
+  name: Leaks
+- base_type: type/Text
+  database_type: text
+  display_name: Leaking scenarios
+  field_ref:
+  - field
+  - Leaking scenarios
+  - base-type: type/Text
+  name: Leaking scenarios
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - color: '#ED6E6E'
+    columns:
+    - Leaks
+    highlight_row: true
+    operator: '>'
+    type: single
+    value: 0
+card_schema: 24
+serdes/meta:
+- id: YuAJgqJryRfsFUPkgOePQ
+  label: permission_leaks
+  model: Card
+type: question

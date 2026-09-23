@@ -1,0 +1,117 @@
+name: 'Quality: each store vs pgvector, paired'
+description: |-
+  Is any store proven better or worse than today's pgvector engine? Each engine against semantic on the same questions. "no proven difference" means the 95% range crosses 0 — a tie at this sample size. Pinned as the chart next to it.
+
+  **Paired**: Compare two setups on the same question first, then average, so that easy vs hard questions don't blur the result.
+
+  **Δ (delta)**: The change between two setups, e.g. variant minus baseline. Positive = better.
+
+  **± 95% CI**: The range the true value probably falls in, given only this many questions (average ± 1.96 standard errors). A difference whose range includes 0 is not proven.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+entity_id: JIDm63ZZlGwG6rq2qroMV
+created_at: '2026-09-23T20:15:05.144587Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH s AS (
+      WITH src AS (
+        SELECT engine AS arm, 1 AS pair, scenario_id, value
+        FROM harness_scenario_metric
+        WHERE corpus_id = 'northwind-golden-v1' AND metric = 'ndcg@10' AND embedder = 'ollama/all-minilm' AND embedding_text = 'baseline' AND text_strategy = 'none'
+      ), d AS (
+        SELECT a.arm, a.pair, a.value, a.value - r.value AS delta
+        FROM src a JOIN src r ON r.arm = 'semantic' AND r.pair = a.pair AND r.scenario_id = a.scenario_id
+        WHERE a.arm <> 'semantic'
+      )
+      SELECT arm, pair, count(*) AS n, avg(value) AS v, avg(delta) AS mean, 1.96 * stddev_samp(delta) / sqrt(count(*)) AS ci
+      FROM d GROUP BY 1, 2
+      )
+      SELECT arm AS "Engine",
+             round(mean::numeric, 3) AS "Δ vs semantic", round(ci::numeric, 3) AS "± 95% CI",
+             CASE WHEN n < 5 THEN 'too few questions'
+                  WHEN mean - ci > 0 THEN 'better'
+                  WHEN mean + ci < 0 THEN 'worse'
+                  ELSE 'no proven difference' END AS "Verdict",
+             n AS "n questions"
+      FROM s
+      ORDER BY array_position(ARRAY['semantic', 'semantic-pure', 'semantic-vector', 'sqlite-vec1', 'sqlite-vec1-pure', 'lucene', 'lucene-pure', 'appdb', 'in-place'], arm)
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: Δ vs semantic
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - Δ vs semantic
+  - base-type: type/Decimal
+  name: Δ vs semantic
+  semantic_type: null
+- base_type: type/Decimal
+  database_type: numeric
+  display_name: ± 95% CI
+  effective_type: type/Decimal
+  field_ref:
+  - field
+  - ± 95% CI
+  - base-type: type/Decimal
+  name: ± 95% CI
+  semantic_type: null
+- base_type: type/Text
+  database_type: text
+  display_name: Verdict
+  effective_type: type/Text
+  field_ref:
+  - field
+  - Verdict
+  - base-type: type/Text
+  name: Verdict
+  semantic_type: null
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n questions
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - n questions
+  - base-type: type/BigInteger
+  name: n questions
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  table.column_formatting:
+  - colors:
+    - '#ED6E6E'
+    - '#FFFFFF'
+    - '#84BB4C'
+    columns:
+    - Δ vs semantic
+    max_type: custom
+    max_value: 0.3
+    min_type: custom
+    min_value: -0.3
+    type: range
+card_schema: 24
+serdes/meta:
+- id: JIDm63ZZlGwG6rq2qroMV
+  label: quality__each_store_vs_pgvector__paired
+  model: Card
+type: question

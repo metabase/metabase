@@ -1,0 +1,115 @@
+name: False-positive rate on no-answer queries
+description: |-
+  Does an engine return results when it should return nothing? Lower is better, but only a few questions have no answer (see n), so treat it as a hint. Empty = this corpus has no no-answer questions. It's the flip side of the zero-result rate: an engine that never comes back empty scores badly here. On queries that should return nothing: how often each engine returned something anyway. The other side of the cutoff trade-off. semantic tops up with appdb keyword hits when it finds fewer than semantic-search-min-results-threshold results.
+
+  **False-positive rate**: The share of no-answer questions where the engine returned something anyway. Lower is better.
+
+  **empty-expected**: Nothing in the catalogue should match. The right response is no results.
+
+  **n**: How many questions (or measurements) a number is based on. Below ~5, treat it as an anecdote.
+
+  **Embedder**: The model that makes embeddings. Measured so far: `all-minilm` (the one semantic uses today) and `snowflake-arctic-embed2`.
+
+  **Top-up**: When semantic finds fewer than `semantic-search-min-results-threshold` results (100 by default, so almost always), it adds appdb keyword hits. It never does this when semantic finds nothing at all. So semantic's results can include appdb's; semantic-pure (top-up off) shows how much that matters.
+entity_id: nwMhlw76-s2S3N103krs8
+created_at: '2026-09-23T14:18:20.571375Z'
+creator_id: dev@metabase.local
+display: bar
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: |-
+      WITH x AS (
+        SELECT engine AS "Engine", split_part(embedder, '/', 2) AS "Embedder", avg(value) AS "False-positive rate",
+             count(*) AS "n"
+        FROM harness_scenario_metric
+        WHERE corpus_id = {{corpus}} AND metric = 'false_positive_rate'
+          AND embedding_text = {{variant}}
+          AND text_strategy = {{strategy}}
+          [[AND (data_scale = {{scale}} OR data_scale IS NULL)]]
+        GROUP BY 1, 2
+      )
+      SELECT * FROM x
+      -- Say why the card is empty rather than showing nothing.
+      UNION ALL
+      SELECT 'this corpus has no no-answer questions', NULL, NULL, NULL WHERE NOT EXISTS (SELECT 1 FROM x)
+      ORDER BY 1, 2
+    template-tags:
+    - default: baseline
+      display-name: Embedding text
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000005
+      name: variant
+      required: true
+      type: text
+    - default: none
+      display-name: Text strategy
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000006
+      name: strategy
+      required: true
+      type: text
+    - default: northwind-golden-v1
+      display-name: Corpus
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000001
+      name: corpus
+      required: true
+      type: text
+    - display-name: Scale
+      id: 8f7c0a5e-1b2a-4c55-9d1e-000000000002
+      name: scale
+      required: false
+      type: number
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: Engine
+  field_ref:
+  - field
+  - Engine
+  - base-type: type/Text
+  name: Engine
+- base_type: type/Text
+  database_type: text
+  display_name: Embedder
+  field_ref:
+  - field
+  - Embedder
+  - base-type: type/Text
+  name: Embedder
+- base_type: type/Float
+  database_type: float8
+  display_name: False-positive rate
+  field_ref:
+  - field
+  - False-positive rate
+  - base-type: type/Float
+  name: False-positive rate
+  semantic_type: type/Share
+- base_type: type/BigInteger
+  database_type: int8
+  display_name: n
+  field_ref:
+  - field
+  - n
+  - base-type: type/BigInteger
+  name: n
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - Engine
+  - Embedder
+  graph.metrics:
+  - False-positive rate
+  graph.show_values: true
+  graph.y_axis.auto_range: false
+  graph.y_axis.max: 1
+card_schema: 24
+serdes/meta:
+- id: nwMhlw76-s2S3N103krs8
+  label: false_positive_rate_on_no_answer_queries
+  model: Card
+type: question

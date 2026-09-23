@@ -227,6 +227,17 @@
   :visibility :internal
   :doc false)
 
+(defsetting semantic-search-keyword-arm-enabled
+  (deferred-tru
+   (str "Merge a keyword (full-text) search into semantic search results? "
+        "When false, semantic search returns vector matches only."))
+  :type       :boolean
+  :default    true
+  :encryption :no
+  :export?    false
+  :visibility :admin
+  :doc        false)
+
 (defsetting index-update-thread-count
   (deferred-tru "Number of threads to use for batched index updates, including embedding requests")
   :type :integer

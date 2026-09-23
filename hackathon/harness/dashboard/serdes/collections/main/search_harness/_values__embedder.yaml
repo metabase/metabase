@@ -1,0 +1,31 @@
+name: '_values: embedder'
+entity_id: dXPQ5nJ7Q80S1-iUdoSCL
+created_at: '2026-09-23T14:18:20.066779Z'
+creator_id: dev@metabase.local
+display: table
+collection_id: gjR5SGM1RGd2H2jxbW8g3
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Search Harness
+  stages:
+  - native: SELECT DISTINCT embedder FROM harness_run WHERE embedder IS NOT NULL ORDER BY 1
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  database_type: text
+  display_name: embedder
+  field_ref:
+  - field
+  - embedder
+  - base-type: type/Text
+  name: embedder
+visualization_settings:
+  column_settings: null
+card_schema: 24
+serdes/meta:
+- id: dXPQ5nJ7Q80S1-iUdoSCL
+  label: _values__embedder
+  model: Card
+type: question

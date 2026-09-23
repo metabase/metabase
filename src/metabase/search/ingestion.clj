@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
+   [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -48,6 +49,26 @@
     (->> (into [] xf search-terms)
          (str/join " "))))
 
+(def ^:private embedding-context-fields
+  "Labeled lines the `:context` embedding-text variant appends, as `[label column]` over the ingestion row.
+  Only render terms the specs already select, so the variant adds no app-DB work."
+  [["collection"        :collection_name]
+   ["database"          :database_name]
+   ["schema"            :table_schema]
+   ["table"             :table_display_name]
+   ["table_description" :table_description]
+   ["description"       :description]
+   ["chart"             :display]])
+
+(def ^:private embedding-sql-max-length
+  "Native SQL is cut to this many characters, so it can't push a document over the embedding token budget."
+  1000)
+
+(defn- labeled-line [label v]
+  (let [v (str/trim (str v))]
+    (when-not (str/blank? v)
+      [label v])))
+
 (defn- embeddable-text
   "Generate labeled text for semantic search embeddings.
   Format:
@@ -60,20 +81,34 @@
   explosion are specific to full-text search optimization.
 
   Fields listed in the spec's `:embedding-exclude` set are kept out of the
-  embedding text entirely (but remain in `searchable-text`)."
-  [m]
-  (let [spec         (search.spec/spec (:model m))
-        search-terms (:search-terms spec)
-        excluded     (:embedding-exclude spec #{})
-        field-keys   (->> (cond-> search-terms (map? search-terms) keys)
-                          (remove excluded))
-        header       (str "[" (:model m) "]")
-        fields        (keep (fn [k]
-                              (let [v (get m k)]
-                                (when (not (str/blank? (str v)))
-                                  (str (name k) ": " (str/trim (str v))))))
-                            field-keys)]
-    (str header "\n" (str/join "\n" fields))))
+  embedding text entirely (but remain in `searchable-text`).
+
+  `variant` is a [[search.settings/embedding-text-variants]] value. `:baseline` embeds only the search terms;
+  `:context` adds [[embedding-context-fields]]; `:context-sql` also adds the card's native SQL."
+  ([m]
+   (embeddable-text m (search.settings/search-embedding-text-variant)))
+  ([m variant]
+   (let [spec         (search.spec/spec (:model m))
+         search-terms (:search-terms spec)
+         excluded     (:embedding-exclude spec #{})
+         field-keys   (->> (cond-> search-terms (map? search-terms) keys)
+                           (remove excluded))
+         term-lines   (keep #(labeled-line (name %) (get m %)) field-keys)
+         term-values  (into #{} (map second) term-lines)
+         ;; Joined columns often repeat a value already present (a collection's own name is its
+         ;; collection_name, a table's description is its table_description), so drop repeated values.
+         ;; Only the added lines are deduplicated, which keeps `:baseline` identical to the pre-variant text.
+         extra-lines  (->> (concat
+                            (when (#{:context :context-sql} variant)
+                              (keep (fn [[label k]] (labeled-line label (get m k)))
+                                    embedding-context-fields))
+                            (when (= :context-sql variant)
+                              (when-let [sql (:native_query m)]
+                                [(labeled-line "sql" (u/truncate (str sql) embedding-sql-max-length))])))
+                           (remove (fn [line] (or (nil? line) (term-values (second line)))))
+                           (m/distinct-by second))]
+     (str "[" (:model m) "]\n"
+          (str/join "\n" (map (fn [[label v]] (str label ": " v)) (concat term-lines extra-lines)))))))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
@@ -117,7 +152,7 @@
                         (assoc
                          :display_data (display-data m)
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))
+                         :embeddable_text (embeddable-text (merge m fn-results))))
         document (merge fn-results sql-results)
         curated  (collections.curation/curated? document)]
     ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
