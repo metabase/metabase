@@ -107,6 +107,7 @@ STOP_WORDS = set("""a an and are as at be but by does for from has have in into 
 LOCAL_SOURCE_TRAILER = re.compile(r"\nSource: local-papercuts/(\S+)$")
 INSTALLER = Path(__file__).with_name("install.sh")
 INSTALLER_KEY = "@TYPESAFE_API_KEY@"
+INSTALLER_SERVER = "@PAPERCUTS_SERVER@"
 NO_KEY_INSTALLER = """#!/bin/sh
 echo "This papercuts server has no usable TYPESAFE_API_KEY, so it can't hand out the installer yet." >&2
 exit 1
@@ -273,12 +274,15 @@ def actor_of(payload):
     return text_field(payload, "actor") or "anonymous"
 
 
-def install_script(key):
-    """The installer with the server's Jev key filled in. The key lands in single quotes, so anything but a plain token
-    is refused."""
+def install_script(key, host, port):
+    """The installer with the server's Jev key and address filled in. Both land in the script, so a key that isn't a
+    plain token is refused, and a host that isn't a plain name, or is loopback behind a proxy, becomes the tailnet IP."""
     if not key or not re.fullmatch(r"[\w.-]+", key):
         return NO_KEY_INSTALLER
-    return INSTALLER.read_text().replace(INSTALLER_KEY, key)
+    host = (host or "").rsplit(":", 1)[0]
+    if not re.fullmatch(r"[A-Za-z0-9.-]+", host) or host in ("localhost", "127.0.0.1"):
+        host = "10.193.193.227"
+    return INSTALLER.read_text().replace(INSTALLER_KEY, key).replace(INSTALLER_SERVER, f"http://{host}:{port}")
 
 
 def run_script(db, script):
@@ -2859,7 +2863,8 @@ class Handler(BaseHTTPRequestHandler):
             if handler := handlers.get((command, action, bool(other))):
                 return self.respond(200, handler())
         if command == "GET" and path == "/api/install.sh":
-            return self.respond(200, install_script(os.environ.get("TYPESAFE_API_KEY")), "text/plain")
+            script = install_script(os.environ.get("TYPESAFE_API_KEY"), self.headers.get("Host"), self.server.server_port)
+            return self.respond(200, script, "text/plain")
         if command == "GET" and path == "/api/dispatches":
             return self.respond(200, self.store.list_dispatches(params))
         if dispatch and command == "GET":
