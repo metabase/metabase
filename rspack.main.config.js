@@ -29,9 +29,6 @@ const {
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
 const {
-  FontSubsetPlugin,
-} = require("./frontend/build/shared/rspack/plugins/font-subset-plugin");
-const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -251,6 +248,24 @@ const config = {
         },
       },
       {
+        // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
+        // loader, so css-loader sees the rewritten stylesheet and resolves its
+        // url() against the generated chunks.
+        test: /[\\/]css[\\/]core[\\/]fonts\.css$/,
+        enforce: "pre",
+        use: [
+          {
+            loader:
+              __dirname +
+              "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
+            options: {
+              fontsDir: __dirname + "/frontend/fonts",
+              outputDir: __dirname + "/target/font-subsets",
+            },
+          },
+        ],
+      },
+      {
         test: /\.css$/,
         use: [
           {
@@ -432,11 +447,6 @@ const config = {
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
-    }),
-    new FontSubsetPlugin({
-      source: __dirname + "/frontend/src/metabase/css/core/fonts.css",
-      fontsDir: __dirname + "/frontend/fonts",
-      outputDir: __dirname + "/target/font-subsets",
     }),
     ...COMPRESSION_CONFIG,
   ],

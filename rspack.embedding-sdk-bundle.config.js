@@ -3,9 +3,6 @@
 
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const {
-  FontSubsetPlugin,
-} = require("./frontend/build/shared/rspack/plugins/font-subset-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
@@ -164,6 +161,24 @@ const config = {
         },
       },
       {
+        // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
+        // loader, so css-loader sees the rewritten stylesheet and resolves its
+        // url() against the generated chunks.
+        test: /[\\/]css[\\/]core[\\/]fonts\.css$/,
+        enforce: "pre",
+        use: [
+          {
+            loader:
+              __dirname +
+              "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
+            options: {
+              fontsDir: __dirname + "/frontend/fonts",
+              outputDir: __dirname + "/target/font-subsets",
+            },
+          },
+        ],
+      },
+      {
         test: /\.css$/,
         oneOf: [
           // Scope SDK Mantine styles to the SDK to prevent leakage outside of the SDK
@@ -301,11 +316,6 @@ const config = {
   },
 
   plugins: [
-    new FontSubsetPlugin({
-      source: __dirname + "/frontend/src/metabase/css/core/fonts.css",
-      fontsDir: __dirname + "/frontend/fonts",
-      outputDir: __dirname + "/target/font-subsets",
-    }),
     ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
