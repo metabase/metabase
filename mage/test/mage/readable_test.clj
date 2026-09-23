@@ -235,3 +235,31 @@
       "does-not-exist.clj"
       ""
       nil)))
+
+(deftest ^:parallel pre-post-conditions-test
+  (testing "single-parameter type checks in :pre become parameter types; other checks become asserts"
+    (is (= (lines "function f(s: string | null, id: number, conn: Connection) {"
+                  "  assert(isValid(s, id));"
+                  "  return g(s, id);"
+                  "}")
+           (translate "(defn f [s id conn]
+                         {:pre [((some-fn string? nil?) s) (integer? id) (instance? Connection conn) (valid? s id)]}
+                         (g s id))"))))
+  (testing "`or` of type checks on one parameter becomes a union"
+    (is (str/includes? (translate "(defn f [x] {:pre [(or (nil? x) (keyword? x))]} x)") "function f(x: null | Keyword)")))
+  (testing "a Malli schema wins over :pre; the :pre check is kept as an assert"
+    (is (= (lines "function f(x: ms.PositiveInt) {"
+                  "  assert(x is number);"
+                  "  return x;"
+                  "}")
+           (translate "(mu/defn f [x :- ms/PositiveInt] {:pre [(integer? x)]} x)"))))
+  (testing ":post type checks become the return type, other :post checks are documented"
+    (is (= (lines "/** Ensures: isValid(result) */"
+                  "function f(x): object {"
+                  "  return g(x);"
+                  "}")
+           (translate "(defn f [x] {:post [(map? %) (valid? %)]} (g x))"))))
+  (testing "a map that is the only body form is a return value, not a condition map"
+    (is (str/includes? (translate "(defn f [] {:pre 1})") "return { pre: 1 };")))
+  (testing "anonymous functions"
+    (is (str/includes? (translate "(def f (fn [x] {:pre [(string? x)]} x))") "const f = (x: string) => x;"))))

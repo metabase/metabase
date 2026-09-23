@@ -539,42 +539,137 @@
 
 (defn params
   "Translate a parameter vector (supports `& rest`, Malli `:- Schema` annotations and `^Type` hints).
-  Returns {:docs [param-doc ...], :prelude [stmt ...], :names [local-name ...]}."
-  [ctx pvec]
-  (let [fs (p/forms (p/unwrap-meta pvec))
-        ps (loop [fs fs, rest? false, acc []]
-             (if-let [f (first fs)]
-               (cond
-                 (= '& (p/sym f))     (recur (rest fs) true acc)
-                 (= :- (:k f))        (recur (drop 2 fs) rest? (update acc (dec (count acc)) assoc :schema (second fs)))
-                 :else                (let [[target metas] (p/meta-target f)]
-                                        (recur (rest fs) false
-                                               (conj acc {:node target :rest? rest?
-                                                          :hint (:hint (p/meta-flags metas))}))))
-               acc))]
-    (reduce
-     (fn [acc {:keys [node rest? schema hint]}]
-       (let [{:keys [simple doc as]} (pattern ctx node)
-             type-doc (cond
-                        schema (schema-type ctx schema)
-                        hint   (str hint))
-             base     (cond simple (sym-doc ctx (symbol simple))
-                            as     (sym-doc ctx (symbol as))
-                            :else  doc)
-             pdoc     [(when rest? "...") base (when type-doc [": " type-doc])]]
-         (-> acc
-             (update :docs conj pdoc)
-             (update :names into (binding-names node))
-             (cond-> as (update :prelude conj ["const " doc " = " (sym-doc ctx (symbol as)) ";"])))))
-     {:docs [] :prelude [] :names []}
-     ps)))
+  `inferred` maps simple param names to type strings (from `:pre` checks), used when a param has no explicit type.
+  Returns {:docs [param-doc ...], :prelude [stmt ...], :names [local-name ...], :inferred-used #{name ...}}."
+  ([ctx pvec] (params ctx pvec {}))
+  ([ctx pvec inferred]
+   (let [fs (p/forms (p/unwrap-meta pvec))
+         ps (loop [fs fs, rest? false, acc []]
+              (if-let [f (first fs)]
+                (cond
+                  (= '& (p/sym f))     (recur (rest fs) true acc)
+                  (= :- (:k f))        (recur (drop 2 fs) rest? (update acc (dec (count acc)) assoc :schema (second fs)))
+                  :else                (let [[target metas] (p/meta-target f)]
+                                         (recur (rest fs) false
+                                                (conj acc {:node target :rest? rest?
+                                                           :hint (:hint (p/meta-flags metas))}))))
+                acc))]
+     (reduce
+      (fn [acc {:keys [node rest? schema hint]}]
+        (let [{:keys [simple doc as]} (pattern ctx node)
+              inferred-type (when (and simple (not schema) (not hint) (not rest?)) (get inferred simple))
+              type-doc (cond
+                         schema        (schema-type ctx schema)
+                         hint          (str hint)
+                         inferred-type inferred-type)
+              base     (cond simple (sym-doc ctx (symbol simple))
+                             as     (sym-doc ctx (symbol as))
+                             :else  doc)
+              pdoc     [(when rest? "...") base (when type-doc [": " type-doc])]]
+          (-> acc
+              (update :docs conj pdoc)
+              (update :names into (binding-names node))
+              (cond-> inferred-type (update :inferred-used conj simple))
+              (cond-> as (update :prelude conj ["const " doc " = " (sym-doc ctx (symbol as)) ";"])))))
+      {:docs [] :prelude [] :names [] :inferred-used #{}}
+      ps))))
+
+;;; ------------------------------------------------ :pre / :post conditions --------------------------------------
+
+(def ^:private predicate-types
+  "Type predicates that can be shown as a parameter/return type, by name."
+  {"string?" "string" "integer?" "number" "int?" "number" "pos-int?" "number" "nat-int?" "number" "number?" "number"
+   "double?" "number" "float?" "number" "boolean?" "boolean" "keyword?" "Keyword" "simple-keyword?" "Keyword"
+   "qualified-keyword?" "Keyword" "symbol?" "Symbol" "simple-symbol?" "Symbol" "map?" "object" "fn?" "Function"
+   "ifn?" "Function" "vector?" "any[]" "sequential?" "any[]" "set?" "Set<any>" "uuid?" "UUID" "nil?" "null"
+   "inst?" "Date"})
+
+(defn- predicate-type
+  "The type named by predicate node `pred` (`string?`, `(some-fn string? nil?)`), or nil."
+  [ctx pred]
+  (let [pred (p/unwrap-meta pred)]
+    (cond
+      (p/symbol-node? pred)
+      (let [k (p/resolve-sym (:info ctx) (p/sym pred))]
+        (when (#{"clojure.core" nil} (namespace k))
+          (get predicate-types (name k))))
+
+      (= 'clojure.core/some-fn (resolve-head ctx pred))
+      (let [ts (map #(predicate-type ctx %) (rest (p/forms pred)))]
+        (when (and (seq ts) (every? some? ts))
+          (str/join " | " (distinct ts)))))))
+
+(defn- condition-type
+  "For a condition that only checks the type of one of `param-names`, [param-name type-string]; otherwise nil.
+  Handles `(string? x)`, `(instance? Cls x)`, `((some-fn string? nil?) x)` and `(or (nil? x) (string? x))`."
+  [ctx node param-names]
+  (let [node (p/unwrap-meta node)]
+    (when (p/list-node? node)
+      (let [[head & args] (p/forms node)
+            param (fn [n] (let [s (some-> n p/unwrap-meta p/sym str)] (when (contains? param-names s) s)))
+            k     (resolve-head ctx node)]
+        (cond
+          (and (= k 'clojure.core/instance?) (= 2 (count args)) (param (second args)))
+          [(param (second args)) (d/flat-string (expr (xctx ctx) (first args)))]
+
+          (= k 'clojure.core/or)
+          (let [parts (map #(condition-type ctx % param-names) args)]
+            (when (and (seq parts) (every? some? parts) (apply = (map first parts)))
+              [(ffirst parts) (str/join " | " (distinct (map second parts)))]))
+
+          (and (= 1 (count args)) (param (first args)))
+          (when-let [t (predicate-type ctx head)]
+            [(param (first args)) t]))))))
+
+(defn conditions
+  "Split a leading `{:pre [...] :post [...]}` condition map off function body entries. (A map that is the only body
+  form is the return value, not a condition map.) Returns {:pre [nodes] :post [nodes] :ents remaining-entries}."
+  [ents]
+  (let [forms (filter #(= :form (:type %)) ents)
+        m     (some-> (first forms) :node p/unwrap-meta)
+        kvs   (when (p/map-node? m) (partition 2 (p/forms m)))]
+    (if (and (next forms)
+             (seq kvs)
+             (every? #(#{:pre :post} (:k (first %))) kvs))
+      (let [by-key (into {} (for [[k v] kvs] [(:k k) (if (p/vector-node? v) (p/forms v) [v])]))]
+        {:pre  (:pre by-key)
+         :post (:post by-key)
+         :ents (remove #(identical? (:node %) (:node (first forms))) ents)})
+      {:ents ents})))
+
+(defn signature
+  "Parameters for a function arity, folding its `:pre`/`:post` condition map in:
+    * `:pre` checks of a single parameter's type become that parameter's type (unless it already has one)
+    * other `:pre` checks become `assert(...)` statements at the top of the body
+    * `:post` type checks become the return type; other `:post` checks become `Ensures:` doc lines
+  Returns the [[params]] result plus {:ents body-entries, :ret-type str-or-nil, :ensures [str ...]}."
+  [ctx pvec ents]
+  (let [{:keys [pre post ents]} (conditions ents)
+        names     (set (filter string? (map #(some-> % p/unwrap-meta p/sym str)
+                                            (remove #(= '& (p/sym %)) (p/forms (p/unwrap-meta pvec))))))
+        typed     (vec (for [c pre] [c (condition-type ctx c names)]))
+        inferred  (reduce (fn [m [_ [nm t]]] (if (and nm (not (contains? m nm))) (assoc m nm t) m)) {} typed)
+        result    (params ctx pvec inferred)
+        used      (:inferred-used result)
+        consumed  (set (keep (fn [[c [nm t]]] (when (and nm (contains? used nm) (= t (get inferred nm))) c)) typed))
+        asserts   (for [[c [nm t]] typed :when (not (contains? consumed c))]
+                    ;; a type-only check that couldn't become the param's type reads best as `x is T`
+                    ["assert(" (if nm [(sym-doc ctx (symbol nm)) " is " t] (expr (xctx ctx) c)) ");"])
+        pctx      (update (xctx ctx) :renames assoc "%" "result")
+        post-type (some (fn [c] (second (condition-type pctx c #{"%"}))) post)
+        ensures   (for [c post :when (not (and post-type (= post-type (second (condition-type pctx c #{"%"})))))]
+                    (d/flat-string (expr pctx c)))]
+    (-> result
+        (update :prelude #(into (vec asserts) %))
+        (assoc :ents ents :ret-type post-type :ensures (vec ensures)))))
 
 (defn arrow
   "An arrow function `(params) => expr` or `(params) => { ... }` for a params vector and body entries."
   [ctx pvec body-ents]
-  (let [{:keys [docs prelude names]} (params ctx pvec)
+  (let [{:keys [docs prelude names ents ret-type]} (signature ctx pvec body-ents)
+        body-ents ents
         forms (map :node (filter #(= :form (:type %)) body-ents))
-        head  (d/bracket "(" docs ")")
+        head  [(d/bracket "(" docs ")") (when ret-type [": " ret-type])]
         simple? (and (empty? prelude)
                      (= 1 (count forms))
                      (every? #(= :form (:type %)) body-ents)

@@ -124,18 +124,23 @@
                                            (and ret *return-doc*) (*return-doc* ctx ret)
                                            ret                    {:type (t/schema-type ctx ret)}
                                            hint                   {:type (str hint)})
-        doc      (cond-> (or doc "") rdesc (str (when doc "\n\n") "Returns: " rdesc))]
+        sigs     (vec (for [{:keys [params node skip]} arities]
+                        (assoc (t/signature ctx params (p/entries node skip)) :pvec params)))
+        ensures  (distinct (mapcat :ensures sigs))
+        doc      (cond-> (or doc "")
+                   rdesc          (str (when doc "\n\n") "Returns: " rdesc)
+                   (seq ensures)  (str (when (or doc rdesc) "\n\n") (str/join "\n" (map #(str "Ensures: " %) ensures))))]
     (-> []
         (cond-> (not (str/blank? doc)) (conj (t/jsdoc doc)))
         (cond-> prefix-comment (conj prefix-comment))
-        (into (for [{:keys [params node skip]} arities
-                    :let [{pdocs :docs prelude :prelude pnames :names} (t/params ctx params)
-                          c (assoc ctx :recur {:kind :fn :name name})]]
+        (into (for [{pdocs :docs prelude :prelude pnames :names ents :ents ret-type :ret-type} sigs
+                    :let [c (assoc ctx :recur {:kind :fn :name name})
+                          rtype (or rtype ret-type)]]
                 [(when private? "private ") keyword " " (t/sym-doc ctx name)
                  (d/bracket "(" pdocs ")")
                  (when rtype [": " rtype])
                  " "
-                 (t/body-block (t/at c :return) (p/entries node skip) pnames prelude)])))))
+                 (t/body-block (t/at c :return) ents pnames prelude)])))))
 
 (t/defstmt (core 'defn 'defn-)
   (fn [ctx node _args]
@@ -1069,13 +1074,13 @@
 (defn method-stmts
   "`name.implement(dispatchValue, (params) => { ... })` for defmethod-like forms."
   [ctx node {:keys [name-doc qualifier dispatch-node params-node skip ret-schema]}]
-  (let [{pdocs :docs prelude :prelude pnames :names} (t/params ctx params-node)]
+  (let [{pdocs :docs prelude :prelude pnames :names ents :ents} (t/signature ctx params-node (p/entries node skip))]
     [[name-doc "." (if qualifier (names/camel (name qualifier)) "implement") "("
       (x ctx dispatch-node) ", "
       (d/bracket "(" pdocs ")")
       (when ret-schema [": " (t/schema-type ctx ret-schema)])
       " => "
-      (t/body-block (t/at ctx :return) (p/entries node skip) pnames prelude)
+      (t/body-block (t/at ctx :return) ents pnames prelude)
       ");"]]))
 
 (t/defstmt (core 'defmethod)
