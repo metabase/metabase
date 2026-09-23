@@ -955,6 +955,7 @@ class HttpTest(HttpCase):
         for path in ("/", "/papercuts/1"):
             page = self.call("GET", path)[1]
             self.assertIn("<span class='claimant'>Chris is working on this</span>", page)
+            self.assertIn("<span class=muted>claimed just now</span>", page)
             self.assertIn("data-copy-prompt='1'>Copy prompt</button>", page)
         status, prompt, response = self.call("GET", "/api/papercuts/1/prompt")
         self.assertEqual((status, response.getheader("Content-Type")), (200, "text/plain; charset=utf-8"))
@@ -973,6 +974,11 @@ class HttpTest(HttpCase):
         self.assertEqual(self.call("GET", "/api/papercuts/2")[1]["status"], "open")
         self.assertIn("data-claim='2'>Claim this papercut</button>", self.call("GET", "/papercuts/2")[1])
         self.assertNotIn("metabot-demo-break-search", self.call("GET", "/api/papercuts/2/prompt")[1])
+        self.report("r3", "Third")
+        for papercut_id in (3, 2):
+            self.call("POST", f"/api/papercuts/{papercut_id}/dispatch", {"claimant": "Tyler"})
+        titles = [p["title"] for p in self.call("GET", "/api/papercuts?sort=oldest-claim-first")[1]["papercuts"]]
+        self.assertEqual(titles, ["Third", "Other", "Search fails quietly"])
 
     def test_cancelling_a_queued_dispatch_reopens_the_papercut_for_another(self):
         self.report("r1", "Trap")

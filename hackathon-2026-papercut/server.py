@@ -52,8 +52,12 @@ DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
+# When the papercut's claim in progress started, or NULL when nobody is working on it.
+CLAIMED_AT = f"""(SELECT MIN(d.created_at) FROM dispatches d WHERE d.papercut_id = p.id
+                  AND d.state IN ({', '.join(f"'{state}'" for state in ACTIVE_DISPATCH_STATES)}))"""
 SORTS = {
     "important": f"{IMPORTANT} DESC, p.last_seen DESC, p.id DESC",
+    "oldest-claim-first": f"{CLAIMED_AT} IS NULL, {CLAIMED_AT}, p.last_seen DESC, p.id DESC",
     "recent": "p.last_seen DESC, p.id DESC",
     "oldest": "p.first_seen ASC, p.id ASC",
     "reports": "report_count DESC, p.last_seen DESC, p.id DESC",
@@ -853,7 +857,7 @@ class Store:
         with self.connect() as db:
             total = db.execute(f"SELECT COUNT(*) FROM papercuts p WHERE {where}", params).fetchone()[0]
             rows = db.execute(
-                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important,
+                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important, {CLAIMED_AT} AS claimed_at,
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
                             WHERE f.papercut_id = p.id) AS fingerprints,
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
@@ -2189,13 +2193,23 @@ def first_name(claimant):
     return words[0].capitalize() if words else claimant
 
 
+def ago(timestamp):
+    minutes = (datetime.now(timezone.utc) - datetime.fromisoformat(timestamp)).total_seconds() / 60
+    if minutes < 1:
+        return "just now"
+    if minutes < 60:
+        return f"{minutes:.0f} min ago"
+    return f"{minutes / 60:.0f}h ago" if minutes < 48 * 60 else f"{minutes / 1440:.0f}d ago"
+
+
 def dispatch_control(papercut, dispatch, claim_label="Claim"):
     """Who is working on a papercut, with the buttons to copy the fix prompt and release it, or the Claim button and
     the latest claim's outcome when nobody is."""
     active = dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES
     if active:
+        claimed_at = dispatch.get("created_at") or papercut.get("claimed_at")
         parts = [f"<span class='claimant'>{html.escape(first_name(dispatch['actor']))} is working on this</span>"
-                 f"{dispatch_links(dispatch)}"
+                 f"{f'<span class=muted>claimed {ago(claimed_at)}</span>' if claimed_at else ''}{dispatch_links(dispatch)}"
                  f"<button type='button' class='secondary' data-copy-prompt='{papercut['id']}'>Copy prompt</button>"]
         if signed_in_email() in (None, dispatch["actor"]):
             parts.append(f"<button type='button' class='secondary' data-release='{dispatch['id']}'>Release</button>")
