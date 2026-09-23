@@ -542,7 +542,9 @@
       (is (= {:name "test_echo" :scope "agent:content:read" :description "Test-only tool." :default_access "allowed"}
              echo)))
     (testing "sorted by scope then name"
-      (is (= (sort-by (juxt :scope :name) catalog) catalog)))))
+      (is (= (sort-by (juxt :scope :name) catalog) catalog)))
+    (testing "app-only tools are left out, since their access follows the tools that use them"
+      (is (not-any? #(= "refresh_ui_credential" (:name %)) catalog)))))
 
 ;;; ------------------------------------------ Security schemes -----------------------------------------------------
 

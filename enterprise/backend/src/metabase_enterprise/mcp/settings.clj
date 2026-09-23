@@ -10,5 +10,8 @@
   :default    false
   :visibility :admin
   :encryption :no
-  :export?    true
+  ;; Only the mode switch in `metabase-enterprise.mcp.api.permissions` may write it: it reshapes the group rows to
+  ;; match, and a bare write through the settings API or a serdes import would leave rows neither mode describes.
+  :setter     :none
+  :export?    false
   :feature    :ai-controls)
