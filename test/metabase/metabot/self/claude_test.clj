@@ -325,6 +325,7 @@
   (let [input [{:role :user :content "hi"}]
         speed #(:speed (claude/claude-request-body (merge {:input input} %)))]
     (testing ":fast? requests fast mode on models that support it"
+      (is (= "fast" (speed {:model "claude-opus-5-5" :fast? true})))
       (is (= "fast" (speed {:model "claude-opus-5" :fast? true})))
       (is (= "fast" (speed {:model "claude-opus-4-8" :fast? true}))))
     (testing "no speed without :fast?"
@@ -625,6 +626,7 @@
           thinking #(:thinking (capture-claude-request-body! (merge {:input input} %)))]
       (testing "current-gen models stream summarized reasoning"
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-fable-5"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-5-5"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
         (testing "bedrock vendor prefix is stripped"
@@ -816,7 +818,8 @@
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
-    (doseq [id ["claude-fable-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
+    (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5"
+                "claude-haiku-4-5-20251001"]]
       (is (true? (#'claude/supported-model? {:id id})) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
@@ -843,7 +846,7 @@
           model)))
   (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0"
+                   "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
                    "claude-fable-5"]]
       (is (false? (#'claude/model-supports-temperature? model))
@@ -855,6 +858,56 @@
       (is (false? (#'claude/model-supports-temperature? model))
           model))
     (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
+
+(deftest ^:parallel model-supports-forced-tool-choice?-test
+  (testing "models that accept tool_choice any / tool"
+    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-5" "claude-opus-4-8" "claude-opus-5"
+                   "claude-opus-5-0" "claude-fable-5" "anthropic.claude-opus-5"]]
+      (is (true? (#'claude/model-supports-forced-tool-choice? model))
+          model)))
+  (testing "a forced tool choice is rejected starting with Opus 5.5, in every spelling and with a vendor prefix"
+    (doseq [model ["claude-opus-5-5" "claude-opus-5.5" "claude-opus-5-5-20261001" "claude-opus-6"
+                   "anthropic.claude-opus-5-5" "Claude-Opus-5-5"]]
+      (is (false? (#'claude/model-supports-forced-tool-choice? model))
+          model))))
+
+(deftest ^:parallel forced-tool-choice-downgraded-test
+  (let [input        [{:role :user :content "hi"}]
+        schema       {:type "object" :properties {:answer {:type "string"}}}
+        tools        [(metabot.tu/get-time-tool)]
+        request-body #(claude/claude-request-body (merge {:input input} %))]
+    (testing "structured output forces the tool call and suppresses thinking on models that accept it"
+      (let [body (request-body {:model "claude-opus-5" :schema schema :system "Title this." :max-tokens 512})]
+        (is (= {:type "tool" :name "structured_output"} (:tool_choice body)))
+        (is (not (contains? body :thinking)))
+        (is (= 512 (:max_tokens body)))
+        (is (= "Title this." (-> body :system first :text)))))
+    (testing "on Opus 5.5 structured output runs under auto with the tool named in the system prompt,
+              thinking kept on, and the cap floored for the thinking spend"
+      (let [body (request-body {:model "claude-opus-5-5" :schema schema :system "Title this." :max-tokens 512})]
+        (is (= {:type "auto"} (:tool_choice body)))
+        (is (= ["structured_output"] (map :name (:tools body))))
+        (is (= {:type "adaptive" :display "summarized"} (:thinking body)))
+        (is (= 2048 (:max_tokens body)))
+        (is (= "Title this.\n\nAnswer only by calling the `structured_output` tool."
+               (-> body :system first :text))))
+      (testing "with no caller system prompt the instruction stands alone"
+        (is (= "Answer only by calling the `structured_output` tool."
+               (-> (request-body {:model "claude-opus-5-5" :schema schema}) :system first :text))))
+      (testing "a cap above the floor is kept"
+        (is (= 4096 (:max_tokens (request-body {:model "claude-opus-5-5" :schema schema :max-tokens 4096}))))))
+    (testing "tool_choice required maps to any where accepted and to auto on Opus 5.5"
+      (is (= {:type "any"} (:tool_choice (request-body {:model "claude-opus-5" :tools tools :tool_choice "required"}))))
+      (let [body (request-body {:model "claude-opus-5-5" :tools tools :tool_choice "required" :max-tokens 512})]
+        (is (= {:type "auto"} (:tool_choice body)))
+        (is (= {:type "adaptive" :display "summarized"} (:thinking body)))
+        (is (= 2048 (:max_tokens body)))))
+    (testing "an ordinary Opus 5.5 chat request is untouched"
+      (let [body (request-body {:model "claude-opus-5-5" :tools tools :tool_choice "auto" :system "Be brief."})]
+        (is (= {:type "auto"} (:tool_choice body)))
+        (is (= 128000 (:max_tokens body)))
+        (is (= "Be brief." (-> body :system first :text)))
+        (is (= 512 (:max_tokens (request-body {:model "claude-opus-5-5" :max-tokens 512}))))))))
 
 (deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
   (let [request-body #(claude/claude-request-body {:model       %

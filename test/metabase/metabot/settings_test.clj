@@ -250,7 +250,8 @@
                        (connection "bedrock" "bedrock")
                        (connection "openai" "openai")]
       (doseq [[model-ref expected]
-              {"anthropic/claude-opus-5"           true
+              {"anthropic/claude-opus-5-5"         true
+               "anthropic/claude-opus-5"           true
                "anthropic/claude-opus-4-8"         true
                "anthropic/claude-opus-4-7"         false
                "anthropic/claude-sonnet-4-6"       false

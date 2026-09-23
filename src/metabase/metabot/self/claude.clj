@@ -328,6 +328,7 @@
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
   {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
+   "claude-opus-5-5"            {:display-name "Claude Opus 5.5"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
    "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
@@ -435,9 +436,26 @@
   [model]
   (some? (model-thinking-config model)))
 
+(defn- model-supports-forced-tool-choice?
+  "Whether `model` accepts `tool_choice` `any` / `tool`. Rejected with a 400 starting with Claude Opus 5.5,
+  which also cannot turn thinking off, so its structured and required calls run under `auto` with adaptive
+  thinking kept on."
+  [model]
+  (not (when-let [[family major minor] (claude-model-version model)]
+         (and (= family "opus") (or (> major 5) (and (= major 5) (>= minor 5)))))))
+
+(def ^:private forced-tool-call-token-floor
+  "Smallest `max_tokens` a structured or required call may be capped at on a model whose thinking cannot be
+  turned off: the thinking spend bills against the same budget as the tool call, so a small caller cap (the
+  conversation-title path sends 512) could hit `max_tokens` before the call is emitted."
+  2048)
+
+(def ^:private structured-output-instruction
+  "Answer only by calling the `structured_output` tool.")
+
 (def ^:private fast-mode-models
   "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
-  #{"claude-opus-4-8" "claude-opus-5"})
+  #{"claude-opus-4-8" "claude-opus-5" "claude-opus-5-5"})
 
 (defn fast-mode-model?
   "Whether `model` supports Anthropic fast mode. Never through the AI proxy: fast mode is premium-priced,
@@ -454,36 +472,45 @@
   restrictions, which the model-id-derived config and the suppression rules below cannot describe."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
-  (let [;; forced tool choice (structured output, or "required") is incompatible
+  (let [required?  (= "required" (some-> tool_choice name))
+        forceable? (model-supports-forced-tool-choice? model)
+        ;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
-        thinking  (or reasoning-config
-                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
-                        (model-thinking-config model)))
-        fast?     (and fast? (fast-mode-model? model ai-proxy?))
-        input     (cond->> input
-                    (nil? thinking) (remove #(= :reasoning (:type %))))
-        messages  (parts->claude-messages input)
-        all-tools (when (seq tools) (mapv tool->claude tools))
-        all-tools (if (and all-tools (not schema))
-                    (add-tools-cache-breakpoint all-tools)
-                    all-tools)]
+        thinking   (or reasoning-config
+                       (when-not (or (not reasoning?) (and forceable? (or schema required?)))
+                         (model-thinking-config model)))
+        fast?      (and fast? (fast-mode-model? model ai-proxy?))
+        system     (if (and schema (not forceable?))
+                     (str/join "\n\n" (remove str/blank? [system structured-output-instruction]))
+                     system)
+        max-tokens (or max-tokens (model-max-tokens model) default-max-tokens)
+        max-tokens (cond-> max-tokens
+                     (and (not forceable?) (or schema required?)) (max forced-tool-call-token-floor))
+        input      (cond->> input
+                     (nil? thinking) (remove #(= :reasoning (:type %))))
+        messages   (parts->claude-messages input)
+        all-tools  (when (seq tools) (mapv tool->claude tools))
+        all-tools  (if (and all-tools (not schema))
+                     (add-tools-cache-breakpoint all-tools)
+                     all-tools)]
     (cond-> {:model         model
-             :max_tokens    (or max-tokens (model-max-tokens model) default-max-tokens)
+             :max_tokens    max-tokens
              :stream        true
              :cache_control {:type "ephemeral"}
              :messages      messages}
       system            (assoc :system (system->cached-content-blocks system))
       all-tools         (assoc :tools all-tools)
-      schema            (assoc :tool_choice {:type "tool"
-                                             :name "structured_output"}
+      schema            (assoc :tool_choice (if forceable?
+                                              {:type "tool" :name "structured_output"}
+                                              {:type "auto"})
                                :tools [{:name         "structured_output"
                                         :description  "Output structured data"
                                         :input_schema schema}])
 
       (and all-tools tool_choice)
-      (assoc :tool_choice (case (name tool_choice)
-                            "auto"     {:type "auto"}
-                            "required" {:type "any"}))
+      (assoc :tool_choice (if (and required? forceable?)
+                            {:type "any"}
+                            {:type "auto"}))
 
       thinking          (assoc :thinking thinking)
 

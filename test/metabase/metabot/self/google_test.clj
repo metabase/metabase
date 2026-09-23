@@ -80,6 +80,7 @@
            including when the platform dates it in the `@` spelling"
     (are [model window] (= window (google/context-window-tokens model))
       "anthropic/claude-fable-5"            1000000
+      "anthropic/claude-opus-5-5"           1000000
       "anthropic/claude-opus-5"             1000000
       "anthropic/claude-opus-4-6"           1000000
       "anthropic/claude-sonnet-5"           1000000
