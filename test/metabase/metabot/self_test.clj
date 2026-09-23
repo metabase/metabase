@@ -845,6 +845,12 @@
                :result {:output "limit=15"}}
               (run-probe tools {:limit "15"}))))))
 
+(deftest ^:parallel replayed-nested-tool-arguments-are-valid-input-test
+  (testing "a tool call with a nested object argument, keywordized at every depth off the stream, can be replayed"
+    (let [arguments (json/decode+kw "{\"query\": {\"lib/type\": \"mbql/query\", \"stages\": [{\"source-table\": 7}]}}")]
+      (is (nil? (mr/explain self.core/LLMRequestOpts
+                            {:input [{:type :tool-input :id "call-1" :function "run_query" :arguments arguments}]}))))))
+
 ;;; AI SDK SSE output tests
 
 (defn- sse-events

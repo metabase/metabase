@@ -73,7 +73,10 @@
                  :model/Field    {person-fk :id} {:table_id orders-id :name "person_id" :base_type :type/Integer
                                                   :semantic_type :type/FK :fk_target_field_id person-pk}
                  :model/Field    {total-id :id}  {:table_id orders-id :name "total" :base_type :type/Float}
-                 :model/Database {empty-id :id}  {:name "Empty Warehouse" :engine :postgres}
+                 :model/Database {empty-id :id}  {:name "Empty Warehouse" :engine :postgres
+                                                  :initial_sync_status "complete"}
+                 :model/Database {syncing-id :id} {:name "Syncing Warehouse" :engine :postgres
+                                                   :initial_sync_status "incomplete"}
                  :model/Database {stub-id :id}   {:name "Stub Warehouse" :engine :postgres :is_stub true}
                  :model/Table    _               {:db_id stub-id :schema "s" :name "t" :active true}
                  :model/Database {dest-id :id}   {:name "Destination Warehouse" :engine :postgres
@@ -99,8 +102,12 @@
         (testing "an admin may write SQL everywhere, so no database is marked structured-only"
           (is (not (str/includes? snapshot "structured queries only")))
           (is (not (str/includes? snapshot "You can't write SQL"))))
+        (testing "lists connected databases with no tables yet, so the agent doesn't deny they exist"
+          (is (str/includes? snapshot "### Connected databases with no tables yet"))
+          (is (str/includes? snapshot (str "- **Empty Warehouse** — id " empty-id ", postgres, sync found no tables")))
+          (is (str/includes? snapshot (str "- **Syncing Warehouse** — id " syncing-id ", postgres, "
+                                           "initial sync still running"))))
         (testing "leaves out databases the agent can't usefully query"
-          (is (not (str/includes? snapshot (str "id " empty-id ","))) "no queryable tables")
           (is (not (str/includes? snapshot "Stub Warehouse")) "deserialization placeholder")
           (is (not (str/includes? snapshot "Destination Warehouse")) "router destination")
           ;; a destination can't carry tables in a with-temp (no perms may be granted on it), so check the source
@@ -111,10 +118,12 @@
           (is (not (str/includes? snapshot "Snapshot Archived Metric"))))
         (testing "no longer reports misleading content counts"
           (is (not (str/includes? snapshot "collections"))))))
-    (testing "a user without data access sees none of the databases"
+    (testing "a user without data access sees none of the databases, tableless ones included"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (is (not (str/includes? (megabot-context/instance-snapshot) "Snapshot Warehouse"))))))
+          (let [snapshot (megabot-context/instance-snapshot)]
+            (is (not (str/includes? snapshot "Snapshot Warehouse")))
+            (is (not (str/includes? snapshot "Empty Warehouse")))))))
     (testing "a database the user can query but not write SQL against is listed, marked structured-only"
       (mt/with-no-data-perms-for-all-users!
         (doseq [id [(mt/id) db-id]]

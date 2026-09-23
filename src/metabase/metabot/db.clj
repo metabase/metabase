@@ -1173,10 +1173,11 @@
           schema))))
 
 (mu/defn queryable-warehouse-databases
-  "The ID, name, and engine of the warehouse Databases a person can point a query at, by id: not the audit database,
-  not a stub placeholder created by deserialization, and not a router destination (queries go to the router)."
+  "The ID, name, engine, and initial sync status of the warehouse Databases a person can point a query at, by id: not
+  the audit database, not a stub placeholder created by deserialization, and not a router destination (queries go to
+  the router)."
   []
-  (t2/select [:model/Database :id :name :engine]
+  (t2/select [:model/Database :id :name :engine :initial_sync_status]
              {:where    [:and
                          [:!= :id audit-app/audit-db-id]
                          [:or [:= :is_stub false] [:= :is_stub nil]]
@@ -1202,6 +1203,17 @@
                                           visible]
                                :group-by [:db_id]}
                         cte (assoc :with cte)))))))
+
+(mu/defn databases-without-active-tables :- [:set ::lib.schema.id/database]
+  "The IDs, among `database-ids`, of the Databases with no active Table at all, whoever asks: sync hasn't found any
+  yet, or has found none."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (if (empty? database-ids)
+    #{}
+    (reduce disj
+            (set database-ids)
+            (t2/select-fn-set :db_id :model/Table :db_id [:in database-ids] :active true
+                              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))))
 
 (mu/defn visible-field-summaries
   "The ID, Table ID, name, semantic type, and FK target of the active, non-retired Fields of the Tables with

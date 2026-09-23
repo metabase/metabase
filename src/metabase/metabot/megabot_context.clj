@@ -153,36 +153,70 @@
      (when (pos? more)
        (str "- …and " more " more tables: find them with query_app_db on metabase_table (db_id = " id ").")))))
 
+(defn- tableless-databases
+  "The databases among `dbs` that the current user may query but that have no tables at all yet (`counts` is the
+  visible-table count per database id). The agent must still hear of them, or it tells the user a connected database
+  doesn't exist."
+  [dbs counts]
+  (let [candidates (remove (comp counts :id) dbs)
+        empty-ids  (metabot.db/databases-without-active-tables (mapv :id candidates))]
+    (filter #(and (empty-ids (:id %))
+                  (not= :no (perms/most-permissive-database-permission-for-user
+                             api/*current-user-id* :perms/create-queries (:id %))))
+            candidates)))
+
+(defn- render-tableless-databases [dbs]
+  (when (seq dbs)
+    (te/lines
+     "### Connected databases with no tables yet"
+     (str "Metabase has no tables for these, so nothing in them can be queried yet. When sync has finished and found "
+          "nothing, the database is rarely empty: usually the connection's database user can't see its schemas, or "
+          "schema filters exclude them. On Postgres, information_schema also hides the tables that user has no "
+          "privilege on, so an empty result there proves nothing. Once the connection is fixed, re-sync with "
+          "`POST /api/database/:id/sync_schema`.")
+     (for [{:keys [id engine initial_sync_status] db-name :name} dbs]
+       (str "- **" db-name "** — id " id ", " (some-> engine name) ", "
+            (if (= "complete" initial_sync_status)
+              "sync found no tables"
+              "initial sync still running"))))))
+
 (defn- render-databases []
-  (let [dbs             (take max-snapshot-databases (metabot.db/queryable-warehouse-databases))
-        counts          (metabot.db/visible-table-counts-for-current-user (mapv :id dbs))
-        ;; a database the user can query no table of is no use to the agent
-        dbs             (keep #(when-let [n (counts (:id %))] (assoc % :table_count n)) dbs)
+  (let [all-dbs         (take max-snapshot-databases (metabot.db/queryable-warehouse-databases))
+        counts          (metabot.db/visible-table-counts-for-current-user (mapv :id all-dbs))
+        _               (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) all-dbs)})
+        ;; a database the user can query no table of is no use to the agent, unless it has no tables at all yet
+        tableless       (tableless-databases all-dbs counts)
+        dbs             (keep #(when-let [n (counts (:id %))] (assoc % :table_count n)) all-dbs)
         tables          (listed-tables dbs)
         all             (mapcat val tables)
         fields          (when (<= (count all) max-tables-with-columns)
                           (metabot.db/visible-field-summaries (mapv :id all)))
         fields-by-table (group-by :table_id fields)
         render          (column-renderer fields (into {} (map (juxt :id identity)) all))
-        _               (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})
         sql-ids         (into #{} (comp (map :id) (filter sql-allowed?)) dbs)
         ;; with SQL allowed nowhere one line says so; otherwise only the exceptions are marked
         dbs             (cond->> dbs
                           (seq sql-ids) (map #(cond-> %
                                                 (not (sql-ids (:id %)))
                                                 (assoc :sql-marker ", structured queries only (no SQL permission)"))))]
-    (if (empty? dbs)
-      "You can't query any warehouse database: none is connected, or the current user has access to none."
-      (te/lines
-       "### Warehouse databases you can query"
-       (str "Tables are listed as `<table id> schema.table`, most viewed first. Structured queries take the numeric "
-            "ids; SQL takes the physical names, with the database id as `database_id`."
-            (when (seq fields)
-              " Columns are listed as `name #<field id>`, with primary keys and foreign keys marked."))
-       (when (empty? sql-ids)
-         "You can't write SQL on any of these databases: query them with run_warehouse_query.")
-       (for [db dbs]
-         (render-database db (get tables (:id db)) fields-by-table render))))))
+    (->> [(cond
+            (seq dbs)
+            (te/lines
+             "### Warehouse databases you can query"
+             (str "Tables are listed as `<table id> schema.table`, most viewed first. Structured queries take the "
+                  "numeric ids; SQL takes the physical names, with the database id as `database_id`."
+                  (when (seq fields)
+                    " Columns are listed as `name #<field id>`, with primary keys and foreign keys marked."))
+             (when (empty? sql-ids)
+               "You can't write SQL on any of these databases: query them with run_warehouse_query.")
+             (for [db dbs]
+               (render-database db (get tables (:id db)) fields-by-table render)))
+
+            (empty? tableless)
+            "You can't query any warehouse database: none is connected, or the current user has access to none.")
+          (render-tableless-databases tableless)]
+         (remove nil?)
+         (str/join "\n\n"))))
 
 (defn- truncate-description [description]
   (when-not (str/blank? description)

@@ -120,7 +120,8 @@
 
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
-  string keys off the wire, keyword keys when built in Clojure."
+  string keys when replayed from stored history, keyword keys at every depth when parsed off the stream
+  (`parse-tool-arguments`) or built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
    [:or :string :keyword] ::request.schema/json-value])
 
