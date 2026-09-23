@@ -745,6 +745,28 @@
                         #"should not appear")))
                 (is (zero? @calls)))})))))))
 
+(deftest ai-title-test
+  (doseq [[desc generate-title? subject header]
+          [["with generate_title, Metabot's title replaces the default email subject and Slack header"
+            true "Widgets jumped 20% this week" "🔔 Widgets jumped 20% this week"]
+           ["without it the defaults stay, even when the model offers a title anyway"
+            false (format "Alert: %s has results" notification.tu/default-card-name)
+            (str "🔔 " notification.tu/default-card-name)]]]
+    (testing desc
+      (notification.tu/with-notification-testing-setup!
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary "Widgets are up."
+                                                                   :title   "Widgets jumped 20% this week"})]
+          (notification.tu/with-card-notification
+            [notification {:card              {:name          notification.tu/default-card-name
+                                               :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                           :notification-card {:prompt "Anything unusual?" :generate_title generate-title?}
+                           :handlers          [@notification.tu/default-email-handler
+                                               notification.tu/default-slack-handler]}]
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email (fn [[email]] (is (= subject (:subject email))))
+              :channel/slack (fn [[message]] (is (= header (-> message :blocks first :text :text))))})))))))
+
 (deftest ai-summary-gets-card-context-test
   (testing "the card's description and its collection's timeline events reach the model"
     (mt/with-temp [:model/Collection    {coll-id :id} {}

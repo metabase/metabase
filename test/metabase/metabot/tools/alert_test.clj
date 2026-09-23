@@ -51,6 +51,9 @@
   (testing "submitting the summary ends the turn with it as structured output"
     (is (= {:summary "Revenue is up **12%**."}
            (:structured-output (tools.alert/submit-alert-summary-tool {:summary "Revenue is up **12%**."})))))
+  (testing "the summary can carry a title"
+    (is (= {:summary "Up." :title "Revenue up 12%"}
+           (:structured-output (tools.alert/submit-alert-summary-tool {:summary "Up." :title "Revenue up 12%"})))))
   (testing "submitting a send decision carries all three fields"
     (is (= {:reason "It fell." :verdict "deliver" :explanation "Orders fell 40%."}
            (:structured-output (tools.alert/submit-send-decision-tool

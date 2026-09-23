@@ -395,6 +395,21 @@ export const CreateOrEditQuestionAlertModal = ({
         </AlertModalSettingsBlock>
         <AlertMetabotPrompt
           prompt={notification.payload?.prompt}
+          generateTitle={notification.payload?.generate_title}
+          onGenerateTitleChange={(generateTitle) => {
+            setNotification({
+              ...notification,
+              payload: {
+                ...notification.payload,
+                card_id: notification.payload?.card_id ?? questionId,
+                send_condition:
+                  notification.payload?.send_condition ??
+                  triggerOptions[0].value,
+                send_once: notification.payload?.send_once ?? false,
+                generate_title: generateTitle,
+              },
+            });
+          }}
           onChange={(prompt) => {
             setNotification({
               ...notification,

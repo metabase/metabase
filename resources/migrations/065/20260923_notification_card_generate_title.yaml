@@ -1,0 +1,25 @@
+## Add notification_card.generate_title: when true, and the alert has a `prompt`, Metabot also writes the
+## alert's title (email subject, Slack header) instead of the default "Alert: <card> has results". False
+## (the default, and the value on every pre-existing row) keeps the default title.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:04
+      author: nvoxland
+      comment: Add notification_card.generate_title, whether Metabot writes the alert's title
+      changes:
+        - addColumn:
+            tableName: notification_card
+            columns:
+              - column:
+                  name: generate_title
+                  type: ${boolean.type}
+                  remarks: Whether Metabot writes this alert's title from its results. Only applies when prompt is set.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: notification_card
+            columnName: generate_title

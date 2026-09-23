@@ -33,7 +33,8 @@
    [:send_condition  {:optional true} [:maybe [:or :keyword :string]]]
    [:disable_links   {:optional true} [:maybe :boolean]]
    [:prompt          {:optional true} [:maybe :string]]
-   [:send_prompt     {:optional true} [:maybe :string]]])
+   [:send_prompt     {:optional true} [:maybe :string]]
+   [:generate_title  {:optional true} [:maybe :boolean]]])
 
 (def ^:private NotificationHandlerRow
   "A whole NotificationHandler row for insert."

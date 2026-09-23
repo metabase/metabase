@@ -82,7 +82,14 @@
                                 (assoc ai-context :send-prompt (:send_prompt payload)))))
             ;; nil from the gate means "no decision", which sends. Only an explicit false suppresses.
             ai-skip        (when (and gate (not (:send? gate))) :ai-declined)
-            skip-reason    (or condition-skip ai-skip)]
+            skip-reason    (or condition-skip ai-skip)
+            ;; No point narrating an alert nobody will receive.
+            summary        (when-not skip-reason
+                             (request/with-current-user creator_id
+                               (ai-summary/summarize
+                                (assoc ai-context
+                                       :prompt          (:prompt payload)
+                                       :generate-title? (boolean (:generate_title payload))))))]
         (when ai-skip
           (log/info "Metabot declined to send this alert" {:reason (:reason gate)}))
         {:card_part         part
@@ -90,11 +97,8 @@
          :skip_reason       skip-reason
          ;; only meaningful when the alert is actually delivered; a suppressed one is never rendered
          :ai_send_reason    (:explanation gate)
-         ;; No point narrating an alert nobody will receive.
-         :ai_summary        (when-not skip-reason
-                              (request/with-current-user creator_id
-                                (ai-summary/summarize
-                                 (assoc ai-context :prompt (:prompt payload)))))
+         :ai_summary        (:summary summary)
+         :ai_title          (:title summary)
          :style             {:color_text_dark   channel.render/color-text-dark
                              :color_text_light  channel.render/color-text-light
                              :color_text_medium channel.render/color-text-medium}

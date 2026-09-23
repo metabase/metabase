@@ -135,6 +135,8 @@
                  [:style             :map]
                  ;; Metabot's interpretation of the results; nil unless the alert carries a prompt
                  [:ai_summary {:optional true} [:maybe :string]]
+                 ;; replaces the default title when the alert asked Metabot to write one
+                 [:ai_title {:optional true} [:maybe :string]]
                  ;; why this send is being skipped, decided in `payload` and read back by `skip-reason`
                  [:skip_reason {:optional true} [:maybe :keyword]]
                  ;; the AI send gate's one-line rationale, for logging and debugging

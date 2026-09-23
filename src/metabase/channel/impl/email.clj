@@ -238,6 +238,7 @@
                 notification_card
                 subscriptions
                 ai_summary
+                ai_title
                 ai_send_reason
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
@@ -256,10 +257,11 @@
         goal               (ui-logic/find-goal-value payload)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
-                                    :computed {:subject         (case (keyword (:send_condition notification_card))
-                                                                  :goal_above (trs "Alert: {0} has reached its goal" (:name card))
-                                                                  :goal_below (trs "Alert: {0} has gone below its goal" (:name card))
-                                                                  :has_result (trs "Alert: {0} has results" (:name card)))
+                                    :computed {:subject         (or ai_title
+                                                                    (case (keyword (:send_condition notification_card))
+                                                                      :goal_above (trs "Alert: {0} has reached its goal" (:name card))
+                                                                      :goal_below (trs "Alert: {0} has gone below its goal" (:name card))
+                                                                      :has_result (trs "Alert: {0} has results" (:name card))))
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         html-content
                                                ;; plain prose, rendered escaped by the template

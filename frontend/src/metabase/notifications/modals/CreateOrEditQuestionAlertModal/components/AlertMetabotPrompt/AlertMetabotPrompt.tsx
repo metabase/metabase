@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/settings";
-import { Stack, Text, Textarea } from "metabase/ui";
+import { Checkbox, Stack, Text, Textarea } from "metabase/ui";
 
 import { AlertModalSettingsBlock } from "../AlertModalSettingsBlock/AlertModalSettingsBlock";
 
@@ -9,10 +9,17 @@ const PROMPT_MAX_LENGTH = 500;
 
 type Props = {
   prompt: string | null | undefined;
+  generateTitle: boolean | undefined;
   onChange: (prompt: string | null) => void;
+  onGenerateTitleChange: (generateTitle: boolean) => void;
 };
 
-export const AlertMetabotPrompt = ({ prompt, onChange }: Props) => {
+export const AlertMetabotPrompt = ({
+  prompt,
+  generateTitle,
+  onChange,
+  onGenerateTitleChange,
+}: Props) => {
   const isMetabotEnabled = useSetting("metabot-enabled?");
   const metabotName = useSetting("metabot-name");
 
@@ -42,6 +49,13 @@ export const AlertMetabotPrompt = ({ prompt, onChange }: Props) => {
         <Text size="sm" c="text-secondary">
           {t`${metabotName} reads the results with your permissions and writes a short summary above the chart. Leave this empty to send the alert on its own.`}
         </Text>
+        <Checkbox
+          // the title comes out of the same Metabot call as the summary, so it needs a prompt
+          disabled={!prompt}
+          checked={Boolean(prompt) && Boolean(generateTitle)}
+          label={t`Let ${metabotName} write the alert's title`}
+          onChange={(event) => onGenerateTitleChange(event.target.checked)}
+        />
       </Stack>
     </AlertModalSettingsBlock>
   );

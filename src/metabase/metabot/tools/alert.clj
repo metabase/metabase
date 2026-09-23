@@ -77,10 +77,13 @@
   submit-alert-summary-tool
   "Finish the alert-summary task by submitting your interpretation. Call this exactly once, when you
   are done; it ends your turn."
-  [{:keys [summary]} :- [:map {:closed true}
-                         [:summary [:string {:description "The interpretation, as plain text or light markdown."}]]]]
+  [{:keys [summary title]} :- [:map {:closed true}
+                               [:summary [:string {:description "The interpretation, as plain text or light markdown."}]]
+                               [:title {:optional true}
+                                [:maybe [:string {:description "The alert's title, only when your task asks for one."}]]]]]
   {:output            "Summary submitted."
-   :structured-output {:summary summary}})
+   :structured-output (cond-> {:summary summary}
+                        title (assoc :title title))})
 
 (mu/defn ^{:tool-name "submit_send_decision"}
   submit-send-decision-tool

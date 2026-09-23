@@ -40,7 +40,8 @@
    [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:disable_links  {:optional true} [:maybe :boolean]]
    [:prompt         {:optional true} [:maybe :string]]
-   [:send_prompt    {:optional true} [:maybe :string]]])
+   [:send_prompt    {:optional true} [:maybe :string]]
+   [:generate_title {:optional true} [:maybe :boolean]]])
 
 (mr/def ::notification-handler
   "A NotificationHandler as selected from the app DB: every column of `:notification_handler`."

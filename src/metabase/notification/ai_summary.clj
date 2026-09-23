@@ -55,6 +55,16 @@
   sentence; this bounds a model that ignores it."
   200)
 
+(def max-title-chars
+  "Hard cap on a Metabot-written alert title. It becomes an email subject and a Slack header (itself
+  capped at 150), so it has to stay headline-sized whatever the model writes."
+  100)
+
+(def ^:private title-instructions
+  (str "\n\nAlso write a `title` for the alert: a headline naming the single most important finding, "
+       "e.g. \"Revenue down 42% after the pricing change\". It replaces the alert's email subject and "
+       "Slack header, so keep it under 80 characters, plain text, no markdown, no trailing period."))
+
 (def ^:private max-timeline-events
   "Cap on the timeline events shown to the model, so a busy timeline can't crowd out the stats."
   20)
@@ -290,29 +300,44 @@
       result)))
 
 (defn- summary-messages
-  [prompt card-name timezone-id first-day-of-week results]
-  [{:role "system" :content system-prompt}
+  [prompt card-name timezone-id first-day-of-week generate-title? results]
+  [{:role "system" :content (cond-> system-prompt generate-title? (str title-instructions))}
    {:role "user"
     :content (str "The alert is for a saved question called \"" card-name "\".\n\n"
                   (temporal-context timezone-id first-day-of-week) "\n\n"
                   "The sender asked:\n" prompt "\n\n"
                   "<results>\n" results "\n</results>")}])
 
+(defn- clean-title
+  "A model-written `title` as one line of plain text, or nil when there's nothing left. It is rendered
+  as an email subject and a Slack header, neither of which renders markdown or line breaks."
+  [title]
+  (some-> title
+          str
+          (str/replace #"[*_`#]" "")
+          (str/replace #"\s+" " ")
+          str/trim
+          u/not-blank
+          (u/truncate max-title-chars)))
+
 (defn summarize
-  "Return a short interpretation of an alert's `:result`, guided by the notification's `:prompt`,
-  or nil when one can't be produced.
+  "Return `{:summary ...}`, a short interpretation of an alert's `:result` guided by the notification's
+  `:prompt`, or nil when one can't be produced. With `:generate-title?` the model also writes the
+  alert's title, returned as `:title` when it wrote a usable one.
 
   Never throws: the caller is a notification that must send regardless."
-  [{:keys [prompt card-name timezone-id first-day-of-week] :as ctx}]
+  [{:keys [prompt card-name timezone-id first-day-of-week generate-title?] :as ctx}]
   (when-not (str/blank? prompt)
     (when-let [results (results-for-llm ctx)]
       (try
-        (some-> (call-with-timeout #(call-llm! (summary-messages prompt card-name timezone-id first-day-of-week results)
-                                               "alert-ai-summary"))
-                :summary
-                str/trim
-                u/not-blank
-                (u/truncate max-summary-chars))
+        (let [answer (call-with-timeout #(call-llm! (summary-messages prompt card-name timezone-id first-day-of-week
+                                                                      generate-title? results)
+                                                    "alert-ai-summary"))]
+          (when-let [summary (some-> (:summary answer) str/trim u/not-blank (u/truncate max-summary-chars))]
+            (cond-> {:summary summary}
+              ;; a title the model offers unasked is ignored: the alert owner didn't opt in
+              generate-title? (merge (when-let [title (clean-title (:title answer))]
+                                       {:title title})))))
         (catch Throwable e
           (log/warn "Failed to generate notification AI summary" {:error (ex-message e)})
           nil)))))

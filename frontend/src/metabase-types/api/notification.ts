@@ -22,6 +22,8 @@ type NotificationCardPayload = {
   prompt?: string | null;
   // second gate, checked only after send_condition passes; null means no AI gate
   send_prompt?: string | null;
+  // whether Metabot also writes the alert's title; only applies when `prompt` is set
+  generate_title?: boolean;
 
   id?: number;
   created_at?: string;

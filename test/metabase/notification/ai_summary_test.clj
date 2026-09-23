@@ -143,7 +143,7 @@
 (deftest summarize-test
   (testing "returns the model's summary text"
     (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _tag] {:summary "Revenue is up **12%**."})]
-      (is (= "Revenue is up **12%**."
+      (is (= {:summary "Revenue is up **12%**."}
              (ai-summary/summarize {:prompt    "Whats going on?"
                                     :card-name "Revenue"
                                     :result    (result ["N"] [[1]])})))))
@@ -186,9 +186,34 @@
   (testing "an overlong summary is truncated"
     (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary (str/join (repeat 5000 "x"))})]
       (is (>= ai-summary/max-summary-chars
-              (count (ai-summary/summarize {:prompt    "summarize"
-                                            :card-name "Revenue"
-                                            :result    (result ["N"] [[1]])})))))))
+              (count (:summary (ai-summary/summarize {:prompt    "summarize"
+                                                      :card-name "Revenue"
+                                                      :result    (result ["N"] [[1]])}))))))))
+
+(deftest summarize-title-test
+  (let [summarize (fn [response generate-title?]
+                    (let [captured (atom nil)]
+                      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
+                                                                      (reset! captured messages)
+                                                                      response)]
+                        {:result       (ai-summary/summarize {:prompt          "What's going on?"
+                                                              :card-name       "Revenue"
+                                                              :generate-title? generate-title?
+                                                              :result          (result ["N"] [[1]])})
+                         :instructions (->> @captured (filter #(= "system" (:role %))) first :content)})))]
+    (testing "when asked, the model writes a title too, which comes back as one line of plain text"
+      (let [{:keys [result instructions]} (summarize {:summary "Up." :title "  **Revenue** up 12%\nafter launch  "} true)]
+        (is (= {:summary "Up." :title "Revenue up 12% after launch"} result))
+        (is (str/includes? instructions "`title`"))))
+    (testing "when not asked, no title is requested, and one the model offers anyway is dropped"
+      (let [{:keys [result instructions]} (summarize {:summary "Up." :title "Unrequested"} false)]
+        (is (= {:summary "Up."} result))
+        (is (not (str/includes? instructions "`title`")))))
+    (testing "an overlong title is capped"
+      (is (>= ai-summary/max-title-chars
+              (count (:title (:result (summarize {:summary "Up." :title (str/join (repeat 500 "x"))} true)))))))
+    (testing "a blank title is dropped but the summary kept"
+      (is (= {:summary "Up."} (:result (summarize {:summary "Up." :title "   "} true)))))))
 
 (deftest summarize-timeout-test
   (testing "a model that never answers gives up and yields no summary, rather than holding the send thread"

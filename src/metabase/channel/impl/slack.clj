@@ -210,7 +210,9 @@
   [_channel-type {:keys [payload]} {:keys [recipients]}]
   (let [blocks (concat [{:type "header"
                          :text {:type "plain_text"
-                                :text (truncate (str "🔔 " (-> payload :card :name)) header-text-limit)
+                                ;; Metabot's title, when the alert asked for one, replaces the card name
+                                :text (truncate (str "🔔 " (or (:ai_title payload) (-> payload :card :name)))
+                                                header-text-limit)
                                 :emoji true}}]
                        (part->sections! (:card_part payload)))]
     (doall (for [channel (map notification-recipient->channel recipients)]

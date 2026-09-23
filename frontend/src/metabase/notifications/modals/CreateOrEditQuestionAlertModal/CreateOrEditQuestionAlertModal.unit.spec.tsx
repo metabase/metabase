@@ -100,6 +100,47 @@ describe("CreateOrEditQuestionAlertModal", () => {
         "Flag anything unusual",
       );
     });
+
+    it("should only enable the title checkbox once there is a prompt", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      const titleCheckbox = screen.getByRole("checkbox", {
+        name: "Let Metabot write the alert's title",
+      });
+      expect(titleCheckbox).toBeDisabled();
+      expect(titleCheckbox).not.toBeChecked();
+
+      await userEvent.type(
+        screen.getByTestId("alert-metabot-prompt"),
+        "flag big drops",
+      );
+      expect(titleCheckbox).toBeEnabled();
+
+      await userEvent.click(titleCheckbox);
+      expect(titleCheckbox).toBeChecked();
+    });
+
+    it("should show an existing title choice when editing an alert", async () => {
+      const editingNotification = createMockNotification({
+        payload: {
+          card_id: 1,
+          send_once: false,
+          send_condition: "has_result",
+          prompt: "Flag anything unusual",
+          generate_title: true,
+        },
+        subscriptions: [createMockNotificationCronSubscription()],
+      });
+      setup({ isAdmin: true, editingNotification });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Let Metabot write the alert's title",
+        }),
+      ).toBeChecked();
+    });
   });
 
   describe("Metabot send gate", () => {
