@@ -2,7 +2,8 @@
   (:require
    [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
-   [mage.papercuts.scan :as scan])
+   [mage.papercuts.scan :as scan]
+   [mage.papercuts.transcript :as transcript])
   (:import
    (java.time Instant)))
 
@@ -160,3 +161,12 @@
   (is (= "metabase" (scan/repository-name "git@github.com:metabase/metabase.git")))
   (is (= "evals" (scan/repository-name "https://github.com/metabase/evals/")))
   (is (nil? (scan/repository-name nil))))
+
+(deftest codex-session-that-moves-into-a-private-checkout-test
+  (let [file (str (fs/create-temp-file {:suffix ".jsonl"}))]
+    (spit file (str "{\"type\":\"session_meta\",\"payload\":{\"id\":\"01a0\",\"cwd\":\"/w/metabase\"}}\n"
+                    "{\"type\":\"turn_context\",\"payload\":{\"cwd\":\"/w/metabase-private\"}}\n"
+                    "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\","
+                    "\"content\":[{\"type\":\"input_text\",\"text\":\"look at this\"}]}}\n"))
+    (testing "a session that starts public and moves into metabase-private counts as security work"
+      (is (scan/security-worktree? {:cwd "/w/metabase"} (transcript/codex-entries file))))))

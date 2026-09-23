@@ -213,11 +213,25 @@
                      (let [text (str/triml (codex-content-text (:content payload)))]
                        (some #(str/starts-with? text %) codex-injected-prefixes))))))))
 
+(defn- call-workdir
+  "The `workdir` a Codex tool call ran in, when its arguments name one."
+  [{:keys [type arguments]}]
+  (when (and (= "function_call" type) (string? arguments))
+    (not-empty (str (:workdir (try (json/read-str arguments) (catch Exception _ nil)))))))
+
 (defn codex-entries
-  "Entries for a Codex rollout transcript."
+  "Entries for a Codex rollout transcript. Each carries `:cwd`: the working directory of its turn, from the latest
+  `session_meta` or `turn_context`, or the `workdir` of the tool call it records."
   [path]
-  (into [] (comp (mapcat (fn [[line record]] (codex-record-entries line record))) (remove nil?))
-        (read-records path)))
+  (:entries
+   (reduce (fn [{:keys [cwd] :as acc} [line {:keys [type payload] :as record}]]
+             (if (#{"session_meta" "turn_context"} type)
+               (assoc acc :cwd (or (not-empty (:cwd payload)) cwd))
+               (let [dir (or (call-workdir payload) cwd)]
+                 (update acc :entries into (for [e (codex-record-entries line record) :when e]
+                                             (cond-> e dir (assoc :cwd dir)))))))
+           {:cwd nil :entries []}
+           (read-records path))))
 
 (defn codex-session
   "Session metadata from a Codex rollout's first `session_meta` record."
