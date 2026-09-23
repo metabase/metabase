@@ -15,14 +15,15 @@ import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-d
 import type { DashboardCard } from "metabase-types/api";
 
 import { DashboardArchivedEntityBanner } from "../DashboardArchivedEntityBanner";
+import { DashboardFocus } from "../DashboardFocus/DashboardFocus";
 import {
   DashboardInfoButton,
   ExportAsPdfButton,
   FullscreenToggle,
 } from "../DashboardHeader/buttons";
-import { DashboardFocus } from "../DashboardFocus/DashboardFocus";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
+import { DashboardTabSplit } from "../DashboardTabSplit/DashboardTabSplit";
 import { DashboardTabs } from "../DashboardTabs";
 import { DashboardTitle } from "../DashboardTitle";
 import { FilterApplyToast } from "../FilterApplyToast";
@@ -124,6 +125,11 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {!isEditing && typeof dashboard?.id === "number" && (
             <FullWidthContainer>
               <DashboardFocus dashboardId={dashboard.id} />
+            </FullWidthContainer>
+          )}
+          {isEditing && typeof dashboard?.id === "number" && (
+            <FullWidthContainer>
+              <DashboardTabSplit dashboardId={dashboard.id} />
             </FullWidthContainer>
           )}
           <FullWidthContainer

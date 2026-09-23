@@ -287,6 +287,16 @@ export const jevApi = Api.injectEndpoints({
         body: { intent },
       }),
     }),
+    splitDashboardIntoTabs: builder.mutation<
+      DashboardTabSplit,
+      { dashboardId: number; tabs: TabSpec[] }
+    >({
+      query: ({ dashboardId, tabs }) => ({
+        method: "POST",
+        url: `/api/jev/dashboard/${dashboardId}/split-into-tabs`,
+        body: { tabs },
+      }),
+    }),
   }),
 });
 
@@ -352,6 +362,35 @@ export interface DashboardFocus {
   filters: DashboardFocusFilter[];
 }
 
+/** A tab the user names for splitting a dashboard. */
+export interface TabSpec {
+  name: string;
+  description?: string;
+}
+
+/** Jev's placement of one dashcard into a named tab. */
+export interface TabAssignment {
+  dashcard_id: number;
+  card_id: number | null;
+  title?: string;
+  /** Index into the requested tabs; null if Jev couldn't place it. */
+  tab_index: number | null;
+  /** Jev's confidence for a query card; absent for text cards. */
+  confidence?: number;
+  /** True for text/heading cards (placed by proximity, not Jev). */
+  is_text: boolean;
+  /** True when placed by proximity rather than a Jev judgment. */
+  by_proximity: boolean;
+}
+
+export interface DashboardTabSplit {
+  dashboard_id: number;
+  jev_available: boolean;
+  tabs: TabSpec[];
+  assignments: TabAssignment[];
+  elapsed_ms?: number;
+}
+
 export const {
   usePreviewJevClassifyMutation,
   useSuggestJevClassifyInputsMutation,
@@ -364,4 +403,5 @@ export const {
   useRankExplorationsMutation,
   useSuggestVizMutation,
   useFocusDashboardMutation,
+  useSplitDashboardIntoTabsMutation,
 } = jevApi;
