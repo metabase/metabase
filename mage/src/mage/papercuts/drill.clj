@@ -99,9 +99,24 @@ Known papercuts:
 === TRANSCRIPT (review this) ===
 " text "\n"))
 
+(def ^:private timeout-ms
+  "A drill-down usually takes a minute or two. Past this the CLI is taken to be hung, and the session is retried on
+  the next run."
+  (* 15 60 1000))
+
+(defn- run-cli
+  "Run `args` like `p/shell` with `:continue`, but kill the process tree and throw once it runs past `timeout-ms`."
+  [opts & args]
+  (let [proc   (apply p/process opts args)
+        result (deref proc timeout-ms ::timeout)]
+    (when (= ::timeout result)
+      (p/destroy-tree proc)
+      (throw (ex-info (str (first args) " timed out after " (quot timeout-ms 60000) " minutes") {})))
+    result))
+
 (defn- run-claude [{:keys [model]} prompt-text]
   (let [{:keys [exit out err]}
-        (p/shell {:in prompt-text :out :string :err :string :continue true :dir (str (fs/temp-dir))}
+        (run-cli {:in prompt-text :out :string :err :string :dir (str (fs/temp-dir))}
                  "claude" "-p" "--output-format" "json" "--no-session-persistence" "--tools" ""
                  "--json-schema" (json/write-str schema)
                  "--model" (or model "sonnet"))]
@@ -119,7 +134,7 @@ Known papercuts:
       (spit schema-file (json/write-str schema))
       ;; The prompt goes in on stdin and stdin is then closed; with stdin left open, `codex exec` waits for more.
       (let [{:keys [exit out err]}
-            (apply p/shell {:in prompt-text :out :string :err :string :continue true :dir (str dir)}
+            (apply run-cli {:in prompt-text :out :string :err :string :dir (str dir)}
                    (concat ["codex" "exec" "--ephemeral" "--sandbox" "read-only" "--skip-git-repo-check"
                             "--color" "never" "--output-schema" schema-file "-o" answer-file]
                            (when model ["-m" model])
