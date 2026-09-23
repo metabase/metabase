@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -13,6 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 
 const { admin } = USERS;
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const TAB_1 = {
   id: 1,
@@ -218,25 +219,30 @@ describe("command palette", () => {
     cy.log("setup permissions");
 
     H.activateToken("pro-self-hosted");
-    cy.visit("/admin/permissions/application");
 
-    const SETTINGS_INDEX = 0;
-    const MONITORING_INDEX = 1;
-    H.modifyPermission("All Users", SETTINGS_INDEX, "Yes");
-    H.modifyPermission("All Users", MONITORING_INDEX, "Yes");
+    H.updateAdvancedPermissionsGraph({
+      [ALL_USERS_GROUP]: { setting: "yes", monitoring: "yes" },
+    });
 
-    H.saveChangesToPermissions();
-
-    cy.findByRole("tab", { name: "Data" }).click();
-    cy.findByRole("menuitem", { name: "All Users" }).click();
-
-    const TABLE_METADATA_INDEX = 3;
-    const DATABASE_INDEX = 4;
-
-    H.modifyPermission("Sample Database", TABLE_METADATA_INDEX, "Yes");
-    H.modifyPermission("Sample Database", DATABASE_INDEX, "Yes");
-
-    H.saveChangesToPermissions();
+    cy.request("GET", "/api/permissions/graph").then(
+      ({ body: { groups, revision } }) => {
+        cy.request("PUT", "/api/permissions/graph", {
+          revision,
+          groups: {
+            ...groups,
+            [ALL_USERS_GROUP]: {
+              ...groups[ALL_USERS_GROUP],
+              [SAMPLE_DB_ID]: {
+                ...groups[ALL_USERS_GROUP]?.[SAMPLE_DB_ID],
+                // "Manage table metadata" and "Manage database"
+                "data-model": { schemas: "all" },
+                details: "yes",
+              },
+            },
+          },
+        });
+      },
+    );
 
     cy.signInAsNormalUser();
 
