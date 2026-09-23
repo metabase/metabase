@@ -1,3 +1,5 @@
+export type UpgradeOperation = "upgrade" | "downgrade";
+
 export interface UpgradeResponse {
   status: string;
   instructions?: string;

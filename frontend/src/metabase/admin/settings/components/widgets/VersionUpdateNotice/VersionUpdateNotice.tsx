@@ -11,6 +11,7 @@ import {
   versionIsLatest,
 } from "metabase/utils/version";
 
+import { SelfDowngrade } from "../SelfDowngrade";
 import { SelfUpgradeButton } from "../SelfUpgrade";
 import { getUpgradeGuideUrl } from "../SelfUpgrade/utils";
 
@@ -22,40 +23,43 @@ export function VersionUpdateNotice() {
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = versionInfo?.latest?.version;
-  const displayVersion = formatVersion(currentVersion);
 
   if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
-    return <OnLatestVersion currentVersion={displayVersion} />;
+    return <OnLatestVersion currentVersion={currentVersion} />;
   }
 
   if (latestVersion && newVersionAvailable({ currentVersion, latestVersion })) {
     return (
       <NewVersionAvailable
-        currentVersion={displayVersion}
+        currentVersion={currentVersion}
         latestVersion={latestVersion}
       />
     );
   }
-  return <DefaultUpdateMessage currentVersion={displayVersion} />;
+  return <DefaultUpdateMessage currentVersion={currentVersion} />;
 }
 
 function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
+  const displayVersion = formatVersion(currentVersion);
   return (
     <div>
       <div className={S.message}>
         {c(`{0} is a version number`)
-          .t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
+          .t`You're running Metabase ${displayVersion} which is the latest and greatest!`}
+        <SelfDowngrade currentVersion={currentVersion} />
       </div>
     </div>
   );
 }
 
 function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
+  const displayVersion = formatVersion(currentVersion);
   return (
     <div>
       <div className={S.message}>
         {c(`{0} is a version number`)
-          .t`You're running Metabase ${currentVersion}`}
+          .t`You're running Metabase ${displayVersion}`}
+        <SelfDowngrade currentVersion={currentVersion} />
       </div>
     </div>
   );
@@ -75,9 +79,12 @@ function NewVersionAvailable({
       classNames={{ wrapper: S.alertWrapper }}
     >
       <Group justify="space-between" wrap="nowrap">
-        <Text fw="bold">
-          {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
-        </Text>
+        <div>
+          <Text fw="bold">
+            {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${formatVersion(currentVersion)}.`}
+          </Text>
+          <SelfDowngrade currentVersion={currentVersion} />
+        </div>
         <Group gap="sm" wrap="nowrap">
           <Button
             component={ExternalLink}

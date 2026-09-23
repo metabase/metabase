@@ -116,7 +116,7 @@ export function UpdatePage() {
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <LogoIcon height={56} />
-          <h1>{getUpdateHeading(status.phase)}</h1>
+          <h1>{getUpdateHeading(status.phase, status.operation)}</h1>
           <UpgradeProgress status={status} />
           {!isGameRevealed && <UpgradeCompletion status={status} />}
           <p>{t`Enter KONAMI code if you're bored`}</p>
