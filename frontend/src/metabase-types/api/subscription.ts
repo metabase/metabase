@@ -26,6 +26,7 @@ export interface DashboardSubscription {
   disable_links: boolean;
   entity_id: BaseEntityId;
   id: number;
+  metabot_prompt: string | null;
   name: string | null;
   parameters: Parameter[];
   skip_if_empty: boolean;
@@ -54,6 +55,7 @@ export type DraftDashboardSubscription = Pick<
       | "creator_id"
       | "disable_links"
       | "entity_id"
+      | "metabot_prompt"
       | "updated_at"
     >
   >;
@@ -71,6 +73,7 @@ export interface CreateSubscriptionRequest {
   collection_position?: number | null;
   dashboard_id?: DashboardId;
   parameters?: Parameter[];
+  metabot_prompt?: string | null;
 }
 
 export interface UpdateSubscriptionRequest {
@@ -83,6 +86,7 @@ export interface UpdateSubscriptionRequest {
   collection_position?: number | null;
   dashboard_id?: DashboardId;
   parameters?: Parameter[];
+  metabot_prompt?: string | null;
   archived?: boolean;
   can_write?: boolean;
 }

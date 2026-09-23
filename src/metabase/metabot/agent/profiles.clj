@@ -91,7 +91,7 @@
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
-    (when-not (apply distinct? tool-name-seq)
+    (when (and (seq tool-name-seq) (not (apply distinct? tool-name-seq)))
       (let [dups (->> (frequencies tool-name-seq)
                       (filter (fn [[_ cnt]] (< 1 cnt))))]
         (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
@@ -214,6 +214,16 @@
                     #'tools/static-viz-tool
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
+
+;; Dashboard subscriptions with a prompt: writes the report body over the dashboard's results, re-running cards
+;; over time when it needs a trend. Skills are off so the model doesn't try to load one.
+(register-profile!
+ {:name            :subscription
+  :prompt-template "subscription.selmer"
+  :max-iterations  8
+  :temperature     0.3
+  :skills?         false
+  :tools           [#'tools/compare-card-over-time-tool]})
 
 (register-profile!
  {:name            :explorations

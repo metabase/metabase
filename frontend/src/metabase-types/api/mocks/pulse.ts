@@ -21,6 +21,7 @@ export const createMockDashboardSubscription = (
   // Unjustified type cast. FIXME
   entity_id: "" as BaseEntityId,
   skip_if_empty: false,
+  metabot_prompt: null,
   id: 1,
   updated_at: "2022-01-01T00:00:00Z",
   ...opts,

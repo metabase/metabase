@@ -62,6 +62,16 @@
 
 (defn- maybe-name [x] (some-> x name))
 
+(defn- schedule-type->unit
+  "The temporal bucket matching a pulse channel's schedule: how far apart two sends are."
+  [schedule-type]
+  (case (some-> schedule-type keyword)
+    :hourly  :hour
+    :daily   :day
+    :weekly  :week
+    :monthly :month
+    nil))
+
 (defn- notification-info
   [pulse dashboard pulse-channel]
   (if (= :pulse (alert-or-pulse pulse))
@@ -73,6 +83,8 @@
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
                               :disable_links                    (:disable_links pulse)
+                              :metabot_prompt                   (:metabot_prompt pulse)
+                              :schedule_unit                    (schedule-type->unit (:schedule_type pulse-channel))
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}

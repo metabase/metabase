@@ -1,0 +1,22 @@
+## Hackathon 2026: a dashboard subscription can carry a Metabot prompt. When set, the send runs Metabot with this
+## prompt over the dashboard results instead of sending every card.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:01
+      author: arikaronov
+      comment: Add metabot_prompt to pulse
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: metabot_prompt
+                  type: ${text.type}
+                  remarks: Optional Metabot instruction that compiles the subscription content; null keeps the classic send
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: metabot_prompt

@@ -288,7 +288,8 @@
    [:cards               {:optional true} [:sequential CoercibleToCardRef]]
    [:channels            {:optional true} [:sequential PulseChannelInput]]
    [:archived            {:optional true} boolean?]
-   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
+   [:metabot_prompt      {:optional true} [:maybe :string]]])
 
 (def ^:private NotificationOrId
   "A Pulse/Alert id, a full Pulse row, or [[update-notification!]]'s own argument map — the shapes
@@ -646,7 +647,8 @@
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
-                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
+                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]
+                [:metabot_prompt      {:optional true} [:maybe :string]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)
@@ -683,7 +685,7 @@
   [notification :- UpdateNotificationInput]
   (pulse.db/update-pulse! (u/the-id notification)
                           (u/select-keys-when notification
-                                              :present [:collection_id :collection_position :archived]
+                                              :present [:collection_id :collection_position :archived :metabot_prompt]
                                               :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)

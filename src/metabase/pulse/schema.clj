@@ -36,7 +36,8 @@
    [:dashboard_id        {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.parameter]]]
    [:entity_id           {:optional true} [:maybe :string]]
-   [:disable_links       {:optional true} [:maybe :boolean]]])
+   [:disable_links       {:optional true} [:maybe :boolean]]
+   [:metabot_prompt      {:optional true} [:maybe :string]]])
 
 (mr/def ::pulse-card
   "A PulseCard as selected from the app DB: every column of `:pulse_card`."

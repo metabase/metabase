@@ -81,6 +81,8 @@
                   [:id             {:optional true} [:maybe ms/PositiveInt]]
                   [:dashboard_id ms/PositiveInt]
                   [:disable_links  {:optional true} [:maybe :boolean]]
+                  [:metabot_prompt {:optional true} [:maybe :string]]
+                  [:schedule_unit  {:optional true} [:maybe [:enum :hour :day :week :month]]]
                   [:skip_if_empty  {:optional true} :boolean]
                   [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-optional-type]]]
                   [:dashboard_subscription_dashcards {:optional true}

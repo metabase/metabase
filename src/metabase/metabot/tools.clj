@@ -12,6 +12,7 @@
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.clarification :as tools.clarification]
+   [metabase.metabot.tools.compare-over-time :as tools.compare-over-time]
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
@@ -99,6 +100,8 @@
   slackbot-construct-notebook-query-tool]
  [tools.static-viz
   static-viz-tool]
+ [tools.compare-over-time
+  compare-card-over-time-tool]
  [tools.create-alert
   create-alert-tool]
  [tools.create-dashboard-subscription

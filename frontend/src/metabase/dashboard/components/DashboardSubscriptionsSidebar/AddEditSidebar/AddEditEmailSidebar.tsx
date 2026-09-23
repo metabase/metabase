@@ -39,6 +39,7 @@ import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
+import { MetabotPromptSection } from "./MetabotPromptSection";
 import { getSubscriptionScheduleDescription } from "./utils";
 
 interface AddEditEmailSidebarProps {
@@ -211,6 +212,7 @@ export const AddEditEmailSidebar = ({
             setPulse={setPulse}
             allowDownload={allowDownload}
           />
+          <MetabotPromptSection pulse={pulse} setPulse={setPulse} />
         </Stack>
 
         {pulse.id != null && (

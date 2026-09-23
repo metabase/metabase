@@ -159,6 +159,7 @@
   [_route-params
    _query-params
    {:keys               [name cards channels parameters]
+    metabot-prompt      :metabot_prompt
     skip-if-empty       :skip_if_empty
     collection-id       :collection_id
     collection-position :collection_position
@@ -171,7 +172,8 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+       [:metabot_prompt      {:optional true} [:maybe :string]]]
    request]
   (create-pulse-with-perm-checks!
    cards
@@ -183,6 +185,7 @@
     :collection_position collection-position
     :dashboard_id        dashboard-id
     :parameters          parameters
+    :metabot_prompt      metabot-prompt
     :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -290,7 +293,7 @@
         ;; ok, now update the Pulse
         (models.pulse/update-pulse!
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                            :archived :parameters])
+                                            :archived :parameters :metabot_prompt])
                 :id id)))))
   (models.pulse/retrieve-pulse id))
 
@@ -311,7 +314,8 @@
                      [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                      [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                      [:archived      {:default false} [:maybe :boolean]]
-                     [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
+                     [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+                     [:metabot_prompt {:optional true} [:maybe :string]]]]
   (update-pulse-with-perm-checks! id pulse-updates))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -377,7 +381,8 @@
                                          [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
                                          [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
                                          [:alert_first_only    {:optional true} [:maybe :boolean]]
-                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]
+                                         [:metabot_prompt      {:optional true} [:maybe :string]]]
    request]
   (perms/check-has-application-permission :subscription false)
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.

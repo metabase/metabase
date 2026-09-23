@@ -5,6 +5,7 @@
    [metabase.notification.db :as notification.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.payload.metabot-digest :as metabot-digest]
    [metabase.notification.send :as notification.send]
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -56,7 +57,10 @@
                                  (remove (fn [{part-type :type :as part}]
                                            (and
                                             (= part-type :card)
-                                            (zero? (get-in part [:result :row_count] 0))))))
+                                            (zero? (get-in part [:result :row_count] 0)))))
+                                 ;; hackathon: a prompt means Metabot writes the report body first
+                                 true
+                                 (metabot-digest/digest-parts creator_id dashboard dashboard_subscription))
        :dashboard              dashboard
        :style                  {:color_text_dark   channel.render/color-text-dark
                                 :color_text_light  channel.render/color-text-light

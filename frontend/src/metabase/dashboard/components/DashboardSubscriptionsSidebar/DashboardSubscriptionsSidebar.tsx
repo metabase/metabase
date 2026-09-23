@@ -504,6 +504,7 @@ function DashboardSubscriptionsSidebarInner({
         onChannelScheduleChange={_.partial(onChannelScheduleChange, index)}
         testPulse={testPulseFn}
         toggleSkipIfEmpty={toggleSkipIfEmpty}
+        setPulse={setPulse}
         handleArchive={handleArchive}
         dashboard={dashboard}
         setPulseParameters={setPulseParameters}

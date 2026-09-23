@@ -34,6 +34,7 @@ import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
+import { MetabotPromptSection } from "./MetabotPromptSection";
 import { getSubscriptionScheduleDescription } from "./utils";
 
 interface AddEditSlackSidebarProps {
@@ -53,6 +54,7 @@ interface AddEditSlackSidebarProps {
   ) => void;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   toggleSkipIfEmpty: () => void;
+  setPulse: (pulse: DraftDashboardSubscription) => void;
   handleArchive: () => void;
   setPulseParameters: (parameters: UiParameter[]) => void;
 }
@@ -72,6 +74,7 @@ export const AddEditSlackSidebar = ({
   onChannelScheduleChange,
   testPulse,
   toggleSkipIfEmpty,
+  setPulse,
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
@@ -200,6 +203,7 @@ export const AddEditSlackSidebar = ({
             }}
             label={<Text fw="bold">{t`Send dashboard as PDF`}</Text>}
           />
+          <MetabotPromptSection pulse={pulse} setPulse={setPulse} />
         </Stack>
         {pulse.id != null && (
           <DeleteSubscriptionAction

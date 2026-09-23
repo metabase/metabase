@@ -32,6 +32,7 @@ export const NEW_PULSE_TEMPLATE = {
   skip_if_empty: false,
   collection_id: null,
   parameters: [],
+  metabot_prompt: null,
 } satisfies Partial<DashboardSubscription>;
 
 export const channelTargetIsValid = (
