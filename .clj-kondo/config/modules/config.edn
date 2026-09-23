@@ -1125,6 +1125,12 @@
    :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
    :uses #{lib.be util}}
 
+  jekyll-mode
+  {:team "UX West"
+   :api  #{metabase.jekyll-mode.core
+           metabase.jekyll-mode.init}
+   :uses #{util}}
+
   lib
   {:team "Querying Platform"
    :module-exports #{lib.agent-lib
