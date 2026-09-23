@@ -103,7 +103,7 @@ class GoogleSignIn:
                                              "grant_type": "authorization_code"})
             claims = self.google(f"{TOKENINFO_URL}?{urlencode({'id_token': tokens['id_token']})}")
         except (OSError, ValueError, KeyError):
-            return self.refuse(handler, 502, "Google sign-in failed.")
+            return self.refuse(handler, 400, "Google sign-in failed.")
         email = str(claims.get("email", "")).lower()
         if not (claims.get("aud") == self.client_id and claims.get("iss") in ISSUERS
                 and int(claims.get("exp", 0)) > time.time() and claims.get("email_verified") in ("true", True)

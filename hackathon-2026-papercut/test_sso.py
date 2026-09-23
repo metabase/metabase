@@ -88,7 +88,7 @@ class SignInTest(HttpCase):
             with self.subTest(target):
                 self.assertEqual(self.sign_in_as(target)[2].getheader("Location"), location)
 
-    def test_other_accounts_are_refused(self):
+    def test_other_accounts_and_broken_sign_ins_are_refused(self):
         for claims in ({"hd": None}, {"email": "ada@metabase.com.example.org"}, {"email_verified": "false"},
                        {"aud": "another-client"}, {"iss": "https://example.org"}, {"nonce": "another-sign-in"},
                        {"exp": str(int(time.time()) - 1)}):
@@ -96,6 +96,9 @@ class SignInTest(HttpCase):
                 status, _, response = self.sign_in_as(**claims)
                 self.assertEqual((status, response.getheader("Set-Cookie")), (403, None))
         self.assertEqual(self.sign_in_as(state="forged")[0], 400)
+        self.sign_in.google = lambda *_: {}
+        self.assertEqual(self.sign_in_as()[:2], (400, "<!doctype html><title>Papercuts</title><p>Google sign-in failed. "
+                                                     "<a href='/auth/login'>Sign in</a></p>"))
         self.assertEqual(self.call("GET", "/auth/callback?code=code&state=forged", headers=PROXIED)[0], 400)
 
     def test_changed_or_expired_sessions_are_refused(self):
