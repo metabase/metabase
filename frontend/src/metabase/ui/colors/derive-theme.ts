@@ -26,12 +26,12 @@ export function deriveFullMetabaseTheme({
   colorScheme,
   whitelabelColors,
   embeddingThemeOverride,
-  keepBrandRampDynamic = false,
+  forceDynamicBrandRamp = false,
 }: {
   colorScheme: ResolvedColorScheme;
   whitelabelColors?: ColorSettings | null;
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
-  keepBrandRampDynamic?: boolean;
+  forceDynamicBrandRamp?: boolean;
 }): MetabaseDerivedThemeV2 {
   const baseTheme = getThemeFromColorScheme(colorScheme);
 
@@ -47,8 +47,8 @@ export function deriveFullMetabaseTheme({
   // When instance doesn't have custom brand color configured, we replace brand
   // ramp (which is generated dynamically using color-mix to work with custom colors)
   // with a hand-picked `ocean` ramp
-  const keepRampDynamic =
-    keepBrandRampDynamic ||
+  const shouldKeepBrandRampDynamic =
+    forceDynamicBrandRamp ||
     Boolean(
       embeddingColors?.["core-brand"] ??
       embeddingColors?.brand ??
@@ -57,7 +57,7 @@ export function deriveFullMetabaseTheme({
 
   // Unjustified type cast. FIXME
   const colors = {
-    ...(keepRampDynamic
+    ...(shouldKeepBrandRampDynamic
       ? baseTheme.colors
       : // baseTheme is created on module init, before we have an opportunity to check
         // if instance has custom brand color set. Because of this we replace value of

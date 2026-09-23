@@ -22,15 +22,19 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { ColorSettings } from "metabase-types/api";
 
-const createColorVars = (
-  colorScheme: ResolvedColorScheme,
-  whitelabelColors?: ColorSettings | null,
-  keepBrandRampDynamic?: boolean,
-): string => {
+const createColorVars = ({
+  colorScheme,
+  whitelabelColors,
+  forceDynamicBrandRamp,
+}: {
+  colorScheme: ResolvedColorScheme;
+  whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
+}): string => {
   const theme = deriveFullMetabaseTheme({
     colorScheme,
     whitelabelColors,
-    keepBrandRampDynamic,
+    forceDynamicBrandRamp,
   });
 
   return Object.entries(theme.colors)
@@ -55,7 +59,7 @@ export function getMetabaseCssVariables({
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      ${createColorVars(colorScheme, whitelabelColors)}
+      ${createColorVars({ colorScheme, whitelabelColors })}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
@@ -77,7 +81,11 @@ export function getMetabaseSdkCssVariables({
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
-      ${createColorVars(colorScheme, whitelabelColors, true)}
+      ${createColorVars({
+        colorScheme,
+        whitelabelColors,
+        forceDynamicBrandRamp: true,
+      })}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

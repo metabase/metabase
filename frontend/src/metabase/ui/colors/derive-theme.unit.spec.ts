@@ -142,14 +142,12 @@ describe("deriveFullMetabaseTheme", () => {
 
   describe("brand ramp", () => {
     it.each([
-      ["light", METABASE_LIGHT_THEME],
-      ["dark", METABASE_DARK_THEME],
+      ["light" as const, METABASE_LIGHT_THEME],
+      ["dark" as const, METABASE_DARK_THEME],
     ])(
       "resolves the %s brand ramp to Ocean when the brand color is not customized",
       (colorScheme, theme) => {
-        const derived = deriveFullMetabaseTheme({
-          colorScheme: colorScheme === "dark" ? "dark" : "light",
-        });
+        const derived = deriveFullMetabaseTheme({ colorScheme });
 
         // Every color the theme defined off the ramp must now be a literal Ocean stop
         expect(dynamicBrandRampColors(derived.colors)).toEqual([]);
@@ -191,7 +189,7 @@ describe("deriveFullMetabaseTheme", () => {
     it("keeps the dynamic brand ramp when the caller asks for it", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",
-        keepBrandRampDynamic: true,
+        forceDynamicBrandRamp: true,
       });
 
       expect(derived.colors["text-brand"]).toBe(
