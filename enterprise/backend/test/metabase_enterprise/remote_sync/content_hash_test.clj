@@ -503,8 +503,7 @@
                (noop-card-update-status-with-ledger-path!
                 card
                 (fn [path]
-                  (let [dir (subs path 0 (inc (.lastIndexOf ^String path "/")))]
-                    (str dir (:entity_id card) "_old_name.yaml"))))))))))
+                  (str (re-find #"^.*/" path) (:entity_id card) "_old_name.yaml")))))))))
 
 (deftest noop-update-of-card-whose-repo-directory-differs-marks-dirty-test
   (testing "A no-op save of a card whose repo directory differs from where it now serializes (e.g. a parent was
@@ -516,4 +515,4 @@
                (noop-card-update-status-with-ledger-path!
                 card
                 (fn [path]
-                  (str "collections/main/old_parent/" (subs path (inc (.lastIndexOf ^String path "/"))))))))))))
+                  (str "collections/main/old_parent/" (re-find #"[^/]*$" path))))))))))
