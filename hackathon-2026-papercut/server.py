@@ -2103,7 +2103,8 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None):
             f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}"
             "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
             f"<div id='results'>{category_chips(filters.get('category', ''), counts)}"
-            f"<div class='results-heading'><h2>{result['total']} papercuts</h2></div>{cards}</div>")
+            f"<div class='results-heading'><h2>{result['total']} "
+            f"{'papercut' if result['total'] == 1 else 'papercuts'}</h2></div>{cards}</div>")
     return page("Papercuts", body)
 
 
