@@ -85,6 +85,8 @@ async function report(f: any, id: string) {
     observed_at: new Date(f.created_at).toISOString(),
     branch: BRANCH,
     commit_sha: COMMIT,
+    // HEAD as read at startup; the server needs to know it isn't necessarily the exact commit that ran.
+    commit_source: COMMIT ? "session-start" : undefined,
     source_type: review ? "metabot-turn-review" : "metabot-tool-error",
     source_ref: `${env.MB_URL ?? "http://localhost:3000"}/monitor/ai-auditing/conversations/${data.session_id}`,
     details: {

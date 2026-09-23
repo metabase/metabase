@@ -9,11 +9,24 @@
 (set! *warn-on-reflection* true)
 
 (defn- git [dir & args]
-  (let [{:keys [exit out err]} (apply p/shell {:dir dir :out :string :err :string :continue true} "git" args)]
+  ;; `reflog-commit` reads an English warning, so keep git from translating it.
+  (let [{:keys [exit out err]} (apply p/shell {:dir       dir
+                                               :out       :string
+                                               :err       :string
+                                               :continue  true
+                                               :extra-env {"LC_ALL" "C"}}
+                                      "git" args)]
     {:ok (zero? exit) :out (str/trim out) :err err}))
 
 (defn- sha [s]
   (when (re-matches #"[0-9a-f]{40}" (str s)) s))
+
+(defn public-url
+  "`url` without the user info and query an HTTPS remote can carry credentials in. Other forms pass through."
+  [url]
+  (if-let [[_ scheme location] (re-matches #"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@?#]*@)?([^?#]*).*" url)]
+    (str scheme location)
+    url))
 
 (defn repo-dir
   "A directory to run git in for a session's `cwd`. Worktrees are named `<repo>.<branch>` next to the main checkout
@@ -54,10 +67,11 @@
               (some-> (or (commit-before dir ref ts)
                           (when (not= "HEAD" ref) (commit-before dir (str "origin/" ref) ts)))
                       (vector "before-timestamp"))))
-        url    (or (:repository-url session-git)
-                   (when dir
-                     (let [{:keys [ok out]} (git dir "remote" "get-url" "origin")]
-                       (when ok (not-empty out)))))]
+        url    (some-> (or (:repository-url session-git)
+                           (when dir
+                             (let [{:keys [ok out]} (git dir "remote" "get-url" "origin")]
+                               (when ok (not-empty out)))))
+                       public-url)]
     (cond-> {}
       branch (assoc :branch branch)
       commit (assoc :commit_sha commit :commit_source source)

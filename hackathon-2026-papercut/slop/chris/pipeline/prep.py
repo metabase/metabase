@@ -2,13 +2,22 @@ import json, os, sys, glob, re
 SENS = r"[A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|PASS|PWD|AUTH|CREDENTIAL|COOKIE|SESSION|PRIVATE|DSN|CONN)[A-Za-z0-9_]*"
 PATTERNS = [
   (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "<REDACTED-PRIVATE-KEY>"),
+  # A key printed only in part, say by `head`, has one marker and not the other.
+  (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*", re.S), "<REDACTED-PRIVATE-KEY>"),
+  (re.compile(r"\A.*?-----END [A-Z ]*PRIVATE KEY-----", re.S), "<REDACTED-PRIVATE-KEY>"),
+  # Lines of a key body with neither marker in view.
+  (re.compile(r"^[A-Za-z0-9+/]{60,}={0,2}$", re.M), "<REDACTED-KEY-LINE>"),
   (re.compile(r"(?i)\b(" + SENS + r")(\s*[=:]\s*|\"\s*:\s*\")([^\s\"',;]+)"), r"\1\2<REDACTED>"),
+  # EDN, as in `.lein-env`: `:mb-db-pass "..."`.
+  (re.compile(r"(?i)(::?[\w.*+!?/-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""), r'\1\2"<REDACTED>"'),
   (re.compile(r"(?i)(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{12,}"), r"\1 <REDACTED>"),
   (re.compile(r"(?i)(x-api-key|x-metabase-session|authorization)(\"?\s*[:=]\s*\"?)[^\s\"']+"), r"\1\2<REDACTED>"),
   (re.compile(r"\b(sk-[A-Za-z0-9_-]{16,}|sk-ant-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|lin_api_[A-Za-z0-9]{20,}|mb_[A-Za-z0-9+/=]{20,})"), "<REDACTED-TOKEN>"),
   (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"), "<REDACTED-JWT>"),
   (re.compile(r"([a-z][a-z0-9+.-]*://[^\s:/@]+:)[^\s@/]+@"), r"\1<REDACTED>@"),
   (re.compile(r"(?i)(-p|--password)(\s+|=)\S+"), r"\1\2<REDACTED>"),
+  # Bare hex of secret-like length. 40 characters is a git SHA and stays. Last, so known formats keep their label.
+  (re.compile(r"(?i)(?<![0-9a-f])(?:[0-9a-f]{32,39}|[0-9a-f]{41,})(?![0-9a-f])"), "<REDACTED-HEX>"),
 ]
 HIGH_ENTROPY = re.compile(r"(?<![A-Za-z0-9/._-])[A-Za-z0-9+_=-]{32,}(?![A-Za-z0-9/._-])")
 def _he(m):
@@ -24,7 +33,8 @@ OUT = "chunks.jsonl"
 CHUNK = 60000; OVERLAP = 6000
 
 def trunc(s, n):
-    s = s if isinstance(s, str) else json.dumps(s)
+    # Redact first: cutting can split a key block or token so no pattern matches what is left.
+    s = redact(s if isinstance(s, str) else json.dumps(s))
     return s if len(s) <= n else s[:n*2//3] + f" …[{len(s)-n} chars cut]… " + s[-n//3:]
 
 def tool_input(name, inp):

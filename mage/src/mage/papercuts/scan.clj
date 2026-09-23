@@ -17,6 +17,7 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [mage.bot.env :as bot-env]
@@ -27,6 +28,8 @@
    [mage.papercuts.transcript :as transcript]
    [mage.util :as u])
   (:import
+   (java.nio.channels FileChannel)
+   (java.nio.file OpenOption StandardOpenOption)
    (java.time Duration Instant)
    (java.util.concurrent Executors TimeUnit)))
 
@@ -274,13 +277,14 @@
 
 (defn reportable
   "Positive papercuts from a drill-down that have an anchor in the new stretch and whose slug this session has not
-  reported before. Anchors outside the chunk are dropped, since the agent may have misnumbered them."
+  reported before. Only anchors in the new stretch are kept: the report is dated, identified and looked up in git
+  at its first anchor, and earlier lines were already scanned. Later ones were misnumbered."
   [papercuts {:keys [first-new-line last-line]} already-reported]
   (let [seen (into #{} (map :slug) already-reported)]
     (for [papercut papercuts
-          :let [anchors (filter #(<= (:line %) last-line) (:anchors papercut))]
+          :let [anchors (filter #(<= first-new-line (:line %) last-line) (:anchors papercut))]
           :when (and (= "positive" (:label papercut))
-                     (some #(>= (:line %) first-new-line) anchors)
+                     (seq anchors)
                      (not (seen (:slug papercut))))]
       (assoc papercut :anchors (vec anchors)))))
 
@@ -351,6 +355,13 @@
                                   :line        (first (get-in r [:details :lines]))
                                   :report_id   (:report_id r)})))))
 
+(defn mentions-embargo?
+  "Whether the raw transcript at `path` mentions embargoed work. Rendered entries are truncated and redacted, which can
+  cut or mask a marker, so the file itself is read."
+  [path]
+  (with-open [reader (io/reader (str path))]
+    (boolean (some #(re-find embargo-pattern %) (line-seq reader)))))
+
 (defn- scan-session!
   "Scan the new stretch of one session. Returns the session's next state. When a chunk fails, the state stops
   before that chunk and carries the exception under `::error`, so finished chunks are not redone."
@@ -363,7 +374,7 @@
       (empty? fresh)
       state
 
-      (some #(re-find embargo-pattern (:text %)) entries)
+      (mentions-embargo? (:path session))
       (do (say session (c/yellow "skipped: mentions embargoed work"))
           (assoc state :line (:line (peek fresh)) :until (:ts (peek fresh)) :skipped "embargo"))
 
@@ -383,11 +394,18 @@
       (do (println (c/red "TYPESAFE_API_KEY not found in mise.local.toml, .env, .lein-env, or the environment."))
           (u/exit 1))))
 
-(defn scan!
-  "Entry point for `mage papercuts-scan-claude` and `mage papercuts-scan-codex`."
-  [source {:keys [options]}]
-  (let [state-file (or (:state-file options) (default-state-file source))
-        since      (parse-since (:since options))
+(defn- with-state-lock
+  "Call `f` holding an exclusive lock beside `state-file`. Scans of the same state file, from hooks or by hand, then
+  run one at a time instead of overwriting each other's progress."
+  [state-file f]
+  (fs/create-dirs (fs/parent state-file))
+  (with-open [channel (FileChannel/open (fs/path (str state-file ".lock"))
+                                        (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
+    (.lock channel)
+    (f)))
+
+(defn- scan-with-state! [source options state-file]
+  (let [since      (parse-since (:since options))
         opts       (merge options
                           {:since      since
                            :agent      (keyword (or (:drill-agent options) (name source)))
@@ -434,3 +452,11 @@
                             (when persist? (str " State: " state-file " (" reported " papercut report(s) recorded)."))))))
     (when (pos? @failures)
       (u/exit 1))))
+
+(defn scan!
+  "Entry point for `mage papercuts-scan-claude` and `mage papercuts-scan-codex`."
+  [source {:keys [options]}]
+  (let [state-file (or (:state-file options) (default-state-file source))]
+    (if (or (:dry-run options) (:screen-only options))
+      (scan-with-state! source options state-file)
+      (with-state-lock state-file #(scan-with-state! source options state-file)))))

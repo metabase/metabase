@@ -39,6 +39,49 @@ class StoreCase(unittest.TestCase):
         return self.report(title=title, fingerprint=title, **changes)["papercut"]["id"]
 
 
+class WebViewTest(StoreCase):
+    def test_list_has_structured_results_and_live_filters(self):
+        self.papercut("Bash tool runs zsh on macOS: unmatched globs abort commands",
+                      description="A shell trap.\n\nKind: env-friction\nImpact: both\nSeverity: medium")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("Bash tool runs zsh on macOS</a>", page)
+        self.assertIn("<dt>Severity</dt><dd>medium</dd>", page)
+        self.assertIn("<strong>Not estimated</strong><span>Time lost</span>", page)
+        self.assertNotIn("<select id='repository' name='repository'>", page)
+        self.papercut("Another repository trap", repository="elsewhere")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("<select id='repository' name='repository'>", page)
+        self.assertIn("setTimeout(applyFilters, event.target.matches('input') ? 300 : 0)", page)
+        self.assertIn("setInterval(refreshPage, 15000)", page)
+
+    def test_description_fields_and_safe_markdown(self):
+        narrative, fix, facts = server.description_parts(
+            "Uses `zsh` and **fails**.\n\nSuggested fix: Check *flags*.\n\n"
+            "Kind: env-friction\nImpact: both\nSeverity: medium\nSource status: open\n"
+            "Area: shell\nSource: local-papercuts/example.md")
+        self.assertEqual(narrative, "Uses `zsh` and **fails**.")
+        self.assertEqual(fix, "Check *flags*.")
+        self.assertEqual(facts["Severity"], "medium")
+        rendered = server.markdown_html("**bold** and `code` [safe](https://example.com) "
+                                        "[bad](javascript:alert) <script>alert(1)</script>")
+        self.assertIn("<strong>bold</strong>", rendered)
+        self.assertIn("<code>code</code>", rendered)
+        self.assertIn("href='https://example.com'", rendered)
+        self.assertNotIn("href='javascript:", rendered)
+        self.assertNotIn("<script>", rendered)
+
+    def test_markdown_tables_render_from_new_and_older_imports(self):
+        table = "| Idiom | Behaviour |\n|---|---|\n| `echo ===` | **error** |"
+        flattened = "A summary: | Idiom | Behaviour | |---|---| | `echo ===` | **error** |"
+        for source in (table, flattened):
+            with self.subTest(source=source):
+                rendered = server.markdown_html(source)
+                self.assertIn("<table>", rendered)
+                self.assertIn("<th>Idiom</th>", rendered)
+                self.assertIn("<code>echo ===</code>", rendered)
+                self.assertIn("<strong>error</strong>", rendered)
+
+
 class IngestTest(StoreCase):
     def test_replay_and_cross_reporter_counts(self):
         first = self.store.ingest(self.sample)
@@ -113,9 +156,28 @@ class IngestTest(StoreCase):
 
     def test_rejects_malformed_git_context(self):
         for changes in ({"commit_sha": "not-a-sha"}, {"commit_sha": "abc"},
-                        {"commit_sha": "70a3d8cb4a7", "commit_source": "guess"}, {"commit_source": "reflog"}):
+                        {"commit_sha": "70a3d8cb4a7", "commit_source": "guess"}, {"commit_source": "reflog"},
+                        {"commit_sha": "70a3d8cb4a7"}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 self.report(**changes)
+
+    def test_repository_url_credentials_are_dropped(self):
+        result = self.report(repository_url="https://chris:ghp_secret@github.com/metabase/metabase.git?token=x")
+        report = self.store.get_papercut(result["papercut"]["id"])["reports"][0]
+        self.assertEqual((report["repository_url"], report["payload"]["repository_url"]),
+                         ("https://github.com/metabase/metabase.git",) * 2)
+        self.assertNotIn("ghp_secret", json.dumps(report))
+        # An @ in the query or fragment is not user info.
+        self.assertEqual(server.public_url("https://host?token=user@secret"), "https://host")
+        self.assertEqual(server.public_url("https://host/repo#user@secret"), "https://host/repo")
+
+    def test_non_ascii_titles_keep_their_own_fingerprints(self):
+        first = self.store.ingest({**self.sample, "report_id": "a", "title": "Ошибка сборки", "path": ""})
+        second = self.store.ingest({**self.sample, "report_id": "b", "title": "Сбой тестов", "path": ""})
+        emoji = self.store.ingest({**self.sample, "report_id": "c", "title": "🔥", "path": ""})
+        self.assertEqual(len({r["papercut"]["id"] for r in (first, second, emoji)}), 3)
+        # ASCII titles group as before: case and punctuation don't matter.
+        self.assertEqual(server.normalized("Agent-Misses the_build!"), "agent misses the build")
 
     def test_category_is_unclassified_until_a_report_or_triage_sets_it(self):
         papercut_id = self.store.ingest(self.sample)["papercut"]["id"]
@@ -201,6 +263,17 @@ class ListTest(StoreCase):
         changed = self.store.list_papercuts({"since": cursor})
         self.assertEqual({p["id"] for p in changed["papercuts"]}, {first, second})
         self.assertGreater(changed["cursor"], cursor)
+        # The same instant in another offset reads the same changes; a feed ignores the page size.
+        shifted = server.datetime.fromisoformat(cursor).astimezone(server.timezone(server.timedelta(hours=-4)))
+        self.assertEqual(len(self.store.list_papercuts({"since": shifted.isoformat(), "limit": "1"})["papercuts"]), 2)
+        for bad in ("2026-09-01", "2026-09-01T00:00:00"):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                self.store.list_papercuts({"since": bad})
+
+    def test_agents_sort(self):
+        one, both = self.papercut("One agent", agent="claude"), self.papercut("Both agents", agent="claude")
+        self.report(title="Both agents", fingerprint="Both agents", agent="codex")
+        self.assertEqual([p["id"] for p in self.store.list_papercuts({"sort": "agents"})["papercuts"]], [both, one])
 
 
 class TriageTest(StoreCase):
@@ -245,6 +318,13 @@ class TriageTest(StoreCase):
         self.assertEqual((event["kind"], event["actor"], event["old_value"], event["new_value"]),
                          ("reopened", "server", "resolved", "open"))
 
+    def test_report_in_the_resolution_second_reopens(self):
+        papercut_id = self.papercut("Trap", observed_at="2026-09-01")
+        self.store.update_papercut(papercut_id, {"status": "resolved"})
+        resolved_at = self.store.get_papercut(papercut_id)["status_changed_at"]
+        same_second = resolved_at[:19] + "Z"
+        self.assertTrue(self.report(title="Trap", fingerprint="Trap", observed_at=same_second)["reopened"])
+
     def test_wontfix_is_not_reopened(self):
         papercut_id = self.papercut("Trap")
         self.store.update_papercut(papercut_id, {"status": "wontfix"})
@@ -277,6 +357,20 @@ class RelationTest(StoreCase):
         papercut = self.store.relate(second, {"papercut_id": unrelated, "actor": "chris"})
         self.assertEqual([(r["id"], r["source"]) for r in papercut["related"]], [(unrelated, "manual")])
         self.assertEqual([e["kind"] for e in papercut["events"]][-3:], ["unrelated", "description", "related"])
+
+    def test_relation_changes_mark_both_sides_changed(self):
+        first = self.papercut("Git replay leaves worktree index stale", description="Moving the branch ref")
+        second = self.papercut("Git replay leaves the worktree index stale", description="Moving a branch ref")
+        cursor = self.store.list_papercuts()["cursor"]
+        # Editing one side drops the suggestion; the other side lists it too.
+        self.store.update_papercut(second, {"title": "Kondo cache hides lint warnings", "description": "Cold cache"})
+        self.assertIn(first, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
+
+        target, neighbour = self.papercut("Target"), self.papercut("Neighbour")
+        self.store.relate(first, {"papercut_id": neighbour})
+        cursor = self.store.list_papercuts()["cursor"]
+        self.store.merge(first, {"into": target})
+        self.assertIn(neighbour, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
 
     def test_relations_stay_within_a_repository(self):
         first = self.papercut("Trap")
@@ -680,6 +774,7 @@ class HttpTest(unittest.TestCase):
                 status, body, _ = self.call("GET", f"/api/papercuts?since={since}")
                 self.assertEqual((status, [p["title"] for p in body["papercuts"]]), (200, ["Second"]))
         self.assertEqual(self.call("GET", "/api/papercuts?since=yesterday")[0], 400)
+        self.assertEqual(self.call("GET", f"/?since={cursor}")[0], 200)
 
     def test_assessment_and_dispatch_routes(self):
         papercut_id = self.report("r1")[1]["papercut"]["id"]
@@ -724,6 +819,20 @@ class HttpTest(unittest.TestCase):
         status, body, _ = self.call("DELETE", f"/api/papercuts/{b}/related/{a}")
         self.assertEqual((status, body["related"]), (200, []))
 
+    def test_writes_need_a_json_content_type(self):
+        body = {"repository": "metabase", "reporter": "laptop", "report_id": "r1", "title": "Trap"}
+        for content_type in ("text/plain", "application/x-www-form-urlencoded"):
+            with self.subTest(content_type):
+                self.assertEqual(self.call("POST", "/api/reports", body, {"Content-Type": content_type})[0], 415)
+        self.assertEqual(self.call("POST", "/api/reports", body,
+                                   {"Content-Type": "application/json; charset=utf-8"})[0], 201)
+
+    def test_patch_rejects_null_text(self):
+        papercut_id = self.report("r1")[1]["papercut"]["id"]
+        for key in ("description", "path", "area"):
+            with self.subTest(key):
+                self.assertEqual(self.call("PATCH", f"/api/papercuts/{papercut_id}", {key: None})[0], 400)
+
     def test_token_guards_writes(self):
         self.handler.token = "secret"
         self.assertEqual(self.report("r1")[0], 401)
@@ -764,6 +873,22 @@ class HttpTest(unittest.TestCase):
         self.assertIn("PR: <a href='https://github.com/metabase/metabase/pull/123'>", page)
         self.assertNotIn("Open PR", page)
 
+    def test_list_puts_important_papercuts_first_and_shows_fixes(self):
+        for report_id in ("r1", "r2", "r3"):
+            self.report(report_id, "Loud")
+        self.report("r4", "Quiet")
+        self.call("POST", "/api/papercuts/2/comments",
+                  {"author": "papercut-fixer", "body": "Draft PR: https://github.com/metabase/metabase/pull/123"})
+        self.assertEqual([(p["title"], p["fix_state"]) for p in self.call("GET", "/api/papercuts")[1]["papercuts"]],
+                         [("Quiet", "pr_opened"), ("Loud", None)])
+        _, page, _ = self.call("GET", "/")
+        self.assertLess(page.index(">Loud</a>"), page.index(">Quiet</a>"))
+        self.assertEqual(page.count("<span class='pill important'"), 1)
+        self.assertIn("<span class='pill fix-pr_opened'>PR opened</span>", page)
+        self.assertIn("data-value='unclassified' aria-pressed='true'>unclassified<span class='count'>2</span>", page)
+        for categories, total in (("unclassified,tooling", 2), ("tooling", 0), ("none", 0)):
+            self.assertEqual(self.call("GET", f"/api/papercuts?category={categories}")[1]["total"], total)
+
     def test_html_escapes_titles(self):
         papercut_id = self.report("r1", "<script>alert(1)</script>")[1]["papercut"]["id"]
         _, page, _ = self.call("GET", f"/papercuts/{papercut_id}")
@@ -785,10 +910,17 @@ class HttpTest(unittest.TestCase):
                                                "title": f"{report_id} report", "fingerprint": "trap", "session": "s1",
                                                "observed_at": observed_at})
         _, page, _ = self.call("GET", "/papercuts/1")
-        self.assertIn("<details class='card' open><summary><strong>laptop</strong> <span class='muted'>"
-                      "2026-09-02T00:00:00+00:00 · session s1</span> new report</summary>", page)
-        self.assertIn("<details class='card'><summary><strong>laptop</strong> <span class='muted'>"
-                      "2026-09-01T00:00:00+00:00 · session s1</span> old report</summary>", page)
+        self.assertIn("2026-09-02T00:00:00+00:00 · session s1</p><details open><summary>Report details</summary>"
+                      "<p>new report</p>", page)
+        self.assertIn("2026-09-01T00:00:00+00:00 · session s1</p><details><summary>Report details</summary>"
+                      "<p>old report</p>", page)
+
+    def test_urls_in_report_prose_are_links(self):
+        self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": "r1",
+                                           "title": "Trap", "description": "See https://github.com/metabase/metabase/pull/1."})
+        _, page, _ = self.call("GET", "/papercuts/1")
+        self.assertIn("<a href='https://github.com/metabase/metabase/pull/1'>https://github.com/metabase/metabase/pull/1</a>.",
+                      page)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 (ns mage.papercuts.scan-test
   (:require
+   [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
    [mage.papercuts.scan :as scan])
   (:import
@@ -56,8 +57,9 @@
       (is (empty? (scan/reportable [(assoc papercut :label "negative")] chunk []))))
     (testing "a papercut needs an anchor in the new stretch"
       (is (empty? (scan/reportable [(assoc papercut :anchors [{:line 9}])] chunk []))))
-    (testing "anchors past the chunk are dropped"
-      (is (= [{:line 12}] (:anchors (first (scan/reportable [(assoc papercut :anchors [{:line 12} {:line 99}])] chunk []))))))
+    (testing "anchors outside the new stretch are dropped, so the report is keyed on a new line"
+      (is (= [{:line 12}] (:anchors (first (scan/reportable [(assoc papercut :anchors [{:line 5} {:line 12} {:line 99}])]
+                                                            chunk []))))))
     (testing "a slug the session already reported is skipped"
       (is (empty? (scan/reportable [papercut] chunk [{:slug "console-hides-warnings"}]))))))
 
@@ -88,3 +90,16 @@
     (is (= "Trap.\n\nMechanism.\n\nSuggested fix: Fix.\n\nTranscript: /t/31b066ea.jsonl#L12" (:description report)))
     (is (= {:lines [12 14] :slug "console-hides-warnings" :kind "misleading-signal" :screen {:misleading_signal 0.9}}
            (select-keys (:details report) [:lines :slug :kind :screen])))))
+
+(deftest mentions-embargo-test
+  (let [dir (fs/create-temp-dir {:prefix "papercut-embargo"})]
+    (try
+      (testing "a marker inside a value that redaction would mask still counts"
+        (let [path (fs/path dir "masked.jsonl")]
+          (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"PRIVATE_NOTE=embargo until the fix ships\"}}\n")
+          (is (scan/mentions-embargo? path))))
+      (let [path (fs/path dir "clean.jsonl")]
+        (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"run the tests\"}}\n")
+        (is (not (scan/mentions-embargo? path))))
+      (finally
+        (fs/delete-tree dir)))))

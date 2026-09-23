@@ -12,6 +12,10 @@ Python 3 and SQLite are the only requirements. Run from this directory:
 python3 server.py --db papercuts.sqlite3
 ```
 
+During development, add `--reload`. Edits to `server.py` restart the process on
+the same port, and open browser pages pick up the new version on their next
+refresh check.
+
 Open <http://127.0.0.1:8765/>. To accept reports from other machines on a trusted
 network, pass `--host 0.0.0.0` and set a token with `--token` or `PAPERCUTS_TOKEN`.
 Requests that change data must then send `Authorization: Bearer <token>`; reads stay
@@ -93,6 +97,13 @@ curl -sS 'http://127.0.0.1:8765/api/papercuts/1?reports_limit=10'
 A papercut's detail includes its fingerprints, category votes, the latest reports,
 related papercuts, its history, its latest readiness assessment and its dispatches. Asking for a merged papercut redirects to the one
 it was merged into.
+
+The browser list applies search, status, category, repository (when there is more than
+one), sort and page-size changes automatically. Search waits 300 ms after typing.
+The list and detail pages check for updates every 15 seconds while visible, and have
+a manual refresh button. Report prose, suggested fixes and source fields are shown
+separately; Markdown tables, lists, code and links are rendered as safe HTML. Time
+lost shows "Not estimated" until a report includes `cost_minutes`.
 
 `GET /api/issues` is the old list route, kept for the transcript scanner in
 `mage/src/mage/papercuts/`: a plain array of every live papercut, with fingerprints.
