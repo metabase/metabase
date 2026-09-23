@@ -1,0 +1,25 @@
+#!/usr/bin/env -S mise exec -- bb
+;; Evaluate Clojure code in the running dev-ee JVM over nREPL.
+;; Usage: nrepl-eval '<code>'   (or pipe code on stdin)
+;; Port: $NREPL_PORT, else .nrepl-port in $METABASE_REPO (~/src/mb/metabase). Prints out/err/value; exits 1 on an exception.
+(require '[bencode.core :as b] '[clojure.string :as str])
+(import '[java.net Socket] '[java.io PushbackInputStream])
+(let [port (or (System/getenv "NREPL_PORT")
+               (str/trim (slurp (str (or (System/getenv "METABASE_REPO") (str (System/getProperty "user.home") "/src/mb/metabase")) "/.nrepl-port"))))
+      code (or (first *command-line-args*) (slurp *in*))
+      s    (Socket. "localhost" (parse-long port))
+      out  (.getOutputStream s)
+      in   (PushbackInputStream. (.getInputStream s))
+      ->s  #(if (bytes? %) (String. ^bytes %) %)]
+  (b/write-bencode out {"op" "eval" "code" code "id" "1"})
+  (loop [failed? false]
+    (let [msg    (update-vals (b/read-bencode in) #(if (sequential? %) (mapv ->s %) (->s %)))
+          status (set (get msg "status"))]
+      (some-> (get msg "out") print)
+      (some-> (get msg "err") (->> (binding [*out* *err*]) print))
+      (some-> (get msg "value") println)
+      (flush)
+      (let [failed? (or failed? (contains? status "eval-error") (some? (get msg "ex")))]
+        (if (contains? status "done")
+          (do (.close s) (System/exit (if failed? 1 0)))
+          (recur failed?))))))
