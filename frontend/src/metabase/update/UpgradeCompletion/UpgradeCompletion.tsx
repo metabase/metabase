@@ -31,7 +31,7 @@ export function UpgradeCompletion({
   const handleReload = () => {
     clearUpgradeSession();
     reset();
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", "/admin/settings/updates");
     reload();
   };
 
