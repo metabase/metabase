@@ -11,7 +11,6 @@
   shape lives in [[metabase.query-processor.pivot.middleware]]."
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
@@ -49,103 +48,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def group-bitmask
-  "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
-  pivot.common/group-bitmask)
-
-(defn- powerset
-  "Generate a powerset while maintaining the original ordering as much as possible"
-  [xs]
-  (for [combo (reverse (range (long (Math/pow 2 (count xs)))))]
-    (for [item  (range 0 (count xs))
-          :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
-      (nth xs item))))
-
-(mr/def ::pivot-rows     [:sequential ::pivot.common/index])
-(mr/def ::pivot-cols     [:sequential ::pivot.common/index])
-(mr/def ::pivot-measures [:sequential ::pivot.common/index])
-
 (mr/def ::column-sort-order [:map-of [:maybe ::pivot.common/index] [:maybe :keyword]])
 
 (mr/def ::pivot-opts [:maybe
                       [:map {:closed true}
-                       [:pivot-rows         {:optional true} [:maybe ::pivot-rows]]
-                       [:pivot-cols         {:optional true} [:maybe ::pivot-cols]]
-                       [:pivot-measures     {:optional true} [:maybe ::pivot-measures]]
+                       [:pivot-rows         {:optional true} [:maybe ::pivot.common/pivot-rows]]
+                       [:pivot-cols         {:optional true} [:maybe ::pivot.common/pivot-cols]]
+                       [:pivot-measures     {:optional true} [:maybe ::pivot.common/pivot-measures]]
                        [:show-row-totals    {:optional true} [:maybe :boolean]]
                        [:show-column-totals {:optional true} [:maybe :boolean]]
                        [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
-
-(mr/def ::pivot.common/breakout-combinations
-  [:and
-   [:sequential ::pivot.common/breakout-combination]
-   [:fn
-    {:error/message "Distinct combinations"}
-    #(or (empty? %)
-         (apply distinct? %))]])
-
-(mu/defn breakout-combinations :- ::pivot.common/breakout-combinations
-  "Return a sequence of all breakout combinations (by index) we should generate queries for.
-
-    (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
-  [num-breakouts      :- ::pivot.common/num-breakouts
-   pivot-rows         :- [:maybe ::pivot-rows]
-   pivot-cols         :- [:maybe ::pivot-cols]
-   show-row-totals    :- [:maybe :boolean]
-   show-column-totals :- [:maybe :boolean]]
-  (let [row-totals (if (nil? show-row-totals)    true show-row-totals)
-        col-totals (if (nil? show-column-totals) true show-column-totals)]
-    ;; validate pivot-rows/pivot-cols
-    (doseq [[k pivots] [[:pivot-rows pivot-rows]
-                        [:pivot-cols pivot-cols]]
-            i          pivots]
-      (when (>= i num-breakouts)
-        (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
-                             (name k) i num-breakouts)
-                        {:type          qp.error-type/invalid-query
-                         :num-breakouts num-breakouts
-                         :pivot-rows    pivot-rows
-                         :pivot-cols    pivot-cols}))))
-    (sort-by
-     (partial pivot.common/group-bitmask num-breakouts)
-     (m/distinct-by
-      (partial pivot.common/group-bitmask num-breakouts)
-      (map
-       (comp vec sort)
-       ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
-       ;; we'll just generate everything
-       (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
-         (concat
-          ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
-          ;; primary data: return all breakouts
-          ;; => [0 1 2 3] => 0000 => Group #15
-          [(range num-breakouts)]
-          ;; subtotal rows
-          ;; _.range(1, pivotRows.length).map(i => [...pivotRow.slice(0, i), ...pivotCols])
-          ;;  => [0 _ _ 3] [0 1 _ 3] => 0110 0100 => Group #6, #4
-          (when col-totals
-            (for [i (range 1 (count pivot-rows))]
-              (concat (take i pivot-rows) pivot-cols)))
-          ;; "row totals" on the right
-          ;; pivotRows
-          ;; => [0 1 2 _] => 1000 => Group #8
-          (when row-totals
-            [pivot-rows])
-          ;; subtotal rows within "row totals"
-          ;; _.range(1, pivotRows.length).map(i => pivotRow.slice(0, i))
-          ;; => [0 _ _ _] [0 1 _ _] => 1110 1100 => Group #14, #12
-          (when (and row-totals col-totals)
-            (for [i (range 1 (count pivot-rows))]
-              (take i pivot-rows)))
-          ;; "grand totals" row
-          ;; pivotCols
-          ;; => [_ _ _ 3] => 0111 => Group #7
-          (when col-totals
-            [pivot-cols])
-          ;; bottom right corner [_ _ _ _] => 1111 => Group #15
-          (when (and row-totals col-totals)
-            [[]]))))))))
 
 (mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
@@ -165,11 +77,11 @@
    {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
   (try
     (let [all-breakouts (lib/breakouts query)
-          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
-                                                                               pivot-rows
-                                                                               pivot-cols
-                                                                               show-row-totals
-                                                                               show-column-totals)
+          all-queries   (for [breakout-indexes (u/prog1 (pivot.common/breakout-combinations (count all-breakouts)
+                                                                                            pivot-rows
+                                                                                            pivot-cols
+                                                                                            show-row-totals
+                                                                                            show-column-totals)
                                                  (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
                           (-> query
                               (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)

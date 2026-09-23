@@ -38,7 +38,6 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
-   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -2047,8 +2046,7 @@ function(bin) {
                 projected-fields)}]]))
 
 (def ^:private pivot-facet-rows-field
-  "Intermediate field name for the concatenated pivot rows before `$unwind` + `$replaceRoot`. Prefixed so it can't
-  collide with a user-supplied column alias."
+  "Intermediate field name for the concatenated pivot rows before `$unwind` + `$replaceRoot`."
   "__mb_pivot_rows")
 
 (mu/defn- handle-pivot :- ::compiled-pipeline
@@ -2059,7 +2057,7 @@ function(bin) {
 
   Subject to MongoDB's `$facet` size limits — 16 MB on the concatenated output document (raises error
   10334) and 100 MB in-memory per stage inside a branch, which cannot spill to disk (raises error
-  4031700). Both are translated in [[metabase.driver.mongo.execute]]."
+  4031700)."
   [query        :- ::lib.schema/query
    stage-number :- :int
    pipeline-ctx :- ::compiled-pipeline]
@@ -2072,7 +2070,7 @@ function(bin) {
         nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
         rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
         cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
-        combos            (qp.pivot/breakout-combinations
+        combos            (pivot.common/breakout-combinations
                            (count non-remap-bos)
                            rows-idx
                            cols-idx

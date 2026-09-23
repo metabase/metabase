@@ -233,8 +233,7 @@
     (if oversize-on-pivot?
       (ex-info (tru (str "Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
                          "cardinality by adding filters or dropping breakouts with many distinct values, "
-                         "or turn off the ''use-native-pivot-tables'' Instance setting to fall back to the "
-                         "multi-query pivot path."))
+                         "or ask an admin to disable the ''use-native-pivot-tables'' setting."))
                {:driver     :mongo
                 :native     native-query
                 :type       driver-api/qp.error-type.invalid-query
