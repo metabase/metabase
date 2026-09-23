@@ -15,10 +15,10 @@ const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
 // of their inputs, so the directory doubles as the cache that keeps a warm build
 // from re-subsetting 104 faces.
 const GENERATED_FONTS_PATH = ROOT_PATH + "/node_modules/.cache/font-subsets";
-// Backs the bare `fonts.css` import. The file holds the @font-face declarations
-// and the loader replaces each one with its per-range chunks, so what a module
-// imports under that name is built, never read off disk.
-const FONT_FACES_PATH = ROOT_PATH + "/frontend/src/metabase/css/core/fonts.css";
+// Backs the bare `fonts.css` import. No such file exists: a virtual module
+// holds the place and the font-subset loader supplies every rule, built from
+// the fonts in the directory beside it.
+const FONT_FACES_PATH = ROOT_PATH + "/frontend/fonts/fonts.css";
 const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
