@@ -169,7 +169,7 @@ hook command, so it does not depend on the agent's environment. Existing hooks a
    :requires [[mage.papercuts.hooks :as papercuts-hooks]]
    :options [[nil "--agent AGENT" "Install for claude, codex, or both (default: every agent on PATH)"
               :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]
-             [nil "--server URL" "Papercuts server origin, optionally with a port (default: the shared server over Tailscale)"]
+             [nil "--server URL" "Papercuts server origin, optionally with a port (default: PAPERCUTS_SERVER, else the shared server over Tailscale)"]
              [nil "--uninstall" "Remove this installer's hooks (for both agents unless --agent is given)"]]
    :task (task! (papercuts-hooks/install! parsed))}
 
