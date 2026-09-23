@@ -344,8 +344,6 @@
       (when (int? card-id)
         ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
         ;; transforming the entire dataset_query just to export one stable identifier.
-        ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
-        ;; treat this as a full card row and demand it.
         (models.db/card-serdes-columns card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
