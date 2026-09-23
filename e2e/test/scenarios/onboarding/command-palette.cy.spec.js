@@ -342,17 +342,26 @@ describe("shortcuts", () => {
     H.shortcutModal().should("not.exist");
     H.navigationSidebar().should("be.visible");
 
+    // Each destination is anchored on rendered content, not just the URL: the
+    // pathname changes when the route transition starts, and a chord pressed
+    // while the next page is still mounting is dropped.
     cy.realPress("g").realPress("p");
     cy.location("pathname").should(
       "equal",
       `/collection/${ADMIN_PERSONAL_COLLECTION_ID}`,
     );
+    cy.findByTestId("collection-name-heading").should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
 
     cy.realPress("g").realPress("t");
     cy.location("pathname").should("equal", "/trash");
+    cy.findByTestId("collection-name-heading").should("contain.text", "Trash");
 
     cy.realPress("g").realPress("s");
     cy.location("pathname").should("match", /^\/data-studio/);
+    H.DataStudio.nav().should("be.visible");
 
     H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
