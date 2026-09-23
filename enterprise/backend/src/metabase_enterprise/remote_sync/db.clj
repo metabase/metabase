@@ -271,18 +271,6 @@
   ;; select only the two columns: a full row runs the model's whole after-select (a Card normalizes its query)
   (t2/select-pk->fn :entity_id [model :id :entity_id] :id [:in ids]))
 
-(mu/defn existing-entity-ids
-  "The subset of `entity-ids` that instances of `model` have."
-  [model      :- :keyword
-   entity-ids :- [:or [:set :string] [:sequential :string]]]
-  (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
-
-(mu/defn ids-by-entity-ids
-  "The IDs of the instances of `model` with `entity-ids`."
-  [model      :- :keyword
-   entity-ids :- [:set :string]]
-  (t2/select-pks-vec model :entity_id [:in entity-ids]))
-
 (defn- path-expr
   "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
   `has-field?`."
@@ -564,12 +552,6 @@
   "The model IDs of the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
   (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type))
-
-(mu/defn rsos-of-models
-  "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type :- :string
-   model-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn active-child-rsos
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
