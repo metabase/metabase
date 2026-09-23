@@ -299,6 +299,8 @@
    [:vector-search-explain?              {:optional true} [:maybe boolean?]]
    [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
+   [:vibes                               {:optional true} [:maybe boolean?]]
+   [:vibes-prompt                        {:optional true} [:maybe string?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:curated                             {:optional true} [:maybe true?]]
@@ -344,6 +346,8 @@
            search-string
            table-db-id
            verified
+           vibes
+           vibes-prompt
            curated
            weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
@@ -388,6 +392,8 @@
                  (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
                  (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? vibes)                               (assoc :vibes vibes)
+                 (not (str/blank? vibes-prompt))             (assoc :vibes-prompt vibes-prompt)
                  (some? verified)                            (assoc :verified verified)
                  (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)

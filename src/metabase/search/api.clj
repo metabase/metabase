@@ -231,6 +231,7 @@
    [:vector_search_max_scan_tuples       {:optional true} [:maybe [:int {:min 1 :max 2147483647}]]]
    [:vector_search_explain               {:optional true} [:maybe :boolean]]
    [:search_native_query                 {:optional true} [:maybe :boolean]]
+   [:vibes                               {:optional true} [:maybe :boolean]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:calculate_available_models          {:optional true} [:maybe true?]]
@@ -245,7 +246,7 @@
 
 (defn- params->search-context
   "Build a search context from the raw `GET /api/search` query params. Shared by the search and debug endpoints."
-  [{:keys                               [q context archived models verified ids]
+  [{:keys                               [q context archived models verified ids vibes]
     calculate-available-models          :calculate_available_models
     collection                          :collection
     created-at                          :created_at
@@ -288,6 +289,7 @@
     :vector-search-max-scan-tuples       vector-search-max-scan-tuples
     :vector-search-explain?              vector-search-explain
     :search-native-query                 search-native-query
+    :vibes                               vibes
     :search-string                       (some-> q str/trim not-empty)
     :table-db-id                         table-db-id
     :verified                            verified
@@ -316,6 +318,8 @@
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
+  - `vibes`: set to true to rerank semantic results by vibes (an LLM relevance judgement against the search
+    string); only the semantic engine's SQLite store honours it, and only when the `vibes-enabled` setting is on
   - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),
     `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`
     (index-backed iterative scans with inline filters); ignored by other engines

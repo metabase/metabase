@@ -492,6 +492,10 @@
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
    [:search-native-query                 {:optional true} :boolean]
+   ;; true to rerank the semantic candidates by vibes (the SQLite engine, when `vibes-enabled`); `:vibes-prompt`
+   ;; is what they are judged against, defaulting to the search string
+   [:vibes                               {:optional true} :boolean]
+   [:vibes-prompt                        {:optional true} [:maybe :string]]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
