@@ -242,7 +242,7 @@ def register_aliases(server, repository, papercut_id, aliases):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="+", type=Path, help="Markdown writeups, or directories of them")
-    parser.add_argument("--server", default="http://127.0.0.1:8765")
+    parser.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://10.193.193.227:8765"))
     parser.add_argument("--repository", default="metabase")
     args = parser.parse_args()
     for path in writeups(args.paths):

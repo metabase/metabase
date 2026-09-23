@@ -63,7 +63,7 @@ def post(server, route, payload):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server", default="http://127.0.0.1:8765")
+    parser.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://10.193.193.227:8765"))
     args = parser.parse_args()
     papercut_ids = []
     for report in REPORTS:
