@@ -1458,7 +1458,7 @@
               (do
                 (case (:status result)
                   :success (do
-                             (when branch
+                             (when (and branch (nil? (mdb.worktree/worktree-id)))
                                (set-sync-branch! branch))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
