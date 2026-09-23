@@ -1031,6 +1031,13 @@ def pill(value):
     return f"<span class='pill'>{html.escape(value)}</span>"
 
 
+def linked(text):
+    """Escape `text`, turning each http(s) URL in it into a link."""
+    parts = re.split(r"(https?://[^\s<>\"'`()\[\]]*[^\s<>\"'`()\[\].,;:!?])", text)
+    return "".join(f"<a href='{html.escape(part)}'>{html.escape(part)}</a>" if i % 2 else html.escape(part)
+                   for i, part in enumerate(parts))
+
+
 def select(name, options, chosen, blank):
     return (f"<select name='{name}'><option value=''>{blank}</option>" + "".join(
         f"<option value='{value}' {'selected' if chosen == value else ''}>{value}</option>" for value in options
@@ -1082,11 +1089,11 @@ def papercut_html(papercut):
         f"<div class='card'><strong>{esc(r['reporter'])}</strong>"
         f"{' via ' + esc(r['agent']) if r['agent'] else ''}{' on ' + esc(r['machine']) if r['machine'] else ''} "
         f"<span class='muted'>{esc(r['observed_at'] or r['received_at'])}"
-        f"{' · ' + esc(r['source_ref']) if r['source_ref'] else ''}"
+        f"{' · ' + linked(r['source_ref']) if r['source_ref'] else ''}"
         f"{' · session ' + esc(r['session']) if r['session'] else ''}"
         f"{git_label(r)}"
         f"{cost(r['cost_minutes'])}</span>"
-        f"<p>{esc(r['title'])}</p><pre>{esc(r['description'])}</pre></div>"
+        f"<p>{esc(r['title'])}</p><pre>{linked(r['description'])}</pre></div>"
         for r in papercut["reports"]
     )
     if papercut["report_count"] > len(papercut["reports"]):
@@ -1112,7 +1119,7 @@ def papercut_html(papercut):
             f"{' · ' + esc(papercut['area']) if papercut['area'] else ''}<br>"
             f"First seen {esc(papercut['first_seen'])}; last seen {esc(papercut['last_seen'])}"
             f"{'<br>Reporters suggested: ' + votes if votes else ''}</p>"
-            f"<div class='card'><pre>{esc(papercut['description'])}</pre></div>"
+            f"<div class='card'><pre>{linked(papercut['description'])}</pre></div>"
             f"<h3>Related papercuts</h3><ul>{related}</ul><h3>History</h3><ul>{history}</ul>"
             f"<h3>Reports</h3>{reports}")
     return page(papercut["title"], body)

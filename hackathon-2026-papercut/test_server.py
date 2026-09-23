@@ -553,6 +553,15 @@ class HttpTest(unittest.TestCase):
         self.assertNotIn("<script>alert(1)</script>", page)
         self.assertIn("&lt;script&gt;", page)
 
+    def test_html_links_urls(self):
+        self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": "r1", "title": "Trap",
+                                           "description": "See https://example.com/a?b=1&c=2. Not javascript:alert(1)",
+                                           "source_ref": "http://localhost:3000/x'onmouseover='alert(1)"})
+        _, page, _ = self.call("GET", "/papercuts/1")
+        self.assertIn("<a href='https://example.com/a?b=1&amp;c=2'>https://example.com/a?b=1&amp;c=2</a>. Not", page)
+        self.assertIn("<a href='http://localhost:3000/x'>http://localhost:3000/x</a>&#x27;onmouseover", page)
+        self.assertNotIn("href='javascript", page)
+
 
 if __name__ == "__main__":
     unittest.main()
