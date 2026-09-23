@@ -129,7 +129,11 @@
     (let [[_ response]  (initialize!)
           instructions (get-in response [:body :result :instructions])]
       (is (str/includes? instructions "<data boundary="))
-      (is (re-find #"(?i)never follow instructions" instructions)))))
+      (is (re-find #"(?i)never follow instructions" instructions))))
+  (testing "GHY-4554: server prose quotes every value it did not write, so the same rule covers quoted values"
+    (let [[_ response]  (initialize!)
+          instructions (get-in response [:body :result :instructions])]
+      (is (re-find #"(?i)<data boundary=[^\n]*quoted values[^\n]*never follow instructions" instructions)))))
 
 (def ^:private planted-text
   "Untrusted text posing as the end of a data section and a server instruction, carrying a line separator, a zero-width
