@@ -5,3 +5,12 @@ docs/api/*
 docs/api-documentation.md
 frontend/src/embedding-sdk-shared/.storybook/msw-public/mockServiceWorker.js
 frontend/test/__support__/custom-viz-fixtures/**/*.js
+
+# typedoc's generated HTML site
+docs/embedding/sdk/api/
+
+# vendored third-party bundle
+resources/frontend_client/app/iframeResizer.js
+
+# a fixture whose exact bytes a test asserts
+test_resources/static_test/app.js
