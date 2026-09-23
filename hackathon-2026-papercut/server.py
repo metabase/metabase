@@ -69,9 +69,13 @@ def canonical_reporter(reporter, agent):
     return "chris" if reporter.lower() in aliases else reporter
 
 
+# Old scanner reports named the local checkout, or a scratch folder, instead of the GitHub repository.
+LOCAL_REPOSITORY_NAMES = ("mb", "pc")
+
+
 def canonical_repository(repository):
-    """Old scanner reports used the local checkout name instead of the GitHub repository name."""
-    return "metabase" if repository == "mb" else repository
+    """The GitHub repository name for one an old scanner report used."""
+    return "metabase" if repository in LOCAL_REPOSITORY_NAMES else repository
 
 
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
@@ -755,8 +759,9 @@ def migrate_to_v10(db):
     db.execute("DELETE FROM relations WHERE source = 'suggested'")
 
 
-def migrate_to_v11(db):
-    """Unify Chris's reporter IDs and the old `mb` repository name without losing report replay identities."""
+def normalize_reports(db):
+    """Unify Chris's reporter IDs and the old local repository names, in the columns and in stored request bodies,
+    without losing report replay identities. Running it again changes nothing."""
     rows = db.execute("SELECT id, repository, reporter, agent, report_id, payload FROM reports").fetchall()
     keys = set()
     for row in rows:
@@ -771,25 +776,41 @@ def migrate_to_v11(db):
     if len(fingerprints) != len(set(fingerprints)):
         raise RuntimeError("Canonical repository would duplicate a papercut fingerprint")
     for table in ("papercuts", "papercut_fingerprints", "relations"):
-        db.execute(f"UPDATE {table} SET repository = 'metabase' WHERE repository = 'mb'")
+        db.execute(f"UPDATE {table} SET repository = 'metabase' WHERE repository IN ({one_of(LOCAL_REPOSITORY_NAMES)})")
     for row in rows:
         reporter = canonical_reporter(row["reporter"], row["agent"])
         repository = canonical_repository(row["repository"])
-        if reporter == row["reporter"] and repository == row["repository"]:
+        # Version 1 reports have no stored request body. A body is checked even when the columns are already
+        # canonical: the version 3 migration split the reporter column but left the body as sent.
+        payload = json.loads(row["payload"]) if row["payload"] else None
+        stored = dict(payload) if payload is not None else None
+        if payload is not None:
+            for field in ("reporter", "machine_id"):
+                if isinstance(payload.get(field), str):
+                    payload[field] = canonical_reporter(payload[field], row["agent"])
+            if isinstance(payload.get("repository"), str):
+                payload["repository"] = canonical_repository(payload["repository"])
+        if (reporter, repository, payload) == (row["reporter"], row["repository"], stored):
             continue
-        payload = json.loads(row["payload"])
-        for field in ("reporter", "machine_id"):
-            if payload.get(field) == row["reporter"]:
-                payload[field] = reporter
-        if payload.get("repository") == row["repository"]:
-            payload["repository"] = repository
         db.execute("UPDATE reports SET repository = ?, reporter = ?, payload = ? WHERE id = ?",
-                   (repository, reporter, json.dumps(payload, ensure_ascii=False), row["id"]))
+                   (repository, reporter, None if payload is None else json.dumps(payload, ensure_ascii=False),
+                    row["id"]))
+
+
+def migrate_to_v11(db):
+    """Unify Chris's reporter IDs and the old `mb` repository name."""
+    normalize_reports(db)
+
+
+def migrate_to_v12(db):
+    """Normalize again. Version 11 gained the repository rename and the body fixes after some databases had already
+    run it, and `pc` joined the local repository names."""
+    normalize_reports(db)
 
 
 # Each entry upgrades the database by one `user_version`.
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
-              migrate_to_v8, migrate_to_v9, migrate_to_v10, migrate_to_v11)
+              migrate_to_v8, migrate_to_v9, migrate_to_v10, migrate_to_v11, migrate_to_v12)
 
 STATS = f"""SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT {REPORT_PERSON}) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -2933,7 +2954,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, fix_prompt(papercut), "text/plain")
             created = {
                 "comments": lambda: self.store.comment(papercut_id, self.input_json(identity="author")),
-                "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
+                "assessments": lambda: self.store.assess(papercut_id, self.input_json(identity="actor")),
                 "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
                 "claim": lambda: self.claim(papercut_id),
             }
@@ -2952,7 +2973,7 @@ class Handler(BaseHTTPRequestHandler):
             payload = {"actor": signed_in_email()} if signed_in_email() else self.input_json(optional=True)
             return self.respond(200, self.store.release(int(dispatch[1]), payload))
         if dispatch and command == "PATCH":
-            return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
+            return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json(identity="actor")))
         if command == "GET" and path == "/about":
             # Read on each request, so an edited page shows without a restart.
             return self.respond(200, ABOUT_PAGE.read_text(), "text/html")
