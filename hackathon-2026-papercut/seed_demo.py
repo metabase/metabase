@@ -61,13 +61,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--server", default="http://127.0.0.1:8765")
     args = parser.parse_args()
-    issue_ids = []
+    papercut_ids = []
     for report in REPORTS:
         result = post(args.server, "/api/reports", report)
-        issue_ids.append(result["issue"]["id"])
-        print(f"#{issue_ids[-1]} {report['title']}: {'already present' if result['replay'] else 'recorded'}")
-    post(args.server, f"/api/issues/{issue_ids[0]}/related", {"issue_id": issue_ids[3]})
-    print(f"Related #{issue_ids[0]} and #{issue_ids[3]} manually")
+        papercut_ids.append(result["papercut"]["id"])
+        print(f"#{papercut_ids[-1]} {report['title']}: {'already present' if result['replay'] else 'recorded'}")
+    post(args.server, f"/api/papercuts/{papercut_ids[0]}/related", {"papercut_id": papercut_ids[3], "actor": "seed_demo"})
+    print(f"Related #{papercut_ids[0]} and #{papercut_ids[3]} manually")
 
 
 if __name__ == "__main__":

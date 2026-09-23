@@ -3,9 +3,11 @@
 
 import argparse
 import json
+import os
 import re
 from pathlib import Path
 from urllib.error import HTTPError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
@@ -34,13 +36,14 @@ CATEGORY_BY_CLASSIFICATION = (
 STATUS_BY_SOURCE = {"fixed": "resolved", "wontfix": "wontfix"}
 # Archive files that are not papercuts: an index of the Codex cases and known non-papercuts for a classifier.
 # Slugs starting with an underscore are pipeline notes.
-NOT_PAPERCUTS = {"index", "negative-controls"}
+NOT_PAPERCUTS = {"index", "INDEX", "negative-controls"}
+ACTOR = "import_local"
 
 
 def reporter_and_slug(path):
     """`chris.claude.some-slug.md` was written by agent `claude` for user `chris`."""
     user, agent, slug = path.stem.split(".", 2)
-    return f"{user}.{agent}", agent, slug
+    return user, agent, slug
 
 
 def section(content, heading):
@@ -125,7 +128,9 @@ def parse_claude(path, content):
     return {
         "title": metadata["title"],
         "description": "\n\n".join(parts),
-        "path": metadata.get("area", ""),
+        "area": metadata.get("area", ""),
+        # Writeups merged into this one; their slugs become extra fingerprints.
+        "aliases": re.findall(r"[\w-]+", metadata.get("merged_from", "")),
         "category": CATEGORY_BY_KIND.get(metadata.get("kind"), "other"),
         "status": source_status.split("#")[0].strip(),
         "occurrences": [
@@ -148,7 +153,8 @@ def parse_codex(path, content):
     return {
         "title": title.group(1).strip(),
         "description": plain_links("\n\n".join(p for p in paragraphs[1:2] + [classification] if p)),
-        "path": "",
+        "area": "",
+        "aliases": [],
         "category": category,
         "status": "open",
         "occurrences": [{"transcript": t, "lines": None, "observed_at": transcript_start(t)} for t in transcripts],
@@ -163,11 +169,29 @@ def writeups(paths):
             yield path
 
 
-def request(server, method, route, payload):
-    req = Request(f"{server.rstrip('/')}{route}", data=json.dumps(payload).encode(),
-                  headers={"Content-Type": "application/json"}, method=method)
+def request(server, method, route, payload=None):
+    headers = {"Content-Type": "application/json"}
+    if token := os.environ.get("PAPERCUTS_TOKEN"):
+        headers["Authorization"] = f"Bearer {token}"
+    data = json.dumps(payload).encode() if payload is not None else None
+    req = Request(f"{server.rstrip('/')}{route}", data=data, headers=headers, method=method)
     with urlopen(req, timeout=10) as response:
         return json.load(response)
+
+
+def register_aliases(server, repository, papercut_id, aliases):
+    """Route each merged writeup's fingerprint to `papercut_id`, merging any papercut it already created."""
+    for alias in aliases:
+        fingerprint = f"local-papercuts:{alias}"
+        query = urlencode({"repository": repository, "fingerprint": fingerprint})
+        owners = request(server, "GET", f"/api/papercuts?{query}")["papercuts"]
+        if not owners:
+            request(server, "POST", f"/api/papercuts/{papercut_id}/fingerprints",
+                    {"fingerprint": fingerprint, "actor": ACTOR})
+        elif owners[0]["id"] != papercut_id:
+            request(server, "POST", f"/api/papercuts/{owners[0]['id']}/merge",
+                    {"into": papercut_id, "actor": ACTOR, "reason": f"Writeup {alias} was merged into this one"})
+            print(f"  merged #{owners[0]['id']} ({alias})")
 
 
 def main():
@@ -177,7 +201,7 @@ def main():
     parser.add_argument("--repository", default="metabase")
     args = parser.parse_args()
     for path in writeups(args.paths):
-        reporter, agent, slug = reporter_and_slug(path)
+        user, agent, slug = reporter_and_slug(path)
         if slug in NOT_PAPERCUTS or slug.startswith("_"):
             continue
         content = path.read_text()
@@ -188,21 +212,24 @@ def main():
             continue
         # Every papercut keeps at least one report, even when the writeup lists no transcript.
         for occurrence in writeup["occurrences"] or [{"transcript": None, "lines": None, "observed_at": None}]:
-            session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else "writeup"
+            session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else None
             report = {
                 "repository": args.repository,
-                "reporter": reporter,
-                "report_id": f"local-papercuts:{slug}:{session}:{occurrence['lines'] or ''}",
+                "reporter": user,
+                "agent": agent,
+                "report_id": f"local-papercuts:{slug}:{session or 'writeup'}:{occurrence['lines'] or ''}",
                 "fingerprint": f"local-papercuts:{slug}",
                 "title": writeup["title"],
                 "description": writeup["description"],
-                "path": writeup["path"],
+                "area": writeup["area"],
                 "source_type": "local-papercuts",
                 "source_ref": path.name,
-                # Not columns on the server, but kept in the report's raw payload.
+                # Not columns on the server, but kept in the report's stored request body.
                 "transcript": occurrence["transcript"],
                 "lines": occurrence["lines"],
             }
+            if session:
+                report["session"] = session
             if writeup["category"]:
                 report["category"] = writeup["category"]
             if occurrence["observed_at"]:
@@ -213,10 +240,12 @@ def main():
                 print(f"Failed {path.name}: {error.read().decode()}")
                 break
         else:
-            issue = result["issue"]
+            papercut = result["papercut"]
             if status := STATUS_BY_SOURCE.get(writeup["status"]):
-                issue = request(args.server, "PATCH", f"/api/issues/{issue['id']}", {"status": status})
-            print(f"#{issue['id']} [{issue['status']}] {issue['report_count']}x {writeup['title'][:90]}")
+                papercut = request(args.server, "PATCH", f"/api/papercuts/{papercut['id']}",
+                                   {"status": status, "actor": ACTOR, "reason": f"Source writeup is {writeup['status']}"})
+            print(f"#{papercut['id']} [{papercut['status']}] {papercut['report_count']}x {writeup['title'][:90]}")
+            register_aliases(args.server, args.repository, papercut["id"], writeup["aliases"])
 
 
 if __name__ == "__main__":
