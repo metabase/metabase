@@ -73,3 +73,15 @@
                                              :sectionId "product"}]]
         (is (= "https://metabase.com/dashboard/1?tab=5&category=Electronics#scrollTo=123"
                (urls/dashcard-url {:dashboard_id 1 :id 123 :dashboard_tab_id 5})))))))
+
+(deftest metabot-alert-url-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+    (testing "a saved alert is named by id; without Metabot output the link carries only it and when it was sent"
+      (is (= "https://metabase.com/metabot/new?alert=5&sent_at=2026-09-23T09%3A00%3A00Z"
+             (urls/metabot-alert-url 5 "2026-09-23T09:00:00Z" {:summary nil :send_reason nil}))))
+    (testing "an unsaved alert has no id, so it is described as unpadded base64url JSON instead"
+      (is (= "https://metabase.com/metabot/new?alert=eyJzZW5kX2NvbmRpdGlvbiI6ImdvYWxfYWJvdmUifQ&sent_at=2026-09-23T09%3A00%3A00Z"
+             (urls/metabot-alert-url {:send_condition "goal_above"} "2026-09-23T09:00:00Z" nil))))
+    (testing "Metabot output rides along as unpadded base64url JSON"
+      (is (= "https://metabase.com/metabot/new?alert=5&sent_at=2026-09-23T09%3A00%3A00Z&ai=eyJzdW1tYXJ5IjoiVmVudGVzIOKAlCAyMCAlIn0"
+             (urls/metabot-alert-url 5 "2026-09-23T09:00:00Z" {:summary "Ventes — 20 %" :send_reason nil}))))))

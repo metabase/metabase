@@ -65,3 +65,14 @@ export const setupBulkNotificationActionEndpoint = (
 ) => {
   fetchMock.post("path:/api/notification/admin/bulk", response);
 };
+
+export const setupGetNotificationEndpoint = (notification: Notification) => {
+  fetchMock.get(`path:/api/notification/${notification.id}`, notification);
+};
+
+export const setupGetNotificationErrorEndpoint = (
+  id: NotificationId,
+  status = 403,
+) => {
+  fetchMock.get(`path:/api/notification/${id}`, { status });
+};

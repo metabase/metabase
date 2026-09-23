@@ -17,6 +17,8 @@
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -745,6 +747,86 @@
                         #"should not appear")))
                 (is (zero? @calls)))})))))))
 
+(defn- decode-base64-url [^String s]
+  (String. (.decode (java.util.Base64/getUrlDecoder) s) java.nio.charset.StandardCharsets/UTF_8))
+
+(defn- continue-in-metabot-params
+  "Query params of the email's \"Follow up with Metabot\" link, or nil when it has none."
+  [email]
+  (let [html (->> email :message (m/find-first #(= "text/html; charset=utf-8" (:type %))) :content)]
+    (when-let [[_ query] (re-find #"href=\"[^\"]*/metabot/new\?([^\"]+)\"[^>]*>\s*Follow up with Metabot" (str html))]
+      (-> query (str/replace "&amp;" "&") codec/form-decode))))
+
+(deftest continue-in-metabot-link-test
+  (testing "every user-recipient alert email links to Metabot with the alert id and send time, even without AI"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card     {:name          notification.tu/default-card-name
+                                  :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                       :handlers [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [[email]]
+            (let [params (continue-in-metabot-params email)]
+              (is (= (str (:id notification)) (get params "alert")))
+              (is (some? (u.date/parse (get params "sent_at"))))
+              (is (not (contains? params "ai")))))}))))
+  (testing "when Metabot summarized the run, the link carries the summary and send reason"
+    (notification.tu/with-notification-testing-setup!
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary "Widgets are up **20%**."})]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:prompt "Anything unusual?"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= {:summary "Widgets are up **20%**."}
+                     (-> (continue-in-metabot-params email)
+                         (get "ai")
+                         decode-base64-url
+                         json/decode+kw))))})))))
+  (testing "an unsaved alert (\"Send now\") has no id, so the alert param describes the alert instead"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card              {:name          notification.tu/default-card-name
+                                           :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                       :notification-card {:send_condition :has_result}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         (dissoc notification :id)
+         {:channel/email
+          (fn [[email]]
+            (let [params (continue-in-metabot-params email)]
+              (is (=? {:card           {:id   (-> notification :payload :card_id)
+                                        :name notification.tu/default-card-name
+                                        :type "question"}
+                       :send_condition "has_result"}
+                      (-> params (get "alert") decode-base64-url json/decode+kw)))
+              (is (some? (u.date/parse (get params "sent_at"))))))}))))
+  (testing "non-user recipients can't sign in, so their email has no link"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card     {:dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                       :handlers [{:channel_type :channel/email
+                                   :recipients   [{:type    :notification-recipient/raw-value
+                                                   :details {:value "external@metabase.com"}}]}]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email (fn [[email]] (is (nil? (continue-in-metabot-params email))))}))))
+  (testing "an alert with links disabled has no link"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                       :notification-card {:disable_links true}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email (fn [[email]] (is (nil? (continue-in-metabot-params email))))})))))
+
 (deftest ai-title-test
   (doseq [[desc generate-title? subject header]
           [["with generate_title, Metabot's title replaces the default email subject and Slack header"
@@ -899,7 +981,7 @@
               (is (zero? @calls)))))))))
 
 (deftest ai-send-gate-explanation-is-rendered-test
-  (testing "when a gate lets an alert through, its one-line explanation opens the email"
+  (testing "when a gate lets an alert through, its one-line explanation closes the email, after the chart and send condition"
     (notification.tu/with-notification-testing-setup!
       (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages tag]
                                                       (if (= tag "alert-ai-send-gate")
@@ -930,7 +1012,13 @@
                       card-name-regex
                       #"Orders fell for a third straight month"
                       #"Revenue fell"
-                      #"internal working that should stay out"))))})))))
+                      #"internal working that should stay out")))
+              (let [html (->> email :message (m/find-first #(= "text/html; charset=utf-8" (:type %))) :content)]
+                (is (< (str/index-of html "Revenue fell")
+                       ;; the rendered card opens with a link to the question
+                       (str/last-index-of html "/question/")
+                       (str/index-of html "Orders fell for a third straight month")
+                       (str/index-of html "Follow up with Metabot")))))})))))
   (testing "an alert with no gate renders no explanation block"
     (notification.tu/with-notification-testing-setup!
       (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary "Just a summary."})]

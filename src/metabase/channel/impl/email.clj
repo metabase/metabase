@@ -232,8 +232,15 @@
 ;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn- unsaved-alert-description
+  "What the Metabot link needs to know about an alert that was never saved (\"Send now\"), so has no id to look up."
+  [{:keys [card notification_card subscriptions]}]
+  (m/assoc-some {:card           (select-keys card [:id :name :type])
+                 :send_condition (:send_condition notification_card)}
+                :subscription (not-empty (select-keys (first subscriptions) [:cron_schedule :ui_display_type]))))
+
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients]}]
+  [_channel-type {:keys [id payload payload_type creator_id] :as notification-payload} {:keys [template recipients]}]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -255,6 +262,11 @@
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
+        ;; non-users can't sign in, so only user recipients get the link
+        metabot-url        (when-not (:disable_links notification_card)
+                             (urls/metabot-alert-url (or id (unsaved-alert-description payload))
+                                                     (str (java.time.Instant/now))
+                                                     {:summary ai_summary :send_reason ai_send_reason}))
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (or ai_title
@@ -272,6 +284,7 @@
                                                ;; UI only allow one subscription per card notification
                                                :alert_schedule  (some-> subscriptions first :cron_schedule channel.shared/friendly-cron-description)
                                                :goal_value      goal
+                                               :continue_in_metabot_url (when (nil? non-user-email) metabot-url)
                                                :management_text (if (nil? non-user-email)
                                                                   "Manage your subscriptions"
                                                                   "Unsubscribe")

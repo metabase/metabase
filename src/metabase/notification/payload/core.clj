@@ -189,7 +189,7 @@
 (mu/defn notification-payload :- ::NotificationPayload
   "Realize notification-info with :context and :payload."
   [notification :- ::Notification]
-  (assoc (select-keys notification [:payload_type :creator_id])
+  (assoc (select-keys notification [:id :payload_type :creator_id])
          :creator (notification.db/user-summary (:creator_id notification))
          :payload (w/prewalk (fn [x]
                                (if (and (map? x) (:lib/metadata x))

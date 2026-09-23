@@ -389,7 +389,10 @@ export const getNotificationHandlersGroupedByTypes = (
 };
 
 export const formatNotificationSchedule = (
-  subscription: NotificationCronSubscription,
+  subscription: Pick<
+    NotificationCronSubscription,
+    "cron_schedule" | "ui_display_type"
+  >,
 ): string | null => {
   const value: ScheduleValue | null =
     subscription.ui_display_type === "cron/raw"

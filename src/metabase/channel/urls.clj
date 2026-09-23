@@ -11,7 +11,13 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
-   [ring.util.codec :as codec]))
+   [metabase.util.json :as json]
+   [ring.util.codec :as codec])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.util Base64)))
+
+(set! *warn-on-reflection* true)
 
 (defn site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
@@ -122,6 +128,23 @@
   "URL for nonusers to unsubscribe from alerts"
   []
   (str (site-url) "/unsubscribe"))
+
+(defn- base64url-json
+  [x]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder))
+                   (.getBytes ^String (json/encode x) StandardCharsets/UTF_8)))
+
+(defn metabot-alert-url
+  "URL that opens Metabot seeded with a triggered card alert. `alert` is a saved alert's id, which the frontend looks
+  up; an unsaved one (\"Send now\") has no id, so it is a map describing the alert, sent as base64url JSON. `sent-at`
+  pins the run, and `ai` (Metabot's `:summary`/`:send_reason` for the run, if any) rides along the same way because
+  nothing persists it."
+  [alert sent-at ai]
+  (let [ai (not-empty (into {} (remove (comp nil? val)) ai))]
+    (str (site-url) "/metabot/new?alert=" (if (map? alert) (base64url-json alert) alert)
+         "&sent_at=" (codec/url-encode sent-at)
+         (when ai
+           (str "&ai=" (base64url-json ai))))))
 
 (defn collection-path
   "Relative frontend path for a `Collection` with ID, or nil for root, e.g. \"/collection/10\"."
