@@ -2,8 +2,15 @@
   "Tests for the MockSource implementation in test-helpers."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.test-helpers :as th]))
+   [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase.search.core :as search]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- write-files!
   "Wholesale-write `files` ({:path :content}) to `snapshot` via the commit builder (clear managed dirs,
@@ -55,3 +62,25 @@
       (is (= #{"collections/abc/file1.yaml"}
              (set (source.p/list-files snapshot)))
           "Snippets dir should be cleaned even though no snippet files were written"))))
+
+(defn- content-ids
+  "Ids of the main app's cards, dashboards and non-personal collections (test users' personal collections
+  are created lazily, so they are left out)."
+  []
+  {:cards       (t2/select-pks-set :model/Card)
+   :dashboards  (t2/select-pks-set :model/Dashboard)
+   :collections (t2/select-pks-set :model/Collection :personal_owner_id nil)})
+
+(deftest clean-remote-sync-state-removes-imported-content-test
+  (testing "content a test imports into the main app is gone once the clean-remote-sync-state fixture ends"
+    (mt/dataset test-data
+      (mt/id) ; the mock source's card references test-data
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (let [before (content-ids)]
+          (th/clean-remote-sync-state
+           (fn []
+             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                          :initiated_by   (mt/user->id :rasta)})]
+               (is (= :success (:status (impl/import! (source.p/snapshot (th/create-mock-source)) task-id))))
+               (is (t2/exists? :model/Card :name "Some Question")))))
+          (is (= before (content-ids))))))))
