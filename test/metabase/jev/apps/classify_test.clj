@@ -140,3 +140,38 @@
                     "min-confidence" 0.6}
             result (classify/classify (mt/mbql-query venues {:limit 2}) [spec] 2 nil)]
         (is (= ["kind" "kind_confidence"] (take-last 2 (map :name (:columns result)))))))))
+
+(deftest suggest-inputs-test
+  (let [query (mt/mbql-query venues {:limit 5})]
+    (testing "one noul per column in a single call; nothing scores high, so it falls back to a text column"
+      (let [calls (atom 0)]
+        (with-redefs [jev/ask (fn [state questions & _]
+                                (swap! calls inc)
+                                (is (= 6 (count (:columns state))))
+                                {:ok      true
+                                 :answers (into {} (map (fn [[id _]] [id {:noul 0.1}])) questions)})]
+          (is (= {:suggested ["NAME"] :status "no-preference"}
+                 (-> (classify/suggest-inputs query nil) (select-keys [:suggested :status]) (update :suggested vec))))
+          (is (= 1 @calls)))))
+    (testing "orders suggestions by score"
+      (with-redefs [jev/ask (fn [_ questions & _]
+                              {:ok      true
+                               :answers (merge (into {} (map (fn [[id _]] [id {:noul 0.1}])) questions)
+                                               {:c1 {:noul 0.9} :c5 {:noul 0.7}})})]
+        (is (= ["NAME" "PRICE"] (:suggested (classify/suggest-inputs query nil))))))
+    (testing "falls back to the first text column when Jev is unavailable"
+      (with-redefs [jev/ask (constantly {:ok false :error "no token"})]
+        (is (= {:suggested ["NAME"] :status "unavailable"}
+               (select-keys (classify/suggest-inputs query nil) [:suggested :status])))))))
+
+(deftest suggest-inputs-for-question-test
+  (testing "with a question, each column is judged on whether it helps answer that question"
+    (with-redefs [jev/ask (fn [_ questions & _]
+                            (is (every? #(re-find #"help answer this question about that row: How pricey is it\?"
+                                                  (:instructions %))
+                                        (vals questions)))
+                            {:ok      true
+                             :answers (merge (into {} (map (fn [[id _]] [id {:noul 0.1}])) questions)
+                                             {:c5 {:noul 0.95}})})]
+      (is (= ["PRICE"] (:suggested (classify/suggest-inputs (mt/mbql-query venues {:limit 5})
+                                                            "How pricey is it?")))))))

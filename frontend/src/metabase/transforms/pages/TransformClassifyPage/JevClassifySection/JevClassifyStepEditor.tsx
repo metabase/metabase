@@ -1,5 +1,9 @@
+import { useEffect, useRef } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import {
   ActionIcon,
   Button,
@@ -14,27 +18,38 @@ import {
 } from "metabase/ui";
 import { isJevClassifyOutputMode } from "metabase-types/guards";
 
-import type { AnswerDraft, StepDraft } from "./utils";
+import type { AnswerDraft, InputSuggestion, StepDraft } from "./utils";
+
+const QUESTION_DEBOUNCE_MS = 1000;
 
 type JevClassifyStepEditorProps = {
   step: StepDraft;
   sourceColumnNames: readonly string[];
   isLoadingColumns?: boolean;
+  suggestion?: InputSuggestion;
+  isSuggestingInputs?: boolean;
   error: string | null;
   readOnly?: boolean;
   onChange: (step: StepDraft) => void;
   onRemove: () => void;
+  /** Called with the question once the user stops typing. */
+  onQuestionSettled: (question: string) => void;
 };
 
 export function JevClassifyStepEditor({
   step,
   sourceColumnNames,
   isLoadingColumns,
+  suggestion,
+  isSuggestingInputs,
   error,
   readOnly,
   onChange,
   onRemove,
+  onQuestionSettled,
 }: JevClassifyStepEditorProps) {
+  useOnQuestionSettled(step.question, onQuestionSettled);
+
   const columnPlaceholder = isLoadingColumns
     ? t`Loading columns…`
     : t`Pick a column`;
@@ -52,6 +67,15 @@ export function JevClassifyStepEditor({
       <Group justify="space-between" align="flex-end" wrap="nowrap">
         <MultiSelect
           label={t`Read columns`}
+          description={
+            <InputSuggestionHint
+              suggestion={suggestion}
+              inputs={step.inputs}
+              isSuggesting={isSuggestingInputs}
+              readOnly={readOnly}
+              onApply={(inputs) => update({ inputs })}
+            />
+          }
           data={[...sourceColumnNames]}
           value={step.inputs}
           onChange={(inputs) => update({ inputs })}
@@ -218,4 +242,63 @@ function AnswersEditor({ answers, readOnly, onChange }: AnswersEditorProps) {
       )}
     </Stack>
   );
+}
+
+type InputSuggestionHintProps = {
+  suggestion: InputSuggestion | undefined;
+  inputs: string[];
+  isSuggesting?: boolean;
+  readOnly?: boolean;
+  onApply: (inputs: string[]) => void;
+};
+
+function InputSuggestionHint({
+  suggestion,
+  inputs,
+  isSuggesting,
+  readOnly,
+  onApply,
+}: InputSuggestionHintProps) {
+  if (isSuggesting) {
+    return t`Jev is picking columns for this question…`;
+  }
+  if (suggestion == null || suggestion.inputs.length === 0) {
+    return null;
+  }
+  if (_.isEqual(suggestion.inputs, inputs)) {
+    return suggestion.question === ""
+      ? t`Suggested by Jev: the columns most worth reading.`
+      : t`Suggested by Jev for this question.`;
+  }
+  if (readOnly) {
+    return null;
+  }
+  const columnList = suggestion.inputs.join(", ");
+  return (
+    <Button
+      variant="subtle"
+      size="compact-sm"
+      p={0}
+      onClick={() => onApply(suggestion.inputs)}
+    >
+      {t`Use Jev's suggestion: ${columnList}`}
+    </Button>
+  );
+}
+
+/** Calls `onSettled` once `question` stops changing, but not for the question the step loaded with. */
+function useOnQuestionSettled(
+  question: string,
+  onSettled: (question: string) => void,
+) {
+  const debouncedQuestion = useDebouncedValue(question, QUESTION_DEBOUNCE_MS);
+  const settledQuestionRef = useRef(question);
+  const onSettledRef = useLatest(onSettled);
+
+  useEffect(() => {
+    if (debouncedQuestion !== settledQuestionRef.current) {
+      settledQuestionRef.current = debouncedQuestion;
+      onSettledRef.current(debouncedQuestion);
+    }
+  }, [debouncedQuestion, onSettledRef]);
 }

@@ -358,6 +358,72 @@
 (defmethod transforms.i/execute! :jev [transform opts]
   ((get-method transforms.i/execute! :query) transform opts))
 
+;;; ------------------------------------------ Input suggestions -------------------------------------------
+
+(def ^:private suggestion-sample-rows 20)
+(def ^:private suggestion-sample-values 3)
+(def ^:private suggestion-sample-length 120)
+(def ^:private max-suggested-inputs 3)
+(def ^:private min-suggestion-score 0.5)
+
+(defn- column-summary
+  "A column as Jev sees it when choosing inputs: name, type and a few distinct, truncated sample values."
+  [{col-name :name :keys [base_type]} values]
+  {:name    col-name
+   :type    (some-> base_type name)
+   :samples (into []
+                  (comp (remove nil?)
+                        (map #(let [v (str %)]
+                                (cond-> v (> (count v) suggestion-sample-length)
+                                        (subs 0 suggestion-sample-length))))
+                        (distinct)
+                        (take suggestion-sample-values))
+                  values)})
+
+(defn- first-text-column [cols]
+  (some (fn [{col-name :name :keys [base_type]}]
+          (when (isa? (keyword base_type) :type/Text) col-name))
+        cols))
+
+(defn- input-question
+  "The per-column question: relevance to `question` when there is one, else \"is this free text\"."
+  [col-name question]
+  (if (str/blank? question)
+    (format (str "Is column \"%s\" free-form content a person wrote, such as a review, comment, description "
+                 "or message, that is worth reading to categorize the row? IDs, codes, numbers, dates and short "
+                 "labels are not.")
+            col-name)
+    (format "Would reading column \"%s\" of a row help answer this question about that row: %s"
+            col-name question)))
+
+(defn suggest-inputs
+  "Ask Jev which of `query`'s columns are worth reading to answer `question` about a row (or, without a
+  question, which hold free text worth reading). One Jev call: the sampled columns are the state, one `noul`
+  per column. Returns `{:columns [{:name :score}] :suggested [names] :status}`, `:suggested` being the
+  best-scoring columns, falling back to the first text column when Jev is unavailable or unsure."
+  [query question]
+  (let [{:keys [cols rows]} (run-source-query query suggestion-sample-rows)
+        summaries (map-indexed (fn [i col] (column-summary col (map #(nth % i) rows))) cols)
+        ids       (mapv #(keyword (str "c" %)) (range (count cols)))
+        questions (into {}
+                        (map (fn [id {col-name :name}]
+                               [id (jev/noul (input-question col-name question))])
+                             ids summaries))
+        res       (when (seq cols) (jev/ask {:columns (vec summaries)} questions))
+        scored    (mapv (fn [id {col-name :name}]
+                          {:name col-name :score (get-in res [:answers id :noul])})
+                        ids summaries)
+        suggested (->> scored
+                       (filter #(some-> (:score %) (>= min-suggestion-score)))
+                       (sort-by :score >)
+                       (take max-suggested-inputs)
+                       (mapv :name))
+        fallback  (some-> (first-text-column cols) vector)]
+    (cond
+      (not (:ok res))   {:columns scored :suggested (or fallback []) :status "unavailable"}
+      (seq suggested)   {:columns scored :suggested suggested :status "ok"}
+      :else             {:columns scored :suggested (or fallback []) :status "no-preference"})))
+
 ;;; ------------------------------------------------ API ---------------------------------------------------
 
 (api.macros/defendpoint :post "/classify/preview" :- :any
@@ -371,6 +437,16 @@
        [:classify ::raw-classifications]
        [:limit    {:optional true} [:maybe [:int {:min 1, :max 200}]]]]]
   (classify query specs (or limit 20) nil))
+
+(api.macros/defendpoint :post "/classify/suggest-inputs" :- :any
+  "Ask Jev which columns of `query` are worth reading to answer `question` about a row. See
+  [[suggest-inputs]]."
+  [_route-params
+   _query-params
+   {:keys [query question]} :- [:map {:closed true}
+                                [:query    [:map {:closed false, ::mr/deliberately-open true}]]
+                                [:question {:optional true} [:maybe :string]]]]
+  (suggest-inputs query question))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/jev/classify/*` routes."

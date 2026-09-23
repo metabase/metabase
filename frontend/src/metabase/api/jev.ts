@@ -27,6 +27,13 @@ export interface JevClassifyPreview {
   };
 }
 
+export interface JevClassifyInputSuggestions {
+  columns: { name: string; score: number | null }[];
+  /** Best-scoring columns to read, or the first text column as a fallback. */
+  suggested: string[];
+  status: "ok" | "no-preference" | "unavailable";
+}
+
 export interface JevUsage {
   input_tokens: number;
   output_tokens: number;
@@ -176,6 +183,16 @@ export const jevApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/jev/classify/preview",
+        body,
+      }),
+    }),
+    suggestJevClassifyInputs: builder.mutation<
+      JevClassifyInputSuggestions,
+      { query: DatasetQuery; question?: string }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/jev/classify/suggest-inputs",
         body,
       }),
     }),
@@ -337,6 +354,7 @@ export interface DashboardFocus {
 
 export const {
   usePreviewJevClassifyMutation,
+  useSuggestJevClassifyInputsMutation,
   useSuggestEntityTypeMutation,
   useGetTableSuggestionsQuery,
   useLazyGetTableSuggestionsQuery,

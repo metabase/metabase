@@ -13,7 +13,7 @@ const SOURCE_COLUMNS = ["ID", "BODY", "RATING"];
 
 function createDraft(opts?: Partial<StepDraft>): StepDraft {
   return {
-    ...createStepDraft("BODY"),
+    ...createStepDraft(["BODY"]),
     question: "What is the complaint about?",
     answers: [
       { key: "shipping", description: "late or damaged delivery" },

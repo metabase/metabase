@@ -117,6 +117,13 @@ const transformSettingsPage = () =>
     Component: TransformSettingsPage,
   }));
 
+const transformClassifyPage = () =>
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformClassifyPage"
+  ).then(({ TransformClassifyPage }) => ({
+    Component: TransformClassifyPage,
+  }));
+
 const transformIndexesPage = () =>
   import(
     /* webpackChunkName: "transforms" */ "./pages/TransformIndexesPage"
@@ -153,6 +160,7 @@ export function getDataStudioTransformRoutes() {
       <Route path=":transformId/edit" lazy={transformQueryPage} />
       <Route path=":transformId/run" lazy={transformRunPage} />
       <Route path=":transformId/settings" lazy={transformSettingsPage} />
+      <Route path=":transformId/classify" lazy={transformClassifyPage} />
       <Route path=":transformId/indexes" lazy={transformIndexesPage} />
       {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
       {PLUGIN_DEPENDENCIES.isEnabled && (

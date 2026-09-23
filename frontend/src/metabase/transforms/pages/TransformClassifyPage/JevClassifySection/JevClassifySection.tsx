@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
   usePreviewJevClassifyMutation,
+  useSuggestJevClassifyInputsMutation,
   useUpdateTransformMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -15,6 +16,7 @@ import type { QueryTransformSource, Transform } from "metabase-types/api";
 import { JevClassifyPreview } from "./JevClassifyPreview";
 import { JevClassifyStepEditor } from "./JevClassifyStepEditor";
 import {
+  type InputSuggestion,
   type StepDraft,
   createStepDraft,
   draftToStep,
@@ -68,6 +70,13 @@ function JevClassifySectionContent({
     error: columnsError,
   } = useSourceColumns(source);
   const [previewJevClassify, previewResult] = usePreviewJevClassifyMutation();
+  const [suggestInputs, { isLoading: isSuggestingInputs }] =
+    useSuggestJevClassifyInputsMutation();
+  const [suggestionsByStepId, setSuggestionsByStepId] = useState<
+    Record<string, InputSuggestion>
+  >({});
+  const [suggestingStepId, setSuggestingStepId] = useState<string | null>(null);
+  const latestQuestionByStepIdRef = useRef<Record<string, string>>({});
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -83,8 +92,53 @@ function JevClassifySectionContent({
   const handleStepRemove = (stepId: string) =>
     setSteps(steps.filter((step) => step.id !== stepId));
 
-  const handleStepAdd = () =>
-    setSteps([...steps, createStepDraft(textColumnName)]);
+  const handleStepAdd = async () => {
+    const { data } = await suggestInputs({ query: source.query });
+    const inputs =
+      data?.suggested ?? (textColumnName != null ? [textColumnName] : []);
+    const step = createStepDraft(inputs);
+    setSteps([...steps, step]);
+    if (data?.status === "ok") {
+      setSuggestionsByStepId((suggestions) => ({
+        ...suggestions,
+        [step.id]: { inputs, question: "" },
+      }));
+    }
+  };
+
+  const handleQuestionSettled = async (stepId: string, rawQuestion: string) => {
+    const question = rawQuestion.trim();
+    const previous = suggestionsByStepId[stepId];
+    latestQuestionByStepIdRef.current[stepId] = question;
+    if (question === "" || previous?.question === question) {
+      return;
+    }
+    setSuggestingStepId(stepId);
+    const { data } = await suggestInputs({ query: source.query, question });
+    const isStale = latestQuestionByStepIdRef.current[stepId] !== question;
+    if (isStale) {
+      return;
+    }
+    setSuggestingStepId(null);
+    if (data?.status !== "ok") {
+      return;
+    }
+    setSuggestionsByStepId((suggestions) => ({
+      ...suggestions,
+      [stepId]: { inputs: data.suggested, question },
+    }));
+    // Keep following Jev until the user picks columns themselves.
+    setSteps((steps) =>
+      steps.map((s) => {
+        const isFollowingJev =
+          s.inputs.length === 0 ||
+          (previous != null && _.isEqual(previous.inputs, s.inputs));
+        return s.id === stepId && isFollowingJev
+          ? { ...s, inputs: data.suggested }
+          : s;
+      }),
+    );
+  };
 
   const handlePreview = () =>
     previewJevClassify({
@@ -114,7 +168,7 @@ function JevClassifySectionContent({
 
   return (
     <TitleSection
-      label={t`Classify with Jev`}
+      label={t`Classify`}
       description={t`Jev reads a column of every row, answers your question, and the transform writes the answer as a column you can group and filter by.`}
     >
       <Stack p="xl" gap="lg">
@@ -141,6 +195,11 @@ function JevClassifySectionContent({
             step={step}
             sourceColumnNames={sourceColumnNames}
             isLoadingColumns={isLoadingColumns}
+            suggestion={suggestionsByStepId[step.id]}
+            isSuggestingInputs={suggestingStepId === step.id}
+            onQuestionSettled={(question) =>
+              handleQuestionSettled(step.id, question)
+            }
             error={getStepError(step, sourceColumnNames)}
             readOnly={readOnly}
             onChange={handleStepChange}
@@ -152,6 +211,7 @@ function JevClassifySectionContent({
             variant="subtle"
             leftSection={<Icon name="add" />}
             onClick={handleStepAdd}
+            loading={isSuggestingInputs}
             w="fit-content"
           >
             {t`Add a Jev step`}

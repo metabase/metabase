@@ -1,6 +1,5 @@
 import {
   setupDatabaseEndpoints,
-  setupJevClassifyPreviewEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -39,7 +38,6 @@ function setup({
   remoteSyncReadOnly = false,
 }: SetupOpts) {
   setupDatabaseEndpoints(createMockDatabase({ id: 1 }));
-  setupJevClassifyPreviewEndpoint();
   setupUsersEndpoints([
     createMockUser({
       id: 1,

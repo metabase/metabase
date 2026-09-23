@@ -58,6 +58,14 @@ function setup({
     return body.classify.length === 0 ? SOURCE_PREVIEW : CLASSIFY_PREVIEW;
   });
   fetchMock.put(`path:/api/transform/${transform.id}`, transform);
+  fetchMock.post("path:/api/jev/classify/suggest-inputs", ({ options }) => {
+    const { question } = JSON.parse(String(options.body));
+    return {
+      columns: [],
+      suggested: question ? ["ID"] : ["BODY"],
+      status: "ok",
+    };
+  });
 
   renderWithProviders(
     <JevClassifySection transform={transform} readOnly={readOnly} />,
@@ -84,7 +92,7 @@ describe("JevClassifySection", () => {
         })}
       />,
     );
-    expect(screen.queryByText("Classify with Jev")).not.toBeInTheDocument();
+    expect(screen.queryByText("Classify")).not.toBeInTheDocument();
   });
 
   it("shows the empty state and lets you add a step", async () => {
@@ -95,14 +103,14 @@ describe("JevClassifySection", () => {
       screen.getByRole("button", { name: /Add a Jev step/ }),
     );
 
-    expect(screen.getByLabelText("Question")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Question")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Add a Jev step/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("offers the source columns and defaults a new step to a text column", async () => {
+  it("pre-selects the columns Jev suggests and still offers the rest", async () => {
     setup();
     await screen.findByText(/No Jev step yet/);
     await waitFor(() =>
@@ -115,11 +123,66 @@ describe("JevClassifySection", () => {
       screen.getByRole("button", { name: /Add a Jev step/ }),
     );
 
-    const readColumns = screen.getByRole("textbox", { name: "Read columns" });
+    const readColumns = await screen.findByRole("textbox", {
+      name: "Read columns",
+    });
     expect(screen.getByText("BODY")).toBeInTheDocument();
+    expect(
+      screen.getByText("Suggested by Jev: the columns most worth reading."),
+    ).toBeInTheDocument();
     await userEvent.click(readColumns);
     await userEvent.click(await screen.findByRole("option", { name: "ID" }));
     expect(screen.getByText("ID")).toBeInTheDocument();
+  });
+
+  it("re-picks the columns for the question while you follow Jev", async () => {
+    setup();
+    await screen.findByText(/No Jev step yet/);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Add a Jev step/ }),
+    );
+    await screen.findByText(
+      "Suggested by Jev: the columns most worth reading.",
+    );
+
+    await userEvent.type(screen.getByLabelText("Question"), "Which row is it?");
+
+    expect(
+      await screen.findByText(
+        "Suggested by Jev for this question.",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ID")).toBeInTheDocument();
+    expect(screen.queryByText("BODY")).not.toBeInTheDocument();
+
+    const questionCalls = fetchMock.callHistory
+      .calls("path:/api/jev/classify/suggest-inputs")
+      .filter(({ options }) => JSON.parse(String(options.body)).question);
+    expect(questionCalls).toHaveLength(1);
+  });
+
+  it("only offers the question's columns once you picked your own", async () => {
+    setup({ transform: createTransformWithStep() });
+    const question = await screen.findByDisplayValue(
+      "What is the complaint about?",
+    );
+
+    await userEvent.type(question, " Really?");
+
+    const applyButton = await screen.findByRole(
+      "button",
+      { name: "Use Jev's suggestion: ID" },
+      { timeout: 3000 },
+    );
+    expect(screen.getByText("BODY")).toBeInTheDocument();
+
+    await userEvent.click(applyButton);
+    expect(
+      await screen.findByText("Suggested by Jev for this question."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("BODY")).not.toBeInTheDocument();
   });
 
   it("previews a saved step with confidence badges", async () => {

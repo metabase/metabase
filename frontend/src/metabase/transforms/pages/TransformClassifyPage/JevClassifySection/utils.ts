@@ -24,14 +24,20 @@ export type StepDraft = {
   minConfidence: number | null;
 };
 
+/** Columns Jev picked for a step, and the question it picked them for ("" before there is one). */
+export type InputSuggestion = {
+  inputs: string[];
+  question: string;
+};
+
 export const DEFAULT_MIN_CONFIDENCE = 0.6;
 
 export const CONFIDENCE_COLUMN_SUFFIX = "_confidence";
 
-export function createStepDraft(input?: string): StepDraft {
+export function createStepDraft(inputs: string[] = []): StepDraft {
   return {
     id: _.uniqueId("jev-step-"),
-    inputs: input != null ? [input] : [],
+    inputs,
     question: "",
     kind: "choice",
     answers: [
