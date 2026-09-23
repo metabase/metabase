@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -68,7 +67,7 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (assoc :schema (:default_schema (mt/db))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
@@ -251,8 +250,7 @@
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
    Useful for tests that need to create tables with a schema matching transform targets."
   []
-  (or (when (get-method driver.sql/default-schema driver/*driver*)
-        (driver.sql/default-schema driver/*driver*))
+  (or (:default_schema (mt/db))
       (if (= :bigquery-cloud-sdk driver/*driver*)
         (t2/select-one-fn :schema :model/Table :db_id (mt/id))
         "public")))

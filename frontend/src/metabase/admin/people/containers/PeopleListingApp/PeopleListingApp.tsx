@@ -142,7 +142,9 @@ export function PeopleListingApp({
               {buttonText && (
                 <Box>
                   <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
-                    <Button variant="filled">{buttonText}</Button>
+                    <Button variant="filled" size="lg">
+                      {buttonText}
+                    </Button>
                   </Link>
                 </Box>
               )}
