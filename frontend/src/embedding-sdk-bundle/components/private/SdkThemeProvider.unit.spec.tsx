@@ -88,7 +88,9 @@ const renderSdkThemeProvider = (
     },
   );
 
-const winningValue = (cssVariables: string, variable: string) =>
+// Emmited styles can contain redefinition of same variable with different value, so we can't rely on simple
+// `.toContain` checks, instead we need to extract last definition which is what would be actually applied by browser
+const getLastCssVariableValue = (cssVariables: string, variable: string) =>
   [...cssVariables.matchAll(new RegExp(`${variable}:\\s*([^;]+);`, "g"))]
     .at(-1)
     ?.at(1)
@@ -128,8 +130,8 @@ describe("SdkThemeProvider", () => {
     const LIGHT_OCEAN = { textHover: ocean[60], textBrand: ocean[50] };
     const DARK_OCEAN = { textHover: ocean[30], textBrand: ocean[40] };
 
-    // Read what the provider actually rendered rather than calling the emitter again,
-    // so the flag it decides on is part of what we assert
+    // We need to check what was actually injected into page, thus
+    // direct query (unlike other tests that use SdkCssVariablesTester)
     const emittedStyles = () =>
       // eslint-disable-next-line testing-library/no-node-access -- emotion writes these <style> tags; there is no Testing Library query for them
       [...document.querySelectorAll("style")]
@@ -146,13 +148,12 @@ describe("SdkThemeProvider", () => {
         expect(emittedStyles()).toContain("--mb-color-text-brand:"),
       );
 
-      return (variable: string) => winningValue(emittedStyles(), variable);
+      return (variable: string) =>
+        getLastCssVariableValue(emittedStyles(), variable);
     };
 
     it.each([
       ["a V1 theme", { colors: { brand: "#DF75E9" } }],
-      // A V2 theme addresses it as `brand` until GDGT-2536 removes the compatibility
-      // assignment in `deriveFullMetabaseTheme` that overwrites `core-brand` with it
       ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
       [
         "a dark V1 theme",
@@ -168,9 +169,6 @@ describe("SdkThemeProvider", () => {
       expect(cssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
-
-      // `text-brand` is a ramp color the SDK mapping does not re-emit, so it only
-      // tracks the brand if `createColorVars` left it dynamic
       expect(cssVariable("--mb-color-text-brand")).toContain(
         "var(--mb-color-core-brand)",
       );

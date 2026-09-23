@@ -19,8 +19,6 @@ const createSdkTheme = (colors: Record<string, string>) =>
   ({
     fontFamilyMonospace: "monospace",
     fn: {
-      // The real `themeColor` falls back to the primary color for an unset name, so it
-      // never hands back a bare color name.
       themeColor: (name: string) => colors[name] ?? "#ffffff",
     },
     other: {},
@@ -49,8 +47,6 @@ describe("getThemeSpecificCssVariables", () => {
 
 describe("getMetabaseSdkCssVariables", () => {
   it("keeps the brand ramp dynamic when forceDynamicBrandRamp is set", () => {
-    // A v1 SDK theme never reaches `deriveFullMetabaseTheme`; its brand lands as
-    // `--mb-color-core-brand` later in the same block, which the ramp resolves against
     const styles = getMetabaseSdkCssVariables({
       theme: createSdkTheme({ "core-brand": "#DF75E9" }),
       font: "Lato",

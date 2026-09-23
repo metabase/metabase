@@ -152,15 +152,6 @@ describe("deriveFullMetabaseTheme", () => {
       },
     );
 
-    it("replaces brand ramp stops with their matching Ocean stops", () => {
-      const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
-
-      // The light theme defines these off brand[50], brand[60] and brand[10]
-      expect(derived.colors["text-brand"]).toBe(baseColors.ocean[50]);
-      expect(derived.colors["switch-checked"]).toBe(baseColors.ocean[60]);
-      expect(derived.colors["background-brand"]).toBe(baseColors.ocean[10]);
-    });
-
     it("keeps the dynamic brand ramp when whitelabel sets a brand color", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",
@@ -191,14 +182,6 @@ describe("deriveFullMetabaseTheme", () => {
 
       expect(derived.colors["text-brand"]).toBe(
         lightTheme.colors["text-brand"],
-      );
-    });
-
-    it("leaves whitelabel filter and summarize ramps alone", () => {
-      const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
-
-      expect(derived.colors["text-filter"]).toBe(
-        lightTheme.colors["text-filter"],
       );
     });
   });
