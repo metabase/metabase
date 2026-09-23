@@ -39,7 +39,13 @@ Work from the app directory, `<repo>/data_apps/<slug>/`. Resolve the repo root
 with `ROOT="$(git rev-parse --show-toplevel)"`. The final build needs the
 repo-root `.env.local` credentials (`DATA_APP_MB_URL`, `DATA_APP_MB_API_KEY`).
 Check them by sourcing the file in a subshell and printing only whether both are
-set; never print the file or its variables.
+set; never print the file or its variables. The key must belong to an admin:
+the API returns `version` and `outdated` only to admins and refuses an outdated
+app's metadata to everyone else, so a non-admin key cannot prove anything here.
+
+`npm` below stands for the app's own package manager, the one whose lockfile is
+committed (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock`).
+Never introduce a second lockfile.
 
 Read three numbers:
 
@@ -49,7 +55,7 @@ git show HEAD:data_apps/<slug>/data_app.yaml | grep -E '^version:' || echo "vers
 # version in the working tree
 grep -E '^version:' data_app.yaml || echo "version: 1"
 # target: the highest upgrade guide shipped with this skill (no guides means 1)
-ls <skill-dir>/references/upgrades/ | grep -E '^v[0-9]+-to-v[0-9]+\.md$' | sed -E 's/.*-to-v([0-9]+)\.md/\1/' | sort -n | tail -1
+ls <skill-dir>/references/upgrades/ | sed -nE 's/^v[0-9]+-to-v([0-9]+)\.md$/\1/p' | sort -n | tail -1 | grep . || echo 1
 ```
 
 `<skill-dir>` is the directory this SKILL.md was loaded from. The target must
@@ -70,10 +76,10 @@ Then decide:
 
 ## Step 1 - Preflight, once
 
-1. Install the SDK that matches the target Metabase release
-   (`npm install @metabase/embedding-sdk-react@<tag>`); each upgrade guide names
-   the dist-tag it was written against. The lockfile change is committed with
-   the final upgrade.
+1. Install the SDK that matches the target Metabase release with the app's
+   package manager (`npm install @metabase/embedding-sdk-react@<tag>` or its
+   equivalent); each upgrade guide names the dist-tag it was written against.
+   The lockfile change is committed with the final upgrade.
 2. Confirm the app is template-shaped at its current version: `vite.config.ts`
    is the one-liner `export default dataAppConfig()` and `src/index.tsx`
    default-exports a `DataAppFactory`. If not, **Stop**: this is not a version
@@ -101,7 +107,8 @@ For each `N` from the HEAD version up to `target - 1`:
 4. Run the guide's _Done-check summary_. Every line must print `ok`.
 5. Only now set `version: N+1` in `data_app.yaml`. This is the one edit to that line.
 6. If `N+1 < target`: from the repo root,
-   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version N+1"`.
+   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version N+1" -- data_apps/<slug>`.
+   The pathspec keeps anything staged outside the app out of the commit.
    No push, no typecheck, no build. If the user asks why, say the app cannot
    compile until the last upgrade.
 7. If `N+1 == target`: run _Step 3_ before committing.
@@ -127,15 +134,18 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    `data_app.yaml`, the built bundle, `resources_metadata.json` if resources
    changed, and the package lockfile if the SDK was re-pinned. Anything else
    inside the app directory is a user edit; say so before committing.
-5. Commit `"Migrate <slug> data app to data-app version M"`, push, and tell the
-   user to **Pull changes** under Admin > Data apps.
+5. From the repo root,
+   `git add data_apps/<slug> && git commit -m "Migrate <slug> data app to data-app version M" -- data_apps/<slug>`,
+   push, and tell the user to **Pull changes** under Admin > Data apps.
 6. Prove it. After the pull:
    ```bash
    ( source "$ROOT/.env.local"; curl -s -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/apps/<slug>" )
    ```
    must show `"version": M`, `"outdated": false`, and `"sync_error": null`.
-   Report the command and the result. Do not claim the migration is done
-   without it.
+   A response holding only `name` and `display_name` means the key is not an
+   admin's: ask for one, or ask the user to read the admin list, and say the
+   proof is still pending. Report the command and the result. Do not claim the
+   migration is done without it.
 
 ## Resuming an interrupted migration
 
