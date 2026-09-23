@@ -3342,6 +3342,29 @@
            premium-features
            util}}
 
+  workspaces
+  {:team "Graphy"
+   :api  #{metabase.workspaces.core metabase.workspaces.schema}
+   :uses #{lib.schema premium-features util}}
+
+  enterprise/workspaces
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.init}
+   :uses #{app-db
+           cache
+           driver
+           lib
+           lib.metadata
+           lib.schema
+           premium-features
+           query-processor
+           settings
+           sql-tools
+           util
+           workspaces}
+   :model-imports #{:model/Database}
+   :model-exports #{:model/WorkspaceTableRemapping}}
+
   xrays
   {:team "Graphy"
    :api  #{metabase.xrays.api
