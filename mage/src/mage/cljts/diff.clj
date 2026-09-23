@@ -1,4 +1,4 @@
-(ns mage.readable.diff
+(ns mage.cljts.diff
   "Line diffs of two texts, using git's own diff algorithm so results look like GitHub's."
   (:require
    [babashka.fs :as fs]
@@ -17,7 +17,7 @@
   (let [old (or old "") new (or new "")]
     (if (= old new)
       (vec (map-indexed (fn [i l] {:type :ctx :old (inc i) :new (inc i) :text l}) (lines new)))
-      (let [dir (fs/create-temp-dir {:prefix "mage-readable"})
+      (let [dir (fs/create-temp-dir {:prefix "mage-cljts"})
             a   (fs/file dir "a")
             b   (fs/file dir "b")]
         (try

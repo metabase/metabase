@@ -1,13 +1,13 @@
-(ns mage.readable.rules.metabase
+(ns mage.cljts.rules.metabase
   "Metabase's own macros: `defendpoint`, `defsetting`, `defenterprise`, Toucan model hooks, Methodical methods,
   i18n, logging and a few `metabase.util` helpers."
   (:require
    [clojure.string :as str]
-   [mage.readable.doc :as d]
-   [mage.readable.names :as names]
-   [mage.readable.parse :as p]
-   [mage.readable.rules.core :as rc]
-   [mage.readable.translate :as t]))
+   [mage.cljts.doc :as d]
+   [mage.cljts.names :as names]
+   [mage.cljts.parse :as p]
+   [mage.cljts.rules.core :as rc]
+   [mage.cljts.translate :as t]))
 
 (set! *warn-on-reflection* true)
 

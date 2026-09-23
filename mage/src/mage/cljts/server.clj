@@ -1,15 +1,15 @@
-(ns mage.readable.server
-  "A small local web server showing PRs, local changes or single files as readable TypeScript-ish diffs, with a
+(ns mage.cljts.server
+  "A small local web server showing PRs, local changes or single files as TypeScript-ish diffs, with a
   toggle back to the raw Clojure diff."
   (:require
    [babashka.process :as process]
    [clojure.string :as str]
    [hiccup.util :as hiccup.util]
    [hiccup2.core :as h]
-   [mage.readable.core :as readable]
-   [mage.readable.diff :as diff]
-   [mage.readable.git :as git]
-   [mage.readable.highlight :as hl]
+   [mage.cljts.core :as cljts]
+   [mage.cljts.diff :as diff]
+   [mage.cljts.git :as git]
+   [mage.cljts.highlight :as hl]
    [org.httpkit.server :as http])
   (:import
    (java.net URLDecoder URLEncoder)))
@@ -44,11 +44,11 @@
       (let [v (f)] (swap! changes-cache assoc k [now v]) v))))
 
 (defn- translate
-  "{:text readable-text, :rows [clojure-line per readable line]} for Clojure `source`, or nil if it can't be
+  "{:text typescript-ish-text, :rows [clojure-line per output line]} for Clojure `source`, or nil if it can't be
   translated."
   [source]
   (when source
-    (cached [:translate source] #(try (readable/translate-with-source-map source) (catch Throwable _ nil)))))
+    (cached [:translate source] #(try (cljts/translate-with-source-map source) (catch Throwable _ nil)))))
 
 (defn- plain-lines
   "HTML-escaped lines for files we don't highlight."
@@ -75,7 +75,7 @@
                                                          (deliver result [:ok (f item)])
                                                          (catch Throwable e (deliver result [:error e]))
                                                          (finally (.release sem))))
-                                           "mage-readable"
+                                           "mage-cljts"
                                            big-stack-bytes))
                           result))
                       coll)]
@@ -117,22 +117,22 @@
    [:td.sign (case type :add "+" :del "−" " ")]
    [:td.code (hiccup.util/raw-string (if (str/blank? html-line) "&#8203;" html-line))]])
 
-(defn- readable-file? [path]
+(defn- translatable-file? [path]
   (and (git/clojure-file? path) (not (str/ends-with? path ".edn"))))
 
 (defn- file-rows
   "Diff rows (with the Clojure source line of each side) plus per-row highlighted HTML for one file in `view`."
   [{:keys [old new path]} view]
   (let [clj?      (git/clojure-file? path)
-        readable? (and (= view "readable") (readable-file? path))
-        o         (when readable? (translate old))
-        n         (when readable? (translate new))
-        ok?       (and readable? (or (nil? old) o) (or (nil? new) n))
+        ts? (and (= view "ts") (translatable-file? path))
+        o         (when ts? (translate old))
+        n         (when ts? (translate new))
+        ok?       (and ts? (or (nil? old) o) (or (nil? new) n))
         [old-t new-t] (if ok? [(:text o) (:text n)] [old new])
-        ;; readable line -> Clojure line via the source map; in the Clojure view they're the same line
+        ;; TypeScript-view line -> Clojure line via the source map; in the Clojure view they're the same line
         src-line  (fn [translated line] (if ok? (get (:rows translated) (dec line)) line))
         [lang hl-fn] (cond
-                       ok?   [:readable hl/readable-lines]
+                       ok?   [:ts hl/ts-lines]
                        clj?  [:clojure hl/clojure-lines]
                        :else [:plain plain-lines])
         hl-cached (fn [t] (cached [:hl lang t] #(vec (hl-fn (or t "")))))
@@ -144,7 +144,7 @@
                             (:new r) (assoc :new-src (src-line n (:new r)))))
                         (diff/diff-rows old-t new-t))]
     {:rows       rows
-     :fallback?  (and readable? (not ok?))
+     :fallback?  (and ts? (not ok?))
      :html-for   (fn [{:keys [type old new]}]
                    (if (= type :del) (get old-html (dec old) "") (get new-html (dec new) "")))}))
 
@@ -197,9 +197,9 @@
       (when (or (pos? add) (pos? del))
         [:span.counts [:span.add (str "+" add)] " " [:span.del (str "−" del)]])
       [:span.spacer]
-      (when (readable-file? (:path file))
+      (when (translatable-file? (:path file))
         [:span.toggle {:title "Switch this file between views (keyboard: c)"}
-         (for [[v label] [["readable" "Readable"] ["clj" "Clojure"]]]
+         (for [[v label] [["ts" "TypeScript"] ["clj" "Clojure"]]]
            [:button {:type "button" :data-view v :class (when (= v view) "on") :onclick (str "toggleFile(this,'" v "')")}
             label])])
       (when-not (or (= :file (:status file)) (not-shown-note (:path file)))
@@ -322,12 +322,12 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
      [:head
       [:meta {:charset "utf-8"}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-      [:title (str title " · Readable Clojure")]
+      [:title (str title " · cljts")]
       [:link {:rel "icon" :href "data:,"}]
       [:style (hiccup.util/raw-string css)]]
      [:body
       [:header
-       [:a.brand {:href "/"} "Readable Clojure"]
+       [:a.brand {:href "/"} "cljts"]
        [:form {:action "/open" :method "get"}
         [:input {:name "q" :placeholder "PR number, PR URL, or branch"}]
         [:button {:type "submit"} "Open"]]
@@ -336,7 +336,7 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
        [:button {:onclick "document.getElementById('legend').showModal()"} "Legend"]]
       body
       [:dialog#legend
-       [:h3 "How to read the readable view"]
+       [:h3 "How to read the TypeScript view"]
        [:table (for [[code desc] legend] [:tr [:td [:code code]] [:td desc]])]
        [:form {:method "dialog"} [:button "Close"]]]
       [:script (hiccup.util/raw-string js)]]])))
@@ -413,7 +413,7 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
 
 (defn- handler* [start-path {:keys [uri query-string]}]
   (let [params (query-params query-string)
-        view   (if (= "clj" (get params "view")) "clj" "readable")]
+        view   (if (= "clj" (get params "view")) "clj" "ts")]
     (cond
       (= uri "/")                   (redirect start-path)
       (= uri "/open")               (let [q (str/trim (get params "q" ""))]
@@ -443,7 +443,7 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
   ;; localhost only: the server can show any file in the repo
   (http/run-server (handler start-path) {:ip "127.0.0.1" :port port})
   (let [url (str "http://localhost:" port start-path)]
-    (println (str "Readable Clojure viewer running at " url "  (Ctrl-C to stop)"))
+    (println (str "cljts viewer running at " url "  (Ctrl-C to stop)"))
     (when-not no-open?
       (try (process/shell {:continue true} (if (str/includes? (System/getProperty "os.name") "Mac") "open" "xdg-open") url)
            (catch Exception _ nil))))

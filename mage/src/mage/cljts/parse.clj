@@ -1,4 +1,4 @@
-(ns mage.readable.parse
+(ns mage.cljts.parse
   "Reading Clojure source with rewrite-clj (which keeps comments and positions), plus helpers for looking at nodes
   and resolving symbols through the file's `ns` form."
   (:require

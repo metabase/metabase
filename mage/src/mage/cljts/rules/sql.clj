@@ -1,4 +1,4 @@
-(ns mage.readable.rules.sql
+(ns mage.cljts.rules.sql
   "Toucan 2 calls and HoneySQL maps, shown as the SQL they produce:
 
       (t2/select-one :model/Card :id id :archived false)
@@ -10,12 +10,12 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
-   [mage.readable.doc :as d]
-   [mage.readable.models :as models]
-   [mage.readable.names :as names]
-   [mage.readable.parse :as p]
-   [mage.readable.rules.core :as rc]
-   [mage.readable.translate :as t]))
+   [mage.cljts.doc :as d]
+   [mage.cljts.models :as models]
+   [mage.cljts.names :as names]
+   [mage.cljts.parse :as p]
+   [mage.cljts.rules.core :as rc]
+   [mage.cljts.translate :as t]))
 
 (set! *warn-on-reflection* true)
 

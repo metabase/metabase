@@ -1,11 +1,11 @@
-(ns mage.readable.cli
-  "`./bin/mage readable`: start the viewer, print one file's translation, or report translation coverage."
+(ns mage.cljts.cli
+  "`./bin/mage cljts`: start the viewer, print one file's translation, or report translation coverage."
   (:require
    [babashka.fs :as fs]
-   [mage.readable.core :as readable]
-   [mage.readable.git :as git]
-   [mage.readable.server :as server]
-   [mage.readable.translate :as t])
+   [mage.cljts.core :as cljts]
+   [mage.cljts.git :as git]
+   [mage.cljts.server :as server]
+   [mage.cljts.translate :as t])
   (:import
    (java.net URLEncoder)))
 
@@ -20,7 +20,7 @@
     (binding [t/*stats* stats]
       (doseq [f files]
         (try
-          (when-not (readable/translate-string (slurp f))
+          (when-not (cljts/translate-string (slurp f))
             (swap! failed conj [f "parse failed"]))
           (catch Throwable e
             (swap! failed conj [f (str (type e) " " (ex-message e))])))))
@@ -37,7 +37,7 @@
   [{:keys [options arguments]}]
   (let [{:keys [pr branch port print stats no-open base]} options]
     (cond
-      print (clojure.core/print (or (readable/translate-string (slurp print)) "(could not parse)\n"))
+      print (clojure.core/print (or (cljts/translate-string (slurp print)) "(could not parse)\n"))
       stats (server/with-big-stack
               #(stats! (if (seq arguments) arguments ["src" "enterprise/backend/src" "test" "enterprise/backend/test"])))
       :else (server/start! {:port       (or port 7788)

@@ -1,5 +1,5 @@
-(ns mage.readable.highlight
-  "Tiny syntax highlighters for the readable TypeScript-ish output and for Clojure. They run over a whole file (so
+(ns mage.cljts.highlight
+  "Tiny syntax highlighters for the TypeScript view's output and for Clojure. They run over a whole file (so
   multi-line comments and SQL templates are colored correctly) and return one HTML string per line."
   (:require
    [clojure.string :as str]))
@@ -53,7 +53,7 @@
           (recur end (reduce conj! acc (if (= end (.end mt)) toks (conj (vec toks) [nil (subs s (.end mt) end)])))))
         (persistent! (cond-> acc (< pos (count s)) (conj! [nil (subs s pos)])))))))
 
-;;; ------------------------------------------------ Readable (TypeScript-ish) ----------------------------------
+;;; ------------------------------------------------ TypeScript view -------------------------------------------
 
 (def ^:private ts-keywords
   #{"function" "const" "let" "return" "if" "else" "for" "of" "while" "do" "new" "throw" "try" "catch" "finally"
@@ -93,8 +93,8 @@
                                             :else                            nil)
                                           w]])]])
 
-(defn readable-lines
-  "Highlight readable output; returns one HTML string per line."
+(defn ts-lines
+  "Highlight the TypeScript view's output; returns one HTML string per line."
   [text]
   (tokens->lines (scan (or text "") ts-rules)))
 

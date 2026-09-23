@@ -1,15 +1,15 @@
-(ns mage.readable-test
-  "Golden tests for `mage readable`: Clojure in, readable TypeScript-ish text out."
+(ns mage.cljts-test
+  "Golden tests for `mage cljts`: Clojure in, TypeScript-ish text out."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as process]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
-   [mage.readable.core :as readable]
-   [mage.readable.diff :as diff]
-   [mage.readable.git :as git]
-   [mage.readable.names :as names]
-   [mage.readable.server :as server]))
+   [mage.cljts.core :as cljts]
+   [mage.cljts.diff :as diff]
+   [mage.cljts.git :as git]
+   [mage.cljts.names :as names]
+   [mage.cljts.server :as server]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +28,7 @@
 (defn- translate
   "Translate `source` (with a standard ns form prepended) and return the output after the imports."
   [source]
-  (let [out (readable/translate-string (str ns-form "\n" source))]
+  (let [out (cljts/translate-string (str ns-form "\n" source))]
     (->> (str/split-lines out)
          (drop-while #(not (str/blank? %)))
          (drop-while str/blank?)
@@ -179,8 +179,8 @@
   (testing "unknown macros using syntax-quote are shown as raw Clojure"
     (is (str/includes? (translate "(defmacro m [x] `(do ~x))") "clj`")))
   (testing "translation is deterministic"
-    (let [src (slurp "mage/src/mage/readable/translate.clj")]
-      (is (= (readable/translate-string src) (readable/translate-string src))))))
+    (let [src (slurp "mage/src/mage/cljts/translate.clj")]
+      (is (= (cljts/translate-string src) (cljts/translate-string src))))))
 
 (deftest ^:parallel diff-rows-test
   (is (= [{:type :ctx :old 1 :new 1 :text "a"}
@@ -282,7 +282,7 @@
   (let [html (#'server/changes-page {:title "t"
                                      :files [{:path "a.clj" :status :modified :old "(defn f [] 1)\n" :new "(defn f [] 2)\n"}
                                              {:path "b.clj" :status :added :old nil :new "(def x 1)\n"}]}
-                                    "readable")]
+                                    "ts")]
     (is (str/includes? html "a.clj"))
     (is (str/includes? html "b.clj"))
     (is (str/includes? html "<span class=\"hl-kw\">return</span> <span class=\"hl-number\">2</span>;"))))
@@ -297,7 +297,7 @@
   (git! dir "commit" "-q" "-m" (str "change " file)))
 
 (deftest branch-parent-test
-  (fs/with-temp-dir [dir {:prefix "readable-git"}]
+  (fs/with-temp-dir [dir {:prefix "cljts-git"}]
     ;; master: a1 -> a2 -> a3 ; `old` from a1 ; `feature` from a2 ; `sub` from feature
     (git! dir "init" "-q" "-b" "master")
     (commit! dir "a.clj" "(ns a)\n")
@@ -325,10 +325,10 @@
                               (git/branch-changes "nope" nil)))))))
 
 (deftest ^:parallel source-map-test
-  (testing "every readable line maps back to the Clojure line it came from (including past 8 forms)"
+  (testing "every output line maps back to the Clojure line it came from (including past 8 forms)"
     (let [src (str "(ns a)\n\n"
                    (str/join "\n\n" (for [i (range 12)] (str "(defn f" i " [x]\n  ;; note " i "\n  (g x " i "))"))))
-          {:keys [text rows]} (readable/translate-with-source-map src)
+          {:keys [text rows]} (cljts/translate-with-source-map src)
           src-lines (str/split-lines src)
           out-lines (str/split-lines text)]
       (is (= (count out-lines) (count rows)))
@@ -346,7 +346,7 @@
                                      :files [{:path "a.clj" :status :modified :old "(def x 1)\n" :new "(def x 2)\n"}
                                              {:path "frontend/src/thing.tsx" :status :modified :old nil :new nil}
                                              {:path "resources/x.yaml" :status :modified :old "a: 1\n" :new "a: 2\n"}]}
-                                    "readable")]
+                                    "ts")]
     (testing "non-Clojure files are listed, but their bodies aren't shown"
       (is (str/includes? html "frontend/src/thing.tsx"))
       (is (str/includes? html "You know how TypeScript works."))

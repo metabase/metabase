@@ -1,13 +1,13 @@
-(ns mage.readable.rules.malli
+(ns mage.cljts.rules.malli
   "Malli schemas. Input schemas (on function parameters) become TypeScript types, since that's where a TS reader
   expects them. Return schemas become a plain-English `Returns:` line in the doc comment, with a short return type."
   (:require
    [clojure.string :as str]
-   [mage.readable.doc :as d]
-   [mage.readable.names :as names]
-   [mage.readable.parse :as p]
-   [mage.readable.rules.core :as rc]
-   [mage.readable.translate :as t]
+   [mage.cljts.doc :as d]
+   [mage.cljts.names :as names]
+   [mage.cljts.parse :as p]
+   [mage.cljts.rules.core :as rc]
+   [mage.cljts.translate :as t]
    [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)

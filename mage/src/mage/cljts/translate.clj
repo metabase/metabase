@@ -1,5 +1,5 @@
-(ns mage.readable.translate
-  "The translation engine: turns rewrite-clj nodes into layout docs (see [[mage.readable.doc]]).
+(ns mage.cljts.translate
+  "The translation engine: turns rewrite-clj nodes into layout docs (see [[mage.cljts.doc]]).
 
   Clojure is expression-oriented and TypeScript isn't, so every translation happens in a *position*, `(:pos ctx)`:
 
@@ -14,9 +14,9 @@
   is shown as raw Clojure in a ``clj`...` `` template."
   (:require
    [clojure.string :as str]
-   [mage.readable.doc :as d]
-   [mage.readable.names :as names]
-   [mage.readable.parse :as p]
+   [mage.cljts.doc :as d]
+   [mage.cljts.names :as names]
+   [mage.cljts.parse :as p]
    [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)
@@ -270,7 +270,7 @@
     (update stmts (dec (count stmts)) (fn [s] [s " " text]))))
 
 (defn entry-items
-  "Turn entries (see [[mage.readable.parse/entries]]) into bracket items, grouping every `group-size` forms and
+  "Turn entries (see [[mage.cljts.parse/entries]]) into bracket items, grouping every `group-size` forms and
   translating each group with `f` (which receives a vector of nodes). Comments become leading/trailing comments."
   [ents group-size f]
   (loop [ents ents, pending-lead [], group [], items []]
@@ -904,7 +904,7 @@
    ents))
 
 (defn translate-root-with-source-map
-  "Translate a parsed file (rewrite-clj :forms node). Returns {:text readable-text, :rows [clojure-line per output
+  "Translate a parsed file (rewrite-clj :forms node). Returns {:text typescript-ish-text, :rows [clojure-line per output
   line]} where each entry is the (1-based) Clojure source line that output line came from."
   [root]
   (let [info (p/ns-info root)
@@ -913,6 +913,6 @@
     {:text (str text "\n") :rows rows}))
 
 (defn translate-root
-  "Translate a parsed file (rewrite-clj :forms node) into readable text."
+  "Translate a parsed file (rewrite-clj :forms node) into TypeScript-ish text."
   [root]
   (:text (translate-root-with-source-map root)))
