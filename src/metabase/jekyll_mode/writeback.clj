@@ -1,7 +1,10 @@
 (ns metabase.jekyll-mode.writeback
   (:require
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.jekyll-mode.files :as files]
-   [metabase.jekyll-mode.writeback.serialize :as serialize]
+   [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -26,10 +29,13 @@
   [{:keys [id], :as instance} :- [:map
                                   [:id pos-int?]]]
   (when-not *suppress-file-updates*
-    (files/create-model-directory-if-not-exists! (t2/model instance))
-    (let [filename (files/instance-filename instance)]
-      (spit filename (serialize/serialize instance))
-      (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename))))
+    (let [model    (t2/model instance)
+          root-dir (files/directory-prefix)]
+      (serdes/with-cache
+        (let [entity-stream (v2.extract/extract {:targets [[(name model) id]]})
+              writer        (v2.storage.files/file-writer root-dir)]
+          (v2.storage/store! entity-stream writer)))
+      (printf "Wrote %s %d to %s.\n" (t2/model instance) id root-dir))))
 
 (t2/define-after-update ::writeback
   [instance]

@@ -1129,7 +1129,11 @@
   {:team "UX West"
    :api  #{metabase.jekyll-mode.core
            metabase.jekyll-mode.init}
-   :uses #{util}}
+   :uses #{models util enterprise/serialization}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Segment}}
 
   lib
   {:team "Querying Platform"
