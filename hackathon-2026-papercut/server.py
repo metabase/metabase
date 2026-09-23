@@ -1549,11 +1549,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .results-heading {display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: 1.6rem 0 .7rem}
 .results-heading h2 {font-size: 1.15rem; margin: 0}
 .results-heading p {margin: 0; font-size: .85rem}
-.issue-list {list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem}
+.issue-list {list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem}
 .card {background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.15rem 1.3rem; box-shadow: var(--shadow)}
 .issue-card {display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem}
 .issue-card:hover {border-color: var(--control-border)}
-.issue-card h3 {font-size: 1.09rem; line-height: 1.35; letter-spacing: -.015em; margin: .15rem 0 .45rem; overflow-wrap: anywhere}
+.issue-card h3 {font-size: 1.09rem; line-height: 1.35; letter-spacing: -.015em; margin: .15rem 0 .45rem}
 .issue-card .issue-number {font-size: .85rem; font-weight: 600; color: var(--muted); margin-right: .35rem}
 .issue-card .location {grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere}
 .issue-summary {grid-column: 1 / -1; color: var(--text); margin: 0; line-height: 1.48}
@@ -1614,7 +1614,7 @@ h1 code, h3 code, .related-item a code {font: .88em ui-monospace, SFMono-Regular
 .report-card p {margin: .4rem 0}
 .report-card summary {cursor: pointer; font-weight: 650; margin-top: .4rem}
 @media (max-width: 930px) {.toolbar, .toolbar.single-repository {grid-template-columns: repeat(3, minmax(0, 1fr))} .detail-layout {grid-template-columns: 1fr}}
-@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: minmax(0, 1fr)} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading {align-items: flex-start; flex-direction: column}}
+@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: 1fr} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading {align-items: flex-start; flex-direction: column}}
 </style>"""
 
 THEME_INIT = """<script>
