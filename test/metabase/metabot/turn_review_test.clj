@@ -195,6 +195,7 @@
               model-calls                (atom 0)
               model-error                (atom (ex-info "Model unavailable" {}))
               posts                      (atom [])
+              failures                   (atom {})
               review!                    (fn [parts]
                                            (reset! posts [])
                                            (turn-review/review-turn! assistant-msg-id parts {:profile-id "internal"})
@@ -203,14 +204,16 @@
                                                           :url           url
                                                           :authorization (get-in request [:headers "Authorization"])))
                                                  @posts))]
-          (binding [turn-review/*run-synchronously?* true]
+          (binding [turn-review/*run-synchronously?*  true
+                    turn-review/*post-retry-delay-ms* 0]
             (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (fn [& _]
                                                                            (swap! model-calls inc)
                                                                            (throw @model-error))
                                         http/post                        (fn [url request]
                                                                            (swap! posts conj [url request])
-                                                                           (when (str/includes? url "down.test")
-                                                                             (throw (ex-info "Connection refused" {})))
+                                                                           (when-let [e (first (@failures url))]
+                                                                             (swap! failures update url rest)
+                                                                             (throw e))
                                                                            {:status 201})]
               (testing "a clean turn posts nothing and never calls the model"
                 (is (= [] (review! [{:type :text :text "There are 18,760 orders."} stop])))
@@ -240,12 +243,19 @@
                           :severity "high"
                           :details  {:verdict {:confidence 0.9 :reviewed_by "model"}}}]
                         (review! silent-search-failure))))
-              (testing "each server in the list gets the papercut, and a failed post is logged, not thrown"
+              (testing "each server in the list gets the papercut, and a rejected post is logged, not thrown"
+                (reset! failures {"http://down.test/api/reports"
+                                  [(ex-info "clj-http: status 401" {:status 401 :body "Unauthorized"})]})
                 (mt/with-temporary-setting-values [metabot-papercuts-server-url
                                                    "http://down.test, http://papercuts.test"]
                   (log.capture/with-log-messages-for-level [logs [metabase.metabot.turn-review :warn]]
                     (is (= ["http://down.test/api/reports" "http://papercuts.test/api/reports"]
                            (map :url (review! silent-search-failure))))
-                    (is (some #(re-find #"Posting Metabot papercut .* to http://down.test failed: Connection refused"
+                    (is (some #(re-find #"Posting Metabot papercut .* to http://down.test failed: Unauthorized"
                                         (:message %))
-                              (logs)))))))))))))
+                              (logs))))))
+              (testing "a connection error or a 5xx is retried once"
+                (doseq [e [(java.net.ConnectException. "Connection refused")
+                           (ex-info "clj-http: status 503" {:status 503})]]
+                  (reset! failures {"http://papercuts.test/api/reports" [e e e]})
+                  (is (= 2 (count (review! silent-search-failure)))))))))))))
