@@ -30,6 +30,8 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[serdes-workflow](.claude/skills/serdes-workflow/SKILL.md)** - Export, validate, and import Metabase content via serdes
 - **[serdes-yaml-edit](.claude/skills/serdes-yaml-edit/SKILL.md)** - Edit exported YAML files with correct portable references
+- **[jekyll-dashboard-create](.claude/skills/jekyll-dashboard-create/SKILL.md)** - Author a new Dashboard as serdes YAML and load it via jekyll-mode's local dev pipeline
+- **[jekyll-card-create](.claude/skills/jekyll-card-create/SKILL.md)** - Author a new Card (question/model/metric) as serdes YAML (MBQL 5 stages) and load it via jekyll-mode's local dev pipeline
 
 ## Frontend
 

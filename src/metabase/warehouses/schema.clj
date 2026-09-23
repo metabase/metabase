@@ -87,7 +87,8 @@
    [:provider_name               {:optional true} [:maybe :string]]
    [:write_data_details          {:optional true} [:maybe ::database.write-data-details]]
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
-   [:is_stub                     {:optional true} [:maybe :boolean]]])
+   [:is_stub                     {:optional true} [:maybe :boolean]]
+   [:default_schema              {:optional true} [:maybe :string]]])
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."
