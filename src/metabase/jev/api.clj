@@ -23,6 +23,7 @@
    [metabase.jev.apps.joins :as jev.joins]
    [metabase.jev.apps.saving :as jev.saving]
    [metabase.jev.apps.search :as jev.search]
+   [metabase.jev.apps.table-facts :as jev.table-facts]
    [metabase.jev.apps.tables :as jev.tables]
    [metabase.jev.apps.usage :as jev.usage]
    [metabase.jev.apps.viz :as jev.viz]
@@ -64,4 +65,5 @@
                     jev.search/routes
                     jev.saving/routes
                     jev.create/routes
+                    jev.table-facts/routes
                     (api.macros/ns-handler *ns*)))
