@@ -44,7 +44,7 @@
   (update-file! instance))
 
 (comment
-  (defn- %update! []
+  (defn- %insert! []
     (t2/insert! :model/Card (-> (t2/select-one :model/Card)
                                 (dissoc :id :entity_id)))))
 
