@@ -3171,11 +3171,12 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{app-db util}
+   :uses #{app-db premium-features util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
-                    :model/TableUserSettings}}
+                    :model/TableUserSettings
+                    :model/WorkspaceTableRemapping}}
 
   warehouses
   {:team "UX West"

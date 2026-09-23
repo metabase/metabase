@@ -3,6 +3,7 @@
   in its user-settings table."
   (:require
    [metabase.app-db.worktree :as mdb.worktree]
+   [metabase.premium-features.defenterprise :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -107,6 +108,26 @@
    :data_layer         :data_layer_set
    :data_source        :data_source_set})
 
+(def ^:private WorkspaceSchema
+  "Where the transforms of one database write their output while workspaces are on."
+  [:map {:closed true}
+   [:db_id  pos-int?]
+   [:schema [:string {:min 1}]]])
+
+(defenterprise-schema workspace-schemas :- [:sequential WorkspaceSchema]
+  "Every `{:db_id, :schema}` transforms write their output into while workspaces are on, empty otherwise -- which is
+  the whole switch, since with nowhere to write there is nothing to stand in for anything.
+
+  Read from the databases rather than from the remappings on hand: another worktree, or another instance pointed at
+  the same warehouse, writes tables into these schemas that this reader has no remapping for, and those are nobody's
+  tables. Few, so they are inlined as literals; the enterprise side caches the read.
+
+  Declared with the narrow `metabase.premium-features.defenterprise` rather than `premium-features.core`: this module
+  sits below the settings namespaces, and `premium-features.core` would close a load cycle."
+  metabase-enterprise.workspaces.core
+  []
+  [])
+
 (def table-columns
   "Every column of `metabase_table`. Spelled out rather than read from `:metabase.warehouse-schema.schema/table`,
   which lives in a module above this one; `metabase.warehouse-schema-overlay.core-test` fails if the two drift."
@@ -115,10 +136,6 @@
     :field_order :id :initial_sync_status :is_defective_duplicate :is_published :is_upload :is_writable :name
     :owner_email :owner_user_id :points_of_interest :schema :show_in_getting_started :transform_id :transform_target
     :unique_table_helper :updated_at :view_count :visibility_type})
-
-(def ^:private sync-owned-table-columns
-  "The columns of `metabase_table` users cannot set."
-  (sort (remove user-settable-table-columns table-columns)))
 
 (mu/defn- table-user-settings-join
   "The `:left-join` entries joining `metabase_table_user_settings` as `settings-alias` to the Table table aliased
@@ -154,25 +171,119 @@
         [:case [:= [:coalesce settings-column table-column] true] true :else false]
         [:coalesce settings-column table-column]))))
 
+(def ^:private workspace-remapped-table-columns
+  "The Table columns a workspace table borrows from the canonical table it stands in for."
+  #{:schema :name})
+
+(mu/defn- workspace-remapping-join
+  "The `:left-join` entries joining `workspace_table_remapping` as `remapping-alias` to the Table aliased
+  `table-alias` on the workspace table it points at -- the row that is standing in for a canonical table.
+
+  Scoped to `worktree-id`, nil being the main app: the same canonical table is remapped once per worktree, so
+  without it the join matches whichever worktree's row the planner reaches first. Named here rather than left to
+  [[metabase.app-db.worktree]], which restricts the table a query selects from, not the ones it joins."
+  [table-alias     :- :keyword
+   remapping-alias :- :keyword
+   worktree-id     :- [:maybe pos-int?]]
+  [[(t2/table-name :model/WorkspaceTableRemapping) remapping-alias]
+   [:and
+    [:= (u/qualified-key remapping-alias :worktree_id) worktree-id]
+    [:= (u/qualified-key remapping-alias :db_id) (u/qualified-key table-alias :db_id)]
+    [:= (u/qualified-key remapping-alias :to_schema) (u/qualified-key table-alias :schema)]
+    [:= (u/qualified-key remapping-alias :to_table) (u/qualified-key table-alias :name)]]])
+
+(mu/defn- workspace-remapped-column
+  "Honey SQL expression for `column` as readers see it: a workspace table stands where the canonical table it was
+  written for would be, so it answers to that name. Requires [[workspace-remapping-join]]."
+  [column          :- (into [:enum] workspace-remapped-table-columns)
+   table-alias     :- :keyword
+   remapping-alias :- :keyword]
+  [:case [:not= (u/qualified-key remapping-alias :id) nil]
+   (u/qualified-key remapping-alias (if (= column :name) :from_table :from_schema))
+   :else (u/qualified-key table-alias column)])
+
+(mu/defn- in-workspace-schema
+  "Honey SQL predicate matching the Table rows aliased `table-alias` that live in a schema transforms write into."
+  [table-alias :- :keyword
+   schemas     :- [:sequential WorkspaceSchema]]
+  (into [:or]
+        (map (fn [{:keys [db_id schema]}]
+               [:and
+                [:= (u/qualified-key table-alias :db_id) db_id]
+                [:= (u/qualified-key table-alias :schema) schema]]))
+        schemas))
+
+(mu/defn- workspace-table-filter
+  "Honey SQL predicate keeping the rows a reader should see. Two jobs, and only one of them is per-worktree.
+
+  Hiding the workspace schemas is unconditional: they are where transform runs write, not part of any database
+  anyone browses, so their tables are dropped -- except the ones standing in for a canonical table in the reader's
+  worktree, which come back in that table's place. Everything else in there belongs to another worktree, or another
+  instance pointed at the same warehouse, and is nobody's here.
+
+  Hiding the canonical row a workspace table stands in for is scoped to `worktree-id`, so the table is shown once.
+  Only once that table is there to stand in, though: a remapping is recorded before the run writes, and sync gives
+  the table its row later still, and in between the canonical table is all there is. Another worktree's remapping
+  of the same table must not hide the canonical row from a reader with no replacement to show in its place."
+  [table-alias     :- :keyword
+   remapping-alias :- :keyword
+   schemas         :- [:sequential WorkspaceSchema]
+   worktree-id     :- [:maybe pos-int?]]
+  [:and
+   [:not [:exists ^:allow-subquery
+          {:select [[[:inline 1]]]
+           :from   [[(t2/table-name :model/WorkspaceTableRemapping) :s]]
+           :join   [[(t2/table-name :model/Table) :st]
+                    [:and
+                     [:= :st.db_id :s.db_id]
+                     [:= :st.schema :s.to_schema]
+                     [:= :st.name :s.to_table]
+                     [:= :st.active true]]]
+           :where  [:and
+                    [:= :s.worktree_id worktree-id]
+                    [:= :s.db_id (u/qualified-key table-alias :db_id)]
+                    [:or
+                     [:= :s.from_schema (u/qualified-key table-alias :schema)]
+                     [:and [:= :s.from_schema nil] [:= (u/qualified-key table-alias :schema) nil]]]
+                    [:= :s.from_table (u/qualified-key table-alias :name)]]}]]
+   [:or
+    [:not= (u/qualified-key remapping-alias :id) nil]
+    [:not (in-workspace-schema table-alias schemas)]]])
+
 (mu/defn table-query :- [:tuple :any :keyword]
   "The source a query over Tables reads from: `metabase_table` merged with the user values, with the options of
-  [[field-query]]."
+  [[field-query]]. While workspaces are on, a workspace table also answers to the name of the canonical table it
+  stands in for in the worktree being worked in, and every other table in a workspace schema is left out;
+  `{:workspace-remapping? false}` gives the Tables as sync recorded them."
   ([]
    (table-query nil))
 
-  ([{:keys [alias user-settings? worktree-id]
-     :or   {alias          (t2/table-name :model/Table)
-            user-settings? true
-            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                    [:alias          {:optional true} :keyword]
-                                                                    [:user-settings? {:optional true} :boolean]
-                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
-   [(if user-settings?
-      ^:allow-subquery
-      {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)
-                        (map (fn [column] [(table-user-settings-column column :t :u) column]))
-                        (sort user-settable-table-columns))
-       :from      [[(t2/table-name :model/Table) :t]]
-       :left-join (table-user-settings-join :t :u worktree-id)}
-      (t2/table-name :model/Table))
-    alias]))
+  ([{:keys [alias user-settings? workspace-remapping? worktree-id]
+     :or   {alias                (t2/table-name :model/Table)
+            user-settings?       true
+            workspace-remapping? true
+            worktree-id          (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
+                                                                          [:alias                {:optional true} :keyword]
+                                                                          [:user-settings?       {:optional true} :boolean]
+                                                                          [:workspace-remapping? {:optional true} :boolean]
+                                                                          [:worktree-id          {:optional true} [:maybe pos-int?]]]]]
+   (let [schemas (when workspace-remapping? (not-empty (workspace-schemas)))]
+     [(if (or user-settings? schemas)
+        (cond-> ^:allow-subquery
+         {:select (mapv (fn [column]
+                          (cond
+                            (and user-settings? (user-settable-table-columns column))
+                            [(table-user-settings-column column :t :u) column]
+
+                            (and schemas (workspace-remapped-table-columns column))
+                            [(workspace-remapped-column column :t :w) column]
+
+                            :else
+                            (u/qualified-key :t column)))
+                        (sort table-columns))
+          :from   [[(t2/table-name :model/Table) :t]]}
+          user-settings? (assoc :left-join (table-user-settings-join :t :u worktree-id))
+          schemas        (-> (update :left-join (fnil into []) (workspace-remapping-join :t :w worktree-id))
+                             (assoc :where (workspace-table-filter :t :w schemas worktree-id))))
+        (t2/table-name :model/Table))
+      alias])))
