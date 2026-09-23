@@ -158,3 +158,23 @@
                    (t2/select-one [:model/TransformJob :name :schedule :active] :id job-id)))
             (finally
               (remote-sync.db/delete-worktree! worktree-id))))))))
+
+(deftest a-remapping-stays-in-its-worktree-test
+  (testing "a Field is shared by every world, but the remapping of one belongs to the world that made it"
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "remap-" (random-uuid))})
+          field-id          (mt/id :venues :name)
+          dimension-names   #(->> (apply mt/user-http-request :crowberto :get 200 (str "field/" field-id) %&)
+                                  :dimensions
+                                  (map :name)
+                                  set)]
+      (try
+        (mt/user-http-request :crowberto :post 200 (str "field/" field-id "/dimension")
+                              (worktree-header worktree-id)
+                              {:type "internal" :name "Branch remapping"})
+        (is (= #{"Branch remapping"} (dimension-names (worktree-header worktree-id))))
+        (is (= #{} (dimension-names)))
+        (finally
+          (remote-sync.db/delete-worktree! worktree-id)))
+      (testing "and it goes when the worktree does"
+        (mdb.worktree/without-worktree-scoping
+         (is (zero? (t2/count :model/Dimension :field_id field-id))))))))

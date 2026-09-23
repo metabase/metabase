@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -90,30 +91,30 @@
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
-(defn- check-not-in-worktree
+(defn- check-same-world
   [model id]
-  (when (and id (bookmarks.db/item-worktree-id model id))
-    (throw (ex-info "A bookmark cannot point at a worktree's content"
+  (when (and id (not= (bookmarks.db/item-worktree-id model id) (mdb.worktree/worktree-id)))
+    (throw (ex-info "A bookmark cannot point at another world's content"
                     {:status-code 400 :model model :id id}))))
 
 (t2/define-before-insert :model/CardBookmark [bookmark]
-  (check-not-in-worktree :model/Card (:card_id bookmark))
+  (check-same-world :model/Card (:card_id bookmark))
   bookmark)
 
 (t2/define-before-insert :model/DashboardBookmark [bookmark]
-  (check-not-in-worktree :model/Dashboard (:dashboard_id bookmark))
+  (check-same-world :model/Dashboard (:dashboard_id bookmark))
   bookmark)
 
 (t2/define-before-insert :model/DocumentBookmark [bookmark]
-  (check-not-in-worktree :model/Document (:document_id bookmark))
+  (check-same-world :model/Document (:document_id bookmark))
   bookmark)
 
 (t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (check-not-in-worktree :model/Collection (:collection_id bookmark))
+  (check-same-world :model/Collection (:collection_id bookmark))
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
   bookmark)
 
 (t2/define-before-update :model/CollectionBookmark [model]
-  (check-not-in-worktree :model/Collection (:collection_id (t2/changes model)))
+  (check-same-world :model/Collection (:collection_id (t2/changes model)))
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
   model)
