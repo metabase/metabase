@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.db-activity :as db-activity]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
@@ -139,3 +140,24 @@
       (let [traversals (atom 0)]
         (is (= 2 (count (source/serialize-specs (counting traversals) nil))))
         (is (= 2 @traversals))))))
+
+(deftest serialize-specs-throttles-progress-writes-test
+  (testing "serializing many entities with a task id writes progress a bounded number of times, not once per entity"
+    ;; not `with-temp`: it pins a connection opened before counting starts, hiding the writes from the counter.
+    ;; The `clean-remote-sync-state` fixture removes the row.
+    (let [task-id    (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"})
+          n          50
+          entities   (mapv #(create-test-entity (str "E" %) (str "e" %) "Card") (range n))
+          statements (fn [task-id]
+                       (let [counts (db-activity/with-db-activity (source/serialize-specs entities task-id))]
+                         (is (= n (count (:result counts))))
+                         (get-in counts [:by-thread (.threadId (Thread/currentThread)) :statements] 0)))
+          ;; serializing without a task id is the same work minus progress reporting, so the difference is exactly
+          ;; the progress writes
+          baseline   (statements nil)
+          reporting  (statements task-id)]
+      ;; each progress write is a cancelled-check SELECT plus an UPDATE. Unthrottled that is one write per entity
+      ;; (100 statements here); throttled it is the first write plus the forced final one, well inside one window.
+      (is (<= (- reporting baseline) 4))
+      (testing "the final progress still reflects the whole stream"
+        (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))
