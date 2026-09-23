@@ -245,41 +245,65 @@
   500)
 
 (defn- import-content-metadata
-  "Content-hash entries for imported `rows` ({:model_type :model_id}), re-serializing each entity once to hash
-  it. `repo-paths` supplies the real repo path for entity-id models (else the freshly computed one).
+  "Content-hash entries for imported `rows` ({:model_type :model_id}). `repo-files` ({:model_type :entity_id :path
+  :content}) supplies the real repo path for entity-id models (else the freshly computed one) and the text of the
+  file each was loaded from.
+
+  A stored hash is the hash of Metabase's own serialization of the local entity (the save-event handler compares a
+  fresh one against it). An entity-id entity whose loaded file hashes to its prior hash in `prior-hashes`
+  ({[model_type model_id] content_hash}) keeps that hash without being re-serialized: those bytes are exactly what
+  Metabase once serialized, and loading its own serialization yields an entity that serializes back to the same
+  bytes. Every other entity (new, changed, or hand-edited in a form Metabase wouldn't write) is re-serialized once
+  and hashed.
 
   Returns:
    - [{:model_type :model_id :path :content_hash}] (entities that fail to serialize are omitted)"
-  [rows repo-paths]
+  [rows repo-files prior-hashes]
   (let [storage-opts (source/storage-context)
-        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
+        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id] :as f}] [[model_type entity_id] f])) repo-files)
         serialize    (fn [model-type opts id->eid instance]
                        (try
                          (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type opts instance))
                                repo-path (some->> (some-> id->eid (get (:id instance)))
                                                   (vector model-type)
-                                                  repo-by-eid)]
+                                                  repo-by-eid
+                                                  :path)]
                            {:model_type   model-type
                             :model_id     (:id instance)
                             :path         (or repo-path (:path fspec))
                             :content_hash (source/content-hash (:content fspec))})
                          (catch Exception e
                            (log/warnf "Skipping %s %s: failed to serialize for content hash: %s" model-type (:id instance) (ex-message e))
-                           nil)))]
+                           nil)))
+        ;; the entry for a row whose loaded file is byte-identical to what its prior hash was taken from, else nil
+        unchanged    (fn [model-type id->eid {:keys [model_id]}]
+                       (when-let [prior (get prior-hashes [model-type model_id])]
+                         (when-let [{:keys [path content]} (some->> (get id->eid model_id)
+                                                                    (vector model-type)
+                                                                    repo-by-eid)]
+                           (when (and content (= prior (source/content-hash content)))
+                             {:model_type model-type :model_id model_id :path path :content_hash prior}))))]
     ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
     ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
     (into []
           (mapcat (fn [[model-type model-rows]]
                     (let [spec      (spec/spec-for-model-type model-type)
                           model-key (:model-key spec)
+                          ;; entity-id models: map local id -> entity_id so we can look up the repo file
+                          id->eid   (when (and model-key (= :entity-id (:identity spec)))
+                                      (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))
+                          kept      (when (seq prior-hashes)
+                                      (into [] (keep #(unchanged model-type id->eid %)) model-rows))
+                          kept-ids  (into #{} (map :model_id) kept)
+                          stale-ids (into [] (comp (map :model_id) (remove kept-ids)) model-rows)
                           opts      (merge spec/git-sync-extract-opts
                                            {:filter-column :id
-                                            :filter-ids    (mapv :model_id model-rows)})
-                          ;; entity-id models: map local id -> entity_id so we can look up the repo path
-                          id->eid   (when (and model-key (= :entity-id (:identity spec)))
-                                      (remote-sync.db/entity-ids-by-id model-key (mapv :model_id model-rows)))]
-                      (eduction (keep #(serialize model-type opts id->eid %))
-                                (serdes/extract-query model-type opts)))))
+                                            :filter-ids    stale-ids})]
+                      ;; `cat` reduces each part: the extract-query is reducible but not seqable
+                      (eduction cat [kept
+                                     (when (seq stale-ids)
+                                       (eduction (keep #(serialize model-type opts id->eid %))
+                                                 (serdes/extract-query model-type opts)))]))))
           (group-by :model_type rows))))
 
 (defn- merge-content-metadata
@@ -295,14 +319,18 @@
 
 (defn- insert-with-metadata!
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
-  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
-  [rows repo-paths]
-  ;; Hashing re-serializes every imported entity after the load, so no Field is written meanwhile; synced cards
-  ;; reference a few fields many times, so a bounded field-path cache turns one query per ref into one per field.
-  (serdes/with-cache
-    (serdes/with-field-path-cache
-      (doseq [chunk (partition-all app-db-batch-size rows)]
-        (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
+  each chunk's file_path + content_hash (`repo-files` gives entity-id models their real path and loaded file) into
+  its insert. `prior-hashes` ({[model_type model_id] content_hash}, read before the old rows were dropped) lets
+  entities whose file hasn't changed since it was hashed skip re-serialization; see [[import-content-metadata]]."
+  ([rows repo-files]
+   (insert-with-metadata! rows repo-files {}))
+  ([rows repo-files prior-hashes]
+   ;; Hashing re-serializes imported entities after the load, so no Field is written meanwhile; synced cards
+   ;; reference a few fields many times, so a bounded field-path cache turns one query per ref into one per field.
+   (serdes/with-cache
+     (serdes/with-field-path-cache
+       (doseq [chunk (partition-all app-db-batch-size rows)]
+         (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-files prior-hashes))))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -378,9 +406,11 @@
       ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
       ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
       ;; insert. Chunked so insert/IN params and memory stay bounded.
-      (remote-sync.db/delete-all-rsos!)
-      (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
-                             (source.ingestable/cached-file-paths base-ingestable))
+      (let [prior-hashes (remote-sync.db/rso-content-hashes)]
+        (remote-sync.db/delete-all-rsos!)
+        (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                               (source.ingestable/cached-file-paths base-ingestable)
+                               prior-hashes))
       (when finalize! (finalize!)))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
