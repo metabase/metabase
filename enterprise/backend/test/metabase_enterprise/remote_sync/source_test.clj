@@ -156,8 +156,9 @@
           ;; the progress writes
           baseline   (statements nil)
           reporting  (statements task-id)]
-      ;; each progress write is a cancelled-check SELECT plus an UPDATE. Unthrottled that is one write per entity
-      ;; (99 measured before the fix); throttled it is the first write plus the forced final one, well inside one window.
-      (is (<= (- reporting baseline) 4))
+      ;; each progress write is a cancelled-check SELECT, then Toucan's SELECT of the row for the `:hook/worktree-id`
+      ;; before-update hook, then the UPDATE. Unthrottled that is one write per entity (99 statements measured before
+      ;; the fix, at two per write); throttled it is the first write plus the forced final one, well inside one window.
+      (is (<= (- reporting baseline) 6))
       (testing "the final progress still reflects the whole stream"
         (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))
