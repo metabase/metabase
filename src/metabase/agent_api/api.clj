@@ -1348,6 +1348,8 @@
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
   (let [current        (agent-api.db/dashcards dashboard-id)
+        ;; the dashboard row is the same for every mutation in the batch
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
@@ -1377,7 +1379,7 @@
                 ;; A card placed on a shared dashboard exposes its selected timeline events, so the
                 ;; same read check the REST writer applies runs here too.
                 _       (queries/check-newly-exposed-dashcards-timeline-permissions!
-                         (agent-api.db/dashboard dashboard-id) current [{:card_id card_id}])
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))

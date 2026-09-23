@@ -125,6 +125,8 @@ describe("scenarios > organization > timelines > public links and embeds", () =>
   });
 
   it("should show saved events read-only on an interactively embedded dashboard but keep the events panel on the question", () => {
+    // without the token this runs in plain-app mode and asserts the wrong surface
+    H.activateToken("pro-self-hosted");
     cy.get<DashboardId>("@dashboardId").then((id) =>
       H.visitFullAppEmbeddingUrl({ url: `/dashboard/${id}` }),
     );
