@@ -37,6 +37,15 @@
   (mdb.worktree/with-worktree worktree-id
     (set (t2/select-fn-set :name :model/Card))))
 
+(defn- main-app-content
+  "What a pull would write in the main app: its cards, collections, dashboards and RemoteSyncObject rows."
+  []
+  (mdb.worktree/with-worktree nil
+    {:cards       (t2/select-fn-set (juxt :id :entity_id :name :collection_id :updated_at) :model/Card)
+     :collections (t2/select-fn-set (juxt :id :entity_id :name :location) :model/Collection)
+     :dashboards  (t2/select-fn-set (juxt :id :entity_id :name :updated_at) :model/Dashboard)
+     :rsos        (t2/select-fn-set (juxt :id :model_type :model_id :status) :model/RemoteSyncObject)}))
+
 (deftest pulls-in-different-worktrees-run-in-parallel-test
   ;; Other tests can leave cards with the mock source's names in the main app; this test must not depend on
   ;; the main app being empty, so it starts with such leftovers itself.
@@ -52,7 +61,8 @@
             b       (:id (remote-sync.db/insert-worktree! {:branch "develop"}))
             release (promise)
             started (atom #{})
-            orig    (dynamic-redefs/original-fn #'impl/import!)]
+            orig    (dynamic-redefs/original-fn #'impl/import!)
+            before  (main-app-content)]
         (try
           (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [branch] (test-helpers/create-mock-source :branch branch))
                                       impl/import!                (fn [& args]
@@ -80,7 +90,7 @@
                 (is (not (contains? (card-names a) "Dev Card")))
                 (is (contains? (card-names b) "Dev Card"))
                 (is (not (contains? (card-names b) "Some Question")))
-                (is (not-any? #{"Some Question" "Dev Card"} (card-names nil))))))
+                (is (= before (main-app-content)) "neither pull wrote to the main app"))))
           (finally
             (deliver release true)
             (remote-sync.db/delete-worktree! a)
