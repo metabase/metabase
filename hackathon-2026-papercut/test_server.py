@@ -98,6 +98,17 @@ class WebViewTest(StoreCase):
         self.assertIn("data-value='instance:stats' aria-pressed='true'>stats<span class='count'>1</span>", page)
         self.assertIn("data-value='person:chris.claude' aria-pressed='false'>Chris · Claude<span class='count'>2</span>", page)
 
+    def test_chris_reporter_aliases_share_a_source_and_reporter_count(self):
+        papercut_id = self.papercut("Alias", reporter="chris", agent="claude")
+        self.report(title="Alias", fingerprint="Alias", reporter="christruter.claude", agent="claude")
+        self.report(title="Alias", fingerprint="Alias", reporter="christruter", agent="codex")
+        self.assertEqual(self.store.sources(), {"person:chris.claude": 1, "person:chris.codex": 1})
+        self.assertEqual(self.store.get_papercut(papercut_id)["reporter_count"], 1)
+        self.assertEqual([p["id"] for p in self.store.list_papercuts({"source": "person:chris.claude"})["papercuts"]],
+                         [papercut_id])
+        self.assertEqual([p["id"] for p in self.store.list_papercuts({"source": "person:chris.codex"})["papercuts"]],
+                         [papercut_id])
+
     def test_list_previews_are_plain_text(self):
         self.papercut("Markdown preview", description="Intro `code` and **bold**.\n\n## Links\n\n- [Conversation](http://x) here")
         page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())

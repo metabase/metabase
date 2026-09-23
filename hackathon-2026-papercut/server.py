@@ -62,10 +62,18 @@ PR_URL = re.compile(r"https://github\.com/metabase/metabase/pull/(\d+)")
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
+# The importer used `chris`, while live scans use the OS username `christruter` (sometimes with an agent suffix).
+# Keep the stored reporter for provenance and replay, but count and filter those reports as one person.
+REPORT_PERSON = """CASE WHEN lower(r.reporter) IN ('chris', 'christruter',
+                                                  'chris.' || lower(r.agent), 'christruter.' || lower(r.agent))
+                         THEN 'chris' ELSE r.reporter END"""
 # Where a report came from: a Metabase instance (Metabot names it in `machine`), or a person and their agent.
-REPORT_SOURCE = """CASE WHEN r.agent = 'metabot' THEN 'instance:' || COALESCE(NULLIF(r.machine, ''), 'metabot')
-                        WHEN r.agent IS NULL OR r.agent = '' OR r.reporter LIKE '%.' || r.agent THEN 'person:' || r.reporter
-                        ELSE 'person:' || r.reporter || '.' || r.agent END"""
+REPORT_SOURCE = f"""CASE WHEN r.agent = 'metabot' THEN 'instance:' || COALESCE(NULLIF(r.machine, ''), 'metabot')
+                         WHEN {REPORT_PERSON} = 'chris' AND r.agent IS NOT NULL AND r.agent != ''
+                           THEN 'person:chris.' || r.agent
+                         WHEN r.agent IS NULL OR r.agent = '' OR r.reporter LIKE '%.' || r.agent
+                           THEN 'person:' || {REPORT_PERSON}
+                         ELSE 'person:' || {REPORT_PERSON} || '.' || r.agent END"""
 # When the papercut's claim in progress started, or NULL when nobody is working on it.
 CLAIMED_AT = f"""(SELECT MIN(d.created_at) FROM dispatches d WHERE d.papercut_id = p.id
                   AND d.state IN ({', '.join(f"'{state}'" for state in ACTIVE_DISPATCH_STATES)}))"""
@@ -732,10 +740,10 @@ def migrate_to_v10(db):
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
               migrate_to_v8, migrate_to_v9, migrate_to_v10)
 
-STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
+STATS = f"""SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT {REPORT_PERSON}) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
                   COALESCE(SUM(cost_minutes), 0) AS cost_minutes
-           FROM reports GROUP BY papercut_id"""
+           FROM reports r GROUP BY papercut_id"""
 # A papercut that was merged away has no reports left.
 COUNTS = """COALESCE(s.report_count, 0) AS report_count, COALESCE(s.reporter_count, 0) AS reporter_count,
             COALESCE(s.agent_count, 0) AS agent_count, COALESCE(s.cost_reports, 0) AS cost_reports,
