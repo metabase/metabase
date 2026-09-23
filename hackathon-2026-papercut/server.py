@@ -92,6 +92,18 @@ def parse_observed_at(value):
     return parsed.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
+def parse_since(value):
+    """Normalize a change cursor so it compares as a string against stored updated_at values."""
+    # Query-string decoding turns an unencoded "+00:00" into " 00:00"; put the plus back.
+    cursor = re.sub(r" (\d{2}:\d{2})$", r"+\1", value.strip())
+    cursor = re.sub(r"Z$", "+00:00", cursor)
+    try:
+        datetime.fromisoformat(cursor)
+    except ValueError as error:
+        raise ValueError("since must be a cursor returned by a previous list") from error
+    return cursor
+
+
 def words(text):
     found = set()
     for word in re.findall(r"[a-z0-9]+", text.lower()):
@@ -647,7 +659,7 @@ class Store:
         # A change feed must also say which papercuts were merged away, so clients can drop them.
         if filters.get("since"):
             clauses.append("p.updated_at > ?")
-            params.append(filters["since"])
+            params.append(parse_since(filters["since"]))
         else:
             clauses.append("p.merged_into IS NULL")
         sort = filters.get("sort") or "recent"

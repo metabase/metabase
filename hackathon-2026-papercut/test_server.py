@@ -486,6 +486,16 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/")[0], 200)
         self.assertEqual(self.call("GET", "/papercuts/1")[0], 200)
 
+    def test_since_accepts_unencoded_cursor(self):
+        self.report("r1", "First")
+        cursor = self.call("GET", "/api/papercuts")[1]["cursor"]
+        self.report("r2", "Second")
+        for since in (cursor, cursor.replace("+00:00", "Z")):
+            with self.subTest(since):
+                status, body, _ = self.call("GET", f"/api/papercuts?since={since}")
+                self.assertEqual((status, [p["title"] for p in body["papercuts"]]), (200, ["Second"]))
+        self.assertEqual(self.call("GET", "/api/papercuts?since=yesterday")[0], 400)
+
     def test_legacy_issue_routes(self):
         self.report("r1")
         status, body, _ = self.call("GET", "/api/issues?repository=metabase")
