@@ -99,7 +99,8 @@ related papercuts, its history, its latest readiness assessment and its dispatch
 it was merged into.
 
 The browser list applies search, status, category, repository (when there is more than
-one), sort and page-size changes automatically. Search waits 300 ms after typing.
+one) and sort changes automatically, and shows every matching papercut on one page.
+Search waits 300 ms after typing.
 The list and detail pages check for updates every 15 seconds while visible, and have
 a manual refresh button. Report prose, suggested fixes and source fields are shown
 separately; Markdown tables, lists, code and links are rendered as safe HTML. Time

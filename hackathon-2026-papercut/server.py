@@ -2277,39 +2277,61 @@ def main():
           f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",
           flush=True)
     changed = threading.Event()
-    if args.reload:
-        threading.Thread(target=watch_source, args=(server, changed), daemon=True).start()
     try:
-        server.serve_forever()
+        while True:
+            if args.reload:
+                changed.clear()
+                threading.Thread(target=watch_source, args=(server, changed), daemon=True).start()
+            server.serve_forever()
+            if not changed.is_set():
+                break
+            # Another save may have landed while the server stopped, so check the source that would run.
+            if error := source_error():
+                print(f"Not reloading: {error}", file=sys.stderr, flush=True)
+                continue
+            server.server_close()
+            # The listening socket is closed and not inherited, so the new process binds the same port.
+            os.execv(sys.executable, [sys.executable, *sys.argv])
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
-    if changed.is_set():
-        # The listening socket is closed and not inherited, so the new process binds the same port.
-        os.execv(sys.executable, [sys.executable, *sys.argv])
+
+
+def source_error():
+    """Why server.py would fail to load, or None. Compiling bytes lets Python apply the file's own encoding."""
+    source = Path(__file__)
+    try:
+        compile(source.read_bytes(), str(source), "exec")
+    except (OSError, SyntaxError, ValueError) as error:
+        return error
+    return None
 
 
 def watch_source(server, changed):
-    """Stop `server` once this file changes and still compiles. A broken edit keeps the running code."""
+    """Stop `server` once this file has changed, stopped changing, and compiles. A broken edit keeps the running code."""
     source = Path(__file__)
-    seen = source.stat().st_mtime
+    seen = source.stat().st_mtime_ns
     while True:
         time.sleep(1)
         try:
-            modified = source.stat().st_mtime
+            modified = source.stat().st_mtime_ns
             if modified == seen:
                 continue
             seen = modified
-            compile(source.read_text(), str(source), "exec")
-        except (OSError, SyntaxError) as error:
+            # An editor may still be writing; wait for a quiet moment before reading.
+            time.sleep(0.3)
+            if source.stat().st_mtime_ns != seen:
+                continue
+        except OSError:
+            continue
+        if error := source_error():
             print(f"Not reloading: {error}", file=sys.stderr, flush=True)
             continue
         print("server.py changed; reloading", flush=True)
         changed.set()
         server.shutdown()
         return
-
 
 if __name__ == "__main__":
     main()
