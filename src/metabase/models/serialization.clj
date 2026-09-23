@@ -426,8 +426,7 @@
     (group-by backward-fk entities)))
 
 (defn- extract-batch-nested [model-name opts batch]
-  (let [spec (*make-spec* model-name opts)
-        pk   (primary-key model-name)]
+  (let [spec (*make-spec* model-name opts)]
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
