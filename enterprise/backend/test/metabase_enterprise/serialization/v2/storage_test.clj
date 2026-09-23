@@ -145,6 +145,22 @@
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
+(deftest trailing-spaces-in-field-name-test
+  (testing "Field names with trailing spaces export to safe filenames (#38319)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [field-name "A Description in a database    "]
+          (ts/with-temp-dpc [:model/Database db    {:name "My Company Data"}
+                             :model/Table    table {:name "Customers" :db_id (:id db)}
+                             :model/Field    _     {:name field-name :table_id (:id table)}]
+            (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+            (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
+                  filename   "a_description_in_a_database____.yaml"]
+              (testing "trailing spaces are replaced in the exported filename"
+                (is (= #{[filename]} (file-set fields-dir))))
+              (testing "the original field name is preserved in YAML"
+                (is (= field-name (:name (yaml/from-file (io/file fields-dir filename)))))))))))))
+
 (deftest field-data-sensitivity-yaml-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
