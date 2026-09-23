@@ -563,12 +563,22 @@
       ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are disjoint
       ;; from the remote changes, so restoring them reproduces exactly the local diff vs remote. Restore +
       ;; finalize! run inside the load's transaction so a crash can't leave the dirty markers overwritten.
-      (let [dirty-objects (capture-dirty-objects)]
-        (load-snapshot! (source/specs->snapshot merged) report sync-timestamp
-                        :finalize! (fn []
-                                     (restore-dirty-objects! dirty-objects sync-timestamp)
-                                     (finalize!)))
-        (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
+      ;;
+      ;; Because the merge is clean, every file the remote changed since the base took the remote side, and local
+      ;; changes touch none of them. So when those remote changes are incrementally loadable, loading just them
+      ;; from the remote tip leaves the same app DB as loading the whole merged tree, and leaves the ledger rows of
+      ;; everything else, dirty rows included, as they are. Otherwise, load the whole merged tree.
+      (let [dirty-objects (capture-dirty-objects)
+            finalize-merge! (fn []
+                              (restore-dirty-objects! dirty-objects sync-timestamp)
+                              (finalize!))
+            plan            (incremental-import-plan snapshot (source.p/version base-snapshot))]
+        (if (= :remote-sync/incremental-not-possible plan)
+          (load-snapshot! (source/specs->snapshot merged) report sync-timestamp :finalize! finalize-merge!)
+          (incremental-load-snapshot! plan (source.p/version snapshot) report sync-timestamp
+                                      :finalize! finalize-merge!))
+        (log/infof "Pull merge (%s): folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
+                   (if (= :remote-sync/incremental-not-possible plan) "full load" "remote changes only")
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
         {:status        :success
