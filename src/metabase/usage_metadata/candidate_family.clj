@@ -5,10 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.usage-metadata.candidate-definitions :as definitions]
    [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
 
@@ -147,12 +147,12 @@
 (defn materialize!
   "Persist deterministic family ordering and display presentation for one run."
   [run-id]
-  (let [candidates (t2/select [:model/UsageMetadataCandidate
-                               :id :table_id :candidate_type :modeling_status
-                               :signature_hash :signature :definition :semantic_details
-                               :suggested_name :verified_source_count :official_source_count
-                               :distinct_source_count :complexity :recent_view_count]
-                              :run_id run-id)]
+  (let [candidates (usage-metadata.db/run-candidates [:id :table_id :candidate_type :modeling_status
+                                                      :signature_hash :signature :definition :semantic_details
+                                                      :suggested_name :verified_source_count :official_source_count
+                                                      :distinct_source_count :complexity :recent_view_count]
+                                                     run-id
+                                                     nil)]
     (doseq [families (partition-all update-batch-size (candidate-families candidates))]
       (let [case-by-id (fn [column value-fn]
                          (into [:case]
@@ -160,9 +160,8 @@
                                                  [[:= :id candidate-id] (value-fn family)])
                                                families)
                                        [:else column])))]
-        (t2/query
-         {:update (t2/table-name :model/UsageMetadataCandidate)
-          :set    {:display_name     (case-by-id :display_name :display-name)
-                   :semantic_details (case-by-id :semantic_details (comp mi/json-in :semantic-details))
-                   :sort_position    (case-by-id :sort_position :sort-position)}
-          :where  [:in :id (mapv :candidate-id families)]})))))
+        (usage-metadata.db/set-candidate-columns!
+         (mapv :candidate-id families)
+         {:display_name     (case-by-id :display_name :display-name)
+          :semantic_details (case-by-id :semantic_details (comp mi/json-in :semantic-details))
+          :sort_position    (case-by-id :sort_position :sort-position)})))))

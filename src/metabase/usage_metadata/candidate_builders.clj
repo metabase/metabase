@@ -8,6 +8,7 @@
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util :as u]
@@ -15,8 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.string :as u.str]
-   [toucan2.core :as t2]))
+   [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
 
@@ -143,16 +143,10 @@
   [table-ids eligible? include-published?]
   (let [table-ids (into #{} (filter pos-int?) table-ids)
         tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :db_id :schema :name :display_name :description
-                                :data_layer :data_authority :view_count :active :visibility_type
-                                :is_published]
-                               :id [:in table-ids]))
+                    (usage-metadata.db/candidate-dependency-tables table-ids))
         db-ids    (into #{} (keep :db_id) tables)
         databases (when (seq db-ids)
-                    (u/index-by :id
-                                (t2/select [:model/Database :id :name :is_audit :is_sample
-                                            :router_database_id]
-                                           :id [:in db-ids])))]
+                    (u/index-by :id (usage-metadata.db/candidate-databases db-ids)))]
     (into {}
           (keep (fn [{:keys [id db_id schema name display_name description data_layer data_authority
                              view_count]
@@ -394,9 +388,7 @@
   lost the ability to recognize that an equivalent Metric already exists, and may go on to suggest
   creating a duplicate."
   []
-  (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                                :type :metric
-                                :archived false)
+  (let [metric-cards (usage-metadata.db/unarchived-metric-cards)
         card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
     (into #{}
           (keep (fn [card]

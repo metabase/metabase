@@ -9,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [toucan2.core :as t2]))
 
@@ -252,30 +253,27 @@
 (deftest recent-card-view-counts-queries-bounded-id-batches-test
   (let [recent-card-view-counts @#'candidate-mining/recent-card-view-counts
         batch-sizes (atom [])]
-    (with-redefs-fn {#'t2/select
-                     (fn [_model {:keys [where]}]
-                       (let [batch (-> where last last)]
-                         (swap! batch-sizes conj (count batch))
-                         []))}
-      #(recent-card-view-counts (set (range 450)) 90))
+    (with-redefs-fn {#'usage-metadata.db/card-view-counts-since
+                     (fn [batch _cutoff]
+                       (swap! batch-sizes conj (count batch))
+                       [])}
+      #(recent-card-view-counts (set (range 1 451)) 90))
     (is (= (expected-id-batch-sizes 450) @batch-sizes))))
 
 (deftest curation-queries-use-bounded-id-batches-test
   (let [verified-card-ids       @#'candidate-mining/verified-card-ids
         official-collection-ids @#'candidate-mining/official-collection-ids
-        ids                (set (range 450))
+        ids                (set (range 1 451))
         moderation-batches (atom [])
         collection-batches (atom [])]
-    (with-redefs-fn {#'t2/select-fn-set
-                     (fn [_field _model & {:keys [moderated_item_id]}]
-                       (let [batch (last moderated_item_id)]
-                         (swap! moderation-batches conj (count batch))
-                         (set batch)))
-                     #'t2/select-pks-set
-                     (fn [_model & {:keys [id]}]
-                       (let [batch (last id)]
-                         (swap! collection-batches conj (count batch))
-                         (set batch)))}
+    (with-redefs-fn {#'usage-metadata.db/verified-card-ids
+                     (fn [batch]
+                       (swap! moderation-batches conj (count batch))
+                       (set batch))
+                     #'usage-metadata.db/official-collection-ids
+                     (fn [batch]
+                       (swap! collection-batches conj (count batch))
+                       (set batch))}
       #(do
          (is (= ids (verified-card-ids ids)))
          (is (= ids (official-collection-ids ids)))))

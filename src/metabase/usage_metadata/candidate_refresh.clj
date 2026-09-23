@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.mq.core :as mq]
    [metabase.usage-metadata.candidate-snapshot :as snapshot]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.models.candidate]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -21,9 +22,7 @@
 (defn latest-successful-run
   "Return the newest completely materialized candidate snapshot."
   []
-  (t2/select-one :model/UsageMetadataCandidateRun
-                 :status :succeeded
-                 {:order-by [[:finished_at :desc] [:id :desc]]}))
+  (usage-metadata.db/latest-finished-candidate-run :succeeded))
 
 (defn candidate-current?
   "Whether `candidate` belongs to the latest successful snapshot."
@@ -33,15 +32,11 @@
 (defn active-run
   "Return the newest queued or running candidate refresh."
   []
-  (t2/select-one :model/UsageMetadataCandidateRun
-                 :status [:in [:queued :running]]
-                 {:order-by [[:id :desc]]}))
+  (usage-metadata.db/latest-active-candidate-run))
 
 (defn- latest-failed-run
   []
-  (t2/select-one :model/UsageMetadataCandidateRun
-                 :status :failed
-                 {:order-by [[:finished_at :desc] [:id :desc]]}))
+  (usage-metadata.db/latest-finished-candidate-run :failed))
 
 (defn refresh-status
   "Return the successful, active, and failed refresh state used by the API."
@@ -52,27 +47,26 @@
 
 (defn- create-run!
   [trigger requested-by]
-  (t2/insert-returning-instance! :model/UsageMetadataCandidateRun
-                                 {:status            :queued
-                                  :trigger           trigger
-                                  :requested_by      requested-by
-                                  :algorithm_version algorithm-version
-                                  :source_config     snapshot/source-config}))
+  (usage-metadata.db/insert-candidate-run! {:status            :queued
+                                            :trigger           trigger
+                                            :requested_by      requested-by
+                                            :algorithm_version algorithm-version
+                                            :source_config     snapshot/source-config}))
 
 (defn fail-run!
   "Mark a queued or running refresh as failed."
   [run error]
-  (t2/update! :model/UsageMetadataCandidateRun
-              {:id (:id run), :status [:in [:queued :running]]}
-              {:status :failed, :finished_at (mi/now), :error (ex-message error)})
+  (usage-metadata.db/update-candidate-run-in-status!
+   (:id run) [:queued :running]
+   {:status :failed, :finished_at (mi/now), :error (ex-message error)})
   nil)
 
 (defn- claim-run!
   [{run-id :id :as run}]
   (let [started-at (mi/now)]
-    (when (pos? (t2/update! :model/UsageMetadataCandidateRun
-                            {:id run-id, :status :queued}
-                            {:status :running, :started_at started-at, :error nil}))
+    (when (pos? (usage-metadata.db/update-candidate-run-in-status!
+                 run-id [:queued]
+                 {:status :running, :started_at started-at, :error nil}))
       (assoc run :status :running, :started_at started-at, :error nil))))
 
 (defn candidate-refresh-lock-timeout?
@@ -94,7 +88,7 @@
       (cluster-lock/with-cluster-lock {:lock ::candidate-refresh
                                        :timeout-seconds 1
                                        :retry-config {:max-retries 0}}
-        (when (= :running (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id run-id))
+        (when (= :running (:status (usage-metadata.db/candidate-run run-id)))
           (fail-run! run (interrupted-run-error run-id)))
         nil)
       (catch Exception e
@@ -137,7 +131,7 @@
           (do
             (vreset! claimed? true)
             (snapshot/materialize! claimed-run))
-          (when-let [current-run (t2/select-one :model/UsageMetadataCandidateRun :id run-id)]
+          (when-let [current-run (usage-metadata.db/candidate-run run-id)]
             (if (= :running (:status current-run))
               ;; The durable message was recovered after its original worker disappeared. Holding
               ;; the execution lock proves no live worker still owns the run. Partial candidate rows
@@ -168,12 +162,12 @@
   (doseq [{:keys [run-id]} messages]
     ;; A separately delivered copy may already have claimed or completed this run. The queue's
     ;; terminal failure is authoritative only while no worker has claimed it.
-    (t2/update! :model/UsageMetadataCandidateRun
-                {:id run-id, :status :queued}
-                {:status      :failed
-                 :finished_at (mi/now)
-                 :error       (str "Usage metadata candidate refresh could not be dispatched: "
-                                   (ex-message error))})))
+    (usage-metadata.db/update-candidate-run-in-status!
+     run-id [:queued]
+     {:status      :failed
+      :finished_at (mi/now)
+      :error       (str "Usage metadata candidate refresh could not be dispatched: "
+                        (ex-message error))})))
 
 (mq/def-queue! :queue/usage-metadata-candidate-refresh
   {:transactional      :require
@@ -184,5 +178,5 @@
 
 (mq/def-listener! :queue/usage-metadata-candidate-refresh [messages]
   (doseq [{:keys [run-id]} messages]
-    (when-let [run (t2/select-one :model/UsageMetadataCandidateRun :id run-id)]
+    (when-let [run (usage-metadata.db/candidate-run run-id)]
       (run-refresh! run))))

@@ -9,6 +9,7 @@
    [metabase.usage-metadata.candidate-family :as candidate-family]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.candidate-repository :as candidate-repository]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.models.candidate]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -52,20 +53,10 @@
 (defn- usable-table-index
   [table-ids]
   (let [tables (when (seq table-ids)
-                 (t2/select [:model/Table :id :db_id :schema :name :display_name :description
-                             :data_layer :data_authority :view_count :active :visibility_type
-                             :is_published :collection_id]
-                            {:where [:and
-                                     [:in :id table-ids]
-                                     [:= :active true]
-                                     [:= :visibility_type nil]
-                                     [:or [:= :data_layer nil]
-                                      [:not= :data_layer "hidden"]]]}))
+                 (usage-metadata.db/visible-candidate-tables (set table-ids)))
         db-ids (into #{} (keep :db_id) tables)
-        dbs     (when (seq db-ids)
-                  (u/index-by :id
-                              (t2/select [:model/Database :id :name :is_audit :is_sample :router_database_id]
-                                         :id [:in db-ids])))]
+        dbs    (when (seq db-ids)
+                 (u/index-by :id (usage-metadata.db/candidate-databases db-ids)))]
     (into {}
           (keep (fn [{:keys [id db_id] :as table}]
                   (let [database (dbs db_id)]
@@ -195,10 +186,7 @@
 (defn- published-table-ids
   [table-ids]
   (into #{}
-        (mapcat (fn [ids]
-                  (map :id (t2/select [:model/Table :id]
-                                      :id [:in ids]
-                                      :is_published true))))
+        (mapcat #(usage-metadata.db/published-table-ids (vec %)))
         (partition-all reconciliation-query-batch-size table-ids)))
 
 (defn reconcile-candidates!
@@ -207,10 +195,9 @@
   Existing definitions are selected and normalized once per `[candidate-type table-id]`. Match rows and status updates
   are written in bounded batches."
   [run-id]
-  (let [candidates          (t2/select [:model/UsageMetadataCandidate
-                                        :id :candidate_type :table_id :signature :definition]
-                                       :run_id run-id
-                                       :candidate_type [:in [:measure :segment]])
+  (let [candidates          (usage-metadata.db/run-candidates [:id :candidate_type :table_id :signature :definition]
+                                                              run-id
+                                                              [:measure :segment])
         published-table-ids (published-table-ids (into #{} (map :table_id) candidates))
         candidate-keys      (into #{}
                                   (comp (filter #(contains? published-table-ids (:table_id %)))
@@ -226,12 +213,12 @@
     (doseq [match-rows (->> reconciliations
                             (mapcat :match-rows)
                             (partition-all reconciliation-write-batch-size))]
-      (t2/insert! :model/UsageMetadataCandidateMatch match-rows))
+      (usage-metadata.db/insert-candidate-matches! match-rows))
     (doseq [[status status-reconciliations] (group-by :status reconciliations)
             candidate-ids (->> status-reconciliations
                                (map (comp :id :candidate))
                                (partition-all reconciliation-write-batch-size))]
-      (t2/update! :model/UsageMetadataCandidate :id [:in candidate-ids] {:modeling_status status}))
+      (usage-metadata.db/update-candidates! candidate-ids {:modeling_status status}))
     nil))
 
 (defn- merged-source-dependencies
@@ -266,10 +253,7 @@
 (defn- select-candidates
   [run-id signature-hashes]
   (into []
-        (mapcat (fn [hashes]
-                  (t2/select :model/UsageMetadataCandidate
-                             :run_id run-id
-                             :signature_hash [:in hashes])))
+        (mapcat #(usage-metadata.db/run-candidates-with-signature-hashes run-id (vec %)))
         (partition-all persistence-write-batch-size signature-hashes)))
 
 (defn- case-by-id
@@ -284,18 +268,17 @@
   [updates]
   (doseq [batch (partition-all persistence-write-batch-size updates)]
     (let [semantic-updates (filter #(contains? (:values %) :semantic_details) batch)]
-      (t2/query
-       {:update (t2/table-name :model/UsageMetadataCandidate)
-        :set    (cond-> {:verified_source_count (case-by-id :verified_source_count batch :verified_source_count)
-                         :official_source_count (case-by-id :official_source_count batch :official_source_count)
-                         :popular_source_count  (case-by-id :popular_source_count batch :popular_source_count)
-                         :distinct_source_count (case-by-id :distinct_source_count batch :distinct_source_count)
-                         :recent_view_count      (case-by-id :recent_view_count batch :recent_view_count)}
-                  (seq semantic-updates)
-                  (assoc :semantic_details
-                         (case-by-id :semantic_details semantic-updates
-                                     (comp mi/json-in :semantic_details))))
-        :where  [:in :id (mapv (comp :id :candidate) batch)]}))))
+      (usage-metadata.db/set-candidate-columns!
+       (mapv (comp :id :candidate) batch)
+       (cond-> {:verified_source_count (case-by-id :verified_source_count batch :verified_source_count)
+                :official_source_count (case-by-id :official_source_count batch :official_source_count)
+                :popular_source_count  (case-by-id :popular_source_count batch :popular_source_count)
+                :distinct_source_count (case-by-id :distinct_source_count batch :distinct_source_count)
+                :recent_view_count      (case-by-id :recent_view_count batch :recent_view_count)}
+         (seq semantic-updates)
+         (assoc :semantic_details
+                (case-by-id :semantic_details semantic-updates
+                            (comp mi/json-in :semantic_details))))))))
 
 (defn- persist-observations!
   [run-id observations]
@@ -316,7 +299,7 @@
                                          {:candidate-id (:id candidate)})))
         missing        (remove #(contains? existing-index (:key %)) prepared)]
     (doseq [rows (->> missing (map :row) (partition-all persistence-write-batch-size))]
-      (t2/insert! :model/UsageMetadataCandidate rows))
+      (usage-metadata.db/insert-candidates! rows))
     (let [candidate-index (u/index-by candidate-key (select-candidates run-id signature-hashes))
           source-rows     (for [{:keys [key observation]} prepared
                                 :let [candidate (candidate-index key)]
@@ -328,7 +311,7 @@
                                      :values (merged-evidence candidate observation)}))
                                 prepared)]
       (doseq [rows (partition-all persistence-write-batch-size source-rows)]
-        (t2/insert! :model/UsageMetadataCandidateSource rows))
+        (usage-metadata.db/insert-candidate-sources! rows))
       (update-existing-evidence! updates))))
 
 (defn- persist-card-batch!
@@ -374,16 +357,14 @@
   "Delete candidates that do not meet semantic or evidence thresholds."
   [run-id]
   (loop [last-id 0]
-    (let [rows (t2/select [:model/UsageMetadataCandidate :id :candidate_type :semantic_details
-                           :complexity :verified_source_count :official_source_count
-                           :distinct_source_count :recent_view_count]
-                          :run_id run-id
-                          :id [:> last-id]
-                          {:order-by [[:id :asc]], :limit 200})]
+    (let [rows (usage-metadata.db/run-candidates-after [:id :candidate_type :semantic_details
+                                                        :complexity :verified_source_count :official_source_count
+                                                        :distinct_source_count :recent_view_count]
+                                                       run-id last-id 200)]
       (when (seq rows)
         (let [candidate-ids (into [] (comp (remove globally-eligible?) (map :id)) rows)]
           (when (seq candidate-ids)
-            (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])))
+            (usage-metadata.db/delete-candidates! candidate-ids)))
         (recur (long (:id (peek rows))))))))
 
 (defn source-provenance-index
@@ -391,12 +372,7 @@
   [candidate-ids]
   (let [sources (->> candidate-ids
                      (partition-all 200)
-                     (mapcat (fn [ids]
-                               (t2/select [:model/UsageMetadataCandidateSource
-                                           :candidate_id :card_id :card_name :card_type
-                                           :verified :official :popular :recent_view_count :joined
-                                           :stage_numbers :model_lineage]
-                                          :candidate_id [:in ids])))
+                     (mapcat #(usage-metadata.db/candidate-sources (vec %)))
                      (group-by :candidate_id))]
     (update-vals sources
                  (fn [candidate-sources]
@@ -445,13 +421,11 @@
 
 (defn- prune-non-closed-candidates!
   [run-id candidate-type candidate-ids-fn]
-  (let [candidates       (t2/select [:model/UsageMetadataCandidate :id :table_id :definition]
-                                    :run_id run-id
-                                    :candidate_type candidate-type)
+  (let [candidates       (usage-metadata.db/run-candidates [:id :table_id :definition] run-id [candidate-type])
         provenance-index (source-provenance-index (map :id candidates))
         candidate-ids    (candidate-ids-fn candidates provenance-index)]
     (when (seq candidate-ids)
-      (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))))
+      (usage-metadata.db/delete-candidates! (vec candidate-ids)))))
 
 (defn- prune-non-closed-segment-candidates!
   [run-id]
@@ -463,12 +437,7 @@
 
 (defn- run-summary
   [run-id]
-  (let [{:keys [table_count]}
-        (t2/query-one
-         {:select [[[:count [:distinct :table_id]] :table_count]]
-          :from   [(t2/table-name :model/UsageMetadataCandidate)]
-          :where  [:= :run_id run-id]})]
-    {:table-count table_count}))
+  {:table-count (usage-metadata.db/run-candidate-table-count run-id)})
 
 (defn prune-old-candidate-snapshots!
   "Delete candidate payloads belonging to older runs, in bounded batches.
@@ -480,22 +449,18 @@
   [current-run-id]
   (loop [batches-remaining max-prune-batches-per-run]
     (when (pos? batches-remaining)
-      (let [candidate-ids (t2/select-pks-set :model/UsageMetadataCandidate
-                                             {:where    [:not= :run_id current-run-id]
-                                              :order-by [[:id :asc]]
-                                              :limit    prune-batch-size})]
+      (let [candidate-ids (usage-metadata.db/candidate-ids-outside-run current-run-id prune-batch-size)]
         (when (seq candidate-ids)
-          (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])
+          (usage-metadata.db/delete-candidates! (vec candidate-ids))
           (recur (dec batches-remaining)))))))
 
 (defn prune-old-snapshots!
   "Retire old candidate payloads and bound retained run diagnostics."
   [current-run-id]
   (prune-old-candidate-snapshots! current-run-id)
-  (let [keep-ids (t2/select-pks-set :model/UsageMetadataCandidateRun
-                                    {:order-by [[:id :desc]], :limit retained-run-count})]
+  (let [keep-ids (usage-metadata.db/newest-candidate-run-ids retained-run-count)]
     (when (seq keep-ids)
-      (t2/delete! :model/UsageMetadataCandidateRun :id [:not-in keep-ids]))))
+      (usage-metadata.db/delete-candidate-runs-except! keep-ids))))
 
 (defn materialize!
   "Populate `run` and atomically promote it while retiring old snapshot payloads."
@@ -514,9 +479,9 @@
     (let [summary (run-summary run-id)]
       (candidate-repository/with-snapshot-action-lock
         #(t2/with-transaction [_conn]
-           (when-not (pos? (t2/update! :model/UsageMetadataCandidateRun
-                                       {:id run-id, :status :running}
-                                       {:status :succeeded, :finished_at (mi/now), :summary summary}))
+           (when-not (pos? (usage-metadata.db/update-candidate-run-in-status!
+                            run-id [:running]
+                            {:status :succeeded, :finished_at (mi/now), :summary summary}))
              (throw (ex-info "Usage metadata candidate run is no longer active"
                              {:run-id run-id})))
            (prune-old-snapshots! run-id)))

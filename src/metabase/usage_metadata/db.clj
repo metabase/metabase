@@ -2,10 +2,15 @@
   "Application database queries for the usage metadata module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -243,6 +248,386 @@
                        table-id (conj [:= :table_id table-id]))}))
 
 (mu/defn unarchived-metric-cards
-  "The id, Database id, query, and schema of the unarchived metric Cards."
+  "The id, name, type, Database id, query, and schema of the unarchived metric Cards."
   []
-  (t2/select [:model/Card :id :database_id :dataset_query :card_schema] :type "metric" :archived false))
+  (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema] :type "metric" :archived false))
+
+;;; ------------------------------------------------ Candidate sources ------------------------------------------------
+
+(def ^:private CardColumns
+  [:cat [:= :model/Card] [:* :keyword]])
+
+(mu/defn eligible-source-cards
+  "The `columns` of every unarchived question and model Card."
+  [columns :- CardColumns]
+  (t2/select columns :archived false :type [:in [:question :model]]))
+
+(mu/defn eligible-source-cards-by-id
+  "The `columns` of the unarchived question and model Cards with `card-ids`."
+  [columns  :- CardColumns
+   card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select columns :id [:in card-ids] :archived false :type [:in [:question :model]]))
+
+(mu/defn verified-card-ids
+  "The ids of the Cards among `card-ids` whose most recent moderation review verified them."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                    :moderated_item_id [:in card-ids]
+                    :moderated_item_type "card"
+                    :most_recent true
+                    :status "verified"))
+
+(mu/defn official-collection-ids
+  "The ids of the official Collections among `collection-ids`."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-set :model/Collection :id [:in collection-ids] :authority_level "official"))
+
+(mu/defn collection-locations
+  "The id, location, and personal owner of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Collection :id :location :personal_owner_id] :id [:in collection-ids]))
+
+(mu/defn card-view-counts-since
+  "Card views logged at or after `cutoff` for the Cards with `card-ids`, counted per Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]
+   cutoff   :- ms/TemporalInstant]
+  (t2/select [:model/ViewLog :model_id [:%count.* :view_count]]
+             {:where    [:and
+                         [:= :model "card"]
+                         [:>= :timestamp cutoff]
+                         [:in :model_id card-ids]]
+              :group-by [:model_id]}))
+
+(mu/defn unarchived-cards-of-types
+  "The id, name, type, Database id, query, and schema of the unarchived Cards with `card-ids` and one of `types`."
+  [card-ids :- [:sequential ::lib.schema.id/card]
+   types    :- [:set :keyword]]
+  (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+             :id [:in card-ids]
+             :archived false
+             :type [:in types]))
+
+;;; ---------------------------------------------- Candidate tables -------------------------------------------------
+
+(mu/defn candidate-dependency-tables
+  "The Tables with `table-ids` as users see them, with the columns that decide whether they can back a candidate."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :db_id :schema :name :display_name :description
+              :data_layer :data_authority :view_count :active :visibility_type :is_published :collection_id]
+             :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn visible-candidate-tables
+  "The active, visible, not-hidden Tables with `table-ids` as users see them."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select [:model/Table :id :db_id :schema :name :display_name :description
+              :data_layer :data_authority :view_count :active :visibility_type :is_published :collection_id]
+             {:from  [(warehouse-schema-overlay/table-query)]
+              :where [:and
+                      [:in :id table-ids]
+                      [:= :active true]
+                      [:= :visibility_type nil]
+                      [:or [:= :data_layer nil] [:not= :data_layer "hidden"]]]}))
+
+(mu/defn published-table-ids
+  "The ids of the published Tables among `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select-fn-set :id [:model/Table :id]
+                    :id [:in table-ids]
+                    :is_published true
+                    {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn table
+  "The Table with `table-id` as users see it."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn candidate-databases
+  "The id, name, and audit/sample/router flags of the Databases with `database-ids`."
+  [database-ids :- [:set ::lib.schema.id/database]]
+  (t2/select [:model/Database :id :name :is_audit :is_sample :router_database_id] :id [:in database-ids]))
+
+;;; ----------------------------------------------- Candidate runs --------------------------------------------------
+
+(mu/defn candidate-run
+  "The candidate refresh run with `run-id`."
+  [run-id :- ms/PositiveInt]
+  (t2/select-one :model/UsageMetadataCandidateRun :id run-id))
+
+(mu/defn latest-finished-candidate-run
+  "The most recently finished candidate refresh run with `status`."
+  [status :- ::usage-metadata.schema/candidate-run-status]
+  (t2/select-one :model/UsageMetadataCandidateRun
+                 :status status
+                 {:order-by [[:finished_at :desc] [:id :desc]]}))
+
+(mu/defn latest-active-candidate-run
+  "The newest queued or running candidate refresh run."
+  []
+  (t2/select-one :model/UsageMetadataCandidateRun
+                 :status [:in [:queued :running]]
+                 {:order-by [[:id :desc]]}))
+
+(mu/defn insert-candidate-run!
+  "Insert a candidate refresh run and return it."
+  [run :- ::usage-metadata.schema/candidate-run.update]
+  (t2/insert-returning-instance! :model/UsageMetadataCandidateRun run))
+
+(mu/defn update-candidate-run-in-status!
+  "Apply `changes` to the run with `run-id` if its status is one of `statuses`; the number of rows updated."
+  [run-id   :- ms/PositiveInt
+   statuses :- [:sequential ::usage-metadata.schema/candidate-run-status]
+   changes  :- ::usage-metadata.schema/candidate-run.update]
+  (t2/update! :model/UsageMetadataCandidateRun {:id run-id, :status [:in statuses]} changes))
+
+(mu/defn newest-candidate-run-ids
+  "The ids of the newest `n` candidate refresh runs."
+  [n :- ms/PositiveInt]
+  (t2/select-pks-set :model/UsageMetadataCandidateRun {:order-by [[:id :desc]], :limit n}))
+
+(mu/defn delete-candidate-runs-except!
+  "Delete every candidate refresh run whose id is not in `keep-ids`."
+  [keep-ids :- [:set ms/PositiveInt]]
+  (t2/delete! :model/UsageMetadataCandidateRun :id [:not-in keep-ids]))
+
+;;; ------------------------------------------------- Candidates ----------------------------------------------------
+
+(mu/defn candidate
+  "The candidate with `candidate-id`."
+  [candidate-id :- ms/PositiveInt]
+  (t2/select-one :model/UsageMetadataCandidate :id candidate-id))
+
+(mu/defn run-candidates
+  "The `columns` of the candidates in `run-id`, optionally narrowed to `candidate-types`."
+  [columns         :- [:sequential :keyword]
+   run-id          :- ms/PositiveInt
+   candidate-types :- [:maybe [:sequential ::usage-metadata.schema/candidate-type]]]
+  (t2/select (into [:model/UsageMetadataCandidate] columns)
+             {:where (cond-> [:and [:= :run_id run-id]]
+                       candidate-types (conj [:in :candidate_type (mapv name candidate-types)]))}))
+
+(mu/defn run-candidates-with-signature-hashes
+  "The candidates in `run-id` whose signature hash is one of `signature-hashes`."
+  [run-id           :- ms/PositiveInt
+   signature-hashes :- [:sequential :string]]
+  (t2/select :model/UsageMetadataCandidate :run_id run-id :signature_hash [:in signature-hashes]))
+
+(mu/defn run-candidates-after
+  "The `columns` of up to `limit` candidates in `run-id` with ids greater than `last-id`, in id order."
+  [columns :- [:sequential :keyword]
+   run-id  :- ms/PositiveInt
+   last-id :- :int
+   limit   :- ms/PositiveInt]
+  (t2/select (into [:model/UsageMetadataCandidate] columns)
+             :run_id run-id
+             :id [:> last-id]
+             {:order-by [[:id :asc]], :limit limit}))
+
+(mu/defn candidates-by-id
+  "The `columns` of the candidates with `candidate-ids`, keyed by id."
+  [columns       :- [:sequential :keyword]
+   candidate-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn identity (into [:model/UsageMetadataCandidate :id] columns) :id [:in candidate-ids]))
+
+(mu/defn candidate-ids-outside-run
+  "The ids of up to `limit` candidates that do not belong to `run-id`, in id order."
+  [run-id :- ms/PositiveInt
+   limit  :- ms/PositiveInt]
+  (t2/select-pks-set :model/UsageMetadataCandidate
+                     {:where    [:not= :run_id run-id]
+                      :order-by [[:id :asc]]
+                      :limit    limit}))
+
+(mu/defn run-candidate-table-count
+  "The number of distinct Tables with candidates in `run-id`."
+  [run-id :- ms/PositiveInt]
+  (:table_count (t2/query-one {:select [[[:count [:distinct :table_id]] :table_count]]
+                               :from   [(t2/table-name :model/UsageMetadataCandidate)]
+                               :where  [:= :run_id run-id]})))
+
+(mu/defn insert-candidates!
+  "Insert candidate `rows`."
+  [rows :- [:sequential ::usage-metadata.schema/candidate.update]]
+  (t2/insert! :model/UsageMetadataCandidate rows))
+
+(mu/defn update-candidates!
+  "Apply `changes` to the candidates with `candidate-ids`."
+  [candidate-ids :- [:sequential ms/PositiveInt]
+   changes       :- ::usage-metadata.schema/candidate.update]
+  (t2/update! :model/UsageMetadataCandidate :id [:in candidate-ids] changes))
+
+(mr/def ::candidate-set-clause
+  [:map {:closed true}
+   [:verified_source_count {:optional true} ::h2x/expr]
+   [:official_source_count {:optional true} ::h2x/expr]
+   [:popular_source_count  {:optional true} ::h2x/expr]
+   [:distinct_source_count {:optional true} ::h2x/expr]
+   [:recent_view_count     {:optional true} ::h2x/expr]
+   [:semantic_details      {:optional true} ::h2x/expr]
+   [:display_name          {:optional true} ::h2x/expr]
+   [:sort_position         {:optional true} ::h2x/expr]])
+
+(mu/defn set-candidate-columns!
+  "Set the candidates with `candidate-ids` to the Honey SQL `set-clause`, which may compute per-row values."
+  [candidate-ids :- [:sequential ms/PositiveInt]
+   set-clause    :- ::candidate-set-clause]
+  (t2/query {:update (t2/table-name :model/UsageMetadataCandidate)
+             :set    set-clause
+             :where  [:in :id candidate-ids]}))
+
+(mu/defn delete-candidates!
+  "Delete the candidates with `candidate-ids`."
+  [candidate-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids]))
+
+;;; ------------------------------------------------ Candidate lists ------------------------------------------------
+
+(defn- candidate-list-query
+  [run-id {:keys [table-id database-id candidate-type queue search]}]
+  {:from       [[(t2/table-name :model/UsageMetadataCandidate) :candidate]]
+   :inner-join [(warehouse-schema-overlay/table-query {:alias :table})
+                [:= :candidate.table_id :table.id]
+                [(t2/table-name :model/Database) :database]
+                [:= :table.db_id :database.id]]
+   :left-join  [[(t2/table-name :model/UsageMetadataCandidateDismissal) :dismissal]
+                [:and
+                 [:= :candidate.candidate_type :dismissal.candidate_type]
+                 [:= :candidate.table_id :dismissal.table_id]
+                 [:= :candidate.signature_version :dismissal.signature_version]
+                 [:= :candidate.signature_hash :dismissal.signature_hash]]]
+   :where      (cond-> [:and [:= :candidate.run_id run-id]]
+                 table-id       (conj [:= :candidate.table_id table-id])
+                 database-id    (conj [:= :table.db_id database-id])
+                 candidate-type (conj [:= :candidate.candidate_type (name candidate-type)])
+
+                 (= queue :suggested)
+                 (conj [:= :dismissal.id nil]
+                       [:!= :candidate.modeling_status (name :modeled)])
+
+                 (= queue :used-raw)
+                 (conj [:= :candidate.modeling_status (name :modeled)])
+
+                 (= queue :discarded)
+                 (conj [:!= :dismissal.id nil]
+                       [:!= :candidate.modeling_status (name :modeled)])
+
+                 (not (str/blank? search))
+                 (conj (let [pattern (str "%" (u/lower-case-en search) "%")]
+                         [:or
+                          [:like [:lower :candidate.suggested_name] pattern]
+                          [:like [:lower :candidate.display_name] pattern]
+                          [:like [:lower :candidate.suggested_description] pattern]
+                          [:like [:lower :table.name] pattern]
+                          [:like [:lower :table.display_name] pattern]
+                          [:like [:lower :table.schema] pattern]
+                          [:like [:lower :database.name] pattern]])))})
+
+(mu/defn candidate-list-count
+  "The number of candidates in `run-id` that match `filters`."
+  [run-id  :- ms/PositiveInt
+   filters :- ::usage-metadata.schema/candidate-list-filters]
+  (:total (t2/query-one (assoc (candidate-list-query run-id filters)
+                               :select [[[:count :candidate.id] :total]]))))
+
+(mu/defn candidate-list-ids
+  "One page of the ids of the candidates in `run-id` that match `filters`, in sort order."
+  [run-id  :- ms/PositiveInt
+   filters :- ::usage-metadata.schema/candidate-list-filters
+   limit   :- ms/PositiveInt
+   offset  :- ms/IntGreaterThanOrEqualToZero]
+  (mapv :id (t2/query (assoc (candidate-list-query run-id filters)
+                             :select   [[:candidate.id :id]]
+                             :order-by [[:candidate.sort_position :asc]]
+                             :limit    limit
+                             :offset   offset))))
+
+(mu/defn candidate-table-list-count
+  "The number of distinct Tables with candidates in `run-id` that match `filters`."
+  [run-id  :- ms/PositiveInt
+   filters :- ::usage-metadata.schema/candidate-list-filters]
+  (:total (t2/query-one (assoc (candidate-list-query run-id filters)
+                               :select [[[:count [:distinct :candidate.table_id]] :total]]))))
+
+(mu/defn candidate-table-list-counts
+  "One page of the Tables with candidates in `run-id` that match `filters`, with their candidate counts, busiest
+  first."
+  [run-id  :- ms/PositiveInt
+   filters :- ::usage-metadata.schema/candidate-list-filters
+   limit   :- ms/PositiveInt
+   offset  :- ms/IntGreaterThanOrEqualToZero]
+  (t2/query (assoc (candidate-list-query run-id filters)
+                   :select   [[:candidate.table_id :table_id]
+                              [[:count :candidate.id] :candidate_count]]
+                   :group-by [:candidate.table_id :table.display_name :table.name]
+                   :order-by [[:candidate_count :desc]
+                              [[:lower [:coalesce :table.display_name :table.name]] :asc]
+                              [:candidate.table_id :asc]]
+                   :limit    limit
+                   :offset   offset)))
+
+;;; ------------------------------------------- Candidate sources and matches -------------------------------------
+
+(def ^:private candidate-source-columns
+  [:card_id :card_name :card_type :verified :official :popular :recent_view_count :joined :stage_numbers
+   :model_lineage])
+
+(mu/defn candidate-sources
+  "The source Cards recorded for the candidates with `candidate-ids`."
+  [candidate-ids :- [:sequential ms/PositiveInt]]
+  (t2/select (into [:model/UsageMetadataCandidateSource :candidate_id] candidate-source-columns)
+             :candidate_id [:in candidate-ids]
+             {:order-by [[:candidate_id :asc] [:card_id :asc]]}))
+
+(mu/defn insert-candidate-sources!
+  "Insert candidate source `rows`."
+  [rows :- [:sequential ::usage-metadata.schema/candidate-source.update]]
+  (t2/insert! :model/UsageMetadataCandidateSource rows))
+
+(mu/defn candidate-matches
+  "The Library entities matched to the candidate with `candidate-id`, in insertion order."
+  [candidate-id :- ms/PositiveInt]
+  (t2/select [:model/UsageMetadataCandidateMatch :relation :entity_id :entity_name :entity_description]
+             :candidate_id candidate-id
+             {:order-by [[:id :asc]]}))
+
+(mu/defn insert-candidate-matches!
+  "Insert candidate match `rows`."
+  [rows :- [:sequential ::usage-metadata.schema/candidate-match.update]]
+  (t2/insert! :model/UsageMetadataCandidateMatch rows))
+
+(mu/defn select-or-insert-candidate-match!
+  "The candidate match identified by `match-keys`, inserting `row` when there is none."
+  [match-keys :- [:map {:closed true}
+                  [:candidate_id ms/PositiveInt]
+                  [:relation     ::usage-metadata.schema/candidate-match-relation]
+                  [:entity_id    ms/PositiveInt]]
+   row        :- ::usage-metadata.schema/candidate-match.update]
+  (app-db/select-or-insert! :model/UsageMetadataCandidateMatch match-keys (constantly row)))
+
+(mu/defn unarchived-library-entities
+  "The id, Table id, name, description, and definition of the unarchived Measures or Segments on `table-ids`."
+  [model     :- [:enum :model/Measure :model/Segment]
+   table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [model :id :table_id :name :description :definition] :table_id [:in table-ids] :archived false))
+
+;;; ---------------------------------------------- Candidate dismissals -------------------------------------------
+
+(mu/defn table-candidate-dismissals
+  "The candidate dismissals recorded on `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select :model/UsageMetadataCandidateDismissal :table_id [:in table-ids]))
+
+(mu/defn select-or-insert-candidate-dismissal!
+  "The dismissal with `dismissal-identity`, inserting `row` when there is none."
+  [dismissal-identity :- ::usage-metadata.schema/candidate-dismissal-identity
+   row                :- ::usage-metadata.schema/candidate-dismissal.update]
+  (app-db/select-or-insert! :model/UsageMetadataCandidateDismissal dismissal-identity (constantly row)))
+
+(mu/defn delete-candidate-dismissal!
+  "Delete the dismissal with `dismissal-identity`."
+  [{:keys [candidate_type table_id signature_version signature_hash]} :- ::usage-metadata.schema/candidate-dismissal-identity]
+  (t2/delete! :model/UsageMetadataCandidateDismissal
+              :candidate_type candidate_type
+              :table_id table_id
+              :signature_version signature_version
+              :signature_hash signature_hash))

@@ -10,6 +10,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -98,36 +99,26 @@
 (defn- select-candidate-cards-by-id
   [columns card-ids]
   (mapcat-id-batches
-   #(t2/select columns
-               :id [:in %]
-               :archived false
-               :type [:in [:question :model]])
+   #(usage-metadata.db/eligible-source-cards-by-id columns (vec %))
    card-ids))
 
 (defn- verified-card-ids
   [card-ids]
   (into #{}
-        (mapcat #(t2/select-fn-set :moderated_item_id :model/ModerationReview
-                                   :moderated_item_id [:in %]
-                                   :moderated_item_type "card"
-                                   :most_recent true
-                                   :status "verified"))
+        (mapcat #(usage-metadata.db/verified-card-ids (vec %)))
         (partition-all candidate-query-batch-size card-ids)))
 
 (defn- official-collection-ids
   [collection-ids]
   (into #{}
-        (mapcat #(t2/select-pks-set :model/Collection
-                                    :id [:in %]
-                                    :authority_level "official"))
+        (mapcat #(usage-metadata.db/official-collection-ids (vec %)))
         (partition-all candidate-query-batch-size collection-ids)))
 
 (defn- exclude-personal-collection-cards
   [cards]
   (let [collection-ids          (into #{} (keep :collection_id) cards)
         collections             (-> (mapcat-id-batches
-                                     #(t2/select [:model/Collection :id :location :personal_owner_id]
-                                                 :id [:in %])
+                                     #(usage-metadata.db/collection-locations (vec %))
                                      collection-ids)
                                     (t2/hydrate :is_personal))
         personal-collection-ids (into #{} (comp (filter :is_personal) (map :id)) collections)]
@@ -140,12 +131,7 @@
   (let [cutoff (t/minus (t/offset-date-time) (t/days days))]
     (into {}
           (comp
-           (mapcat #(t2/select [:model/ViewLog :model_id [:%count.* :view_count]]
-                               {:where    [:and
-                                           [:= :model "card"]
-                                           [:>= :timestamp cutoff]
-                                           [:in :model_id %]]
-                                :group-by [:model_id]}))
+           (mapcat #(usage-metadata.db/card-view-counts-since (vec %) cutoff))
            (map (fn [{:keys [model_id view_count]}]
                   [model_id (long view_count)])))
           (partition-all candidate-query-batch-size card-ids))))
@@ -155,9 +141,7 @@
   (exclude-personal-collection-cards
    (if card-ids
      (select-candidate-cards-by-id columns card-ids)
-     (t2/select columns
-                :archived false
-                :type [:in [:question :model]]))))
+     (usage-metadata.db/eligible-source-cards columns))))
 
 (defn- add-card-evidence
   [{:keys [min-view-count view-count-window-days recent-view-counts verified-ids official-ids]}
@@ -235,10 +219,7 @@
   [ids allowed-types]
   (into []
         (mapcat (fn [batch]
-                  (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                             :id [:in batch]
-                             :archived false
-                             :type [:in allowed-types])))
+                  (usage-metadata.db/unarchived-cards-of-types (vec batch) (set allowed-types))))
         (partition-all candidate-query-batch-size ids)))
 
 (defn- candidate-lineage-index

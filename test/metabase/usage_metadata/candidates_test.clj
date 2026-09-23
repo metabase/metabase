@@ -18,6 +18,7 @@
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.usage-metadata.candidate-snapshot :as candidate-snapshot]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -270,10 +271,10 @@
                                                        :source_config     {}
                                                        :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate candidate (candidate-row (:id run) (mt/id :orders))]
-    (let [original-select-pk->fn (mt/original-fn #'t2/select-pk->fn)]
+    (let [original-candidates-by-id (mt/original-fn #'usage-metadata.db/candidates-by-id)]
       (mt/with-dynamic-fn-redefs
-        [t2/select-pk->fn (fn [f model & args]
-                            (dissoc (apply original-select-pk->fn f model args) (:id candidate)))]
+        [usage-metadata.db/candidates-by-id (fn [columns ids]
+                                              (dissoc (original-candidates-by-id columns ids) (:id candidate)))]
         (testing "a row that disappears between the id query and the row query is dropped, not returned as a null id"
           (is (=? {:total 1, :rows []}
                   (candidate-repository/candidate-page (:id run) {} {:limit 10, :offset 0}))))))))
@@ -457,27 +458,27 @@
   (let [pages   (atom [#{1 2} #{3} #{}])
         deleted (atom [])]
     (mt/with-dynamic-fn-redefs
-      [t2/select-pks-set (fn [_model query]
-                           (is (= [:not= :run_id 9] (:where query)))
-                           (is (= 200 (:limit query)))
-                           (let [page (first @pages)]
-                             (swap! pages subvec 1)
-                             page))
-       t2/delete!         (fn [_model _id ids]
-                            (swap! deleted conj ids))]
+      [usage-metadata.db/candidate-ids-outside-run (fn [run-id limit]
+                                                     (is (= 9 run-id))
+                                                     (is (= 200 limit))
+                                                     (let [page (first @pages)]
+                                                       (swap! pages subvec 1)
+                                                       page))
+       usage-metadata.db/delete-candidates!         (fn [ids]
+                                                      (swap! deleted conj (set ids)))]
       (prune-old-candidate-snapshots! 9))
-    (is (= [[:in #{1 2}] [:in #{3}]] @deleted))))
+    (is (= [#{1 2} #{3}] @deleted))))
 
 (deftest old-candidate-snapshots-prune-stops-after-batch-bound-test
   (let [max-batches   @#'candidate-snapshot/max-prune-batches-per-run
         pages-served  (atom 0)
         deleted-count (atom 0)]
     (mt/with-dynamic-fn-redefs
-      [t2/select-pks-set (fn [_model _query]
-                           (swap! pages-served inc)
-                           #{1})
-       t2/delete!         (fn [_model _id _ids]
-                            (swap! deleted-count inc))]
+      [usage-metadata.db/candidate-ids-outside-run (fn [_run-id _limit]
+                                                     (swap! pages-served inc)
+                                                     #{1})
+       usage-metadata.db/delete-candidates!         (fn [_ids]
+                                                      (swap! deleted-count inc))]
       (prune-old-candidate-snapshots! 9))
     (testing "an inexhaustible backlog stops after max-prune-batches-per-run, not indefinitely"
       (is (= max-batches @pages-served))
@@ -792,7 +793,17 @@
                 :suggested-name "Large order count"
                 :suggested-description "Count large orders"
                 :aggregation (first (lib/aggregations definition 0))
-                :required-tables [{:id table-id, :published? false}]
+                :required-tables [{:id             table-id
+                                   :database-id    (mt/id)
+                                   :database-name  "Test Database"
+                                   :schema         "PUBLIC"
+                                   :name           "ORDERS"
+                                   :display-name   "Orders"
+                                   :description    nil
+                                   :data-layer     nil
+                                   :data-authority nil
+                                   :view-count     0
+                                   :published?     false}]
                 :evidence {:source-items [(assoc source-item
                                                  :stage-numbers [0]
                                                  :joined? false)]
