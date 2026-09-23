@@ -624,8 +624,18 @@ def migrate_to_v5(db):
                f"severity = {first_detail('severity', SEVERITIES)}")
 
 
+def migrate_to_v6(db):
+    """Drop credentials from repository URLs stored before the server cleaned them, in the column and the stored
+    request body, which the detail endpoint also returns."""
+    db.create_function("public_url", 1, public_url, deterministic=True)
+    db.execute("UPDATE reports SET repository_url = public_url(repository_url) WHERE repository_url IS NOT NULL")
+    db.execute("""UPDATE reports SET payload = json_set(payload, '$.repository_url',
+                                                  public_url(json_extract(payload, '$.repository_url')))
+                  WHERE json_type(payload, '$.repository_url') = 'text'""")
+
+
 # Each entry upgrades the database by one `user_version`.
-MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5)
+MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -940,6 +950,12 @@ class Store:
         db.execute(f"UPDATE papercuts SET {field} = ? WHERE id = ?", (value, papercut_id))
         if field == "status":
             db.execute("UPDATE papercuts SET status_changed_at = ? WHERE id = ?", (at, papercut_id))
+        if field in ("title", "status"):
+            # Related papercuts show this one's title and status, so polling clients must refetch them too.
+            db.execute("""UPDATE papercuts SET updated_at = ? WHERE id IN (
+                              SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END FROM relations
+                              WHERE (papercut_a = ? OR papercut_b = ?) AND source != 'rejected')""",
+                       (at, papercut_id, papercut_id, papercut_id))
         self._event(db, papercut_id, kind or field, actor, at, old, value, body)
         return True
 
