@@ -42,7 +42,9 @@
         url     (str "http://127.0.0.1:" port)
         process (p/process {:dir (str (fs/path u/project-root-directory "hackathon-2026-papercut"))
                             :out :string :err :string}
-                           "python3" "server.py" "--db" (str (fs/path dir "papercuts.sqlite3")) "--port" (str port))]
+                           "python3" "server.py" "--db" (str (fs/path dir "papercuts.sqlite3")) "--port" (str port)
+                           ;; An empty token overrides PAPERCUTS_TOKEN, which the test client doesn't send.
+                           "--token" "")]
     (loop [attempt 0]
       (cond
         (try (= 200 (:status (request url :get "/api/papercuts"))) (catch Exception _ false))
