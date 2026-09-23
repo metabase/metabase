@@ -315,6 +315,10 @@ const conversationDefaultsByAgentId: Partial<
   ask: {
     profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
   },
+  // the side panel runs the megabot profile directly, the same as the Ask page
+  omnibot: {
+    profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
+  },
 };
 
 export const createConversation = (
