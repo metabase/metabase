@@ -104,9 +104,11 @@
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
       (let [{:keys [results raw-count]}
-            (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
-                                         (semantic.env/get-index-metadata)
-                                         search-ctx)
+            (if (sqlite-config/enabled?)
+              (semantic.sqlite/query search-ctx)
+              (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                           (semantic.env/get-index-metadata)
+                                           search-ctx))
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
         (if (or (>= final-count threshold)

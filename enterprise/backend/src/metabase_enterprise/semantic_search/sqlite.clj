@@ -12,9 +12,14 @@
    [clojure.string :as str]
    [environ.core :refer [env]]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.appdb-scoring :as appdb-scoring]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
+   [metabase.search.config :as search.config]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -665,3 +670,64 @@
                                           :let [f (io/file (str path suffix))]
                                           :when (.exists f)]
                                       (.length f)))}))))
+
+;;; ------------------------------------------------ Search engine -------------------------------------------------
+
+(defn- search-ctx->knn-opts
+  "The [[knn]] filters for the search context filters that map onto vec1 meta columns (applied inside the KNN)."
+  [{:keys [models archived? verified created-by table-db-id]}]
+  (cond-> {}
+    (some? models)    (assoc :models (vec models))
+    (some? archived?) (assoc :archived? archived?)
+    (some? verified)  (assoc :verified? verified)
+    (seq created-by)  (assoc :creator-ids (vec created-by))
+    table-db-id       (assoc :database-ids [table-db-id])))
+
+(def ^:private unsupported-filters
+  ;; search context filters the SQLite store ignores (hackathon)
+  [:last-edited-by :created-at :last-edited-at :curated? :filter-items-in-personal-collection])
+
+(defn- post-filter
+  "Predicate on [[knn]] rows for the search context filters applied after the KNN (may leave fewer than k rows)."
+  [{:keys [ids display-type] :as search-ctx}]
+  (when-let [ignored (seq (filter #(some? (get search-ctx %)) unsupported-filters))]
+    (log/debugf "SQLite semantic search ignores the filters %s" (pr-str ignored)))
+  (let [ids           (some->> (seq ids) (into #{} (map str)))
+        display-types (some-> (seq display-type) set)]
+    (fn [{:keys [model_id legacy_input]}]
+      (and (or (nil? ids) (contains? ids model_id))
+           (or (nil? display-types) (contains? display-types (:display_type legacy_input)))))))
+
+(defn- ->result
+  "A search result (the document's legacy input) for the `rank`-th (1-based) [[knn]] row, scored like pgvector's
+  vector-only hits: `:rrf` from the semantic rank (no keyword rank) and `:semantic-distance`."
+  [weights rank {:keys [legacy_input distance]}]
+  (let [scores {:rrf               (* 0.49 (/ 1.0 (+ 60 rank)))
+                ;; same linear map as scoring/semantic-distance-score-expr: distance 0 -> 1, 2 -> 0
+                :semantic-distance (- 1.0 (/ distance 2.0))}]
+    (assoc legacy_input
+           :score      (reduce + (for [[k v] scores] (* v (get weights k 0))))
+           :all-scores (semantic.scoring/all-scores weights (keys scores) scores))))
+
+(defn query
+  "Semantic search over the store for `search-ctx`, as `{:results :raw-count}` like the pgvector engine: results
+  nearest first, within [[sqlite-config/max-distance]], filtered by the search context and read permissions,
+  with appdb scores (bookmarks, recency) added. `:raw-count` counts results before the permission filter."
+  [{:keys [search-string] :as search-ctx}]
+  (if (str/blank? search-string)
+    {:results [] :raw-count 0}
+    (let [weights (search.config/weights search-ctx)
+          {:keys [rows]} (search-text search-string
+                                      (assoc (search-ctx->knn-opts search-ctx)
+                                             :k            (semantic.settings/semantic-search-results-limit)
+                                             :max-distance (sqlite-config/max-distance)))
+          raw     (into [] (comp (filter (post-filter search-ctx))
+                                 (map-indexed (fn [i row] (->result weights (inc i) row))))
+                        rows)]
+      {:raw-count (count raw)
+       ;; the pgvector engine's post-processing, as in semantic.index/query-index
+       :results   (->> raw
+                       semantic.index/filter-read-permitted
+                       (semantic.index/apply-collection-id-filter search-ctx)
+                       (mapv search/collapse-id)
+                       (semantic.scoring/with-appdb-scores search-ctx (appdb-scoring/appdb-scorers search-ctx) weights))})))

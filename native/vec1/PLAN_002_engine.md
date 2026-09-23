@@ -102,32 +102,42 @@ One switch: `sqlite/enabled?` (`MB_SEMANTIC_SEARCH_SQLITE_PATH` set). When on:
 - [x] Tests: `sqlite_test` `index-all-prune-test`; `sqlite_engine_test` `write-hooks-test` (init, update,
       delete, diagnose, prune on re-init, repair, force-reset). 25 tests / 121 assertions green.
 
-## Phase C — query: `sqlite/query` [search-ctx] → `{:results :raw-count}` (3–4 h)
+## Phase C — query: `sqlite/query` [search-ctx] → `{:results :raw-count}` ✅ done 2026-09-23
 
 The standalone query from PLAN.md 1.4, on top of `sqlite/search-text`.
 
-- [ ] Blank `:search-string` → `{:results [] :raw-count 0}` (core then falls back — same as pgvector).
-- [ ] Map search-ctx filters (names from `index.clj` `filter-conditions`):
+- [x] Blank `:search-string` → `{:results [] :raw-count 0}` (core then falls back — same as pgvector).
+- [x] Map search-ctx filters (names from `index.clj` `filter-conditions`):
   - inside the KNN (vec1 meta columns): `:models` → `:models`; `:archived?` → `:archived?`;
     `:verified` → `:verified?`; `:created-by` → `:creator-ids`; `:table-db-id` → `:database-ids [id]`.
   - after the KNN, in Clojure (may return fewer than k): `:ids`, `:display-type`, `:last-edited-by`,
     `:created-at` / `:last-edited-at` ranges, `:curated?`, personal-collection filter. Hackathon: implement
     `:ids` and `:display-type`; log-and-ignore the rest (list them in the code).
-- [ ] `k` = `(semantic-search-results-limit)` (1000).
-- [ ] **Distance cutoff** — needed, or every search returns the whole index (k ≥ doc count). pgvector's 0.7
+- [x] `k` = `(semantic-search-results-limit)` (1000).
+- [x] **Distance cutoff** — needed, or every search returns the whole index (k ≥ doc count). pgvector's 0.7
       drops 3 of 8 correct paraphrase hits with this model (PLAN_001 acceptance: hits at 0.55–0.84).
       Start with a constant `max-distance` = 0.8, overridable by env `MB_SEMANTIC_SEARCH_SQLITE_MAX_DISTANCE`;
       tune in Phase E with `paraphrase-check` + a few unrelated queries (e.g. "weather forecast" should
       return little or nothing).
-- [ ] Row → result: `(assoc legacy_input :score s :all-scores [{:name :semantic-distance :score s :weight w
+- [x] Row → result: `(assoc legacy_input :score s :all-scores [{:name :semantic-distance :score s :weight w
       :contribution (* w s)}])` with `s = 1 - distance/2` (same linear map as `scoring.clj`
       `semantic-distance-score-expr`), `w = (search.config/weight search-ctx :semantic-distance)`.
-- [ ] Reuse the pgvector post-processing, in this order (as in `index.clj` `query-index`):
+- [x] Reuse the pgvector post-processing, in this order (as in `index.clj` `query-index`):
       `filter-read-permitted` → `apply-collection-id-filter` → `(mapv search/collapse-id)` →
       `scoring/with-appdb-scores`. The first two are private in `index.clj` → make public (hackathon).
-- [ ] `:raw-count` = row count before permission filtering (core uses it to decide whether to fall back).
-- [ ] `core.clj` `results`: replace only the `(semantic.pgvector-api/query …)` call with
+- [x] `:raw-count` = row count before permission filtering (core uses it to decide whether to fall back).
+- [x] `core.clj` `results`: replace only the `(semantic.pgvector-api/query …)` call with
       `(if (sqlite/enabled?) (sqlite/query search-ctx) (semantic.pgvector-api/query …))`.
+- [x] **Scoring, deviation from the plan:** each result carries pgvector's vector-only scores — `:rrf`
+      `0.49/(60 + rank)` (weight 500, no keyword rank) and `:semantic-distance` `1 - d/2` (weight 10) — so it sits on
+      the same scale as today and the appdb scorers (`:bookmarked` 1, `:user-recency` 5) weigh in as they do on
+      pgvector. With `:semantic-distance` alone, recency (weight 5) would dominate the ~1.5-point semantic spread.
+- [x] `max-distance` lives in `sqlite-config` (`MB_SEMANTIC_SEARCH_SQLITE_MAX_DISTANCE`, default 0.8).
+- [x] Unsupported filters (`:last-edited-by`, `:created-at`, `:last-edited-at`, `:curated?`,
+      `:filter-items-in-personal-collection`) are ignored with a debug log.
+- [x] Verified in the dev REPL through the full `metabase.search.core/search` (SQLite mode via redef, as admin):
+      engine `:search.engine/semantic`; "income across american regions" → Revenue by state first (6 hits within
+      0.8); `:models #{"dashboard"}` → dashboards only; "weather forecast for tomorrow" → 0 hits.
 
 ## Phase D — tests (2–3 h)
 
