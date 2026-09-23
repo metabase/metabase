@@ -227,7 +227,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="feedback-negative"
+                    color="negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
@@ -419,6 +419,7 @@ const EditMap = ({
             />
             <Button
               ml="sm"
+              size="lg"
               disabled={!map.url}
               variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}

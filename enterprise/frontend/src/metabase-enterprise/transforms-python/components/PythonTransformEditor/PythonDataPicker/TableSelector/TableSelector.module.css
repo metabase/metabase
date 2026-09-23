@@ -2,6 +2,10 @@
   border: 1px solid var(--border-color);
 }
 
+.tableSelectorButton {
+  --mb-button-padding-x: calc(var(--mantine-spacing-md) - 1px);
+}
+
 .tableSelectorButtonInner {
   justify-content: start;
 }
