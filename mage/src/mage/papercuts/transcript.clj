@@ -17,7 +17,15 @@
 
 (def ^:private redactions
   [[#"(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----" "<REDACTED-PRIVATE-KEY>"]
+   ;; A key printed only in part, say by `head`, has one marker and not the other.
+   [#"(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*" "<REDACTED-PRIVATE-KEY>"]
+   [#"(?s)\A.*?-----END [A-Z ]*PRIVATE KEY-----" "<REDACTED-PRIVATE-KEY>"]
+   ;; Lines of a key body with neither marker in view.
+   [#"(?m)^[A-Za-z0-9+/]{60,}={0,2}$" "<REDACTED-KEY-LINE>"]
    [(re-pattern (str "(?i)\\b(" sensitive-name ")(\\s*[=:]\\s*|\"\\s*:\\s*\")([^\\s\"',;]+)")) "$1$2<REDACTED>"]
+   ;; EDN, as in `.lein-env`: `:mb-db-pass "..."`.
+   [#"(?i)(:[\w.*+!?-]*(?:key|token|secret|password|passwd|pass|pwd|auth|credential|cookie|session|private|dsn|conn)[\w.*+!?-]*)(\s+)\"(?:[^\"\\]|\\.)*\""
+    "$1$2\"<REDACTED>\""]
    [#"(?i)(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{12,}" "$1 <REDACTED>"]
    [#"(?i)(x-api-key|x-metabase-session|authorization)(\"?\s*[:=]\s*\"?)[^\s\"']+" "$1$2<REDACTED>"]
    [(re-pattern (str "\\b(sk-[A-Za-z0-9_-]{16,}|sk-ant-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]{20,}"
@@ -26,7 +34,10 @@
     "<REDACTED-TOKEN>"]
    [#"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}" "<REDACTED-JWT>"]
    [#"([a-z][a-z0-9+.-]*://[^\s:/@]+:)[^\s@/]+@" "$1<REDACTED>@"]
-   [#"(?i)(-p|--password)(\s+|=)\S+" "$1$2<REDACTED>"]])
+   [#"(?i)(-p|--password)(\s+|=)\S+" "$1$2<REDACTED>"]
+   ;; Bare hex of secret-like length: encryption keys, API keys, sha256 digests. 40 characters is a git SHA and stays.
+   ;; Last, so a known token format that happens to be hex keeps its own label.
+   [#"(?i)(?<![0-9a-f])(?:[0-9a-f]{32,39}|[0-9a-f]{41,})(?![0-9a-f])" "<REDACTED-HEX>"]])
 
 (def ^:private high-entropy #"(?<![A-Za-z0-9/._-])[A-Za-z0-9+_=-]{32,}(?![A-Za-z0-9/._-])")
 
@@ -49,9 +60,10 @@
 ;;; Rendering helpers
 
 (defn- truncate
-  "Keep the first two thirds and the last third of `s` when it is longer than `n`."
+  "Redact `s`, then keep the first two thirds and the last third when it is longer than `n`.
+  Redacting first matters: a cut through a secret leaves a fragment no pattern recognizes."
   [s n]
-  (let [s (if (string? s) s (json/write-str s))]
+  (let [s (redact (if (string? s) s (json/write-str s)))]
     (if (<= (count s) n)
       s
       (str (subs s 0 (quot (* n 2) 3))

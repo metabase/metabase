@@ -28,6 +28,17 @@
            (transcript/redact "postgres://metabase:s3cret@localhost:5432/db"))))
   (testing "long mixed-case strings"
     (is (= "value <REDACTED-HIGH-ENTROPY>" (transcript/redact (str "value " fake-mixed-secret)))))
+  (testing "EDN secrets, as printed from .lein-env"
+    (is (= "{:mb-db-pass \"<REDACTED>\" :mb-encryption-secret-key \"<REDACTED>\" :mb-db-type \"h2\"}"
+           (transcript/redact "{:mb-db-pass \"hunter22\" :mb-encryption-secret-key \"k3y\" :mb-db-type \"h2\"}"))))
+  (testing "bare hex of secret-like length, but not a 40-character git SHA"
+    (let [sha (apply str (repeat 40 "a"))]
+      (is (= (str "key <REDACTED-HEX> commit " sha)
+             (transcript/redact (str "key " (apply str (repeat 64 "f")) " commit " sha))))))
+  (testing "a private key printed in part"
+    (is (= "<REDACTED-PRIVATE-KEY>" (transcript/redact (str "-----BEGIN " "PRIVATE KEY-----\nMIIEvQIBADAN"))))
+    (is (= "<REDACTED-PRIVATE-KEY>\ndone" (transcript/redact (str "MIIEvQIBADAN\n-----END " "PRIVATE KEY-----\ndone"))))
+    (is (= "<REDACTED-KEY-LINE>" (transcript/redact (apply str (repeat 64 "Qz+/"))))))
   (testing "git SHAs, UUIDs and paths stay"
     (let [s "commit d3a5a218a55f0e1c2b3a4d5e6f708192a3b4c5d6 session 31b066ea-d480-4a3f-a6f1-0bc74a18367f"]
       (is (= s (transcript/redact s))))))
@@ -50,6 +61,17 @@
             {:line 5 :ts "2026-09-01T10:00:02Z" :tag "TOOL Bash" :text "./bin/test-agent"}
             {:line 6 :ts "2026-09-01T10:00:03Z" :tag "RESULT ERROR" :text "boom"}]
            (transcript/claude-entries file)))))
+
+(deftest redact-before-truncate-test
+  (testing "a secret where a long tool result gets cut is redacted whole, not left as a fragment"
+    (let [pem    (str "-----BEGIN RSA " "PRIVATE KEY-----\n" (apply str (repeat 20 "MIIEpAIBAAKCAQEA7x/9Qz+\n"))
+                      "-----END RSA " "PRIVATE KEY-----")
+          output (str (apply str (repeat 800 "y")) pem)
+          file   (write-jsonl [{:type    "user" :timestamp "2026-09-01T10:00:00Z"
+                                :message {:content [{:type "tool_result" :content [{:type "text" :text output}]}]}}])
+          text   (:text (first (transcript/claude-entries file)))]
+      (is (not (str/includes? text "MIIEpAIBAAKCAQEA")))
+      (is (not (str/includes? text "PRIVATE KEY-----"))))))
 
 (deftest claude-session-test
   (is (= {:source :claude :id "31b066ea-d480-4a3f-a6f1-0bc74a18367f" :subagent false :project "-Users-me-metabase"}
