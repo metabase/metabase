@@ -1,0 +1,41 @@
+## Reinstall v_metabot_conversations as v8 — adds a CASE branch for the `notification_alert_summary`
+## source, matching the v6 bump of v_ai_usage_log in
+## 20260923_ai_usage_log_view_v6_notification_source.yaml.
+##
+## runOnChange so editing the v8 SQL re-runs this on upgrade; earlier versions are checksum-pinned and must
+## never be edited in place.
+##
+## Keep the CASE branches in sync with the known-sources allow-list in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:02
+      author: nvoxland
+      runOnChange: true
+      comment: Reinstall v_metabot_conversations (v8) with the notification alert summary source in source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v8/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v8/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v8/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v7/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v7/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v7/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

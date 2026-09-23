@@ -1,0 +1,44 @@
+## Reinstall v_ai_usage_log as v6 — adds a CASE branch for the `notification_alert_summary` source, so
+## tokens spent interpreting an alert's results surface as "Alerts" in AI usage analytics rather than as a
+## raw machine name.
+##
+## runOnChange so editing the v6 SQL re-runs this on upgrade; earlier versions are checksum-pinned and must
+## never be edited in place.
+##
+## v_metabot_conversations gets the same treatment in
+## 20260923_metabot_conversations_v8_notification_source.yaml.
+##
+## Keep the CASE branches in sync with the known-sources allow-list in
+## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:01
+      author: nvoxland
+      runOnChange: true
+      comment: Reinstall v_ai_usage_log (v6) with the notification alert summary source in source_name CASE
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v6/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v6/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v6/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v5/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v5/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v5/h2-ai_usage_log.sql
+            relativeToChangelogFile: true

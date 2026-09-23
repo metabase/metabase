@@ -112,8 +112,11 @@
                        summary-json-schema
                        nil
                        max-summary-tokens
+                       ;; `:source` is an allow-list in `metabase-enterprise.metabot.usage/known-sources`;
+                       ;; an unregistered value throws inside the provider stream and is retried as if the
+                       ;; API had failed, so it must stay in sync with that set and the analytics views.
                        {:request-id          (str (random-uuid))
-                        :source              "notification"
+                        :source              "notification_alert_summary"
                         :tag                 "alert-ai-summary"
                         :required-permission :permission/metabot-other-tools}))))
 
