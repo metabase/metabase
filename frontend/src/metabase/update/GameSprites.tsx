@@ -10,6 +10,29 @@ const SPRITE_PROPS = {
   focusable: false,
 } as const;
 
+const ARROW_ROTATIONS = { up: 0, right: 90, down: 180, left: 270 } as const;
+
+export function KonamiArrowSprite({
+  direction,
+}: {
+  direction: keyof typeof ARROW_ROTATIONS;
+}) {
+  return (
+    <svg
+      {...SPRITE_PROPS}
+      width="1em"
+      height="1em"
+      viewBox="0 0 9 9"
+      fill="currentColor"
+    >
+      <path
+        transform={`rotate(${ARROW_ROTATIONS[direction]} 4.5 4.5)`}
+        d="M4 0h1v1h1v1h1v1h1v1H6v5H3V4H1V3h1V2h1V1h1Z"
+      />
+    </svg>
+  );
+}
+
 export function MetabotShipSprite() {
   return (
     <svg
