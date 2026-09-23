@@ -27,12 +27,6 @@
   []
   *scope-queries?*)
 
-(defn world-clause
-  "Honey SQL restricting `table` to the world being worked in, for a hand-written query that names its table rather
-  than a model and so is not restricted for it."
-  [table]
-  [:= (keyword (name table) "worktree_id") *worktree-id*])
-
 (defn do-across-worlds
   "Impl for [[across-worlds]]."
   [thunk]
@@ -44,6 +38,13 @@
   branch's. For the code that works out which world something belongs to, and for deleting a worktree."
   [& body]
   `(do-across-worlds (^:once fn* [] ~@body)))
+
+(defn world-clause
+  "Honey SQL restricting `table` to the world being worked in, for a hand-written query that names its table rather
+  than a model and so is not restricted for it. Nil while working [[across-worlds]]."
+  [table]
+  (when *scope-queries?*
+    [:= (keyword (name table) "worktree_id") *worktree-id*]))
 
 (defn do-with-worktree
   "Impl for [[with-worktree]]."
