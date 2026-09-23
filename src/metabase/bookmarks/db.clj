@@ -298,11 +298,13 @@
                            (collection/visible-collection-filter-clause collection-id-field
                                                                         {:cte-name :visible_collection_ids}
                                                                         user-scope))
+        ;; the joins are restricted to the current world, so an item of another world joins as all NULLs -- which
+        ;; `world-conditions` would take for the main app's; requiring the joined id drops it
         readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "card")]       [:not= :card.id nil]       (visible? :card.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  [:not= :dashboard.id nil]  (visible? :dashboard.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "collection")] [:not= :collection.id nil] (visible? :collection.id)]
+                             [:and [:= :bookmark.type (h2x/literal "document")]   [:not= :document.id nil]   (visible? :document.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (mdb/query
      {:with [[:visible_collection_ids (collection/visible-collection-query
