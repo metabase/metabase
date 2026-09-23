@@ -5,6 +5,7 @@ const path = require("path");
 const {
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
+  buildFontFaces,
   latinCharacters,
   restCharacters,
 } = require("../fonts");
@@ -26,28 +27,32 @@ const RECIPE = JSON.stringify([
 ]);
 
 /**
- * Splits each bundled face into a latin chunk and a chunk holding everything
- * else, and rewrites the stylesheet so both are declared with a `unicode-range`.
- * A page downloads only the chunks it renders, and coverage is unchanged because
- * the browser fetches the second chunk on demand.
+ * Builds the bundled `@font-face` rules from the fonts themselves, then splits
+ * each face into a latin chunk and a chunk holding everything else, declared
+ * with a `unicode-range`. A page downloads only the chunks it renders, and
+ * coverage is unchanged because the browser fetches the second chunk on demand.
  *
- * The rewritten stylesheet is this loader's return value rather than a file, so
- * the app imports the hand-written source and never a build artifact. Subsetting
- * a face costs around 100ms, so the chunks are cached on disk under the hash of
+ * The whole stylesheet is this loader's return value. Its resource is a virtual
+ * module, so there is no file to drift from the fonts it describes. Subsetting a
+ * face costs around 100ms, so the chunks are cached on disk under the hash of
  * their source: a cold build pays about eighteen seconds, later builds nothing.
  */
-module.exports = function fontSubsetLoader(css) {
+module.exports = function fontSubsetLoader() {
   const callback = this.async();
-  rewrite(this, css).then((rewritten) => callback(null, rewritten), callback);
+  rewrite(this).then((rewritten) => callback(null, rewritten), callback);
 };
 
-async function rewrite(loader, css) {
+async function rewrite(loader) {
   const { fontsDir, outputDir } = loader.getOptions();
   const subsetFont = (await import("subset-font")).default;
   fs.mkdirSync(outputDir, { recursive: true });
-  // The fonts and the ranges decide the output while the stylesheet stays put,
-  // so each one has to be able to invalidate this module on its own.
+  // Nothing about this module comes from its own resource, so everything it is
+  // built from has to invalidate it explicitly. `buildFontFaces` reports each
+  // font it reads.
   loader.addDependency(require.resolve("../fonts"));
+  const css = await buildFontFaces(fontsDir, (file) =>
+    loader.addDependency(file),
+  );
 
   const chunksFor = async (rel) => {
     const source = path.join(fontsDir, rel);
