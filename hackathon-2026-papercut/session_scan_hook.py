@@ -1,7 +1,8 @@
 """Start a single-session papercut scan from a Claude or Codex lifecycle hook.
 
-Hook deadlines are short. A detached worker runs mage and serializes access to
-its per-agent progress file. Scan output is logged under local/papercuts/.
+Hook deadlines are short, so the hook only queues the session and starts a detached worker. At most one worker
+per agent runs: it scans every queued session, and a worker that finds another running leaves its session to it.
+Scan output is logged under local/papercuts/.
 """
 
 import fcntl
@@ -51,29 +52,72 @@ def launch(source, payload, server=None):
     if not isinstance(session_id, str):
         return False
     scan_command(source, session_id, event, server)
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    enqueue(source, session_id, event, normalize_server(server) if server is not None else None)
     with (LOG_DIR / "hook-scan.log").open("a") as log:
-        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker", source, session_id, event,
-                          normalize_server(server) if server is not None else ""],
+        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker", source],
                          cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                          start_new_session=True, close_fds=True)
     return True
 
 
-def work(source, session_id, event, server):
+def pending_path(source):
+    return LOG_DIR / f"hook-scan.{source}.pending"
+
+
+def enqueue(source, session_id, event, server):
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with pending_path(source).open("a") as pending:
+        fcntl.flock(pending, fcntl.LOCK_EX)
+        pending.write(json.dumps({"session": session_id, "event": event, "server": server}) + "\n")
+
+
+def merged(entries):
+    """One scan per session, in first-queued order. SessionEnd wins, since it also screens a short last stretch."""
+    by_session = {}
+    for entry in entries:
+        prior = by_session.get(entry["session"])
+        if prior and prior["event"] == "SessionEnd":
+            entry = {**entry, "event": "SessionEnd"}
+        by_session[entry["session"]] = entry
+    return list(by_session.values())
+
+
+def take_pending(pending):
+    """Read and clear the queue. `pending` must be open and locked."""
+    pending.seek(0)
+    entries = [json.loads(line) for line in pending.read().splitlines() if line.strip()]
+    pending.seek(0)
+    pending.truncate()
+    return merged(entries)
+
+
+def work(source):
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     # The last assistant message may reach the transcript just after Stop.
     time.sleep(3)
     with (LOG_DIR / f"hook-scan.{source}.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
-        print(f"Scanning {source} session {session_id} after {event}", flush=True)
-        return subprocess.call(scan_command(source, session_id, event, server), cwd=ROOT,
-                               env={**os.environ, "PAPERCUTS_SCAN_HOOK": "1"})
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 0  # The running worker scans what this one queued.
+        while True:
+            with pending_path(source).open("a+") as pending:
+                fcntl.flock(pending, fcntl.LOCK_EX)
+                entries = take_pending(pending)
+                if not entries:
+                    # Unlock while still holding the queue, so a session queued from here on starts a worker that
+                    # can take the lock.
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+                    return 0
+            for entry in entries:
+                print(f"Scanning {source} session {entry['session']} after {entry['event']}", flush=True)
+                subprocess.call(scan_command(source, entry["session"], entry["event"], entry["server"]), cwd=ROOT,
+                                env={**os.environ, "PAPERCUTS_SCAN_HOOK": "1"})
 
 
 def main():
-    if len(sys.argv) == 6 and sys.argv[1] == "--worker":
-        return work(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5] or None)
+    if len(sys.argv) == 3 and sys.argv[1] == "--worker" and sys.argv[2] in {"claude", "codex"}:
+        return work(sys.argv[2])
     if len(sys.argv) == 2:
         # A hook installed before the server was saved in its command: the scanner resolves PAPERCUTS_SERVER as it
         # would when run by hand, then falls back to the shared server.
