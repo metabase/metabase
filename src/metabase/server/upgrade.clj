@@ -51,7 +51,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 (def ^:private progress (atom {:status :not-upgrading :current 0}))
 
 ;; based on clojure.java.io/copy but with status reporting and slowdown
-(defn- copy [^InputStream input ^OutputStream output slowly?]
+(defn- copy [^InputStream input ^OutputStream output delay-factor]
   (let [buffer-size (* 1024 1024) ; 1 megabyte buffer
         buffer (make-array Byte/TYPE buffer-size)]
     (loop []
@@ -60,8 +60,8 @@ by moving %s to %s and restarting." new-jar-path jar-path))
         ;; If we do a download from the live jar, it will take too long during
         ;; the demo. If we point it at a local URL, it will be too fast for
         ;; anyone to see the progress bar. Let's shoot for making it take 10s.
-        (when slowly?
-          (Thread/sleep 5))
+        (when delay-factor
+          (Thread/sleep delay-factor))
         (when (pos? size)
           (do (.write output buffer 0 size)
               (recur)))))))
@@ -89,7 +89,8 @@ by moving %s to %s and restarting." new-jar-path jar-path))
           total (parse-long (-> response :headers (get "Content-Length")))]
       (swap! progress assoc :total total :current 0)
       (with-open [out (io/output-stream temp-jar-path)]
-        (copy (:body response) out (System/getenv "MB_UPGRADE_SLOW"))))
+        (copy (:body response) out (some-> (System/getenv "MB_UPGRADE_SLOW")
+                                           parse-long))))
     (swap! progress assoc :status :downloaded)
     (log/info "Download complete.")
     (log/info (prn-str @progress))

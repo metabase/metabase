@@ -1,5 +1,5 @@
 #!/bin/bash
-export MB_UPGRADE_SLOW=y
+export MB_UPGRADE_SLOW=5 # milliseconds to delay in between megabytes
 export MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar
 export MB_JETTY_PORT=8088
 java -jar target/uberjar/metabase-current.jar
