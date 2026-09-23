@@ -1,6 +1,7 @@
 (ns metabase.jekyll-mode.load
   (:require
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.jekyll-mode.files :as files]
    [metabase.jekyll-mode.writeback :as writeback]
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
@@ -30,8 +31,9 @@
       (let [id (t2/insert-returning-pk! model instance)]
         (printf "Inserted new %s %d.\n" model id)))))
 
-(defn- load-instance-from-file! [model filename]
-  (load-instance! model (file->instance model filename)))
+(mu/defn- load-instance-from-file! [filename :- :string]
+  (let [model (files/filename->model filename)]
+    (load-instance! model (file->instance model filename))))
 
 (comment
   (defn- %read-file-for-update! []

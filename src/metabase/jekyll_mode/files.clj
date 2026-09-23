@@ -7,6 +7,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; TODO -- this should be configurable by the user (make it a Setting?)
 
 (defn- directory-prefix []
@@ -29,6 +31,16 @@
 
 (def directory->model
   (into (sorted-map) (set/map-invert model->directory)))
+
+(mu/defn filename->model :- ::model
+  [filename :- :string]
+  (directory->model (.. (u.files/get-path filename)
+                        getParent
+                        getFileName
+                        toString)))
+
+(comment
+  (filename->model "/Users/camsaul/metabase/local/dashboards/2.yaml"))
 
 (mu/defn- model-directory :- :string
   [model :- ::model]
