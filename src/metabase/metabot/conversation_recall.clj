@@ -6,18 +6,15 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.conversation-recall-index :as recall-index]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as schema]
    [metabase.util.json :as json]))
 
-(def profiles
-  "Profiles whose conversations participate in recall."
-  #{"internal" "nlq" "nlq-fallback"})
-
 (defn eligible-message?
   "Whether a message is a live, recallable user message or successful completed assistant message."
   [{:keys [role finished error deleted_at profile_id]}]
-  (and (profiles profile_id)
+  (and (recall-index/profiles profile_id)
        (nil? deleted_at)
        (or (= role :user) (and (= role :assistant) (true? finished) (nil? error)))))
 

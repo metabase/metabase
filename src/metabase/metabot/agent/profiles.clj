@@ -299,6 +299,7 @@
   ;; A successful ask_user is the answer for this turn — stop and wait for the user's reply. The loop
   ;; streams its question as assistant text, since the model gets no further step to write it.
   :terminal-tools        #{"ask_user"}
+  :external-mcp-tools?   true
   ;; Primed knowledge, so conversations don't start by rediscovering the app db: the curated app-db
   ;; map (static, cached prefix), a live instance snapshot (dialect, warehouse dbs, content counts),
   ;; and the persistent-note catalog (keys + summaries; bodies load on demand via read_note).
@@ -316,6 +317,11 @@
                           #'tools/write-note-tool
                           #'tools/read-note-tool
                           #'tools/delete-note-tool
+                          #'tools/conversation-search-tool
+                          #'tools/recent-chats-tool
+                          #'tools/read-conversation-tool
+                          #'tools/web-search-tool
+                          #'tools/read-web-page-tool
                           #'tools/todo-write-tool
                           #'tools/todo-read-tool
                           #'tools/ask-user-tool]})

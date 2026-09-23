@@ -65,7 +65,8 @@
   earlier work. Supply a short topic phrase, not a whole document or words like 'our conversation'.
   Matches use both keywords and meaning. within_conversation_id narrows to a known chat.
   Results include source URLs and page_token values for read_conversation. An empty result is not proof
-  something was never discussed; try broader terms. Artifacts can be opened with read_resource."
+  something was never discussed; try broader terms. Excerpts carry the artifact URIs and query
+  definitions behind past results; your system prompt says how to continue working with them."
   [{:keys [query] limit :max_results conversation-id :within_conversation_id
     :or {limit 5}} :- [:map {:closed true}
                        [:query [:string {:min 1 :max 1000}]]
@@ -137,8 +138,8 @@
   "Read a bounded passage from your user's past conversation. Use a conversation_id returned by
   conversation_search/recent_chats or supplied by the user. A search hit's page_token starts at its
   matching passage. Omit it to start at the beginning; returned next/prev tokens navigate adjacent
-  passages. Read more only when needed. This does not load or modify any chart;
-  use read_resource on a returned artifact URI to continue working with that artifact."
+  passages. Read more only when needed. This does not load or modify any chart; your system prompt
+  says how to continue working with a returned artifact."
   [{conversation-id :conversation_id page-token :page_token max-turns :max_turns
     :or {max-turns 20}} :- [:map {:closed true}
                             [:conversation_id ms/UUIDString]

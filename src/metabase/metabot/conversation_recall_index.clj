@@ -3,6 +3,10 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
+(def profiles
+  "Profile ids whose conversations are indexed and recallable through the conversation tools."
+  #{"internal" "nlq" "nlq-fallback" "megabot"})
+
 (defenterprise search
   "Hybrid search restricted to an owner. Returns status and candidate excerpts; unavailable in OSS."
   metabase-enterprise.metabot.conversation-recall-index

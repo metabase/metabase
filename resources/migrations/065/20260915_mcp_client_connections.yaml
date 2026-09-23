@@ -5,7 +5,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-09-15T12:00:00
+      id: v65.2026-09-15T12:00:00
       author: sloansparger
       comment: Create mcp_server table
       changes:
@@ -80,7 +80,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v64.2026-09-15T12:00:01
+      id: v65.2026-09-15T12:00:01
       author: sloansparger
       comment: Create mcp_connection table
       changes:
@@ -178,7 +178,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v64.2026-09-15T12:00:02
+      id: v65.2026-09-15T12:00:02
       author: sloansparger
       comment: Add index on mcp_connection.user_id
       changes:
@@ -190,7 +190,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: v64.2026-09-15T12:00:03
+      id: v65.2026-09-15T12:00:03
       author: sloansparger
       comment: Add index on mcp_connection.oauth_state
       changes:
@@ -202,7 +202,7 @@ databaseChangeLog:
                   name: oauth_state
 
   - changeSet:
-      id: v64.2026-09-15T12:00:04
+      id: v65.2026-09-15T12:00:04
       author: sloansparger
       comment: Add foreign key constraint for mcp_connection.mcp_server_id
       changes:
@@ -215,7 +215,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v64.2026-09-15T12:00:05
+      id: v65.2026-09-15T12:00:05
       author: sloansparger
       comment: Add foreign key constraint for mcp_connection.user_id
       changes:
@@ -228,7 +228,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v64.2026-09-15T12:00:06
+      id: v65.2026-09-15T12:00:06
       author: sloansparger
       comment: Add unique constraint for mcp_connection server and user
       changes:

@@ -73,6 +73,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.conversation-recall :as recall]
+   [metabase.metabot.conversation-recall-index :as recall-index]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.scope :as scope]
@@ -807,7 +808,7 @@
              :id-segment   id-seg}))))
 
 (defn- fetch-past-artifact [conversation-id message-id kind artifact-id]
-  (api/check-403 (contains? #{:internal :nlq :nlq-fallback} shared/*profile-id*))
+  (api/check-403 (contains? recall-index/profiles (some-> shared/*profile-id* name)))
   (recall/owned-conversation! conversation-id)
   (let [state (recall/state-at (metabot.db/live-messages conversation-id) (parse-long message-id))
         chart (when (= kind "chart") (get-in state [:charts artifact-id]))

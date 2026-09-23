@@ -222,12 +222,14 @@
   #{"run_warehouse_sql" "run_warehouse_query" "query_app_db" "describe_app_db" "show_result" "save_result" "navigate"
     "call_api" "list_api_endpoints" "describe_api_endpoint"
     "write_note" "read_note" "delete_note"
+    "conversation_search" "recent_chats" "read_conversation"
+    "web_search" "read_web_page"
     "todo_write" "todo_read" "ask_user"})
 
 (def ^:private megabot-scoped-tool-names
-  "Megabot reuses the shared todo tools as-is, so they carry their own :scope. Every other megabot tool is
-  deliberately unguarded (no :scope)."
-  #{"todo_write" "todo_read"})
+  "Megabot reuses the shared todo, conversation-recall, and web tools as-is, so they carry their own :scope.
+  Every other megabot tool is deliberately unguarded (no :scope)."
+  #{"todo_write" "todo_read" "conversation_search" "recent_chats" "read_conversation" "web_search" "read_web_page"})
 
 (def ^:private megabot-tool-capabilities
   "The one megabot tool with `:capabilities`: run_warehouse_sql, so a user who can't write SQL anywhere isn't offered
@@ -255,14 +257,19 @@
           (testing tool-name
             (is (nil? (:scope (meta tool-var))))
             (is (= (get megabot-tool-capabilities tool-name) (:capabilities (meta tool-var)))))))))
-  (testing "with an unrestricted scope the tools resolve, plus load_skill from the always-on skills"
+  (testing "with an unrestricted scope and a web search key the tools resolve, plus load_skill from the always-on skills"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
-      (testing "a user who may write SQL gets every tool"
-        (is (= (conj megabot-tool-names "load_skill")
-               (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"]))))))
-      (testing "a user who may not gets every tool but run_warehouse_sql"
-        (is (= (-> megabot-tool-names (disj "run_warehouse_sql") (conj "load_skill"))
-               (set (keys (profiles/get-tools-for-profile :megabot []))))))))
+      (mt/with-temporary-setting-values [metabot-web-search-api-key "serper-key"]
+        (testing "a user who may write SQL gets every tool"
+          (is (= (conj megabot-tool-names "load_skill")
+                 (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"]))))))
+        (testing "a user who may not gets every tool but run_warehouse_sql"
+          (is (= (-> megabot-tool-names (disj "run_warehouse_sql") (conj "load_skill"))
+                 (set (keys (profiles/get-tools-for-profile :megabot [])))))))
+      (testing "without a web search key the web tools are withheld"
+        (mt/with-temporary-setting-values [metabot-web-search-api-key nil]
+          (is (= (-> megabot-tool-names (disj "web_search" "read_web_page") (conj "load_skill"))
+                 (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"])))))))))
   (testing "the structured-query skill is always on, and the operator catalog loads on demand"
     (let [profile  (profiles/get-profile :megabot)
           manifest (skills/build-skill-manifest profile (map #(:tool-name (meta %)) (:tools profile)) [])]

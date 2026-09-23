@@ -189,7 +189,7 @@ function McpServerRow({
       title: t`Remove ${server.name}?`,
       message: t`Everyone's connection to this server will be removed too.`,
       confirmButtonText: t`Remove`,
-      confirmButtonProps: { color: "danger" },
+      confirmButtonProps: { color: "negative" },
       onConfirm: () => deleteServer(server.id),
     });
   }, [showConfirmation, deleteServer, server]);

@@ -491,7 +491,7 @@ describe("MetabotChainOfThought", () => {
     // three stacked favicons plus an overflow badge for the other two domains
     expect(screen.getByText("+2")).toBeInTheDocument();
     await userEvent.click(screen.getByText("5 results"));
-    const link = screen.getByRole("link", {
+    const link = await screen.findByRole("link", {
       name: /Metabase 0.60 release notes/,
     });
     expect(link).toHaveAttribute(
