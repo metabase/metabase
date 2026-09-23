@@ -22,6 +22,7 @@ import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes
 import { useHasTransformDirtyChanges } from "./hooks/use-has-transform-dirty-changes";
 import { useRemoteSyncDirtyState } from "./hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "./hooks/use-sync-status";
+import { useWorktreeUrlParam } from "./hooks/use-worktree-url-param";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { getIsRemoteSyncReadOnly } from "./selectors";
 import { remoteSyncReducer } from "./sync-task-slice";
@@ -51,6 +52,7 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges = useHasGlossaryDirtyChanges;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
     PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState = useRemoteSyncDirtyState;
+    PLUGIN_REMOTE_SYNC.useWorktreeUrlParam = useWorktreeUrlParam;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

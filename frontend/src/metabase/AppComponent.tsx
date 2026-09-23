@@ -23,6 +23,7 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -91,6 +92,7 @@ export function App() {
   // session and makes `session-properties` invalidations refetch.
   // In RTK if there is no active subscriber, invalidating a tag does not trigger a refetch.
   useGetSettingsQuery();
+  PLUGIN_REMOTE_SYNC.useWorktreeUrlParam();
 
   useEffect(() => {
     initializeIframeResizer();

@@ -90,6 +90,7 @@ const getDefaultPluginRemoteSync = () => ({
     ({
       isCollectionDirty: false,
     }) as unknown as RemoteSyncDirtyState,
+  useWorktreeUrlParam: () => {},
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -119,4 +120,5 @@ export const PLUGIN_REMOTE_SYNC: {
   useHasGlossaryDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
+  useWorktreeUrlParam: () => void;
 } = definePluginSlot(getDefaultPluginRemoteSync);

@@ -84,13 +84,14 @@ export const GitSyncOptionsDropdown = ({
       >
         {t`Enter worktree`}
       </Menu.Item>
-      <Menu.Item
-        disabled={!isInWorktree}
-        leftSection={<Icon name="close" size={12} />}
-        onClick={onLeaveWorktreeClick}
-      >
-        {t`Leave worktree`}
-      </Menu.Item>
+      {isInWorktree && (
+        <Menu.Item
+          leftSection={<Icon name="close" size={12} />}
+          onClick={onLeaveWorktreeClick}
+        >
+          {t`Leave worktree`}
+        </Menu.Item>
+      )}
     </Menu.Dropdown>
   );
 };
