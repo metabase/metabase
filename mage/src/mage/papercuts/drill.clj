@@ -107,7 +107,12 @@ Known papercuts:
 (defn- run-cli
   "Run `args` like `p/shell` with `:continue`, but kill the process tree and throw once it runs past `timeout-ms`."
   [opts & args]
-  (let [proc   (apply p/process (assoc opts :shutdown p/destroy-tree) args)
+  ;; The drill-down agent's own session ends like any other and would set off the papercut hooks, whether this
+  ;; scan was started by a hook or by hand.
+  (let [proc   (apply p/process (-> opts
+                                    (assoc :shutdown p/destroy-tree)
+                                    (assoc-in [:extra-env "PAPERCUTS_SCAN_HOOK"] "1"))
+                      args)
         result (deref proc timeout-ms ::timeout)]
     (when (= ::timeout result)
       (p/destroy-tree proc)
