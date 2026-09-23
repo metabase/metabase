@@ -106,3 +106,37 @@
               (is (not (contains? (names) "Zzyzx main app card")))))
           (finally
             (remote-sync.db/delete-worktree! worktree-id)))))))
+
+(deftest a-bookmark-stays-in-its-worktree-test
+  (mt/with-temp [:model/Card main-card {:name "Main app bookmarked card" :collection_id nil}]
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "bookmark-" (random-uuid))})
+          bookmark-names    #(->> (apply mt/user-http-request :crowberto :get 200 "bookmark" %&)
+                                  (map :name)
+                                  set)]
+      (try
+        (let [branch-card-id (mdb.worktree/with-worktree worktree-id
+                               (t2/insert-returning-pk! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                                           {:name "Branch bookmarked card"
+                                                                            :collection_id nil})))]
+          (mt/user-http-request :crowberto :post 200 (str "bookmark/card/" (:id main-card)))
+          (mt/user-http-request :crowberto :post 200 (str "bookmark/card/" branch-card-id) (worktree-header worktree-id))
+          (testing "the main app lists only its own bookmarks"
+            (is (= #{"Main app bookmarked card"} (bookmark-names))))
+          (testing "a worktree lists only its own bookmarks"
+            (is (= #{"Branch bookmarked card"} (bookmark-names (worktree-header worktree-id))))))
+        (finally
+          (t2/delete! :model/CardBookmark :user_id (mt/user->id :crowberto))
+          (remote-sync.db/delete-worktree! worktree-id))))))
+
+(deftest a-job-run-from-a-worktree-is-refused-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temp [:model/TransformJob job {:name "Main app job" :schedule "0 0 0 * * ?"}]
+      (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "job-run-" (random-uuid))})]
+        (try
+          (testing "running a job from a worktree answers with a 400 rather than never answering"
+            (is (= "A transform job runs the main app's transforms, never a worktree's"
+                   (:message (deref (future (mt/user-http-request :crowberto :post 400 (str "transform-job/" (:id job) "/run")
+                                                                  (worktree-header worktree-id)))
+                                    10000 {:message ::timed-out})))))
+          (finally
+            (remote-sync.db/delete-worktree! worktree-id)))))))
