@@ -298,6 +298,28 @@
    {{:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}
     {:query {:filter [:starts-with [:field 10 nil] "ABC" {:case-sensitive true}]}}}))
 
+(deftest ^:parallel normalize-filter-test-10
+  (normalize-tests
+   "the unit in absolute-datetime clauses should get normalized, also when nested in a compound filter"
+   {{:query {"FILTER" ["between" ["field" 13 nil] ["absolute-datetime" "2024-01-01" "day"] ["absolute-datetime" "2027-01-23" "day"]]}}
+    {:query {:filter [:between [:field 13 nil] [:absolute-datetime "2024-01-01" :day] [:absolute-datetime "2027-01-23" :day]]}}
+
+    {:query {"FILTER" ["and"
+                       ["between" ["field" 13 nil] ["absolute-datetime" "2024-01-01" "day"] ["absolute-datetime" "2027-01-23" "day"]]
+                       ["=" ["field" 14 nil] 165]]}}
+    {:query {:filter [:and
+                      [:between [:field 13 nil] [:absolute-datetime "2024-01-01" :day] [:absolute-datetime "2027-01-23" :day]]
+                      [:= [:field 14 nil] 165]]}}
+
+    {:query {"FILTER" ["=" ["field" 13 nil] ["absolute-datetime" "2024-01-01T10:20:30" "minute"]]}}
+    {:query {:filter [:= [:field 13 nil] [:absolute-datetime "2024-01-01T10:20:30" :minute]]}}}))
+
+(deftest ^:parallel normalize-temporal-extract-unit-test
+  (normalize-tests
+   "the unit in temporal-extract clauses should get normalized"
+   {{:query {"EXPRESSIONS" {"year" ["temporal-extract" ["field" 13 nil] "year-of-era"]}}}
+    {:query {:expressions {"year" [:temporal-extract [:field 13 nil] :year-of-era]}}}}))
+
 (deftest ^:parallel normalize-parmaeters-test
   (normalize-tests
    "make sure we're not running around trying to normalize the type in native query params"

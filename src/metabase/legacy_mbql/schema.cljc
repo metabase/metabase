@@ -150,25 +150,31 @@
   "Set of valid units for bucketing or comparing against a *datetime* Field."
   (set/union date-bucketing-units time-bucketing-units))
 
+;; The unit enums carry `:decode/normalize` so a unit that arrives as a string (JSON, e.g. `["absolute-datetime"
+;; "2024-01-01" "day"]`) normalizes to the keyword. Without it the clause stays invalid and every clause that contains
+;; it is left unnormalized.
 (mr/def ::DateUnit
   "Valid unit for date bucketing."
-  (into [:enum {:error/message "date bucketing unit"}] date-bucketing-units))
+  (into [:enum {:error/message "date bucketing unit", :decode/normalize helpers/normalize-keyword}]
+        date-bucketing-units))
 
 ;; it could make sense to say hour-of-day(field) =  hour-of-day("2018-10-10T12:00")
 ;; but it does not make sense to say month-of-year(field) = month-of-year("08:00:00"),
 ;; does it? So we'll restrict the set of units a TimeValue can have to ones that have no notion of day/date.
 (mr/def ::TimeUnit
   "Valid unit for time bucketing."
-  (into [:enum {:error/message "time bucketing unit"}] time-bucketing-units))
+  (into [:enum {:error/message "time bucketing unit", :decode/normalize helpers/normalize-keyword}]
+        time-bucketing-units))
 
 (mr/def ::DateTimeUnit
   "Valid unit for *datetime* bucketing."
-  (into [:enum {:error/message "datetime bucketing unit"}] datetime-bucketing-units))
+  (into [:enum {:error/message "datetime bucketing unit", :decode/normalize helpers/normalize-keyword}]
+        datetime-bucketing-units))
 
 (mr/def ::TemporalExtractUnit
   "Valid units to extract from a temporal."
   [:enum
-   {:error/message "temporal extract unit"}
+   {:error/message "temporal extract unit", :decode/normalize helpers/normalize-keyword}
    :year-of-era
    :quarter-of-year
    :month-of-year
