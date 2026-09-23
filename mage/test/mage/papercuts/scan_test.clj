@@ -27,9 +27,18 @@
       (is (= "scan-state.claude.10.193.193.227-8765.edn" (str (fs/file-name shared))))
       (is (= "scan-state.claude.127.0.0.1-8766.edn" (str (fs/file-name local))))
       (is (= "scan-log.claude.10.193.193.227-8765.jsonl" (str (fs/file-name (#'scan/log-file shared)))))
-      (is (= "scan-state.claude.metaouch.dev.edn" (str (fs/file-name (scan/default-state-file :claude "https://metaouch.dev")))))))
+      (is (= "scan-state.claude.https-metaouch.dev-443.edn"
+             (str (fs/file-name (scan/default-state-file :claude "https://metaouch.dev")))))))
+  (testing "the scheme and effective port tell servers apart"
+    (let [file-name #(str (fs/file-name (scan/default-state-file :claude %)))]
+      (is (not= (file-name "http://example.com") (file-name "https://example.com")))
+      (is (= (file-name "https://example.com") (file-name "https://example.com:443/")))
+      (is (= (file-name "http://example.com") (file-name "http://example.com:80")))))
   (testing "a state file named some other way doesn't have its log written over it"
-    (is (= "/tmp/progress.edn.log.jsonl" (#'scan/log-file "/tmp/progress.edn")))))
+    (is (= "/tmp/progress.edn.log.jsonl" (#'scan/log-file "/tmp/progress.edn"))))
+  (testing "the log goes beside its state file, even when a directory looks like a state file"
+    (is (= "/tmp/scan-state.archive/progress.edn.log.jsonl" (#'scan/log-file "/tmp/scan-state.archive/progress.edn")))
+    (is (= "/tmp/x/scan-log.claude.h-80.jsonl" (#'scan/log-file "/tmp/x/scan-state.claude.h-80.edn")))))
 
 (defn- entry [line ts]
   {:line line :ts ts :tag "USER" :text (str "message " line)})
@@ -189,3 +198,19 @@
         (is (= "metabase" (#'scan/session-repository {:repository "metabase"} {:cwd scratch} []))))
       (finally
         (fs/delete-tree root)))))
+
+(deftest starting-state-test
+  (let [dir    (fs/create-temp-dir {:prefix "papercut-state"})
+        legacy (str (fs/path dir "scan-state.claude.edn"))
+        fresh  (str (fs/path dir "scan-state.claude.h-80.edn"))]
+    (try
+      (spit legacy (pr-str {:version 1 :sessions {"s1" {:line 40}}}))
+      (testing "a default per-server file that doesn't exist yet starts from the old single file"
+        (is (= {"s1" {:line 40}} (:sessions (scan/starting-state false fresh legacy)))))
+      (testing "an explicit --state-file is taken as given"
+        (is (= {} (:sessions (scan/starting-state true fresh legacy)))))
+      (spit fresh (pr-str {:version 1 :sessions {"s2" {:line 7}}}))
+      (testing "once the per-server file exists, it wins"
+        (is (= {"s2" {:line 7}} (:sessions (scan/starting-state false fresh legacy)))))
+      (finally
+        (fs/delete-tree dir)))))
