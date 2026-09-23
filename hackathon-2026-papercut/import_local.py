@@ -179,6 +179,24 @@ def request(server, method, route, payload=None):
         return json.load(response)
 
 
+def recorded_occurrences(server, repository, slugs):
+    """Occurrences already recorded under any of `slugs`, as `{"<session>:<lines>": (report_id, fingerprint)}`.
+
+    A writeup merged into another often shares occurrences with it. Resending such an occurrence under
+    its original report_id and fingerprint makes it a replay instead of a second report.
+    """
+    recorded = {}
+    for slug in slugs:
+        query = urlencode({"repository": repository, "fingerprint": f"local-papercuts:{slug}"})
+        for papercut in request(server, "GET", f"/api/papercuts?{query}")["papercuts"]:
+            detail = request(server, "GET", f"/api/papercuts/{papercut['id']}?reports_limit=1000")
+            for report in detail["reports"]:
+                if (report["report_id"] or "").startswith("local-papercuts:"):
+                    occurrence = report["report_id"].split(":", 2)[2]
+                    recorded.setdefault(occurrence, (report["report_id"], report["fingerprint"]))
+    return recorded
+
+
 def register_aliases(server, repository, papercut_id, aliases):
     """Route each merged writeup's fingerprint to `papercut_id`, merging any papercut it already created."""
     for alias in aliases:
@@ -210,6 +228,7 @@ def main():
         except ValueError as error:
             print(f"Skipped {path.name}: {error}")
             continue
+        recorded = recorded_occurrences(args.server, args.repository, writeup["aliases"]) if writeup["aliases"] else {}
         # Every papercut keeps at least one report, even when the writeup lists no transcript.
         for occurrence in writeup["occurrences"] or [{"transcript": None, "lines": None, "observed_at": None}]:
             session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else None
@@ -230,6 +249,8 @@ def main():
             }
             if session:
                 report["session"] = session
+            if earlier := recorded.get(report["report_id"].split(":", 2)[2]):
+                report["report_id"], report["fingerprint"] = earlier
             if writeup["category"]:
                 report["category"] = writeup["category"]
             if occurrence["observed_at"]:
