@@ -3,7 +3,8 @@
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::table-info
   "A warehouse table location."
@@ -21,4 +22,5 @@
    [:from_schema  [:maybe :string]]
    [:from_table   ::lib.schema.common/non-blank-string]
    [:to_schema    [:maybe :string]]
-   [:to_table     ::lib.schema.common/non-blank-string]])
+   [:to_table     ::lib.schema.common/non-blank-string]
+   [:created_at   ms/TemporalInstant]])
