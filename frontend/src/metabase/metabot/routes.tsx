@@ -14,6 +14,11 @@ const metabotConversationPage = () =>
     Component: MetabotConversationPage,
   }));
 
+const metabotDigestPage = () =>
+  import(
+    /* webpackChunkName: "metabot-digest" */ "./components/MetabotDigestPage"
+  ).then(({ MetabotDigestPage }) => ({ Component: MetabotDigestPage }));
+
 const slackConnectSuccess = () =>
   import(
     /* webpackChunkName: "metabot-slack-connect" */ "./components/SlackConnectSuccess"
@@ -32,6 +37,7 @@ export const getMetabotRoutes = () => {
         path={`${Urls.CONVERSATION_BASE_PATH}/:convoId`}
         lazy={metabotConversationPage}
       />
+      <Route path="digest" lazy={metabotDigestPage} />
       <Route path="slack-connect-success" lazy={slackConnectSuccess} />
     </>
   );

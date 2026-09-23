@@ -241,7 +241,12 @@
   ;; The digest reads its candidates and writes prose about them; the skill catalog is prompt weight
   ;; it never spends. Same call `:explorations` makes.
   :skills?         false
-  :tools           [#'tools/search-tool
+  ;; The digest is structured data for a page, not a chat reply: the turn's whole job is one
+  ;; `render_digest` call, so require it and end the turn as soon as it lands.
+  :required-tool-call? true
+  :terminal-tools  #{"render_digest"}
+  :tools           [#'tools/render-digest-tool
+                    #'tools/search-tool
                     #'tools/read-resource-tool]})
 
 (defn- filter-by-capabilities

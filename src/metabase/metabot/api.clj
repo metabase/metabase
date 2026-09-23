@@ -16,6 +16,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api.conversations]
+   [metabase.metabot.api.digest]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
@@ -457,6 +458,7 @@
     {"/metabot"       metabase.metabot.api.metabot/routes
      "/conversations" metabase.metabot.api.conversations/routes
      "/permissions"   metabase.metabot.api.permissions/routes
+     "/digest"        metabase.metabot.api.digest/routes
      "/document"      metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
      "/slack"         metabase.slackbot.api/routes})

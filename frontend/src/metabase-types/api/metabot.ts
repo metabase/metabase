@@ -361,6 +361,36 @@ export interface MetabotGenerateContentResponse {
   error: string | null;
 }
 
+/* Metabot v3 - Digest */
+
+export type MetabotDigestItemModel =
+  | "card"
+  | "dashboard"
+  | "table"
+  | "collection"
+  | "document";
+
+export interface MetabotDigestItem {
+  model: MetabotDigestItemModel;
+  id: number;
+  name: string | null;
+  description: string | null;
+  card_type: string | null;
+  /**
+   * One sentence, written by Metabot, on why this matters to the user. Null when Metabot omitted
+   * this item — selection is server-side, so the item still renders without it.
+   */
+  reason: string | null;
+  /** Which interest signals this entity carried, e.g. "bookmark", "alert". */
+  signals: string[];
+}
+
+export interface MetabotDigestResponse {
+  summary: string | null;
+  items: MetabotDigestItem[];
+  error: string | null;
+}
+
 /* Metabot v3 - Conversations */
 
 export interface SaveMetabotEntityRequest {

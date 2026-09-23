@@ -13,7 +13,6 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.metabot.digest.signals :as digest.signals]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.util.log :as log])
   (:import
@@ -61,7 +60,7 @@
 
 (def ^:private max-description-length
   "Descriptions are free-text and can run to paragraphs. Thirty untruncated ones would undo the token
-  budget [[metabot.settings/metabot-digest-candidate-limit]] exists to protect, and the model only needs
+  budget `metabot-digest-candidate-limit` exists to protect, and the model only needs
   enough to tell one candidate from another."
   240)
 
@@ -87,34 +86,34 @@
                            [(format "<description>%s</description>" d)])
                          (keep #(reason->xml % now) reasons)
                          (keep identity [(popularity->xml view-count)]))]
-    (str/join "\n" (concat [(format "  <candidate %s>" open)]
+    (str/join "\n" (concat [(format "  <item %s>" open)]
                            (map #(str "    " %) children)
-                           ["  </candidate>"]))))
+                           ["  </item>"]))))
 
-(defn candidates->xml
-  "Render `candidates` (from [[digest.signals/digest-candidates]]) as the `{{digest_candidates}}`
-  template var. Returns nil when there is nothing to show, so the template guard stays false."
-  [candidates now]
-  (when (seq candidates)
+(defn items->xml
+  "Render the digest selection (from [[digest.signals/digest-selection]]) as the `{{digest_items}}` template var.
+
+  These are items, not candidates: the server has already chosen them. The model's job is a reason for each, so
+  the block is exactly what will be rendered — nothing to pick from. Returns nil when the selection is empty, so
+  the template guard stays false."
+  [items now]
+  (when (seq items)
     (str/join "\n"
-              (concat [(format "<digest-candidates count=\"%d\" surface-target=\"%d\">"
-                               (count candidates)
-                               (metabot.settings/metabot-digest-surface-target))]
-                      (map #(candidate->xml % now) candidates)
-                      ["</digest-candidates>"]))))
+              (concat [(format "<digest-items count=\"%d\">" (count items))]
+                      (map #(candidate->xml % now) items)
+                      ["</digest-items>"]))))
 
 (defn digest-system-context
   "System-prompt template vars contributed by the `:digest` profile. Wired as the profile's
   `:system-prompt-context` hook.
 
-  Returns nil for `:digest_candidates` when the user has no signals at all, so a brand-new user gets a
-  prompt with no digest block rather than an empty one."
+  Returns nil for `:digest_items` when the user has no signals at all, so a brand-new user gets a prompt with no
+  digest block rather than an empty one."
   [_context]
   (try
-    (let [now        (Instant/now)
-          candidates (digest.signals/digest-candidates api/*current-user-id*)]
-      {:digest_candidates     (candidates->xml candidates now)
-       :digest_surface_target (str (metabot.settings/metabot-digest-surface-target))})
+    (let [now   (Instant/now)
+          items (digest.signals/digest-selection api/*current-user-id*)]
+      {:digest_items (items->xml items now)})
     (catch Exception e
       (log/errorf "Error building Metabot digest context: %s" (ex-message e))
-      {:digest_candidates nil})))
+      {:digest_items nil})))

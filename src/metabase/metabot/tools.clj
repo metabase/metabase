@@ -15,6 +15,7 @@
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
+   [metabase.metabot.tools.digest :as tools.digest]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.metabot.tools.explorations :as tools.explorations]
@@ -44,6 +45,8 @@
   sql-search-tool
   nlq-search-tool
   transform-search-tool]
+ [tools.digest
+  render-digest-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct

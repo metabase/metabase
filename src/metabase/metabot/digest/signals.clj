@@ -289,3 +289,14 @@
          (map (fn [candidate] (assoc candidate :score (score candidate now))))
          (sort-by :score >)
          (take (metabot.settings/metabot-digest-candidate-limit)))))
+
+(defn digest-selection
+  "The items the digest actually renders: the top [[metabase.metabot.settings/metabot-digest-surface-target]]
+  candidates.
+
+  Selection is deterministic and server-owned. The model annotates this list — it does not choose it, and cannot
+  add to or drop from it. Both the prompt and `render_digest` read the selection from here so they cannot disagree
+  about which items are in play."
+  [user-id]
+  (vec (take (metabot.settings/metabot-digest-surface-target)
+             (digest-candidates user-id))))

@@ -8,6 +8,7 @@ import type {
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
+  MetabotDigestResponse,
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
@@ -149,6 +150,12 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    getMetabotDigest: builder.query<MetabotDigestResponse, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/metabot/digest",
+      }),
+    }),
     saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
       query: ({ conversation_id, ...body }) => ({
         method: "POST",
@@ -196,6 +203,7 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetMetabotDigestQuery,
   useGetMetabotConversationQuery,
   useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,
