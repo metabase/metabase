@@ -53,7 +53,9 @@
   each test only has to override the signal it cares about."
   [thunk]
   (mt/with-dynamic-fn-redefs
-    [semantic.util/semantic-search-active? (constantly true)
+    ;; These probes are pgvector's; the instance default backend is :lucene, which turns them off.
+    [semantic.util/lucene-backend?         (constantly false)
+     semantic.util/semantic-search-active? (constantly true)
      semantic.env/get-pgvector-datasource! (constantly ::pgvector)
      semantic.env/get-index-metadata       (constantly ::index-metadata)
      semantic.env/get-configured-embedding-model (constantly embedding-model)

@@ -5,9 +5,16 @@
    [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.task.index-repair :as index-repair]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
+
+;; The repair metrics these tests assert on are pgvector's; the instance default backend is :lucene, which
+;; skips reporting them.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [semantic.util/lucene-backend? (constantly false)]
+                        (thunk))))
 
 (deftest successful-repair-reports-current-metric-snapshot-test
   (let [reported    (atom [])
