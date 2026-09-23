@@ -28,9 +28,10 @@
   Documents whose embedding could not be produced are left out of the counts; the periodic repair backfills them."
   [document-reducible]
   (lucene.index/ensure-open!)
-  (transduce (comp (partition-all batch-size) (map write-batch!))
-             (partial merge-with +)
-             document-reducible))
+  (or (transduce (comp (partition-all batch-size) (map write-batch!))
+                 (partial merge-with +)
+                 document-reducible)
+      {}))
 
 (defn delete!
   "Remove `ids` of search `model` from the table and this node's index, returning `{model n}`."
@@ -54,6 +55,7 @@
     (when force-reset?
       (log/info "Resetting semantic search embeddings")
       (lucene.store/delete-space! space)
+      (lucene.store/delete-other-spaces! space)
       (lucene.index/delete-all!))
     (if (or force-reset? re-populate? (zero? (:n (lucene.store/space-stats space))))
       (update! searchable-documents)
@@ -61,36 +63,46 @@
         (log/debug "Semantic search embeddings are already populated, skipping initial population")
         {}))))
 
-(defn- stale-model-ids
-  "The `[model model-id]` pairs stored for `space` that `seen` did not turn up in the canonical document stream."
-  [space seen]
-  (into []
-        (comp (map (juxt :model :model_id))
-              (remove seen))
-        (lucene.store/model-ids space)))
+(defn- model-id-of [document]
+  [(:model document) (str (:id document))])
+
+(defn- backfill-batch!
+  "Persist only the documents of this batch that `stored` does not already have, recording every id in `seen`."
+  [stored seen documents]
+  (swap! seen into (map model-id-of) documents)
+  (let [absent (remove (comp stored model-id-of) documents)]
+    (if (seq absent)
+      (write-batch! absent)
+      {})))
 
 (defn repair!
   "Bring the embedding table and this node's index back in line with `searchable-documents`.
 
-  Re-running the whole corpus through the write path backfills anything an unavailable embedder skipped; rows for
-  documents that no longer exist are dropped. Returns `{:index-id … :orphans … :snapshot-at …}`, the shape
+  Backfills documents the table is missing -- whatever an unavailable embedder skipped -- and drops rows for
+  documents that no longer exist, or that belong to an embedding space this instance has moved off. Rows that are
+  already there are left alone: rewriting them would move every one of their `updated_at` timestamps and make every
+  node in the cluster re-import the whole corpus on its next sync.
+
+  Returns `{:index-id … :orphans … :snapshot-at …}`, the shape
   `metabase-enterprise.semantic-search.task.index-repair` reports on."
   [searchable-documents]
   (lucene.index/ensure-open!)
   (let [space       (lucene.store/space-id)
         snapshot-at (t/offset-date-time)
+        stored      (lucene.store/stored-model-ids space)
         seen        (atom #{})]
     (transduce (comp (partition-all batch-size)
-                     (map (fn [documents]
-                            (swap! seen into (map (juxt :model (comp str :id))) documents)
-                            (write-batch! documents))))
+                     (map (partial backfill-batch! stored seen)))
                (partial merge-with +)
                searchable-documents)
-    (let [stale (stale-model-ids space @seen)]
+    (let [stale     (into [] (remove @seen) stored)
+          abandoned (lucene.store/delete-other-spaces! space)]
       (doseq [[model pairs] (group-by first stale)]
         (delete! model (map second pairs)))
       (when (seq stale)
         (log/infof "Dropped %d stale semantic search embeddings" (count stale)))
+      (when (pos? abandoned)
+        (log/infof "Dropped %d semantic search embeddings from abandoned embedding spaces" abandoned))
       {:index-id    nil
        :orphans     (count stale)
        :snapshot-at snapshot-at})))

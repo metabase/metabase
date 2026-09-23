@@ -58,7 +58,7 @@
   nil)
 
 (defonce ^:private state
-  ;; {:space-id :dims :path :directory :writer :manager}, or nil when no index is open on this node.
+  ;; {:space-id :dims :root :path :directory :writer :manager}, or nil when no index is open on this node.
   (atom nil))
 
 (defonce ^:private lock (Object.))
@@ -73,8 +73,18 @@
     (u.files/get-path (str *index-root*))
     (u.files/append-to-path (plugins/plugins-dir) "semantic-search")))
 
+(defn- space-file-name ^String [space-id]
+  (str/replace (str space-id) #"[^A-Za-z0-9._-]" "_"))
+
 (defn- space-dir ^Path [space-id]
-  (u.files/append-to-path (index-root) (str/replace (str space-id) #"[^A-Za-z0-9._-]" "_")))
+  (u.files/append-to-path (index-root) (space-file-name space-id)))
+
+(defn sidecar-path
+  "Path of a file sitting next to `space-id`'s index directory, for state Lucene's own directory cannot hold.
+
+  Beside rather than inside: `IndexWriter` owns the files in its directory."
+  ^Path [space-id ^String suffix]
+  (u.files/append-to-path (index-root) (str (space-file-name space-id) suffix)))
 
 (defn- delete-recursive! [^Path path]
   (when (u.files/exists? path)
@@ -84,19 +94,26 @@
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
 
-(defn- open-directory! [space-id dims]
-  (let [path (space-dir space-id)]
-    (u.files/create-dir-if-not-exists! path)
-    (let [directory (FSDirectory/open path)
-          config    (doto (IndexWriterConfig.)
-                      (.setOpenMode IndexWriterConfig$OpenMode/CREATE_OR_APPEND))
-          writer    (IndexWriter. directory config)]
-      {:space-id  space-id
-       :dims      dims
-       :path      path
-       :directory directory
-       :writer    writer
-       :manager   (SearcherManager. writer (SearcherFactory.))})))
+(defn- open-directory! [^Path path space-id dims]
+  (u.files/create-dir-if-not-exists! path)
+  (let [directory (FSDirectory/open path)
+        config    (doto (IndexWriterConfig.)
+                    (.setOpenMode IndexWriterConfig$OpenMode/CREATE_OR_APPEND))
+        writer    (IndexWriter. directory config)]
+    {:space-id  space-id
+     :dims      dims
+     :root      (index-root)
+     :path      path
+     :directory directory
+     :writer    writer
+     :manager   (SearcherManager. writer (SearcherFactory.))}))
+
+(defn- private-dir
+  "A directory of this JVM's own, for when another process already holds the lock on the shared one."
+  ^Path [space-id]
+  (u.files/append-to-path (u.files/get-path (System/getProperty "java.io.tmpdir"))
+                          "metabase-semantic-search"
+                          (space-file-name space-id)))
 
 (defn- open-index!
   "Open the index directory for `space-id`, wiping and recreating it once if the existing one cannot be opened."
@@ -105,17 +122,24 @@
     (throw (ex-info (str "Embedding model is too wide for the Lucene semantic search index: "
                          dims " dimensions, maximum " max-dimensions)
                     {:dims dims :max-dimensions max-dimensions})))
-  (try
-    (open-directory! space-id dims)
-    (catch Exception e
-      ;; A half-written or lock-stranded directory is recoverable: the app-DB table can refill it.
-      (if (some (partial instance? (class e))
-                [CorruptIndexException IndexNotFoundException LockObtainFailedException])
-        (do
-          (log/warnf "Recreating unreadable semantic search Lucene index at %s: %s" (space-dir space-id) (ex-message e))
-          (delete-recursive! (space-dir space-id))
-          (open-directory! space-id dims))
-        (throw e)))))
+  (let [path (space-dir space-id)]
+    (try
+      (open-directory! path space-id dims)
+      (catch LockObtainFailedException e
+        ;; Another live JVM owns this directory -- two containers sharing MB_PLUGINS_DIR. Deleting it would
+        ;; unlink the segments out from under that process, so take a private copy instead; the app-DB table
+        ;; refills it within one sync tick.
+        (log/warnf "Another process holds the semantic search Lucene index at %s (%s); using a private copy under %s"
+                   path (ex-message e) (private-dir space-id))
+        (open-directory! (private-dir space-id) space-id dims))
+      (catch Exception e
+        ;; A half-written directory is recoverable: the app-DB table can refill it.
+        (if (some #(instance? % e) [CorruptIndexException IndexNotFoundException])
+          (do
+            (log/warnf "Recreating unreadable semantic search Lucene index at %s: %s" path (ex-message e))
+            (delete-recursive! path)
+            (open-directory! path space-id dims))
+          (throw e))))))
 
 (defn- close-state! [{:keys [^SearcherManager manager ^IndexWriter writer ^Directory directory path]}]
   (doseq [[what ^java.io.Closeable closeable] [["searcher manager" manager] ["writer" writer] ["directory" directory]]
@@ -134,7 +158,7 @@
       (log/infof "Closed semantic search Lucene index at %s" (:path s))))
   nil)
 
-(defn configured-space
+(defn- configured-space
   "Return `{:space-id … :dims …}` for the embedding model this instance is configured to use.
 
   Throws when the configured embedding provider is not installed."
@@ -152,20 +176,18 @@
    (let [{:keys [space-id dims]} (configured-space)]
      (ensure-open! space-id dims)))
   ([space-id dims]
-   (let [path    (space-dir space-id)
-         current @state]
-     (if (= path (:path current))
-       current
+   (let [open-for? (fn [s] (and s (= space-id (:space-id s)) (= (index-root) (:root s))))]
+     (if (open-for? @state)
+       @state
        (locking lock
-         (let [current @state]
-           (if (= path (:path current))
-             current
-             (do
-               (when current (close-state! current))
-               (let [opened (open-index! space-id dims)]
-                 (reset! state opened)
-                 (log/infof "Opened semantic search Lucene index at %s" path)
-                 opened)))))))))
+         (if (open-for? @state)
+           @state
+           (do
+             (some-> @state close-state!)
+             (let [opened (open-index! space-id dims)]
+               (reset! state opened)
+               (log/infof "Opened semantic search Lucene index at %s" (:path opened))
+               opened))))))))
 
 (defn- current-state []
   (or @state
@@ -207,6 +229,18 @@
       (log/debugf "Ignoring unparsable search timestamp %s: %s" (pr-str v) (ex-message e))
       nil)))
 
+(defn- boolean-term
+  "The indexed form of a boolean attribute, or nil when it is absent.
+
+  MySQL returns booleans as 0/1 rather than false/true, so the raw value cannot go straight into a term."
+  ^String [v]
+  (cond
+    (nil? v)     nil
+    (boolean? v) (str v)
+    (= 0 v)      "false"
+    (= 1 v)      "true"
+    :else        (str (boolean v))))
+
 (defn- add-term! [^Document doc ^String field value stored?]
   (when (some? value)
     (.add doc (StringField. field (str value) (if stored? Field$Store/YES Field$Store/NO)))))
@@ -240,9 +274,9 @@
     (add-term! doc "model" model true)
     (add-term! doc "model_id" model_id true)
     (add-term! doc "display_type" (:display_type document) false)
-    (add-term! doc "archived" (boolean (:archived document)) false)
-    (add-term! doc "verified" (:verified document) false)
-    (add-term! doc "curated" (:curated document) false)
+    (add-term! doc "archived" (or (boolean-term (:archived document)) "false") false)
+    (add-term! doc "verified" (boolean-term (:verified document)) false)
+    (add-term! doc "curated" (boolean-term (:curated document)) false)
     (add-term! doc "collection_id" (:collection_id document) false)
     (add-term! doc "creator_id" (:creator_id document) false)
     (add-term! doc "last_editor_id" (:last_editor_id document) false)
@@ -320,8 +354,3 @@
   []
   (with-searcher [^IndexSearcher searcher]
     (.numDocs (.getIndexReader searcher))))
-
-(defn open?
-  "Whether this node has a Lucene index open."
-  []
-  (some? @state))

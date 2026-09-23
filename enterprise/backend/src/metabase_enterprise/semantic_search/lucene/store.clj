@@ -57,6 +57,15 @@
           (log/warnf "Failed to generate semantic search embeddings, skipping this batch: %s" (ex-message t))
           {})))))
 
+(def ^:private stored-document-keys
+  "The document keys a stored row keeps: exactly what `row->document` in
+  [[metabase-enterprise.semantic-search.lucene.index]] reads back, plus `model`/`id` for diagnostics.
+
+  An ingestion document also carries `searchable_text`, `embeddable_text` and `display_data`, which together are
+  two to three times the size of the rest and which nothing reads out of this table."
+  [:model :id :legacy_input :display_type :archived :verified :curated
+   :collection_id :creator_id :last_editor_id :database_id :created_at :updated_at])
+
 (defn- document-row
   "The table row for one ingestion document, or nil when we have no embedding for it."
   [{:keys [space dims owner-ids embeddings]} {::keys [content-hash] :as document}]
@@ -69,9 +78,9 @@
      :content_hash       content-hash
      :dims               dims
      :embedding          embedding
-     ;; The whole document travels with the row so a node can rebuild its Lucene index from this table alone.
+     ;; Enough of the document travels with the row that a node can rebuild its Lucene index from this table alone.
      :document           (-> document
-                             (dissoc ::content-hash)
+                             (select-keys stored-document-keys)
                              (assoc :personal_owner_id (get owner-ids (:collection_id document))))}))
 
 (defn- write-rows!
@@ -125,6 +134,18 @@
   "Delete every row of `space`, returning the number deleted."
   [space]
   (semantic-search.db/delete-embedding-space! space))
+
+(defn delete-other-spaces!
+  "Delete the rows of every embedding space but `space`, returning the number deleted.
+
+  Switching embedding model abandons a whole space; nothing else reclaims it under this backend."
+  [space]
+  (semantic-search.db/delete-embeddings-outside-space! space))
+
+(defn stored-model-ids
+  "Set of `[model model_id]` pairs already stored in `space`."
+  [space]
+  (into #{} (map (juxt :model :model_id)) (semantic-search.db/embedding-model-ids space)))
 
 ;;;; Reading
 

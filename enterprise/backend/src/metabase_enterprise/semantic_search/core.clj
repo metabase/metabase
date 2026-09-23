@@ -100,7 +100,7 @@
   [search-ctx]
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
-      (let [{:keys [results raw-count]}
+      (let [{:keys [results raw-count keyword-results]}
             (if (semantic.util/lucene-backend?)
               (lucene.query/query search-ctx)
               (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
@@ -125,7 +125,10 @@
               (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
             (let [total-limit      (semantic.settings/semantic-search-results-limit)
                   fallback-results (try
-                                     (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
+                                     ;; The Lucene arm already ran the appdb query to fuse with; running it again
+                                     ;; here would double every search's keyword cost to rediscover the same rows.
+                                     (cond->> (or keyword-results
+                                                  (search.engine/results (assoc search-ctx :search-engine fallback)))
                                        ;; The in-place engine returns a reducible (but not seqable) result that needs to
                                        ;; be realized before we concat and dedup with the semantic engine results.
                                        (= :search.engine/in-place fallback)

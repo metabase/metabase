@@ -145,11 +145,15 @@
 
   Degrades to no keyword arm rather than failing the search: the vector arm can still answer."
   [search-context limit]
-  (try
-    (into [] (take limit) (search.engine/results (assoc search-context :search-engine :search.engine/appdb)))
-    (catch Throwable t
-      (log/warnf "Keyword arm of semantic search failed, continuing with vector results only: %s" (ex-message t))
-      [])))
+  (if-not (search.engine/supported-engine? :search.engine/appdb)
+    (do
+      (log/debug "Skipping the keyword arm of semantic search: this app DB cannot hold a search index")
+      [])
+    (try
+      (into [] (take limit) (search.engine/results (assoc search-context :search-engine :search.engine/appdb)))
+      (catch Throwable t
+        (log/warnf "Keyword arm of semantic search failed, continuing with vector results only: %s" (ex-message t))
+        []))))
 
 ;;;; Fusion
 
@@ -225,7 +229,7 @@
 
     (zero? (lucene.index/live-count))
     (do
-      (log/warn "Semantic search Lucene index is empty, answering from the keyword arm alone")
+      (log/debug "Semantic search Lucene index is empty, answering from the keyword arm alone")
       [])
 
     :else
@@ -234,8 +238,10 @@
 (defn query
   "Answer `search-context` from the Lucene vector arm fused with the appdb keyword arm.
 
-  Returns `{:results … :raw-count …}`, where `:raw-count` counts the fused set before permission filtering --
-  the signal [[metabase-enterprise.semantic-search.core/results]] uses to decide whether to supplement.
+  Returns `{:results … :raw-count … :keyword-results …}`. `:raw-count` counts the fused set before permission
+  filtering -- the signal [[metabase-enterprise.semantic-search.core/results]] uses to decide whether to
+  supplement -- and `:keyword-results` are the appdb rows this query already paid for, so that supplement does not
+  run the same query a second time.
   Throws when the query cannot be embedded, which that caller turns into a keyword-only fallback."
   [search-context]
   (let [search-string (:search-string search-context)]
@@ -246,9 +252,8 @@
             limit     (semantic.settings/semantic-search-results-limit)
             weights   (search.config/weights search-context)
             _         (lucene.index/ensure-open!)
-            fused     (fuse weights
-                            (vector-rows search-context limit)
-                            (keyword-hits search-context limit))
+            keyword-rows (keyword-hits search-context limit)
+            fused     (fuse weights (vector-rows search-context limit) keyword-rows)
             permitted (->> fused
                            semantic.index/filter-read-permitted
                            (semantic.index/apply-collection-id-filter search-context))
@@ -261,15 +266,21 @@
                     :fused-count          (count fused)
                     :final-count          (count results)
                     :total-time-ms        (u/since-ms timer)})
-        {:results   results
-         :raw-count (count fused)}))))
+        {:results         results
+         :raw-count       (count fused)
+         :keyword-results keyword-rows}))))
 
 ;;;; Diagnostics
 
-(defn- in-index?
-  [document-id]
+(defn- indexed-legacy-input
+  "The decoded `legacy_input` this node has indexed for `document-id`, or nil when it has none."
+  [^String document-id]
   (lucene.index/with-searcher [^IndexSearcher searcher]
-    (pos? (.count searcher (TermQuery. (Term. "id" ^String document-id))))))
+    (let [^TopDocs hits (.search searcher (TermQuery. (Term. "id" document-id)) (int 1))]
+      (when-let [^ScoreDoc hit (first (.scoreDocs hits))]
+        (-> (.document (.storedFields searcher) (.-doc hit))
+            (.get "legacy_input")
+            json/decode+kw)))))
 
 (defn- excluding-filter
   "The first filter key whose clause excludes `document-id`, or nil when every clause admits it."
@@ -291,17 +302,22 @@
   `:candidate` when it survives all of them. See [[metabase.search.debug/diagnose]]."
   [search-context expected-model expected-id]
   (lucene.index/ensure-open!)
-  (let [document-id (lucene.index/document-id expected-model expected-id)]
+  (let [document-id (lucene.index/document-id expected-model expected-id)
+        legacy      (indexed-legacy-input document-id)]
     (cond
-      (not (in-index? document-id))
+      (nil? legacy)
       {:type :missing-from-index :details {:document-id document-id}}
 
-      (excluding-filter search-context document-id)
-      {:type :filtered :details {:excluded-by (excluding-filter search-context document-id)}}
+      ;; Access control before the structural filters, so a not-permitted row reads as such even when a query
+      ;; filter would also drop it. Matches the pgvector arm and the appdb engine.
+      (empty? (semantic.index/filter-read-permitted [legacy]))
+      {:type :filtered :details {:excluded-by :permissions}}
 
       :else
-      (if-let [hit (first (vector-hits (embed-query (:search-string search-context))
-                                       (assoc search-context :ids [expected-id] :models #{expected-model})
-                                       1))]
-        {:type :candidate :details {:semantic-distance (- 2.0 (* 2.0 (:semantic-score hit)))}}
-        {:type :not-matching :details {:score-floor score-floor}}))))
+      (if-let [excluded-by (excluding-filter search-context document-id)]
+        {:type :filtered :details {:excluded-by excluded-by}}
+        (if-let [hit (first (vector-hits (embed-query (:search-string search-context))
+                                         (assoc search-context :ids [expected-id] :models #{expected-model})
+                                         1))]
+          {:type :candidate :details {:semantic-distance (- 2.0 (* 2.0 (:semantic-score hit)))}}
+          {:type :not-matching :details {:score-floor score-floor}})))))

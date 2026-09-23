@@ -12,7 +12,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
-   [metabase.search.ingestion :as search.ingestion]))
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.util.log :as log]))
 
 (def ^:private indexible-items-count
   (memoize/ttl search.ingestion/search-items-count
@@ -21,10 +22,15 @@
 (defn- lucene-status
   "Indexing progress for the Lucene backend: how many documents of the current embedding space are embedded."
   []
-  (let [indexed (semantic-search.db/count-embeddings (lucene.store/space-id))]
-    (if (pos? indexed)
-      {:indexed_count indexed
-       :total_est     (indexible-items-count)}
+  ;; Resolving the space needs the configured embedding provider to be registered, which it need not be.
+  (try
+    (let [indexed (semantic-search.db/count-embeddings (lucene.store/space-id))]
+      (if (pos? indexed)
+        {:indexed_count indexed
+         :total_est     (indexible-items-count)}
+        {}))
+    (catch Throwable t
+      (log/debugf "No semantic search status to report: %s" (ex-message t))
       {})))
 
 (defn- active-index-document-count

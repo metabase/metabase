@@ -119,3 +119,15 @@
     (testing "stopping twice is harmless"
       (is (nil? (lucene.sync/stop!)))
       (is (nil? (lucene.sync/stop!))))))
+
+(deftest sync-watermark-survives-a-restart-test
+  (lucene.tu/with-lucene-store [4]
+    (with-active-engine
+      (write-elsewhere! [(lucene.tu/document "card" 1)])
+      (lucene.sync/sync-tick!)
+      (testing "after a restart the on-disk index is still warm, so the tick does not re-walk the space"
+        ;; Forgetting the in-memory state is what a restart looks like from here; the index and the watermark
+        ;; file both survive it.
+        (lucene.sync/reset-state!)
+        (is (= {:space (lucene.store/space-id) :skipped true} (lucene.sync/sync-tick!)))
+        (is (= #{"card_1"} (lucene.index/live-ids)))))))

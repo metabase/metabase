@@ -121,7 +121,8 @@
   True when the `:semantic-search` feature is present, the pgvector backend is selected, and a pgvector store
   might exist: a dedicated MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-available?]] can
   probe to answer for sure.
-  Cheap and infallible by contract -- it runs at boot and never queries the DB."
+  Cheap and infallible by contract -- it runs at boot, and the only read it makes is of the
+  `semantic-search-backend` setting."
   []
   ;; The license is in this boot gate, not only the per-execution gates, so an unlicensed instance's
   ;; scheduler stays free of no-op jobs. The asymmetry is deliberate: removing the feature at runtime lets

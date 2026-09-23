@@ -1,13 +1,23 @@
 (ns metabase-enterprise.semantic-search.lucene.store-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.lucene.index :as lucene.index]
    [metabase-enterprise.semantic-search.lucene.store :as lucene.store]
    [metabase-enterprise.semantic-search.lucene.test-util :as lucene.tu]
    [metabase-enterprise.semantic-search.models.embedding :as semantic.models.embedding]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.apache.lucene.document LongPoint)
+   (org.apache.lucene.index Term)
+   (org.apache.lucene.search IndexSearcher TermQuery)))
 
 (set! *warn-on-reflection* true)
+
+(defn- term-count
+  "How many indexed documents carry `value` in `field`."
+  [^IndexSearcher searcher ^String field ^String value]
+  (.count searcher (TermQuery. (Term. field value))))
 
 (defn- stored-rows []
   (t2/select :model/SemanticSearchEmbedding {:order-by [[:model :asc] [:model_id :asc]]}))
@@ -26,8 +36,9 @@
         (is (= "1" (:model_id card-1)))
         (is (= (lucene.store/space-id) (:embedding_space_id card-1)))
         (is (= 4 (:dims card-1)))
-        (testing "the whole document round-trips as JSON, with the resolved personal owner added"
-          (is (= "doc 1" (get-in card-1 [:document :name])))
+        (testing "the stored document round-trips as JSON, with the resolved personal owner added"
+          (is (= "card" (get-in card-1 [:document :model])))
+          (is (contains? (:document card-1) :legacy_input))
           (is (contains? (:document card-1) :personal_owner_id)))
         (testing "the vector round-trips through the blob column"
           (is (= [1 2 3 4]
@@ -52,9 +63,9 @@
       (is (= [] (lucene.tu/embedded-texts))))
     (testing "a metadata-only change rewrites the row without calling the embedder"
       (lucene.tu/reset-embedded-texts!)
-      (lucene.store/upsert-documents! [(lucene.tu/document "card" 1 :view_count 42)])
+      (lucene.store/upsert-documents! [(lucene.tu/document "card" 1 :archived true)])
       (is (= [] (lucene.tu/embedded-texts)))
-      (is (= 42 (get-in (t2/select-one :model/SemanticSearchEmbedding :model_id "1") [:document :view_count]))))
+      (is (true? (:archived (t2/select-one :model/SemanticSearchEmbedding :model_id "1")))))
     (testing "changing the embedded text embeds exactly that one text"
       (lucene.tu/reset-embedded-texts!)
       (lucene.store/upsert-documents! [(lucene.tu/document "card" 1 :name "renamed")])
@@ -136,3 +147,40 @@
     (lucene.store/upsert-documents! [(lucene.tu/document "card" 1)])
     (is (= 1 (lucene.store/delete-space! (lucene.store/space-id))))
     (is (= [] (stored-rows)))))
+
+(deftest stored-document-rebuilds-every-indexed-field-test
+  (lucene.tu/with-lucene-store [4]
+    (lucene.index/ensure-open!)
+    (let [{:keys [rows]} (lucene.store/upsert-documents!
+                          [(lucene.tu/document "card" 1
+                                               :display_type   "table"
+                                               :verified       true
+                                               :curated        true
+                                               :collection_id  7
+                                               :creator_id     11
+                                               :last_editor_id 12
+                                               :database_id    13
+                                               :created_at     "2026-01-02T03:04:05Z"
+                                               :updated_at     "2026-02-03T04:05:06Z")])]
+      (testing "the stored document keeps only what the Lucene document is built from"
+        (is (= #{:model :id :legacy_input :display_type :archived :verified :curated :collection_id
+                 :creator_id :last_editor_id :database_id :created_at :updated_at :personal_owner_id}
+               (set (keys (:document (first rows)))))))
+      (testing "and that is still enough to rebuild every field of the Lucene document schema"
+        (lucene.index/upsert-rows! rows)
+        (lucene.index/with-searcher [^IndexSearcher searcher]
+          (are [field value] (= 1 (term-count searcher field value))
+            "id"                "card_1"
+            "model"             "card"
+            "model_id"          "1"
+            "display_type"      "table"
+            "archived"          "false"
+            "verified"          "true"
+            "curated"           "true"
+            "collection_id"     "7"
+            "creator_id"        "11"
+            "last_editor_id"    "12"
+            "database_id"       "13"
+            "personal_owner_id" lucene.index/null-owner)
+          (is (= 1 (.count searcher (LongPoint/newRangeQuery "model_created_at" Long/MIN_VALUE Long/MAX_VALUE))))
+          (is (= 1 (.count searcher (LongPoint/newRangeQuery "model_updated_at" Long/MIN_VALUE Long/MAX_VALUE)))))))))

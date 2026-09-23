@@ -190,12 +190,23 @@
 (deftest diagnose-reports-the-stage-that-dropped-a-document-test
   (with-semantic-search
     (mt/with-temp [:model/Card card {:name dog-card}]
-      (testing "a document that is not indexed at all"
-        (is (= :missing-from-index
-               (:type (lucene.query/diagnose {:search-string "puppy"} "card" 999999)))))
-      (testing "a document a filter excludes"
-        (is (= {:type :filtered :details {:excluded-by :models}}
-               (lucene.query/diagnose {:search-string "puppy" :models #{"dashboard"}} "card" (:id card)))))
-      (testing "a document that survives every stage"
-        (is (= :candidate
-               (:type (lucene.query/diagnose {:search-string "puppy"} "card" (:id card)))))))))
+      (mt/with-test-user :crowberto
+        (testing "a document that is not indexed at all"
+          (is (= :missing-from-index
+                 (:type (lucene.query/diagnose {:search-string "puppy"} "card" 999999)))))
+        (testing "a document a filter excludes"
+          (is (= {:type :filtered :details {:excluded-by :models}}
+                 (lucene.query/diagnose {:search-string "puppy" :models #{"dashboard"}} "card" (:id card)))))
+        (testing "a document that survives every stage"
+          (is (= :candidate
+                 (:type (lucene.query/diagnose {:search-string "puppy"} "card" (:id card))))))))))
+
+(deftest diagnose-reports-permissions-before-filters-test
+  (with-semantic-search
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {:name "Private Kennel"}
+                     :model/Card card {:name dog-card :collection_id (:id collection)}]
+        (testing "a document the current user may not read reads as permission-filtered, not merely filtered"
+          (mt/with-test-user :rasta
+            (is (= {:type :filtered :details {:excluded-by :permissions}}
+                   (lucene.query/diagnose {:search-string "puppy" :models #{"dashboard"}} "card" (:id card))))))))))

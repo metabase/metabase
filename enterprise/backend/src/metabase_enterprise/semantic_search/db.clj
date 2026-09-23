@@ -116,6 +116,11 @@
 
 ;;;; semantic_search_embedding -- the Lucene backend's vector store
 
+(def ^:private max-ids-per-query
+  "How many model IDs to list in one statement. Each is a bound parameter and Postgres caps a statement at 65535 of
+  them, so a caller passing a very large set is split across several queries rather than failing outright."
+  5000)
+
 (mu/defn embeddings-by-content-hash
   "The `content_hash` and `embedding` of the rows in `space` whose text hashes to one of `hashes`."
   [space  :- :string
@@ -130,10 +135,13 @@
   [space     :- :string
    model     :- :string
    model-ids :- [:sequential :string]]
-  (t2/delete! :model/SemanticSearchEmbedding
-              :embedding_space_id space
-              :model model
-              :model_id [:in model-ids]))
+  (transduce (map (fn [chunk]
+                    (t2/delete! :model/SemanticSearchEmbedding
+                                :embedding_space_id space
+                                :model model
+                                :model_id [:in chunk])))
+             +
+             (partition-all max-ids-per-query model-ids)))
 
 (mu/defn insert-embeddings!
   "Insert embedding `rows`."
@@ -144,6 +152,11 @@
   "Delete every row of `space`, returning how many were deleted."
   [space :- :string]
   (t2/delete! :model/SemanticSearchEmbedding :embedding_space_id space))
+
+(mu/defn delete-embeddings-outside-space!
+  "Delete every row that is not in `space`, returning how many were deleted."
+  [space :- :string]
+  (t2/delete! :model/SemanticSearchEmbedding :embedding_space_id [:not= space]))
 
 (mu/defn count-embeddings
   "How many rows `space` has."
@@ -161,7 +174,8 @@
   "Up to `limit` rows of `space` with `id` above `after-id`, lowest id first, optionally written at or after `since`."
   [space    :- :string
    after-id :- ms/Int
-   since    :- [:maybe ms/TemporalInstant]
+   since    :- [:maybe [:fn {:error/message "a timestamp the JDBC driver accepts as a parameter"}
+                        #(or (inst? %) (instance? java.time.temporal.Temporal %))]]
    limit    :- ms/PositiveInt]
   (t2/select :model/SemanticSearchEmbedding
              {:where    (cond-> [:and
@@ -183,8 +197,11 @@
   [space     :- :string
    model     :- :string
    model-ids :- [:sequential :string]]
-  (t2/select :model/SemanticSearchEmbedding
-             {:where [:and
-                      [:= :embedding_space_id space]
-                      [:= :model model]
-                      [:in :model_id model-ids]]}))
+  (into []
+        (mapcat (fn [chunk]
+                  (t2/select :model/SemanticSearchEmbedding
+                             {:where [:and
+                                      [:= :embedding_space_id space]
+                                      [:= :model model]
+                                      [:in :model_id chunk]]})))
+        (partition-all max-ids-per-query model-ids)))
