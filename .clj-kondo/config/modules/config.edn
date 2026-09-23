@@ -4191,6 +4191,7 @@
            metabot.llm
            models
            permissions
+           plugins
            premium-features
            request
            search
