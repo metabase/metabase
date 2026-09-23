@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.mcp.permissions]
+   [metabase-enterprise.mcp.settings :as mcp.settings]
    [metabase.mcp.v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -273,3 +274,10 @@
               (is (= msg (mt/user-http-request :crowberto :post 400 "ee/ai-controls/mcp-permissions/advanced"))))
             (is (t2/exists? :model/McpGroupPermission :group_id group-id)
                 "no rows are deleted by the refused switch")))))))
+
+(deftest mode-setting-is-read-only-outside-the-mode-switch-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "PUT /api/setting cannot flip the mode without the row changes the /advanced endpoints make"
+      (mt/with-temporary-setting-values [mcp-advanced-permissions false]
+        (mt/user-http-request :crowberto :put "setting/mcp-advanced-permissions" {:value true})
+        (is (false? (mcp.settings/mcp-advanced-permissions)))))))

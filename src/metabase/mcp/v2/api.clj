@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
@@ -111,8 +112,16 @@
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
-    (if (or (not (string? uri)) (str/blank? uri))
+    (cond
+      ;; `initialize` checks this too, but a session opened before an admin turned MCP off for the user's groups
+      ;; would otherwise keep reading.
+      (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
+      (transport/jsonrpc-error id common/error-code-invalid-request transport/mcp-access-disabled-message)
+
+      (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 (message/msg ["Missing required parameter: uri"]))
+
+      :else
       ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
       ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
       ;; templates that embed it (the test fallback), and the production template discards it.

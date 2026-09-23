@@ -110,7 +110,7 @@
       (when-not advanced?
         (doseq [group-id (mcp.db/seeded-group-ids)]
           (mcp.db/upsert-group-permission! group-id seeded-permission)))
-      (mcp.settings/mcp-advanced-permissions! advanced?))
+      (setting/set! :mcp-advanced-permissions advanced? :bypass-read-only? true))
     (catch Throwable e
       ;; the setting write updated the cache in place, so a rolled-back transaction leaves it describing the
       ;; other mode

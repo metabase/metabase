@@ -6,9 +6,11 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.mcp.permissions :as mcp.perms]
+   [metabase.mcp.v2.api :as v2.api]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.resources :as v2.resources]
    [metabase.mcp.v2.test-util]
    [metabase.test :as mt]))
 
@@ -138,3 +140,28 @@
       (testing "a superuser still connects"
         (is (=? {:result {:protocolVersion string?}}
                 (mt/user-http-request :crowberto :post 200 "metabase-mcp" initialize)))))))
+
+(deftest ^:parallel app-only-tool-follows-the-ui-tools-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (testing "refresh_ui_credential is not on the admin's grid, so an entry stored for it is ignored while a UI tool
+              is allowed"
+      (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"refresh_ui_credential" "no"}])]
+        (is (contains? (listed-tool-names) "refresh_ui_credential"))))
+    (testing "it is hidden and refused once every UI tool is denied"
+      (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"visualize_query"      "no"
+                                                                           "render_drill_through" "no"}])]
+        (is (not (contains? (listed-tool-names) "refresh_ui_credential")))
+        (is (= common/error-code-invalid-request
+               (get-in (registry/call-tool nil nil "refresh_ui_credential" {}) [:error :code])))))))
+
+(deftest ^:parallel resources-read-is-refused-when-mcp-is-disabled-test
+  (let [read-fields #(#'v2.api/handle-resources-read 1 {:uri v2.resources/fields-catalog-uri} nil nil)]
+    (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
+      (testing "a session opened before an admin turned MCP off reads nothing"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (=? {:error {:code common/error-code-invalid-request}}
+                  (read-fields)))))
+      (testing "a superuser still reads"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (=? {:result {:contents seq}}
+                  (read-fields))))))))

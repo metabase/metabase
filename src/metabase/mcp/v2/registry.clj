@@ -182,11 +182,29 @@
     (cond-> sentence
       (not (str/ends-with? sentence ".")) (str "."))))
 
+(defn- app-only?
+  "Whether `tool` is called only by an MCP App iframe, never by the model, like `refresh_ui_credential`."
+  [tool]
+  (= ["app"] (get-in tool [:_meta :ui :visibility])))
+
+(defn- tool-allowed?
+  "Whether `policy` lets its user use `tool`. An app-only tool has no row on the admin's grid: it is allowed while
+   the policy allows any MCP Apps tool, since those are what call it."
+  [policy tool]
+  (if (app-only? tool)
+    (boolean (some #(and (seq (:required-extensions %))
+                         (not (app-only? %))
+                         (mcp.perms/tool-allowed? policy %))
+                   (vals @tools*)))
+    (mcp.perms/tool-allowed? policy tool)))
+
 (defn tool-catalog
-  "Every registered tool as `{:name :scope :description :default_access}`, sorted by scope then name;
-   `:description` is the first sentence of the tool's own and `:default_access` is `\"allowed\"` or `\"denied\"`."
+  "Every registered tool an admin can allow or deny, as `{:name :scope :description :default_access}`, sorted by
+   scope then name; `:description` is the first sentence of the tool's own and `:default_access` is `\"allowed\"` or
+   `\"denied\"`. App-only tools are left out, since [[tool-allowed?]] derives their access."
   []
   (->> (vals @tools*)
+       (remove app-only?)
        (map (fn [{:keys [default-access] :as tool}]
               (-> (select-keys tool [:name :scope :description])
                   (update :description first-sentence)
@@ -278,7 +296,7 @@
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
             ;; the user's groups allow it
-            (filter #(mcp.perms/tool-allowed? policy %))
+            (filter #(tool-allowed? policy %))
             (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
                                   :securitySchemes :_meta])))
            (manifest)))))
@@ -362,7 +380,7 @@
                                                                (:scope tool) token-scopes)
                :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
 
-      (not (mcp.perms/tool-allowed? (mcp.perms/policy-for-current-user) tool))
+      (not (tool-allowed? (mcp.perms/policy-for-current-user) tool))
       {:error {:code    common/error-code-invalid-request
                :message (group-policy-denial-message tool-name)}}
 
