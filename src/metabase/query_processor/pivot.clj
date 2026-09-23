@@ -595,7 +595,7 @@
    (pivot-options query (get-in query [:info :visualization-settings]))
    (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))))
 
-(mu/defn- run-pivot-query-multi
+(mu/defn- run-multi-query-pivot
   "Generate one subquery per breakout combination implied by `query`'s pivot intent (viz-settings or legacy keys),
   run each, and merge the results through `rff` into a single output."
   [query :- ::lib.schema/query
@@ -820,33 +820,26 @@
   nil)
 
 (defn- pivot-parity-flows
-  "Ordered flow list for the parity checker, given `driver` and the (preprocessed) `query`. Family-level
-  rules live here — driver developers only touch [[metabase.driver/database-supports?]] on
-  `:native-pivot-tables` and `:native-pivot-tables/window-functions`.
+  "Ordered flow list, given the (preprocessed) `query` and its `database`.
 
-  * every driver runs `:multi-query` — the reference flow, one query per breakout combination.
-  * every SQL driver additionally runs `:union-all` — the SQL family's unconditional single-query
+  * every driver includes `:multi-query` — the reference flow, one query per breakout combination.
+  * every SQL driver additionally includes `:union-all` — the SQL family's unconditional single-query
     fallback shape.
-  * every driver that declares `:native-pivot-tables` additionally runs `:native-pivot-query`, which
-    each family's compiler renders as its native single-scan shape (`GROUPING SETS` on SQL, `$facet`
-    on Mongo). Exception: when the query has a window-function aggregation and the driver does NOT
-    declare `:native-pivot-tables/window-functions`, `:native-pivot-query` is dropped — SQL's
-    `GROUPING SETS` composes nonsensically with window functions (a running total spanning detail
-    and subtotal rows).
+  * every driver that declares `:native-pivot-tables` additionally includes `:native-pivot-query`,
+    which each family's compiler renders as its native single-scan shape (`GROUPING SETS` on SQL,
+    `$facet` on Mongo). Dropped when the query has a window-function aggregation and the driver
+    does NOT declare `:native-pivot-tables/window-functions`.
 
-  Non-`:multi-query` labels double as [[*force-compilation-shape*]] values that the driver's compiler
-  recognises. When [[qp.settings/use-native-pivot-tables]] is on and parity is off, the first
-  non-`:multi-query` entry is the compilation shape the driver will use."
-  [driver query database]
-  (let [sql?         (isa? driver/hierarchy driver :sql)
+  `:multi-query` comes first (the reference). The remaining flows are listed in order of
+  decreasing efficiency."
+  [query database]
+  (let [driver       (:engine database)
+        sql?         (isa? driver/hierarchy driver :sql)
         native?      (driver.u/supports? driver :native-pivot-tables database)
         native-safe? (and native?
                           (or (not (some lib.schema.aggregation/window-aggregation-expression?
                                          (lib/aggregations query)))
                               (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
-    ;; `:native-pivot-query` conj'd first so it sits ahead of `:union-all` — the primary flow is the
-    ;; first non-`:multi-query` entry, and where both are available (SQL with `:native-pivot-tables`)
-    ;; the native shape is the one we want to run.
     (cond-> [:multi-query]
       native-safe? (conj :native-pivot-query)
       sql?         (conj :union-all))))
@@ -855,20 +848,19 @@
   "Run one pivot `flow` against `query`. `primary-flow` uses the caller's `rff` and lets
   `qp.pipeline/*result*` pass through; the others use the default rff and result handler purely to
   collect an outcome for comparison. Returns `{:outcome ...}` on success or `{:throwable ...}` on
-  failure — annotated with `:elapsed-ms` and `:flow` so the parity checker (and CI log inspection) can
-  see per-flow timings without extra plumbing."
+  failure — annotated with `:elapsed-ms` and `:flow`."
   [flow query rff primary-flow]
   (let [primary?    (= flow primary-flow)
         multi?      (= flow :multi-query)
-        runner      (if multi? run-pivot-query-multi run-single-query-pivot)
+        runner      (if multi? run-multi-query-pivot run-single-query-pivot)
         ;; Non-`:multi-query` flow labels double as `*force-compilation-shape*` values.
         force-shape (when-not multi? flow)
         do-run      (fn [rff]
                       (binding [*force-compilation-shape* force-shape]
-                        (let [t0     (System/nanoTime)
+                        (let [timer  (u/start-timer)
                               result (try {:outcome (runner query rff)}
                                           (catch Throwable t {:throwable t}))]
-                          (assoc result :flow flow, :elapsed-ms (long (/ (- (System/nanoTime) t0) 1e6))))))]
+                          (assoc result :flow flow, :elapsed-ms (u/since-ms timer)))))]
     (if primary?
       (do-run rff)
       (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
@@ -911,7 +903,7 @@
   * **Single-query** — the driver's own `:pivot` compiler renders one query that covers every breakout
     combination. Chosen when [[qp.settings/use-native-pivot-tables]] is on and the driver has a
     single-query shape available (see [[pivot-parity-flows]] for the family rules).
-  * **Multi-query** — one query per breakout combination, results concatenated. Used otherwise.
+  * **Multi-query** — one query per breakout combination, results concatenated. Chosen otherwise.
 
   When [[*check-pivot-parity?*]] is on and the driver has more than the `:multi-query` flow, every flow
   runs (primary via the caller's rff, others via the default rff for comparison) and disagreement is
@@ -938,12 +930,11 @@
                (empty? (lib/aggregations query)))
          (qp/process-query (maybe-userland query) rff)
          (let [db                (query-database query)
-               driver            (:engine db)
-               flows             (pivot-parity-flows driver query db)
+               flows             (pivot-parity-flows query db)
                single-flow       (first (remove #{:multi-query} flows))
                use-single-query? (and single-flow (qp.settings/use-native-pivot-tables))
                primary-flow      (if use-single-query? single-flow :multi-query)
-               primary           (if use-single-query? run-single-query-pivot run-pivot-query-multi)]
+               primary           (if use-single-query? run-single-query-pivot run-multi-query-pivot)]
            (binding [qp.pipeline/*pivot?* true]
              (if (and single-flow (pivot-parity-enabled?))
                (run-with-parity-check query rff flows primary-flow)
