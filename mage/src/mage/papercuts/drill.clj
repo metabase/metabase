@@ -107,7 +107,7 @@ Known papercuts:
 (defn- run-cli
   "Run `args` like `p/shell` with `:continue`, but kill the process tree and throw once it runs past `timeout-ms`."
   [opts & args]
-  (let [proc   (apply p/process opts args)
+  (let [proc   (apply p/process (assoc opts :shutdown p/destroy-tree) args)
         result (deref proc timeout-ms ::timeout)]
     (when (= ::timeout result)
       (p/destroy-tree proc)
