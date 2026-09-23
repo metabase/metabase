@@ -157,3 +157,18 @@
                              (forced-reload-of-unchanged! {:cards 20})
                              10 20)]
         (is (<= (:statements cost) 10.0))))))
+
+(deftest reload-commits-entities-in-batches-test
+  (testing "A forced reload commits loaded entities in batches, not one transaction per entity (HACKRDE-22)"
+    ;; Today every entity is its own transaction: on Postgres BEGIN + SAVEPOINT + COMMIT, three round trips per
+    ;; entity on top of ~5 statements. Per-entity cost is the difference between 20 and 60 cards, so fixed
+    ;; per-pull transactions cancel; with batches of 20 or more that difference is at most 2 transactions.
+    (let [cost (per-entity (forced-reload-of-unchanged! {:cards 20})
+                           (forced-reload-of-unchanged! {:cards 60})
+                           20 60)]
+      (is (<= (:transactions cost) 0.1))
+      (is (<= (:savepoints cost) 0.1))
+      (is (<= (:commits cost) 0.1))
+      (testing "nothing else per entity gets worse"
+        (is (<= (:statements cost) 5.0))
+        (is (zero? (:checkouts cost)))))))

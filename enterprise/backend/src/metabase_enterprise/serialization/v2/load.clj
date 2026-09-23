@@ -225,12 +225,25 @@
               _                  (when (seq deps)
                                    (log/debug "Ended loading dependencies" {:entity_id (:entity_id ingested)
                                                                             :level     (count expanding)}))
-              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
+              local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))
+              ;; A stripped load and the full load of the same entity are separate attempts.
+              attempt            [path (contains? circular path)]]
           (try
-            (with-retries 3 200
-              (fn []
-                (t2/with-transaction [_tx]
-                  (serdes/load-one! ingested local-or-nil))))
+            (cond
+              ;; This entity already failed in a batch that was rolled back: report that failure again instead of
+              ;; attempting it a second time. See [[load-batch!]].
+              (contains? (:failed ctx) attempt)
+              (throw (get-in ctx [:failed attempt]))
+
+              ;; Inside a batch the batch's transaction is this entity's, and failures are handled for the batch.
+              (:batched? ctx)
+              (serdes/load-one! ingested local-or-nil)
+
+              :else
+              (with-retries 3 200
+                (fn []
+                  (t2/with-transaction [_tx]
+                    (serdes/load-one! ingested local-or-nil)))))
             ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
@@ -244,7 +257,8 @@
                                                   (str/join ", " (sort (map name (keys-to-strip ingested)))))
                                           ""))
                                 (-> (path-error-data ::load-failure expanding path)
-                                    (assoc :entity (entity-reference rebuilt-path ingested))
+                                    (assoc :entity (entity-reference rebuilt-path ingested)
+                                           ::attempt attempt)
                                     (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
                                 e))))))))))
 
@@ -259,6 +273,63 @@
              (not (.getAutoCommit conn)))
     (.rollback conn)
     (.setAutoCommit conn true)))
+
+(def ^:private batch-size
+  "How many of the ingested items [[load-metabase!]] loads and commits in one transaction. Each transaction costs
+  round trips of its own (on Postgres `BEGIN`, `SAVEPOINT` and `COMMIT`, about as many again as loading an unchanged
+  card), so committing every entity separately makes those a large share of a load. Kept small because a batch holds
+  its row locks until it commits, and long-held locks are what deadlocked imports with concurrent writers (#74412)."
+  20)
+
+(defn- load-alone!
+  "Loads `item` in its own transaction(s), retrying transient failures, the way every item was loaded before batching.
+  With `continue-on-error`, a failure is recorded in `ctx` and loading carries on."
+  [ctx item continue-on-error ^java.sql.Connection conn]
+  (try
+    (load-one! ctx item)
+    (catch Exception e
+      (when-not continue-on-error
+        (throw e))
+      (discard-uncommitted! conn)
+      ;; eschew big and scary stacktrace
+      (log/warnf (u/strip-error e "Skipping deserialization error"))
+      (update ctx :errors conj e))))
+
+(defn- failed-attempt
+  "When `e` is an entity's non-transient failure to load into the app DB, returns `{attempt cause}` so the entity can
+  be reported as failed again without another attempt; nil for anything else (transient errors are worth retrying,
+  and other failures, such as a missing dependency, happen before any write and cost nothing to reproduce)."
+  [e]
+  (let [{:keys [error] ::keys [attempt]} (ex-data e)
+        cause                            (ex-cause e)]
+    (when (and (= ::load-failure error)
+               attempt
+               cause
+               (not (transient-error/transient-error? (mdb/db-type) e)))
+      {attempt cause})))
+
+(defn- load-batch!
+  "Loads `items` and commits them in one transaction. If anything in the batch fails, the transaction rolls back and
+  the items are loaded again one at a time, each in its own transaction (see [[load-alone!]]), so a failure costs
+  only the failing entity, as it did before batching (#74412). An entity that failed non-transiently in the batch is
+  not attempted again: its failure is reported as it would have been had it been loaded alone first."
+  [ctx items continue-on-error ^java.sql.Connection conn]
+  (let [result (try
+                 (t2/with-transaction [_tx]
+                   (reduce load-one! (assoc ctx :batched? true) items))
+                 (catch Exception e
+                   e))]
+    (if-not (instance? Exception result)
+      (dissoc result :batched?)
+      (do
+        (log/debugf "Batch of %d failed, loading its items one at a time: %s" (count items) (ex-message result))
+        (discard-uncommitted! conn)
+        ;; The rollback removed every row the batch wrote, but the import resolver may have memoized their ids.
+        (serdes/forget-cached-imports!)
+        (-> (reduce #(load-alone! %1 %2 continue-on-error conn)
+                    (assoc ctx :failed (or (failed-attempt result) {}))
+                    items)
+            (dissoc :failed))))))
 
 (defn new-context
   "Given an ingestion create a new context for serialization.
@@ -284,8 +355,8 @@
                        reindex?          true}}]
   (binding [serdes/*skip-schema-validation?* (serialization.settings/serialization-skip-schema-validation)]
     (u/prog1
-      ;; Each entity is loaded in its own transaction (inside load-one!), so a deadlock or transient
-      ;; failure on one entity doesn't abort the entire import. See #74412.
+      ;; Entities are committed in small batches (see [[load-batch!]]); a failed batch is loaded again one entity
+      ;; per transaction, so a deadlock or transient failure on one entity doesn't abort the entire import. See #74412.
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
       ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
       (let [contents      (serdes.ingest/ingest-list ingestion)
@@ -305,18 +376,9 @@
         ;; transaction checks a connection out of the pool and back in, and each check-in costs a round trip (a
         ;; `DISCARD ALL` on Postgres). Each entity still commits in its own transaction on this connection.
         (t2/with-connection [^java.sql.Connection conn]
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        (discard-uncommitted! conn)
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
+          (reduce #(load-batch! %1 %2 continue-on-error conn)
                   ctx
-                  contents)))
+                  (partition-all batch-size contents))))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
