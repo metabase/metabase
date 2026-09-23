@@ -317,10 +317,14 @@ describe("command palette", () => {
     cy.findByLabelText(/Email address/).type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
-    cy.findByTestId("greeting-message");
+    cy.findByTestId("greeting-message").should("be.visible");
 
+    // The palette stays disabled until its own effect sees the logged-in user,
+    // and the greeting renders independently of the app bar, so wait for the
+    // shell that hosts the palette before reaching for the keybinding.
+    H.commandPaletteButton().should("be.visible");
     H.openCommandPalette();
-    H.commandPalette().should("exist");
+    H.commandPalette().should("be.visible");
   });
 });
 
