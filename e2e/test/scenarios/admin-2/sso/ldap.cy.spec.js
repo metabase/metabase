@@ -77,7 +77,8 @@ describe(
 
       cy.log("Connection validation error");
       enterLdapPort("1");
-      cy.button("Save and enable").click();
+      // the submit button reads "Failed" for 5s after a rejected save
+      cy.button("Save and enable", { timeout: 7000 }).click();
       cy.wait("@updateLdapSettings");
 
       cy.findAllByText("Wrong host or port").should("exist");
