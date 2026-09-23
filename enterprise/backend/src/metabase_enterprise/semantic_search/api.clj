@@ -9,12 +9,14 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase-enterprise.semantic-search.task.duplicates-backfill :as duplicates-backfill]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.search.ingestion :as search.ingestion]
    [next.jdbc :as jdbc]
@@ -58,6 +60,18 @@
   [pgvector index-metadata]
   (when-let [table-name (-> index-metadata :index :table-name)]
     (semantic.index/index-size pgvector table-name)))
+
+(defn- semantic-search-available-for-duplicates?
+  "Whether the duplicate checker has a licensed, configured semantic-search backend and embedder.
+
+  `semantic.u/semantic-search-available?` intentionally describes pgvector availability and returns false for
+  SQLite-backed semantic search, so the duplicates status endpoint must account for the SQLite store explicitly."
+  []
+  (and (premium-features/has-feature? :semantic-search)
+       (or (sqlite-config/enabled?)
+           (semantic.u/semantic-search-available?))
+       (semantic.embedding/embedding-supported?
+        (semantic.embedding/get-configured-model))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -108,9 +122,7 @@
   [_route-params]
   (api/check-data-analyst)
   (let [status (semantic.duplicates/backfill-status)]
-    (cond-> (merge {:available (and (semantic.u/semantic-search-available?)
-                                    (semantic.embedding/embedding-supported?
-                                     (semantic.embedding/get-configured-model)))}
+    (cond-> (merge {:available (semantic-search-available-for-duplicates?)}
                    status)
       ;; Raw provider errors can contain deployment details. Only administrators need the diagnostic text.
       (not api/*is-superuser?*) (assoc :last_error nil))))
