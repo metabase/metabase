@@ -22,6 +22,11 @@ const GOAL_LINE_SETTINGS: VisualizationSettings = {
 
 const REFERENCED_GOAL = { type: "card", id: 9, column: "goal" } as const;
 
+const REFERENCED_GOAL_SETTINGS: VisualizationSettings = {
+  ...GOAL_LINE_SETTINGS,
+  "graph.goal_value": REFERENCED_GOAL,
+};
+
 const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("definition", () => {
@@ -42,10 +47,7 @@ describe("definition", () => {
 
         it("accepts a goal reference that is still resolving", () => {
           expect(() =>
-            checkRenderable(createSeries(display), {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": REFERENCED_GOAL,
-            }),
+            checkRenderable(createSeries(display), REFERENCED_GOAL_SETTINGS),
           ).not.toThrow();
         });
 
@@ -65,10 +67,7 @@ describe("definition", () => {
           });
 
           expect(() =>
-            checkRenderable(series, {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": REFERENCED_GOAL,
-            }),
+            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
           ).not.toThrow();
         });
 
@@ -80,10 +79,7 @@ describe("definition", () => {
           });
 
           expect(() =>
-            checkRenderable(series, {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": REFERENCED_GOAL,
-            }),
+            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
           ).toThrow(GOAL_ERROR);
         });
 
@@ -103,10 +99,7 @@ describe("definition", () => {
           });
 
           expect(() =>
-            checkRenderable(series, {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": REFERENCED_GOAL,
-            }),
+            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
           ).toThrow(GOAL_ERROR);
         });
 
@@ -121,10 +114,7 @@ describe("definition", () => {
           });
 
           expect(() =>
-            checkRenderable(transformed, {
-              ...GOAL_LINE_SETTINGS,
-              "graph.goal_value": REFERENCED_GOAL,
-            }),
+            checkRenderable(transformed, REFERENCED_GOAL_SETTINGS),
           ).toThrow(GOAL_ERROR);
         });
       },

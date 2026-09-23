@@ -126,6 +126,7 @@
       :column-not-found "nope"  self-data
       :not-a-number     "name"  self-data
       :not-a-number     "total" (assoc self-data :rows [])
+      :not-a-number     "total" (assoc self-data :rows [[3 nil "x"]])
       :not-a-number     "total" (assoc self-data :rows [[3 ##Inf "x"]])
       :never-ran        ref-a   self-data)))
 

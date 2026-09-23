@@ -89,6 +89,35 @@
                             :rows [[1000]]}}
                   (referenced-goal-result part goal-id))))))))
 
+(deftest execute-dashboard-subscription-visualizer-card-keeps-referenced-entities-test
+  (testing "a visualizer dashcard's goal, nested in its chart settings, is answered by its primary card's result"
+    (mt/with-temp [:model/Card          {goal-id :id}   {:dataset_query (mt/mbql-query checkins
+                                                                          {:aggregation [[:count]]})}
+                   :model/Card          {card-id :id}   {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card          {series-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})}
+                   :model/Dashboard     {dash-id :id}   {}
+                   :model/DashboardCard dashcard
+                   {:dashboard_id           dash-id
+                    :card_id                card-id
+                    :visualization_settings {:visualization
+                                             {:display             "line"
+                                              :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" card-id)
+                                                                                :originalName "count"
+                                                                                :name         "COLUMN_1"}]}
+                                              :settings            {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}}}
+                   :model/DashboardCardSeries _ {:dashboardcard_id (:id dashcard) :card_id series-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [part (notification.payload.execute/execute-dashboard-subscription-card dashcard [])]
+          (is (=? {:status "completed"
+                   :data   {:rows [[1000]]}}
+                  (referenced-goal-result part goal-id)))
+          (testing "the other combined cards don't run it again"
+            (is (= [series-id] (map (comp :id :card) (get-in part [:dashcard :series-results]))))
+            (is (nil? (get-in part [:dashcard :series-results 0 :result :data :referenced_entities])))))))))
+
 (defn- card-parts [parts]
   (filter #(= :card (:type %)) parts))
 

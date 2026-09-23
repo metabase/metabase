@@ -211,8 +211,10 @@
    (sources->specs (mapcat #(goal-sources % effective-settings) viz-settings-maps))))
 
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values."
-  [qp card-viz dash-viz]
+  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values. `visualizer-viz`
+  are the settings a visualizer dashcard nests under `:visualization`; they toggle their own goals."
+  [qp card-viz dash-viz visualizer-viz]
   (maybe-wrap-qp qp
-                 (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
+                 (concat (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
+                         (viz-settings->goal-specs visualizer-viz))
                  goal-max-rows))

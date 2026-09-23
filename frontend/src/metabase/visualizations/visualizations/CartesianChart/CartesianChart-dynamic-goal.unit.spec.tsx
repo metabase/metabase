@@ -2,8 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { delay } from "__support__/utils";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -54,14 +53,21 @@ const FAILED: ReferencedEntitiesResults = {
 };
 
 async function setup(rawSeries: RawSeries) {
+  jest.useFakeTimers();
   renderWithProviders(<Visualization rawSeries={rawSeries} />);
   // ExplicitSize sets the chart dimensions after mounting
-  await delay(0);
+  await act(async () => {
+    jest.advanceTimersByTime(0);
+  });
 }
 
 describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
   "%s chart dynamic goal",
   (display) => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it("draws the goal line at the value answered by the dataset", async () => {
       await setup(createSeries(display, ANSWERED));
 
