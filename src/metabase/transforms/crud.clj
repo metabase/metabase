@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -139,11 +140,18 @@
                         nil))]
         (not-empty methods)))))
 
+(defn- output-table
+  "The Table `transform` writes in the world being worked in: the workspace table its target is remapped to there, or
+  the target itself when it is not remapped."
+  [{{:keys [schema name]} :target :as transform}]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    (transforms-base.u/target-table db-id (workspaces/workspace-table db-id schema name) :active true)))
+
 (defn get-transform
   "Get a specific transform."
   [id]
-  (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
-        target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
+  (let [transform    (api/read-check :model/Transform id)
+        target-table (output-table transform)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (u/update-some :last_run transforms-base.u/present-run)
