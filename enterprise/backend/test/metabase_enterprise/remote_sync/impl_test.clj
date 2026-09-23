@@ -700,6 +700,7 @@
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-branch ""]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                      source/default-branch-from-settings (constantly "main")
                                       impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
             (impl/finish-remote-config!)
             (is (= "main" (setting/get :remote-sync-branch))

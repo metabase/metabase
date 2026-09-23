@@ -370,6 +370,17 @@
        (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
      push-response)))
 
+(defn- ref-head-branch
+  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at.
+  Throws ExceptionInfo if there is none."
+  [refs]
+  (let [head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
+    (or (when head-ref
+          (when (.isSymbolic ^Ref head-ref)
+            (when-let [target (.getTarget ^Ref head-ref)]
+              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
+
 (defn default-branch
   "Retrieves the default branch name of the git repository.
 
@@ -379,13 +390,17 @@
   Throws ExceptionInfo if no default branch is found."
   [{:keys [^Git git] :as git-source}]
   ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
-  (let [refs (call-remote-command (.lsRemote git) git-source)
-        head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
-    (or (when head-ref
-          (when (.isSymbolic ^Ref head-ref)
-            (when-let [target (.getTarget ^Ref head-ref)]
-              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
-        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
+  (ref-head-branch (call-remote-command (.lsRemote git) git-source)))
+
+(defn remote-default-branch
+  "The default branch name of the repository at `remote-url`, read straight from the remote with the optional
+  `token`. Unlike [[default-branch]], it needs no local clone, so filling in a blank branch setting does not first
+  download the repository's whole history. Throws ExceptionInfo if no default branch is found."
+  [^String remote-url ^String token]
+  ;; not `setHeads true`: that would filter out the symbolic HEAD ref this reads
+  (ref-head-branch (call-remote-command (-> (Git/lsRemoteRepository)
+                                            (.setRemote remote-url))
+                                        {:remote-url remote-url :token token})))
 
 (defn- close-commit-resources! [inserter reader rev-walk]
   (.close ^ObjectInserter inserter)
