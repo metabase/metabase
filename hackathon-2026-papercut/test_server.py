@@ -72,6 +72,15 @@ class StoreTest(unittest.TestCase):
         self.assertNotIn("<script>", rendered)
         self.assertIn("&lt;script&gt;", rendered)
 
+    def test_observed_at_sets_seen_window(self):
+        self.store.ingest({**self.sample, "observed_at": "2026-08-30"})
+        issue, _, _ = self.store.ingest({**self.sample, "report_id": "report-2", "observed_at": "2026-08-21T10:00:00Z"})
+        self.assertEqual(issue["first_seen"], "2026-08-21T10:00:00+00:00")
+        self.assertEqual(issue["last_seen"], "2026-08-30T00:00:00+00:00")
+        self.assertEqual(issue["reports"][0]["observed_at"], "2026-08-21T10:00:00+00:00")
+        with self.assertRaises(ValueError):
+            self.store.ingest({**self.sample, "report_id": "report-3", "observed_at": "last tuesday"})
+
     def test_concurrent_reports_group_without_losing_counts(self):
         def report(number):
             return self.store.ingest({

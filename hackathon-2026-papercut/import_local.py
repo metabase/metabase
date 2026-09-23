@@ -1,79 +1,217 @@
 #!/usr/bin/env python3
-"""Import selected local-papercuts writeups as source-backed reports."""
+"""Import local-papercuts writeups as source-backed reports, one report per recorded occurrence."""
 
 import argparse
 import json
 import re
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
 CATEGORY_BY_KIND = {
+    "agent-behaviour": "agent-trap",
     "codebase-trap": "code-smell",
     "doc-gap": "documentation",
+    "env-friction": "tooling",
     "misleading-signal": "agent-trap",
     "test-harness": "tooling",
     "tool-quirk": "tooling",
 }
+# Codex writeups have no kind; their closing "Classification:" line names the papercut type in prose.
+CATEGORY_BY_CLASSIFICATION = (
+    ("documentation", "documentation"),
+    ("test", "tooling"),
+    ("tool", "tooling"),
+    ("lint", "tooling"),
+    ("workflow", "tooling"),
+    ("environment", "tooling"),
+    ("code", "code-smell"),
+    ("contract", "code-smell"),
+    ("integration", "code-smell"),
+    ("migration", "code-smell"),
+)
+STATUS_BY_SOURCE = {"fixed": "resolved", "wontfix": "wontfix"}
+# Archive files that are not papercuts: an index of the Codex cases and known non-papercuts for a classifier.
+# Slugs starting with an underscore are pipeline notes.
+NOT_PAPERCUTS = {"index", "negative-controls"}
 
 
-def parse_writeup(path):
-    content = path.read_text()
+def reporter_and_slug(path):
+    """`chris.claude.some-slug.md` was written by agent `claude` for user `chris`."""
+    user, agent, slug = path.stem.split(".", 2)
+    return f"{user}.{agent}", agent, slug
+
+
+def section(content, heading):
+    match = re.search(rf"^## {heading}\s*\n(.*?)(?=^## |\Z)", content, re.MULTILINE | re.DOTALL)
+    return match.group(1).strip() if match else None
+
+
+def occurrences(content):
+    """Collect `- transcript:` blocks from frontmatter and `## Additional occurrence` sections."""
+    found, current = [], None
+    for line in content.splitlines():
+        start = re.match(r"^(\s*)- transcript:\s*(\S+)", line)
+        if start:
+            current = {"indent": len(start.group(1)), "transcript": start.group(2)}
+            found.append(current)
+            continue
+        field = re.match(r"^(\s+)(\w+):\s*(.*?)\s*$", line)
+        if current and field and len(field.group(1)) > current["indent"]:
+            if field.group(2) in ("lines", "date"):
+                current[field.group(2)] = field.group(3)
+        else:
+            current = None
+    unique = {}
+    for occurrence in found:
+        unique.setdefault((occurrence["transcript"], occurrence.get("lines")), occurrence)
+    return list(unique.values())
+
+
+def transcript_start(transcript):
+    """First timestamp in a Claude or Codex transcript, when the transcript is still on disk."""
+    try:
+        with open(transcript) as lines:
+            for line in lines:
+                match = re.search(r'"timestamp"\s*:\s*"([^"]+)"', line)
+                if match:
+                    return match.group(1)
+    except OSError:
+        pass
+    return None
+
+
+def observed_date(occurrence):
+    """Writeup dates are hand-written ("~2026-09-17", "2026-08-21..24", "2026-09 (approx)"); keep the first day."""
+    written = occurrence.get("date") or ""
+    if day := re.search(r"\d{4}-\d{2}-\d{2}", written):
+        return day.group(0)
+    if started := transcript_start(occurrence["transcript"]):
+        return started
+    if month := re.search(r"\d{4}-\d{2}", written):
+        return f"{month.group(0)}-01"
+    return None
+
+
+def plain_links(text):
+    return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+
+
+def parse_claude(path, content):
     metadata = {}
-    if content.startswith("---\n"):
-        frontmatter, separator, content = content[4:].partition("\n---\n")
-        if not separator:
-            raise ValueError(f"{path}: missing closing frontmatter marker")
-        for line in frontmatter.splitlines():
-            if line and not line[0].isspace() and ":" in line:
-                key, _, value = line.partition(":")
-                metadata[key] = value.strip()
-    title = metadata.get("title") or re.search(r"^# (.+)$", content, re.MULTILINE).group(1)
-    slug = metadata.get("slug") or path.stem
-    summary = re.search(r"^## Summary\s*\n(.*?)(?=^## |\Z)", content, re.MULTILINE | re.DOTALL)
-    if not summary:
-        raise ValueError(f"{path}: no Summary section")
-    return metadata, title, slug, " ".join(summary.group(1).split())
+    if not content.startswith("---\n"):
+        raise ValueError("no frontmatter")
+    frontmatter, separator, body = content[4:].partition("\n---\n")
+    if not separator:
+        raise ValueError("missing closing frontmatter marker")
+    for line in frontmatter.splitlines():
+        if line and not line[0].isspace() and ":" in line:
+            key, _, value = line.partition(":")
+            metadata[key] = value.strip().strip('"')
+    summary = section(body, "Summary")
+    if not metadata.get("title") or not summary:
+        raise ValueError("no title or Summary section")
+    source_status = metadata.get("status", "")
+    parts = [" ".join(summary.split())]
+    if fix := section(body, "Suggested fix"):
+        parts.append("Suggested fix: " + " ".join(fix.split()))
+    parts.append("\n".join(
+        f"{label}: {metadata[key]}"
+        for key, label in (("kind", "Kind"), ("impact", "Impact"), ("severity", "Severity"),
+                           ("status", "Source status"), ("area", "Area"))
+        if metadata.get(key)
+    ))
+    return {
+        "title": metadata["title"],
+        "description": "\n\n".join(parts),
+        "path": metadata.get("area", ""),
+        "category": CATEGORY_BY_KIND.get(metadata.get("kind"), "other"),
+        "status": source_status.split("#")[0].strip(),
+        "occurrences": [
+            {"transcript": o["transcript"], "lines": o.get("lines"), "observed_at": observed_date(o)}
+            for o in occurrences(content)
+        ],
+    }
 
 
-def submit(server, report):
-    request = Request(
-        f"{server.rstrip('/')}/api/reports",
-        data=json.dumps(report).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urlopen(request, timeout=10) as response:
+def parse_codex(path, content):
+    title = re.search(r"^# (.+)$", content, re.MULTILINE)
+    source = re.search(r"^Sources?: .*$", content, re.MULTILINE)
+    transcripts = list(dict.fromkeys(re.findall(r"\]\(([^)#]+\.jsonl)", source.group(0)))) if source else []
+    if not title or not transcripts:
+        raise ValueError("no title or Source line")
+    paragraphs = [p.strip() for p in content[source.end():].split("\n\n") if p.strip()]
+    classification = next((p for p in paragraphs if p.startswith("Classification:")), "")
+    lowered = classification.lower()
+    category = next((cat for word, cat in CATEGORY_BY_CLASSIFICATION if word in lowered), None)
+    return {
+        "title": title.group(1).strip(),
+        "description": plain_links("\n\n".join(p for p in paragraphs[1:2] + [classification] if p)),
+        "path": "",
+        "category": category,
+        "status": "open",
+        "occurrences": [{"transcript": t, "lines": None, "observed_at": transcript_start(t)} for t in transcripts],
+    }
+
+
+def writeups(paths):
+    for path in paths:
+        if path.is_dir():
+            yield from sorted(path.glob("*.md"))
+        else:
+            yield path
+
+
+def request(server, method, route, payload):
+    req = Request(f"{server.rstrip('/')}{route}", data=json.dumps(payload).encode(),
+                  headers={"Content-Type": "application/json"}, method=method)
+    with urlopen(req, timeout=10) as response:
         return json.load(response)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("paths", nargs="+", type=Path, help="Individual Markdown writeups to import")
+    parser.add_argument("paths", nargs="+", type=Path, help="Markdown writeups, or directories of them")
     parser.add_argument("--server", default="http://127.0.0.1:8765")
+    parser.add_argument("--repository", default="metabase")
     args = parser.parse_args()
-    for path in args.paths:
-        metadata, title, slug, summary = parse_writeup(path)
-        if metadata.get("status") in {"fixed", "wontfix"}:
-            print(f"Skipped {path.name}: source status is {metadata['status']}")
+    for path in writeups(args.paths):
+        machine_id, agent, slug = reporter_and_slug(path)
+        if slug in NOT_PAPERCUTS or slug.startswith("_"):
             continue
-        context = "\n".join(
-            f"{label}: {metadata[key]}"
-            for key, label in (("kind", "Kind"), ("impact", "Impact"), ("severity", "Severity"),
-                               ("status", "Source status"), ("area", "Area"))
-            if metadata.get(key)
-        )
-        report = {
-            "repository": "metabase",
-            "machine_id": "local-papercuts-archive",
-            "report_id": f"local-papercuts:{slug}",
-            "fingerprint": f"local-papercuts:{slug}",
-            "title": title,
-            "description": f"{summary}\n\n{context}\nSource: local-papercuts/{path.name}",
-            "category": CATEGORY_BY_KIND.get(metadata.get("kind"), "other"),
-        }
-        result = submit(args.server, report)
-        print(f"#{result['issue']['id']} {title}: {'already present' if result['replay'] else 'recorded'}")
+        content = path.read_text()
+        try:
+            writeup = (parse_codex if agent == "codex" else parse_claude)(path, content)
+        except ValueError as error:
+            print(f"Skipped {path.name}: {error}")
+            continue
+        # Every papercut keeps at least one report, even when the writeup lists no transcript.
+        for occurrence in writeup["occurrences"] or [{"transcript": None, "lines": None, "observed_at": None}]:
+            session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else "writeup"
+            report = {
+                "repository": args.repository,
+                "machine_id": machine_id,
+                "report_id": f"local-papercuts:{slug}:{session}:{occurrence['lines'] or ''}",
+                "fingerprint": f"local-papercuts:{slug}",
+                "title": writeup["title"],
+                "description": f"{writeup['description']}\nSource: local-papercuts/{path.name}",
+                "path": writeup["path"],
+            }
+            if writeup["category"]:
+                report["category"] = writeup["category"]
+            if occurrence["observed_at"]:
+                report["observed_at"] = occurrence["observed_at"]
+            try:
+                result = request(args.server, "POST", "/api/reports", report)
+            except HTTPError as error:
+                print(f"Failed {path.name}: {error.read().decode()}")
+                break
+        else:
+            issue = result["issue"]
+            if status := STATUS_BY_SOURCE.get(writeup["status"]):
+                issue = request(args.server, "PATCH", f"/api/issues/{issue['id']}", {"status": status})
+            print(f"#{issue['id']} [{issue['status']}] {issue['report_count']}x {writeup['title'][:90]}")
 
 
 if __name__ == "__main__":

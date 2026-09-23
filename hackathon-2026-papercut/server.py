@@ -27,6 +27,19 @@ def normalized(value):
     return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
 
 
+def parse_observed_at(value):
+    """Normalize an optional ISO date or timestamp to a UTC timestamp."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError("observed_at must be an ISO 8601 date or timestamp") from error
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
 def classify(title, description):
     words = set(normalized(f"{title} {description}").split())
     if words & {"flaky", "nondeterministic", "intermittent"}:
@@ -76,6 +89,7 @@ class Store:
                     description TEXT NOT NULL,
                     path TEXT NOT NULL,
                     received_at TEXT NOT NULL,
+                    observed_at TEXT,
                     UNIQUE(repository, machine_id, report_id)
                 );
                 CREATE INDEX IF NOT EXISTS reports_issue ON reports(issue_id);
@@ -88,6 +102,9 @@ class Store:
                     CHECK(issue_a < issue_b)
                 );
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(reports)")}
+            if "observed_at" not in columns:
+                db.execute("ALTER TABLE reports ADD COLUMN observed_at TEXT")
 
     @contextmanager
     def connect(self):
@@ -112,7 +129,7 @@ class Store:
         for key in required:
             if not isinstance(payload.get(key), str) or not payload[key].strip():
                 raise ValueError(f"{key} must be a nonempty string")
-        for key in ("description", "path", "fingerprint", "report_id", "category"):
+        for key in ("description", "path", "fingerprint", "report_id", "category", "observed_at"):
             if key in payload and not isinstance(payload[key], str):
                 raise ValueError(f"{key} must be a string")
         if any(len(value) > 10_000 for value in payload.values() if isinstance(value, str)):
@@ -131,6 +148,8 @@ class Store:
             f"{normalized(path)}\0{normalized(title)}".encode()
         ).hexdigest()
         timestamp = now()
+        observed_at = parse_observed_at(payload.get("observed_at"))
+        seen = observed_at or timestamp
 
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -152,17 +171,20 @@ class Store:
                     """INSERT INTO issues
                        (repository, fingerprint, title, description, path, category, first_seen, last_seen)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (repository, fingerprint, title, description, path, category, timestamp, timestamp),
+                    (repository, fingerprint, title, description, path, category, seen, seen),
                 ).lastrowid
                 self._suggest_relations(db, issue_id, repository, title, path)
             else:
                 issue_id = issue["id"]
-                db.execute("UPDATE issues SET last_seen = ? WHERE id = ?", (timestamp, issue_id))
+                db.execute(
+                    "UPDATE issues SET first_seen = MIN(first_seen, ?), last_seen = MAX(last_seen, ?) WHERE id = ?",
+                    (seen, seen, issue_id),
+                )
             db.execute(
                 """INSERT INTO reports
-                   (issue_id, repository, machine_id, report_id, title, description, path, received_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (issue_id, repository, machine_id, report_id, title, description, path, timestamp),
+                   (issue_id, repository, machine_id, report_id, title, description, path, received_at, observed_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (issue_id, repository, machine_id, report_id, title, description, path, timestamp, observed_at),
             )
         return self.get_issue(issue_id), created, False
 
@@ -289,7 +311,7 @@ def issue_list_html(issues, filters):
 def issue_html(issue):
     esc = html.escape
     reports = "".join(
-        f"<div class='card'><strong>{esc(r['machine_id'])}</strong> <span class='muted'>{esc(r['received_at'])}</span>"
+        f"<div class='card'><strong>{esc(r['machine_id'])}</strong> <span class='muted'>{esc(r['observed_at'] or r['received_at'])}</span>"
         f"<p>{esc(r['title'])}</p><pre>{esc(r['description'])}</pre></div>"
         for r in issue["reports"]
     )

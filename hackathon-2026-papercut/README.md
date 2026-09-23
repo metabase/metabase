@@ -52,9 +52,14 @@ For a populated demo, start the server and run `python3 seed_demo.py`. It record
 four papercuts under `demo/metabase`, including a duplicate report and related
 issues. The seed is safe to run again: stable report IDs prevent double counting.
 
-To view real, source-backed papercuts from a local archive, pass selected writeups
-to `python3 import_local.py /path/to/local-papercuts/example.md`. The importer
-skips writeups marked `fixed` or `wontfix`, stores their
-summary and metadata, and uses stable IDs so repeats do not inflate counts. The
-imported reports are labeled `local-papercuts-archive` because the original
-machine IDs are not available.
+To view real, source-backed papercuts, point the importer at the local archive:
+`python3 import_local.py ~/local-papercuts`. It accepts files or directories. Each
+transcript occurrence a writeup records becomes one report under a per-writeup
+fingerprint, so report counts show how often a papercut was hit. The report's
+`machine_id` is the file's `<user>.<agent>` prefix, and `observed_at` is the
+occurrence date. Writeups marked `fixed` or `wontfix` are imported, then set to
+`resolved` or `wontfix`. Stable report IDs make repeat imports a no-op.
+
+Reports may carry an optional `observed_at` (ISO 8601 date or timestamp) for when
+the papercut was hit. It sets the papercut's first and last seen dates instead of
+the time the server received the report.
