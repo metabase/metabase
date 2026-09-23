@@ -1,6 +1,7 @@
 (ns metabase.jekyll-mode.files
   (:require
    [metabase.jekyll-mode.files]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -22,8 +23,8 @@
   [model :- ::model]
   (str (directory-prefix)
        "/"
-       (case model
-         :model/Dashboard "dashboards")))
+       ;; HACK !!!!!
+       (str (u/lower-case-en (name model)) "s")))
 
 (mu/defn instance-filename :- :string
   [instance :- [:map

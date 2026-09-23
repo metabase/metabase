@@ -9,7 +9,12 @@
 
 ;;; TODO -- move model-related stuff into separate `.models.writeback` namespace
 
-(derive :model/Dashboard ::writeback)
+(doseq [model [:model/Card
+               :model/Dashboard
+               :model/DashboardCard
+               :model/Metric
+               :model/Segment]]
+  (derive model ::writeback))
 
 (mu/defn- update-file!
   [{:keys [id], :as instance} :- [:map
