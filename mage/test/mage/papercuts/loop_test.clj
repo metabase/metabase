@@ -159,9 +159,7 @@
                                          {:status "resolved" :actor "tester" :reason "Logs now printed"}))))
             (is (= "resolved" (:status (first (papercuts server))))))
           (testing "a later session that hits the same papercut joins it and reopens it"
-            ;; The server keeps observed_at to the second, so a hit in the same second as the resolution can't be
-            ;; ordered after it. Stamp the later session clearly after.
-            (write-session! projects second-id (str (.plusSeconds (Instant/now) 2)) flaky-test-messages)
+            (write-session! projects second-id (str (Instant/now)) flaky-test-messages)
             (scan! server state-file projects flaky-test)
             (let [detail (:body (request server :get (str "/api/papercuts/" id)))]
               (is (= [id] (map :id (papercuts server))))

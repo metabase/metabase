@@ -108,6 +108,15 @@ def parse_observed_at(value):
     return parsed.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
+def reopens(observed, resolved_at):
+    """True when a report observed at `observed` counts as coming after a resolution at `resolved_at`."""
+    if not resolved_at:
+        return True
+    # observed_at is kept to the second and resolutions to the microsecond, so a report from the resolution's own
+    # second can't be ordered. Count it as after: a missed reopen hides a regression, a spurious one costs a click.
+    return datetime.fromisoformat(observed) >= datetime.fromisoformat(resolved_at).replace(microsecond=0)
+
+
 def parse_since(value):
     """Normalize a change cursor so it compares as a string against stored updated_at values."""
     # Query-string decoding turns an unencoded "+00:00" into " 00:00"; put the plus back.
@@ -711,8 +720,7 @@ class Store:
                 papercut_id = routed["papercut_id"]
                 papercut = db.execute("SELECT * FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()
                 # A report dated after the fix means the fix didn't hold, or a stale copy of the trap remains.
-                # Compare at the precision status changes are stamped with.
-                reopened = papercut["status"] == "resolved" and (observed_at or stamp) > (papercut["status_changed_at"] or "")
+                reopened = papercut["status"] == "resolved" and reopens(observed_at or stamp, papercut["status_changed_at"])
                 db.execute(
                     """UPDATE papercuts SET first_seen = MIN(first_seen, ?), last_seen = MAX(last_seen, ?),
                               category = COALESCE(category, ?), owner = COALESCE(owner, ?),

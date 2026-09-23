@@ -245,6 +245,13 @@ class TriageTest(StoreCase):
         self.assertEqual((event["kind"], event["actor"], event["old_value"], event["new_value"]),
                          ("reopened", "server", "resolved", "open"))
 
+    def test_report_in_the_resolution_second_reopens(self):
+        papercut_id = self.papercut("Trap", observed_at="2026-09-01")
+        self.store.update_papercut(papercut_id, {"status": "resolved"})
+        resolved_at = self.store.get_papercut(papercut_id)["status_changed_at"]
+        same_second = resolved_at[:19] + "Z"
+        self.assertTrue(self.report(title="Trap", fingerprint="Trap", observed_at=same_second)["reopened"])
+
     def test_wontfix_is_not_reopened(self):
         papercut_id = self.papercut("Trap")
         self.store.update_papercut(papercut_id, {"status": "wontfix"})
