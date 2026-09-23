@@ -94,6 +94,9 @@
                ;; message array is rebuilt, so long tasks don't blow the context.
                [:max-output-tokens {:optional true} [:maybe :int]]
                [:compact-history? {:optional true} :boolean]
+               ;; :stream-usage? streams the turn's running token usage after each LLM call (see
+               ;; [[metabase.metabot.self.core/parts->aisdk-sse-xf]]) instead of only on the final `finish`.
+               [:stream-usage? {:optional true} :boolean]
                [:system-prompt-context {:optional true} [:fn ifn?]]
                [:external-mcp-tools? {:optional true} :boolean]]]
   (let [tool-vars     (:tools profile)
@@ -180,7 +183,7 @@
                           #'tools/describe-app-db-tool
                           #'tools/show-result-tool
                           #'tools/save-result-tool
-                          #'tools/navigate-tool
+                          #'tools/show-page-link-tool
                           #'tools/call-api-tool
                           #'tools/list-api-endpoints-tool
                           #'tools/describe-api-endpoint-tool
@@ -291,11 +294,16 @@
   :max-iterations        1000
   ;; Structured queries are the default warehouse path, so their dialect is inlined (cached prefix) rather
   ;; than left to a load_skill the model might skip and fall back to SQL. The operator catalog stays on demand.
-  :always-on-skills      [:megabot-discovery :megabot-query]
+  ;; web-search is inlined too, but only surfaces while its tools are registered (a Serper key is set and the
+  ;; user has `agent:web:read`).
+  :always-on-skills      [:megabot-discovery :megabot-query :web-search]
   ;; Loop hygiene so the 1000-iteration budget is usable on long tasks: cap each turn's output, and
   ;; compact old tool outputs to short stubs when the replayed history is rebuilt (see agent/core).
   :max-output-tokens     16384
   :compact-history?      true
+  ;; Report token usage after every LLM call, not just at the end of the turn, so the client's usage counter
+  ;; keeps up with long turns and still counts a turn the user stops.
+  :stream-usage?         true
   ;; A successful ask_user is the answer for this turn — stop and wait for the user's reply. The loop
   ;; streams its question as assistant text, since the model gets no further step to write it.
   :terminal-tools        #{"ask_user"}
@@ -310,7 +318,7 @@
                           #'tools/describe-app-db-tool
                           #'tools/show-result-tool
                           #'tools/save-result-tool
-                          #'tools/navigate-tool
+                          #'tools/show-page-link-tool
                           #'tools/call-api-tool
                           #'tools/list-api-endpoints-tool
                           #'tools/describe-api-endpoint-tool
@@ -320,11 +328,14 @@
                           #'tools/conversation-search-tool
                           #'tools/recent-chats-tool
                           #'tools/read-conversation-tool
-                          #'tools/web-search-tool
-                          #'tools/read-web-page-tool
                           #'tools/todo-write-tool
                           #'tools/todo-read-tool
-                          #'tools/ask-user-tool]})
+                          #'tools/ask-user-tool
+                          ;; The public internet (Serper search + page reader). Like the todo tools, these are
+                          ;; shared tools with their own :scope (`agent:web:read`); `filter-by-availability`
+                          ;; also drops them until `metabot-web-search-api-key` is set.
+                          #'tools/web-search-tool
+                          #'tools/read-web-page-tool]})
 
 (register-profile!
  {:name            :explorations
@@ -396,6 +407,12 @@
   "Whether a profile with `profile-id` is registered."
   [profile-id]
   (contains? @*profiles profile-id))
+
+(defn stream-usage?
+  "Whether `profile-id`'s turns stream their running token usage after each LLM call (its `:stream-usage?` key)."
+  [profile-id]
+  ;; read the registry directly: [[get-profile]] can probe the library index for :nlq, needless for a static flag
+  (boolean (:stream-usage? (get @*profiles profile-id))))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.

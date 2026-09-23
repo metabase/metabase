@@ -142,6 +142,9 @@
     (is (false? (streaming/persistable-data-part? (streaming/search-results-part {:total_count 0 :results []})))))
   (testing "tool-title parts are not persisted (they render under the ephemeral chain of thought)"
     (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
+  (testing "debug-log and eval-session parts are not persisted (stream-only, no client renderer)"
+    (is (false? (streaming/persistable-data-part? {:type :data :data-type "debug_log" :data []})))
+    (is (false? (streaming/persistable-data-part? {:type :data :data-type "eval_session" :data {:session-id "s"}}))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? (streaming/todo-list-part []))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))

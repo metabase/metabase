@@ -23,6 +23,7 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getProfileOverride,
+  getSessionTokenUsage,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
   submitInput as submitInputAction,
@@ -176,6 +177,9 @@ export const useMetabotConversation = (conversationId: string) => {
     isContextWindowFull: longChatNotice === "full",
     contextWindowPercentUsage: useSelector((state) =>
       getContextUsagePercent(state, conversationId),
+    ),
+    sessionTokenUsage: useSelector((state) =>
+      getSessionTokenUsage(state, conversationId),
     ),
     activeToolCalls: useSelector((state) =>
       getActiveToolCalls(state, conversationId),

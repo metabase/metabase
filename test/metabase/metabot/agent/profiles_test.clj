@@ -16,6 +16,8 @@
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
+(set! *warn-on-reflection* true)
+
 (deftest get-profile-test
   (letfn [(tool-names [profile]
             (set (map #(:tool-name (meta %)) (:tools profile))))]
@@ -219,12 +221,17 @@
                              (assoc base :skills? false :always-on-skills [:read-resource])))))))
 
 (def ^:private megabot-tool-names
-  #{"run_warehouse_sql" "run_warehouse_query" "query_app_db" "describe_app_db" "show_result" "save_result" "navigate"
+  #{"run_warehouse_sql" "run_warehouse_query" "query_app_db" "describe_app_db"
+    "show_result" "save_result" "show_page_link"
     "call_api" "list_api_endpoints" "describe_api_endpoint"
     "write_note" "read_note" "delete_note"
     "conversation_search" "recent_chats" "read_conversation"
-    "web_search" "read_web_page"
-    "todo_write" "todo_read" "ask_user"})
+    "todo_write" "todo_read" "ask_user"
+    "web_search" "read_web_page"})
+
+(def ^:private megabot-web-tool-names
+  "Registered only while a Serper key is set (`:available?`)."
+  #{"web_search" "read_web_page"})
 
 (def ^:private megabot-scoped-tool-names
   "Megabot reuses the shared todo, conversation-recall, and web tools as-is, so they carry their own :scope.
@@ -248,9 +255,13 @@
         (is (= 16384 (:max-output-tokens profile)))
         (is (true? (:compact-history? profile)))
         (is (= #{"ask_user"} (:terminal-tools profile))))
+      (testing "token usage streams after every LLM call, for the client's usage counter"
+        (is (true? (profiles/stream-usage? :megabot)))
+        (is (false? (profiles/stream-usage? :internal)))
+        (is (false? (profiles/stream-usage? :unknown-profile))))
       (testing "persistent memory is injected via a :system-prompt-context hook"
         (is (ifn? (:system-prompt-context profile))))
-      (testing "every tool except the reused todo tools is unguarded (no :scope), and only run_warehouse_sql needs a capability"
+      (testing "every tool except the reused todo and web tools is unguarded (no :scope), and only run_warehouse_sql needs a capability"
         (doseq [tool-var (:tools profile)
                 :let     [tool-name (:tool-name (meta tool-var))]
                 :when    (not (contains? megabot-scoped-tool-names tool-name))]
@@ -265,15 +276,11 @@
                  (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"]))))))
         (testing "a user who may not gets every tool but run_warehouse_sql"
           (is (= (-> megabot-tool-names (disj "run_warehouse_sql") (conj "load_skill"))
-                 (set (keys (profiles/get-tools-for-profile :megabot [])))))))
-      (testing "without a web search key the web tools are withheld"
-        (mt/with-temporary-setting-values [metabot-web-search-api-key nil]
-          (is (= (-> megabot-tool-names (disj "web_search" "read_web_page") (conj "load_skill"))
-                 (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"])))))))))
+                 (set (keys (profiles/get-tools-for-profile :megabot [])))))))))
   (testing "the structured-query skill is always on, and the operator catalog loads on demand"
     (let [profile  (profiles/get-profile :megabot)
           manifest (skills/build-skill-manifest profile (map #(:tool-name (meta %)) (:tools profile)) [])]
-      (is (= [:megabot-discovery :megabot-query] (map :id (:always-on manifest))))
+      (is (= [:megabot-discovery :megabot-query :web-search] (map :id (:always-on manifest))))
       (is (some #(= "megabot-query-operators" (:id %)) (:catalog manifest)))))
   (testing "megabot's skills follow their tools: a profile gets them only when the tool is active"
     (doseq [profile-id (keys @@#'profiles/*profiles)
@@ -297,6 +304,25 @@
   (testing "the ::profile-id schema (enforced by run-agent-loop in dev/test) accepts :megabot"
     (is (mr/validate :metabase.metabot.agent.core/profile-id :megabot))))
 
+(deftest megabot-web-tools-test
+  (let [tool-names (fn [] (set (keys (profiles/get-tools-for-profile :megabot ["permission:write_sql_queries"]))))]
+    (testing "without a Serper key the web tools are dropped"
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
+        (mt/with-temporary-setting-values [metabot-web-search-api-key nil]
+          (is (= (-> (set/difference megabot-tool-names megabot-web-tool-names) (conj "load_skill"))
+                 (tool-names))))))
+    (testing "with a key they still need the agent:web:read scope"
+      (binding [scope/*current-user-scope* #{"agent:todo:*"}]
+        (mt/with-temporary-setting-values [metabot-web-search-api-key "serper-key"]
+          (is (not-any? megabot-web-tool-names (tool-names)))))))
+  (testing "the always-on web-search skill drops out along with its tools"
+    (let [profile (profiles/get-profile :megabot)]
+      (is (= [:megabot-discovery :megabot-query]
+             (map :id (:always-on (skills/build-skill-manifest
+                                   profile
+                                   (remove megabot-web-tool-names (map #(:tool-name (meta %)) (:tools profile)))
+                                   []))))))))
+
 (deftest megabot-prompt-text-names-only-megabot-tools-test
   (testing "megabot's tool descriptions, system prompt, and skills never name a tool the profile doesn't have"
     (let [all-tool-names (->> (ns-publics 'metabase.metabot.tools)
@@ -312,7 +338,8 @@
                                 "megabot-api.md" (slurp (io/resource "metabot/skills/megabot-api.md"))
                                 "megabot-discovery.md" (slurp (io/resource "metabot/skills/megabot-discovery.md"))
                                 "megabot-query.md" (slurp (io/resource "metabot/skills/megabot-query.md"))
-                                "megabot-query-operators.md" (slurp (io/resource "metabot/skills/megabot-query-operators.md"))}
+                                "megabot-query-operators.md" (slurp (io/resource "metabot/skills/megabot-query-operators.md"))
+                                "web-search.md" (slurp (io/resource "metabot/skills/web-search.md"))}
                                (for [tool-var (:tools (profiles/get-profile :megabot))]
                                  [(:tool-name (meta tool-var)) (:doc (meta tool-var))]))]
       (is (contains? all-tool-names "save_entity") "sanity: the other profiles' tools are in the checked set")

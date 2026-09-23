@@ -4,7 +4,8 @@
 
   - `call_api`             — issue GET/POST/PUT/DELETE/PATCH against the internal `/api` and read the response.
   - `list_api_endpoints`   — a paged, searchable index of every API endpoint (method / path / description).
-  - `describe_api_endpoint`— the request/response schema of one endpoint, so a correct `call_api` can be built.
+  - `describe_api_endpoint`— a compact request/response signature of one endpoint (or one named schema), so a
+                             correct `call_api` can be built.
 
   None of these carry `:scope`/`:capabilities` metadata, so they are neither scope-filtered nor
   scope-checked at call time — matching the other megabot tools.
@@ -78,7 +79,6 @@
 ;;; Memoized production handler + OpenAPI spec (routes resolved lazily)
 ;;; ──────────────────────────────────────────────────────────────────
 
-#_{:clj-kondo/ignore [:metabase/modules]}
 (def ^:private api-handler
   "The real production Ring handler (full middleware onion), built once. This is the exact
   composition `metabase.core.core` builds for the running server, so JSON body/param parsing,
@@ -86,7 +86,6 @@
   (delay (server/make-handler
           (server/make-routes (requiring-resolve 'metabase.api-routes.core/routes)))))
 
-#_{:clj-kondo/ignore [:metabase/modules]}
 (def ^:private full-spec
   "The complete OpenAPI object (same generator that serves `/api/docs/openapi.json`), built once."
   (delay (api/root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes))))
@@ -443,13 +442,21 @@
                   truncated? (or capped? (> (count body-str) te/default-max-output-chars))
                   shown      (u.str/limit-chars body-str te/default-max-output-chars)
                   ok?        (and (int? status) (<= 200 status 299))
-                  change     (when (and write? ok? target)
-                               (entity-change m target body (response-json body-str capped?)))]
+                  written    (when (and write? ok?) (response-json body-str capped?))
+                  change     (when (and write? ok? target) (entity-change m target body written))
+                  ;; a POST that made something other than a card, dashboard, collection, or document (an alert, a
+                  ;; segment, a user, …) has no change line, but its new id is the part a later step needs
+                  new-id     (when (and (= m :post) (nil? change) (pos-int? (:id written)))
+                               (:id written))]
               (with-title
                 {:output            (te/lines
+                                     ;; everything before the first blank line is the output's lead, which is kept
+                                     ;; when old history is compacted (`metabase.metabot.agent.core/output-lead`)
                                      (str "HTTP " status)
                                      (some-> change entity-change-line)
-                                     shown
+                                     (some->> new-id (format "Response id: %d."))
+                                     (when-not (str/blank? shown)
+                                       ["" shown])
                                      (when truncated?
                                        "…[body truncated] — narrow the result with query_params like limit/offset."))
                  :structured-output (cond-> {:status status :method method :path (:uri req)}
@@ -521,70 +528,461 @@
 ;;; describe_api_endpoint
 ;;; ──────────────────────────────────────────────────────────────────
 
-(def ^:private max-described-schemas
-  "Bound on how many referenced component schemas describe_api_endpoint will inline."
-  60)
+(def ^:private schema-ref-prefix "#/components/schemas/")
 
-(defn- refs-in-json
-  "All schema names referenced via `#/components/schemas/<name>` inside a JSON string."
-  [^String s]
-  (set (map second (re-seq #"#/components/schemas/([^\"]+)" s))))
+(def ^:private max-field-depth
+  "How many levels of nested objects describe_api_endpoint expands in a request body or a described schema."
+  1)
 
-(defn- resolve-schemas
-  "Transitively collect the component schemas reachable from `seed-refs`, bounded by `max-count`."
-  [schemas seed-refs max-count]
-  (loop [pending (vec seed-refs)
-         seen    #{}
-         acc     {}]
-    (if (or (empty? pending) (>= (count acc) max-count))
-      acc
-      (let [nm           (first pending)
-            rest-pending (subvec pending 1)]
-        (if (or (contains? seen nm) (not (contains? schemas nm)))
-          (recur rest-pending (conj seen nm) acc)
-          (let [schema     (get schemas nm)
-                child-refs (refs-in-json (json/encode schema))]
-            (recur (into rest-pending (remove seen child-refs))
-                   (conj seen nm)
-                   (assoc acc nm schema))))))))
+(def ^:private max-expanded-lines
+  "A referenced object whose fields take more lines than this (or more characters than [[max-expanded-chars]]) is
+  shown by its schema name."
+  24)
+
+(def ^:private max-expanded-chars 1500)
+
+(def ^:private max-inline-chars
+  "A referenced type without fields (an enum, a union) longer than this is shown by its schema name."
+  300)
+
+(def ^:private max-describe-chars
+  "Budget for describing one operation or schema. Over it, the description is redone with nested objects shown by
+  name."
+  5000)
+
+(def ^:private max-alternatives
+  "How many members of an enum or a union are listed."
+  30)
+
+(def ^:private max-listed-keys
+  "How many keys an object too deep to expand lists."
+  8)
+
+(def ^:private query-field-names
+  "Names of the fields that hold a query, which describe_api_endpoint shows as a placeholder rather than expanding."
+  #{"dataset_query" "query"})
+
+(def ^:private query-note
+  (str "A query isn't expanded here: don't write one by hand. Copy an existing question's query (`dataset_query` from "
+       "`GET /api/card/:id`), or save a new query as a question by rendering it with show_result and saving it with "
+       "save_result."))
+
+(defn- schema-ref-name
+  "The name of the component schema a `$ref` schema points at, or nil."
+  [schema]
+  (when (map? schema)
+    (some-> (:$ref schema) (str/replace-first schema-ref-prefix ""))))
+
+(defn- union-ref-names
+  "The component schemas `schema` refers to, looking through `oneOf`/`anyOf` wrappers such as a nullable ref."
+  [schema]
+  (if-let [schema-name (schema-ref-name schema)]
+    [schema-name]
+    (when (map? schema)
+      (mapcat union-ref-names (concat (:oneOf schema) (:anyOf schema))))))
+
+(defn- schema-type
+  "A schema's `type` as a string (the spec has keywords)."
+  [schema]
+  (some-> (:type schema) u/qualified-name))
+
+(defn- query-field?
+  "Whether a field holds a query: it has a query field's name and refers to a component schema."
+  [field-name schema]
+  (and (contains? query-field-names field-name)
+       (boolean (seq (union-ref-names schema)))))
+
+(def ^:private query-schemas
+  "Names of the component schemas that query fields refer to, gathered from the spec."
+  (delay
+    (->> (concat (vals @spec-schemas)
+                 (for [[_ ops] (:paths @full-spec) [_ op] ops] (:requestBody op)))
+         (tree-seq coll? seq)
+         (filter #(and (map? %) (map? (:properties %))))
+         (mapcat :properties)
+         (filter (fn [[k schema]] (query-field? (u/qualified-name k) schema)))
+         (into #{} (mapcat (comp union-ref-names val))))))
+
+(defn- query-schema?
+  "Whether component schema `schema-name` is a query: one that query fields refer to, or an alias or union of one."
+  [schemas schema-name]
+  (letfn [(query? [n seen]
+            (or (contains? @query-schemas n)
+                (some #(and (not (seen %)) (query? % (conj seen n)))
+                      (union-ref-names (get schemas n)))))]
+    (boolean (query? schema-name #{}))))
+
+(defn- field-description
+  "A schema's description worth showing next to a field: its first line, unless it is a generated \"value must be …\"
+  validation message."
+  [description]
+  (when (and (string? description)
+             (not (str/blank? description))
+             (not (re-find #"(?i)^value must be\b" description)))
+    (first-line description)))
+
+;;; A schema compacts to `{:type <one-line type> :alts [...] :fields [field …] :variants [[field …] …] :collapsed? bool
+;;; :notes #{…}}`; a field adds `:name`, `:required?` and `:description`. `:alts` are a union's or an enum's members;
+;;; `:fields`, an object's own fields; `:variants`, the fields only some of a union's object shapes have. `:collapsed?`
+;;; marks an object too deep to expand, which a `$ref` names instead. `:notes` are the legend entries the compact form
+;;; needs, gathered from everything inside it: `:required`, `:refs`, `:query`.
+
+(declare nested-lines compact-schema)
+
+(defn- notes-of
+  "The notes of compact forms or fields, plus `:required` when one of them is a required field."
+  [xs]
+  (cond-> (into #{} (mapcat :notes) xs)
+    (some :required? xs) (conj :required)))
+
+(defn- type-alts
+  "The members of a compact type: a union's or an enum's, or the type itself."
+  [compact]
+  (or (:alts compact) [(:type compact)]))
+
+(defn- union-type
+  "A compact union of the types `alts`: no duplicates, at most [[max-alternatives]] listed, and `null` last."
+  [alts]
+  (let [alts   (distinct alts)
+        others (remove #{"null"} alts)
+        more   (- (count others) max-alternatives)
+        alts   (cond-> (vec (take max-alternatives others))
+                 (pos? more)           (conj (str "… " more " more"))
+                 (some #{"null"} alts) (conj "null"))]
+    {:type (str/join " | " alts) :alts alts}))
+
+(defn- container-type
+  "`compact` as the element type of a container, e.g. `array of (\"a\" | \"b\")`."
+  [prefix compact]
+  (-> compact
+      (assoc :type (str prefix (if (next (:alts compact)) (str "(" (:type compact) ")") (:type compact))))
+      (dissoc :alts)))
+
+(def ^:private query-placeholder
+  {:type "a query (see the note below)" :notes #{:query}})
+
+(defn- named-ref [schema-name]
+  {:type (str "<" schema-name ">") :notes #{:refs}})
+
+(defn- sorted-fields
+  "`fields`, required ones first, then by name."
+  [fields]
+  (vec (sort-by (juxt (complement :required?) :name) fields)))
+
+(defn- lines-for-fields
+  "Indented `name*: type — description` lines for `fields`, each followed by its own nested lines."
+  [indent fields]
+  (mapcat (fn [{field-name :name :keys [required? type description] :as field}]
+            (cons (str indent field-name (when required? "*") ": " type (some->> description (str " — ")))
+                  (nested-lines (str indent "  ") field)))
+          fields))
+
+(defn- nested-lines
+  "The lines under a compact type: its fields, then the fields only some of its shapes have."
+  [indent {:keys [fields variants]}]
+  (concat (lines-for-fields indent fields)
+          (mapcat (fn [i shape-fields]
+                    (when (seq shape-fields)
+                      (cons (str indent "shape " (inc i) (if (seq fields) " also has:" ":"))
+                            (lines-for-fields (str indent "  ") shape-fields))))
+                  (range)
+                  variants)))
+
+(defn- small-enough-to-inline?
+  "Whether the compact form of a referenced schema is small enough to show in place of its name."
+  [compact]
+  (cond
+    (:collapsed? compact)
+    false
+
+    (or (seq (:fields compact)) (seq (:variants compact)))
+    (let [lines (nested-lines "" compact)]
+      (and (<= (count lines) max-expanded-lines)
+           (<= (count (str/join "\n" lines)) max-expanded-chars)))
+
+    :else
+    (<= (count (:type compact)) max-inline-chars)))
+
+(defn- compact-ref [{:keys [schemas expanding cache depth max-depth] :as ctx} schema-name]
+  (let [schema (get schemas schema-name)
+        k      [schema-name depth max-depth]]
+    (cond
+      (query-schema? schemas schema-name)  query-placeholder
+      (or (nil? schema)
+          (contains? expanding schema-name)) (named-ref schema-name)
+      ;; Memoized per render: the MBQL clause unions reach the same schemas along thousands of paths. A result is
+      ;; shared whatever else is mid-expansion, so a recursive schema cut short on one path is named on the others too.
+      (contains? @cache k)                 (get @cache k)
+      :else
+      (u/prog1 (let [compact (compact-schema (update ctx :expanding conj schema-name) schema)]
+                 (if (small-enough-to-inline? compact)
+                   compact
+                   (named-ref schema-name)))
+        (vswap! cache assoc k <>)))))
+
+(defn- merged-shapes
+  "A union of several object shapes as one object: the fields every shape shares, then each shape's own fields."
+  [shapes]
+  (let [shared (set (reduce (fn [acc fields] (filter (set fields) acc))
+                            (:fields (first shapes))
+                            (map :fields (rest shapes))))]
+    {:type     (str "object (" (count shapes) " shapes)")
+     :fields   (filterv shared (:fields (first shapes)))
+     :variants (mapv #(vec (remove shared (:fields %))) shapes)
+     :notes    (notes-of shapes)}))
+
+(defn- compact-union [ctx alternatives]
+  (let [compacts (distinct (map #(compact-schema ctx %) alternatives))
+        {shapes true others false} (group-by #(boolean (seq (:fields %))) compacts)
+        compacts (if (next shapes)
+                   (cons (merged-shapes shapes) others)
+                   compacts)]
+    (cond-> (assoc (union-type (mapcat type-alts compacts)) :notes (notes-of compacts))
+      (some :fields compacts)     (assoc :fields (some :fields compacts))
+      (some :variants compacts)   (assoc :variants (some :variants compacts))
+      (some :collapsed? compacts) (assoc :collapsed? true))))
+
+(defn- compact-all-of
+  "An `allOf`: its parts that aren't `any`, joined with `&`."
+  [ctx parts]
+  (let [compacts (remove #(= "any" (:type %)) (map #(compact-schema ctx %) parts))]
+    (if (next compacts)
+      (cond-> {:type (str/join " & " (map :type compacts)) :notes (notes-of compacts)}
+        (some :collapsed? compacts) (assoc :collapsed? true))
+      (or (first compacts) {:type "any"}))))
+
+(defn- compact-fields [{:keys [depth] :as ctx} properties required]
+  (let [ctx      (assoc ctx :depth (inc depth))
+        required (into #{} (map u/qualified-name) required)]
+    (sorted-fields (for [[k schema] properties
+                         :let [field-name (u/qualified-name k)]]
+                     (merge {:name field-name :required? (contains? required field-name)}
+                            (when-let [description (field-description (:description schema))]
+                              {:description description})
+                            (if (query-field? field-name schema)
+                              query-placeholder
+                              (compact-schema ctx schema)))))))
+
+(defn- collapsed-object
+  "An object too deep to expand, as its first few keys, required ones first and marked `*`."
+  [properties required]
+  (let [required (into #{} (map u/qualified-name) required)
+        ks       (sorted-fields (for [k (keys properties)
+                                      :let [field-name (u/qualified-name k)]]
+                                  {:name field-name :required? (contains? required field-name)}))]
+    {:type       (str "object {"
+                      (str/join ", " (map #(cond-> (:name %) (:required? %) (str "*")) (take max-listed-keys ks)))
+                      (when (> (count ks) max-listed-keys) ", …")
+                      "}")
+     :collapsed? true
+     :notes      (notes-of (take max-listed-keys ks))}))
+
+(defn- compact-object [{:keys [depth max-depth] :as ctx} {:keys [properties required additionalProperties]}]
+  (cond
+    (and (seq properties) (> depth max-depth))
+    (collapsed-object properties required)
+
+    (seq properties)
+    (let [fields (compact-fields ctx properties required)]
+      {:type "object" :fields fields :notes (notes-of fields)})
+
+    (and (map? additionalProperties) (seq additionalProperties))
+    (container-type "map of " (compact-schema ctx additionalProperties))
+
+    :else
+    {:type "object"}))
+
+(defn- compact-tuple
+  "A `prefixItems` tuple, as `[a, b, c]`."
+  [ctx items]
+  (let [compacts (map #(compact-schema ctx %) items)]
+    {:type  (str "[" (str/join ", " (map :type compacts)) "]")
+     :notes (notes-of compacts)}))
+
+(defn- compact-schema
+  "The compact form of a JSON schema. Fields are listed down to `max-depth` nested objects; see the comment above."
+  [ctx schema]
+  (cond
+    (not (map? schema))                   {:type "any"}
+    (:$ref schema)                        (compact-ref ctx (schema-ref-name schema))
+    (contains? schema :const)             {:type (json/encode (:const schema))}
+    (seq (:enum schema))                  (union-type (map json/encode (:enum schema)))
+    (or (:oneOf schema) (:anyOf schema))  (compact-union ctx (concat (:oneOf schema) (:anyOf schema)))
+    (contains? schema :allOf)             (compact-all-of ctx (:allOf schema))
+    (:prefixItems schema)                 (compact-tuple ctx (:prefixItems schema))
+    (:items schema)                       (container-type "array of " (compact-schema ctx (:items schema)))
+    (or (= "object" (schema-type schema))
+        (:properties schema)
+        (:additionalProperties schema))   (compact-object ctx schema)
+    (schema-type schema)                  {:type (schema-type schema)}
+    :else                                 {:type "any"}))
+
+(defn- compact-root
+  "The compact form of a body, response, or described schema. A top-level `$ref` is expanded whatever its size."
+  [{:keys [schemas] :as ctx} schema]
+  (let [schema-name (schema-ref-name schema)]
+    (if (and schema-name (contains? schemas schema-name) (not (query-schema? schemas schema-name)))
+      (recur (update ctx :expanding conj schema-name) (get schemas schema-name))
+      (compact-schema ctx schema))))
+
+(defn- compact-context
+  "A fresh context for compacting schemas, expanding objects down to `max-depth`."
+  [max-depth]
+  {:schemas @spec-schemas :depth 0 :max-depth max-depth :expanding #{} :cache (volatile! {})})
+
+(defn- section-lines
+  "`title: <type>` and the lines under it."
+  [title compact]
+  (cons (str title ": " (:type compact))
+        (nested-lines "  " compact)))
+
+(defn- description-within-budget
+  "`(describe max-depth)` at [[max-field-depth]], or at depth 0 — nested objects shown by name — when its `:lines` run
+  over [[max-describe-chars]]."
+  [describe]
+  (let [description (describe max-field-depth)]
+    (if (> (count (str/join "\n" (:lines description))) max-describe-chars)
+      (describe 0)
+      description)))
+
+(defn- param-fields [ctx params]
+  (vec (for [{param-name :name :keys [required description schema]} params]
+         (merge {:name param-name :required? (boolean required)}
+                (when-let [description (field-description description)]
+                  {:description description})
+                (compact-schema (assoc ctx :depth 1) schema)))))
+
+(defn- operation-description
+  "The compact signature of one operation, `{:lines [...] :notes #{...}}`: its description, path and query params,
+  body, and the response's top-level fields."
+  [max-depth method path op]
+  (let [ctx          (compact-context max-depth)
+        by-location  (group-by :in (:parameters op))
+        path-params  (param-fields ctx (by-location :path))
+        query-params (sorted-fields (param-fields ctx (by-location :query)))
+        [content-type {body :schema}] (first (get-in op [:requestBody :content]))
+        body         (some->> body (compact-root ctx))
+        response     (some->> (get-in op [:responses "2XX" :content]) first val :schema
+                              (compact-root (assoc ctx :max-depth 0)))]
+    {:lines (concat [(str method " " path)]
+                    (when-not (str/blank? (:description op)) [(str/trim (:description op))])
+                    (when (seq path-params) (cons "Path params:" (lines-for-fields "  " path-params)))
+                    (when (seq query-params) (cons "Query params:" (lines-for-fields "  " query-params)))
+                    (when body
+                      (section-lines (cond-> "Body" (not= content-type "application/json") (str " (" content-type ")"))
+                                     body))
+                    (if response (section-lines "Response" response) ["Response: not described"]))
+     :notes (notes-of (concat path-params query-params (remove nil? [body response])))}))
+
+(defn- legend
+  "A blank line, then the notes explaining what `notes` says the description used; nil when there are none."
+  [notes]
+  (when (seq notes)
+    [""
+     (when (contains? notes :required)
+       "`*` marks a required field.")
+     (when (contains? notes :refs)
+       "`<name>` is a schema not expanded here: call describe_api_endpoint with `schema: \"<name>\"` to expand it.")
+     (when (contains? notes :query)
+       query-note)]))
+
+(defn- schema-arg-name
+  "The schema name a `schema` argument gives, without any `#/components/schemas/` prefix or `<…>`."
+  [s]
+  (-> (str/trim s) (str/replace-first schema-ref-prefix "") (str/replace #"^<|>$" "")))
+
+(defn- schemas-named
+  "The component schemas `s` can name, sorted: its exact name, or else every schema whose name ends in `.<s>`."
+  [schemas s]
+  (if (contains? schemas s)
+    [s]
+    (sort (filter #(str/ends-with? % (str "." s)) (keys schemas)))))
+
+(defn- schema-list-lines
+  "Indented lines listing up to 10 schema names."
+  [names]
+  (concat (map #(str "  " %) (take 10 names))
+          (when (> (count names) 10) ["  …"])))
+
+(defn- schema-result
+  "describe_api_endpoint's result for its `schema` argument."
+  [schema-arg]
+  (let [schemas @spec-schemas
+        s       (schema-arg-name schema-arg)
+        matches (schemas-named schemas s)]
+    (cond
+      (next matches)
+      {:output (te/lines (str "Several schemas are named " s ". Pass one's full name:")
+                         (schema-list-lines matches))}
+
+      (empty? matches)
+      (let [q       (u/lower-case-en s)
+            similar (sort (filter #(str/includes? (u/lower-case-en %) q) (keys schemas)))]
+        {:output (te/lines (str "No schema named " s ".")
+                           (when (seq similar)
+                             (cons "Schemas with similar names:" (schema-list-lines similar))))})
+
+      (query-schema? schemas (first matches))
+      {:output (te/lines (str "Schema " (first matches) " is a query.") query-note)}
+
+      :else
+      (let [schema-name           (first matches)
+            {:keys [lines notes]} (description-within-budget
+                                   (fn [max-depth]
+                                     (let [compact (compact-root (compact-context max-depth)
+                                                                 {:$ref (str schema-ref-prefix schema-name)})]
+                                       {:lines (section-lines "Type" compact) :notes (:notes compact)})))]
+        {:output (te/truncate-output
+                  (te/lines (str "Schema " schema-name)
+                            (field-description (:description (get schemas schema-name)))
+                            lines
+                            (legend notes)))}))))
 
 (mu/defn ^{:tool-name "describe_api_endpoint"}
   describe-api-endpoint-tool
   "Show the request and response shape of an API endpoint so you can build a correct call_api call.
   `path` is the endpoint path in its templated form as listed by list_api_endpoints, e.g.
   \"/api/collection/{id}\" (\"/api/collection/:id\" is also accepted). `method` optionally narrows to
-  one verb; otherwise every verb on the path is shown. Returns the parameters, request body, and
-  responses for each operation, plus the referenced component schemas inlined."
-  [{:keys [path method]}
+  one verb; otherwise every verb on the path is shown. Each operation is a compact signature: its
+  description, path and query params, the body's fields with their types (required ones marked `*`,
+  enums as their values), and the response's top-level fields. Nested objects are expanded one level;
+  deeper ones are listed as `<schema name>` — pass that name as `schema` to expand it the same way
+  (`path` and `method` are then ignored). Query fields such as `dataset_query` are never expanded:
+  don't write a query by hand."
+  [{:keys [path method schema]}
    :- [:map {:closed true}
-       [:path   :string]
-       [:method {:optional true} method-enum]]]
+       [:path   {:optional true} :string]
+       [:method {:optional true} method-enum]
+       [:schema {:optional true} :string]]]
   (try
-    (let [paths      (:paths @full-spec)
-          [uri _]    (split-path path)
-          templated  (str/replace uri #"/:([^/]+)" "/{$1}")
-          ops        (or (get paths templated) (get paths uri))]
-      (if-not ops
-        {:output (te/lines
-                  (str "No endpoint found for path " templated ".")
-                  "Use list_api_endpoints (with a search term) to find the exact path.")}
-        (let [selected (if (str/blank? method)
-                         ops
-                         (select-keys ops [(keyword (u/lower-case-en method))]))]
-          (if (empty? selected)
-            {:output (str "No " method " operation at " templated ". Available: "
-                          (str/join ", " (sort (map (comp u/upper-case-en name) (keys ops)))))}
-            (let [named    (into {} (map (fn [[m op]] [(u/upper-case-en (name m)) op])) selected)
-                  ops-json (json/encode named)
-                  used     (resolve-schemas @spec-schemas (refs-in-json ops-json) max-described-schemas)]
-              {:output (te/truncate-output
-                        (te/lines
-                         (str "Endpoint: " templated)
-                         ""
-                         "Operation(s):"
-                         ops-json
-                         ""
-                         (when (seq used) "Referenced schemas:")
-                         (when (seq used) (json/encode used))))})))))
+    (cond
+      (not (str/blank? schema))
+      (schema-result schema)
+
+      (str/blank? path)
+      {:output "Pass the endpoint's `path`, or a `schema` name to expand."}
+
+      :else
+      (let [paths     (:paths @full-spec)
+            [uri _]   (split-path path)
+            templated (str/replace uri #"/:([^/]+)" "/{$1}")
+            spec-path (if (contains? paths templated) templated uri)
+            ops       (get paths spec-path)]
+        (if-not ops
+          {:output (te/lines
+                    (str "No endpoint found for path " templated ".")
+                    "Use list_api_endpoints (with a search term) to find the exact path.")}
+          (let [selected (if (str/blank? method)
+                           ops
+                           (select-keys ops [(keyword (u/lower-case-en method))]))]
+            (if (empty? selected)
+              {:output (str "No " method " operation at " templated ". Available: "
+                            (str/join ", " (sort (map (comp u/upper-case-en name) (keys ops)))))}
+              (let [verb         (fn [[m _]] (u/upper-case-en (name m)))
+                    descriptions (for [[_ op :as entry] (sort-by #(.indexOf ^java.util.List http-verbs (verb %)) selected)]
+                                   (description-within-budget #(operation-description % (verb entry) spec-path op)))]
+                {:output (te/truncate-output
+                          (te/lines (interpose "" (map :lines descriptions))
+                                    (legend (notes-of descriptions))))}))))))
     (catch Exception e
       {:output (str "Error describing endpoint: " (ex-message e))})))

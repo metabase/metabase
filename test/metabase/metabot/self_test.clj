@@ -1169,6 +1169,60 @@
                :contextTokens 1550}}
              finish)))))
 
+(deftest parts->aisdk-sse-xf-provider-test
+  (let [parts [{:type :start :id "m"}
+               {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
+               {:type :finish}]]
+    (testing "the provider rides on the finish metadata"
+      (is (=? {:type "finish" :messageMetadata {:usage {:inputTokens 10} :provider "anthropic"}}
+              (last (sse-events {:provider "anthropic"} parts)))))
+    (testing "and is left off when unknown"
+      (is (not (contains? (:messageMetadata (last (sse-events parts))) :provider)))))
+  (testing "finish still omits messageMetadata when no usage was observed"
+    (is (not (contains? (last (sse-events {:provider "anthropic"} [{:type :text :id "t" :text "x"}]))
+                        :messageMetadata)))))
+
+(deftest parts->aisdk-sse-xf-stream-usage-test
+  (let [parts [{:type :start :id "m"}
+               {:type :text :id "t1" :text "thinking about it"}
+               {:type :usage :model "claude-sonnet-4-6"
+                :usage {:promptTokens 1500 :completionTokens 10 :cacheCreationTokens 300 :cacheReadTokens 1200}}
+               {:type :start :id "m2"}
+               ;; cumulative per model, as accumulate-usage-xf emits it
+               {:type :usage :model "claude-sonnet-4-6"
+                :usage {:promptTokens 3100 :completionTokens 30 :cacheCreationTokens 400 :cacheReadTokens 2600}}
+               {:type :finish}]]
+    (testing "with :stream-usage?, each usage part emits the turn's running usage as a message-metadata event"
+      (let [events (sse-events {:provider "anthropic" :stream-usage? true} parts)]
+        (is (= ["start" "start-step" "text-start" "text-delta" "text-end" "message-metadata"
+                "finish-step" "start-step" "message-metadata" "finish-step" "finish"]
+               (mapv :type events)))
+        (is (= [{:usage    {:inputTokens 1500 :outputTokens 10 :totalTokens 1510
+                            :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
+                 :provider "anthropic"}
+                {:usage    {:inputTokens 3100 :outputTokens 30 :totalTokens 3130
+                            :cacheCreationTokens 400 :cacheReadTokens 2600 :cachedInputTokens 2600}
+                 :provider "anthropic"}]
+               (->> events
+                    (filter #(= "message-metadata" (:type %)))
+                    (mapv :messageMetadata))))
+        (testing "the finish total matches the last running snapshot"
+          (is (= {:inputTokens 3100 :outputTokens 30 :totalTokens 3130
+                  :cacheCreationTokens 400 :cacheReadTokens 2600 :cachedInputTokens 2600}
+                 (get-in (last events) [:messageMetadata :usage]))))))
+    (testing "without :stream-usage?, usage is only reported on finish"
+      (is (not-any? #(= "message-metadata" (:type %))
+                    (sse-events {:provider "anthropic"} parts))))))
+
+(deftest provider-type-test
+  (llm.tu/with-default-connections
+    (are [model provider] (= provider (self/provider-type model))
+      "anthropic/claude-sonnet-4-6"           "anthropic"
+      "metabase/anthropic/claude-sonnet-4-6"  "anthropic" ; the provider behind the AI proxy
+      "openrouter/anthropic/claude-haiku-4.5" "openrouter"
+      "azure/openai/gpt-5.4-mini-prod"        "azure"
+      "unknown"                               nil)))
+
 (deftest context-window-tokens-test
   (llm.tu/with-default-connections
     (are [model window] (= window (self/context-window-tokens model))

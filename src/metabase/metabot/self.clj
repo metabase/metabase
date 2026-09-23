@@ -155,6 +155,12 @@
     (when (and window-fn model)
       (window-fn model))))
 
+(defn provider-type
+  "The provider type (e.g. \"anthropic\", \"bedrock\") whose API serves a `connection-key/model` string, or nil when
+  no such connection exists. Models served over the AI proxy report the provider behind the proxy."
+  [model-ref]
+  (:type (llm.provider/resolve-model-ref model-ref)))
+
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes

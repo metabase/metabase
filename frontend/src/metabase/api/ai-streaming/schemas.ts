@@ -43,6 +43,7 @@ export const knownDataPartTypes = [
   "data-transform_suggestion",
   "data-generated_entity",
   "data-entity_saved",
+  "data-page_link",
   "data-adhoc_viz",
   "data-static_viz",
   "data-search_results",
@@ -118,6 +119,24 @@ export type GeneratedDashboard = {
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
 
+export type PageLinkModel =
+  | "dashboard"
+  | "question"
+  | "model"
+  | "metric"
+  | "collection"
+  | "document"
+  | "table"
+  | "transform";
+
+export type PageLinkData = {
+  url: string;
+  title: string;
+  // absent for an app page (e.g. admin settings) that isn't an item
+  model?: PageLinkModel;
+  tool_call_id?: string;
+};
+
 export type SavedEntityDestination =
   | { type: "collection"; id: number | null }
   | { type: "dashboard"; id: number }
@@ -151,6 +170,7 @@ export type KnownDataPart =
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
   | { type: "data-entity_saved"; data: EntitySavedValue }
+  | { type: "data-page_link"; data: PageLinkData }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }

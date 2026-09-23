@@ -128,6 +128,14 @@ export type MetabotContextUsage = {
   contextWindowTokens: number;
 };
 
+export type MetabotTokenUsage = {
+  // includes the cache counts, which are a breakdown of it
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+};
+
 export type MetabotMessage = {
   id: string;
   externalId?: string;
@@ -176,6 +184,10 @@ export interface MetabotConversationState {
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   contextWindowTokens?: number;
+  // this session's token usage: finished turns, plus the latest cumulative
+  // snapshot of the turn in flight (folded into the former when the next starts)
+  completedTokenUsage?: MetabotTokenUsage;
+  turnTokenUsage?: MetabotTokenUsage;
   profileOverride: MetabotProfileId | undefined;
   experimental: {
     developerMessage: string;

@@ -563,8 +563,10 @@ describe("MetabotChainOfThought", () => {
     // three stacked favicons plus an overflow badge for the other two domains
     expect(screen.getByText("+2")).toBeInTheDocument();
     await userEvent.click(screen.getByText("5 results"));
-    const link = await screen.findByRole("link", {
+    // under jsdom, role queries treat the expanded Collapse body as hidden
+    const link = screen.getByRole("link", {
       name: /Metabase 0.60 release notes/,
+      hidden: true,
     });
     expect(link).toHaveAttribute(
       "href",
@@ -573,7 +575,7 @@ describe("MetabotChainOfThought", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveTextContent("metabase.com");
     expect(
-      within(link).getByRole("img", { name: "metabase.com" }),
+      within(link).getByRole("img", { name: "metabase.com", hidden: true }),
     ).toHaveAttribute(
       "src",
       "https://www.google.com/s2/favicons?domain=metabase.com&sz=32",

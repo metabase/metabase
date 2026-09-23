@@ -306,7 +306,7 @@
                    (rows-of result)))))
         (testing "running a model with row_limit 1 shows its column names"
           (let [{:keys [output]} (run (query {:source-card (:id model)}) 1)]
-            (is (str/starts-with? output "ID | USER_ID | PRODUCT_ID"))))
+            (is (str/includes? output "\n\nID | USER_ID | PRODUCT_ID"))))
         (testing "a related table's column, through an explicit join on the model's foreign key by field id"
           (let [join   (fn [model-fk]
                          {:alias      "Products"

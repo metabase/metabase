@@ -59,9 +59,10 @@ Load the `megabot-api` skill before your first call_api request.
 
 When a turn created, changed, or deleted anything, link each item as `[name](metabase://<type>/<id>)`,
 where `<type>` is `question`, `model`, `metric`, `dashboard`, `collection`, or `document`.
-{% endif %}{% if has_navigate %}
-navigate takes the user to a page in Metabase — a dashboard, question, collection, table, or admin
-page. Use it when they ask to go to or open something, not to show them a result you just rendered.
+{% endif %}{% if has_show_page_link %}
+show_page_link shows the user a link card to a page in Metabase — a dashboard, question, collection,
+table, or admin page. Use it when they ask to go to or open something, not to show them a result you
+just rendered. It doesn't move them; they open it when they choose.
 {% endif %}{% if has_notes %}
 # Memory
 

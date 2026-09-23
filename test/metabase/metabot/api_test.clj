@@ -13,6 +13,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -83,7 +84,10 @@
                                                :contextTokens       15
                                                :contextWindowTokens 1000}}
                             (u/seek #(= "finish" (:type %)) events))
-                        "finish event carries accumulated and final-call context usage"))
+                        "finish event carries accumulated and final-call context usage")
+                    (testing "a profile without :stream-usage? reports usage only on finish, without the provider"
+                      (is (not-any? #(= "message-metadata" (:type %)) events))
+                      (is (not (contains? (:messageMetadata (u/seek #(= "finish" (:type %)) events)) :provider)))))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
                   ;; Native agent stores parts in the v2 at-rest format
@@ -97,6 +101,36 @@
                                            {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version 2}]
                           messages)))))))))))
+
+(deftest stream-usage-profile-streaming-test
+  (testing "a :stream-usage? profile streams its running usage after each LLM call, naming the serving provider"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (mut/mock-llm-response
+                                                             [{:type :start :id "msg-1"}
+                                                              {:type :text :text "Hello"}
+                                                              {:type  :usage :usage {:promptTokens 10 :completionTokens 5}
+                                                               :model "test-model" :id "msg-1"}]))
+                                    profiles/stream-usage?           (constantly true)
+                                    conversation-title/ensure-title! (constantly {:status :ready :title "Usage"})]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (let [events (->> (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    {:message         "hi"
+                                                     :context         {}
+                                                     :conversation_id (str (random-uuid))
+                                                     :state           {}})
+                              str/split-lines
+                              (filter #(str/starts-with? % "data: "))
+                              (remove #(= "data: [DONE]" %))
+                              (mapv #(json/decode+kw (subs % 6))))]
+              (is (=? [{:messageMetadata {:usage    {:inputTokens 10 :outputTokens 5}
+                                          :provider "openrouter"}}]
+                      (filterv #(= "message-metadata" (:type %)) events)))
+              (is (=? {:messageMetadata {:usage {:inputTokens 10} :provider "openrouter"}}
+                      (u/seek #(= "finish" (:type %)) events))))))))))
 
 (deftest emits-title-event-inline-when-ready-during-stream-test
   (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"

@@ -6,10 +6,15 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.api-call :as api-call]
    [metabase.server.streaming-response :as streaming-response]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
    (java.util.concurrent CountDownLatch)))
+
+(set! *warn-on-reflection* true)
 
 (defn- call [args]
   (api-call/call-api-tool args))
@@ -22,9 +27,7 @@
 ;; call_api dispatches through the real production handler, which returns 503 until initialization is
 ;; complete. These tests exercise the tool directly (not via the test HTTP client, which would do this
 ;; itself), so nothing else completes init — initialize the :web-server component, which marks it complete.
-(use-fixtures :once (fn [thunk]
-                      (mt/initialize-if-needed! :web-server)
-                      (thunk)))
+(use-fixtures :once (fixtures/initialize :web-server))
 
 ;;; ---------------------------------------------- call_api ----------------------------------------------
 
@@ -166,7 +169,7 @@
   bytes written in `written`. With `error-after-cancel?`, reports the cancellation via `write-error!` like
   the QP does."
   [written error-after-cancel?]
-  (let [chunk (.getBytes (apply str (repeat 1024 "x")) "UTF-8")]
+  (let [chunk (.getBytes ^String (apply str (repeat 1024 "x")) "UTF-8")]
     (streaming-response/streaming-response {:content-type "text/plain"} [os canceled-chan]
       (streaming-response/set-status! 202)
       (loop []
@@ -202,7 +205,7 @@
     (do-with-stub-handler!
      (responding-with {:status  200
                        :headers {"Content-Type" "text/plain"}
-                       :body    (ByteArrayInputStream. (.getBytes (apply str (repeat (* 1024 1024) "a")) "UTF-8"))})
+                       :body    (ByteArrayInputStream. (.getBytes ^String (apply str (repeat (* 1024 1024) "a")) "UTF-8"))})
      (fn []
        (let [{:keys [output]} (call {:method "GET" :path "/api/big"})]
          (is (str/includes? output "[body truncated]"))
@@ -314,6 +317,31 @@
           (is (= "Failed: Renamed the instance" (title (call (assoc rename :summary "Renamed the instance")))))
           (is (= "A change failed" (title (call rename)))))))))
 
+(deftest call-api-output-lead-test
+  (testing "what a write did comes before the first blank line, the lead that history compaction keeps"
+    (mt/with-model-cleanup [:model/Collection :model/PermissionsGroup]
+      (mt/with-test-user :crowberto
+        (testing "a created collection: the status and the change line with its link"
+          (let [{:keys [output]} (call {:method "POST" :path "/api/collection" :body {:name "Megabot lead"}})
+                [lead body]      (str/split output #"\n\n" 2)
+                [status change]  (str/split-lines lead)]
+            (is (re-matches #"HTTP 20\d" status))
+            (is (re-matches
+                 #"Created collection \d+ \"Megabot lead\"\. Link it as \[Megabot lead\]\(metabase://collection/\d+\)\."
+                 change))
+            (is (= 2 (count (str/split-lines lead))))
+            (is (str/starts-with? body "{"))))
+        (testing "a created group, which has no link, carries its new id instead"
+          (let [{:keys [output]} (call {:method "POST"
+                                        :path   "/api/permissions/group"
+                                        :body   {:name "Megabot lead group"}})
+                [lead body]      (str/split output #"\n\n" 2)
+                group-id         (:id (t2/select-one :model/PermissionsGroup :name "Megabot lead group"))]
+            (is (pos-int? group-id))
+            (is (re-matches #"HTTP 20\d\nResponse id: \d+\." lead))
+            (is (str/includes? lead (str "Response id: " group-id ".")))
+            (is (str/starts-with? body "{"))))))))
+
 (deftest call-api-read-summary-test
   (testing "reads — GETs and query POSTs — get no summary line and no step title"
     (mt/with-test-user :crowberto
@@ -322,8 +350,8 @@
                                ["POST" (str "/api/card/" card-id "/query")]]]
           (testing (str method " " path)
             (let [result (call {:method method :path path :summary "ignored"})]
-              (is (str/starts-with? (:output result) "HTTP 20"))
-              (is (str/starts-with? (summary-line (:output result)) "{"))
+              (is (re-find #"^HTTP 20\d\n\n\{" (:output result))
+                  "the status alone, then the body after a blank line")
               (is (nil? (:data-parts result)))
               (is (nil? (get-in result [:structured-output :entity]))))))))))
 
@@ -336,7 +364,7 @@
       (is (str/includes? output "/api/"))))
   (testing "search narrows the results"
     (let [{:keys [output]} (api-call/list-api-endpoints-tool {:search "collection"})]
-      (is (str/includes? (str/lower-case output) "collection"))))
+      (is (str/includes? (u/lower-case-en output) "collection"))))
   (testing "method filter narrows to one verb"
     (let [{:keys [output]} (api-call/list-api-endpoints-tool {:method "POST" :search "collection"})]
       (is (str/includes? output "POST"))
@@ -345,15 +373,125 @@
     (let [{:keys [output]} (api-call/list-api-endpoints-tool {:page 2 :page_size 5})]
       (is (str/includes? output "Page 2/")))))
 
-(deftest describe-api-endpoint-test
-  (testing "returns the operation schema for a known endpoint"
-    (let [{:keys [output]} (api-call/describe-api-endpoint-tool {:path "/api/collection" :method "POST"})]
-      (is (str/includes? output "Endpoint: /api/collection"))
-      (is (str/includes? output "Operation"))))
+(defn- describe [args]
+  (:output (api-call/describe-api-endpoint-tool args)))
+
+(deftest ^:parallel describe-api-endpoint-test
+  (testing "returns a compact signature for a known endpoint"
+    (let [output (describe {:path "/api/collection" :method "POST"})]
+      (is (str/starts-with? output "POST /api/collection\n"))
+      (is (str/includes? output "\nBody: object\n  name*: string\n"))))
+  (testing "without a method, every verb on the path is described"
+    (let [output (describe {:path "/api/collection/{id}"})]
+      (doseq [verb ["GET" "PUT" "DELETE"]]
+        (is (str/includes? output (str verb " /api/collection/{id}\n"))))
+      (is (str/includes? output "Path params:\n  id*: integer"))))
   (testing "a templated id path resolves via both {id} and :id forms"
     (doseq [p ["/api/collection/{id}" "/api/collection/:id"]]
-      (let [{:keys [output]} (api-call/describe-api-endpoint-tool {:path p})]
-        (is (not (str/includes? output "No endpoint found")) (str "path variant: " p)))))
+      (is (not (str/includes? (describe {:path p}) "No endpoint found")) (str "path variant: " p))))
   (testing "an unknown path returns a friendly message"
-    (let [{:keys [output]} (api-call/describe-api-endpoint-tool {:path "/api/definitely-not-real"})]
-      (is (str/includes? output "No endpoint found")))))
+    (is (str/includes? (describe {:path "/api/definitely-not-real"}) "No endpoint found")))
+  (testing "neither path nor schema asks for one"
+    (is (str/includes? (describe {}) "Pass the endpoint's `path`"))))
+
+(def ^:private big-endpoints
+  "Endpoints whose raw OpenAPI description, with the schemas it references inlined, ran to 75-90K characters."
+  [["POST" "/api/card"]
+   ["PUT" "/api/card/{id}"]
+   ["POST" "/api/dataset"]
+   ["POST" "/api/notification"]])
+
+(deftest ^:parallel describe-api-endpoint-size-test
+  (doseq [[method path] big-endpoints]
+    (testing (str method " " path " fits the description budget")
+      (is (<= (count (describe {:path path :method method})) 5000)))))
+
+(deftest ^:parallel describe-api-endpoint-fields-test
+  (testing "required body fields and enum values are listed"
+    (let [output (describe {:path "/api/card" :method "POST"})]
+      (doseq [field ["dataset_query*" "display*: string" "name*: string" "visualization_settings*: object"]]
+        (is (str/includes? output (str "\n  " field)) field))
+      (is (str/includes? output "\n  type: \"question\" | \"metric\" | \"model\" | null\n"))
+      (is (str/includes? output "\n  collection_id: integer | string | null\n"))
+      (testing "and a referenced object one level down"
+        (is (str/includes? output "\n  size: object | null\n    size_x*: integer\n    size_y*: integer\n")))))
+  (testing "path and query params are listed"
+    (let [output (describe {:path "/api/card/{id}" :method "PUT"})]
+      (is (str/includes? output "Path params:\n  id*: integer\n"))
+      (is (str/includes? output "Query params:\n  delete_old_dashcards: boolean | null\n"))))
+  (testing "a union of object shapes lists the shared fields once, then each shape's own"
+    (let [body (first (str/split (describe {:path "/api/notification" :method "POST"}) #"\nResponse"))]
+      (is (str/includes? body "\nBody: object (2 shapes)\n"))
+      (is (= 1 (count (re-seq #"\n  payload_type\*: \"" body))))
+      (is (= 2 (count (re-seq #"\n  shape \d also has:\n" body))))
+      (is (= 2 (count (re-seq #"\n    payload\*?: " body))))))
+  (testing "a response shows only its top-level fields"
+    (let [output (describe {:path "/api/dataset" :method "POST"})]
+      (is (str/includes? output "\nResponse: object\n  row_count*: integer\n  status*: \"completed\" | \"failed\"\n"))
+      (is (re-find #"\n  data: <[^>]+>\n" output)))))
+
+(deftest ^:parallel describe-api-endpoint-query-test
+  (doseq [[method path body-line] [["POST" "/api/card" "\n  dataset_query*: a query (see the note below)\n"]
+                                   ["PUT" "/api/card/{id}" "\n  dataset_query: a query (see the note below)\n"]
+                                   ["POST" "/api/dataset" "\nBody: a query (see the note below)\n"]]]
+    (testing (str "a query isn't expanded in " method " " path ", and the note says how to get one")
+      (let [output (describe {:path path :method method})]
+        (is (str/includes? output body-line))
+        (is (str/includes? output "`dataset_query` from `GET /api/card/:id`"))
+        (is (str/includes? output "save_result"))
+        (is (not (str/includes? output "run_warehouse_query")))
+        (is (not (str/includes? output "stages"))))))
+  (testing "a query schema asked for by name isn't expanded either"
+    (let [output (describe {:schema "metabase.lib.schema.query"})]
+      (is (str/includes? output "is a query"))
+      (is (str/includes? output "save_result")))))
+
+(deftest ^:parallel describe-api-endpoint-schema-test
+  (testing "`schema` expands a named component schema in the same compact form"
+    (let [schema-name "metabase.notification.models.CreateNotificationRecipientParams"
+          output      (describe {:schema schema-name})]
+      (is (str/starts-with? output (str "Schema " schema-name "\n")))
+      (is (str/includes? output "\nType: object (4 shapes)\n"))
+      (is (str/includes? output "\n  type*: \"notification-recipient/raw-value\" | \"notification-recipient/user\""))
+      (testing "a schema can be named by its last segment, or as shown in angle brackets"
+        (is (= output (describe {:schema "CreateNotificationRecipientParams"})))
+        (is (= output (describe {:schema (str "<" schema-name ">")}))))))
+  (testing "`schema` takes precedence over `path`"
+    (is (str/starts-with? (describe {:path "/api/card" :schema "metabase.lib.schema.parameter.type"})
+                          "Schema metabase.lib.schema.parameter.type\n")))
+  (testing "every schema an endpoint lists by name can be expanded"
+    (doseq [[method path] big-endpoints
+            schema-name   (distinct (map second (re-seq #"<([^>\s]+)>" (describe {:path path :method method}))))
+            :when         (not= schema-name "name")]
+      (testing (str method " " path " → " schema-name)
+        (let [output (describe {:schema schema-name})]
+          (is (str/starts-with? output (str "Schema " schema-name "\n")))
+          (is (<= (count output) 10000))))))
+  (testing "an unknown schema says so"
+    (is (str/starts-with? (describe {:schema "NotificationRecipient-typo"})
+                          "No schema named NotificationRecipient-typo.")))
+  (testing "a name that matches no schema exactly lists the schemas whose names contain it"
+    (let [output (describe {:schema "notificationrecipient"})]
+      (is (str/includes? output "Schemas with similar names:"))
+      (is (str/includes? output "metabase.notification.models.NotificationRecipient"))))
+  (testing "a last segment several schemas share lists those schemas"
+    (let [output (describe {:schema "orphaned-query"})]
+      (is (str/starts-with? output "Schema metabase.transforms.schema.orphaned-query")))
+    (let [output (describe {:schema "query"})]
+      (is (str/starts-with? output "Several schemas are named query. Pass one's full name:\n"))
+      (is (not (str/includes? output "query-definition"))))))
+
+(deftest ^:parallel describe-api-endpoint-everything-test
+  (testing "every endpoint and every component schema describes without error"
+    (let [spec @@#'api-call/full-spec]
+      (doseq [[path ops] (:paths spec)
+              [m _]      ops
+              :let       [method (u/upper-case-en (name m))]]
+        (let [output (describe {:path path :method method})]
+          (is (str/starts-with? output (str method " " path "\n")) (str method " " path))))
+      (doseq [schema-name (keys (get-in spec [:components :schemas]))
+              :let        [schema-name (name schema-name)]]
+        (let [output (describe {:schema schema-name})]
+          (is (or (str/starts-with? output (str "Schema " schema-name "\n"))
+                  (str/includes? output "is a query"))
+              schema-name))))))

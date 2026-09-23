@@ -120,7 +120,7 @@
   describe-app-db-tool
   show-result-tool
   save-result-tool
-  navigate-tool]
+  show-page-link-tool]
  [tools.api-call
   call-api-tool
   list-api-endpoints-tool
@@ -152,8 +152,8 @@
     "create_alert" "create_dashboard_subscription" "static_viz"
     "read_resource" "conversation_search" "recent_chats" "read_conversation"
     ;; megabot: the run tools register their query in memory; show_result reads it back and stores
-    ;; the chart that save_result saves; navigate resolves query/chart links against it
-    "run_warehouse_sql" "run_warehouse_query" "show_result" "save_result" "navigate"})
+    ;; the chart that save_result saves; show_page_link resolves query/chart links against it
+    "run_warehouse_sql" "run_warehouse_query" "show_result" "save_result" "show_page_link"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks

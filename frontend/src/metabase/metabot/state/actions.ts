@@ -37,6 +37,7 @@ import { metabotApi } from "../api";
 import {
   METABOT_ERR_MSG,
   type MetabotProfileId,
+  TOKEN_USAGE_PROVIDER,
   isHistoryEnabledProfile,
 } from "../constants";
 import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
@@ -64,7 +65,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  parseSlashCommand,
+  toMetabotTokenUsage,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -84,6 +89,7 @@ export const {
   toolCallTitled,
   toolCallSearchResults,
   toolCallWebResults,
+  turnTokenUsageUpdated,
   setMetabotReqIdOverride,
   setDebugMode,
   createAgent,
@@ -582,6 +588,10 @@ export const sendAgentRequest = createAsyncThunk<
                 }
                 pushDataPart({ type: "data_part", part });
               })
+              // a link card the user opens when they choose, on every surface
+              .with({ type: "data-page_link" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
                 dispatch(
@@ -697,6 +707,16 @@ export const sendAgentRequest = createAsyncThunk<
             // rides the trailing `finish` event's messageMetadata, folded in at
             // rejection time below
             streamedError = { message: error.errorText };
+          },
+          onMessageMetadata: function handleMessageMetadata(metadata) {
+            if (metadata.usage && metadata.provider === TOKEN_USAGE_PROVIDER) {
+              dispatch(
+                turnTokenUsageUpdated({
+                  conversationId,
+                  usage: toMetabotTokenUsage(metadata.usage),
+                }),
+              );
+            }
           },
         },
       );

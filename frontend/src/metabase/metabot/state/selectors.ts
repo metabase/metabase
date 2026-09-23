@@ -19,7 +19,12 @@ import type {
   MetabotContextUsage,
   MetabotMessage,
 } from "./types";
-import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
+import {
+  addTokenUsage,
+  hasInProgressMessage,
+  isGeneratedCardPart,
+  isTextPart,
+} from "./utils";
 
 /*
  * Top Level Selectors
@@ -265,6 +270,23 @@ export const getMetabotReqIdOverride = createSelector(
 export const getMetabotRequestId = (state: State, conversationId: string) =>
   getMetabotReqIdOverride(state, conversationId) ??
   (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
+
+const getCompletedTokenUsage = createSelector(
+  getConversation,
+  (convo) => convo.completedTokenUsage,
+);
+
+const getTurnTokenUsage = createSelector(
+  getConversation,
+  (convo) => convo.turnTokenUsage,
+);
+
+// keyed on the usage fields, not the conversation, so streamed text doesn't
+// produce a new object (and a re-render) on every delta
+export const getSessionTokenUsage = createSelector(
+  [getCompletedTokenUsage, getTurnTokenUsage],
+  addTokenUsage,
+);
 
 export const getProfileOverride = createSelector(
   getConversation,

@@ -13,7 +13,7 @@
   - `show_result`        — render a query the model already ran inline in the chat, as a table/chart.
   - `save_result`        — save a rendered result as a question in a collection, dashboard, or document,
                            through the same save path as the shared `save_entity` tool.
-  - `navigate`           — take the user to a page: a `metabase://` link or an in-app path.
+  - `show_page_link`     — a link card to a page (a `metabase://` link or an in-app path); it never navigates.
 
   Both warehouse tools run through the query processor under the already-bound
   `metabase.api.common/*current-user-id*`, so the QP's own data/native-permission and sandboxing
@@ -341,11 +341,14 @@
         (register-query! query-id query)
         {:output            (te/truncate-output
                              (te/lines
-                              text
-                              ""
+                              ;; everything before the first blank line is the output's lead, which is kept when old
+                              ;; history is compacted (`metabase.metabot.agent.core/output-lead`), so an old run can
+                              ;; still be rendered or linked without running it again
                               (str "Query ID: " query-id)
                               (str "Link it as " (te/link "text" "metabase://query/" query-id)
-                                   ", or render the full result for the user with show_result.")))
+                                   ", or render the full result for the user with show_result.")
+                              ""
+                              text))
          :structured-output {:query-id   query-id
                              :query      query
                              :database   (:database query)
@@ -684,27 +687,55 @@
        :data-parts [(streaming/tool-title-part (tru "Couldn''t save the result"))]})))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Navigate
+;;; Show page link
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- navigation-url
-  "Resolve `target` to the in-app path the frontend routes to, or nil. `target` is a `metabase://` link, resolved by
-  the same `links/resolve-metabase-uri` that resolves the links in the model's text, or an in-app path starting with
-  `/`, passed through as-is."
+(def ^:private named-entity-models
+  "`metabase://` link types naming a saved item, with the model its name is read from."
+  {"question"   :model/Card
+   "model"      :model/Card
+   "metric"     :model/Card
+   "dashboard"  :model/Dashboard
+   "collection" :model/Collection
+   "document"   :model/Document})
+
+(defn- page-target
+  "Resolve `target` to `{:url :link-type :id}`, or nil. `target` is a `metabase://` link, resolved by the same
+  `links/resolve-metabase-uri` that resolves the links in the model's text, or an in-app path starting with a single
+  `/`, passed through as-is (and with no `:link-type`)."
   [target]
   (let [target (str/trim target)]
     (cond
       (str/starts-with? target "metabase://")
-      (links/resolve-metabase-uri target (shared/current-queries-state) (shared/current-charts-state))
+      (when-let [url (links/resolve-metabase-uri target (shared/current-queries-state) (shared/current-charts-state))]
+        (let [[link-type id] (str/split (subs target (count "metabase://")) #"/" 2)]
+          {:url url :link-type link-type :id id}))
 
       (and (str/starts-with? target "/") (not (str/starts-with? target "//")))
-      target)))
+      {:url target})))
 
-(mu/defn ^{:tool-name "navigate"}
-  navigate-tool
-  "Take the user to a page in Metabase. Use it when the user asks to go to, open, or be taken to something (\"open the
-  Sales dashboard\", \"take me to the orders table\", \"where do I set up email?\"), not to show them data you can
-  answer or render with show_result.
+(defn- saved-name
+  "The saved name of the item a `metabase://<link-type>/<id>` link names, or nil when it isn't a saved item."
+  [link-type id]
+  (when-let [model (named-entity-models link-type)]
+    (when-let [id (some-> id parse-long)]
+      (when (pos? id)
+        (:name (metabot.db/entity-summary model id))))))
+
+(defn- page-model
+  "The kind of item a page shows, which picks its link card's icon: the link type, except that a query or chart from
+  this conversation opens as a question. nil for an in-app path."
+  [link-type]
+  (case link-type
+    ("query" "chart") "question"
+    link-type))
+
+(mu/defn ^{:tool-name "show_page_link"}
+  show-page-link-tool
+  "Show the user a link card to a page in Metabase. Use it when the user asks to go to, open, or be taken to something
+  (\"open the Sales dashboard\", \"take me to the orders table\", \"where do I set up email?\"), not to show them data
+  you can answer or render with show_result. It doesn't move them: the card appears in the chat, and they open the page
+  when they choose.
 
   `target` is either:
   - a `metabase://` link: `metabase://dashboard/<id>`, `question/<id>`, `model/<id>`, `metric/<id>`,
@@ -715,22 +746,26 @@
     `/collection/root`, `/auto/dashboard/table/<id>` (an X-ray of a table).
   Find ids with query_app_db or a call_api GET first.
 
-  `title` is a short label for the link shown in the chat, e.g. the name of the dashboard."
+  `title` is the page's name as the user would say it, e.g. \"Sales\" or \"Email settings\". A saved question,
+  model, metric, dashboard, collection, or document is labeled with its own name instead."
   [{:keys [target title]} :- [:map {:closed true}
                               [:target :string]
-                              [:title {:optional true} [:maybe :string]]]]
-  (if-let [url (navigation-url target)]
-    {:output            (te/lines
-                         "<result>"
-                         (str "Navigated the user to " url ".")
-                         "</result>"
-                         "<instructions>"
-                         "The user is now on that page. Say in one sentence where you took them; don't describe what they can see."
-                         "</instructions>")
-     :structured-output {:result-type :navigation :url url}
-     ;; the dashboard-type `generated_entity` part is the frontend's generic navigation hook: the sidebar routes to
-     ;; its `url` (any in-app path), the full-page chat renders it as a link card
-     :data-parts        [(streaming/dashboard-entity-part {:url url :title (or (not-empty title) url)})]}
-    (error-output (str "Can't navigate to `" target "`.")
+                              [:title :string]]]
+  (if-let [{:keys [url link-type id]} (page-target target)]
+    (if-let [title (or (not-empty (saved-name link-type id))
+                       (not-empty (str/trim title)))]
+      {:output            (te/lines
+                           "<result>"
+                           (str "Showed the user a link to \"" title "\" (" url "). They are still in this chat, and "
+                                "open the page when they choose.")
+                           "</result>"
+                           "<instructions>"
+                           (str "Don't say you took them there, and don't describe the page. Point them to the link in "
+                                "one short sentence, or go on with the rest of their request.")
+                           "</instructions>")
+       :structured-output {:result-type :page-link :url url}
+       :data-parts        [(streaming/page-link-part {:url url :title title :model (page-model link-type)})]}
+      (error-output "Pass a `title`." "Name the page as the user would say it, e.g. \"Email settings\"."))
+    (error-output (str "Can't link to `" target "`.")
                   (str "Pass a metabase://<type>/<id> link with an existing id (a query or chart id must come from "
                        "this conversation), or an in-app path starting with a single `/`."))))

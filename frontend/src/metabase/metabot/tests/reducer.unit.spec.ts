@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { createDraft } from "immer";
 
 import {
+  type MetabotMessagePart,
   type MetabotState,
   metabotActions,
   metabotReducer,
@@ -156,6 +157,49 @@ describe("metabot reducer", () => {
       );
 
       expect(store.getState().metabot.conversations[abandoned]).toBeDefined();
+    });
+
+    it("drops data parts the client can't render when loading a snapshot", () => {
+      const store = createTestStore();
+      const conversationId = conversationIdForAgent(store, "omnibot");
+      const text = {
+        id: "t1",
+        role: "agent" as const,
+        type: "text" as const,
+        message: "hi",
+      };
+      const todoList = {
+        id: "d1",
+        role: "agent" as const,
+        type: "data_part" as const,
+        part: { type: "data-todo_list" as const, data: [] },
+      };
+      // the server can return data parts outside the client's type union
+      const evalSession = {
+        id: "d2",
+        role: "agent",
+        type: "data_part",
+        part: { type: "data-eval_session", data: { "session-id": "s" } },
+      } as unknown as MetabotMessagePart;
+
+      store.dispatch(
+        metabotActions.setConversationSnapshot({
+          conversationId,
+          messages: [
+            {
+              id: "m1",
+              role: "agent",
+              status: { type: "done" },
+              parts: [text, todoList, evalSession],
+            },
+          ],
+        }),
+      );
+
+      expect(
+        store.getState().metabot.conversations[conversationId]?.messages[0]
+          .parts,
+      ).toEqual([text, todoList]);
     });
   });
 
@@ -564,6 +608,72 @@ describe("metabot reducer", () => {
       );
 
       expect(getConvo(store)?.messages).toEqual([]);
+    });
+  });
+
+  describe("token usage", () => {
+    const conversationId = testConversationId("omnibot");
+    const createUsage = (inputTokens: number, outputTokens: number) => ({
+      inputTokens,
+      outputTokens,
+      cacheCreationTokens: 10,
+      cacheReadTokens: 20,
+    });
+    const reportUsage = (
+      store: ReturnType<typeof createTestStore>,
+      usage: ReturnType<typeof createUsage>,
+    ) =>
+      store.dispatch(
+        metabotActions.turnTokenUsageUpdated({ conversationId, usage }),
+      );
+    const abortTurn = (store: ReturnType<typeof createTestStore>) =>
+      store.dispatch({
+        type: sendAgentRequest.rejected.type,
+        error: { message: "Aborted" },
+        meta: { aborted: true, arg: { conversation_id: conversationId } },
+      });
+
+    it("replaces the turn's usage with each cumulative snapshot", () => {
+      const store = createStreamingStore();
+      reportUsage(store, createUsage(100, 5));
+      reportUsage(store, createUsage(300, 15));
+
+      expect(convoForAgent(store, "omnibot")).toMatchObject({
+        completedTokenUsage: undefined,
+        turnTokenUsage: createUsage(300, 15),
+      });
+    });
+
+    it("keeps a stopped turn's usage and folds it into the total when the next turn starts", () => {
+      const store = createStreamingStore();
+      reportUsage(store, createUsage(300, 15));
+      abortTurn(store);
+      startRequestlessAgentTurn(store, conversationId);
+      reportUsage(store, createUsage(50, 2));
+      abortTurn(store);
+      startRequestlessAgentTurn(store, conversationId);
+
+      expect(convoForAgent(store, "omnibot")).toMatchObject({
+        completedTokenUsage: {
+          inputTokens: 350,
+          outputTokens: 17,
+          cacheCreationTokens: 20,
+          cacheReadTokens: 40,
+        },
+        turnTokenUsage: undefined,
+      });
+    });
+
+    it("starts a new conversation with no usage", () => {
+      const store = createStreamingStore();
+      reportUsage(store, createUsage(300, 15));
+      store.dispatch(
+        metabotActions.startNewConversation({ agentId: "omnibot" }),
+      );
+
+      const convo = convoForAgent(store, "omnibot");
+      expect(convo.completedTokenUsage).toBeUndefined();
+      expect(convo.turnTokenUsage).toBeUndefined();
     });
   });
 });
