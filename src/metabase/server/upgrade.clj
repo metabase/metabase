@@ -43,7 +43,7 @@ If the automated upgrade goes wrong, you can roll back to the previous version
 by moving %s to %s and restarting." new-jar-path jar-path))
 
 (defn- exit-soon []
-  (future
+  (future ; save-lisp-and-die
     (log/info "Exiting in order to restart to new version.")
     (Thread/sleep 100)
     (System/exit 0)))
@@ -61,7 +61,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
         ;; the demo. If we point it at a local URL, it will be too fast for
         ;; anyone to see the progress bar. Let's shoot for making it take 10s.
         (when slowly?
-          (Thread/sleep 8))
+          (Thread/sleep 5))
         (when (pos? size)
           (do (.write output buffer 0 size)
               (recur)))))))
@@ -112,7 +112,10 @@ by moving %s to %s and restarting." new-jar-path jar-path))
   (log/info "Rolling back...")
   (let [jar-path (current-jar-path)
         rollback-jar-path (jar-path-for jar-path "rollback")
-        prev-jar-path (jar-path-for jar-path "old")]
+        prev-jar-path (jar-path-for jar-path "prev")]
+    (when-not (.exists (io/file prev-jar-path))
+      (throw (ex-info "Can't roll back; previous jar not found"
+                      {:status-code 404})))
     (.renameTo (io/file jar-path) (io/file rollback-jar-path))
     (.renameTo (io/file prev-jar-path) (io/file jar-path))
     (log/info "Moving jars" {:jar-path jar-path
@@ -121,6 +124,15 @@ by moving %s to %s and restarting." new-jar-path jar-path))
     (exit-soon)
     (respond {:status-code 200 :headers headers
               :body {:status "Rolled back; restarting"}})))
+
+(defn rollback-available?
+  "Should the frontend show the rollback button?"
+  [_request respond _raise]
+  (let [jar-path (current-jar-path)
+        prev-jar-path (jar-path-for jar-path "prev")]
+    (respond (if (.exists (io/file prev-jar-path))
+               {:status 200 :body {:status "OK"} :headers headers}
+               {:status 404 :body {:status "no rollback"} :headers headers}))))
 
 ;;; manual test steps:
 
@@ -139,7 +151,9 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 
 ;; * ls -l target/uberjar
 ;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
+;; * curl -I http://localhost:8088/api/upgrade/rollback
 ;; * curl -XPOST http://localhost:8088/api/upgrade/rollback
+;; * [wait for it to restart...]
 ;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
 
 ;;; supervisor.sh:

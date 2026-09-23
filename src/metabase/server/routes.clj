@@ -3,7 +3,8 @@
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
    ;; non-/api routes in this ns have no OpenAPI surface; plain compojure is fine
-   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET POST OPTIONS]]
+   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]}
+    [context defroutes GET POST OPTIONS HEAD]]
    [compojure.route :as route]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -126,6 +127,8 @@
    (GET "/api/upgrade/health" [] upgrade/health)
    ;; ^/api/upgrade/rollback -> reverse the most recent automatic upgrade
    (POST "/api/upgrade/rollback" [] upgrade/rollback)
+   ;; ^/api/upgrade/rollback -> check to see if rollback is available
+   (HEAD "/api/upgrade/rollback" [] upgrade/rollback-available?)
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
