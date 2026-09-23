@@ -12,6 +12,10 @@ Python 3 and SQLite are the only requirements. Run from this directory:
 python3 server.py --db papercuts.sqlite3
 ```
 
+During development, add `--reload`. Edits to `server.py` restart the process on
+the same port, and open browser pages pick up the new version on their next
+refresh check.
+
 Open <http://127.0.0.1:8765/>. To accept reports from other machines on a trusted
 network, pass `--host 0.0.0.0` and set a token with `--token` or `PAPERCUTS_TOKEN`.
 Requests that change data must then send `Authorization: Bearer <token>`; reads stay

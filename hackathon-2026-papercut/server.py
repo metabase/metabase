@@ -10,6 +10,8 @@ import os
 import re
 import sqlite3
 import sys
+import threading
+import time
 import traceback
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -2024,18 +2026,48 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--token", default=os.environ.get("PAPERCUTS_TOKEN"),
                         help="Require this bearer token on requests that change data (default: $PAPERCUTS_TOKEN)")
+    parser.add_argument("--reload", action="store_true",
+                        help="Restart in place, on the same port, when server.py changes")
     args = parser.parse_args()
     Handler.store = Store(args.db)
     Handler.token = args.token or None
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Papercuts at http://{args.host}:{server.server_port}/ (database: {args.db}"
-          f"{', writes need a token' if Handler.token else ''})", flush=True)
+          f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",
+          flush=True)
+    changed = threading.Event()
+    if args.reload:
+        threading.Thread(target=watch_source, args=(server, changed), daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
+    if changed.is_set():
+        # The listening socket is closed and not inherited, so the new process binds the same port.
+        os.execv(sys.executable, [sys.executable, *sys.argv])
+
+
+def watch_source(server, changed):
+    """Stop `server` once this file changes and still compiles. A broken edit keeps the running code."""
+    source = Path(__file__)
+    seen = source.stat().st_mtime
+    while True:
+        time.sleep(1)
+        try:
+            modified = source.stat().st_mtime
+            if modified == seen:
+                continue
+            seen = modified
+            compile(source.read_text(), str(source), "exec")
+        except (OSError, SyntaxError) as error:
+            print(f"Not reloading: {error}", file=sys.stderr, flush=True)
+            continue
+        print("server.py changed; reloading", flush=True)
+        changed.set()
+        server.shutdown()
+        return
 
 
 if __name__ == "__main__":
