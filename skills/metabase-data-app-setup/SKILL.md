@@ -16,9 +16,13 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
 - "I want to build a data app" / any vague intent to author a data app
 - "turn this collection into a data app" / "build a data app from these saved
-  questions/this collection/this dashboard" / any request to convert existing
-  saved-question content into an app — see *Starting from an existing
-  collection* below before Step 1.
+  questions/this collection" / any request to convert existing saved-question
+  content into an app — see *Starting from an existing collection* below
+  before Step 1.
+- "turn this dashboard into a data app" / "build a data app from this
+  dashboard" — see *Starting from an existing dashboard* below before Step 1:
+  the collection pipeline plus dashboard-specific layout, filter, and tab
+  handling.
 - Starting a fresh agent task that will produce a data-app bundle.
 - Do **not** use this skill for an existing data-app project when the task is to
   build screens, use Metabase data, generate or refresh schema files, wire saved
@@ -102,6 +106,56 @@ scaffolding:
    skill's `DataAppRouter`/`DataAppLink`, making sure the first/leftmost page
    is what loads at the base route (see *If the app has multiple tabs...*
    below).
+
+## Starting from an existing dashboard
+
+Same pipeline as *Starting from an existing collection* above — materialize as
+transforms, publish to a Library sub-collection, scope the schema to it — plus
+three dashboard-only deltas: preserve the grid layout, carry dashboard filters
+over as dynamic filters, and turn tabs into router pages.
+
+1. **Read the source dashboard**, same as collection step 1, plus its
+   `dashcards` (`card_id`, `col`, `row`, `size_x`, `size_y`,
+   `dashboard_tab_id`), `tabs`, and `parameters` (each dashcard's
+   `parameter_mappings`) — from the repo's `collections/` YAML or
+   `mb dashboard get <id> --json`. Note each card's grid position and tab, and
+   which parameters map to which cards.
+
+2. **Materialize and publish per collection steps 2–3.** Extend the
+   "don't pre-filter" rule from user-requested filters to every
+   `parameter_mappings` column: it must survive unfiltered/ungrouped into the
+   transform's output, same as a user-requested dynamic filter.
+
+3. **Give the app one dynamic filter per dashboard parameter**, state lifted
+   above the router so every mapped page/card shares it (see the
+   semantic-layer skill's *Filter UI Patterns* for the control per `type`, and
+   *Static and dynamic query parts* for keeping the parameter's column a
+   static breakout with the filter applied dynamically). Scope each filter to
+   exactly the tabs its `parameter_mappings` named — a parameter mapped to one
+   tab's cards shows, and filters, only there.
+
+4. **One route per dashboard tab**, via the routing skill's
+   `DataAppRouter`/`DataAppLink`. Style the links as a tab strip — active tab
+   marked — not a sidebar or dropdown, and load the leftmost tab at the base
+   route (that skill's *Always preselect the default tab*).
+
+5. **Keep each tab's grid grouping**: KPI rows stay a row, half-width charts
+   stay side by side, full-width tables stay full-width. Recognizable parity,
+   not pixel parity with the 24-column grid.
+
+6. **Scaffold and build per collection step 4** — schema scoped to the new
+   sub-collection, then Steps 1–5 below.
+
+### Nested navigation when a collection includes a dashboard
+
+Mirror the source hierarchy instead of flattening every dashboard's tabs into
+one page list: top-level navigation (sidebar, or another page picker) for the
+collection's areas/dashboards, and inside each dashboard a local tab strip
+(step 4 above) scoped under that dashboard's own path prefix
+(`/franchise-performance`, `/franchise-performance/orders`, …, alongside a
+sibling dashboard's own `/other-dashboard/*` tree). Top-level nav answers
+"which area"; the local tab strip answers "which view of this dashboard" —
+the split the source collection and dashboard already draw.
 
 ## Step 1 — Locate the remote-sync repository
 
