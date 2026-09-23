@@ -30,6 +30,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -312,8 +313,9 @@
              (is (= :incremental (run-differential! g0 g1))))))))))
 
 (deftest collection-delete-with-contents-equivalence-test
-  (testing "HACKRDE-21: deleting a sub-collection and its contents stays incremental (contents are deleted before
-            the collection) and reconciles to the same state as the full oracle"
+  (testing "HACKRDE-21: deleting a sub-collection and its contents falls back to the full import (the delete cascades
+            to contents the ledger doesn't track, which only the full reindex removes from search) and reconciles to
+            the same state as the full oracle"
     (do-with-bench!
      (fn [f0]
        (let [bench (bench-collection)]
@@ -322,14 +324,37 @@
                         :model/Card _ {:name "Sub One" :collection_id sub-id}
                         :model/Card _ {:name "Sub Two" :collection_id sub-id}]
            (let [g0 (synced-tree)]
-             (is (= :incremental (run-differential! g0 f0))))))))))
+             (is (= :fallback (run-differential! g0 f0))))))))))
 
 (deftest root-collection-delete-with-contents-equivalence-test
-  (testing "HACKRDE-21: deleting the whole synced tree (root collection and contents) stays incremental and
-            reconciles to the same state as the full oracle"
+  (testing "HACKRDE-21: deleting the whole synced tree (root collection and contents) falls back to the full import
+            and reconciles to the same state as the full oracle"
     (do-with-bench!
      (fn [f0]
-       (is (= :incremental (run-differential! f0 {})))))))
+       (is (= :fallback (run-differential! f0 {})))))))
+
+(deftest collection-delete-removes-untracked-contents-from-search-test
+  (testing "HACKRDE-21: a pull that deletes a collection also deletes contents the ledger doesn't track (here a
+            model's action, which has no RemoteSyncObject row); like the full import, it must leave search"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Collection {sub-id :id} {:name "Sub" :is_remote_synced true
+                                                          :location (str "/" (:id bench) "/")}
+                          :model/Card {model-id :id} {:name "Sub Model" :type :model :collection_id sub-id}
+                          :model/Action {action-id :id} {:name "Zebra action" :type :http :model_id model-id}]
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0       (synced-tree)
+                     src      (rs.test/versioned-source :trees {"v0" g0 "v1" f0} :current "v0")
+                     indexed? #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))]
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 (is (t2/exists? :model/Action action-id) "the action survives the baseline import")
+                 (is (indexed?) "precondition: the action is in the search index")
+                 (let [[result _path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)) "the pull deleting Sub succeeds")
+                   (is (not (t2/exists? :model/Action action-id)) "deleting Sub cascaded to its model's action")
+                   (is (not (indexed?)) "the cascaded action is gone from the search index")))))))))))
 
 (deftest namespaced-collection-change-falls-back-test
   (testing "HACKRDE-21: adding a transforms-namespace collection still takes the full import (the collection's
