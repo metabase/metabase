@@ -35,7 +35,7 @@
 (defn run
   "Entry point for the mage task."
   [{:keys [options arguments]}]
-  (let [{:keys [pr port print stats no-open base]} options]
+  (let [{:keys [pr branch port print stats no-open base]} options]
     (cond
       print (clojure.core/print (or (readable/translate-string (slurp print)) "(could not parse)\n"))
       stats (server/with-big-stack
@@ -44,6 +44,8 @@
                             :no-open?   no-open
                             :start-path (cond
                                           pr               (str "/pr/" (or (git/parse-pr pr) pr))
+                                          branch           (str "/branch?name=" (URLEncoder/encode ^String branch "UTF-8")
+                                                                (when base (str "&base=" (URLEncoder/encode ^String base "UTF-8"))))
                                           (seq arguments)  (str "/file?path=" (URLEncoder/encode ^String (first arguments) "UTF-8"))
                                           base             (str "/local?base=" (URLEncoder/encode ^String base "UTF-8"))
                                           :else            "/local")}))))

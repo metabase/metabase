@@ -1,6 +1,8 @@
 (ns mage.readable-test
   "Golden tests for `mage readable`: Clojure in, readable TypeScript-ish text out."
   (:require
+   [babashka.fs :as fs]
+   [babashka.process :as process]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [mage.readable.core :as readable]
@@ -284,3 +286,40 @@
     (is (str/includes? html "a.clj"))
     (is (str/includes? html "b.clj"))
     (is (str/includes? html "<span class=\"hl-kw\">return</span> <span class=\"hl-number\">2</span>;"))))
+
+(defn- git! [dir & args]
+  (apply process/shell {:dir (str dir) :out :string :err :string}
+         "git" "-c" "user.email=test@example.com" "-c" "user.name=Test" "-c" "commit.gpgsign=false" args))
+
+(defn- commit! [dir file text]
+  (spit (str (fs/path dir file)) text)
+  (git! dir "add" file)
+  (git! dir "commit" "-q" "-m" (str "change " file)))
+
+(deftest branch-parent-test
+  (fs/with-temp-dir [dir {:prefix "readable-git"}]
+    ;; master: a1 -> a2 -> a3 ; `old` from a1 ; `feature` from a2 ; `sub` from feature
+    (git! dir "init" "-q" "-b" "master")
+    (commit! dir "a.clj" "(ns a)\n")
+    (git! dir "branch" "old")
+    (commit! dir "a.clj" "(ns a)\n(def x 1)\n")
+    (git! dir "checkout" "-q" "-b" "feature")
+    (commit! dir "f.clj" "(ns f)\n")
+    (git! dir "checkout" "-q" "-b" "sub")
+    (commit! dir "s.clj" "(ns s)\n")
+    (git! dir "checkout" "-q" "master")
+    (commit! dir "a.clj" "(ns a)\n(def x 2)\n")
+    (binding [git/*repo-dir* (str dir)]
+      (testing "branches resolve by name; unknown names don't"
+        (is (= "feature" (git/resolve-branch "feature")))
+        (is (nil? (git/resolve-branch "no-such-branch"))))
+      (testing "the parent is the branch it forked from most recently"
+        (is (= "master" (:ref (git/branch-parent "feature"))))
+        (is (= "feature" (:ref (git/branch-parent "sub")))))
+      (testing "branch changes cover only the branch's own commits"
+        (is (= ["s.clj"] (map :path (:files (git/branch-changes "sub" nil)))))
+        (is (= #{"f.clj" "s.clj"} (set (map :path (:files (git/branch-changes "sub" "master"))))))
+        (is (str/includes? (:title (git/branch-changes "sub" nil)) "sub vs. feature (its parent)")))
+      (testing "unknown branches get a clear error"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No PR or branch named \"nope\""
+                              (git/branch-changes "nope" nil)))))))

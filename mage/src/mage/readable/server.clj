@@ -252,9 +252,9 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
      [:body
       [:header
        [:a.brand {:href "/"} "Readable Clojure"]
-       [:form {:action "/pr" :method "get"}
-        [:input {:name "pr" :placeholder "PR URL or number"}]
-        [:button {:type "submit"} "Open PR"]]
+       [:form {:action "/open" :method "get"}
+        [:input {:name "q" :placeholder "PR number, PR URL, or branch"}]
+        [:button {:type "submit"} "Open"]]
        [:a.btn {:href "/local"} "Local changes"]
        [:a.btn {:href "/files"} "Browse files"]
        [:button {:onclick "document.getElementById('legend').showModal()"} "Legend"]
@@ -318,9 +318,14 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
         view   (if (= "clj" (get params "view")) "clj" "readable")]
     (cond
       (= uri "/")                   (redirect start-path)
-      (= uri "/pr")                 (if-let [n (git/parse-pr (get params "pr"))]
-                                      (redirect (str "/pr/" n))
-                                      (html-response (error-page (ex-info "That doesn't look like a PR URL or number." {}))))
+      (= uri "/open")               (let [q (str/trim (get params "q" ""))]
+                                      (cond
+                                        (git/parse-pr q)       (redirect (str "/pr/" (git/parse-pr q)))
+                                        (git/resolve-branch q) (redirect (str "/branch?name=" (URLEncoder/encode q "UTF-8")))
+                                        :else                  (html-response (error-page (ex-info (str "\"" q "\" isn't a PR number, a PR URL, or a branch in this repository.") {})))))
+      (= uri "/pr")                 (redirect (str "/open?q=" (URLEncoder/encode ^String (get params "pr" "") "UTF-8")))
+      (= uri "/branch")             (let [nm (get params "name") base (get params "base")]
+                                      (html-response (changes-page (cached-changes [:branch nm base] #(git/branch-changes nm base) (get params "refresh")) view)))
       (str/starts-with? uri "/pr/") (let [n (parse-long (subs uri 4))]
                                       (html-response (changes-page (cached-changes [:pr n] #(git/pr-changes n) (get params "refresh")) view)))
       (= uri "/local")              (let [base (get params "base")]

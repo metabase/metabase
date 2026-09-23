@@ -7,10 +7,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *repo-dir*
+  "The repository to run git in (nil = the current directory). Rebound by tests."
+  nil)
+
 (defn- sh
   "Run a command, returning trimmed stdout. Throws with stderr on failure."
   [& args]
-  (let [{:keys [exit out err]} (apply process/shell {:out :string :err :string :continue true} args)]
+  (let [{:keys [exit out err]} (apply process/shell {:out :string :err :string :continue true :dir *repo-dir*} args)]
     (when-not (zero? exit)
       (throw (ex-info (str (str/join " " args) " failed: " (str/trim (str err))) {:exit exit})))
     (str/trim out)))
@@ -23,7 +27,8 @@
 (defn show
   "The contents of `path` at git revision `rev`, or nil if it didn't exist there."
   [rev path]
-  (let [{:keys [exit out]} (process/shell {:out :string :err :string :continue true} "git" "show" (str rev ":" path))]
+  (let [{:keys [exit out]} (process/shell {:out :string :err :string :continue true :dir *repo-dir*}
+                                          "git" "show" (str rev ":" path))]
     (when (zero? exit) out)))
 
 (def ^:private status-names {"A" :added "M" :modified "D" :deleted "R" :renamed "C" :copied "T" :modified})
@@ -124,6 +129,55 @@
       {:title (str "#" n " " title)
        :url   url
        :files (file-versions mb head (name-status (sh "git" "diff" "--name-status" "-M" mb head)))})))
+
+;;; ------------------------------------------------ Branches -------------------------------------------------
+
+(defn resolve-branch
+  "The ref to use for branch name `s`: `s` itself if it names a commit, else `origin/s`; nil if neither exists."
+  [s]
+  (when-not (str/blank? s)
+    (let [s (str/trim s)]
+      (first (filter commit-exists? [s (str "origin/" s)])))))
+
+(defn- parent-candidates
+  "Branches that `branch` might have been created from: the default base, release branches and local branches."
+  [branch]
+  (let [refs (fn [& patterns]
+               (remove str/blank? (str/split-lines (apply sh "git" "for-each-ref" "--format=%(refname:short)" patterns))))
+        default (default-base)]
+    (->> (concat [default]
+                 (refs "refs/remotes/origin/release-x.*")
+                 (refs "refs/heads"))
+         (remove (set [branch (str/replace branch #"^origin/" "")]))
+         distinct)))
+
+(defn branch-parent
+  "Guess the branch `branch` was created from: the candidate it forked from most recently, i.e. whose merge-base
+  with `branch` has the fewest commits between it and `branch`'s tip. Candidates that already contain the whole
+  branch (distance 0) are skipped, and ties go to the earlier candidate (the default base first).
+  Returns {:ref candidate :merge-base sha}."
+  [branch]
+  (let [scored (pmap (fn [cand]
+                       (when-let [mb (sh-ok "git" "merge-base" branch cand)]
+                         (when-not (str/blank? mb)
+                           {:ref cand :merge-base mb
+                            :distance (parse-long (sh "git" "rev-list" "--count" (str mb ".." branch)))})))
+                     (parent-candidates branch))]
+    (->> scored
+         (filter #(and % (pos? (:distance %))))
+         (reduce (fn [best c] (if (or (nil? best) (< (:distance c) (:distance best))) c best)) nil))))
+
+(defn branch-changes
+  "Files changed on `branch` since it split from `base` (or, if `base` is nil, from its guessed parent branch)."
+  [branch-name base]
+  (let [branch (or (resolve-branch branch-name)
+                   (throw (ex-info (str "No PR or branch named \"" branch-name "\" in this repository.") {})))
+        {:keys [ref merge-base]} (if base
+                                   {:ref base :merge-base (sh "git" "merge-base" branch base)}
+                                   (or (branch-parent branch)
+                                       (throw (ex-info (str "Couldn't find a parent branch for " branch) {}))))]
+    {:title (str branch " vs. " ref (when-not base " (its parent)") ", merge-base " (subs merge-base 0 10))
+     :files (file-versions merge-base branch (name-status (sh "git" "diff" "--name-status" "-M" merge-base branch)))}))
 
 ;;; ------------------------------------------------ Browsing ---------------------------------------------------
 
