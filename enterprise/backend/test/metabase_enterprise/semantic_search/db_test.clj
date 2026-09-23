@@ -1,9 +1,10 @@
 (ns metabase-enterprise.semantic-search.db-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (com.mchange.v2.c3p0 PoolBackedDataSource PooledDataSource)
    (java.sql SQLException SQLTimeoutException)
    (javax.sql DataSource)))
 
@@ -38,6 +39,17 @@
            clojure.lang.ExceptionInfo
            #"MB_PGVECTOR_DB_URL environment variable is required"
            (semantic.db.datasource/init-db!))))))
+
+(deftest pool-hides-credentials-test
+  (testing "the pool's string form, which c3p0 puts in its exception messages, leaves out the URL credentials"
+    ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
+    (with-redefs [semantic.db.datasource/db-url      "jdbc:postgresql://localhost:5432/mb?user=mb&password=hunter2"
+                  semantic.db.datasource/data-source (atom nil)]
+      (let [pool ^PooledDataSource (semantic.db.datasource/init-db!)]
+        (.close pool)
+        (let [e (is (thrown-with-msg? SQLException #"has been closed" (.getConnection pool)))]
+          (is (not (str/includes? (ex-message e) "hunter2")))
+          (is (not (str/includes? (str pool) "hunter2"))))))))
 
 (deftest test-connection-before-init-test
   (testing "test-connection! throws exception when pool not initialized"

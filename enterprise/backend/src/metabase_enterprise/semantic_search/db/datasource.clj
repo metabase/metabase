@@ -15,6 +15,7 @@
    (java.nio.charset StandardCharsets)
    (java.sql Connection SQLException)
    (java.util.concurrent Executor)
+   (javax.sql DataSource)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -165,6 +166,19 @@
   (delay (.addShutdownHook (Runtime/getRuntime)
                            (Thread. ^Runnable shutdown-db! "semantic-search-pool-shutdown"))))
 
+(defn- redacted-data-source
+  "Wrap `ds` so it prints without its JDBC URL, which carries the database credentials.
+  c3p0 prints the data source it pools in its own string form, and that reaches the logs through exception
+  messages such as \"... has been closed() -- you can no longer use it\"."
+  ^DataSource [^DataSource ds]
+  (reify DataSource
+    (getConnection [_] (.getConnection ds))
+    (getConnection [_ user password] (.getConnection ds user password))
+    (getLoginTimeout [_] (.getLoginTimeout ds))
+    (setLoginTimeout [_ seconds] (.setLoginTimeout ds seconds))
+    Object
+    (toString [_] "pgvector JDBC data source (URL redacted)")))
+
 (defn init-db!
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
@@ -172,9 +186,9 @@
   (locking data-source
     (or @data-source
         (let [{:keys [jdbc-url pool-props]} (parsed-db-config)
-              unpooled-ds (jdbc/get-datasource {:jdbcUrl jdbc-url})
+              unpooled-ds (redacted-data-source (jdbc/get-datasource {:jdbcUrl jdbc-url}))
               pooled-ds   (DataSources/pooledDataSource
-                           ^javax.sql.DataSource unpooled-ds
+                           unpooled-ds
                            (connection-pool/map->properties pool-props))]
           (log/info "Initializing semantic search connection pool with properties:" pool-props)
           (force shutdown-hook)
