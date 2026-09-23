@@ -443,6 +443,16 @@
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
+(defn- check-source-cards-in-this-worktree
+  "Refuse a query built on a Card of another worktree -- or of the main app, from a worktree. That Card is invisible
+  here, so the reference would dangle; a Card that exists nowhere is left to the checks that already catch it."
+  [{query :dataset_query}]
+  (when-let [card-ids (some-> query not-empty lib/all-source-card-ids)]
+    (when-let [elsewhere (not-empty (set/difference (queries.db/existing-card-ids-in-every-worktree card-ids)
+                                                    (queries.db/existing-card-ids card-ids)))]
+      (throw (ex-info (tru "A card can only be built on cards of its own worktree.")
+                      {:status-code 400, :card-ids elsewhere})))))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 ;;
 ;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
@@ -456,6 +466,7 @@
                   (merge defaults card))]
     (u/prog1 card
       (check-field-filter-fields-are-from-correct-database card)
+      (check-source-cards-in-this-worktree card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
       (assert-not-native-audit-db-query card)
@@ -555,7 +566,8 @@
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 card
     (when (:dataset_query changes)
-      (assert-not-native-audit-db-query changes))
+      (assert-not-native-audit-db-query changes)
+      (check-source-cards-in-this-worktree changes))
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)

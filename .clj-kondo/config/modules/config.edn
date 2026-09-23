@@ -844,6 +844,7 @@
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
    :uses #{api
+           app-db
            database-routing
            driver
            events
