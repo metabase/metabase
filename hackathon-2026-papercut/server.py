@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 import traceback
+from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -46,7 +47,11 @@ DISPATCH_TRANSITIONS = {
 # The papercut status a final dispatch state leaves behind, applied only while the papercut is still `investigating`.
 STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "needs_human": "open", "not_reproducible": "open", "failed": "open"}
 DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log")
+# The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
+IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
+               OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
 SORTS = {
+    "important": f"{IMPORTANT} DESC, p.last_seen DESC, p.id DESC",
     "recent": "p.last_seen DESC, p.id DESC",
     "oldest": "p.first_seen ASC, p.id ASC",
     "reports": "report_count DESC, p.last_seen DESC, p.id DESC",
@@ -790,11 +795,15 @@ class Store:
             if filters.get(key):
                 clauses.append(f"p.{key} = ?")
                 params.append(filters[key])
-        if filters.get("category") == "unclassified":
-            clauses.append("p.category IS NULL")
-        elif filters.get("category"):
-            clauses.append("p.category = ?")
-            params.append(filters["category"])
+        # A comma-separated list; `unclassified` matches papercuts without a category.
+        if filters.get("category"):
+            categories = filters["category"].split(",")
+            named = [category for category in categories if category != "unclassified"]
+            either = [f"p.category IN ({', '.join('?' * len(named))})"] if named else []
+            if "unclassified" in categories:
+                either.append("p.category IS NULL")
+            clauses.append(f"({' OR '.join(either)})")
+            params.extend(named)
         if filters.get("q"):
             clauses.append("(p.title LIKE ? OR p.description LIKE ? OR p.path LIKE ? OR p.area LIKE ?)")
             params.extend([f"%{filters['q']}%"] * 4)
@@ -822,9 +831,12 @@ class Store:
         with self.connect() as db:
             total = db.execute(f"SELECT COUNT(*) FROM papercuts p WHERE {where}", params).fetchone()[0]
             rows = db.execute(
-                f"""SELECT p.*, {COUNTS},
+                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important,
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
-                            WHERE f.papercut_id = p.id) AS fingerprints
+                            WHERE f.papercut_id = p.id) AS fingerprints,
+                           COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
+                                    (SELECT 'pr_opened' FROM events e WHERE e.papercut_id = p.id AND e.kind = 'comment'
+                                     AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state
                     FROM papercuts p LEFT JOIN ({STATS}) s ON s.papercut_id = p.id
                     WHERE {where} ORDER BY {SORTS[sort]} LIMIT ? OFFSET ?""",
                 [*params, limit, offset],
@@ -863,8 +875,8 @@ class Store:
     def get_papercut(self, papercut_id, reports_limit=50):
         with self.connect() as db:
             row = db.execute(
-                f"""SELECT p.*, {COUNTS} FROM papercuts p LEFT JOIN ({STATS}) s ON s.papercut_id = p.id
-                    WHERE p.id = ?""",
+                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important
+                    FROM papercuts p LEFT JOIN ({STATS}) s ON s.papercut_id = p.id WHERE p.id = ?""",
                 (papercut_id,),
             ).fetchone()
             if row is None:
@@ -1372,24 +1384,41 @@ try {
 } catch (_) {}
 </script>"""
 
+ICONS = {
+    "system": "<rect x='2' y='3' width='20' height='14' rx='2'/><path d='M8 21h8M12 17v4'/>",
+    "light": "<circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"
+             "M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41'/>",
+    "dark": "<path d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'/>",
+    "flame": "<path d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5"
+             "a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z'/>",
+    "chevron": "<path d='m6 9 6 6 6-6'/>",
+}
+
+
+def icon(name):
+    return f"<svg class='icon' viewBox='0 0 24 24' aria-hidden='true'>{ICONS[name]}</svg>"
+
+
+THEME_SWITCH = ("<div class='theme-switch' role='group' aria-label='Color theme'>" + "".join(
+    f"<button type='button' data-theme-choice='{theme}' title='{label}' aria-label='{label}'>{icon(theme)}</button>"
+    for theme, label in (("system", "Theme follows your OS"), ("light", "Light theme"), ("dark", "Dark theme"))) + "</div>")
+
 THEME_CONTROL = """<script>
-const themeToggle = document.getElementById('theme-toggle');
-const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
-function darkThemeActive() {
-  const chosen = document.documentElement.dataset.theme;
-  return chosen === 'dark' || (!chosen && systemTheme.matches);
+const themeButtons = document.querySelectorAll('[data-theme-choice]');
+function showTheme() {
+  const chosen = document.documentElement.dataset.theme || 'system';
+  for (const button of themeButtons) button.setAttribute('aria-pressed', button.dataset.themeChoice === chosen);
 }
-function updateThemeToggle() {
-  themeToggle.textContent = darkThemeActive() ? 'Light mode' : 'Dark mode';
+for (const button of themeButtons) {
+  button.addEventListener('click', () => {
+    const choice = button.dataset.themeChoice;
+    if (choice === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = choice;
+    try { localStorage.setItem('papercuts-theme', choice); } catch (_) {}
+    showTheme();
+  });
 }
-themeToggle.addEventListener('click', () => {
-  const theme = darkThemeActive() ? 'light' : 'dark';
-  document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem('papercuts-theme', theme); } catch (_) {}
-  updateThemeToggle();
-});
-systemTheme.addEventListener('change', updateThemeToggle);
-updateThemeToggle();
+showTheme();
 </script>"""
 
 LIVE_REFRESH = """<script>
@@ -1462,16 +1491,175 @@ setInterval(refreshPage, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPage(); });
 </script>"""
 
+DARK_STATES = ("--important: #fb923c; --danger-bg: #5a2727; --danger-text: #ffc9c9; --warning-bg: #5b431b; --warning-text: #ffe0a1; "
+               "--success-bg: #214a35; --success-text: #baf0ca; --info-bg: #2b416a; --info-text: #c9dcff")
+
+UI_STYLE = """<style>
+:root {--important: #c2410c; --danger-bg: #fde7e7; --danger-text: #9f1d1d; --warning-bg: #fff0d7; --warning-text: #805100;
+       --success-bg: #e7f4ec; --success-text: #175d32; --info-bg: #e7edfa; --info-text: #294d91}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {""" + DARK_STATES + """}
+  :root:not([data-theme="light"]) .status-open {background: #214a35; color: #baf0ca}
+  :root:not([data-theme="light"]) .status-investigating {background: #5b431b; color: #ffe0a1}
+  :root:not([data-theme="light"]) .status-resolved {background: #2b416a; color: #c9dcff}
+  :root:not([data-theme="light"]) .status-wontfix {background: #493750; color: #e8c6f2}
+}
+:root[data-theme="dark"] {""" + DARK_STATES + """}
+.icon {width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round}
+.theme-switch {display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface)}
+.header-actions .theme-switch button {display: grid; place-items: center; width: 32px; min-height: 30px; padding: 0; border: 0; border-radius: 7px;
+                                      background: none; color: var(--muted)}
+.header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
+.header-actions .theme-switch button[aria-pressed=true] {color: var(--text); background: var(--pill)}
+@media (min-width: 931px) {
+  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(145px, 1.2fr) minmax(75px, .65fr) auto}
+  .toolbar.single-repository {grid-template-columns: minmax(230px, 2.2fr) minmax(120px, 1fr) minmax(155px, 1.25fr) minmax(75px, .65fr) auto}
+}
+.dropdown {position: relative}
+.dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
+.dropdown-button .icon {color: var(--muted)}
+.dropdown-menu {display: none; position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; min-width: 100%; padding: 6px;
+                background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(16, 24, 32, .18)}
+.dropdown.open .dropdown-menu {display: block}
+.dropdown-menu button {display: flex; justify-content: space-between; gap: 1.5rem; width: 100%; min-height: 0; padding: .45rem .6rem; border: 0;
+                       border-radius: 8px; background: none; text-align: left; white-space: nowrap}
+.dropdown-menu button:hover {background: var(--hover)}
+.dropdown-menu button[aria-selected=true] {font-weight: 700}
+.dropdown-menu button[aria-selected=true]::after {content: "✓"; color: var(--accent)}
+.chips {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1.3rem}
+.chips .eyebrow {margin-right: .3rem}
+.chip {display: inline-flex; align-items: center; gap: .45rem; min-height: 34px; padding: 0 .85rem; border: 1px dashed var(--control-border);
+       border-radius: 999px; background: none; color: var(--muted); font-size: .86rem}
+.chip::before {content: ""; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--dot, var(--muted))}
+.chip .count {font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums}
+.chip[aria-pressed=true] {border-style: solid; border-color: var(--border); background: var(--surface); color: var(--text); font-weight: 650;
+                          box-shadow: var(--shadow)}
+.chip[aria-pressed=true]::before {background: var(--dot, var(--muted))}
+.chip.none {opacity: .55}
+.chip[data-value=agent-trap] {--dot: #8b5cf6}
+.chip[data-value=code-smell] {--dot: #d99a2b}
+.chip[data-value=flaky-test] {--dot: #e25c5c}
+.chip[data-value=tooling] {--dot: #14a3a3}
+.chip[data-value=documentation] {--dot: #4f86e0}
+.chips .link {min-height: 0; padding: 0 .2rem; border: 0; background: none; color: var(--link)}
+.issue-card.important {border-left: 4px solid var(--important)}
+.pill.important {display: inline-flex; align-items: center; gap: .3rem; color: var(--important); background: none; box-shadow: inset 0 0 0 1px currentColor}
+.pill.important .icon {width: 12px; height: 12px; fill: currentColor; stroke-width: 1.5}
+.severity-high, .fix-failed {background: var(--danger-bg); color: var(--danger-text)}
+.report-card summary {display: inline-flex; align-items: center; gap: .45rem; list-style: none}
+.report-card summary::-webkit-details-marker {display: none}
+.report-card summary::before {content: ""; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 2px 2px 0;
+                              transform: rotate(-45deg); transition: transform .15s}
+.report-card details[open] > summary::before {transform: rotate(45deg)}
+.severity-medium, .fix-needs_human {background: var(--warning-bg); color: var(--warning-text)}
+.fix-pr_opened, .fix-already_fixed {background: var(--success-bg); color: var(--success-text)}
+.fix-claimed, .fix-linear_created, .fix-running {background: var(--info-bg); color: var(--info-text)}
+</style>"""
+
+UI_SCRIPT = """<script>
+(() => {
+  const form = document.getElementById('filters');
+  if (!form) return;
+  const dropdowns = [];
+  const close = (except) => dropdowns.forEach((dropdown) => dropdown !== except && dropdown.classList.remove('open'));
+  for (const select of form.querySelectorAll('.filter-field select')) {
+    const dropdown = document.createElement('div');
+    dropdown.className = 'dropdown';
+    dropdown.innerHTML = `<button type='button' class='dropdown-button' id='${select.id}-menu'><span></span>CHEVRON</button>` +
+      "<div class='dropdown-menu' role='listbox'></div>";
+    const [button, menu] = dropdown.children;
+    const labels = [...new Set([...select.options].reverse().map((option) => option.textContent))].reverse();
+    for (const label of labels) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'option');
+      item.textContent = label;
+      item.addEventListener('click', () => {
+        select.value = [...select.options].find((option) => option.textContent === label).value;
+        select.dispatchEvent(new Event('change', {bubbles: true}));
+        dropdown.classList.remove('open');
+        show();
+      });
+      menu.append(item);
+    }
+    function show() {
+      const chosen = select.selectedOptions[0]?.textContent ?? '';
+      button.firstChild.textContent = chosen;
+      for (const item of menu.children) item.setAttribute('aria-selected', item.textContent === chosen);
+    }
+    button.addEventListener('click', () => {
+      close(dropdown);
+      dropdown.classList.toggle('open');
+    });
+    select.closest('.filter-field').querySelector('label').htmlFor = button.id;
+    select.hidden = true;
+    select.after(dropdown);
+    dropdowns.push(dropdown);
+    show();
+  }
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.dropdown')) close();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') close();
+  });
+
+  const category = form.elements.category;
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('.chip, [data-chips]');
+    if (!target || !category) return;
+    const chips = [...document.querySelectorAll('.chip')];
+    const chosen = new Set(chips.filter((chip) => chip.getAttribute('aria-pressed') === 'true').map((chip) => chip.dataset.value));
+    if (target.dataset.chips === 'all') chips.forEach((chip) => chosen.add(chip.dataset.value));
+    else if (target.dataset.chips === 'none') chosen.clear();
+    else if (chosen.has(target.dataset.value)) chosen.delete(target.dataset.value);
+    else chosen.add(target.dataset.value);
+    for (const chip of chips) chip.setAttribute('aria-pressed', chosen.has(chip.dataset.value));
+    category.value = chosen.size === chips.length ? '' : [...chosen].join(',') || 'none';
+    category.dispatchEvent(new Event('change', {bubbles: true}));
+  });
+})();
+</script>""".replace("CHEVRON", icon("chevron"))
+
+FIX_LABELS = {"claimed": "claimed", "linear_created": "ticket filed", "running": "fixing", "pr_opened": "PR opened",
+              "already_fixed": "already fixed", "needs_human": "needs a human", "not_reproducible": "not reproducible",
+              "failed": "fix failed"}
+
+
+def fix_pill(state):
+    return f"<span class='pill fix-{state}'>{html.escape(FIX_LABELS.get(state, state))}</span>" if state else ""
+
+
+def severity_pill(severity):
+    return f"<span class='pill severity-{severity}'>severity: {html.escape(severity)}</span>" if severity else ""
+
+
+def important_pill(papercut):
+    return (f"<span class='pill important' title='2+ reporters, 3+ reports, an hour lost or high severity'>{icon('flame')}"
+            "important</span>") if papercut["important"] else ""
+
+
+def category_chips(chosen, counts):
+    categories = (*CATEGORIES, "unclassified")
+    picked = set(chosen.split(",")) if chosen else set(categories)
+    chips = "".join(
+        f"<button type='button' class='chip{'' if counts.get(category) else ' none'}' data-value='{category}' "
+        f"aria-pressed='{str(category in picked).lower()}'>{category}<span class='count'>{counts.get(category, 0)}</span></button>"
+        for category in categories)
+    return (f"<div class='chips' role='group' aria-label='Category'><span class='eyebrow'>Category</span>{chips}"
+            "<button type='button' class='link' data-chips='all'>All</button><span class='muted'>·</span>"
+            "<button type='button' class='link' data-chips='none'>None</button></div>")
+
+
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
             "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-            f"{THEME_INIT}{STYLE}</head><body data-build='{SOURCE_VERSION}'>"
+            f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             "<a class='brand' href='/'>✳ Papercuts</a><div class='header-actions'>"
             "<span id='live-status' class='muted' role='status' aria-live='polite'>Live · updates every 15s</span>"
             "<button id='refresh-now' type='button'>Refresh now</button>"
-            "<button id='theme-toggle' type='button' aria-label='Toggle color theme'>Dark mode</button>"
-            f"</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}</body></html>")
+            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}</body></html>")
 
 
 def cost(minutes):
@@ -1703,10 +1891,11 @@ def list_card_html(p):
         f"<div title='{esc(facts[label], quote=True)}'><dt>{esc(label)}</dt><dd>{esc(excerpt(facts[label], 55))}</dd></div>"
         for label in visible_facts if facts.get(label)
     )
-    return (f"<li><article class='card issue-card'>"
+    return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
-            f"<div class='badges'>{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}</div>"
+            f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
+            f"{severity_pill(p['severity'])}{fix_pill(p['fix_state'])}</div>"
             f"<p class='issue-summary'>{esc(excerpt(description))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
@@ -1718,7 +1907,7 @@ def list_card_html(p):
             f"</article></li>")
 
 
-def papercut_list_html(result, filters, repositories=()):
+def papercut_list_html(result, filters, repositories=(), category_counts=None):
     esc = html.escape
     search = filter_field("q", "Search terms", f"<input id='q' type='search' name='q' placeholder='Search terms…' value='{esc(filters.get('q', ''), quote=True)}'>")
     available_repositories = list(repositories)
@@ -1729,8 +1918,10 @@ def papercut_list_html(result, filters, repositories=()):
                                select("repository", available_repositories, filters.get("repository"), "All repositories"))
                   if show_repository else "")
     status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All statuses"))
-    category = filter_field("category", "Category", select("category", (*CATEGORIES, "unclassified"), filters.get("category"), "All categories"))
-    sort = filter_field("sort", "Sort by", select("sort", SORTS, filters.get("sort"), "Most recently seen"))
+    category = f"<input type='hidden' name='category' value='{esc(filters.get('category', ''), quote=True)}'>"
+    counts = category_counts or Counter(p["category"] or "unclassified" for p in result["papercuts"])
+    sort = filter_field("sort", "Sort by", select("sort", [key for key in SORTS if key != "important"], filters.get("sort"),
+                                                  "Important first"))
     limit = filter_field("limit", "Per page", select("limit", ("25", "50", "100"), filters.get("limit", "50"), "50"))
     cards = "".join(list_card_html(p) for p in result["papercuts"])
     if cards:
@@ -1749,7 +1940,7 @@ def papercut_list_html(result, filters, repositories=()):
             "<p>Small friction, collected across reports and agents.</p></div>"
             f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}{limit}"
             "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
-            f"<div id='results'><div class='results-heading'><h2>{result['total']} papercuts</h2>"
+            f"<div id='results'>{category_chips(filters.get('category', ''), counts)}<div class='results-heading'><h2>{result['total']} papercuts</h2>"
             f"<p class='muted'>Showing {start}–{end} of {result['total']}</p></div>{cards}"
             f"<nav class='pagination' aria-label='Pages'><span>Page {result['offset'] // result['limit'] + 1}</span>"
             f"<div class='pagination-links'>{''.join(pages)}</div></nav></div>")
@@ -1778,7 +1969,7 @@ def pr_control(papercut):
     urls = [url for e in papercut["events"] if e["kind"] == "comment" for url in PR_URL.findall(e["body"] or "")]
     if urls:
         return f"<p>PR: <a href='{html.escape(urls[-1])}'>{html.escape(urls[-1])}</a></p>"
-    return ("<p><button type='button' onclick=\"this.disabled = true; "
+    return ("<p><button type='button' class='primary' onclick=\"this.disabled = true; "
             f"fetch('/api/papercuts/{papercut['id']}/comments', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, "
             "body: JSON.stringify({author: 'andrei', body: '/pr'})}).then((r) => r.ok ? location.reload() "
             ": this.textContent = 'Failed: HTTP ' + r.status, (e) => this.textContent = 'Failed: ' + e.message)\">"
@@ -1844,9 +2035,10 @@ def papercut_html(papercut):
     )
     body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
             f"<h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
-            f"<div class='detail-meta'>{status_pill(papercut['status'])}{pill(papercut['category'] or 'unclassified')}"
-            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}"
-            f"{pill('severity: ' + papercut['severity']) if papercut['severity'] else ''}"
+            f"<div class='detail-meta'>{important_pill(papercut)}{status_pill(papercut['status'])}"
+            f"{pill(papercut['category'] or 'unclassified')}"
+            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}"
+            f"{fix_pill(papercut['dispatches'][0]['state'] if papercut['dispatches'] else None)}"
             f"<span class='muted'>{papercut['report_count']} reports · {papercut['reporter_count']} reporters · "
             f"Time lost: {cost_label(papercut)}</span></div>{pr_control(papercut)}</div>"
             "<div class='detail-layout'><div class='detail-content'>"
@@ -1975,8 +2167,11 @@ class Handler(BaseHTTPRequestHandler):
         if command == "GET" and path == "/":
             # The page lists live papercuts; a change feed is for API clients.
             params.pop("since", None)
-            return self.respond(200, papercut_list_html(self.store.list_papercuts(params), params,
-                                                        self.store.repositories()), "text/html")
+            others = {key: params[key] for key in ("q", "status", "repository") if params.get(key)}
+            counted = self.store.list_papercuts({**others, "limit": sys.maxsize}, max_limit=sys.maxsize)["papercuts"]
+            counts = Counter(p["category"] or "unclassified" for p in counted)
+            return self.respond(200, papercut_list_html(self.store.list_papercuts({"sort": "important", **params}), params,
+                                                        self.store.repositories(), counts), "text/html")
         if command == "GET" and html_match:
             if self.redirect_if_merged(int(html_match[1]), "/papercuts", url.query):
                 return None
