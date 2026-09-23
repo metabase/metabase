@@ -41,3 +41,30 @@
           per-card (double (/ (- large small) 10))]
       (is (<= per-card 1.0)
           (format "Card normalizations per card: %s (10 cards: %d, 20 cards: %d)" per-card small large)))))
+
+(defn- card-normalizations-on-incremental-delete
+  "Number of Card after-select normalizations during an incremental pull that deletes `k` of 20 MBQL cards."
+  [k]
+  (search.tu/with-index-disabled
+    (#'pull-cost-test/do-with-content!
+     {:cards 20}
+     (fn [tree]
+       (let [card-paths (take k (sort (filter #(re-find #"(?i)cost_card" %) (keys tree))))
+             _          (is (= k (count card-paths)) "found the card files to delete")
+             src        (rs.test/versioned-source :trees {"v0" tree "v1" (apply dissoc tree card-paths)} :current "v0")]
+         (is (= :success (:status (#'pull-cost-test/import-at! src "v0" :force? true))) "baseline load")
+         (let [calls (atom 0)
+               real  (mt/original-fn #'card/upgrade-card-schema-to-latest)]
+           (mt/with-dynamic-fn-redefs [card/upgrade-card-schema-to-latest (fn [c] (swap! calls inc) (real c))]
+             (is (= :success (:status (#'pull-cost-test/import-at! src "v1"))) "incremental pull"))
+           @calls))))))
+
+(deftest incremental-delete-does-not-read-deleted-cards-test
+  (testing "An incremental pull that deletes cards looks up their entity_ids without reading (and normalizing)
+            each deleted card's full row. One read per deleted card remains: `t2/delete!` selects the rows to run
+            the Card before-delete hook."
+    (let [small       (card-normalizations-on-incremental-delete 2)
+          large       (card-normalizations-on-incremental-delete 6)
+          per-deleted (double (/ (- large small) 4))]
+      (is (<= per-deleted 1.0)
+          (format "Card normalizations per deleted card: %s (2 deleted: %d, 6 deleted: %d)" per-deleted small large)))))
