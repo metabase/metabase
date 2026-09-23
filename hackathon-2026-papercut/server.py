@@ -20,6 +20,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 
+import sso
+
 SOURCE_VERSION = Path(__file__).stat().st_mtime_ns
 
 
@@ -1790,7 +1792,7 @@ def page(title, body):
             "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
             "<details class='token-control'><summary>API token</summary>"
             "<input id='api-token' type='password' autocomplete='off' placeholder='Bearer token for dispatching'></details>"
-            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
+            f"{sso.account_html()}{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 
 def duration(minutes):
@@ -2206,6 +2208,7 @@ class Handler(BaseHTTPRequestHandler):
     store = None
     # When set, requests that change data must send `Authorization: Bearer <token>`.
     token = None
+    sign_in = None
 
     def respond(self, status, value, content_type="application/json", headers=None):
         body = (json.dumps(value).encode() if content_type == "application/json" else value.encode())
@@ -2250,6 +2253,8 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def route(self):
+        if self.sign_in and self.sign_in.handle(self):
+            return None
         if not self.authorized():
             return self.respond(401, {"error": "Missing or wrong bearer token"})
         url = urlsplit(self.path)
@@ -2370,6 +2375,7 @@ def main():
     args = parser.parse_args()
     Handler.store = Store(args.db)
     Handler.token = args.token or None
+    Handler.sign_in = sso.from_env(os.environ)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Papercuts at http://{args.host}:{server.server_port}/ (database: {args.db}"
           f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",

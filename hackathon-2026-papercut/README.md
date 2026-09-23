@@ -192,6 +192,30 @@ curl -sS 'http://127.0.0.1:8765/api/dispatches?state=active'
 Errors are JSON: 400 for bad input, 401 for a missing token, 404, 409 for conflicts
 such as editing a merged papercut, 503 when the database is busy, and 500 otherwise.
 
+## Google sign-in
+
+With `GOOGLE_OAUTH_CLIENT_ID` set, people sign in with Google, and only verified accounts
+of one Google Workspace domain get in. Pages send anyone without a session to Google, and
+API calls get 401. A session lasts 12 hours, and `/auth/logout` ends it. Writes made with
+a session must come from the public URL's origin, or get 403. Without a client ID,
+nothing changes.
+
+- `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` come from a Google OAuth web
+  client. Register `<public URL>/auth/callback` as its redirect URI, which is
+  `https://metaouch.dev/auth/callback` for the hosted server.
+- `PAPERCUTS_PUBLIC_URL` is the address people open, such as `https://metaouch.dev`.
+- `PAPERCUTS_SESSION_SECRET` signs the session cookies. Use a long random string; changing
+  it signs everyone out.
+- `PAPERCUTS_ALLOWED_DOMAIN` is the Workspace domain, `metabase.com` by default.
+- `PAPERCUTS_SSO_PROXY_ONLY=1` asks for a session only on requests that came through a
+  reverse proxy, recognized by their `X-Forwarded-Proto` header, and trusts the rest. The
+  proxy must set that header on every request, as nginx does with
+  `proxy_set_header X-Forwarded-Proto $scheme;`, and the server's own port must only be
+  reachable from a private network.
+
+The hosted server runs this way: browsers sign in at https://metaouch.dev, while scripts
+and agents on the tailnet call port 8765 directly, without a token.
+
 ## Scripts
 
 Run tests with `python3 -m unittest discover -s . -p 'test_*.py'`.
