@@ -201,7 +201,7 @@
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})
                 completed-task (wait-for-task-completion task_id)]
             (is (=? {:status "success" :task_id int?} resp))
             (is (remote-sync.task/successful? completed-task))))))))
@@ -213,7 +213,7 @@
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-develop)]
-          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch" :expected_branch "main"})
+          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch"})
                 completed-task (wait-for-task-completion task_id)]
             (is (= "success" (:status response)))
             (is (remote-sync.task/successful? completed-task))))))))
@@ -234,36 +234,10 @@
                                            remote-sync-branch "main"]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import"
-                                             {:branch "develop" :expected_branch "main"})]
+                                             {:branch "develop"})]
               (is (true? (:conflicts resp)))
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
-
-(deftest import-rejects-expected-branch-mismatch-test
-  (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
-    (let [mock-main (test-helpers/create-mock-source)]
-      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                         remote-sync-token  "test-token"
-                                         remote-sync-branch "main"]
-        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-          (testing "stale expected_branch -> 409 branch_mismatch, no task created"
-            (let [before (t2/count :model/RemoteSyncTask)
-                  resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/import"
-                                               {:branch "main" :expected_branch "stale-branch"})]
-              (is (true? (:branch_mismatch resp)))
-              (is (= "main" (:current_branch resp)))
-              (is (= before (t2/count :model/RemoteSyncTask))
-                  "no RemoteSyncTask row is created when the guard fires")))
-          (testing "matching expected_branch -> pull proceeds"
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
-                                                                   {:branch "main" :expected_branch "main"})]
-              (is (=? {:status "success" :task_id int?} resp))
-              (wait-for-task-completion task_id)))
-          (testing "a branch switch (operational branch != expected_branch) is allowed when expected_branch matches the setting"
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
-                                                                   {:branch "feature-branch" :expected_branch "main"})]
-              (is (=? {:status "success" :task_id int?} resp))
-              (wait-for-task-completion task_id))))))))
 
 (deftest import-creates-audit-log-entry-test
   (testing "POST /api/ee/remote-sync/import records a remote-sync-import audit log entry (#73335)"
@@ -275,7 +249,7 @@
                                            remote-sync-branch "main"]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
             (let [before            (t2/count :model/AuditLog :topic "remote-sync-import")
-                  {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})]
+                  {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})]
               (wait-for-task-completion task_id)
               ;; the audit event publishes after the task's ended_at is set, so poll for the row
               (let [entry (dh/with-retry {:max-retries 10
@@ -294,17 +268,17 @@
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-branch "main"]
       (testing "a non-admin cannot pull"
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {:expected_branch "main"}))))
-      (testing "a non-admin cannot switch branches (branch != expected_branch)"
+               (mt/user-http-request :rasta :post 403 "ee/remote-sync/import" {}))))
+      (testing "a non-admin cannot switch branches"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/remote-sync/import"
-                                     {:branch "develop" :expected_branch "main"})))))))
+                                     {:branch "develop"})))))))
 
 (deftest import-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/import errors when remote sync is disabled"
     (mt/with-temporary-setting-values [remote-sync-url nil]
       (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"}))))))
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))))
 
 (deftest import-handles-network-errors-test
   (testing "POST /api/ee/remote-sync/import handles network errors during import"
@@ -313,7 +287,7 @@
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})
+          (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})
                 completed-task (wait-for-task-completion task_id)]
             (is (= "success" (:status response)))
             (is (remote-sync.task/failed? completed-task))))))))
@@ -327,7 +301,7 @@
                                            remote-sync-branch "main"]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
             (is (= "Remote sync task in progress"
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"})))))))))
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))))))))
 
 (deftest import-errors-when-dirty-changes-test
   (testing "POST /api/ee/remote-sync/import errors when dirty changes exist"
@@ -343,9 +317,9 @@
                                              :status_changed_at (java.time.OffsetDateTime/now)})
         (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                 (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"}))))
+                 (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {}))))
           (testing "But can force an import"
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true :expected_branch "main"})
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
                   completed-task (wait-for-task-completion task_id)]
               (is (=? {:status "success" :task_id int?} resp))
               (is (remote-sync.task/successful? completed-task)))))))))
@@ -372,7 +346,7 @@
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)
                                       impl/load-snapshot! (constantly nil)]
             (testing "merge=true succeeds even with unsaved local changes"
-              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                     completed-task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? completed-task))))))))))
 
@@ -392,7 +366,7 @@
                                                :status "update"
                                                :status_changed_at (java.time.OffsetDateTime/now)})
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+            (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                   completed-task (wait-for-task-completion task_id)]
               (is (remote-sync.task/successful? completed-task)
                   "a merge pull with nothing new on the remote succeeds instead of failing as a history-rewritten conflict")
@@ -421,7 +395,7 @@
           (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 9001 :model_name "Local Card"
                                                :model_collection_id 1 :status "update"
                                                :status_changed_at (java.time.OffsetDateTime/now)})
-          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
             (is (empty? @loaded) "no reconcile load happens when there is nothing to fold in")
@@ -443,7 +417,7 @@
                                                                     (swap! loaded conj :loaded)
                                                                     (when finalize! (finalize!))
                                                                     nil)]
-          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
             (is (= "v2" (:version task)) "version advances to the remote tip")
@@ -459,7 +433,7 @@
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
                                     remote-sync.task/last-version (constantly "gone")
                                     impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
-          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/conflict? task))
             (is (empty? @loaded) "no load on an unresolvable-base conflict")))))))
@@ -473,7 +447,7 @@
         (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
                                     remote-sync.task/last-version (constantly nil)
                                     impl/load-snapshot!           (fn [_snap & _] nil)]
-          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/conflict? task))))))))
 
@@ -492,7 +466,7 @@
                                                                         (swap! loaded conj :loaded)
                                                                         (when finalize! (finalize!))
                                                                         nil)]
-              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? task))
                 (is (seq @loaded) "the merged result is reconciled back into the app DB (the pull half)")))))))))
@@ -509,7 +483,7 @@
             (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
                                         remote-sync.task/last-version (constantly "gone")
                                         impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
-              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
+              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/conflict? task))
                 (is (empty? @loaded) "no reconcile on an unresolvable-base conflict")))))))))
@@ -526,7 +500,7 @@
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
+                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"
@@ -537,7 +511,7 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? task))
                 (is (=? {:message string? :task_id int?}
@@ -553,7 +527,7 @@
                                              remote-sync-branch "feature-branch"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
               (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                                                     {:branch "feature-branch" :message "Custom export message"})
+                                                                     {:message "Custom export message"})
                     task (wait-for-task-completion task_id)]
                 (is (=? {:message string? :task_id int?}
                         resp))
@@ -564,14 +538,14 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url "file://repo.git"]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {:branch "main"}))))))
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {}))))))
 
 (deftest export-errors-when-remote-sync-disabled-test
   (testing "POST /api/ee/remote-sync/export errors when remote sync is disabled"
     (mt/with-temporary-setting-values [remote-sync-type :read-write
                                        remote-sync-url nil]
       (is (= "Remote sync is not configured."
-             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))
+             (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))
 
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
@@ -585,7 +559,7 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
                     task (wait-for-task-completion (:task_id response))]
                 (is (remote-sync.task/failed? task))))))))))
 
@@ -599,7 +573,7 @@
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Remote sync task in progress"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
+                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-merges-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export with merge=true merges when the remote is ahead of the last sync"
@@ -618,7 +592,7 @@
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
                                         impl/load-snapshot! (constantly nil)]
               (testing "merge=true reconciles non-conflicting remote changes and succeeds"
-                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true :branch "main"})
+                (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true})
                       task     (wait-for-task-completion (:task_id response))]
                   (is (remote-sync.task/successful? task)
                       "non-conflicting remote changes are merged in, so the export succeeds")))
@@ -626,7 +600,7 @@
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "bar"
                                                         :ended_at :%now
                                                         :version "other-version"}]
-                  (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
+                  (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
                         task     (wait-for-task-completion (:task_id response))]
                     (is (remote-sync.task/conflict? task)
                         "a diverged export without force/merge surfaces a conflict for the UI to resolve"))))
@@ -634,7 +608,7 @@
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now
                                                         :version "mock-version"}]
-                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"}))))))))))
+                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-preflight-test
   (testing "GET /api/ee/remote-sync/export-preflight previews a merge without writing"
@@ -646,38 +620,16 @@
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (testing "no prior sync -> not diverged"
-                (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight?branch=main")]
+                (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
                   (is (false? (:has_changes resp)))))
               (testing "remote ahead with non-conflicting changes -> clean merge available"
                 (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"
                                                         :ended_at :%now
                                                         :version "other-version"}]
-                  (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight?branch=main")]
+                  (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight")]
                     (is (true? (:has_changes resp)))
                     (is (true? (:clean resp)))
                     (is (= [] (:conflicts resp)))))))))))))
-
-(deftest export-rejects-branch-mismatch-test
-  (testing "export and export-preflight reject a requested branch that disagrees with the configured setting (multi-tab CAS guard)"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source)]
-          (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
-                                             remote-sync-token  "test-token"
-                                             remote-sync-branch "main"]
-            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
-              (testing "POST /export -> 409 with a branch_mismatch flag and the current branch"
-                (let [before (t2/count :model/RemoteSyncTask)
-                      resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/export" {:branch "stale-branch"})]
-                  (is (true? (:branch_mismatch resp)))
-                  (is (= "main" (:current_branch resp)))
-                  (is (string? (:message resp)))
-                  (is (= before (t2/count :model/RemoteSyncTask))
-                      "no RemoteSyncTask row is created when the guard fires")))
-              (testing "GET /export-preflight -> 409 with a branch_mismatch flag and the current branch"
-                (let [resp (mt/user-http-request :crowberto :get 409 "ee/remote-sync/export-preflight?branch=stale-branch")]
-                  (is (true? (:branch_mismatch resp)))
-                  (is (= "main" (:current_branch resp))))))))))))
 
 (deftest export-force-if-external-changes-test
   (testing "POST /api/ee/remote-sync/export can force sync when remote is ahead of the last sync"
@@ -691,7 +643,7 @@
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (testing "Can export with force"
-                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
+                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true})))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
@@ -1835,7 +1787,7 @@
                                              remote-sync-branch "main"
                                              remote-sync-type   :read-write]
             (is (= "Remote sync task in progress"
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"})))
+                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
@@ -1854,7 +1806,7 @@
                                              remote-sync-type   :read-write]
             (is (= "Remote sync task in progress"
                    (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export"
-                                         {:message "test export" :branch "main"})))
+                                         {:message "test export"})))
             (is (= tasks-before (t2/count :model/RemoteSyncTask))
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 

@@ -13,16 +13,6 @@
   (api/check-404 (nil? worktree-id))
   nil)
 
-(defn check-worktree-access!
-  "Refuse a request that asks for a worktree's content unless the worktree exists and the caller is an admin.
-  Reading or writing a branch means touching a working copy of another world, which only admins may do; a nil
-  `worktree-id` asks for the main app and is always allowed. Returns nil; call for side effect."
-  [worktree-id]
-  (when worktree-id
-    (api/check-superuser)
-    (check-worktree-exists! worktree-id))
-  nil)
-
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
 

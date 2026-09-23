@@ -15,11 +15,11 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.worktree.db :as worktree.db]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
@@ -29,7 +29,6 @@
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -308,7 +307,7 @@
   the `remote-sync-branch` setting when it is the main app's. A worktree tracks a branch of its own and never
   touches the main app's setting."
   []
-  (or (some-> (worktree/worktree-id) worktree.db/worktree-branch)
+  (or (some-> (mdb.worktree/worktree-id) remote-sync.db/worktree-branch)
       (settings/remote-sync-branch)))
 
 (defn set-sync-branch!
@@ -316,8 +315,8 @@
   otherwise. The write counterpart of [[sync-branch]] -- a worktree switching branches must never move the main
   app, and a worktree is what a stash or a new branch created inside one moves onto."
   [branch]
-  (if-let [worktree-id (worktree/worktree-id)]
-    (worktree.db/update-worktree-branch! worktree-id branch)
+  (if-let [worktree-id (mdb.worktree/worktree-id)]
+    (remote-sync.db/update-worktree-branch! worktree-id branch)
     (settings/remote-sync-branch! branch)))
 
 (defn- branch-changed-since-scheduling?
@@ -384,7 +383,7 @@
     (report 0.7 {:force? true})
     (when (and has-transforms?
                (not (settings/remote-sync-transforms))
-               (nil? (worktree/worktree-id)))
+               (nil? (mdb.worktree/worktree-id)))
       (log/info "Detected transforms in remote source, enabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! true))
     ;; Reported before the transaction, not inside it: a write inside would hold the task row's lock until
@@ -402,7 +401,7 @@
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms)
-               (nil? (worktree/worktree-id)))
+               (nil? (mdb.worktree/worktree-id)))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
@@ -1619,7 +1618,7 @@
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
   [branch force? import-args & {:keys [worktree-id] :as opts}]
-  (worktree/do-with-worktree worktree-id #(async-import!* branch force? import-args opts)))
+  (mdb.worktree/do-with-worktree worktree-id #(async-import!* branch force? import-args opts)))
 
 (defn- async-export!*
   [branch force? message {:keys [on-success merge?]}]
@@ -1669,7 +1668,7 @@
 
   Returns a RemoteSyncTask."
   [branch force? message & {:keys [worktree-id] :as opts}]
-  (worktree/do-with-worktree worktree-id #(async-export!* branch force? message opts)))
+  (mdb.worktree/do-with-worktree worktree-id #(async-export!* branch force? message opts)))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing

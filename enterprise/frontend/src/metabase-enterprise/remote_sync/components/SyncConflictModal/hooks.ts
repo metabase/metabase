@@ -26,14 +26,11 @@ export const usePushChangesAction = () => {
         force: boolean,
         closeModal: VoidFunction,
         message?: string,
-        worktreeId?: number,
       ) => {
         try {
           await exportChanges({
-            branch,
             force,
             message,
-            worktree_id: worktreeId,
           }).unwrap();
 
           trackPushChanges({
@@ -68,16 +65,9 @@ export const useMergeChangesAction = () => {
 
   return {
     mergeChanges: useCallback(
-      async (
-        branch: string,
-        closeModal: VoidFunction,
-        message?: string,
-        worktreeId?: number,
-      ) => {
+      async (branch: string, closeModal: VoidFunction, message?: string) => {
         try {
           await exportChanges({
-            branch,
-            worktree_id: worktreeId,
             merge: true,
             message,
           }).unwrap();
@@ -115,15 +105,11 @@ export const useMergeImportAction = () => {
 
   return {
     mergeImport: useCallback(
-      async (branch: string, closeModal: VoidFunction, worktreeId?: number) => {
+      async (branch: string, closeModal: VoidFunction) => {
         try {
-          // Pull merge: the operational branch is the current branch, so it doubles as the
-          // expected_branch assertion.
           await importChanges({
             branch,
-            worktree_id: worktreeId,
             merge: true,
-            expected_branch: branch,
           }).unwrap();
 
           sendToast({
@@ -183,8 +169,8 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
             triggeredFrom: "conflict-modal",
           });
 
+          // createBranch switches the instance to the new branch, so the push follows it there.
           await exportChanges({
-            branch: newBranchName,
             message,
           }).unwrap();
           sendToast({
@@ -215,20 +201,11 @@ export const useDiscardChangesAndImportAction = () => {
 
   return {
     discardChangesAndImport: useCallback(
-      async (
-        targetBranch: string,
-        expectedBranch: string,
-        closeModal: VoidFunction,
-        worktreeId?: number,
-      ) => {
+      async (targetBranch: string, closeModal: VoidFunction) => {
         try {
-          // targetBranch is what we import (may be a switch target); expectedBranch is the branch
-          // we believe is currently active, asserted against the setting to catch a stale tab.
           await importChanges({
             branch: targetBranch,
             force: true,
-            expected_branch: expectedBranch,
-            worktree_id: worktreeId,
           }).unwrap();
           closeModal();
         } catch (error) {

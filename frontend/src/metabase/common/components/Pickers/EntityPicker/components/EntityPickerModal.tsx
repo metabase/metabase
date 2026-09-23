@@ -68,8 +68,6 @@ export function EntityPickerModal({
   disableRecentLogging,
   ...rest
 }: EntityPickerModalProps) {
-  // Search only ever reaches the main app, so a picker working inside a branch browses instead.
-  const canSearch = rest.worktreeId == null;
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>(
@@ -85,12 +83,8 @@ export function EntityPickerModal({
   ] = useDisclosure(false);
 
   const hydratedOptions: EntityPickerOptions = useMemo(
-    () => ({
-      ...defaultOptions,
-      ...options,
-      hasSearch: canSearch && (options?.hasSearch ?? defaultOptions.hasSearch),
-    }),
-    [options, canSearch],
+    () => ({ ...defaultOptions, ...options }),
+    [options],
   );
 
   const { open } = useModalOpen();

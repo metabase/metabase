@@ -82,7 +82,6 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
-   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
@@ -154,15 +153,13 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformResponse]
   "Get a list of transforms."
-  {:worktree :worktree/query}
   [_route-params
    query-params :-
    [:map {:closed true}
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database-id {:optional true} [:maybe ms/PositiveInt]]
-    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -170,12 +167,10 @@
 ;;
 (api.macros/defendpoint :post "/" :- TransformResponse
   "Create a new transform."
-  {:worktree :worktree/body}
   [_route-params
    _query-params
    body :- [:map {:closed true}
             [:name :string]
-            [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
             [:description {:optional true} [:maybe :string]]
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
@@ -196,14 +191,12 @@
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
@@ -299,7 +292,6 @@
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -318,14 +310,12 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
@@ -334,7 +324,6 @@
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
@@ -349,7 +338,6 @@
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
-  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (transforms-rest.db/reset-checkpoint! id)

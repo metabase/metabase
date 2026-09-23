@@ -98,6 +98,7 @@
    [:jwt_attributes          [:maybe LoginAttributes]]
    [:deactivated_with_tenant [:maybe :boolean]]
    [:is_data_analyst         :boolean]
+   [:worktree_id             [:maybe ms/PositiveInt]]
    [:common_name             {:optional true} [:maybe :string]]])
 
 (mr/def ::user.update
@@ -127,7 +128,8 @@
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
-   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters

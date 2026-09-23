@@ -227,8 +227,7 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
-  {:scope api-scope/data-app
-   :worktree [:model/Card :id]}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
@@ -249,7 +248,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
-  {:worktree [:model/Card :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
@@ -414,7 +412,6 @@
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
   - `exclude_ids` to filter out a list of card ids"
-  {:worktree [:model/Card :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id int?]]
    {:keys [last_cursor query exclude_ids]}
@@ -481,10 +478,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  {:worktree (fn [{:keys [body]}]
-               (or (mi/worktree-id :model/Collection (:collection_id body))
-                   (mi/worktree-id :model/Dashboard (:dashboard_id body))
-                   (mi/worktree-id :model/Document (:document_id body))))}
   [_route-params
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
@@ -515,7 +508,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
-  {:worktree [:model/Card :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
@@ -641,7 +633,6 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
-  {:worktree [:model/Card :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
@@ -658,9 +649,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Card (eid-translation/->id-or-404 :card (:id route))))}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
@@ -674,7 +663,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  {:worktree [:model/Card :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
@@ -797,9 +785,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
   and optionally re-sorts the rows via the `sort` body param."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Card (eid-translation/->id-or-404 :card (:card-id route))))}
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
@@ -847,9 +833,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Card (:card-id route)))}
+  {:scope api-scope/data-app}
   [{:keys [card-id export-format]} :- [:map {:closed true}
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
@@ -892,7 +876,6 @@
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
-  {:worktree [:model/Card :card-id]}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -918,7 +901,6 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
-  {:worktree [:model/Card :card-id]}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
@@ -938,9 +920,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Card (:card-id route)))}
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]
    _query-params
@@ -969,8 +949,7 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  {:scope api-scope/data-app
-   :worktree [:model/Card :card-id]}
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
@@ -988,8 +967,7 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app
-   :worktree [:model/Card :card-id]}
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
@@ -1006,8 +984,7 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app
-   :worktree [:model/Card :id]}
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]

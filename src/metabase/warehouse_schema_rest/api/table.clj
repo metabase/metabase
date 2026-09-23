@@ -79,12 +79,10 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
   - `can-write=true` - filter to only tables the user can edit metadata for"
-  {:worktree :worktree/query}
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           published-only can-query can-write include-transform-targets worktree-id]}
+           published-only can-query can-write include-transform-targets]}
    :- [:map {:closed true}
-       [:worktree-id {:optional true} [:maybe ms/PositiveInt]]
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
        [:data-layer {:optional true} ::data-layers]
@@ -109,8 +107,7 @@
             :orphan-only?               orphan-only
             :published-only?            published-only
             :check-unused?              (and unused-only (premium-features/has-feature? :dependencies))
-            :include-transform-targets? include-transform-targets
-            :worktree-id                worktree-id})
+            :include-transform-targets? include-transform-targets})
           tables
       (apply t2/hydrate tables hydrations)
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)

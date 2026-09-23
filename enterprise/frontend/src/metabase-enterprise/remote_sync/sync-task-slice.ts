@@ -8,15 +8,12 @@ import type {
 
 export interface SyncTaskState {
   currentTask: RemoteSyncTask | null;
-  /** the branch the watched task is syncing; undefined is the main app */
-  worktreeId: number | undefined;
   showModal: boolean;
   syncConflictVariant: RemoteSyncConflictVariant | null;
 }
 
 export const initialState: SyncTaskState = {
   currentTask: null,
-  worktreeId: undefined,
   showModal: false,
   syncConflictVariant: null,
 };
@@ -28,10 +25,9 @@ export const remoteSyncSlice = createSlice({
     taskStarted: (
       state,
       action: {
-        payload: { taskType: RemoteSyncTaskType; worktreeId?: number };
+        payload: { taskType: RemoteSyncTaskType };
       },
     ) => {
-      state.worktreeId = action.payload.worktreeId;
       state.currentTask = {
         id: 0,
         sync_task_type: action.payload.taskType,
@@ -63,7 +59,6 @@ export const remoteSyncSlice = createSlice({
     },
     taskCleared: (state) => {
       state.currentTask = null;
-      state.worktreeId = undefined;
       state.showModal = false;
     },
     syncConflictVariantUpdated: (

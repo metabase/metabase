@@ -12,12 +12,10 @@ import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
-  WorktreeSidebarSectionProps,
 } from "metabase/plugins";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
 import type {
-  RemoteSyncChangesRequest,
   RemoteSyncChangesResponse,
   RemoteSyncEntity,
 } from "metabase-types/api";
@@ -55,12 +53,7 @@ export interface RemoteSyncDirtyState {
   /** Refetch the dirty state data */
   refetch: ReturnType<
     UseQuery<
-      QueryDefinition<
-        RemoteSyncChangesRequest | void,
-        BaseQueryFn,
-        TagType,
-        RemoteSyncChangesResponse
-      >
+      QueryDefinition<void, BaseQueryFn, TagType, RemoteSyncChangesResponse>
     >
   >["refetch"];
 }
@@ -68,7 +61,6 @@ export interface RemoteSyncDirtyState {
 const getDefaultPluginRemoteSync = () => ({
   isEnabled: false,
   LibraryNav: PluginPlaceholder,
-  WorktreeSidebarSection: PluginPlaceholder,
   RemoteSyncSettings: PluginPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   // Unjustified type cast. FIXME
@@ -103,7 +95,6 @@ const getDefaultPluginRemoteSync = () => ({
 export const PLUGIN_REMOTE_SYNC: {
   isEnabled: boolean;
   LibraryNav: ComponentType;
-  WorktreeSidebarSection: ComponentType<WorktreeSidebarSectionProps>;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType;

@@ -21,8 +21,6 @@ import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
   opened: boolean;
-  currentBranch: string;
-  worktreeId?: number;
   onClose: () => void;
 }
 
@@ -33,8 +31,6 @@ interface PushChangesModalProps {
  */
 export const PushChangesModal = ({
   opened,
-  currentBranch,
-  worktreeId,
   onClose,
 }: PushChangesModalProps) => (
   <Modal
@@ -44,18 +40,12 @@ export const PushChangesModal = ({
     size="lg"
     padding="xxl"
   >
-    <PushChangesForm
-      currentBranch={currentBranch}
-      worktreeId={worktreeId}
-      onClose={onClose}
-    />
+    <PushChangesForm onClose={onClose} />
   </Modal>
 );
 
 const PushChangesForm = ({
   onClose,
-  currentBranch,
-  worktreeId,
 }: Omit<PushChangesModalProps, "opened">) => {
   const [commitMessage, setCommitMessage] = useState("");
 
@@ -69,14 +59,8 @@ const PushChangesForm = ({
   );
 
   const handlePush = useCallback(async () => {
-    if (!currentBranch) {
-      throw new Error("Current branch is not set");
-    }
-
     const { error } = await exportChanges({
       message: commitMessage.trim() || undefined,
-      branch: currentBranch,
-      worktree_id: worktreeId,
     });
 
     if (error) {
@@ -88,7 +72,7 @@ const PushChangesForm = ({
       force: false,
     });
     onClose();
-  }, [commitMessage, exportChanges, currentBranch, worktreeId, onClose]);
+  }, [commitMessage, exportChanges, onClose]);
 
   return (
     <>
@@ -105,7 +89,7 @@ const PushChangesForm = ({
         )}
 
         <Stack gap="xl">
-          <ChangesLists title={t`Changes to push`} worktreeId={worktreeId} />
+          <ChangesLists title={t`Changes to push`} />
 
           <CommitMessageSection
             value={commitMessage}

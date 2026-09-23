@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -5,6 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
+import type { Worktree } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -19,13 +22,18 @@ const setup = ({
   currentBranch = "main",
   syncType = "read-write",
   isBranchEnvSetting = false,
+  worktree = null,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   isBranchEnvSetting?: boolean;
+  worktree?: Worktree | null;
 } = {}) => {
+  if (worktree) {
+    fetchMock.get(`path:/api/ee/remote-sync/worktree/${worktree.id}`, worktree);
+  }
   setupPropertiesEndpoints(
     createMockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
@@ -43,7 +51,10 @@ const setup = ({
   ]);
 
   const storeInitialState = createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      worktree_id: worktree?.id ?? null,
+    }),
     settings: mockSettings({
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-branch": currentBranch,
@@ -102,14 +113,33 @@ describe("useGitSyncVisible", () => {
     expect(result.current.currentBranch).toBe(null);
   });
 
-  it("should return isVisible: false when sync type is read-only", async () => {
+  it("should stay visible in read-only mode", async () => {
     const { result } = setup({
       syncType: "read-only",
     });
 
     await waitFor(() => {
-      expect(result.current.isVisible).toBe(false);
+      expect(result.current.isVisible).toBe(true);
     });
+    expect(result.current.isReadWrite).toBe(false);
+  });
+
+  it("should return the worktree's branch when the user is working in one", async () => {
+    const { result } = setup({
+      currentBranch: "main",
+      worktree: {
+        id: 7,
+        branch: "feature-branch",
+        creator_id: null,
+        created_at: "2026-09-23T00:00:00Z",
+        updated_at: "2026-09-23T00:00:00Z",
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.currentBranch).toBe("feature-branch");
+    });
+    expect(result.current.isInWorktree).toBe(true);
   });
 
   it("should return isVisible: false when multiple conditions fail", async () => {

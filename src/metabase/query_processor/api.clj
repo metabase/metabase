@@ -193,15 +193,14 @@
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
   visibility_type :sensitive in the response."
-  {:scope api-scope/data-app, :worktree :worktree/query}
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [worktree-id]} :- [:map {:closed true} [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
+   _query-params
    query :- ::lib-be.schema/maybe-legacy-query]
   (queries/batch-fetch-query-metadata
    [query]
-   (cond-> {:worktree-id worktree-id}
-     (some? (get-in query [:settings :include-sensitive-fields]))
-     (assoc :include-sensitive-fields? (get-in query [:settings :include-sensitive-fields])))))
+   (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

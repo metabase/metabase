@@ -100,9 +100,7 @@
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map {:closed true}
-                       [:include-sensitive-fields? {:optional true} :boolean]
-                       [:worktree-id               {:optional true} [:maybe pos-int?]]]]]
+   opts    :- [:maybe [:map {:closed true} [:include-sensitive-fields? {:optional true} :boolean]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)

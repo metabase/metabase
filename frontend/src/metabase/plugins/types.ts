@@ -62,10 +62,6 @@ export type SyncedCollectionsSidebarSectionProps = {
   syncedCollections: CollectionTreeItem[];
 };
 
-export type WorktreeSidebarSectionProps = {
-  onItemSelect: () => void;
-};
-
 export type GitSyncSetupMenuItemProps = {
   isNavbarOpened: boolean;
   onClick: VoidFunction;

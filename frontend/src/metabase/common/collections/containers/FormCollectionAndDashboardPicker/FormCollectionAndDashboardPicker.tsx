@@ -139,12 +139,6 @@ export function FormCollectionAndDashboardPicker({
   const namespace =
     selectedCollection?.namespace ?? selectedDashboard?.collection?.namespace;
 
-  // Content stays in the world it is saved into, so the picker offers that world's collections.
-  const worktreeId =
-    selectedCollection?.worktree_id ??
-    selectedDashboard?.collection?.worktree_id ??
-    undefined;
-
   const pickerValue: OmniPickerValue = dashboardIdInput.value
     ? { id: dashboardIdInput.value, model: "dashboard", namespace }
     : { id: collectionIdInput.value, model: "collection", namespace };
@@ -281,7 +275,6 @@ export function FormCollectionAndDashboardPicker({
         <CollectionPickerModal
           title={pickerTitle}
           value={pickerValue}
-          worktreeId={worktreeId}
           onChange={handleChange}
           onClose={handleModalClose}
           options={options}

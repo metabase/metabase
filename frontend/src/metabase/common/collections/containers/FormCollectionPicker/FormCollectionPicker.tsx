@@ -187,7 +187,6 @@ function FormCollectionPicker({
             model: "collection",
             namespace: collectionNamespace,
           }}
-          worktreeId={selectedCollection?.worktree_id ?? undefined}
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={collectionPickerModalProps?.options || defaultOptions}

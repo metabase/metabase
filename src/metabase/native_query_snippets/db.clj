@@ -11,16 +11,9 @@
    [toucan2.core :as t2]))
 
 (mu/defn snippets-by-archived
-  "The NativeQuerySnippets whose archived flag is `archived` in the world `worktree-id` names, in case-insensitive
-  name order."
-  ([archived :- :boolean]
-   (snippets-by-archived archived nil))
-  ([archived    :- :boolean
-    worktree-id :- [:maybe pos-int?]]
-   (t2/select :model/NativeQuerySnippet
-              :archived archived
-              :worktree_id worktree-id
-              {:order-by [[:%lower.name :asc]]})))
+  "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
+  [archived :- :boolean]
+  (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn snippet
   "The NativeQuerySnippet with `id`, or nil."

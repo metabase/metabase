@@ -19,7 +19,6 @@ import { getProgressPhaseLabel } from "../utils";
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
   progress: number;
-  worktreeId?: number;
   isQuiet?: boolean;
   isCancelled?: boolean;
   minutesSinceLastUpdate?: number | null;
@@ -35,7 +34,6 @@ interface SyncProgressModalProps {
 export function SyncProgressModal({
   progress,
   taskType,
-  worktreeId,
   isQuiet = false,
   isCancelled = false,
   minutesSinceLastUpdate = null,
@@ -55,9 +53,7 @@ export function SyncProgressModal({
 
   const onCancel = async () => {
     try {
-      await cancelRemoteSyncCurrentTask(
-        worktreeId == null ? undefined : { "worktree-id": worktreeId },
-      ).unwrap();
+      await cancelRemoteSyncCurrentTask().unwrap();
       onDismiss();
     } catch (error: any) {
       let message = t`Failed to cancel sync`;

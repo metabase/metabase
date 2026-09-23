@@ -57,7 +57,6 @@ interface UnsyncedWarningModalProps {
   forcePushCasualties?: ForcePushCasualties;
   /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
   historyRewritten?: boolean;
-  worktreeId?: number;
   onClose: VoidFunction;
 }
 
@@ -70,7 +69,6 @@ export const SyncConflictModal = ({
   conflicts,
   forcePushCasualties,
   historyRewritten,
-  worktreeId,
   onClose,
 }: UnsyncedWarningModalProps) => (
   <Modal
@@ -89,7 +87,6 @@ export const SyncConflictModal = ({
       conflicts={conflicts}
       forcePushCasualties={forcePushCasualties}
       historyRewritten={historyRewritten}
-      worktreeId={worktreeId}
       onClose={onClose}
     />
   </Modal>
@@ -104,7 +101,6 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
     conflicts,
     forcePushCasualties,
     historyRewritten,
-    worktreeId,
     onClose,
   } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
@@ -175,16 +171,15 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
         optionValue === "force-push",
         onClose,
         message,
-        worktreeId,
       );
     }
 
     if (optionValue === "merge") {
       // Pull merges into local only; push merges and pushes the result.
       if (variant === "pull") {
-        await mergeImport(currentBranch, onClose, worktreeId);
+        await mergeImport(currentBranch, onClose);
       } else {
-        await mergeChanges(currentBranch, onClose, message, worktreeId);
+        await mergeChanges(currentBranch, onClose, message);
       }
     }
 
@@ -198,14 +193,8 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
 
     if (optionValue === "discard") {
       // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
-      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
-      // switched under us).
-      await discardChangesAndImport(
-        nextBranch || currentBranch,
-        currentBranch,
-        onClose,
-        worktreeId,
-      );
+      // and reload the current branch.
+      await discardChangesAndImport(nextBranch || currentBranch, onClose);
     }
   };
 
@@ -234,7 +223,7 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
         ) : conflicts && conflicts.length > 0 ? (
           <ConflictingChangesList conflicts={conflicts} />
         ) : (
-          <ChangesLists worktreeId={worktreeId} />
+          <ChangesLists />
         )}
 
         <OutOfSyncOptions

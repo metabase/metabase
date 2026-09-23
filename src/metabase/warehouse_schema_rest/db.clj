@@ -77,9 +77,8 @@
   `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
   ordered by name."
   [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
-           check-unused? include-transform-targets? worktree-id]}
+           check-unused? include-transform-targets?]}
    :- [:map {:closed true}
-       [:worktree-id                {:optional true} [:maybe ms/PositiveInt]]
        [:term                       {:optional true} [:maybe :string]]
        [:visibility-type            {:optional true} [:maybe :string]]
        [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
@@ -124,9 +123,7 @@
                                                           :where  [:and
                                                                    [:= :d.to_entity_id :metabase_table.id]
                                                                    [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:from     [(warehouse-schema-overlay/table-query {:worktree-id worktree-id})]
-                             :where    where
-                             :order-by [[:name :asc]]})))
+    (t2/select :model/Table {:from [(warehouse-schema-overlay/table-query)], :where where, :order-by [[:name :asc]]})))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."

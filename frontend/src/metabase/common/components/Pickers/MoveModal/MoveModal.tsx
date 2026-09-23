@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type {
   MoveCollectionDestination,
   MoveDestination,
@@ -53,13 +52,6 @@ export const MoveModal = ({
   canMoveToDashboard,
   isDisabledItem,
 }: MoveModalProps) => {
-  // Content only ever moves within its own world, so the picker offers the collections of the one it is in.
-  const { data: sourceCollection } = useGetCollectionQuery(
-    movingItem?.collection?.id != null
-      ? { id: movingItem.collection.id }
-      : skipToken,
-  );
-
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem): boolean => {
       if (!movingItem) {
@@ -192,7 +184,6 @@ export const MoveModal = ({
         model: "collection",
         namespace: movingItem?.collection?.namespace,
       }}
-      worktreeId={sourceCollection?.worktree_id ?? undefined}
       onChange={handleMove}
       models={models}
       namespaces={getValidNamespaces(movingItem)}
@@ -249,10 +240,6 @@ export const BulkMoveModal = ({
   selectedItems,
   initialCollectionId,
 }: BulkMoveModalProps) => {
-  const { data: sourceCollection } = useGetCollectionQuery({
-    id: initialCollectionId,
-  });
-
   const movingCollectionIds = selectedItems
     .filter((item: OmniPickerCollectionItem) => isItemCollection(item))
     .map((item: OmniPickerCollectionItem) => String(item.id));
@@ -381,7 +368,6 @@ export const BulkMoveModal = ({
         model: "collection",
         namespace: initialNamespace,
       }}
-      worktreeId={sourceCollection?.worktree_id ?? undefined}
       onChange={handleMove}
       models={models}
       namespaces={namespaces}

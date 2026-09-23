@@ -18,15 +18,11 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn list-native-query-snippets :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
-  "List the native query snippets of a world the current user has read access to: the main app's, or those a
-  worktree checked out when given its id."
+  "List all native query snippets the current user has read access to."
   ([]
-   (list-native-query-snippets false nil))
+   (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
-   (list-native-query-snippets archived nil))
-  ([archived    :- ms/BooleanValue
-    worktree-id :- [:maybe ms/PositiveInt]]
-   (let [snippets (native-query-snippets.db/snippets-by-archived archived worktree-id)]
+   (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -35,12 +31,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
-  {:scope api-scope/data-app, :worktree :worktree/query}
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived worktree-id]} :- [:map {:closed true}
-                                      [:archived {:default false} [:maybe ms/BooleanValue]]
-                                      [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (list-native-query-snippets (boolean archived) worktree-id))
+   {:keys [archived]} :- [:map {:closed true}
+                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
+  (list-native-query-snippets (boolean archived)))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
@@ -57,7 +52,6 @@
 ;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
-  {:worktree [:model/NativeQuerySnippet :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
@@ -73,17 +67,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `NativeQuerySnippet`."
-  {:worktree :worktree/body}
   [_route-params
    _query-params
    {:keys [content description name collection_id]} :- [:map {:closed true}
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                        ;; a snippet can live outside a collection, so the caller
-                                                        ;; names the world it belongs to
-                                                        [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]]]
+                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -117,7 +107,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
-  {:worktree [:model/NativeQuerySnippet :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params

@@ -12,7 +12,6 @@ import type {
 import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { IconProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
@@ -34,7 +33,6 @@ type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
     nonNavigable?: boolean;
     collection: Collection;
-    icon?: IconProps;
   };
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
@@ -43,7 +41,6 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
-      icon,
       nonNavigable,
       hovered: isHovered,
       depth,
@@ -97,14 +94,14 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const nodeIcon = icon ?? getCollectionIcon(collection, { isTenantUser });
+    const icon = getCollectionIcon(collection, { isTenantUser });
     const isRegularCollection =
       PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
     const content = (
       <>
         <TreeNode.IconContainer transparent={false}>
-          <SidebarIcon {...nodeIcon} isSelected={isSelected} />
+          <SidebarIcon {...icon} isSelected={isSelected} />
         </TreeNode.IconContainer>
         <NameContainer>{collection.name}</NameContainer>
         {/* Unjustified type cast. FIXME */}
@@ -151,13 +148,6 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     // Unjustified type cast. FIXME
     const collection = item as unknown as Collection;
-    // A node that stands for no collection, such as the branch a worktree's collections hang under, brings its
-    // own icon; a real collection's is worked out from the collection, which a tenant user sees differently.
-    const ownIcon = item.nonNavigable
-      ? typeof item.icon === "string"
-        ? { name: item.icon }
-        : item.icon
-      : undefined;
 
     const link = (droppableProps?: DroppableProps) => (
       <SidebarCollectionLink
@@ -165,7 +155,6 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
         hovered={droppableProps?.hovered ?? false}
         highlighted={droppableProps?.highlighted ?? false}
         collection={collection}
-        icon={ownIcon}
         nonNavigable={item.nonNavigable}
         ref={ref}
       />

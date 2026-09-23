@@ -4,15 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import { useToast } from "metabase/common/hooks";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import {
-  Button,
-  Combobox,
-  Group,
-  Icon,
-  Modal,
-  Text,
-  useCombobox,
-} from "metabase/ui";
+import { Button, Combobox, Group, Icon, Text, useCombobox } from "metabase/ui";
 import {
   useImportChangesMutation,
   useLazyGetRemoteSyncChangesQuery,
@@ -55,7 +47,6 @@ export const BranchSwitcher = ({
   const isAdmin = useSelector(getUserIsAdmin);
   // Set to the target branch when there are unsaved changes, opening the choose-what-to-do modal.
   const [pendingBranch, setPendingBranch] = useState<string | null>(null);
-  const [branchMismatch, setBranchMismatch] = useState<string | null>(null);
 
   // Switching is admin-only; show the section with a message rather than a control they can't use.
   if (!isAdmin) {
@@ -74,22 +65,13 @@ export const BranchSwitcher = ({
     try {
       // force is left false so the backend surfaces deletion conflicts rather than silently discarding
       // local-only content.
-      await importChanges({
-        branch,
-        expected_branch: currentBranch,
-      }).unwrap();
+      await importChanges({ branch }).unwrap();
       trackBranchSwitched({ triggeredFrom: "admin-settings" });
     } catch (error) {
-      const { hasBranchMismatch, errorMessage } = parseSyncError(
+      const { errorMessage } = parseSyncError(
         // Unjustified type cast. FIXME
         error as SyncError,
       );
-      if (hasBranchMismatch) {
-        setBranchMismatch(
-          errorMessage ?? t`The sync branch changed in another session.`,
-        );
-        return;
-      }
       sendToast({
         icon: "warning",
         toastColor: "feedback-negative",
@@ -195,26 +177,6 @@ export const BranchSwitcher = ({
           nextBranch={pendingBranch}
           onClose={() => setPendingBranch(null)}
         />
-      )}
-
-      {branchMismatch && (
-        <Modal
-          opened
-          padding="xxl"
-          title={t`This view is out of date`}
-          withCloseButton={false}
-          onClose={() => setBranchMismatch(null)}
-        >
-          <Text mt="lg">{branchMismatch}</Text>
-          <Group gap="sm" justify="end" mt="xxl">
-            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
-              {t`Cancel`}
-            </Button>
-            <Button variant="filled" onClick={() => window.location.reload()}>
-              {t`Refresh`}
-            </Button>
-          </Group>
-        </Modal>
       )}
     </>
   );

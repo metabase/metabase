@@ -8,10 +8,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
-import {
-  getCollectionItemsOptions,
-  getValidCollectionItemModels,
-} from "metabase/common/components/Pickers/utils";
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
@@ -52,8 +49,7 @@ const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
  * This will generate a list of the top level items for the entity picker
  */
 export const useRootItems = () => {
-  const { options, models, searchQuery, namespaces, worktreeId } =
-    useOmniPickerContext();
+  const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
   const transformsEnabled = useHasTokenFeature("transforms-basic");
@@ -69,18 +65,6 @@ export const useRootItems = () => {
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
-
-  // A branch has no root collection of its own: the collections it checked out are the top level.
-  const { data: worktreeItems, isLoading: isLoadingWorktreeItems } =
-    useListCollectionItemsQuery(
-      worktreeId == null
-        ? skipToken
-        : {
-            id: "root",
-            "worktree-id": worktreeId,
-            ...getCollectionItemsOptions({ models }),
-          },
-    );
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
     skip: !options.hasLibrary,
@@ -100,10 +84,6 @@ export const useRootItems = () => {
   const totalPersonalCollectionItems = personalCollectionItems?.total ?? 0;
 
   useDeepCompareEffect(() => {
-    if (worktreeId != null) {
-      return;
-    }
-
     const databases = databaseData?.data ?? [];
     setIsLoadingCollections(true);
     getRootItems({
@@ -144,7 +124,6 @@ export const useRootItems = () => {
     hasTenants,
     setIsLoadingCollections,
     dispatch,
-    worktreeId,
   ]);
 
   const isLoading =
@@ -152,13 +131,6 @@ export const useRootItems = () => {
     isLoadingCollections ||
     isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
-
-  if (worktreeId != null) {
-    return {
-      items: worktreeItems?.data ?? [],
-      isLoading: isLoadingWorktreeItems,
-    };
-  }
 
   return { items: rootItems, isLoading };
 };

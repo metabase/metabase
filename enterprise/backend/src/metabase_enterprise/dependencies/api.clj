@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
@@ -18,7 +19,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.measures.schema]
-   [metabase.models.interface :as mi]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
@@ -29,7 +29,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (def ^:private entity-keys
@@ -228,7 +227,7 @@
   (cond-> {:user-id                api/*current-user-id*
            :is-superuser?          api/*is-superuser?*
            :is-data-analyst?       api/*is-data-analyst?*
-           :worktree-id            (worktree/worktree-id)}
+           :worktree-id            (mdb.worktree/worktree-id)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies
@@ -367,8 +366,6 @@
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
   depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency."
-  {:worktree (fn [{:keys [query]}]
-               (mi/worktree-id (deps.dependency-types/dependency-type->model (:type query)) (:id query)))}
   [_route-params
    {:keys [id type]} :- [:map {:closed true}
                          [:id {:optional true} ms/PositiveInt]

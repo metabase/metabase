@@ -28,7 +28,6 @@
 
 (api.macros/defendpoint :post "/" :- ::Timeline
   "Create a new [[Timeline]]."
-  {:worktree [:model/Collection :collection_id :body]}
   [_route-params
    _query-params
    {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
@@ -75,7 +74,6 @@
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
-  {:worktree [:model/Timeline :id]}
   [{:keys [id]}                         :- [:map {:closed true}
                                             [:id ms/PositiveInt]]
    {:keys [include archived start end]} :- [:map {:closed true}
@@ -103,7 +101,6 @@
 (api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  {:worktree [:model/Timeline :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -132,7 +129,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
-  {:worktree [:model/Timeline :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]

@@ -8,8 +8,8 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase-enterprise.worktree.db :as worktree.db]
    [metabase.api.common :as api]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -33,7 +33,7 @@
   :feature :none
   [worktree-id]
   (when worktree-id
-    (api/check-404 (worktree.db/worktree-exists? worktree-id)))
+    (api/check-404 (remote-sync.db/worktree-exists? worktree-id)))
   nil)
 
 (defenterprise collection-editable?
@@ -41,11 +41,13 @@
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  Returns true if the collection is editable, false otherwise. Returns true when the caller is working in a
+  worktree, which is where a read-only instance's content is authored, when remote-sync-type is :read-write, or
+  when the collection is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
+  (or (some? (mdb.worktree/worktree-id))
+      (= (settings/remote-sync-type) :read-write)
       (not (collections/remote-synced-collection? collection))))
 
 (defenterprise table-editable?
@@ -63,7 +65,8 @@
   If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
   :feature :none
   [table]
-  (or (= (settings/remote-sync-type) :read-write)
+  (or (some? (mdb.worktree/worktree-id))
+      (= (settings/remote-sync-type) :read-write)
       (not (:is_published table))
       ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
       (not (collections/remote-synced-collection? (or (:collection table)
@@ -78,7 +81,8 @@
   Always returns true on OSS."
   :feature :none
   []
-  (or (not (settings/remote-sync-enabled))
+  (or (some? (mdb.worktree/worktree-id))
+      (not (settings/remote-sync-enabled))
       (= (settings/remote-sync-type) :read-write)))
 
 (defenterprise model-editable?

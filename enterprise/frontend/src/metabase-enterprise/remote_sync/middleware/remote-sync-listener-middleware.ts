@@ -69,13 +69,8 @@ const ALL_INVALIDATION_TAGS = [
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,
-  effect: async (action, { dispatch }) => {
-    dispatch(
-      taskStarted({
-        taskType: "export",
-        worktreeId: action.meta.arg.originalArgs.worktree_id,
-      }),
-    );
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "export" }));
   },
 });
 
@@ -88,13 +83,8 @@ remoteSyncListenerMiddleware.startListening({
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.importChanges.matchPending,
-  effect: async (action, { dispatch }) => {
-    dispatch(
-      taskStarted({
-        taskType: "import",
-        worktreeId: action.meta.arg.originalArgs.worktree_id,
-      }),
-    );
+  effect: async (_action, { dispatch }) => {
+    dispatch(taskStarted({ taskType: "import" }));
   },
 });
 

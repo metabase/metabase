@@ -40,11 +40,7 @@ interface QuestionPickerProps {
 }
 
 export function QuestionPicker({ onSelect }: QuestionPickerProps) {
-  const dashboard = useSelector(getDashboard);
-  // A dashboard only ever holds cards from its own world, so the picker browses that world.
-  const { data: allCollectionsList = [] } = useListCollectionsQuery({
-    "worktree-id": dashboard?.collection?.worktree_id ?? undefined,
-  });
+  const { data: allCollectionsList = [] } = useListCollectionsQuery();
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
@@ -53,6 +49,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   );
   const getIcon = useGetIcon();
   const dispatch = useDispatch();
+  const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
   const [currentCollectionId, setCurrentCollectionId] = useState<CollectionId>(
     dashboardCollection.id,
