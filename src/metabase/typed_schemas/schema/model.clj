@@ -116,13 +116,16 @@
           native-tags (some-> dataset_query :native :template-tags)
           tags (or stage-tags native-tags)]
       (into {}
-            (for [[tag-key tag] tags]
-              [(or (:name tag)
-                   (cond
-                     (string? tag-key)  tag-key
-                     (keyword? tag-key) (clojure.core/name tag-key)
-                     :else              nil))
-               (:type tag)])))))
+            (if (map? tags)
+              (for [[tag-key tag] tags]
+                [(or (:name tag)
+                     (cond
+                       (string? tag-key)  tag-key
+                       (keyword? tag-key) (clojure.core/name tag-key)
+                       :else              nil))
+                 (:type tag)])
+              (for [tag tags]
+                [(:name tag) (:type tag)]))))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."
