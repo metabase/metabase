@@ -9,3 +9,6 @@
                         {:flow-style            :block
                          :split-lines           false
                          :indent-with-indicator true}))
+
+(defn deserialize [path-to-yaml-file]
+  (yaml/from-file path-to-yaml-file))

@@ -9,6 +9,10 @@
 
 ;;; TODO -- move model-related stuff into separate `.models.writeback` namespace
 
+(def ^:dynamic *suppress-writeback*
+  "Block writeback when we know the write is coming from the filesystem watcher."
+  false)
+
 (doseq [model [:model/Card
                :model/Dashboard
                :model/DashboardCard
@@ -37,6 +41,7 @@
  [:toucan.query-type/update.* :hook/search-index])
 
 (comment
+  *e
   (defn- %update! []
     (-> (t2/select-one :model/Dashboard :id 2)
         (update :name str "_2")
@@ -47,6 +52,9 @@
   (update-file! instance))
 
 (comment
+
+  (t2/select-pk->fn :name :model/Card)
+  (t2/update! :model/Card 23 {:name "MOST RECENT SUBSCRIPTION"})
   (defn- %insert! []
     (t2/insert! :model/Card (-> (t2/select-one :model/Card)
                                 (dissoc :id :entity_id)))))

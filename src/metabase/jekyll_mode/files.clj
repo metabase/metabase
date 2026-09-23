@@ -1,7 +1,7 @@
 (ns metabase.jekyll-mode.files
   (:require
    [clojure.set :as set]
-   [metabase.jekyll-mode.files]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -11,8 +11,10 @@
 
 ;;; TODO -- this should be configurable by the user (make it a Setting?)
 
-(defn- directory-prefix []
-  "local")
+(defn directory-prefix
+  "The base directory for Jekyll mode's files."
+  []
+  "local/jekyll")
 
 (mr/def ::model
   [:and
