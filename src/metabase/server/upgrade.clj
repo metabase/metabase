@@ -64,7 +64,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
         ;; the demo. If we point it at a local URL, it will be too fast for
         ;; anyone to see the progress bar. Let's shoot for making it take 10s.
         (when slowly?
-          (Thread/sleep 16))
+          (Thread/sleep 8))
         (when (pos? size)
           (do (.write output buffer 0 size)
               (recur)))))))
@@ -92,7 +92,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
           total (parse-long (-> response :headers (get "Content-Length")))]
       (swap! progress assoc :total total :current 0)
       (with-open [out (io/output-stream temp-jar-path)]
-        (io/copy (:body response) out (System/getenv "MB_UPGRADE_SLOW"))))
+        (copy (:body response) out (System/getenv "MB_UPGRADE_SLOW"))))
     (swap! progress assoc :status :downloaded)
     (log/info "Download complete.")
     (log/info (prn-str @progress))
@@ -109,17 +109,25 @@ by moving %s to %s and restarting." new-jar-path jar-path))
   [_request respond _raise]
   (respond {:status 200 :body @progress :headers headers}))
 
-;; manual test:
+;; manual test steps:
 
-;; * python3 -m http.server 3000
-;; * bin/build.sh
-;; * ./supervisor.sh
+;; * cd target/uberjar && python3 -m http.server 3000 # in a separate tab
+;; * bin/build.sh '{:version "0.63.0"}'
+;; * mv target/uberjar/metabase.jar target/uberjar/metabase-current.jar
+;; * bin/build.sh '{:version "0.65.0"}'
+;; * ./supervisor.sh # in a separate tab
+;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
 ;; * curl -XPOST http://localhost:8088/api/upgrade
 ;; * curl http://localhost:8088/api/upgrade/health # while it's running
+;; * [wait for it to restart...]
+;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
 
 ;; supervisor.sh:
 
 ;; #!/bin/bash
-;; MB_UPGRADE_SLOW=y MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar MB_JETTY_PORT=8088 java -jar target/uberjar/metabase.jar
+;; export MB_UPGRADE_SLOW=y
+;; export MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar
+;; export MB_JETTY_PORT=8088
+;; java -jar target/uberjar/metabase-current.jar
 ;; sleep 2 # give the user a chance to ctrl-c out of it
 ;; exec $0
