@@ -24,7 +24,7 @@
 (defn public-url
   "`url` without the user info and query an HTTPS remote can carry credentials in. Other forms pass through."
   [url]
-  (if-let [[_ scheme location] (re-matches #"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@]*@)?([^?#]*).*" url)]
+  (if-let [[_ scheme location] (re-matches #"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@?#]*@)?([^?#]*).*" url)]
     (str scheme location)
     url))
 

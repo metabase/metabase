@@ -144,7 +144,7 @@ def parse_since(value):
 
 def public_url(url):
     """`url` without the user info and query an HTTPS remote can carry credentials in. Other forms pass through."""
-    match = re.fullmatch(r"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@]*@)?([^?#]*).*", url)
+    match = re.fullmatch(r"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@?#]*@)?([^?#]*).*", url)
     return match[1] + match[2] if match else url
 
 

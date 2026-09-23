@@ -74,5 +74,8 @@
     (is (= "https://github.com/org/repo.git"
            (papercut-git/public-url "https://user:ghp_secret@github.com/org/repo.git?token=x#frag")))
     (is (= "https://github.com/org/repo.git" (papercut-git/public-url "https://ghp_secret@github.com/org/repo.git"))))
+  (testing "an @ in the query or fragment is not user info"
+    (is (= "https://host" (papercut-git/public-url "https://host?token=user@secret")))
+    (is (= "https://host/repo" (papercut-git/public-url "https://host/repo#user@secret"))))
   (testing "scp-style remotes name only a login user, and pass through"
     (is (= "git@github.com:org/repo.git" (papercut-git/public-url "git@github.com:org/repo.git")))))
