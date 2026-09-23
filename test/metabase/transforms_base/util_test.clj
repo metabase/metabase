@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -197,3 +199,56 @@
       (is (= 9 (:transform/checkpoint-field-id attrs)))
       (is (string? (:transform/checkpoint-hi attrs)))
       (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
+
+(defn- prompt-transform
+  [query & {:keys [target-type] :or {target-type "table"}}]
+  {:source {:type :query :query query}
+   :target {:type target-type :name "out"}})
+
+(deftest prompt-usage-error-test
+  (let [base        (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        field       (meta/field-metadata :orders :subtotal)
+        valid       (lib/expression base "Sentiment" (lib/prompt field))
+        valid-xform (prompt-transform valid)]
+    (testing "a last-stage prompt column writing to a table is allowed"
+      (is (transforms-base.u/prompt-query? (-> valid-xform :source :query)))
+      (is (nil? (transforms-base.u/prompt-usage-error valid-xform)))
+      (is (= #{"Sentiment"} (transforms-base.u/last-stage-prompt-names (-> valid-xform :source :query)))))
+    (testing "queries without prompt() are ignored"
+      (is (not (transforms-base.u/prompt-query? base)))
+      (is (nil? (transforms-base.u/prompt-usage-error (prompt-transform base)))))
+    (testing "prompt() must be the outermost expression"
+      (is (= "prompt() must be the outermost function"
+             (transforms-base.u/prompt-usage-error
+              (prompt-transform (lib/expression base "Wrapped" (lib/upper (lib/prompt field))))))))
+    (testing "prompt() cannot be used on an earlier stage"
+      (let [later (-> base
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (meta/field-metadata :orders :user-id))
+                      lib/append-stage
+                      (lib/expression 0 "Sentiment" (lib/prompt field)))]
+        (is (= "prompt() can't be used before a later step"
+               (transforms-base.u/prompt-usage-error (prompt-transform later))))))
+    (testing "prompt() cannot share a stage with a summary"
+      (is (= "prompt() can't be used on the same step as a Summarize"
+             (transforms-base.u/prompt-usage-error
+              (prompt-transform (-> base
+                                    (lib/expression "Sentiment" (lib/prompt field))
+                                    (lib/aggregate (lib/count))))))))
+    (testing "filters and other expressions cannot reference a prompt() column"
+      (let [query (lib/expression base "Sentiment" (lib/prompt field))]
+        (is (= "Columns created with prompt() can't be used in other expressions or filters"
+               (transforms-base.u/prompt-usage-error
+                (prompt-transform (lib/filter query (lib/= (lib/expression-ref query "Sentiment") "good"))))))
+        (is (= "Columns created with prompt() can't be used in other expressions or filters"
+               (transforms-base.u/prompt-usage-error
+                (prompt-transform
+                 (lib/expression query "Other"
+                                 (lib/concat (lib/expression-ref query "Sentiment") "!"))))))))
+    (testing "the target has to be a plain table"
+      (is (= "prompt() transforms can only write to a table"
+             (transforms-base.u/prompt-usage-error (prompt-transform valid :target-type "table-incremental")))))
+    (testing "save-time validation returns the placement error without compiling"
+      (is (= {:error "prompt() must be the outermost function"}
+             (transforms-base.u/validate-transform-query
+              (prompt-transform (lib/expression base "Wrapped" (lib/upper (lib/prompt field))))))))))

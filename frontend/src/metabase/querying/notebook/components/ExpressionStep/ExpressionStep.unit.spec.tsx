@@ -10,6 +10,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
+import { NotebookProvider } from "../Notebook/context";
 
 import { ExpressionStep } from "./ExpressionStep";
 
@@ -36,16 +37,18 @@ function setup({
   setupDatabaseEndpoints(createSampleDatabase());
 
   renderWithProviders(
-    <ExpressionStep
-      step={step}
-      // @ts-expect-error unit test
-      color="#93A1AB"
-      stageIndex={step.stageIndex}
-      query={step.query}
-      updateQuery={updateQuery}
-      isLastOpened={false}
-      reportTimezone="UTC"
-    />,
+    <NotebookProvider>
+      <ExpressionStep
+        step={step}
+        // @ts-expect-error unit test
+        color="#93A1AB"
+        stageIndex={step.stageIndex}
+        query={step.query}
+        updateQuery={updateQuery}
+        isLastOpened={false}
+        reportTimezone="UTC"
+      />
+    </NotebookProvider>,
   );
 
   return { getRecentQuery };

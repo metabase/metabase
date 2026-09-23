@@ -81,6 +81,7 @@ export type QueryEditorUiOptions = {
   hidePreview?: boolean;
   hideRunButton?: boolean;
   resizable?: boolean;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 /**

@@ -76,6 +76,7 @@ type QueryEditorBodyProps = {
   hideRunButton?: boolean;
   topBarInnerContent?: ReactNode;
   availableHeight?: number;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 export function QueryEditorBody({
@@ -113,6 +114,7 @@ export function QueryEditorBody({
   hideRunButton,
   topBarInnerContent,
   availableHeight,
+  allowTransformOnlyFunctions,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -235,6 +237,7 @@ export function QueryEditorBody({
           updateQuestion={setQuestion}
           runQuestionQuery={onRunQuery}
           dataPickerOptions={dataPickerOptions}
+          allowTransformOnlyFunctions={allowTransformOnlyFunctions}
         />
       </Box>
     </ResizableBox>

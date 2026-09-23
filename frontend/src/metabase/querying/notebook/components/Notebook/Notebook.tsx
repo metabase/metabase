@@ -23,6 +23,7 @@ export type NotebookProps = {
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
   dataPickerOptions?: NotebookDataPickerOptions;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 export const Notebook = ({
@@ -38,6 +39,7 @@ export const Notebook = ({
   setQueryBuilderMode,
   modelsFilterList,
   dataPickerOptions,
+  allowTransformOnlyFunctions,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -50,6 +52,7 @@ export const Notebook = ({
     <NotebookProvider
       modelsFilterList={modelsFilterList}
       dataPickerOptions={dataPickerOptions}
+      allowTransformOnlyFunctions={allowTransformOnlyFunctions}
     >
       <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
         <NotebookStepList

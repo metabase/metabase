@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -13,6 +13,8 @@ interface NotebookActionButtonProps {
   color: ColorName;
   secondary?: boolean;
   large?: boolean;
+  disabled?: boolean;
+  disabledTooltip?: string;
   onClick: () => void;
 }
 
@@ -23,10 +25,13 @@ export function NotebookActionButton({
   color,
   secondary,
   large,
+  disabled,
+  disabledTooltip,
   onClick,
   ...props
 }: NotebookActionButtonProps) {
   const label = large ? title : undefined;
+  const tooltip = disabled ? disabledTooltip : large ? undefined : title;
 
   const button = (
     <UnstyledButton
@@ -40,7 +45,8 @@ export function NotebookActionButton({
         className,
       )}
       aria-label={label}
-      onClick={onClick}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
       style={{
         "--notebook-action-button-color": `var(--mb-color-${color})`,
       }}
@@ -57,5 +63,19 @@ export function NotebookActionButton({
     </UnstyledButton>
   );
 
-  return large ? button : <Tooltip label={title}>{button}</Tooltip>;
+  if (!tooltip) {
+    return button;
+  }
+
+  return (
+    <Tooltip label={tooltip}>
+      <Box
+        component="span"
+        display="inline-flex"
+        data-testid={disabled ? "disabled-notebook-action" : undefined}
+      >
+        {button}
+      </Box>
+    </Tooltip>
+  );
 }

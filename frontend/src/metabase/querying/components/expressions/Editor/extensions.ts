@@ -17,6 +17,7 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
+  allowTransformOnlyFunctions?: boolean;
   extensions?: Extension[];
 };
 
@@ -41,6 +42,7 @@ export function useExtensions(options: Options): Extension[] {
     availableColumns,
     availableMetrics,
     database,
+    allowTransformOnlyFunctions,
     extensions: extra = [],
   } = options;
 
@@ -53,6 +55,7 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
+        allowTransformOnlyFunctions,
       }),
       expander(),
       suggestions({
@@ -62,6 +65,7 @@ export function useExtensions(options: Options): Extension[] {
         availableColumns,
         availableMetrics,
         database,
+        allowTransformOnlyFunctions,
       }),
       tooltips({
         position: "fixed",
@@ -78,6 +82,7 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     database,
+    allowTransformOnlyFunctions,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

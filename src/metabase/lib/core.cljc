@@ -393,6 +393,7 @@
   datetime-add
   datetime-subtract
   concat
+  prompt
   substring
   replace
   regex-match-first

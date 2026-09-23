@@ -1379,6 +1379,13 @@
   [driver [_ _opts & args]]
   (into [:concat] (map (partial ->honeysql driver)) args))
 
+(defmethod ->honeysql [:sql :prompt]
+  [driver [_tag opts & args]]
+  ;; Compile as concat so ad-hoc queries never reach the LLM. Pad a single arg so
+  ;; drivers that require at least two concat operands still accept prompt(x).
+  (->honeysql driver (into [:concat opts] (cond-> args
+                                            (= 1 (count args)) (concat [""])))))
+
 (defmethod ->honeysql [:sql :substring]
   [driver [_ _opts arg start length]]
   (if length

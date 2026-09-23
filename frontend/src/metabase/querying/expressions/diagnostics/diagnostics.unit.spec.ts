@@ -76,6 +76,12 @@ describe("diagnostics", () => {
       );
     });
 
+    it("should reject prompt() outside transforms", () => {
+      expect(err('prompt("hello")')).toBe(
+        "prompt() is only available in transforms",
+      );
+    });
+
     describe("sibling tokens validation", () => {
       const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
       const right = [

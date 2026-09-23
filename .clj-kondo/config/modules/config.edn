@@ -2968,6 +2968,18 @@
    :api  #{}
    :uses #{}}
 
+  transforms.prompt
+  {:team "Graphy"
+   :ns-prefix "metabase.transforms-prompt"
+   :api #{metabase.transforms-prompt.init}
+   :uses #{driver
+           lib
+           metabot
+           query-processor
+           request
+           transforms.base
+           util}}
+
   transforms.rest
   {:team "Gadget"
    :ns-prefix "metabase.transforms-rest"

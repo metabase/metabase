@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
+import { queryHasPromptExpression } from "metabase/querying/notebook/utils/steps";
 import { Center, Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
@@ -141,6 +142,7 @@ export function QueryEditor({
             onBlur={onBlur}
             topBarInnerContent={topBarInnerContent}
             extraButton={extraEditorButton}
+            allowTransformOnlyFunctions={uiOptions?.allowTransformOnlyFunctions}
           />
           {!uiOptions?.hidePreview && (
             <QueryEditorVisualization
@@ -155,14 +157,16 @@ export function QueryEditor({
               onCancelQuery={cancelQuery}
             />
           )}
-          {!isNative && uiOptions?.canConvertToNative && (
-            <NativeQueryPreviewSidebarToggle
-              isNativeQueryPreviewSidebarOpen={
-                uiState.sidebarType === "native-query"
-              }
-              onToggleNativeQueryPreviewSidebar={toggleNativeQuerySidebar}
-            />
-          )}
+          {!isNative &&
+            uiOptions?.canConvertToNative &&
+            !queryHasPromptExpression(query) && (
+              <NativeQueryPreviewSidebarToggle
+                isNativeQueryPreviewSidebarOpen={
+                  uiState.sidebarType === "native-query"
+                }
+                onToggleNativeQueryPreviewSidebar={toggleNativeQuerySidebar}
+              />
+            )}
         </Flex>
         {isNative && (
           <NativeQuerySidebar
@@ -188,15 +192,17 @@ export function QueryEditor({
             templateTagsSidebar={templateTagsSidebar}
           />
         )}
-        {!isNative && uiState.sidebarType === "native-query" && (
-          <NativeQueryPreviewSidebar
-            question={question}
-            convertToNativeTitle={uiOptions?.convertToNativeTitle}
-            convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
-            onConvertToNativeClick={convertToNative}
-            readOnly={uiOptions?.readOnly}
-          />
-        )}
+        {!isNative &&
+          uiState.sidebarType === "native-query" &&
+          !queryHasPromptExpression(query) && (
+            <NativeQueryPreviewSidebar
+              question={question}
+              convertToNativeTitle={uiOptions?.convertToNativeTitle}
+              convertToNativeButtonLabel={uiOptions?.convertToNativeButtonLabel}
+              onConvertToNativeClick={convertToNative}
+              readOnly={uiOptions?.readOnly}
+            />
+          )}
       </Flex>
       {isNative && (
         <Modal

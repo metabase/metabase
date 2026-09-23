@@ -49,6 +49,7 @@ export type HelpTextProps = {
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 const components = {
@@ -75,6 +76,7 @@ export function HelpText({
   database,
   reportTimezone,
   expressionMode,
+  allowTransformOnlyFunctions,
 }: HelpTextProps) {
   const helpText =
     enclosingFunction && database
@@ -86,7 +88,8 @@ export function HelpText({
     clause &&
     database != null &&
     hasRequiredFeature(database, clause?.requiresFeature) &&
-    expressionModeSupportsClause(expressionMode, clause.name);
+    expressionModeSupportsClause(expressionMode, clause.name) &&
+    (clause.name !== "prompt" || Boolean(allowTransformOnlyFunctions));
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     helpText?.docsUrl ?? "",

@@ -394,6 +394,7 @@
 (lib.common/defop today [])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
+(lib.common/defop prompt [s & more])
 (lib.common/defop substring [s start end])
 (lib.common/defop split-part [s delimiter index])
 (lib.common/defop collate [s collation])
@@ -722,6 +723,58 @@
       (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
       (i18n/tru "Types are incompatible."))))
 
+(defn- contains-prompt?
+  [expr]
+  (boolean (match/match-one expr :prompt true)))
+
+(defn- nested-prompt?
+  [expr]
+  (if (lib.schema.common/is-clause? :prompt expr)
+    (boolean (some contains-prompt? (nnext expr)))
+    (contains-prompt? expr)))
+
+(defn- summarized-stage?
+  [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (boolean (or (seq (:aggregation stage))
+                 (seq (:breakout stage))))))
+
+(defn- references-prompt-expression?
+  [query stage-number expr]
+  (boolean
+   (some (fn [expression-name]
+           (lib.schema.common/is-clause?
+            :prompt
+            (maybe-resolve-expression query stage-number expression-name)))
+         (referred-expressions expr))))
+
+(defn- diagnose-prompt
+  [query stage-number expression-mode expr]
+  (cond
+    (and (not= expression-mode :expression)
+         (contains-prompt? expr))
+    {:message  (i18n/tru "prompt() is only supported in custom columns")
+     :friendly true}
+
+    (nested-prompt? expr)
+    {:message  (i18n/tru "prompt() must be the outermost function")
+     :friendly true}
+
+    (and (contains-prompt? expr)
+         (not (lib.util/last-stage? query stage-number)))
+    {:message  (i18n/tru "prompt() can''t be used before a later step")
+     :friendly true}
+
+    (and (contains-prompt? expr)
+         (summarized-stage? query stage-number))
+    {:message  (i18n/tru "prompt() can''t be used on the same step as a Summarize")
+     :friendly true}
+
+    (references-prompt-expression? query stage-number expr)
+    {:message (i18n/tru
+               "Columns created with prompt() can''t be used in other expressions or filters")
+     :friendly true}))
+
 (mr/def ::diagnosable-expression
   "An expression, aggregation, or filter that may be invalid; [[diagnose-expression]] reports what is wrong with it."
   [:schema {::mr/deliberately-open true, :description "a possibly invalid MBQL expression"} :any])
@@ -752,7 +805,8 @@
                       :expression expression-explainer
                       :aggregation aggregation-explainer
                       :filter filter-explainer)]
-      (or (when-let [explanation (explainer expr)]
+      (or (diagnose-prompt query stage-number expression-mode expr)
+          (when-let [explanation (explainer expr)]
             (let [friendly-message (friendly-error-message explanation)
                   type-message (type-error-message explanation expr)
                   message (or friendly-message type-message)]

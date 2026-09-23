@@ -36,6 +36,7 @@ export interface NotebookStep {
   testID: string;
   revert: RevertFn | null;
   actions: NotebookStepAction[];
+  disabledReason?: string;
   next: NotebookStep | null;
   previous: NotebookStep | null;
   previewQuery?: Lib.Query | null;
@@ -45,6 +46,8 @@ export interface NotebookStep {
 export interface NotebookStepAction {
   type: NotebookStepType;
   action: (args: { openStep: (id: string) => void }) => void;
+  disabled?: boolean;
+  disabledTooltip?: string;
 }
 
 export type NotebookDataPickerOptions = Pick<

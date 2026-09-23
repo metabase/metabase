@@ -158,4 +158,6 @@
 
 (defmethod transforms-base.i/execute-base! :query
   [transform opts]
-  (run-query-transform! transform opts))
+  (if (transforms-base.u/prompt-query? (-> transform :source :query))
+    (transforms-base.i/execute-prompt-base! transform opts)
+    (run-query-transform! transform opts)))

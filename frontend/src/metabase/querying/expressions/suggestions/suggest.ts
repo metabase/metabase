@@ -11,6 +11,7 @@ export type SuggestOptions = {
   expressionMode: Lib.ExpressionMode;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
+  allowTransformOnlyFunctions?: boolean;
 };
 
 import { suggestAggregations } from "./aggregations";

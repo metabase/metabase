@@ -78,6 +78,7 @@
    [metabase.tiles.init]
    [metabase.tracing.init]
    [metabase.transforms-base.init]
+   [metabase.transforms-prompt.init]
    [metabase.transforms.init]
    [metabase.types.init]
    [metabase.upload.init]

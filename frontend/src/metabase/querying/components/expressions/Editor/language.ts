@@ -25,6 +25,7 @@ type LintOptions = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database: Pick<Database, "features"> | undefined;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 const lint = (options: LintOptions) =>

@@ -32,6 +32,7 @@
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
+    "transform_prompt"
     "unknown"
     "user-intent-classification"})
 

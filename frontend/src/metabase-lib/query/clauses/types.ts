@@ -12,6 +12,7 @@ export enum MBQLClauseCategory {
   Conversion = "conversion",
   Window = "window",
   Aggregation = "aggregation",
+  AI = "ai",
 }
 
 export type ExpressionType =

@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { hasFeature, supportsJoins } from "metabase/databases";
@@ -23,6 +24,7 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType"> & {
     stageIndex: number,
     database: DatabaseFeatures,
   ) => boolean;
+  disabledReason?: (query: Query, stageIndex: number) => string | undefined;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
   revert: (
@@ -123,6 +125,11 @@ const STEPS: NotebookStepDef[] = [
 
       return hasData(query);
     },
+    disabledReason: (query, stageIndex) => {
+      if (hasPromptExpression(query, stageIndex)) {
+        return t`Summarize can't be used after a custom column that uses prompt()`;
+      }
+    },
     active: (query, stageIndex) => {
       const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
       const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
@@ -195,6 +202,27 @@ const hasData = (query: Lib.Query): boolean => {
   const databaseId = Lib.databaseID(query);
   return databaseId !== null;
 };
+
+export function hasPromptExpression(
+  query: Lib.Query,
+  stageIndex: number,
+): boolean {
+  return Lib.expressions(query, stageIndex).some((expression) => {
+    return (
+      Lib.expressionParts(query, stageIndex, expression).operator === "prompt"
+    );
+  });
+}
+
+export function queryHasPromptExpression(query: Lib.Query): boolean {
+  const stageCount = Lib.stageCount(query);
+  for (let stageIndex = 0; stageIndex < stageCount; stageIndex++) {
+    if (hasPromptExpression(query, stageIndex)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
@@ -281,6 +309,7 @@ function getStageSteps(
       question,
       query,
       valid: STEP.valid(query, stageIndex, database),
+      disabledReason: STEP.disabledReason?.(query, stageIndex),
       active,
       visible:
         STEP.valid(query, stageIndex, database) &&
@@ -335,7 +364,14 @@ function getStageSteps(
             openStep,
           }: {
             openStep: (id: NotebookStep["id"]) => void;
-          }) => openStep(step.id),
+          }) => {
+            if (step.disabledReason) {
+              return;
+            }
+            openStep(step.id);
+          },
+          disabled: step.disabledReason != null,
+          disabledTooltip: step.disabledReason,
         });
       }
       steps.splice(i, 1);

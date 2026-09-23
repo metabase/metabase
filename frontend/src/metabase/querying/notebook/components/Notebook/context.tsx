@@ -12,6 +12,7 @@ import type { NotebookDataPickerOptions } from "../../types";
 export type NotebookContextType = {
   modelsFilterList: DataPickerValue["model"][];
   dataPickerOptions?: NotebookDataPickerOptions;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 export const NotebookContext = createContext<NotebookContextType | undefined>(
@@ -21,11 +22,16 @@ export const NotebookContext = createContext<NotebookContextType | undefined>(
 export const NotebookProvider = ({
   modelsFilterList = ["table", "card", "dataset", "metric"],
   dataPickerOptions,
+  allowTransformOnlyFunctions,
   children,
 }: PropsWithChildren<Partial<NotebookContextType>>) => {
   const value = useMemo(
-    () => ({ modelsFilterList, dataPickerOptions }),
-    [modelsFilterList, dataPickerOptions],
+    () => ({
+      modelsFilterList,
+      dataPickerOptions,
+      allowTransformOnlyFunctions,
+    }),
+    [modelsFilterList, dataPickerOptions, allowTransformOnlyFunctions],
   );
 
   return (

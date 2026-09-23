@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
+import type { DatabaseFeature } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { getFilteredClauses } from "./utils";
@@ -8,34 +9,36 @@ import { getFilteredClauses } from "./utils";
 function setup({
   filter = "",
   expressionMode = "expression",
+  allowTransformOnlyFunctions = false,
+  features = [
+    "advanced-math-expressions",
+    "collate",
+    "convert-timezone",
+    "datetime-diff",
+    "distinct-where",
+    "expressions",
+    "expressions/date",
+    "expressions/datetime",
+    "expressions/float",
+    "expressions/integer",
+    "expressions/text",
+    "expressions/today",
+    "percentile-aggregations",
+    "regex",
+    "regex/lookaheads-and-lookbehinds",
+    "split-part",
+    "standard-deviation-aggregations",
+    "window-functions/offset",
+  ],
 }: {
   filter?: string;
   expressionMode?: Lib.ExpressionMode;
+  allowTransformOnlyFunctions?: boolean;
+  features?: DatabaseFeature[];
 } = {}) {
   // Every feature a clause can require, so this exercises name filtering
   // rather than feature gating.
-  const sampleDatabase = createSampleDatabase({
-    features: [
-      "advanced-math-expressions",
-      "collate",
-      "convert-timezone",
-      "datetime-diff",
-      "distinct-where",
-      "expressions",
-      "expressions/date",
-      "expressions/datetime",
-      "expressions/float",
-      "expressions/integer",
-      "expressions/text",
-      "expressions/today",
-      "percentile-aggregations",
-      "regex",
-      "regex/lookaheads-and-lookbehinds",
-      "split-part",
-      "standard-deviation-aggregations",
-      "window-functions/offset",
-    ],
-  });
+  const sampleDatabase = createSampleDatabase({ features });
   const metadata = createMockMetadata({ databases: [sampleDatabase] });
   const database = metadata.database(sampleDatabase.id);
   if (!database) {
@@ -46,6 +49,7 @@ function setup({
     filter,
     expressionMode,
     database,
+    allowTransformOnlyFunctions,
   });
   return { results, database, metadata };
 }
@@ -140,5 +144,20 @@ describe("getFilteredClauses", () => {
 
     // The array should be sorted
     expect(results[0].clauses[0]).toEqual(getHelpText("case", database));
+  });
+
+  it("should omit prompt() unless transform functions are enabled", () => {
+    const hidden = setup({ filter: "prompt" });
+    expect(hidden.results).toHaveLength(0);
+
+    const shown = setup({
+      filter: "prompt",
+      allowTransformOnlyFunctions: true,
+      features: ["transforms/python"],
+    });
+    expect(shown.results.map((group) => group.category)).toEqual(["ai"]);
+    expect(shown.results[0].clauses.map((clause) => clause.name)).toEqual([
+      "prompt",
+    ]);
   });
 });

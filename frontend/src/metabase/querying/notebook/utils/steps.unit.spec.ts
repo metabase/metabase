@@ -311,3 +311,46 @@ describe("aggregated query without breakout", () => {
     ).toEqual(["join", "expression"]);
   });
 });
+
+describe("query with a prompt expression", () => {
+  it("offers summarize as a disabled action and does not append a stage", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "Sentiment",
+              value: {
+                type: "operator",
+                operator: "prompt",
+                args: [{ type: "literal", value: "rate this" }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const question = Question.create({
+      dataset_query: Lib.toJsQuery(query),
+      metadata,
+    });
+
+    const steps = getQuestionSteps(question, sampleDatabase, {});
+
+    expect(steps.map((step) => step.type)).toEqual(["data", "expression"]);
+    expect(steps.map((step) => step.stageIndex)).toEqual([0, 0]);
+    expect(
+      steps
+        .flatMap((step) => step.actions)
+        .find((action) => action.type === "summarize"),
+    ).toEqual({
+      type: "summarize",
+      action: expect.any(Function),
+      disabled: true,
+      disabledTooltip:
+        "Summarize can't be used after a custom column that uses prompt()",
+    });
+  });
+});

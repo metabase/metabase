@@ -23,16 +23,23 @@ import {
 export type Options = {
   expressionMode: Lib.ExpressionMode;
   database: Pick<Database, "features"> | undefined;
+  allowTransformOnlyFunctions?: boolean;
 };
 
-export function suggestFunctions({ expressionMode, database }: Options) {
+export function suggestFunctions({
+  expressionMode,
+  database,
+  allowTransformOnlyFunctions,
+}: Options) {
   if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
 
-  const functions = getSupportedClauses({ expressionMode, database }).map(
-    (func) => expressionClauseCompletion(func, { type: "function" }),
-  );
+  const functions = getSupportedClauses({
+    expressionMode,
+    database,
+    allowTransformOnlyFunctions,
+  }).map((func) => expressionClauseCompletion(func, { type: "function" }));
 
   const matcher = fuzzyMatcher(functions);
 

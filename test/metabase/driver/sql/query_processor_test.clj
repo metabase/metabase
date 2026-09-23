@@ -838,6 +838,14 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
+(deftest ^:parallel prompt-compiles-as-concat-test
+  (testing ":prompt compiles as :concat, so an ad-hoc query never calls the LLM"
+    (is (= (sql.qp/->honeysql :h2 [:concat {} "a" "b"])
+           (sql.qp/->honeysql :h2 [:prompt {} "a" "b"])))
+    (testing "a single argument is padded so drivers that require two concat operands still accept it"
+      (is (= (sql.qp/->honeysql :h2 [:concat {} "only" ""])
+             (sql.qp/->honeysql :h2 [:prompt {} "only"]))))))
+
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
     (is (= '{:select    [__mb_source.P1__CATEGORY   AS P1__CATEGORY

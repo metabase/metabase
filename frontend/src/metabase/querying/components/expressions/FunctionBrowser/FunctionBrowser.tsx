@@ -39,11 +39,13 @@ export function FunctionBrowser({
   reportTimezone,
   query,
   onClauseClick,
+  allowTransformOnlyFunctions,
 }: {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
+  allowTransformOnlyFunctions?: boolean;
 }) {
   const databaseId = Lib.databaseID(query);
   const { data: database, isLoading } = useGetDatabaseQuery(
@@ -58,8 +60,20 @@ export function FunctionBrowser({
 
   const filteredClauses = useMemo(
     () =>
-      getFilteredClauses({ expressionMode, filter, database, reportTimezone }),
-    [filter, expressionMode, database, reportTimezone],
+      getFilteredClauses({
+        expressionMode,
+        filter,
+        database,
+        reportTimezone,
+        allowTransformOnlyFunctions,
+      }),
+    [
+      filter,
+      expressionMode,
+      database,
+      reportTimezone,
+      allowTransformOnlyFunctions,
+    ],
   );
 
   // Until the database answers, the clause list is empty because no feature is

@@ -8,6 +8,7 @@ import {
   type MBQLClauseDefinition,
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
+  TRANSFORM_ONLY,
 } from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -82,11 +83,19 @@ export const clausesForMode = memoize((expressionMode: Lib.ExpressionMode) => {
 export function getSupportedClauses({
   expressionMode,
   database,
+  allowTransformOnlyFunctions = false,
 }: {
   expressionMode: Lib.ExpressionMode;
   database?: Pick<Database, "features"> | null;
+  allowTransformOnlyFunctions?: boolean;
 }) {
+  const transformOnlyClauses =
+    allowTransformOnlyFunctions && expressionMode === "expression"
+      ? Object.keys(TRANSFORM_ONLY).map(getClauseDefinition).filter(isNotNull)
+      : [];
+
   return clausesForMode(expressionMode)
+    .concat(transformOnlyClauses)
     .filter(
       (clause) =>
         database != null &&
@@ -98,6 +107,5 @@ export function getSupportedClauses({
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })
-    .sort((a, b) => a.name.localeCompare(b.name))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

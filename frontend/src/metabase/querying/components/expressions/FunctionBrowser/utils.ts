@@ -34,6 +34,8 @@ function getCategoryName(category: string) {
       return t`Window functions`;
     case "aggregation":
       return t`Aggregations`;
+    case "ai":
+      return t`AI`;
   }
 }
 
@@ -42,13 +44,19 @@ export function getFilteredClauses({
   filter,
   database,
   reportTimezone,
+  allowTransformOnlyFunctions,
 }: {
   expressionMode: Lib.ExpressionMode;
   filter: string;
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
+  allowTransformOnlyFunctions?: boolean;
 }) {
-  const filteredClauses = getSupportedClauses({ expressionMode, database })
+  const filteredClauses = getSupportedClauses({
+    expressionMode,
+    database,
+    allowTransformOnlyFunctions,
+  })
     .filter((clause) =>
       clause.displayName.toLowerCase().includes(filter.toLowerCase()),
     )

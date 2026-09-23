@@ -42,6 +42,11 @@
     );
     color: color-mix(in srgb, var(--notebook-action-button-color), black 11.5%);
   }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
 .label {

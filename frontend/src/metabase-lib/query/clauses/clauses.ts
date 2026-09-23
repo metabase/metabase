@@ -1884,6 +1884,35 @@ export const EXPRESSION_FUNCTIONS = {
   ...LOGICAL,
 } as const;
 
+export const TRANSFORM_ONLY = defineClauses(
+  { category: CATEGORY.AI },
+  {
+    prompt: {
+      displayName: "prompt",
+      type: "string",
+      multiple: true,
+      requiresFeature: "transforms/python",
+      description: () =>
+        t`Sends the concatenated arguments to your configured AI model and returns the response.`,
+      args: () => [
+        {
+          name: t`text`,
+          type: "expression",
+          description: t`The column or text to begin the prompt with.`,
+          example: t`Classify the sentiment as positive, neutral, or negative: `,
+        },
+        {
+          name: "…",
+          type: "string",
+          description: t`Additional columns or text to concatenate into the prompt.`,
+          example: dimension(t`Review`),
+          optional: true,
+        },
+      ],
+    },
+  },
+);
+
 export const AGGREGATION_FUNCTIONS = {
   ...EXPRESSION_FUNCTIONS,
   ...AGGREGATION,
@@ -1894,6 +1923,7 @@ export const MBQL_CLAUSES = {
   ...AGGREGATION_FUNCTIONS,
   ...EXPRESSION_FUNCTIONS,
   ...EXPRESSION_OPERATORS,
+  ...TRANSFORM_ONLY,
 } as const;
 
 export type DefinedClauseName = keyof typeof MBQL_CLAUSES;

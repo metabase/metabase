@@ -562,6 +562,50 @@
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))
 
+(deftest ^:parallel diagnose-prompt-test
+  (let [base  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        field (meta/field-metadata :orders :subtotal)
+        prompt-expr (lib/prompt field)]
+    (testing "a top-level prompt() custom column on the last stage is valid"
+      (is (nil? (lib.expression/diagnose-expression base 0 :expression prompt-expr nil))))
+    (testing "prompt() is only a custom column"
+      (is (=? {:message "prompt() is only supported in custom columns"}
+              (lib.expression/diagnose-expression base 0 :filter prompt-expr nil)))
+      (is (=? {:message "prompt() is only supported in custom columns"}
+              (lib.expression/diagnose-expression base 0 :aggregation (lib/sum prompt-expr) nil))))
+    (testing "prompt() must be the outermost function"
+      (is (=? {:message "prompt() must be the outermost function"}
+              (lib.expression/diagnose-expression base 0 :expression (lib/upper prompt-expr) nil)))
+      (is (=? {:message "prompt() must be the outermost function"}
+              (lib.expression/diagnose-expression base 0 :expression (lib/prompt prompt-expr) nil))))
+    (testing "prompt() is only allowed on the last stage"
+      (let [query (-> base
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (meta/field-metadata :orders :user-id))
+                      lib/append-stage)]
+        (is (=? {:message "prompt() can't be used before a later step"}
+                (lib.expression/diagnose-expression query 0 :expression prompt-expr nil)))))
+    (testing "prompt() is not allowed on a summarized stage"
+      (let [query (lib/aggregate base (lib/count))]
+        (is (=? {:message "prompt() can't be used on the same step as a Summarize"}
+                (lib.expression/diagnose-expression query 0 :expression prompt-expr nil)))))
+    (testing "other expressions and filters cannot reference a prompt() column"
+      (let [query (lib/expression base 0 "Sentiment" prompt-expr)]
+        (is (=? {:message "Columns created with prompt() can't be used in other expressions or filters"}
+                (lib.expression/diagnose-expression
+                 query 0 :expression
+                 (lib/concat (lib/expression-ref query "Sentiment") "!")
+                 nil)))
+        (is (=? {:message "Columns created with prompt() can't be used in other expressions or filters"}
+                (lib.expression/diagnose-expression
+                 query 0 :filter
+                 (lib/= (lib/expression-ref query "Sentiment") "good")
+                 nil)))))))
+
+(deftest ^:parallel prompt-clause-schema-test
+  (is (mr/validate :mbql.clause/prompt (lib/prompt "hello")))
+  (is (mr/validate :mbql.clause/prompt (lib/prompt (meta/field-metadata :orders :subtotal) " please"))))
+
 (deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
   (testing "adding/editing a filter using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]

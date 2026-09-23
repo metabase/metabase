@@ -236,6 +236,40 @@ describe("suggestFunctions", () => {
     });
   });
 
+  it("should suggest prompt only when transform functions are enabled", async () => {
+    const hidden = setup({
+      expressionMode: "expression",
+      features: ["transforms/python"],
+    });
+    expect(
+      (await hidden("prom|"))?.options.find(
+        (option) => option.label === "prompt",
+      ),
+    ).toBeUndefined();
+
+    const shown = suggestFunctions({
+      expressionMode: "expression",
+      database: createSampleDatabase({ features: ["transforms/python"] }),
+      allowTransformOnlyFunctions: true,
+    });
+    expect(
+      (await complete(shown, "prom|"))?.options.find(
+        (option) => option.label === "prompt",
+      )?.displayLabel,
+    ).toBe("prompt");
+
+    const inFilter = suggestFunctions({
+      expressionMode: "filter",
+      database: createSampleDatabase({ features: ["transforms/python"] }),
+      allowTransformOnlyFunctions: true,
+    });
+    expect(
+      (await complete(inFilter, "prom|"))?.options.find(
+        (option) => option.label === "prompt",
+      ),
+    ).toBeUndefined();
+  });
+
   it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {
     const completer = setup({ expressionMode: "expression" });
     const results = await completer("not|");

@@ -60,6 +60,7 @@ export type EditorProps = {
     error: ExpressionError | null,
   ) => void;
   shortcuts?: Shortcut[];
+  allowTransformOnlyFunctions?: boolean;
 };
 
 const EDITOR_WIDGET_HEIGHT = 220;
@@ -81,6 +82,7 @@ export function Editor(props: EditorProps) {
     hasHeader,
     onCloseEditor,
     initialExpressionClause,
+    allowTransformOnlyFunctions,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -118,6 +120,7 @@ export function Editor(props: EditorProps) {
         database={database}
         reportTimezone={reportTimezone}
         expressionMode={expressionMode}
+        allowTransformOnlyFunctions={allowTransformOnlyFunctions}
         {...props}
       />
     ),
@@ -130,6 +133,7 @@ export function Editor(props: EditorProps) {
     availableColumns,
     availableMetrics,
     database,
+    allowTransformOnlyFunctions,
     extensions: [customTooltip],
   });
 
@@ -236,6 +240,7 @@ export function Editor(props: EditorProps) {
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
+            allowTransformOnlyFunctions={allowTransformOnlyFunctions}
           />
         </LayoutSidebar>
       )}
@@ -261,6 +266,7 @@ function useExpression({
   database,
   onChange,
   initialClause,
+  allowTransformOnlyFunctions,
 }: EditorProps & {
   database: Pick<Database, "features"> | undefined;
 }) {
@@ -331,6 +337,7 @@ function useExpression({
         database,
         availableColumns,
         availableMetrics,
+        allowTransformOnlyFunctions,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -349,6 +356,7 @@ function useExpression({
       debouncedOnChange,
       availableColumns,
       availableMetrics,
+      allowTransformOnlyFunctions,
     ],
   );
 

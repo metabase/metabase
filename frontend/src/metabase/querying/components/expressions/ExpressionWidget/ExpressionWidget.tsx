@@ -35,6 +35,7 @@ export type ExpressionWidgetProps = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   readOnly?: boolean;
+  allowTransformOnlyFunctions?: boolean;
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -57,6 +58,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     onClose,
     initialExpressionClause,
     readOnly,
+    allowTransformOnlyFunctions,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -207,6 +209,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         onCloseEditor={onClose}
         initialExpressionClause={initialExpressionClause}
         readOnly={readOnly}
+        allowTransformOnlyFunctions={allowTransformOnlyFunctions}
       />
 
       <LayoutFooter>

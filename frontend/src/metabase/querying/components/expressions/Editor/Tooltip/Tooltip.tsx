@@ -25,6 +25,7 @@ export function Tooltip({
   reportTimezone,
   tooltipRef,
   expressionMode,
+  allowTransformOnlyFunctions,
 
   state,
   view,
@@ -34,6 +35,7 @@ export function Tooltip({
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
+  allowTransformOnlyFunctions?: boolean;
 
   // from tooltip extension
   tooltipRef: RefObject<HTMLDivElement>;
@@ -106,6 +108,7 @@ export function Tooltip({
             open={shouldShowHelpText}
             onToggle={handleToggleHelpText}
             expressionMode={expressionMode}
+            allowTransformOnlyFunctions={allowTransformOnlyFunctions}
           />
           {shouldShowCompletions && (
             <Listbox

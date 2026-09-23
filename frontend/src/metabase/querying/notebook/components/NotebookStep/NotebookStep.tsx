@@ -68,7 +68,13 @@ export function NotebookStep({
               secondary={stepUi.secondary}
               title={title}
               aria-label={title}
-              onClick={() => action.action({ openStep })}
+              disabled={action.disabled}
+              disabledTooltip={action.disabledTooltip}
+              onClick={() => {
+                if (!action.disabled) {
+                  action.action({ openStep });
+                }
+              }}
             />
           ),
         };

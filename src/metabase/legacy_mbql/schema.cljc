@@ -521,7 +521,7 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case :if
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :prompt :regex-match-first :coalesce :case :if
     :host :domain :subdomain :path :month-name :quarter-name :day-name :text :split-part :collate})
 
 (mr/def ::StringExpressionArg
@@ -692,6 +692,10 @@
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]
+  more (rest [:ref ::ExpressionArg]))
+
+(defclause prompt
+  a    [:ref ::ExpressionArg]
   more (rest [:ref ::ExpressionArg]))
 
 (defclause regex-match-first
@@ -1266,7 +1270,7 @@
           aggregation))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case if host domain
+  (one-of substring trim ltrim rtrim replace lower upper concat prompt regex-match-first coalesce case if host domain
           subdomain path month-name quarter-name day-name text split-part collate))
 
 (mr/def ::FieldOrExpressionDef

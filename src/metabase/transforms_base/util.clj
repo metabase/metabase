@@ -470,16 +470,148 @@
     ;; No range params - return unchanged
     query))
 
+(defn- contains-prompt?
+  [form]
+  (boolean
+   (letfn [(walk [x]
+             (cond
+               (and (vector? x) (= :prompt (first x))) true
+               (map? x)                                 (some walk (vals x))
+               (sequential? x)                          (some walk x)
+               :else                                    false))]
+     (walk form))))
+
+(defn prompt-query?
+  "True when `query` contains a `:prompt` clause anywhere, including earlier stages and join subqueries."
+  [query]
+  (contains-prompt? query))
+
+(defn- expression-forms
+  [stage]
+  (let [exprs (:expressions stage)]
+    (cond
+      (map? exprs)        (vec (vals exprs))
+      (sequential? exprs) (vec exprs)
+      :else               [])))
+
+(defn- prompt-expression-names
+  "Names of expressions in `stage` whose definition is a top-level `:prompt` clause."
+  [stage]
+  (set (concat
+        (when (map? (:expressions stage))
+          (keep (fn [[k v]]
+                  (when (and (vector? v) (= :prompt (first v)))
+                    (u/qualified-name k)))
+                (:expressions stage)))
+        (keep (fn [expr]
+                (when (and (vector? expr) (= :prompt (first expr)))
+                  (or (get-in expr [1 :lib/expression-name])
+                      (get-in expr [1 :name]))))
+              (expression-forms stage)))))
+
+(defn- references-expression-name?
+  [form names]
+  (boolean
+   (letfn [(walk [x]
+             (cond
+               (and (vector? x)
+                    (= :expression (first x))
+                    (some names (filter string? x))) true
+               (map? x)                              (some walk (vals x))
+               (sequential? x)                       (some walk x)
+               :else                                 false))]
+     (walk form))))
+
+(defn- prompt-outside-expressions?
+  [stage]
+  (or (contains-prompt? (:filters stage))
+      (contains-prompt? (:aggregation stage))
+      (contains-prompt? (:breakout stage))
+      (contains-prompt? (:order-by stage))
+      (some contains-prompt? (map :conditions (:joins stage)))))
+
+(defn- stage-references-prompt?
+  [stage names]
+  (or (some #(references-expression-name? % names) (:filters stage))
+      (some #(references-expression-name? % names) (:order-by stage))
+      (some #(references-expression-name? % names) (:aggregation stage))
+      (some #(references-expression-name? % names) (:breakout stage))
+      (some #(references-expression-name? (:conditions %) names) (:joins stage))
+      (some (fn [expr]
+              (and (not (and (vector? expr) (= :prompt (first expr))))
+                   (references-expression-name? expr names)))
+            (expression-forms stage))))
+
+(defn- prompt-stage-error
+  "Placement error for one stage. `root-last?` is true only for the root query's last stage; a join's own last
+  stage is still too early, because its SQL runs before the LLM."
+  [stage root-last?]
+  (let [names (prompt-expression-names stage)]
+    (cond
+      (and (not root-last?) (contains-prompt? stage))
+      (i18n/tru "prompt() can''t be used before a later step")
+
+      (and root-last?
+           (or (seq (:aggregation stage)) (seq (:breakout stage)))
+           (or (seq names) (contains-prompt? stage)))
+      (i18n/tru "prompt() can''t be used on the same step as a Summarize")
+
+      (and root-last?
+           (some (fn [expr]
+                   (and (contains-prompt? expr)
+                        (not (and (vector? expr) (= :prompt (first expr))))))
+                 (expression-forms stage)))
+      (i18n/tru "prompt() must be the outermost function")
+
+      (and root-last? (prompt-outside-expressions? stage))
+      (i18n/tru "prompt() is only supported in custom columns")
+
+      (and root-last? (seq names) (stage-references-prompt? stage names))
+      (i18n/tru
+       "Columns created with prompt() can''t be used in other expressions or filters"))))
+
+(defn- prompt-stages-error
+  [stages root?]
+  (let [last-idx (dec (count stages))]
+    (some (fn [[idx stage]]
+            (or (prompt-stage-error stage (and root? (= idx last-idx)))
+                (some #(prompt-stages-error (:stages %) false) (:joins stage))))
+          (map-indexed vector stages))))
+
+(defn query-transform-database
+  "Database a query transform reads from, or nil when that database has been deleted."
+  [transform]
+  (when-let [db-id (get-in transform [:source :query :database])]
+    (transforms-base.db/database db-id)))
+
+(defn last-stage-prompt-names
+  "Names of top-level `:prompt` expressions on the last stage of `query`."
+  [query]
+  (prompt-expression-names (lib.util/query-stage query -1)))
+
+(defn prompt-usage-error
+  "Error message when `transform` uses `:prompt` in a way that cannot be evaluated, otherwise nil.
+
+  `:prompt` is allowed only as the outermost expression of the last stage, on a stage with no aggregations or
+  breakouts, and nothing else in that stage may reference the column. The target must be a plain table."
+  [transform]
+  (when (prompt-query? (-> transform :source :query))
+    (or (when-not (table-target? transform)
+          (i18n/tru "prompt() transforms can only write to a table"))
+        (prompt-stages-error (:stages (lib.util/pipeline (-> transform :source :query))) true))))
+
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
-  [{:keys [source]} :- ::transforms-base.schema/transform]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform]
   (case (keyword (:type source))
     :query
-    (try
-      (qp.preprocess/preprocess (:query source))
-      nil
-      (catch Exception e
-        (qp.catch-exceptions/exception-response e)))))
+    (or (when-let [message (prompt-usage-error transform)]
+          {:error message})
+        (try
+          (qp.preprocess/preprocess (:query source))
+          nil
+          (catch Exception e
+            (qp.catch-exceptions/exception-response e))))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."

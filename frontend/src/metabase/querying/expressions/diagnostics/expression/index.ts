@@ -9,10 +9,12 @@ import { checkFunctionsForExpressionMode } from "./check-functions-for-expressio
 import { checkKnownFunctions } from "./check-known-functions";
 import { checkLibDiagnostics } from "./check-lib-diagnostics";
 import { checkSupportedFunctions } from "./check-supported-functions";
+import { checkTransformOnlyFunctions } from "./check-transform-only-functions";
 
 const expressionChecks = [
   checkKnownFunctions,
   checkSupportedFunctions,
+  checkTransformOnlyFunctions,
   checkFunctionsForExpressionMode,
   checkArgValidators,
   checkArgCount,
@@ -29,6 +31,7 @@ export function diagnoseExpression(options: {
   expressionParts: Lib.ExpressionParts | Lib.ExpressionArg;
   expressionIndex?: number;
   database?: Pick<Database, "features">;
+  allowTransformOnlyFunctions?: boolean;
 }) {
   expressionChecks.forEach((check) => check(options));
 }

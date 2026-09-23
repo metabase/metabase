@@ -49,5 +49,8 @@
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
 
+(mbql-clause/define-catn-mbql-clause :prompt :- :type/Text
+  [:args [:repeat {:min 1} [:schema [:ref ::expression/expression]]]])
+
 (mbql-clause/define-tuple-mbql-clause :text :- :type/Text
   [:schema [:ref ::expression/expression]])

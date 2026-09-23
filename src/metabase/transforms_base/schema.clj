@@ -117,7 +117,9 @@
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
    [:cancel-chan {:optional true} [:maybe ::chan]]
-   [:source-range-params {:optional true} [:maybe ::source-range-params]]])
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]
+   ;; The user the run executes as. Prompt runs re-bind this for the query processor and the LLM gate.
+   [:run-user-id {:optional true} [:maybe ::lib.schema.id/user]]])
 
 ;;; ------------------------------------------------- Result -------------------------------------------------
 

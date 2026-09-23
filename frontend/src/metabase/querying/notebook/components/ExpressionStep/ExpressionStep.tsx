@@ -10,6 +10,7 @@ import {
 } from "../../../components/expressions/ExpressionWidget";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
+import { useNotebookContext } from "../Notebook/context";
 
 export const ExpressionStep = ({
   color,
@@ -20,6 +21,7 @@ export const ExpressionStep = ({
   step,
 }: NotebookStepProps): JSX.Element => {
   const { query, stageIndex } = step;
+  const { allowTransformOnlyFunctions } = useNotebookContext();
   const tc = useTranslateContent();
 
   // A new custom column opens its popover as soon as the step appears. The
@@ -71,6 +73,7 @@ export const ExpressionStep = ({
             updateQuery={updateQuery}
             onClose={onClose}
             readOnly={readOnly}
+            allowTransformOnlyFunctions={allowTransformOnlyFunctions}
           />
         )
       }
@@ -90,6 +93,7 @@ type ExpressionPopoverProps = {
   updateQuery: (query: Lib.Query) => Promise<void>;
   onClose: () => void;
   readOnly?: boolean;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 function ExpressionPopover({
@@ -101,6 +105,7 @@ function ExpressionPopover({
   updateQuery,
   onClose,
   readOnly,
+  allowTransformOnlyFunctions,
 }: ExpressionPopoverProps) {
   const expressionInfo = useMemo(
     () =>
@@ -150,6 +155,7 @@ function ExpressionPopover({
       reportTimezone={reportTimezone}
       onClose={onClose}
       readOnly={readOnly}
+      allowTransformOnlyFunctions={allowTransformOnlyFunctions}
     />
   );
 }

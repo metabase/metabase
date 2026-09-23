@@ -58,6 +58,7 @@
                                       transform
                                       {:cancelled?           #(boolean (a/poll! cancel-chan))
                                        :run-id               run-id
+                                       :run-user-id          run-user-id
                                        :source-range-params  source-range-params
                                        :with-stage-timing-fn (fn [rid stage thunk]
                                                                (transforms.instrumentation/with-stage-timing [rid stage]

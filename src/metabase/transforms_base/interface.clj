@@ -62,6 +62,7 @@
   - `:run-id` - optional, for instrumentation/metrics (nil skips metrics recording)
   - `:with-stage-timing-fn` - optional, (fn [run-id stage thunk]) for timing instrumentation
   - `:message-log` - optional, pre-created message log atom (for python transforms)
+  - `:run-user-id` - optional, the user the run executes as (required by prompt() runs)
 
   Returns a map:
   {:status :succeeded | :failed | :cancelled | :timeout
@@ -105,3 +106,19 @@
                             (:id transform) transform-type)
                     {:transform-id   (:id transform)
                      :transform-type transform-type}))))
+
+(defmulti execute-prompt-base!
+  "Execute a transform whose query contains `:prompt`.
+
+  Dispatches on [[transform->transform-type]]. The `:query` implementation lives in `metabase.transforms-prompt`,
+  which is loaded from its init namespace. The `:default` method throws, so a transform type with no prompt runner
+  fails with a clear error instead of compiling `:prompt` as SQL."
+  {:added "0.58.0" :arglists '([transform options])}
+  (fn [transform _options]
+    (transform->transform-type transform)))
+
+(defmethod execute-prompt-base! :default
+  [transform _options]
+  (throw (ex-info "prompt() transforms are not available"
+                  {:transform-id   (:id transform)
+                   :transform-type (-> transform :source :type)})))

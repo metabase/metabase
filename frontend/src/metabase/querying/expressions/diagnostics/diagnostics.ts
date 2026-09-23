@@ -17,6 +17,7 @@ type Options = {
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
   database?: Pick<Database, "features">;
+  allowTransformOnlyFunctions?: boolean;
 };
 
 export type SyntaxDiagnoser = (tokens: Token[]) => void;

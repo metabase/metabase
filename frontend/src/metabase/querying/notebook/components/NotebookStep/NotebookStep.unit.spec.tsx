@@ -89,6 +89,35 @@ describe("NotebookStep", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders a disabled action with a tooltip and does not open the step", async () => {
+    const summarizeAction = jest.fn();
+    const step = createMockNotebookStep({
+      type: "expression",
+      actions: [
+        {
+          type: "summarize",
+          action: summarizeAction,
+          disabled: true,
+          disabledTooltip:
+            "Summarize can't be used after a custom column that uses prompt()",
+        },
+      ],
+    });
+    const { openStep } = setup({ step });
+
+    const button = screen.getByRole("button", { name: "Summarize" });
+    expect(button).toBeDisabled();
+
+    await userEvent.hover(screen.getByTestId("disabled-notebook-action"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Summarize can't be used after a custom column that uses prompt()",
+    );
+
+    await userEvent.click(button);
+    expect(summarizeAction).not.toHaveBeenCalled();
+    expect(openStep).not.toHaveBeenCalled();
+  });
+
   it("sets the row limit only on blur", async () => {
     const step = createMockNotebookStep({ type: "limit" });
     const { updateQuery } = setup({ step });
