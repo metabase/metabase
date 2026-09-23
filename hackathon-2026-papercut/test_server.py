@@ -95,8 +95,10 @@ class WebViewTest(StoreCase):
                                                 "instance:stats": 1})
         page = server.papercut_list_html(self.store.list_papercuts(), {"source": "instance:stats"}, (), None,
                                          self.store.sources(), self.store.sources())
-        self.assertIn("data-value='instance:stats' aria-pressed='true'>stats<span class='count'>1</span>", page)
-        self.assertIn("data-value='person:chris.claude' aria-pressed='false'>Chris · Claude<span class='count'>2</span>", page)
+        self.assertIn("<optgroup label='Metabase instances'><option value='instance:stats' selected>stats (1)</option></optgroup>",
+                      page)
+        self.assertIn("<option value='person:chris.claude'>Chris · Claude (2)</option>", page)
+        self.assertNotIn("data-name='source'", page)
 
     def test_chris_reporter_aliases_share_a_source_and_reporter_count(self):
         papercut_id = self.papercut("Alias", reporter="chris", agent="claude")
@@ -1212,23 +1214,30 @@ class HttpTest(HttpCase):
 
 
 class InstallerTest(HttpCase):
-    def installer(self, **env):
+    def installer(self, host="ts.metaouch.dev", **env):
         with mock.patch.dict(server.os.environ, env, clear=True):
-            status, script, _ = self.call("GET", "/api/install.sh")
+            status, script, _ = self.call("GET", "/api/install.sh", headers={"Host": host})
         self.assertEqual(status, 200)
         return script
 
-    def test_the_installer_carries_the_servers_key(self):
-        self.assertEqual(server.INSTALLER.read_text().count(server.INSTALLER_KEY), 1)
+    def test_the_installer_carries_the_servers_key_and_address(self):
+        source = server.INSTALLER.read_text()
+        self.assertEqual((source.count(server.INSTALLER_KEY), source.count(server.INSTALLER_SERVER)), (1, 1))
         script = self.installer(TYPESAFE_API_KEY="jev_live.abc-123")
         self.assertIn("TYPESAFE_API_KEY='jev_live.abc-123'", script)
+        self.assertIn(f"SERVER='http://ts.metaouch.dev:{self.httpd.server_port}'", script)
         self.assertEqual(subprocess.run(["sh", "-n"], input=script, text=True).returncode, 0)
+
+    def test_an_odd_or_loopback_host_becomes_the_tailnet_ip(self):
+        for host in ("127.0.0.1:8765", "localhost", "x;touch /tmp/pwned", ""):
+            with self.subTest(host):
+                self.assertIn(f"SERVER='http://10.193.193.227:{self.httpd.server_port}'",
+                              self.installer(host, TYPESAFE_API_KEY="k"))
 
     def test_without_a_usable_key_the_installer_says_so(self):
         for env in ({}, {"TYPESAFE_API_KEY": ""}, {"TYPESAFE_API_KEY": "it's"}):
             with self.subTest(env):
                 self.assertEqual(self.installer(**env), server.NO_KEY_INSTALLER)
-
 
 if __name__ == "__main__":
     unittest.main()
