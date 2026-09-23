@@ -265,7 +265,7 @@ describe("Remote Sync", () => {
 
         H.waitForTask({ taskName: "export" });
         // Push button should be disabled when local changes are synced
-        H.getPushOption().should("have.attr", "data-combobox-disabled", "true");
+        H.getPushOption().should("be.disabled");
       };
 
       it("should allow you to create new branches and switch between them", () => {
