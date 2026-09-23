@@ -4197,6 +4197,7 @@
            search
            search.embeddings
            settings
+           startup
            task
            tracing
            util
