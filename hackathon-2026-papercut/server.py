@@ -1552,11 +1552,14 @@ UI_STYLE = """<style>
 }
 :root[data-theme="dark"] {""" + DARK_STATES + """}
 .icon {width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round}
-.theme-switch {display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface)}
+.theme-switch {display: inline-flex; padding: 3px; border: 1px solid transparent; border-radius: 10px;
+               transition: border-color .15s, background-color .15s}
+.theme-switch:is(:hover, :focus-within) {border-color: var(--border); background: var(--surface)}
 .header-actions .theme-switch button {display: grid; place-items: center; width: 32px; min-height: 30px; padding: 0; border: 0; border-radius: 7px;
-                                      background: none; color: var(--muted)}
+                                      overflow: hidden; background: none; color: var(--muted); transition: width .15s, opacity .15s}
+.theme-switch:not(:hover, :focus-within) button:not([aria-pressed=true]) {width: 0; opacity: 0}
 .header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
-.header-actions .theme-switch button[aria-pressed=true] {color: var(--text); background: var(--pill)}
+.theme-switch:is(:hover, :focus-within) button[aria-pressed=true] {color: var(--text); background: var(--pill)}
 @media (min-width: 931px) {
   .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
   .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(190px, 1.4fr) auto}
