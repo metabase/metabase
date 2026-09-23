@@ -812,3 +812,53 @@
            (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
     (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
               (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))
+
+;; ---------------------------------------------------------------------------
+;; Clone cleanup after a URL change (HACKRDE-30)
+;; ---------------------------------------------------------------------------
+
+(defn- clone-and-forget!
+  "Clones a fresh remote in `dir` and returns only the local clone's path, so nothing the caller holds keeps the
+  clone's Git instance reachable."
+  ^File [dir]
+  (let [[source _] (init-source! "master" dir)]
+    (#'git/repo-path {:remote-url (:remote-url source)})))
+
+(defn- open-until!
+  "Collects garbage and re-opens `remote` up to 30 times, 100 ms apart, until `(done?)` is true. Returns the last
+  source. The pause matters: JGit can hold a Repository briefly after the command that used it returns."
+  [remote done?]
+  (loop [n 0]
+    (System/gc)
+    (Thread/sleep 100)
+    (let [source (->source! "master" remote)]
+      (if (or (done?) (>= n 30))
+        source
+        (recur (inc n))))))
+
+(deftest get-jgit-removes-unused-clone-of-previous-url-test
+  (testing "HACKRDE-30: once nothing uses the clone of a previously opened URL, opening another URL deletes it"
+    (mt/with-temp-dir [old-dir nil]
+      (mt/with-temp-dir [new-dir nil]
+        (let [old-path (clone-and-forget! old-dir)]
+          (is (.exists old-path) "Precondition: the old repository is cloned")
+          (let [[_ new-remote] (init-source! "master" new-dir)
+                new-source     (open-until! new-remote #(not (.exists old-path)))]
+            (is (not (.exists old-path)) "The unused clone of the previous URL is deleted")
+            (is (.exists ^File (#'git/repo-path {:remote-url (:remote-url new-source)}))
+                "The current URL's clone is kept")
+            (is (= ["master"] (source.p/branches new-source)))))))))
+
+(deftest get-jgit-keeps-clone-still-in-use-test
+  (testing "HACKRDE-30: a clone that a live source still holds is never deleted, and re-opening its URL reuses it"
+    (mt/with-temp-dir [old-dir nil]
+      (mt/with-temp-dir [new-dir nil]
+        (let [[old-source old-remote] (init-source! "master" old-dir :branches ["branch-1"])
+              ^File old-path          (#'git/repo-path {:remote-url (:remote-url old-source)})
+              [_ new-remote]          (init-source! "master" new-dir)]
+          (open-until! new-remote (constantly false))
+          (is (.exists old-path) "The clone an in-flight source holds survives the URL change")
+          (is (= ["branch-1" "master"] (source.p/branches old-source))
+              "The in-flight source still works")
+          (is (identical? (:git old-source) (:git (->source! "master" old-remote)))
+              "Switching back to the old URL reuses the Git instance still in use"))))))
