@@ -27,8 +27,7 @@ export function getRowChartSymbols(
 ) {
   return within(container)
     .queryAllByRole("graphics-symbol")
-    .filter(
-      (element) =>
-        element.getAttribute("aria-roledescription") === roleDescription,
-    );
+    .filter((element) => {
+      return element.getAttribute("aria-roledescription") === roleDescription;
+    });
 }
