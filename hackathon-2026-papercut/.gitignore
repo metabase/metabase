@@ -2,3 +2,8 @@
 *.sqlite3-shm
 *.sqlite3-wal
 __pycache__/
+# Local-only papercut mining data: raw transcript paths and scores, and write-ups with security detail.
+slop/*/pipeline/output/
+slop/*/papercuts/*/*.jev-screen.jsonl
+slop/chris/papercuts/claude/chris.claude.exploit-mechanics-in-public-pr-text-before-merge.md
+slop/chris/papercuts/claude/chris.claude.fix-changes-user-facing-semantics-without-checking-ui-contract.md
