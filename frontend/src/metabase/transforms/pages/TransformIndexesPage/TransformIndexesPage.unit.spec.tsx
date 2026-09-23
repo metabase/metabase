@@ -210,6 +210,25 @@ describe("TransformIndexesPage", () => {
     expect(screen.getByText("idx_orders_id")).toBeInTheDocument();
   });
 
+  it("does not claim the table has no indexes when the warehouse could not be read", async () => {
+    setup({
+      indexes: [],
+      warehouseError:
+        "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)",
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByTestId("warehouse-error-banner")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Index the key columns of your transforms to make them faster and more efficient.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create index" }),
+    ).toBeInTheDocument();
+  });
+
   it("does not warn when the warehouse read succeeded", async () => {
     setup({ indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })] });
     await waitForLoaderToBeRemoved();

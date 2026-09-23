@@ -83,6 +83,9 @@ function TransformIndexesContent({
   const hasRequestableIndexes =
     Object.keys(transform.requestable_indexes ?? {}).length > 0;
   const canCreate = targetTableExists && hasRequestableIndexes && !readOnly;
+  const hasIndexes = indexes.length > 0;
+  // An unreadable warehouse means we don't know the table is empty, so don't say so.
+  const showEmptyState = !hasIndexes && warehouseError == null;
   const [editorState, setEditorState] = useState<{
     index?: TableIndexEntry;
   } | null>(null);
@@ -113,9 +116,7 @@ function TransformIndexesContent({
           />
         }
       >
-        {indexes.length === 0 ? (
-          <NoIndexes />
-        ) : (
+        {hasIndexes && (
           <TransformIndexTable
             indexes={indexes}
             kindLabels={getKindLabels(transform.requestable_indexes)}
@@ -124,6 +125,7 @@ function TransformIndexesContent({
             onDelete={deleteIndex}
           />
         )}
+        {showEmptyState && <NoIndexes />}
       </TitleSection>
       {editorState != null && (
         <IndexEditorModal
