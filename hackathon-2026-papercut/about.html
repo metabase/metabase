@@ -329,6 +329,21 @@
     </div>
   </section>
 
+  <section id="merge">
+    <h2>What a merge does</h2>
+    <p class="sub">A merge keeps one papercut and folds the other into it, in one transaction. You choose which one stays; the page suggests the one with more reports.</p>
+    <ul class="plain">
+      <li><b>Reports and fingerprints move</b> to the papercut that stays. Later sightings with the old fingerprint land there too, so the duplicate can't come back on its own.</li>
+      <li><b>The old papercut redirects.</b> Links to it, in the browser and the API, lead to the one that stays.</li>
+      <li><b>Triage carries over only when both agree.</b> If the two papercuts had different statuses or categories, the one that stays goes back to <code>open</code> to be triaged again. If it had no category, it takes the other's.</li>
+      <li><b>A fix in progress moves with it.</b> A dispatch running on the merged papercut now works on the one that stays. When both have a dispatch running, the merge is refused.</li>
+      <li><b>Related links move too.</b> Where both papercuts had a view on the same third papercut, a person's decision beats an AI suggestion.</li>
+      <li><b>History records it</b> on both papercuts, with who merged, when and why.</li>
+      <li><b>The archive importer merges as well.</b> A mined writeup that lists <code>merged_from</code> routes those slugs to its papercut and merges any papercut they already created.</li>
+      <li><b>There's no undo yet.</b> Reports don't remember which papercut they came from, so a merge can't be reversed. That's on the to-do list.</li>
+    </ul>
+  </section>
+
   <section class="two">
     <div>
       <h2>What leaves your laptop</h2>
