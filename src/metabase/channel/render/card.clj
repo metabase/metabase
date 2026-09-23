@@ -1,6 +1,7 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
+   [medley.core :as m]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
@@ -223,7 +224,11 @@
                             (k m)
                             (update k dynamic-goals/resolve-dynamic-goals (:referenced_entities data) effective)))
           card          (resolve-goals card :visualization_settings)
-          dashcard      (some-> dashcard (resolve-goals :visualization_settings))
+          dashcard      (some-> dashcard
+                                (resolve-goals :visualization_settings)
+                                ;; a visualizer dashcard's chart reads the settings nested here, which toggle their own goals
+                                (m/update-existing-in [:visualization_settings :visualization :settings]
+                                                      #(dynamic-goals/resolve-dynamic-goals % (:referenced_entities data))))
           data          (some-> data (resolve-goals :viz-settings))
           chart-type    (or (detect-pulse-chart-type card dashcard data)
                             (when (is-attached? card)

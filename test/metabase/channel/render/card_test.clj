@@ -609,6 +609,41 @@
           (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
         (is (= 80 (:graph.goal_value @captured)))))))
 
+(deftest render-resolves-dynamic-goal-on-visualizer-dashcard-test
+  (testing "a card ref in a visualizer dashcard's nested chart settings is substituted, toggled by those settings"
+    (doseq [show-goal [true false]]
+      (testing (str "graph.show_goal " show-goal)
+        (mt/with-temp [:model/Card          card      {:name                   "line in a visualizer dashcard"
+                                                       :display                :line
+                                                       :visualization_settings {}}
+                       :model/Dashboard     dashboard {}
+                       :model/DashboardCard dashcard  {:dashboard_id           (:id dashboard)
+                                                       :card_id                (:id card)
+                                                       :visualization_settings
+                                                       {:visualization
+                                                        {:display             "line"
+                                                         :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" (:id card))
+                                                                                           :originalName "x"
+                                                                                           :name         "COLUMN_1"}]
+                                                                               :COLUMN_2 [{:sourceId     (str "card:" (:id card))
+                                                                                           :originalName "y"
+                                                                                           :name         "COLUMN_2"}]}
+                                                         :settings            {:graph.dimensions ["COLUMN_1"]
+                                                                               :graph.metrics    ["COLUMN_2"]
+                                                                               :graph.show_goal  show-goal
+                                                                               :graph.goal_value goal-ref}}}}]
+          (let [captured (atom nil)
+                data     {:cols                [{:name "x" :base_type :type/Text}
+                                                {:name "y" :base_type :type/Integer :source :aggregation}]
+                          :rows                [["a" 1] ["b" 2]]
+                          :referenced_entities goal-referenced-entities}]
+            (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                          (reset! captured viz-settings)
+                                                          {:type :svg :content "<svg></svg>"})]
+              (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+            (is (= (if show-goal 80 goal-ref)
+                   (get-in @captured [:visualization :settings :graph.goal_value])))))))))
+
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
     (let [captured (atom nil)
