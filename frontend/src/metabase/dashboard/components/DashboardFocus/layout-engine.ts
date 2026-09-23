@@ -24,6 +24,8 @@ export interface FocusCardInput {
   kind: CardKind;
   /** Relevance to the question, 0..1. Drives ordering and size emphasis. */
   score: number;
+  /** Whether the backend marked this card focused (top-ranked). Demoted cards sink to the bottom. */
+  focused?: boolean;
   /** Row count when known (drives table height). */
   rowCount?: number;
   /** The card's original size, used as a fallback / cap. */
@@ -114,14 +116,21 @@ function perRow(kind: CardKind): number {
   }
 }
 
+/** How far demoted cards shrink vertically, and how many extra columns they pack across. */
+const DEMOTE_HEIGHT_SCALE = 0.6;
+const DEMOTE_MIN_HEIGHT = 3;
+
 /**
- * Pack cards into the 24-col grid in uniform-height BANDS by kind. Within a band, every card is the same
- * height and the row width is split evenly, so a shelf never mixes a short card next to a tall one (the
- * source of the vertical holes). Bands stack in KIND_ORDER, and higher-relevance cards come first within
- * their band. This is the key change from the naive shelf packer: same-kind rows ⇒ no gaps, and RGL's
- * vertical compaction has nothing left to fight.
+ * Pack a set of cards into uniform-height BANDS by kind, starting at row `startY`. Within a band every
+ * card is the same height and the row is split evenly, so a shelf never mixes a short card next to a tall
+ * one (the source of the vertical holes). When `demoted`, cards are shrunk and packed more across so the
+ * whole zone reads as secondary. Returns the placements and the next free row.
  */
-export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
+function packBands(
+  cards: FocusCardInput[],
+  startY: number,
+  demoted: boolean,
+): { placed: PlacedCard[]; nextY: number } {
   const byKind = new Map<CardKind, FocusCardInput[]>();
   for (const card of cards) {
     const list = byKind.get(card.kind) ?? [];
@@ -130,7 +139,7 @@ export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
   }
 
   const placed: PlacedCard[] = [];
-  let y = 0;
+  let y = startY;
 
   for (const kind of KIND_ORDER) {
     const band = byKind.get(kind);
@@ -140,13 +149,20 @@ export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
     // Most relevant first within the band.
     band.sort((a, b) => b.score - a.score);
 
-    const cols = perRow(kind);
+    // Demoted cards pack one extra across (min 2) so the secondary zone stays compact.
+    const cols = demoted ? Math.max(2, perRow(kind)) : perRow(kind);
     const w = Math.floor(GRID_COLS / cols);
 
     for (let i = 0; i < band.length; i += cols) {
       const rowCards = band.slice(i, i + cols);
       // Uniform row height = the tallest card's emphasized height, so the shelf is flush.
-      const rowH = Math.max(...rowCards.map((c) => emphasizedSize(c).h));
+      let rowH = Math.max(...rowCards.map((c) => emphasizedSize(c).h));
+      if (demoted) {
+        rowH = Math.max(
+          DEMOTE_MIN_HEIGHT,
+          Math.round(rowH * DEMOTE_HEIGHT_SCALE),
+        );
+      }
       rowCards.forEach((card, col) => {
         const cardW = kind === "text" ? GRID_COLS : w;
         placed.push({ id: card.id, x: col * w, y, w: cardW, h: rowH });
@@ -155,5 +171,20 @@ export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
     }
   }
 
-  return placed;
+  return { placed, nextY: y };
+}
+
+/**
+ * Pack cards into the 24-col grid in two zones: focused cards up top at full size, demoted (not-relevant)
+ * cards booted to the bottom and shrunk. Each zone packs in uniform-height kind bands (see packBands), so
+ * the split stays visible even when relevance scores cluster tightly — the thing that made a weak-fit
+ * question leave dimmed cards sitting as equals beside the focused one.
+ */
+export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
+  const focused = cards.filter((c) => c.focused !== false);
+  const demoted = cards.filter((c) => c.focused === false);
+
+  const top = packBands(focused, 0, false);
+  const bottom = packBands(demoted, top.nextY, true);
+  return [...top.placed, ...bottom.placed];
 }

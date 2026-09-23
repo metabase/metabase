@@ -676,6 +676,7 @@ class DashboardGridInner extends Component<
             desktop: reflowLayoutByScore(
               layouts.desktop ?? [],
               focus.scores,
+              focus.focused,
               this.getCardShape,
             ),
             mobile: layouts.mobile ?? [],

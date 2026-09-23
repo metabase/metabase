@@ -134,4 +134,35 @@ describe("packLayout", () => {
     const placed = packLayout([card({ id: 1, kind: "text", score: 0.5 })]);
     expect(byId(placed, 1).w).toBe(24);
   });
+
+  it("boots demoted (not-focused) cards below all focused cards", () => {
+    // The screenshot bug: a dimmed callout sat as an equal beside the focused one because scores clustered.
+    // With an explicit focused flag, demoted cards drop below the whole focused zone regardless of score.
+    const placed = packLayout([
+      card({ id: 1, kind: "callout", score: 0.31, focused: true }),
+      card({ id: 2, kind: "callout", score: 0.3, focused: false }),
+      card({ id: 3, kind: "trend", score: 0.29, focused: true }),
+    ]);
+    const demoted = byId(placed, 2);
+    const focusedCards = [byId(placed, 1), byId(placed, 3)];
+    for (const f of focusedCards) {
+      expect(demoted.y).toBeGreaterThanOrEqual(f.y + f.h);
+    }
+  });
+
+  it("shrinks demoted cards relative to the same card focused", () => {
+    const focused = byId(
+      packLayout([
+        card({ id: 1, kind: "comparison", score: 0.5, focused: true }),
+      ]),
+      1,
+    );
+    const demoted = byId(
+      packLayout([
+        card({ id: 1, kind: "comparison", score: 0.5, focused: false }),
+      ]),
+      1,
+    );
+    expect(demoted.h).toBeLessThan(focused.h);
+  });
 });

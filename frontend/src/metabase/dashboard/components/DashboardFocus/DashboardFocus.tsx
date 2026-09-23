@@ -18,18 +18,16 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { clearFocus as clearFocusStore, setFocus } from "./focus-store";
-
 import S from "./DashboardFocus.module.css";
+import { clearFocus as clearFocusStore, setFocus } from "./focus-store";
 
 const DIMMED_CLASS = "jev-focus-dimmed";
 const HIGHLIGHTED_CLASS = "jev-focus-highlighted";
 
 /** Toggle dim/highlight classes on the rendered dashcards, by their data-dashcard-id. */
 function applyFocusToDashcards(cards: DashboardFocusResult["cards"] | null) {
-  const containers = document.querySelectorAll<HTMLElement>(
-    "[data-dashcard-id]",
-  );
+  const containers =
+    document.querySelectorAll<HTMLElement>("[data-dashcard-id]");
   containers.forEach((el) => {
     el.classList.remove(DIMMED_CLASS, HIGHLIGHTED_CLASS);
   });
@@ -76,9 +74,11 @@ export const DashboardFocus = ({ dashboardId }: DashboardFocusProps) => {
     const res = await focusDashboard({ dashboardId, intent }).unwrap();
     setResult(res);
     applyFocusToDashcards(res.cards);
-    // Drive the grid reflow: relevant cards rise, the rest sink (animated by react-grid-layout).
+    // Drive the grid reflow: focused cards rise to a full-size zone, the rest sink and shrink (animated
+    // by react-grid-layout).
     setFocus(
       Object.fromEntries(res.cards.map((c) => [c.dashcard_id, c.score])),
+      res.cards.filter((c) => c.focused).map((c) => c.dashcard_id),
     );
   };
 
@@ -128,7 +128,10 @@ export const DashboardFocus = ({ dashboardId }: DashboardFocusProps) => {
       {isLoading && (
         <Group gap="xs">
           <Loader size="xs" />
-          <Text c="text-secondary" size="sm">{t`Jev is reading the dashboard…`}</Text>
+          <Text
+            c="text-secondary"
+            size="sm"
+          >{t`Jev is reading the dashboard…`}</Text>
         </Group>
       )}
 

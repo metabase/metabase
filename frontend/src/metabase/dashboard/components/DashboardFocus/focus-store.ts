@@ -15,9 +15,11 @@ export interface FocusState {
   active: boolean;
   /** dashcard id -> relevance score (higher = more relevant). */
   scores: Record<number, number>;
+  /** dashcard ids the backend marked focused (top-ranked). The rest are demoted. */
+  focused: Set<number>;
 }
 
-const EMPTY: FocusState = { active: false, scores: {} };
+const EMPTY: FocusState = { active: false, scores: {}, focused: new Set() };
 
 let state: FocusState = EMPTY;
 const listeners = new Set<() => void>();
@@ -28,8 +30,11 @@ function emit() {
   }
 }
 
-export function setFocus(scores: Record<number, number>) {
-  state = { active: true, scores };
+export function setFocus(
+  scores: Record<number, number>,
+  focused: Iterable<number>,
+) {
+  state = { active: true, scores, focused: new Set(focused) };
   emit();
 }
 
@@ -68,11 +73,12 @@ export function subscribeFocus(listener: () => void): () => void {
 type LayoutItem = { i: string; x: number; y: number; w: number; h: number };
 
 /**
- * Re-flow a react-grid-layout by relevance AND kind. Cards are ordered by score (most relevant first),
- * then each is resized and repacked by what it IS (a callout stays small, a table grows with its rows, a
- * trend goes wide) via the layout engine, and the resulting geometry is mapped back onto the caller's
- * items — so react-grid-layout animates the whole rearrangement. This is the fix for the old "staircase":
- * we no longer preserve each card's original width/column, we recompute them from kind × score.
+ * Re-flow a react-grid-layout by relevance AND kind. The focused cards (top-ranked by the backend) are
+ * packed first, at full size, in kind bands; the demoted rest are packed below, shrunk — so even when
+ * scores cluster tightly (a weak-fit question), the split is visible: relevant cards up top and big,
+ * everything else small and out of the way. Within each zone, cards are resized by what they ARE (a
+ * callout stays small, a table grows with its rows, a trend goes wide) and the geometry is mapped back
+ * onto the caller's items so react-grid-layout animates the rearrangement.
  *
  * `shapeOf` reads a card's structural facts (display type, row count) from the rendered result; the grid
  * supplies it from its dashcardData. When a card's shape is unknown it falls back to "other".
@@ -83,19 +89,17 @@ type LayoutItem = { i: string; x: number; y: number; w: number; h: number };
 export function reflowLayoutByScore<T extends LayoutItem>(
   layout: T[],
   scores: Record<number, number>,
+  focused: Set<number>,
   shapeOf?: (dashcardId: number) => CardShape | undefined,
 ): T[] {
-  // Sort by score descending; unscored cards (score undefined) sort as 0 but keep stable order.
-  const scoreOf = (item: LayoutItem) => scores[Number(item.i)] ?? 0;
-  const ordered = [...layout].sort((a, b) => scoreOf(b) - scoreOf(a));
-
-  const inputs: FocusCardInput[] = ordered.map((item) => {
+  const inputs: FocusCardInput[] = layout.map((item) => {
     const id = Number(item.i);
     const shape = shapeOf?.(id);
     return {
       id,
       kind: shape ? classifyKind(shape) : "other",
       score: scores[id] ?? 0,
+      focused: focused.has(id),
       rowCount: shape?.rowCount,
       originalSize: { w: item.w, h: item.h },
     };
@@ -104,7 +108,7 @@ export function reflowLayoutByScore<T extends LayoutItem>(
   const placed = packLayout(inputs);
   const placedById = new Map(placed.map((p) => [p.id, p]));
 
-  return ordered.map((item) => {
+  return layout.map((item) => {
     const p = placedById.get(Number(item.i));
     return p ? { ...item, x: p.x, y: p.y, w: p.w, h: p.h } : item;
   });
