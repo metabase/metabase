@@ -16,13 +16,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [thunk]
-                      (lucene.sync/reset-state!)
-                      (try
-                        (thunk)
-                        (finally
-                          (lucene.sync/stop!)))))
-
 (defmacro ^:private with-active-engine
   "Run `body` as if the semantic engine were one of the active search engines, which the sync gates on."
   [& body]

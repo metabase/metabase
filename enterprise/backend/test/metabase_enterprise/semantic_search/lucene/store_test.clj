@@ -124,7 +124,7 @@
             (is (map? (:document first-row)))
             (is (= 16 (alength ^bytes (:embedding first-row)))))))
       (testing "rows-after can be bounded by a watermark"
-        (is (= [] (lucene.store/rows-after space 0 (java.time.OffsetDateTime/now (java.time.ZoneOffset/UTC)) 10))))
+        (is (= [] (lucene.store/rows-after space 0 (java.time.OffsetDateTime/now java.time.ZoneOffset/UTC) 10))))
       (testing "rows-for-model-ids fetches exactly the requested rows"
         (is (= #{["card" "2"] ["dashboard" "3"]}
                (into #{}

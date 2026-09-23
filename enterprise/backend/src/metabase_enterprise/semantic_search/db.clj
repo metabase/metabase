@@ -113,3 +113,78 @@
   "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at cutoff]}))
+
+;;;; semantic_search_embedding -- the Lucene backend's vector store
+
+(mu/defn embeddings-by-content-hash
+  "The `content_hash` and `embedding` of the rows in `space` whose text hashes to one of `hashes`."
+  [space  :- :string
+   hashes :- [:set :string]]
+  (t2/select [:model/SemanticSearchEmbedding :content_hash :embedding]
+             {:where [:and
+                      [:= :embedding_space_id space]
+                      [:in :content_hash hashes]]}))
+
+(mu/defn delete-embeddings!
+  "Delete the rows of `space` for `model` and `model-ids`, returning how many were deleted."
+  [space     :- :string
+   model     :- :string
+   model-ids :- [:sequential :string]]
+  (t2/delete! :model/SemanticSearchEmbedding
+              :embedding_space_id space
+              :model model
+              :model_id [:in model-ids]))
+
+(mu/defn insert-embeddings!
+  "Insert embedding `rows`."
+  [rows :- [:sequential ::semantic-search.schema/semantic-search-embedding.insert]]
+  (t2/insert! :model/SemanticSearchEmbedding rows))
+
+(mu/defn delete-embedding-space!
+  "Delete every row of `space`, returning how many were deleted."
+  [space :- :string]
+  (t2/delete! :model/SemanticSearchEmbedding :embedding_space_id space))
+
+(mu/defn count-embeddings
+  "How many rows `space` has."
+  [space :- :string]
+  (t2/count :model/SemanticSearchEmbedding :embedding_space_id space))
+
+(mu/defn embedding-space-stats
+  "The row count and latest `updated_at` of `space`, as `{:n … :mx …}`."
+  [space :- :string]
+  (t2/query-one {:select [[[:count :*] :n] [[:max :updated_at] :mx]]
+                 :from   [:semantic_search_embedding]
+                 :where  [:= :embedding_space_id space]}))
+
+(mu/defn embeddings-after
+  "Up to `limit` rows of `space` with `id` above `after-id`, lowest id first, optionally written at or after `since`."
+  [space    :- :string
+   after-id :- ms/Int
+   since    :- [:maybe ms/TemporalInstant]
+   limit    :- ms/PositiveInt]
+  (t2/select :model/SemanticSearchEmbedding
+             {:where    (cond-> [:and
+                                 [:= :embedding_space_id space]
+                                 [:> :id after-id]]
+                          since (conj [:>= :updated_at since]))
+              :order-by [[:id :asc]]
+              :limit    limit}))
+
+(mu/defn embedding-model-ids
+  "The `{:model … :model_id …}` of every row in `space`."
+  [space :- :string]
+  (t2/query {:select [:model :model_id]
+             :from   [:semantic_search_embedding]
+             :where  [:= :embedding_space_id space]}))
+
+(mu/defn embeddings-for-model
+  "The rows of `space` for `model` and `model-ids`."
+  [space     :- :string
+   model     :- :string
+   model-ids :- [:sequential :string]]
+  (t2/select :model/SemanticSearchEmbedding
+             {:where [:and
+                      [:= :embedding_space_id space]
+                      [:= :model model]
+                      [:in :model_id model-ids]]}))

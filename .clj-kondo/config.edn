@@ -487,6 +487,7 @@
   metabase-enterprise.mfa.login-flow-test/with-enrolled-rasta!                           clojure.core/fn
   metabase-enterprise.mfa.recovery-codes-test/with-confirmed-enrollment!                 clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
+  metabase-enterprise.semantic-search.lucene.index/with-searcher                        clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase-enterprise.tenants.pulse-api-test/with-tenant-pulse-fixture!                 clojure.core/fn

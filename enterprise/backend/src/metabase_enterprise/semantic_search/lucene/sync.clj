@@ -10,6 +10,7 @@
    [metabase-enterprise.semantic-search.lucene.store :as lucene.store]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.startup.core :as startup]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
@@ -35,7 +36,7 @@
 (defonce ^:private executor (atom nil))
 
 (defonce ^:private state
-  ;; {:space :n :mx :diffed-at}, describing what this node last synced. nil until the first tick.
+  ;; {:space :n :mx :diff-timer}, describing what this node last synced. nil until the first tick.
   (atom nil))
 
 (defn reset-state!
@@ -88,15 +89,15 @@
           previous       (when (= space (:space @state)) @state)
           diff-due?      (or (nil? previous)
                              (not= n (lucene.index/live-count))
-                             (< id-diff-interval-ms (- (System/currentTimeMillis) (:diffed-at previous 0))))]
+                             (< id-diff-interval-ms (u/since-ms (:diff-timer previous))))]
       (if (and previous (= n (:n previous)) (= mx (:mx previous)) (not diff-due?))
         {:space space :skipped true}
         (let [indexed (import-rows! space (since-watermark (:mx previous)))
               diff    (when diff-due? (reconcile-ids! space))]
-          (reset! state {:space     space
-                         :n         n
-                         :mx        mx
-                         :diffed-at (if diff-due? (System/currentTimeMillis) (:diffed-at previous 0))})
+          (reset! state {:space      space
+                         :n          n
+                         :mx         mx
+                         :diff-timer (if diff-due? (u/start-timer) (:diff-timer previous))})
           (cond-> {:space space :indexed indexed}
             diff (merge diff)))))))
 

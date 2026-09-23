@@ -44,7 +44,7 @@
   (when semantic.db.datasource/db-url
     (initialize/initialize-if-needed! :db)
     ;; These namespaces exercise the pgvector backend specifically; the instance default is :lucene.
-    (mt/with-temporary-setting-values [semantic-search-backend :pgvector]
+    (mt/with-dynamic-fn-redefs [semantic.util/lucene-backend? (constantly false)]
       (f))))
 
 (def default-test-db "my_test_db")

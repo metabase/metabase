@@ -2,6 +2,7 @@
   "/api/ee/semantic-search endpoints"
   (:require
    [clojure.core.memoize :as memoize]
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -11,8 +12,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.permissions.core :as perms]
-   [metabase.search.ingestion :as search.ingestion]
-   [toucan2.core :as t2]))
+   [metabase.search.ingestion :as search.ingestion]))
 
 (def ^:private indexible-items-count
   (memoize/ttl search.ingestion/search-items-count
@@ -21,7 +21,7 @@
 (defn- lucene-status
   "Indexing progress for the Lucene backend: how many documents of the current embedding space are embedded."
   []
-  (let [indexed (t2/count :model/SemanticSearchEmbedding :embedding_space_id (lucene.store/space-id))]
+  (let [indexed (semantic-search.db/count-embeddings (lucene.store/space-id))]
     (if (pos? indexed)
       {:indexed_count indexed
        :total_est     (indexible-items-count)}

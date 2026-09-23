@@ -3,6 +3,7 @@
   clean `semantic_search_embedding` table."
   (:require
    [metabase-enterprise.semantic-search.lucene.index :as lucene.index]
+   [metabase-enterprise.semantic-search.lucene.sync :as lucene.sync]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
@@ -73,7 +74,7 @@
             :legacy_input     (json/encode {:id id :model model :name document-name})}
            overrides)))
 
-(defn do-with-lucene-store
+(defn do-with-lucene-store!
   "Impl for [[with-lucene-store]]."
   [dims f]
   (mt/with-temp-dir [dir nil]
@@ -82,16 +83,19 @@
       (mt/with-temporary-setting-values [ee-embedding-provider         "lucene-test"
                                          ee-embedding-model            "test-model"
                                          ee-embedding-model-dimensions dims]
+        (lucene.sync/stop!)
         (t2/delete! :model/SemanticSearchEmbedding)
         (try
           (f)
           (finally
+            (lucene.sync/stop!)
             (lucene.index/close!)
             (t2/delete! :model/SemanticSearchEmbedding)))))))
 
 (defmacro with-lucene-store
-  "Run `body` with the capturing test embedding provider configured, an empty `semantic_search_embedding` table and
-  [[lucene.index/*index-root*]] pointed at a scratch directory. `dims` sets the provider's vector width."
+  "Run `body` with the capturing test embedding provider configured, an empty `semantic_search_embedding` table, a
+  stopped sync timer and [[lucene.index/*index-root*]] pointed at a scratch directory. `dims` sets the provider's
+  vector width."
   {:style/indent 1}
   [[dims] & body]
-  `(do-with-lucene-store ~dims (fn [] ~@body)))
+  `(do-with-lucene-store! ~dims (fn [] ~@body)))

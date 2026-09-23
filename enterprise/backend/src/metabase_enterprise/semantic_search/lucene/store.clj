@@ -4,6 +4,7 @@
   Every node writes here; every node syncs its own Lucene index from here. Rows are scoped by embedding space, so
   switching embedding model starts a fresh corpus without disturbing the old one."
   (:require
+   [metabase-enterprise.semantic-search.db :as semantic-search.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.models.embedding :as semantic.models.embedding]
@@ -28,10 +29,7 @@
   (when-let [hashes (not-empty (set hashes))]
     (into {}
           (map (juxt :content_hash :embedding))
-          (t2/select [:model/SemanticSearchEmbedding :content_hash :embedding]
-                     {:where [:and
-                              [:= :embedding_space_id space]
-                              [:in :content_hash hashes]]}))))
+          (semantic-search.db/embeddings-by-content-hash space hashes))))
 
 (defn- embed-texts!
   "Map of content hash → embedding bytes for `texts`, or `{}` when the embedder cannot be called right now.
@@ -82,11 +80,8 @@
   (mdb/with-conflict-retry
     (t2/with-transaction [_conn]
       (doseq [[model model-rows] (group-by :model rows)]
-        (t2/delete! :model/SemanticSearchEmbedding
-                    :embedding_space_id space
-                    :model model
-                    :model_id [:in (map :model_id model-rows)]))
-      (t2/insert! :model/SemanticSearchEmbedding rows))))
+        (semantic-search.db/delete-embeddings! space model (mapv :model_id model-rows)))
+      (semantic-search.db/insert-embeddings! rows))))
 
 (defn upsert-documents!
   "Persist one batch of ingestion `documents` into `semantic_search_embedding`.
@@ -123,54 +118,37 @@
   "Delete the rows for `model` and `ids` in the current embedding space, returning the number deleted."
   [model ids]
   (if (seq ids)
-    (t2/delete! :model/SemanticSearchEmbedding
-                :embedding_space_id (space-id)
-                :model model
-                :model_id [:in (map str ids)])
+    (semantic-search.db/delete-embeddings! (space-id) model (mapv str ids))
     0))
 
 (defn delete-space!
   "Delete every row of `space`, returning the number deleted."
   [space]
-  (t2/delete! :model/SemanticSearchEmbedding :embedding_space_id space))
+  (semantic-search.db/delete-embedding-space! space))
 
 ;;;; Reading
 
 (defn space-stats
   "`{:n <row count> :mx <latest updated_at>}` for `space` — the watermark a node syncs its Lucene index against."
   [space]
-  (t2/query-one {:select [[[:count :*] :n] [[:max :updated_at] :mx]]
-                 :from   [:semantic_search_embedding]
-                 :where  [:= :embedding_space_id space]}))
+  (semantic-search.db/embedding-space-stats space))
 
 (defn rows-after
   "Up to `limit` rows of `space` whose `id` is above `after-id`, lowest id first.
 
   `since` bounds the scan to rows written at or after it; pass nil to walk the whole space."
   [space after-id since limit]
-  (t2/select :model/SemanticSearchEmbedding
-             {:where    (cond-> [:and
-                                 [:= :embedding_space_id space]
-                                 [:> :id after-id]]
-                          since (conj [:>= :updated_at since]))
-              :order-by [[:id :asc]]
-              :limit    limit}))
+  (semantic-search.db/embeddings-after space after-id since limit))
 
 (defn model-ids
   "Every `{:model … :model_id …}` in `space`, for reconciling a local index against the table."
   [space]
-  (t2/query {:select [:model :model_id]
-             :from   [:semantic_search_embedding]
-             :where  [:= :embedding_space_id space]}))
+  (semantic-search.db/embedding-model-ids space))
 
 (defn rows-for-model-ids
   "Rows of `space` for the given `[model model-id]` pairs."
   [space model+ids]
   (into []
         (mapcat (fn [[model pairs]]
-                  (t2/select :model/SemanticSearchEmbedding
-                             {:where [:and
-                                      [:= :embedding_space_id space]
-                                      [:= :model model]
-                                      [:in :model_id (map second pairs)]]})))
+                  (semantic-search.db/embeddings-for-model space model (mapv second pairs))))
         (group-by first model+ids)))

@@ -18,3 +18,17 @@
    [:request_type {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:total_tokens {:optional true} [:maybe :int]]])
+
+(mr/def ::semantic-search-embedding.insert
+  "What an insert into `:semantic_search_embedding` accepts: every column except the generated `id` and the
+  `created_at`/`updated_at` the app DB defaults."
+  [:map {:closed true}
+   [:embedding_space_id :string]
+   [:model              :string]
+   [:model_id           :string]
+   [:name               {:optional true} [:maybe :string]]
+   [:archived           :boolean]
+   [:content_hash       :string]
+   [:dims               ms/PositiveInt]
+   [:embedding          [:fn {:error/message "byte array"} bytes?]]
+   [:document           [:fn {:error/message "search document map"} map?]]])
