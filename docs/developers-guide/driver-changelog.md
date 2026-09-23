@@ -90,6 +90,10 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
+  - `metabase.driver/humanize-index-error-message` `[driver message]` -- trims the message of an exception raised by
+    `fetch-table-indexes` or by index DDL before it is shown to the user. Defaults to returning it unchanged;
+    ClickHouse drops the `(version ...) (queryId=...)` tail its server appends.
+
   - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
     tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
 
