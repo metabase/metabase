@@ -372,6 +372,15 @@ class RelationTest(StoreCase):
         self.store.merge(first, {"into": target})
         self.assertIn(neighbour, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
 
+    def test_title_and_status_changes_mark_related_papercuts_changed(self):
+        first, second = self.papercut("First trap"), self.papercut("Second trap")
+        self.store.relate(first, {"papercut_id": second})
+        for change in ({"title": "Renamed trap"}, {"status": "resolved"}):
+            with self.subTest(change):
+                cursor = self.store.list_papercuts()["cursor"]
+                self.store.update_papercut(first, change)
+                self.assertIn(second, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
+
     def test_relations_stay_within_a_repository(self):
         first = self.papercut("Trap")
         other = self.papercut("Trap elsewhere", repository="another")
@@ -683,6 +692,24 @@ class MigrationTest(unittest.TestCase):
                          {"r1": ("fix-x", "abcdef1", "session-start"), "r2": (None, None, None),
                           "r3": (None, None, None)})
 
+    def test_v5_repository_urls_lose_credentials(self):
+        db = sqlite3.connect(self.path, isolation_level=None)
+        db.row_factory = sqlite3.Row
+        for number, step in enumerate(server.MIGRATIONS[:5], 1):
+            step(db)
+            db.execute(f"PRAGMA user_version = {number}")
+        db.execute("""INSERT INTO papercuts (id, repository, title, description, path, first_seen, last_seen, updated_at)
+                      VALUES (1, 'metabase', 'T', '', '', '2026-09-01', '2026-09-01', '2026-09-01')""")
+        leaked = "https://chris:ghp_secret@github.com/metabase/metabase.git"
+        db.execute("""INSERT INTO reports (id, papercut_id, repository, reporter, report_id, fingerprint, title,
+                      description, path, payload, received_at, repository_url) VALUES (1, 1, 'metabase', 'r', 'r1', 'f',
+                      'T', '', '', ?, '2026-09-01', ?)""", (json.dumps({"repository_url": leaked, "title": "T"}), leaked))
+        db.close()
+        report = server.Store(self.path).get_papercut(1)["reports"][0]
+        self.assertEqual((report["repository_url"], report["payload"]),
+                         ("https://github.com/metabase/metabase.git",
+                          {"repository_url": "https://github.com/metabase/metabase.git", "title": "T"}))
+
     def test_v4_owner_and_severity_are_backfilled_and_events_kept(self):
         db = sqlite3.connect(self.path, isolation_level=None)
         db.row_factory = sqlite3.Row
@@ -945,6 +972,9 @@ class HttpTest(unittest.TestCase):
         self.assertIn("data-value='unclassified' aria-pressed='true'>unclassified<span class='count'>2</span>", page)
         for categories, total in (("unclassified,tooling", 2), ("tooling", 0), ("none", 0)):
             self.assertEqual(self.call("GET", f"/api/papercuts?category={categories}")[1]["total"], total)
+
+    def test_time_lost_reads_for_people(self):
+        self.assertEqual([server.duration(minutes) for minutes in (0.001, 12.4, 60, 90)], ["< 1 min", "12 min", "1 h", "1.5 h"])
 
     def test_html_escapes_titles(self):
         papercut_id = self.report("r1", "<script>alert(1)</script>")[1]["papercut"]["id"]

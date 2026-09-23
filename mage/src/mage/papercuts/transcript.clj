@@ -10,6 +10,15 @@
 
 (set! *warn-on-reflection* true)
 
+;;; Locations
+
+(defn agent-dir
+  "The config directory of `source` (`\"claude\"` or `\"codex\"`), which holds its settings and transcripts:
+  `$CLAUDE_CONFIG_DIR` or `$CODEX_HOME` from `env` when set, otherwise `~/.claude` or `~/.codex` under `home`."
+  [env home source]
+  (or (not-empty (get env (if (= (name source) "codex") "CODEX_HOME" "CLAUDE_CONFIG_DIR")))
+      (str (fs/path home (str "." (name source))))))
+
 ;;; Redaction
 
 (def ^:private sensitive-name

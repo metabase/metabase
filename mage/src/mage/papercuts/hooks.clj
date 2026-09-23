@@ -4,6 +4,7 @@
    [babashka.fs :as fs]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.papercuts.transcript :as transcript]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -54,8 +55,8 @@
    config
    events))
 
-(defn- config-path [home source]
-  (str (fs/path home (str "." source) (if (= source "codex") "hooks.json" "settings.json"))))
+(defn- config-path [env home source]
+  (str (fs/path (transcript/agent-dir env home source) (if (= source "codex") "hooks.json" "settings.json"))))
 
 (defn- read-config [path]
   (if (fs/exists? path)
@@ -66,12 +67,17 @@
     {}))
 
 (defn- link-target
-  "The file `path` finally points at, following symlinks even when the last target doesn't exist yet."
+  "The file `path` finally points at, following symlinks even when the last target doesn't exist yet. Throws on a
+  symlink loop."
   [path]
-  (if (fs/sym-link? path)
-    (let [target (fs/read-link path)]
-      (recur (str (if (fs/absolute? target) target (fs/path (fs/parent path) target)))))
-    (str path)))
+  (loop [path (str path) seen #{}]
+    (cond
+      (not (fs/sym-link? path)) path
+      (seen path)                (throw (ex-info (str "Symlink loop at " path) {:path path}))
+      :else
+      (let [target (fs/read-link path)]
+        (recur (str (fs/normalize (if (fs/absolute? target) target (fs/path (fs/parent path) target))))
+               (conj seen path))))))
 
 (defn- write-config! [path config]
   ;; Moving over a symlink would replace the link, so a dotfile-managed config would stop being managed.
@@ -92,17 +98,19 @@
         (when (fs/exists? temp) (fs/delete temp))))))
 
 (defn install-at!
-  "Install selected agents' global hooks under `home`. Public so tests can use a temporary home."
-  [home selected]
-  (doseq [source selected]
-    (let [path   (config-path home source)
-          before (read-config path)
-          after  (updated-config before source)]
-      (if (= before after)
-        (println "Already installed:" path)
-        (do (write-config! path after)
-            (println "Installed" source "hooks in" path)))))
-  selected)
+  "Install selected agents' global hooks under `home`, or where `env` points their config directories. Public so tests
+  can use a temporary home."
+  ([home selected] (install-at! {} home selected))
+  ([env home selected]
+   (doseq [source selected]
+     (let [path   (config-path env home source)
+           before (read-config path)
+           after  (updated-config before source)]
+       (if (= before after)
+         (println "Already installed:" path)
+         (do (write-config! path after)
+             (println "Installed" source "hooks in" path)))))
+   selected))
 
 (defn install!
   "Mage entry point. Merely running this task opts the user into automatic transcript scanning."
@@ -112,7 +120,7 @@
     (println "Installing Stop and SessionEnd hooks for" (str/join ", " selected))
     (println "Future transcript chunks will be sent to TypeSafe Jev; flagged chunks go to the drill-down agent.")
     (println "Findings are submitted to the configured papercuts server. Scans run in the background.")
-    (install-at! (fs/home) selected)
+    (install-at! (into {} (System/getenv)) (fs/home) selected)
     (when (some #{"codex"} selected)
       (println "Codex may require trusting the new hooks with /hooks before they run."))
     (println "Hook scan log:" (fs/path u/project-root-directory "local" "papercuts" "hook-scan.log"))))
