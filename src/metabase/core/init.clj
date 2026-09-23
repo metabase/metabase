@@ -37,6 +37,7 @@
    [metabase.geojson.init]
    [metabase.health-inspector.init]
    [metabase.indexed-entities.init]
+   [metabase.jekyll-mode.init]
    [metabase.lib-be.init]
    [metabase.lib.init]
    [metabase.llm.init]

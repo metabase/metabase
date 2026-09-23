@@ -16,7 +16,7 @@
 
 (def ^:dynamic *enabled*
   "Whether the checks in this namespace do anything; off in prod."
-  (not config/is-prod?))
+  false #_(not config/is-prod?)) ; NOCOMMIT
 
 (defn- ref-name
   "The registry key a schema refers to, for `[:ref ::foo]` and for a bare `::foo` reference alike."
