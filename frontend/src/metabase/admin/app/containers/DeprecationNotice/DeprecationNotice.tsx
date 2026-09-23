@@ -1,4 +1,4 @@
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery, useListEnginesQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 
 import { disableNotice } from "../../actions";
@@ -10,9 +10,8 @@ import {
 
 const DeprecationNoticeContainer = () => {
   const { data: databasesData } = useListDatabasesQuery();
-  const hasDeprecated = useSelector((state) =>
-    hasDeprecatedDatabase(state, { databases: databasesData?.data }),
-  );
+  const { data: engines = {} } = useListEnginesQuery();
+  const hasDeprecated = hasDeprecatedDatabase(engines, databasesData?.data);
   const isEnabled = useSelector(isDeprecationNoticeEnabled);
   const dispatch = useDispatch();
 

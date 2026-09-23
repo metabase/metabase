@@ -57,6 +57,16 @@ export const settingsApi = Api.injectEndpoints({
           }
         }),
     }),
+    // The timezones this instance can use as a report timezone. Served from an
+    // endpoint rather than the settings payload: the list is large, one admin
+    // page reads it, and it only changes when the instance is upgraded.
+    listTimezones: builder.query<string[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/util/timezones",
+      }),
+      keepUnusedDataFor: Infinity,
+    }),
     // admin-only endpoint that returns all settings with lots of extra metadata
     getAdminSettingsDetails: builder.query<SettingDefinitionMap, void>({
       query: () => ({
@@ -177,6 +187,7 @@ export const settingsApi = Api.injectEndpoints({
 
 export const {
   useGetSettingQuery,
+  useListTimezonesQuery,
   useGetVersionInfoQuery,
   useGetAdminSettingsDetailsQuery,
   useGetSessionPropertiesQuery,

@@ -12,6 +12,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
@@ -54,6 +55,8 @@
    (java.sql Connection)
    (java.util.concurrent CountDownLatch Executors)
    (org.quartz JobDetail TriggerKey)))
+
+(comment h2/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -156,6 +159,32 @@
          :result_metadata [{:name         "num_toucans"
                             :display_name "Num Toucans"
                             :base_type    :type/Integer}]))
+
+(deftest ^:parallel engines-test
+  (testing "GET /api/database/engines"
+    (let [engines (mt/user-http-request :rasta :get 200 "database/engines")]
+      (testing "returns connection properties per engine"
+        (is (=? {:driver-name "H2"} (:h2 engines))))
+      (testing "H2 is superseded so it stays out of the UI DB edit forms"
+        (is (= "deprecated" (get-in engines [:h2 :superseded-by])))))))
+
+(deftest ^:parallel engines-etag-test
+  (testing "GET /api/database/engines"
+    (let [response (mt/user-http-request-full-response :rasta :get 200 "database/engines")
+          etag     (get-in response [:headers "ETag"])]
+      (testing "carries an ETag for the list it just served"
+        (is (some? etag)))
+      (testing "and answers a client that already holds that list without the body"
+        (let [not-modified (mt/user-http-request-full-response
+                            :rasta :get 304 "database/engines"
+                            {:request-options {:headers {"if-none-match" etag}}})]
+          (is (= etag (get-in not-modified [:headers "ETag"])))
+          (is (str/blank? (str (:body not-modified))))))
+      (testing "while a client holding a different list is sent the engines"
+        (let [stale (mt/user-http-request-full-response
+                     :rasta :get 200 "database/engines"
+                     {:request-options {:headers {"if-none-match" "\"not-the-current-list\""}}})]
+          (is (=? {:driver-name "H2"} (get-in stale [:body :h2]))))))))
 
 (deftest ^:parallel get-database-test
   (testing "GET /api/database/:id"

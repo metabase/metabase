@@ -8,6 +8,7 @@ import type {
   Database,
   DatabaseId,
   DatabaseUsageInfo,
+  Engine,
   SchemaName,
 } from "metabase-types/api";
 
@@ -62,6 +63,10 @@ export function setupDatabaseUsageInfoEndpoint(
   usageInfo: DatabaseUsageInfo,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
+}
+
+export function setupEnginesEndpoint(engines: Record<string, Engine>) {
+  fetchMock.get("path:/api/database/engines", engines);
 }
 
 export function setupDatabaseListEndpoint(databases: Database[]) {
