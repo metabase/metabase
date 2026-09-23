@@ -103,3 +103,8 @@
         (is (not (scan/mentions-embargo? path))))
       (finally
         (fs/delete-tree dir)))))
+
+(deftest repository-name-test
+  (is (= "metabase" (scan/repository-name "git@github.com:metabase/metabase.git")))
+  (is (= "evals" (scan/repository-name "https://github.com/metabase/evals/")))
+  (is (nil? (scan/repository-name nil))))
