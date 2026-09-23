@@ -7,14 +7,17 @@ export function getExpectedRowChartGoalX(
   goalValue: number,
   maxValue: number,
 ) {
-  const widestBar = getRowChartSymbols(container, "bar").reduce((widest, bar) =>
-    Number(bar.getAttribute("width")) > Number(widest.getAttribute("width"))
-      ? bar
-      : widest,
+  const bars = getRowChartSymbols(container, "bar");
+  const widestBar = bars.reduce(
+    (widest, bar) => (getWidth(bar) > getWidth(widest) ? bar : widest),
+    bars[0],
   );
   const x = Number(widestBar.getAttribute("x"));
-  const width = Number(widestBar.getAttribute("width"));
-  return x + (width * goalValue) / maxValue;
+  return x + (getWidth(widestBar) * goalValue) / maxValue;
+}
+
+function getWidth(element: HTMLElement) {
+  return Number(element.getAttribute("width"));
 }
 
 export function getRowChartGoalLineX(goalLine: HTMLElement) {
