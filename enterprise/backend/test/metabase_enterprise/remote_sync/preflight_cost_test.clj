@@ -72,14 +72,18 @@
         (for [k [:serialized :statements :checkouts :walk-statements]]
           [k (double (/ (- (k large) (k small)) (- n-large n-small)))])))
 
-(deftest preflight-cost-report-test
-  (testing "Report the preflight's per-card cost with one remote change (always green; read the printed numbers)"
-    (let [small (measure-preflight 10)
-          large (measure-preflight 20)]
+(deftest preflight-cost-test
+  (testing "With one remote change, the preflight serializes a constant number of entities, not one per local card"
+    (let [small    (measure-preflight 10)
+          large    (measure-preflight 20)
+          per-card (per-entity small large 10 20)]
       (log/infof "preflight, 1 remote change: n=10 %s; n=20 %s; per card %s"
                  (select-keys small [:serialized :statements :checkouts :walk-statements])
                  (select-keys large [:serialized :statements :checkouts :walk-statements])
-                 (per-entity small large 10 20))
+                 per-card)
+      (is (= 0.0 (:serialized per-card)))
+      (testing "the only app-DB work that grows with the local card count is the dependency walk"
+        (is (<= (:statements per-card) (:walk-statements per-card))))
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 0 :updated 1 :removed 0}
               :force-push-casualties {:deleted [] :overwritten ["Cost card 000 (collections/"]}}
              (-> (:result large)
