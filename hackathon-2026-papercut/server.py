@@ -1497,6 +1497,12 @@ showTheme();
 
 LIVE_REFRESH = """<script>
 const liveStatus = document.getElementById('live-status');
+function showLive(connected) {
+  const label = connected ? 'Connected' : 'Reconnecting…';
+  liveStatus.classList.toggle('lost', !connected);
+  liveStatus.title = label;
+  liveStatus.setAttribute('aria-label', label);
+}
 const filterForm = document.getElementById('filters');
 let refreshSerial = 0;
 let filterTimer;
@@ -1537,9 +1543,9 @@ async function refreshPage(url = window.location.href) {
     } else if (currentMain.innerHTML !== nextMain.innerHTML) {
       currentMain.replaceWith(nextMain);
     }
-    liveStatus.textContent = 'Live';
+    showLive(true);
   } catch (_) {
-    if (serial === refreshSerial) liveStatus.textContent = 'Connection lost · retrying';
+    if (serial === refreshSerial) showLive(false);
   }
 }
 if (filterForm) {
@@ -1574,11 +1580,11 @@ async function checkForChanges() {
   try {
     const feed = await (await fetch('/api/papercuts?' + new URLSearchParams(cursor ? {since: cursor} : {limit: 1}),
                                      {cache: 'no-store'})).json();
-    liveStatus.textContent = 'Live';
+    showLive(true);
     if (cursor !== undefined && feed.cursor !== cursor) refreshPage();
     cursor = feed.cursor;
   } catch (_) {
-    liveStatus.textContent = 'Connection lost · retrying';
+    showLive(false);
   }
 }
 checkForChanges();
@@ -1657,8 +1663,11 @@ UI_STYLE = """<style>
 .issue-card:hover h3 a {text-decoration: underline}
 .issue-card h3 a:focus-visible {outline: none}
 .issue-card:has(h3 a:focus-visible) {outline: 3px solid var(--accent); outline-offset: 2px}
-#live-status::before {content: ""; display: inline-block; width: 7px; height: 7px; margin-right: .4rem; border-radius: 50%;
-                      background: #22a06b; vertical-align: 1px}
+#live-status.led {display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22a06b;
+                  box-shadow: 0 0 0 3px rgba(34, 160, 107, .18)}
+#live-status.led.lost {background: #d9480f; box-shadow: 0 0 0 3px rgba(217, 72, 15, .2)}
+.header-actions .account {color: var(--muted); font-size: .9rem}
+.header-actions .account:hover {color: var(--text)}
 .pill.important {display: inline-flex; align-items: center; gap: .3rem; color: var(--important); background: none; box-shadow: inset 0 0 0 1px currentColor}
 .pill.important .icon {width: 12px; height: 12px; fill: currentColor; stroke-width: 1.5}
 .severity-high, .fix-failed {background: var(--danger-bg); color: var(--danger-text)}
@@ -1673,6 +1682,22 @@ UI_STYLE = """<style>
 .dispatch-control {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem}
 .dispatch-control button {min-height: 30px; padding: 0 .75rem}
 .dispatch-control .claimant {font-weight: 650}
+.detail-title {display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem}
+.detail-actions {display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .9rem}
+.detail-actions:empty {display: none}
+.detail-actions .secondary {min-height: 36px; padding: 0 .9rem; border-color: var(--control-border); background: var(--surface);
+                            color: var(--text); font-weight: 600}
+.detail-actions .claim-button, .dispatch-control .claim-button {min-height: 38px; padding: 0 1.15rem; border: 0; border-radius: 10px;
+  color: #fff; font-weight: 700; letter-spacing: .01em; background: linear-gradient(135deg, #5b5cf6 0%, #3b82f6 55%, #0ea5e9 100%);
+  background-size: 160% 160%; box-shadow: 0 1px 2px rgba(15, 23, 42, .18), 0 4px 14px rgba(59, 130, 246, .28);
+  transition: transform .12s ease, box-shadow .12s ease, background-position .3s ease}
+.detail-actions .claim-button:hover {transform: translateY(-1px); background-position: 100% 50%;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .2), 0 8px 22px rgba(59, 130, 246, .38)}
+.detail-actions .claim-button:active {transform: translateY(0); box-shadow: 0 1px 2px rgba(15, 23, 42, .25)}
+.detail-actions .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
+.detail-meta .claim-tag {background: var(--info-bg); color: var(--info-text)}
+.detail-stats {margin: .6rem 0 0; font-size: .9rem}
+@media (max-width: 700px) {.detail-title {flex-direction: column; gap: 0} .detail-actions {margin-top: .2rem}}
 .detail-sidebar dd.path {overflow-wrap: normal}
 .dispatch-control .claimant::before {content: ""; display: inline-block; width: 8px; height: 8px; margin-right: .45rem; border-radius: 50%;
                                      background: #22a06b; box-shadow: 0 0 0 3px rgba(34, 160, 107, .2); vertical-align: 1px}
@@ -1688,12 +1713,6 @@ UI_STYLE = """<style>
 .dispatch-control .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
 .dispatch-control .claim-button:disabled {opacity: .7; transform: none}
 .dispatch-link a {font-weight: 600; white-space: nowrap}
-.token-control {position: relative}
-.token-control summary {cursor: pointer; list-style: none; color: var(--muted)}
-.token-control summary::-webkit-details-marker {display: none}
-.token-control[data-set=true] summary {color: var(--text)}
-.token-control input {position: absolute; right: 0; top: 2rem; z-index: 10; width: 18rem; padding: .4rem .6rem;
-                      border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text)}
 </style>"""
 
 UI_SCRIPT = """<script>
@@ -1765,23 +1784,12 @@ UI_SCRIPT = """<script>
 # actor `web`; naming the person who clicked is still to do.
 DISPATCH_SCRIPT = """<script>
 (() => {
-  const tokenInput = document.getElementById('api-token');
-  const tokenControl = tokenInput.closest('details');
-  const storedToken = () => { try { return localStorage.getItem('papercuts-token') || ''; } catch (_) { return ''; } };
-  const showToken = () => { tokenControl.dataset.set = Boolean(storedToken()); };
-  tokenInput.value = storedToken();
-  showToken();
-  tokenInput.addEventListener('change', () => {
-    try { localStorage.setItem('papercuts-token', tokenInput.value.trim()); } catch (_) {}
-    showToken();
-  });
   async function write(method, url, body) {
     const headers = {'Content-Type': 'application/json'};
-    if (storedToken()) headers.Authorization = 'Bearer ' + storedToken();
     const response = await fetch(url, {method, headers, body: JSON.stringify(body)});
     if (!response.ok) {
       const error = (await response.json().catch(() => ({}))).error;
-      throw new Error(response.status === 401 ? 'set the API token' : error || 'HTTP ' + response.status);
+      throw new Error(response.status === 401 ? 'sign in first' : error || 'HTTP ' + response.status);
     }
   }
   const claimant = () => {
@@ -1851,16 +1859,19 @@ def category_chips(chosen, counts):
             "<button type='button' class='link' data-chips='none'>None</button></div>")
 
 
+def account_link():
+    email = signed_in_email()
+    return f"<a class='account' href='/auth/logout' title='Sign out'>{html.escape(email)}</a>" if email else ""
+
+
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
             f"<meta name='viewport' content='width=device-width, initial-scale=1'><link rel='icon' href='{FAVICON}'>"
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}' data-user='{html.escape(signed_in_email() or '')}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
-            "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
-            "<details class='token-control'><summary>API token</summary>"
-            "<input id='api-token' type='password' autocomplete='off' placeholder='Bearer token for dispatching'></details>"
-            f"{sso.account_html()}{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
+            f"{account_link()}<span id='live-status' class='led' role='status' title='Connected' aria-label='Connected'></span>"
+            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 
 def duration(minutes):
@@ -2202,22 +2213,37 @@ def ago(timestamp):
     return f"{minutes / 60:.0f}h ago" if minutes < 48 * 60 else f"{minutes / 1440:.0f}d ago"
 
 
+def claim_actions(papercut, dispatch, claim_label="Claim"):
+    """Copy prompt and Release while someone holds the claim, otherwise Claim on an open papercut."""
+    if dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES:
+        release = (f"<button type='button' class='secondary' data-release='{dispatch['id']}'>Release</button>"
+                   if signed_in_email() in (None, dispatch["actor"]) else "")
+        return f"<button type='button' class='secondary' data-copy-prompt='{papercut['id']}'>Copy prompt</button>{release}"
+    if papercut["status"] == "open" and papercut.get("merged_into") is None:
+        return f"<button type='button' class='claim-button' data-claim='{papercut['id']}'>{claim_label}</button>"
+    return ""
+
+
 def dispatch_control(papercut, dispatch, claim_label="Claim"):
-    """Who is working on a papercut, with the buttons to copy the fix prompt and release it, or the Claim button and
-    the latest claim's outcome when nobody is."""
-    active = dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES
-    if active:
+    """Who is working on a papercut and for how long, or how the last claim ended, with the claim buttons."""
+    if dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES:
         claimed_at = dispatch.get("created_at") or papercut.get("claimed_at")
-        parts = [f"<span class='claimant'>{html.escape(first_name(dispatch['actor']))} is working on this</span>"
-                 f"{f'<span class=muted>claimed {ago(claimed_at)}</span>' if claimed_at else ''}{dispatch_links(dispatch)}"
-                 f"<button type='button' class='secondary' data-copy-prompt='{papercut['id']}'>Copy prompt</button>"]
-        if signed_in_email() in (None, dispatch["actor"]):
-            parts.append(f"<button type='button' class='secondary' data-release='{dispatch['id']}'>Release</button>")
+        state = (f"<span class='claimant'>{html.escape(first_name(dispatch['actor']))} is working on this</span>"
+                 f"{f'<span class=muted>claimed {ago(claimed_at)}</span>' if claimed_at else ''}{dispatch_links(dispatch)}")
     else:
-        parts = [fix_pill(dispatch["state"]) + dispatch_links(dispatch)] if dispatch else []
-        if papercut["status"] == "open" and papercut.get("merged_into") is None:
-            parts.append(f"<button type='button' class='claim-button' data-claim='{papercut['id']}'>{claim_label}</button>")
-    return f"<div class='dispatch-control'>{''.join(parts)}</div>" if parts else ""
+        state = fix_pill(dispatch["state"]) + dispatch_links(dispatch) if dispatch else ""
+    parts = state + claim_actions(papercut, dispatch, claim_label)
+    return f"<div class='dispatch-control'>{parts}</div>" if parts else ""
+
+
+def claim_tag(dispatch):
+    """The claim as a tag, `claimed by Andrei · 2h ago`, or how the last one ended."""
+    if dispatch is None:
+        return ""
+    if dispatch["state"] in ACTIVE_DISPATCH_STATES:
+        return (f"<span class='pill claim-tag'>claimed by {html.escape(first_name(dispatch['actor']))} · "
+                f"{ago(dispatch['created_at'])}</span>{dispatch_links(dispatch)}")
+    return fix_pill(dispatch["state"]) + dispatch_links(dispatch)
 
 
 PROMPT_API = os.environ.get("PAPERCUTS_API_URL", "http://10.193.193.227:8765").rstrip("/")
@@ -2302,15 +2328,16 @@ def papercut_html(papercut):
         f"{markdown_html(d['reason']) if d['reason'] else ''}</li>"
         for d in papercut["dispatches"]
     )
+    latest = papercut["dispatches"][0] if papercut["dispatches"] else None
     body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
-            f"<h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
-            f"<div class='detail-meta'>{important_pill(papercut)}{status_pill(papercut['status'])}"
+            f"<div class='detail-title'><h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
+            f"<div class='detail-actions'>{claim_actions(papercut, latest, 'Claim this papercut')}</div></div>"
+            f"<div class='detail-meta'>{status_pill(papercut['status'])}{claim_tag(latest)}{important_pill(papercut)}"
             f"{pill(papercut['category'] or 'unclassified')}"
-            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}"
-            f"<span class='muted'>{papercut['report_count']} report{'' if papercut['report_count'] == 1 else 's'} · "
+            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}</div>"
+            f"<p class='detail-stats muted'>{papercut['report_count']} report{'' if papercut['report_count'] == 1 else 's'} · "
             f"{papercut['reporter_count']} reporter{'' if papercut['reporter_count'] == 1 else 's'} · "
-            f"Time lost: {cost_label(papercut)}</span></div>"
-            f"{dispatch_control(papercut, papercut['dispatches'][0] if papercut['dispatches'] else None, 'Claim this papercut')}</div>"
+            f"Time lost: {cost_label(papercut)}</p></div>"
             "<div class='detail-layout'><div class='detail-content'>"
             f"<section class='card'><h2>Description</h2>{markdown_html(description) if description else '<p>No description recorded.</p>'}</section>"
             f"{'<section class=\"card suggested-fix\"><h2>Suggested fix</h2>' + markdown_html(suggested_fix) + '</section>' if suggested_fix else ''}"

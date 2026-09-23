@@ -42,7 +42,7 @@ class SignInTest(HttpCase):
         status, claim, _ = self.call("POST", "/api/papercuts/1/dispatch", {}, headers=headers)
         self.assertEqual((status, claim["actor"], claim["state"]), (201, "ada@metabase.com", "running"))
         page = self.call("GET", "/papercuts/1", headers=headers)[1]
-        self.assertIn("Ada is working on this", page)
+        self.assertIn("claimed by Ada", page)
         self.assertIn(f"data-release='{claim['id']}'>Release</button>", page)
 
     def test_settings_come_from_the_environment(self):
@@ -87,7 +87,7 @@ class SignInTest(HttpCase):
                                  r"SameSite=Lax; Secure$")
         status, page, _ = self.call("GET", "/", headers={**PROXIED, "Cookie": cookie.split(";")[0]})
         self.assertEqual(status, 200)
-        self.assertIn("ada@metabase.com · <a href='/auth/logout'>Sign out</a>", page)
+        self.assertIn("<a class='account' href='/auth/logout' title='Sign out'>ada@metabase.com</a>", page)
         _, _, response = self.call("GET", "/auth/logout", headers=PROXIED)
         self.assertTrue(response.getheader("Set-Cookie").startswith("papercuts_session=; Max-Age=0; Path=/;"))
 

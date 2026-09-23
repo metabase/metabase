@@ -919,9 +919,10 @@ class HttpTest(HttpCase):
         self.report("r1", "Trap")
         status, dispatch, _ = self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web", "reason": "Dispatched from the web view"})
         self.assertEqual((status, dispatch["actor"], dispatch["state"]), (201, "web", "claimed"))
+        self.assertIn("<span class='claimant'>Web is working on this</span>", self.call("GET", "/")[1])
+        self.assertIn("claimed by Web", self.call("GET", "/papercuts/1")[1])
         for path in ("/", "/papercuts/1"):
             page = self.call("GET", path)[1]
-            self.assertIn("<span class='claimant'>Web is working on this</span>", page)
             self.assertIn(f"data-release='{dispatch['id']}'>Release</button>", page)
             self.assertNotIn("data-claim=", page)
 
@@ -952,10 +953,10 @@ class HttpTest(HttpCase):
                                            "title": "Search fails quietly", "fingerprint": "metabot:abc"})
         status, claim, _ = self.call("POST", "/api/papercuts/1/dispatch", {"claimant": "chris.truter@metabase.com"})
         self.assertEqual((status, claim["state"], claim["actor"]), (201, "running", "chris.truter@metabase.com"))
-        for path in ("/", "/papercuts/1"):
-            page = self.call("GET", path)[1]
-            self.assertIn("<span class='claimant'>Chris is working on this</span>", page)
-            self.assertIn("<span class=muted>claimed just now</span>", page)
+        page, detail = self.call("GET", "/")[1], self.call("GET", "/papercuts/1")[1]
+        self.assertIn("<span class='claimant'>Chris is working on this</span><span class=muted>claimed just now</span>", page)
+        self.assertIn("<span class='pill claim-tag'>claimed by Chris · just now</span>", detail)
+        for page in (page, detail):
             self.assertIn("data-copy-prompt='1'>Copy prompt</button>", page)
         status, prompt, response = self.call("GET", "/api/papercuts/1/prompt")
         self.assertEqual((status, response.getheader("Content-Type")), (200, "text/plain; charset=utf-8"))
@@ -997,7 +998,7 @@ class HttpTest(HttpCase):
         self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"})[0], 401)
         self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"},
                                    headers={"Authorization": "Bearer secret"})[0], 201)
-        self.assertIn("<input id='api-token' type='password'", self.call("GET", "/")[1])
+        self.assertNotIn("id='api-token'", self.call("GET", "/")[1])
 
     def test_list_puts_important_papercuts_first_and_shows_fixes(self):
         for report_id in ("r1", "r2", "r3"):
