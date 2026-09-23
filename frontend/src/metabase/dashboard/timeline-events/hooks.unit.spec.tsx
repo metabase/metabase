@@ -66,6 +66,7 @@ import {
 
 import {
   useDashCardTimelineEvents,
+  useDashboardTimelines,
   useReportDashCardTimelineEventsEnabled,
 } from "./hooks";
 import {
@@ -534,17 +535,58 @@ describe("dashboard timeline events", () => {
     expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(1);
   });
 
+  // mounts the prefetch hook itself — `setup` renders charts, which do not call it
+  const setupPrefetch = async (savedVisibility: VisualizationSettings) => {
+    setupTimelinesEndpoints([TIMELINE]);
+    const Prefetcher = () => {
+      useDashboardTimelines();
+      return null;
+    };
+    const card = createMockCard({
+      display: "line",
+      visualization_settings: savedVisibility,
+    });
+    const dashcard = createMockDashboardCard({
+      id: DASHCARD_ID,
+      dashboard_id: DASHBOARD_ID,
+      card,
+    });
+
+    renderWithProviders(
+      <MockDashboardContext dashboardId={DASHBOARD_ID} withTimelineEvents>
+        <Prefetcher />
+      </MockDashboardContext>,
+      {
+        storeInitialState: createMockState({
+          dashboard: createMockDashboardState({
+            dashboardId: DASHBOARD_ID,
+            dashboards: {
+              [DASHBOARD_ID]: createMockStoreDashboard({
+                id: DASHBOARD_ID,
+                dashcards: [DASHCARD_ID],
+              }),
+            },
+            dashcards: { [DASHCARD_ID]: dashcard },
+            dashcardData: { [DASHCARD_ID]: { [card.id]: DATASET } },
+          }),
+        }),
+      },
+    );
+    await waitFor(() => expect(true).toBe(true));
+    return fetchMock.callHistory.calls("path:/api/timeline");
+  };
+
+  it("loads the timelines when a chart selects one", async () => {
+    expect(await setupPrefetch(EVENTS_RECORDED)).toHaveLength(1);
+  });
+
   it.each([
     ["recorded no selection", {}],
     ["recorded an empty selection", { "timeline.selected_timeline_ids": [] }],
   ])(
     "does not load the timelines when every chart %s",
-    (_description, savedVisibility) => {
-      setupTimelinesEndpoints([TIMELINE]);
-
-      setup({ savedVisibility, seedTimelines: false });
-
-      expect(fetchMock.callHistory.calls("path:/api/timeline")).toHaveLength(0);
+    async (_description, savedVisibility) => {
+      expect(await setupPrefetch(savedVisibility)).toHaveLength(0);
     },
   );
 

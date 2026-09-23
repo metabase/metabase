@@ -295,15 +295,10 @@
 
 (defn- public-dashcard-timeline-ids
   [{:keys [card] :as dashcard}]
-  (let [settings     (:visualization_settings card)
-        timeline-ids (:timeline.selected_timeline_ids settings)]
-    (when (and (pos-int? (:id card))
-               (false? (:archived card))
-               (queries/timeline-events-supported-display? (:display card))
-               (not (queries/dashcard-hides-card-events? dashcard))
-               (not (false? (:timeline_events.enabled settings)))
-               (sequential? timeline-ids))
-      (into #{} (filter pos-int?) timeline-ids))))
+  (when (and (pos-int? (:id card))
+             (false? (:archived card))
+             (not (queries/dashcard-hides-card-events? dashcard)))
+    (not-empty (set (queries/card-exposed-timeline-ids card)))))
 
 (defn- public-timeline-events
   [timeline-ids]
