@@ -9,7 +9,9 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -203,6 +205,35 @@
               (is (nil? (:keyword-results (lucene.query/query ctx)))))))
         (testing "otherwise the rows it already fetched come back for the caller to reuse"
           (is (some? (:keyword-results (lucene.query/query (search-context "Dog"))))))))))
+
+(defn- result-named
+  "The result called `nm` that `:crowberto` gets for `q`, straight from the engine."
+  [q nm]
+  (->> (search.tu/search-results q {:current-user-id (mt/user->id :crowberto)})
+       (filter (comp #{nm} :name))
+       first))
+
+(deftest both-arms-rebuild-timestamps-the-same-way-test
+  (with-semantic-search
+    (mt/with-temp [:model/Card _ {:name dog-card}]
+      ;; "puppy" has no keyword overlap, so that row is rebuilt by the vector arm alone; "Dog" matches the
+      ;; keyword arm, whose body the fusion prefers. Both come out of the same JSON `legacy_input`, where every
+      ;; timestamp is a string -- and `POST /api/agent/v1/search` rejects the strings.
+      (let [vector-only (result-named "puppy" dog-card)
+            keyword-hit (result-named "Dog" dog-card)]
+        (is (some? vector-only))
+        (is (some? keyword-hit))
+        (mt/with-test-user :crowberto
+          (is (empty? (:keyword-results (lucene.query/query (search-context "puppy"))))
+              "the keyword arm matches nothing here, so that row really is the vector arm's own"))
+        (testing "a hit only the vector arm found still carries real java.time timestamps"
+          (is (instance? OffsetDateTime (:updated_at vector-only)))
+          (is (not (string? (:created_at vector-only)))))
+        (testing "and both arms agree on the type of every timestamp they rebuild"
+          (are [k] (= (class (k keyword-hit)) (class (k vector-only)))
+            :created_at
+            :updated_at
+            :last_edited_at))))))
 
 (deftest blank-search-string-falls-back-to-the-keyword-arm-test
   (with-semantic-search

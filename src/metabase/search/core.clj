@@ -53,6 +53,7 @@
   collapse-id
   indexed-entity-id->model-index-id
   indexed-entity-id->model-pk
+  rehydrate-timestamps
   tsv-language
   to-tsquery-expr
   weighted-tsvector])

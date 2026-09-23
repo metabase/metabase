@@ -28,7 +28,6 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical])
   (:import
-   (java.time OffsetDateTime)
    (java.util Queue)))
 
 ;; Register the multimethods for each specialization
@@ -54,9 +53,6 @@
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
 
-(defn- parse-datetime [s]
-  (when s (OffsetDateTime/parse s)))
-
 (defn- rehydrate [weights active-scorers index-row]
   (-> (json/decode+kw (:legacy_input index-row))
       search.util/collapse-id
@@ -68,9 +64,7 @@
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
       ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
-      (update :created_at parse-datetime)
-      (update :updated_at parse-datetime)
-      (update :last_edited_at parse-datetime)))
+      search.util/rehydrate-timestamps))
 
 (defn- view-count-percentiles*
   [p-value]

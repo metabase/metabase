@@ -7,7 +7,11 @@
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as u.str]))
+   [metabase.util.string :as u.str])
+  (:import
+   (java.time OffsetDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn impossible-condition?
   "An (incomplete) check where queries will definitely return nothing, to help avoid spurious index update queries."
@@ -45,6 +49,21 @@
   "Collapse the id of search results that may contain multiple ids (like indexed-entities)."
   [{:keys [id] :as row}]
   (assoc row :id (if (number? id) id (indexed-entity-id->model-pk id))))
+
+(defn- parse-datetime [s]
+  (when s (OffsetDateTime/parse s)))
+
+(defn rehydrate-timestamps
+  "Restore the `java.time` values of a search result rebuilt from its JSON `legacy_input`.
+
+  Every engine reconstructs result rows out of `legacy_input`, where JSON has flattened each timestamp to a string.
+  Consumers downstream -- `POST /api/agent/v1/search`'s response schema among them -- require real temporal values,
+  and rows must look the same whichever engine produced them, so every engine runs this over the same keys."
+  [row]
+  (-> row
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
 
 ;;; ============================================================================
 ;;; Postgres-specific utilities

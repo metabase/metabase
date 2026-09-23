@@ -169,8 +169,13 @@
 (defn- vector-entries [rows]
   (into {}
         (map (fn [{:keys [legacy_input semantic-rank semantic-score]}]
-               ;; `:is_published` is an internal permission signal and never leaves the engine.
-               (let [body (search/collapse-id (dissoc legacy_input :is_published))]
+               ;; `:is_published` is an internal permission signal and never leaves the engine. The timestamps
+               ;; came back out of JSON as strings, and callers -- `POST /api/agent/v1/search`'s response schema
+               ;; among them -- require the same real temporal values the appdb arm hands back.
+               (let [body (-> legacy_input
+                              (dissoc :is_published)
+                              search/collapse-id
+                              search/rehydrate-timestamps)]
                  [(result-key body) {:body           body
                                      :semantic-rank  semantic-rank
                                      :semantic-score semantic-score}])))
