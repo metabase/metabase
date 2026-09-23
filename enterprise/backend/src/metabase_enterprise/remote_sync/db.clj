@@ -196,6 +196,18 @@
       (seq action-ids) (assoc :model/Action action-ids)
       (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
 
+(mu/defn child-card-ids :- [:sequential ms/PositiveInt]
+  "The ids of the Cards that belong to the Dashboards `dashboard-ids` or the Documents `document-ids` (dashboard
+  questions and document cards), which deleting those parents removes by foreign-key cascade."
+  [dashboard-ids :- [:sequential ms/PositiveInt]
+   document-ids  :- [:sequential ms/PositiveInt]]
+  (let [clauses (cond-> []
+                  (seq dashboard-ids) (conj [:in :dashboard_id dashboard-ids])
+                  (seq document-ids)  (conj [:in :document_id document-ids]))]
+    (if (seq clauses)
+      (t2/select-pks-vec :model/Card {:where (into [:or] clauses)})
+      [])))
+
 (mu/defn delete-instances!
   "Delete the instances of `model` with `ids`."
   [model :- :keyword
