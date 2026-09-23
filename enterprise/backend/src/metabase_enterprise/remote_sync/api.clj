@@ -12,6 +12,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -113,7 +114,7 @@
                                      [:merge {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
+  (api/check-400 (spec/session-editable?) "Exports are only allowed when remote-sync-type is set to 'read-write' or from a worktree")
   (let [branch-name (impl/sync-branch)
         user-id     api/*current-user-id*
         {task-id :id}

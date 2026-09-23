@@ -317,7 +317,7 @@
         (not (encryption/decryptable-string? value opts)))))
 
 (defn legacy-startup-encryption-disabled?
-  "Whether `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION` is set to true. By default startup encrypts, with a warning, any
+  "Whether `` is set to true. By default startup encrypts, with a warning, any
   value that a previous version of Metabase stored unencrypted in an encrypted-at-rest column; when disabled, finding
   such a value is an error and startup refuses to run instead."
   []

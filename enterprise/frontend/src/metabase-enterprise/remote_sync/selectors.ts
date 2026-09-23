@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { getUser } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { remoteSyncApi } from "metabase-enterprise/api";
@@ -89,12 +90,14 @@ export const getHasPendingMutation = createSelector(
 );
 
 /**
- * Checks if the remote sync is enabled and in read-only mode.
+ * Whether content the instance syncs may not be edited: it is in read-only mode and the user is not working in a
+ * worktree, which is where a read-only instance's content is authored.
  */
 export const getIsRemoteSyncReadOnly = (state: State): boolean => {
-  return !!(
-    getSetting(state, "remote-sync-enabled") &&
-    getSetting(state, "remote-sync-type") === "read-only"
+  return (
+    (getSetting(state, "remote-sync-enabled") ?? false) &&
+    getSetting(state, "remote-sync-type") === "read-only" &&
+    getUser(state)?.worktree_id == null
   );
 };
 
