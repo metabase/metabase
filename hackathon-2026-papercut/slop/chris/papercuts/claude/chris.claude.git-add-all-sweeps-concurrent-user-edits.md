@@ -139,10 +139,11 @@ They're the same kind of prose-tightening I was doing, on files outside my pass 
 
 ### Additional occurrence
 - transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-data-stack-bot-2089-start-ingesting-eval-results-into-clickhouse/8ca32d6f-c22b-4954-a66c-c4ae6aaa2fd7.jsonl
-- lines: 1549-1706 (flagged 1435-1800)
-- date: 2026-09-01
-- jev: {self_inflicted_bug: 0.96, tool_misuse: 0.92, misleading_signal: 0.71, user_correction: 0.16, codebase_trap: 0.76, flailing: 0.46, env_friction: 0.89}
-- repo: metabase/data-stack (not the metabase repo), PR #94, worktree data-stack.bot-2089-start-ingesting-eval-results-into-clickhouse
+  lines: 1549-1706
+  date: 2026-09-01
+  jev: {self_inflicted_bug: 0.96, tool_misuse: 0.92, misleading_signal: 0.71, user_correction: 0.16, codebase_trap: 0.76, flailing: 0.46, env_friction: 0.89}
+  flagged: 1435-1800
+  repo: metabase/data-stack (not the metabase repo), PR #94, worktree data-stack.bot-2089-start-ingesting-eval-results-into-clickhouse
 
 Same pattern in a different repo, plus a destructive recovery:
 - L1549 user runs `/code-review`; L1553 the review subagent (82 tool uses, ~13 min, same worktree) reports four findings. During this window something else rewrote comments across the worktree (condensed/"de-slopped" versions of long why-comments in `source.yml`, `raw_evals.sql`, `ci.yml`, `compose.ci.yml`, the terraform test, README, CLAUDE.md). The transcript does not show who; candidates are the review subagent or the user editing concurrently.
@@ -188,21 +189,27 @@ It then ran `git reset --soft HEAD~1 && git reset -q` and made six `git commit -
 ## Additional occurrence
 Two more instances of two actors sharing one worktree, both near-misses rather than bad commits:
 
-1. transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2001-audit-appdb-and-dwh-dumps-for-stats-lane-evals/7ad9c402-a811-43c6-b9fe-5e4803b3d6a2.jsonl
-   lines: 1600-1642 (date 2026-08-26; jev {self_inflicted_bug: 0.91, tool_misuse: 0.84, misleading_signal: 0.61, user_correction: 0.76, codebase_trap: 0.78, flailing: 0.34, env_friction: 0.82})
-   The user (via another agent) checked out a new branch `mbql-ids-verify-db-id` *in this agent's worktree* and
-   committed, while the agent had an uncommitted rewrite of `scripts/configure-local-metabase` in the tree. The
-   edit rode across the branch switch. The agent noticed only because HEAD moved (L1620 "Hold on -- HEAD has moved.
-   There's a commit here I didn't make"), checked reflog, and verified its identifiers (`CatalogueEntry`) were not
-   in the user's commit. L1642: "If you'd used `git commit -a` or `git add -A`, my half-finished rewrite would have
-   gone into your commit".
-2. transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-fix-app-db-rollback-only/a4d08ba6-bcae-4d25-a47f-150cf6e80cfc/subagents/agent-a60c5f8ae48a8cd91.jsonl
-   lines: 1389-1397 (date 2026-08-24; jev {self_inflicted_bug: 0.94, tool_misuse: 0.48, misleading_signal: 0.59, user_correction: 0.09, codebase_trap: 0.87, flailing: 0.75, env_friction: 0.64})
-   Parent agent and a background subagent worked in the same worktree. The subagent's uncommitted cljfmt fix
-   "vanished from status" -- the parent had absorbed it into its own commit `4c1bccc3f87`. L1393 "The coordinator
-   has been committing under me (my cljfmt fix absorbed)." The parent in turn noted (main transcript L2710-2743)
-   "The agent's search-test work is still uncommitted in the tree -- I've kept my commits strictly to my own files".
-   Detection: an agent that launches a subagent with repo write access in its own cwd, without `isolation: worktree`.
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2001-audit-appdb-and-dwh-dumps-for-stats-lane-evals/7ad9c402-a811-43c6-b9fe-5e4803b3d6a2.jsonl
+  lines: 1600-1642
+  date: 2026-08-26
+  jev: {self_inflicted_bug: 0.91, tool_misuse: 0.84, misleading_signal: 0.61, user_correction: 0.76, codebase_trap: 0.78, flailing: 0.34, env_friction: 0.82}
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-fix-app-db-rollback-only/a4d08ba6-bcae-4d25-a47f-150cf6e80cfc/subagents/agent-a60c5f8ae48a8cd91.jsonl
+  lines: 1389-1397
+  date: 2026-08-24
+  jev: {self_inflicted_bug: 0.94, tool_misuse: 0.48, misleading_signal: 0.59, user_correction: 0.09, codebase_trap: 0.87, flailing: 0.75, env_friction: 0.64}
+
+In the first, the user (via another agent) checked out a new branch `mbql-ids-verify-db-id` *in this agent's worktree* and
+committed, while the agent had an uncommitted rewrite of `scripts/configure-local-metabase` in the tree. The
+edit rode across the branch switch. The agent noticed only because HEAD moved (L1620 "Hold on -- HEAD has moved.
+There's a commit here I didn't make"), checked reflog, and verified its identifiers (`CatalogueEntry`) were not
+in the user's commit. L1642: "If you'd used `git commit -a` or `git add -A`, my half-finished rewrite would have
+gone into your commit".
+
+In the second, a parent agent and a background subagent worked in the same worktree. The subagent's uncommitted cljfmt fix
+"vanished from status" -- the parent had absorbed it into its own commit `4c1bccc3f87`. L1393 "The coordinator
+has been committing under me (my cljfmt fix absorbed)." The parent in turn noted (main transcript L2710-2743)
+"The agent's search-test work is still uncommitted in the tree -- I've kept my commits strictly to my own files".
+Detection: an agent that launches a subagent with repo write access in its own cwd, without `isolation: worktree`.
 
 ## Additional occurrence
 - transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-kondo-ratchets-merge-script/a2d41fab-dd88-43ad-bebe-2e6c63b8a7d4.jsonl
@@ -218,8 +225,20 @@ Also in this batch: `git add -A && git rebase --continue` committed conflict mar
   lines: 8-82
   date: 2026-08-21
   jev: {subagent of flagged session b31b1fd7 lines 6-430; scores not in batch}
-- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a8d86a710d897ba09.jsonl, /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a13d4dbcc131e3ace.jsonl, /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a78c6410c75364840.jsonl, /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a4d2f969a8f51a83f.jsonl (deleted; reconstructed from redacted chunks)
-  lines: a8d86 L5-6; a13d4 L27; a78c6 L29-33; a4d2f L48-49
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a8d86a710d897ba09.jsonl (deleted; reconstructed from redacted chunks)
+  lines: 5-6
+  date: 2026-08-21
+  jev: {subagents; scores not in batch}
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a13d4dbcc131e3ace.jsonl (deleted; reconstructed from redacted chunks)
+  lines: 27
+  date: 2026-08-21
+  jev: {subagents; scores not in batch}
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a78c6410c75364840.jsonl (deleted; reconstructed from redacted chunks)
+  lines: 29-33
+  date: 2026-08-21
+  jev: {subagents; scores not in batch}
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-metabase-80394-metabot-tennant/b31b1fd7-7c96-47c9-95ad-9bfbd57f1c09/subagents/agent-a4d2f969a8f51a83f.jsonl (deleted; reconstructed from redacted chunks)
+  lines: 48-49
   date: 2026-08-21
   jev: {subagents; scores not in batch}
 

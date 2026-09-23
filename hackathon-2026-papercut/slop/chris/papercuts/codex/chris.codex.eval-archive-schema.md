@@ -11,7 +11,11 @@ Recorded repair: [data-stack#185](https://github.com/metabase/data-stack/pull/18
 Classification: confirmed cross-repository contract papercut; silent data loss from an observability perspective; delayed detection.
 
 ## Additional occurrence
-(Claude drill, batch b0: same transcript, flagged region lines 2768-3137, Jev {self_inflicted_bug: 0.40, tool_misuse: 0.94, misleading_signal: 0.76, user_correction: 0.94, codebase_trap: 0.64, flailing: 0.36, env_friction: 0.72})
+- transcript: /Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl
+  lines: 2768-3137
+  jev: {self_inflicted_bug: 0.40, tool_misuse: 0.94, misleading_signal: 0.76, user_correction: 0.94, codebase_trap: 0.64, flailing: 0.36, env_friction: 0.72}
+
+Found by the Claude drill, batch b0, in the same transcript.
 
 The flagged region is the follow-through on this trap:
 - L2780-2789: the agent explains the loader "quarantines unsupported archives silently. Eval results stopped reaching `raw_evals` for a week while CI stayed green". It traces the bump to #142 commit `e6a0fdf2` ("Signal failure only when cases do not complete", author lbrdnk), which closes BOT-2105 (L2801).
