@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [babashka.process :as p]
    [clojure.test :refer [deftest is testing]]
+   [mage.papercuts.jev :as jev]
    [mage.papercuts.scan :as scan]
    [mage.papercuts.transcript :as transcript])
   (:import
@@ -19,6 +20,17 @@
     (is (= "2026-09-01T10:30:00Z" (scan/parse-since "2026-09-01T10:30:00" now)))
     (is (= "2026-09-01T08:30:00Z" (scan/parse-since "2026-09-01T10:30:00+02:00" now)))
     (is (thrown? Exception (scan/parse-since "last tuesday" now)))))
+
+(deftest screen-or-refused-test
+  (testing "a firewall refusal skips the chunk instead of failing the session on every run"
+    (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 403" {:status 403})))]
+      (is (= {:refused true} (scan/screen-or-refused "key" {:text "sleep 30 && cat log"})))))
+  (testing "other errors still fail it, so the session is retried"
+    (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 401" {:status 401})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"401" (scan/screen-or-refused "key" {:text "x"})))))
+  (testing "a screening passes through"
+    (with-redefs [jev/screen! (fn [_ _] {:scores {:flailing 0.9} :model "jev-test"})]
+      (is (= {:scores {:flailing 0.9} :model "jev-test"} (scan/screen-or-refused "key" {:text "x"}))))))
 
 (deftest state-and-log-files-test
   (testing "each server keeps its own progress and log"

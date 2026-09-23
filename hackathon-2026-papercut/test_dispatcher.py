@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import json
 import subprocess
 import tempfile
 import threading
@@ -181,6 +182,15 @@ class AssessAgainstServerTest(ServerCase):
 
         self.assertIsNone(self.assess(failing))
 
+    def test_refused_text_is_skipped_without_holding_the_cursor(self):
+        papercut_id = self.report("Trap", severity="high")["papercut"]["id"]
+
+        def refusing(state, questions):
+            raise dispatcher.JevError("403 <!DOCTYPE html>", 403)
+
+        self.assertIsNotNone(self.assess(refusing))
+        self.assertIsNone(self.store.get_papercut(papercut_id)["assessment"])
+
 
 class RelationJev:
     """Answers each candidate question from `probabilities`, keyed by candidate id; unlisted ones are unrelated."""
@@ -194,7 +204,35 @@ class RelationJev:
         return {"model": "jev-test", "answers": answers}
 
 
+class RefusingJev(RelationJev):
+    """Like RelationJev, but refuses any request whose state mentions `marker`, as TypeSafe's firewall does."""
+    def __init__(self, marker, probabilities=None):
+        super().__init__(probabilities)
+        self.marker = marker
+
+    def __call__(self, state, questions):
+        if self.marker in json.dumps(state):
+            raise dispatcher.JevError("403 <!DOCTYPE html>", 403)
+        return super().__call__(state, questions)
+
+
 class JudgeRelationsTest(unittest.TestCase):
+    def test_a_refused_candidate_costs_only_its_own_verdict(self):
+        candidates = [{"id": id_, "title": "BLOCKED" if id_ == 4 else f"T{id_}", "description": "d", "path": "",
+                       "area": ""} for id_ in (2, 3, 4, 5)]
+        model, suggestions, refused = dispatcher.judge_isolating(
+            papercut(), candidates, T, RefusingJev("BLOCKED", {2: {"duplicate": 0.9}, 5: {"related": 0.9}}))
+        self.assertEqual((model, [(s["papercut_id"], s["verdict"]) for s in suggestions], [c["id"] for c in refused]),
+                         ("jev-test", [(2, "duplicate"), (5, "related")], [4]))
+
+    def test_other_errors_are_not_isolated(self):
+        def failing(state, questions):
+            raise dispatcher.JevError("429 slow down", 429)
+
+        with self.assertRaises(dispatcher.JevError):
+            dispatcher.judge_isolating(papercut(), [{"id": 2, "title": "T", "description": "d", "path": "", "area": ""}],
+                                       T, failing)
+
     def test_each_candidate_is_a_choice_and_thresholds_pick_what_is_shown(self):
         candidates = [{"id": id_, "title": f"T{id_}", "description": "d" * 5000, "path": "a.clj" if id_ == 2 else "",
                        "area": ""} for id_ in (2, 3, 4, 5)]
@@ -259,6 +297,18 @@ class RelateAgainstServerTest(ServerCase):
         self.report("Git replay leaves worktree index stale")
         _, judged = self.relate(RelationJev({first: {"duplicate": 0.9}}), dry_run=True)
         self.assertEqual((judged, self.store.get_papercut(first)["related"]), ({}, []))
+
+    def test_refused_text_is_skipped_without_holding_the_cursor(self):
+        blocked = self.report("BLOCKED git replay leaves the worktree index stale")["papercut"]["id"]
+        other = self.report("Git replay leaves worktree index stale")["papercut"]["id"]
+        third = self.report("Git replay leaves the index stale")["papercut"]["id"]
+        cursor, judged = self.relate(RefusingJev("BLOCKED", {third: {"duplicate": 0.9}, other: {"duplicate": 0.9}}))
+        # The refused papercut's own text is never judged, but the run still moves the cursor.
+        self.assertIsNotNone(cursor)
+        self.assertEqual(set(judged), {str(other), str(third)})
+        # The others still get verdicts on each other, just not on the refused one.
+        self.assertEqual([(r["id"], r["verdict"]) for r in self.store.get_papercut(other)["related"]], [(third, "duplicate")])
+        self.assertEqual(self.store.get_papercut(blocked)["related"], [])
 
     def test_jev_failure_keeps_the_cursor_and_the_papercut_unjudged(self):
         self.report("Git replay leaves the worktree index stale")

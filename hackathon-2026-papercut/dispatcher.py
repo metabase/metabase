@@ -81,7 +81,15 @@ SCRUBBED_ENV = re.compile(r"^(CLAUDE|ANTHROPIC|MB_|PAPERCUTS_|LINEAR_|JEV_|TYPES
 
 
 class JevError(RuntimeError):
-    pass
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
+
+
+def refused(error):
+    """Whether TypeSafe's firewall refused the request. It answers some text, such as certain shell snippets, with an
+    HTML 403 every time, so sending the same text again is refused again."""
+    return isinstance(error, JevError) and error.status == 403
 
 
 def evidence(papercut, thresholds):
@@ -153,7 +161,7 @@ def ask_jev(state, questions, api_key, model="jev-latest", tries=4, timeout=45):
     """One System One request. Retries network errors, 429 and 5xx; other errors (auth, validation, a WAF 403)
     fail at once."""
     body = json.dumps({"model": model, "state": state, "questions": questions}).encode()
-    error = None
+    error = status = None
     for attempt in range(tries):
         if attempt:
             time.sleep(2 ** attempt)
@@ -162,12 +170,13 @@ def ask_jev(state, questions, api_key, model="jev-latest", tries=4, timeout=45):
             with urlopen(request, timeout=timeout) as response:
                 return json.load(response)
         except HTTPError as http_error:
+            status = http_error.code
             error = f"{http_error.code} {http_error.read()[:300].decode(errors='replace')}"
             if http_error.code != 429 and http_error.code < 500:
                 break
         except (URLError, TimeoutError) as network_error:
-            error = repr(network_error)
-    raise JevError(error)
+            error, status = repr(network_error), None
+    raise JevError(error, status)
 
 
 def decide(papercut, thresholds, jev=None):
@@ -269,6 +278,22 @@ def judge_relations(papercut, candidates, thresholds, jev):
     return response.get("model"), suggestions
 
 
+def judge_isolating(papercut, candidates, thresholds, jev):
+    """`judge_relations`, and the candidates Jev refused to judge. A refusal only rules out the text sent, so the
+    candidates are judged in halves until each refused one is alone; the others still get their verdicts."""
+    try:
+        model, suggestions = judge_relations(papercut, candidates, thresholds, jev)
+        return model, suggestions, []
+    except JevError as error:
+        if not refused(error):
+            raise
+        if len(candidates) == 1:
+            return None, [], candidates
+    half = len(candidates) // 2
+    first, second = (judge_isolating(papercut, part, thresholds, jev) for part in (candidates[:half], candidates[half:]))
+    return first[0] or second[0], first[1] + second[1], first[2] + second[2]
+
+
 def text_digest(papercut):
     """What a relation judgment depends on. New reports don't change it, so they don't cost another Jev call."""
     text = "\0".join(papercut.get(key) or "" for key in ("title", "description", "path", "area"))
@@ -343,6 +368,10 @@ def assess(server, jev, thresholds, since=None, repository=None, ids=None, dry_r
         results = list(pool.map(attempt, papercuts))
     failed, verdicts = False, {}
     for papercut, assessment in zip(papercuts, results):
+        if refused(assessment):
+            # Asking again would be refused again, so the cursor moves on; an edit to the papercut brings it back.
+            print(f"#{papercut['id']} jev refused its text; skipped", file=out, flush=True)
+            continue
         if isinstance(assessment, Exception):
             print(f"#{papercut['id']} jev failed: {assessment!r}", file=out, flush=True)
             failed = True
@@ -382,7 +411,7 @@ def relate(server, jev, thresholds, since=None, repository=None, ids=None, judge
 
     def attempt(item):
         try:
-            return judge_relations(item[0], item[1], thresholds, jev)
+            return judge_isolating(item[0], item[1], thresholds, jev)
         except (JevError, KeyError) as error:
             return error
 
@@ -394,9 +423,17 @@ def relate(server, jev, thresholds, since=None, repository=None, ids=None, judge
             print(f"#{papercut['id']} jev failed: {result!r}", file=out, flush=True)
             failed = True
             continue
-        model, suggestions = result
+        model, suggestions, refused_candidates = result
+        if candidates and len(refused_candidates) == len(candidates):
+            # Every pair was refused, so the refused text is the papercut's own. Asking again would be refused again,
+            # so the cursor moves on; the papercut stays unjudged, and an edit to its text brings it back.
+            print(f"#{papercut['id']} jev refused its text; skipped", file=out, flush=True)
+            continue
         found = ", ".join(f"#{s['papercut_id']} {s['verdict']} {s['score']:.2f}" for s in suggestions) or "nothing"
-        print(f"#{papercut['id']} {papercut['title'][:70]} | {len(candidates)} candidates: {found}", file=out, flush=True)
+        skipped = f"; refused #{', #'.join(str(c['id']) for c in refused_candidates)}" if refused_candidates else ""
+        print(f"#{papercut['id']} {papercut['title'][:70]} | {len(candidates)} candidates: {found}{skipped}",
+              file=out, flush=True)
+        candidates = [c for c in candidates if c not in refused_candidates]
         if not dry_run:
             server.request("POST", f"/api/papercuts/{papercut['id']}/suggestions",
                            {"model": model, "actor": ACTOR, "suggestions": suggestions,

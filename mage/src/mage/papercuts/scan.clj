@@ -395,11 +395,23 @@
     (fs/create-dirs (fs/parent file))
     (spit file (str (json/write-str record) "\n") :append true)))
 
+(defn screen-or-refused
+  "Jev's screening of `chunk`, or `{:refused true}` when TypeSafe's firewall refused it. The firewall answers some
+  text, such as certain shell snippets, with an HTML 403 every time, so a retry would be refused again and the session
+  would fail on every run."
+  [api-key chunk]
+  (try
+    (jev/screen! api-key chunk)
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 403 (:status (ex-data e)))
+        {:refused true}
+        (throw e)))))
+
 (defn- scan-chunk!
   "Screen one chunk, drill it if flagged, and submit what it finds. Returns the session state advanced past it."
   [{:keys [threshold dry-run screen-only verbose api-key known log] :as opts} session state chunk]
-  (let [{:keys [scores model]} (jev/screen! api-key chunk)
-        flagged   (jev/flagged? scores threshold)
+  (let [{:keys [scores model refused]} (screen-or-refused api-key chunk)
+        flagged   (and (not refused) (jev/flagged? scores threshold))
         found     (when (and flagged (not screen-only))
                     (drill/drill! opts (assoc chunk :session session :existing known)))
         reported  (into #{} (map :fingerprint) (:reported state))
@@ -413,7 +425,10 @@
         results   (if dry-run
                     (mapv (constantly :dry-run) reports)
                     (mapv #(submit! opts %) reports))]
-    (when (or flagged verbose)
+    (when refused
+      (say session (str "L" (:first-new-line chunk) "-" (:last-line chunk))
+           (c/yellow "skipped: Jev's firewall refused this stretch (HTTP 403)")))
+    (when (and (not refused) (or flagged verbose))
       (say session (str "L" (:first-new-line chunk) "-" (:last-line chunk))
            (if flagged (c/yellow "flagged") "clean")
            (str/join " " (for [[k v] (sort-by val > scores)] (format "%s=%.2f" (name k) (double v))))))
@@ -427,6 +442,7 @@
                  :path      (:path session)
                  :lines     [(:first-new-line chunk) (:last-line chunk)]
                  :jev_model model
+                 :refused   (boolean refused)
                  :scores    scores
                  :flagged   flagged
                  :papercuts found
