@@ -449,3 +449,18 @@
             (sqlite/stats)))
     (sqlite/delete-documents! "card" [1])
     (is (=? {:docs 4 :vectors 4 :by-model {"card" 2 "dashboard" 2}} (sqlite/stats)))))
+
+(deftest index-all-prune-test
+  (with-store! [_path]
+    (do-with-stub-embeddings
+     (fn [_sent]
+       (sqlite/upsert-documents! [(doc "card" 1 "alpha") (doc "card" 2 "beta") (doc "dashboard" 1 "gamma")])
+       (testing "without :prune? documents missing from the input are kept"
+         (is (not (contains? (sqlite/index-all! [(doc "card" 1 "alpha")]) :pruned)))
+         (is (= 3 (count (doc-names)))))
+       (testing "with :prune? they are deleted from both tables"
+         (is (=? {:upserted 1 :pruned 2} (sqlite/index-all! [(doc "card" 1 "alpha")] :prune? true)))
+         (is (= #{["card" "1"]} (set (keys (doc-names)))))
+         (is (=? {:docs 1 :vectors 1} (sqlite/stats))))
+       (testing "string and numeric ids name the same document"
+         (is (=? {:pruned 0} (sqlite/index-all! [(doc "card" "1" "alpha")] :prune? true))))))))

@@ -494,30 +494,47 @@
             (jdbc/execute! tx (sql/format {:delete-from :search_doc :where [:in :id rowids]})))
           (count rowids))))))
 
+(defn- prune!
+  "Delete every stored document whose `[model model_id]` is not in `keep-keys`. Returns the number deleted."
+  [keep-keys]
+  (let [stale (->> (with-conn [conn]
+                     (jdbc/execute! conn ["SELECT model, model_id FROM search_doc"]
+                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+                   (map (juxt :model :model_id))
+                   (remove keep-keys))]
+    (reduce + 0 (for [[model ids] (update-vals (group-by first stale) #(mapv second %))]
+                  (delete-documents! model ids)))))
+
 (defn index-all!
   "Index every document of `documents` (e.g. `(metabase.search.ingestion/searchable-documents)`), logging progress.
-  Documents already in the store but absent from `documents` are left alone. Returns the [[upsert-documents!]]
-  counts plus `:elapsed-ms`."
-  [documents]
+  Returns the [[upsert-documents!]] counts plus `:elapsed-ms`, and `:pruned` with `:prune? true`: documents already
+  in the store but absent from `documents` (e.g. deleted while Metabase was down) are then removed. Without it they
+  are left alone."
+  [documents & {:keys [prune?]}]
   (let [timer  (u/start-timer)
+        seen   (volatile! (transient #{}))
         result (transduce (partition-all *batch-size*)
                           (completing (fn [acc batch]
+                                        (when prune?
+                                          (vswap! seen #(reduce conj! % (map (fn [d] [(:model d) (str (:id d))]) batch))))
                                         (let [acc (merge-with + acc (upsert-documents! batch))]
                                           (log/infof "SQLite semantic index: %s" (pr-str acc))
                                           acc)))
                           {:upserted 0 :embedded 0 :reused 0 :skipped 0 :failed 0}
                           documents)]
-    (assoc result :elapsed-ms (long (u/since-ms timer)))))
+    (cond-> (assoc result :elapsed-ms (long (u/since-ms timer)))
+      prune? (assoc :pruned (prune! (persistent! @seen))))))
 
 (defonce ^:private indexing? (atom false))
 
 (defn index-all-async!
-  "[[index-all!]] on a background thread. Returns its future, or nil when a run is already in progress."
-  [documents]
+  "[[index-all!]] (same options) on a background thread. Returns its future, or nil when a run is already in
+  progress."
+  [documents & {:as opts}]
   (when (compare-and-set! indexing? false true)
     (future
       (try
-        (index-all! documents)
+        (index-all! documents opts)
         (catch Throwable t
           (log/error t "SQLite semantic indexing failed")
           (throw t))

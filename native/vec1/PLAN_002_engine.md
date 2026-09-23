@@ -75,26 +75,32 @@ One switch: `sqlite/enabled?` (`MB_SEMANTIC_SEARCH_SQLITE_PATH` set). When on:
       before; with it, semantic is still supported / default / active and both pgvector gates are false.
 - [x] Test: `sqlite_engine_test.clj` `gating-test` (test app DB initialised; the store unit tests don't need one).
 
-## Phase B — write hooks (1–2 h)
+## Phase B — write hooks ✅ done 2026-09-23
 
 `core.clj` `init!`, `update-index!`, `delete-from-index!`, `repair-index!`; store additions in `sqlite.clj`.
 
-- [ ] `init!` [documents opts] → `(sqlite/open!)` (configured model; a model change recreates the store),
+- [x] `init!` [documents opts] → `(sqlite/open!)` (configured model; a model change recreates the store),
       `(sqlite/delete-store!)` first when `(:force-reset? opts)`, then `(sqlite/index-all-async! documents)`.
       Async: startup must not wait for embedding every document (same as pgvector, where the indexer embeds
       later). Searches before it finishes get fewer results → app-DB fallback fills in.
       *Check:* `searchable-documents` is a reducible over an app-DB query — fine to realize on the future's thread.
-- [ ] **Prune on full index**: `index-all!` currently leaves docs that vanished while Metabase was down.
+- [x] **Prune on full index**: `index-all!` currently leaves docs that vanished while Metabase was down.
       Add `:prune? true` for `init!`: collect the `[model model_id]` keys seen, then delete every other row
       (`delete-documents!` per model). Cheap at hackathon sizes. Test it.
-- [ ] `update-index!` [documents] → `(sqlite/upsert-documents! documents)`; return `{model count}` of the
+- [x] `update-index!` [documents] → `(sqlite/upsert-documents! documents)`; return `{model count}` of the
       upserted docs (frequencies of `:model`), not the store's `{:upserted …}` counts.
-- [ ] `delete-from-index!` [model ids] → `(sqlite/delete-documents! model ids)`; return `{model n}`.
-- [ ] `repair-index!` → in SQLite mode `index-all!` with `:prune? true`, return
+- [x] `delete-from-index!` [model ids] → `(sqlite/delete-documents! model ids)`; return `{model n}`.
+- [x] `repair-index!` → in SQLite mode `index-all!` with `:prune? true`, return
       `{:index-id 0 :orphans <pruned> :snapshot-at (Instant/now)}`. (Not scheduled in SQLite mode — the repair
       task is pgvector-gated — but keep the contract for direct callers.)
-- [ ] `diagnose` → `{:type :missing-from-index :details {:reason :sqlite-store}}` (or a present/absent
+- [x] `diagnose` → `{:type :missing-from-index :details {:reason :sqlite-store}}` (or a present/absent
       answer via `sqlite/get-doc` if cheap).
+- [x] `diagnose` in SQLite mode: `:candidate` when the store has the doc, `:missing-from-index` otherwise
+      (no per-filter breakdown).
+- [x] Verified in the dev REPL on the real documents (SQLite mode via redef): init → 64 docs; a planted doc is
+      pruned by the next init; update/delete return `{"card" 1}`; repair restores a deleted doc.
+- [x] Tests: `sqlite_test` `index-all-prune-test`; `sqlite_engine_test` `write-hooks-test` (init, update,
+      delete, diagnose, prune on re-init, repair, force-reset). 25 tests / 121 assertions green.
 
 ## Phase C — query: `sqlite/query` [search-ctx] → `{:results :raw-count}` (3–4 h)
 
