@@ -520,6 +520,9 @@ export const sendAgentRequest = createAsyncThunk<
                   setConversationTitle({ conversationId, title: part.data }),
                 );
               })
+              .with({ type: "data-jev" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "data-todo_list" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })

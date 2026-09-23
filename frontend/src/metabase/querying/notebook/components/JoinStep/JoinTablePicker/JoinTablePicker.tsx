@@ -15,6 +15,7 @@ import { NotebookDataPicker } from "../../NotebookDataPicker";
 import { DataPickerTarget } from "../../NotebookDataPicker/DataPickerTarget";
 
 import S from "./JoinTablePicker.module.css";
+import { SuggestedJoins } from "./SuggestedJoins";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -42,6 +43,18 @@ export function JoinTablePicker({
     <Box aria-label={t`Right table`}>
       {isOpened || !table || isEmbed ? (
         <NotebookDataPicker
+          suggestions={(selectTable) =>
+            isOpened && !isReadOnly && !table ? (
+              <SuggestedJoins
+                query={query}
+                stageIndex={stageIndex}
+                onSelect={async (tableId) => {
+                  await selectTable(tableId);
+                  setIsOpened(false);
+                }}
+              />
+            ) : undefined
+          }
           title={t`Pick data to join`}
           query={query}
           stageIndex={stageIndex}

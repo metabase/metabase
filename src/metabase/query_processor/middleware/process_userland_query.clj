@@ -146,7 +146,7 @@
        ;; Prototype: feed the intent shape-model from every real run (value-free facets only).
        ;; Fire-and-forget on a future so its app-db reads never add latency to the query response;
        ;; requiring-resolve keeps the QP free of a hard dependency on the jev module.
-       (when-let [observe (try (requiring-resolve 'metabase.jev.intent/observe-query!)
+       (when-let [observe (try (requiring-resolve 'metabase.jev.apps.intent/observe-query!)
                                (catch Throwable _ nil))]
          (let [user-id (:executor_id execution-info)
                query   (:json_query execution-info)]

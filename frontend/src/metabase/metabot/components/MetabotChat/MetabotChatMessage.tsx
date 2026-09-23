@@ -49,6 +49,7 @@ import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
 const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
   match(part)
+    .with({ type: "data-jev" }, () => true)
     .with({ type: "data-todo_list" }, () => true)
     .with({ type: "data-transform_suggestion" }, () => true)
     .with({ type: "data-navigate_to" }, () => true)

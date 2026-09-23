@@ -34,7 +34,7 @@ import { trackXRaySaved } from "./analytics";
 const SIDEBAR_W = 346;
 
 const AutomaticDashboardAppInner = () => {
-  const { dashboard, parameters, isHeaderVisible, tabs } =
+  const { dashboard, parameters, parameterValues, isHeaderVisible, tabs } =
     useDashboardContext();
 
   usePageTitle(dashboard?.name || "", { titleIndex: 1 });
@@ -55,7 +55,12 @@ const AutomaticDashboardAppInner = () => {
     if (dashboard) {
       // remove the transient id before trying to save
       const { data: newDashboard } = await saveDashboard(
-        dissoc(dashboard, "id"),
+        dissoc(
+          dashboard,
+          "id",
+          "exploration_candidates",
+          "exploration_context",
+        ),
       );
 
       if (!newDashboard) {
@@ -87,9 +92,11 @@ const AutomaticDashboardAppInner = () => {
 
   // pull out "more" related items for displaying as a button at the bottom of the dashboard
   const more = dashboard && dashboard.more;
-  const related = dashboard && dashboard.related;
+  const related = dashboard?.related ?? {};
 
-  const hasSidebar = related && Object.keys(related).length > 0;
+  const hasSidebar =
+    Object.keys(related).length > 0 ||
+    !!dashboard?.exploration_candidates?.length;
 
   return (
     <div
@@ -209,7 +216,17 @@ const AutomaticDashboardAppInner = () => {
               S.SuggestionsSidebarWrapper,
             )}
           >
-            <SuggestionsSidebar related={related} />
+            <SuggestionsSidebar
+              related={related}
+              explorationCandidates={dashboard?.exploration_candidates}
+              explorationContext={JSON.stringify({
+                ...dashboard?.exploration_context,
+                active_filters: parameters.map((parameter) => ({
+                  name: parameter.name,
+                  value: parameterValues[parameter.id],
+                })),
+              })}
+            />
           </Box>
         )}
       </div>

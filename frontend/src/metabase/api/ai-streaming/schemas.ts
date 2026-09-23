@@ -47,6 +47,7 @@ export const knownDataPartTypes = [
   "data-static_viz",
   "data-search_results",
   "data-tool_title",
+  "data-jev",
   "data-conversation-title",
   "data-research_plan_update",
 ] as const satisfies readonly KnownDataPart["type"][];
@@ -129,7 +130,22 @@ export type ResearchPlanUpdateData = AddResearchGroupsResponse & {
   tool_call_id?: string;
 };
 
+export type JevSignal = {
+  phase: string;
+  status: string;
+  action: string;
+  instruction: string;
+  intent?: { choice: string; confidence: number };
+  feedback?: { choice: string; confidence: number };
+  tone?: { choice: string; confidence: number };
+  progress?: { choice: string; confidence: number };
+  usage?: { input_tokens?: number; output_tokens?: number } | null;
+  elapsed_ms: number;
+  failed_steps?: number;
+};
+
 export type KnownDataPart =
+  | { type: "data-jev"; data: JevSignal }
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
   | { type: "data-todo_list"; data: MetabotTodoItem[] }

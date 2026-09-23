@@ -15,6 +15,7 @@
 
   https://api-docs.deepseek.com/guides/anthropic_api"
   (:require
+   [metabase.jev.diagnostics :as diagnostics]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -218,6 +219,7 @@
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (let [req (deepseek-request-body (assoc opts :model model))]
+    (diagnostics/capture-request! "deepseek" req)
     (log/debug "DeepSeek request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.deepseek/request
                       :model      model
