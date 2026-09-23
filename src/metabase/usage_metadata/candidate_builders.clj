@@ -88,7 +88,8 @@
 
 (defn- table-source-item-evidence
   [source-items]
-  (let [{:keys [id name type verified? official-collection? popular? view-count]} (first source-items)]
+  (let [{:keys [id name type verified? official-collection? popular? view-count collection_id last_used_at]}
+        (first source-items)]
     {:id                   id
      :name                 name
      :type                 type
@@ -96,6 +97,8 @@
      :official-collection? official-collection?
      :popular?             popular?
      :view-count           view-count
+     :collection-id        collection_id
+     :last-used-at         last_used_at
      :dependency-paths     (->> source-items
                                 (mapcat :dependency-paths)
                                 distinct

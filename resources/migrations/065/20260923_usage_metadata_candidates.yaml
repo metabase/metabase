@@ -56,6 +56,7 @@ databaseChangeLog:
               - column: {name: popular_source_count, type: int, remarks: Distinct popular source cards, constraints: {nullable: false}}
               - column: {name: distinct_source_count, type: int, remarks: Distinct source cards, constraints: {nullable: false}}
               - column: {name: recent_view_count, type: int, remarks: Sum of source Card views in the snapshot usage window, constraints: {nullable: false}}
+              - column: {name: last_used_at, type: "${timestamp_type}", remarks: Most recent time any source Card was used}
               - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
               - column: {name: sort_position, type: int, remarks: Deterministic depth-first position within the snapshot, constraints: {nullable: false}}
 
@@ -163,6 +164,9 @@ databaseChangeLog:
               - column: {name: joined, type: "${boolean.type}", remarks: Whether evidence came from a joined stage, constraints: {nullable: false}}
               - column: {name: stage_numbers, type: "${text.type}", remarks: JSON stage numbers contributing evidence, constraints: {nullable: false}}
               - column: {name: model_lineage, type: "${text.type}", remarks: JSON transparent model lineage}
+              # Intentionally no Collection FK: completed analysis snapshots must not change when collections move or are deleted.
+              - column: {name: collection_id, type: int, remarks: Collection that held the source Card at refresh time}
+              - column: {name: last_used_at, type: "${timestamp_type}", remarks: Time the source Card was last used}
 
   - changeSet:
       id: v65.um-candidate-source-candidate-index

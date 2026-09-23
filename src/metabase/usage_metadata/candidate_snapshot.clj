@@ -112,7 +112,7 @@
 (defn- observation-row
   [run-id observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
-                distinct-source-count total-view-count]} (:evidence observation)
+                distinct-source-count total-view-count last-used-at]} (:evidence observation)
         type           (:candidate-type observation)
         complexity     (case type
                          :segment (:atom-count observation)
@@ -141,6 +141,7 @@
      :popular_source_count   popular-source-count
      :distinct_source_count  distinct-source-count
      :recent_view_count      total-view-count
+     :last_used_at           last-used-at
      :complexity             complexity
      :sort_position          0}))
 
@@ -156,7 +157,9 @@
    :recent_view_count (:view-count source)
    :joined            (:joined? source)
    :stage_numbers     (:stage-numbers source)
-   :model_lineage     (:model-lineage source)})
+   :model_lineage     (:model-lineage source)
+   :collection_id     (:collection-id source)
+   :last_used_at      (:last-used-at source)})
 
 (defn- candidate-reconciliation
   [{:keys [candidate_type table_id] :as candidate} published? existing-entities]
@@ -235,12 +238,13 @@
 (defn- merged-evidence
   [candidate observation]
   (let [{:keys [verified-source-count official-source-count popular-source-count
-                distinct-source-count total-view-count]} (:evidence observation)]
+                distinct-source-count total-view-count last-used-at]} (:evidence observation)]
     (cond-> {:verified_source_count (+ (:verified_source_count candidate) verified-source-count)
              :official_source_count (+ (:official_source_count candidate) official-source-count)
              :popular_source_count  (+ (:popular_source_count candidate) popular-source-count)
              :distinct_source_count (+ (:distinct_source_count candidate) distinct-source-count)
-             :recent_view_count      (+ (:recent_view_count candidate) total-view-count)}
+             :recent_view_count      (+ (:recent_view_count candidate) total-view-count)
+             :last_used_at           (candidate-mining/latest-time [(:last_used_at candidate) last-used-at])}
       (= :table (:candidate_type candidate))
       (assoc :semantic_details
              (assoc (:semantic_details candidate)
@@ -274,7 +278,8 @@
                 :official_source_count (case-by-id :official_source_count batch :official_source_count)
                 :popular_source_count  (case-by-id :popular_source_count batch :popular_source_count)
                 :distinct_source_count (case-by-id :distinct_source_count batch :distinct_source_count)
-                :recent_view_count      (case-by-id :recent_view_count batch :recent_view_count)}
+                :recent_view_count      (case-by-id :recent_view_count batch :recent_view_count)
+                :last_used_at           (case-by-id :last_used_at batch :last_used_at)}
          (seq semantic-updates)
          (assoc :semantic_details
                 (case-by-id :semantic_details semantic-updates

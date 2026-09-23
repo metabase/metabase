@@ -223,7 +223,7 @@
          (candidate-mining/candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
     (is (= [[:model/Card :id :collection_id :view_count]
             [:model/Card :id :name :description :type :database_id :dataset_query :card_schema
-             :collection_id :view_count]]
+             :collection_id :view_count :last_used_at]]
            @selected-columns))))
 
 (deftest qualified-card-ids-bounds-recent-view-log-scan-test
@@ -279,3 +279,22 @@
          (is (= ids (official-collection-ids ids)))))
     (is (= (expected-id-batch-sizes 450) @moderation-batches))
     (is (= (expected-id-batch-sizes 450) @collection-batches))))
+
+(deftest ^:parallel candidate-evidence-tracks-source-collection-and-latest-use-test
+  (let [source (fn [id collection-id last-used-at]
+                 {:id id, :name (str "Card " id), :type :question, :verified? false, :official-collection? false
+                  :popular? true, :view-count 1, :collection_id collection-id, :last_used_at last-used-at
+                  :stage-number 0, :joined? false})
+        evidence (candidate-mining/candidate-evidence
+                  [(source 1 10 #t "2026-09-01T00:00Z")
+                   (source 2 nil #t "2026-09-10T00:00Z")
+                   (source 3 nil nil)])]
+    (testing "each source keeps the Collection it was saved in and when it was last used"
+      (is (=? [{:id 1, :collection-id 10, :last-used-at #t "2026-09-01T00:00Z"}
+               {:id 2, :collection-id nil}
+               {:id 3, :collection-id nil, :last-used-at nil}]
+              (:source-items evidence))))
+    (testing "the candidate was last used when its most recently used source was"
+      (is (= #t "2026-09-10T00:00Z" (:last-used-at evidence))))
+    (testing "a candidate whose sources were never used has no last use"
+      (is (nil? (:last-used-at (candidate-mining/candidate-evidence [(source 3 nil nil)])))))))

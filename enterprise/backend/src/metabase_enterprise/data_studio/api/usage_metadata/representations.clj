@@ -59,6 +59,7 @@
    :presentation    (candidate-presentation candidate)
    :modeling_status (:modeling_status candidate)
    :dismissed       dismissed?
+   :last_used_at    (:last_used_at candidate)
    :evidence        {:verified_source_count (:verified_source_count candidate)
                      :official_source_count (:official_source_count candidate)
                      :popular_source_count  (:popular_source_count candidate)
@@ -84,9 +85,11 @@
                                (get-in candidate [:semantic_details :source-dependencies]))]
     (assoc (candidate-detail-summary candidate table dismissed? creation-blockers)
            :sources (mapv (fn [source]
-                            (cond-> (select-keys source [:card_id :card_name :card_type :verified :official
-                                                         :popular :recent_view_count :joined
-                                                         :stage_numbers :model_lineage])
+                            (cond-> (-> (select-keys source [:card_id :card_name :card_type :verified :official
+                                                             :popular :recent_view_count :joined
+                                                             :stage_numbers :model_lineage :last_used_at])
+                                        (assoc :collection (some-> (:collection source)
+                                                                   (select-keys [:id :name :authority_level]))))
                               (contains? dependency-paths (:card_id source))
                               (assoc :dependency_paths
                                      (mapv (fn [{:keys [direct? models]}]

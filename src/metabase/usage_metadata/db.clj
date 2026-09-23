@@ -287,6 +287,11 @@
   [collection-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Collection :id :location :personal_owner_id] :id [:in collection-ids]))
 
+(mu/defn collection-names
+  "The id, name, and authority level of the Collections with `collection-ids`."
+  [collection-ids :- [:set ms/PositiveInt]]
+  (t2/select [:model/Collection :id :name :authority_level] :id [:in collection-ids]))
+
 (mu/defn card-view-counts-since
   "Card views logged at or after `cutoff` for the Cards with `card-ids`, counted per Card."
   [card-ids :- [:sequential ::lib.schema.id/card]
@@ -463,6 +468,7 @@
    [:popular_source_count  {:optional true} ::h2x/expr]
    [:distinct_source_count {:optional true} ::h2x/expr]
    [:recent_view_count     {:optional true} ::h2x/expr]
+   [:last_used_at          {:optional true} ::h2x/expr]
    [:semantic_details      {:optional true} ::h2x/expr]
    [:display_name          {:optional true} ::h2x/expr]
    [:sort_position         {:optional true} ::h2x/expr]])
@@ -569,7 +575,7 @@
 
 (def ^:private candidate-source-columns
   [:card_id :card_name :card_type :verified :official :popular :recent_view_count :joined :stage_numbers
-   :model_lineage])
+   :model_lineage :collection_id :last_used_at])
 
 (mu/defn candidate-sources
   "The source Cards recorded for the candidates with `candidate-ids`."

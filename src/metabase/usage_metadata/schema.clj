@@ -57,6 +57,8 @@
    [:official-collection? :boolean]
    [:popular?             :boolean]
    [:view-count           nat-int?]
+   [:collection-id        [:maybe pos-int?]]
+   [:last-used-at         [:maybe ms/TemporalInstant]]
    [:stage-numbers        [:sequential {:min 1} nat-int?]]
    [:joined?              :boolean]
    [:model-lineage        {:optional true}
@@ -72,7 +74,8 @@
    [:verified-source-count nat-int?]
    [:official-source-count nat-int?]
    [:popular-source-count  nat-int?]
-   [:total-view-count      nat-int?]])
+   [:total-view-count      nat-int?]
+   [:last-used-at          [:maybe ms/TemporalInstant]]])
 
 (mr/def ::candidate-table-model
   [:map {:closed true}
@@ -93,6 +96,8 @@
    [:official-collection? :boolean]
    [:popular?             :boolean]
    [:view-count           nat-int?]
+   [:collection-id        [:maybe pos-int?]]
+   [:last-used-at         [:maybe ms/TemporalInstant]]
    [:dependency-paths     [:sequential {:min 1} ::candidate-table-dependency-path]]])
 
 (mr/def ::candidate-table-evidence
@@ -102,7 +107,8 @@
    [:verified-source-count nat-int?]
    [:official-source-count nat-int?]
    [:popular-source-count  nat-int?]
-   [:total-view-count      nat-int?]])
+   [:total-view-count      nat-int?]
+   [:last-used-at          [:maybe ms/TemporalInstant]]])
 
 (mr/def ::candidate-table-metadata
   [:map {:closed true}
@@ -447,6 +453,7 @@
    [:popular_source_count  {:optional true} [:maybe nat-int?]]
    [:distinct_source_count {:optional true} [:maybe nat-int?]]
    [:recent_view_count     {:optional true} [:maybe nat-int?]]
+   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:complexity            {:optional true} [:maybe nat-int?]]
    [:sort_position         {:optional true} [:maybe nat-int?]]])
 
@@ -464,7 +471,9 @@
    [:recent_view_count {:optional true} [:maybe nat-int?]]
    [:joined            {:optional true} [:maybe :boolean]]
    [:stage_numbers     {:optional true} [:maybe [:sequential nat-int?]]]
-   [:model_lineage     {:optional true} [:maybe [:sequential ::candidate-table-model]]]])
+   [:model_lineage     {:optional true} [:maybe [:sequential ::candidate-table-model]]]
+   [:collection_id     {:optional true} [:maybe pos-int?]]
+   [:last_used_at      {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::candidate-match-relation
   [:enum :exact :same-base :subset :superset :overlap])

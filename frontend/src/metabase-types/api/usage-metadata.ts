@@ -1,4 +1,5 @@
 import type { CardId, CardType } from "./card";
+import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -92,6 +93,7 @@ export type UsageMetadataCandidateSummary = {
   presentation: UsageMetadataCandidatePresentation;
   modeling_status: UsageMetadataModelingStatus;
   dismissed: boolean;
+  last_used_at: string | null;
   evidence: UsageMetadataEvidence;
 };
 
@@ -116,7 +118,15 @@ export type UsageMetadataCandidateSource = {
   joined: boolean;
   stage_numbers: number[];
   model_lineage: UsageMetadataModelLineageItem[] | null;
+  last_used_at: string | null;
+  collection: UsageMetadataSourceCollection | null;
   dependency_paths?: UsageMetadataTableDependencyPath[];
+};
+
+export type UsageMetadataSourceCollection = {
+  id: CollectionId;
+  name: string;
+  authority_level: "official" | null;
 };
 
 export type UsageMetadataCandidateMatch =

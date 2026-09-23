@@ -71,6 +71,7 @@
    [:presentation ::candidate-presentation]
    [:modeling_status ::modeling-status]
    [:dismissed :boolean]
+   [:last_used_at [:maybe ms/TemporalInstant]]
    [:evidence ::candidate-evidence]])
 
 (mr/def ::model-lineage-item
@@ -93,6 +94,13 @@
    [:joined :boolean]
    [:stage_numbers [:sequential ms/IntGreaterThanOrEqualToZero]]
    [:model_lineage [:maybe [:sequential ::model-lineage-item]]]
+   [:last_used_at [:maybe ms/TemporalInstant]]
+   [:collection {:description "The Collection that held the source Card at refresh time, as it is named now; nil when
+                               the Card was not in a Collection or the Collection is gone."}
+    [:maybe [:map
+             [:id ms/PositiveInt]
+             [:name :string]
+             [:authority_level [:maybe [:enum :official]]]]]]
    [:dependency_paths {:optional true} [:sequential ::dependency-path]]])
 
 (mr/def ::candidate-match

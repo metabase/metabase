@@ -1117,7 +1117,9 @@
                 :recent_view_count 12
                 :joined        false
                 :stage_numbers [0 1]
-                :model_lineage []}]}
+                :model_lineage []
+                :collection_id nil
+                :last_used_at  nil}]}
              (source-provenance-index [(:id candidate)]))))))
 
 (deftest semantic-eligibility-normalizes-persisted-type-test

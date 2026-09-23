@@ -81,7 +81,8 @@
   #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
 (def ^:private candidate-card-columns
-  [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count])
+  [:model/Card :id :name :description :type :database_id :dataset_query :card_schema :collection_id :view_count
+   :last_used_at])
 
 (def ^:private candidate-qualification-columns
   [:model/Card :id :collection_id :view_count])
@@ -575,7 +576,8 @@
 
 (defn- source-item-evidence
   [source-items]
-  (let [{:keys [id name type verified? official-collection? popular? view-count model-lineage]}
+  (let [{:keys [id name type verified? official-collection? popular? view-count model-lineage collection_id
+                last_used_at]}
         (first source-items)]
     (cond-> {:id                   id
              :name                 name
@@ -584,9 +586,21 @@
              :official-collection? official-collection?
              :popular?             popular?
              :view-count           view-count
+             :collection-id        collection_id
+             :last-used-at         last_used_at
              :stage-numbers        (->> source-items (map :stage-number) distinct sort vec)
              :joined?              (boolean (some :joined? source-items))}
       (seq model-lineage) (assoc :model-lineage model-lineage))))
+
+(defn latest-time
+  "The latest of `times`, ignoring nils; nil when there are none."
+  [times]
+  (reduce (fn [latest time]
+            (if (or (nil? latest) (and time (pos? (compare time latest))))
+              time
+              latest))
+          nil
+          (remove nil? times)))
 
 (defn aggregate-candidate-evidence
   "Aggregate de-duplicated source items after `source-item-projector` combines each source's observations."
@@ -602,7 +616,8 @@
      :verified-source-count (count (filter :verified? items))
      :official-source-count (count (filter :official-collection? items))
      :popular-source-count  (count (filter :popular? items))
-     :total-view-count      (reduce + 0 (map :view-count items))}))
+     :total-view-count      (reduce + 0 (map :view-count items))
+     :last-used-at          (latest-time (map :last-used-at items))}))
 
 (defn candidate-evidence
   "Aggregate source Cards into de-duplicated curation and usage evidence."

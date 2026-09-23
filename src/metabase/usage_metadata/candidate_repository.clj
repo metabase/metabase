@@ -82,7 +82,7 @@
                       [:candidate_type :table_id :signature_version :signature_hash
                        :display_name :semantic_details :modeling_status
                        :verified_source_count :official_source_count :popular_source_count
-                       :distinct_source_count :recent_view_count]
+                       :distinct_source_count :recent_view_count :last_used_at]
                       ids)
                      {})
         rows        (keep candidates ids)
@@ -108,11 +108,14 @@
         dismissals      (dismissal-index [candidate])
         sources         (mapv #(dissoc % :candidate_id)
                               (usage-metadata.db/candidate-sources [(:id candidate)]))
+        collection-ids  (into #{} (keep :collection_id) sources)
+        collections     (when (seq collection-ids)
+                          (into {} (map (juxt :id identity)) (usage-metadata.db/collection-names collection-ids)))
         matches         (usage-metadata.db/candidate-matches (:id candidate))]
     {:candidate candidate
      :table candidate-table
      :dismissed? (dismissed? dismissals candidate)
-     :sources sources
+     :sources (mapv #(assoc % :collection (get collections (:collection_id %))) sources)
      :matches matches}))
 
 (defn existing-entity-index

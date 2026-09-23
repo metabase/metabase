@@ -38,6 +38,7 @@ const candidate: UsageMetadataCandidateDetail = {
   }),
   modeling_status: "missing",
   dismissed: false,
+  last_used_at: null,
   evidence: {
     verified_source_count: 1,
     official_source_count: 0,

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
@@ -128,7 +129,7 @@
                            :dismissed false}]}
                   list-response))
           (is (= #{:id :candidate_type :display_name :presentation
-                   :modeling_status :dismissed :evidence}
+                   :modeling_status :dismissed :last_used_at :evidence}
                  (set (keys (first (:data list-response))))))
           (is (=? {:id (:id candidate)
                    :definition {:lib/type "mbql/query"}
@@ -331,6 +332,60 @@
                                                           :name "Accounts model"}]}]}]}
                 response))
         (is (not (contains? (first (:dependency_paths (first (:sources response)))) :direct?)))))))
+
+(defn- used-at?
+  "A predicate matching a timestamp at the same instant as `iso-instant`, whatever its offset."
+  [iso-instant]
+  #(and (some? %) (= (t/instant iso-instant) (t/instant %))))
+
+(deftest candidate-detail-exposes-source-collection-and-last-use-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection collection {:name "Curated metrics", :authority_level "official"}
+                   :model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate candidate
+                   (candidate-row (:id run) {:last_used_at #t "2026-09-01T10:00:00Z"})]
+      (t2/insert! :model/UsageMetadataCandidateSource
+                  [{:candidate_id      (:id candidate)
+                    :card_id           987654
+                    :card_name         "Curated question"
+                    :card_type         :question
+                    :verified          false
+                    :official          true
+                    :popular           true
+                    :recent_view_count 12
+                    :joined            false
+                    :stage_numbers     [0]
+                    :collection_id     (:id collection)
+                    :last_used_at      #t "2026-09-01T10:00:00Z"}
+                   {:candidate_id      (:id candidate)
+                    :card_id           987655
+                    :card_name         "Uncollected question"
+                    :card_type         :question
+                    :verified          false
+                    :official          false
+                    :popular           true
+                    :recent_view_count 3
+                    :joined            false
+                    :stage_numbers     [0]}])
+      (testing "the list exposes when the candidate's sources were last used"
+        (is (=? {:data [{:id (:id candidate), :last_used_at (used-at? "2026-09-01T10:00:00Z")}]}
+                (mt/user-http-request :crowberto :get 200 "ee/data-studio/usage-metadata/candidates"))))
+      (testing "each source names the Collection it was saved in, as the Collection is named now"
+        (t2/update! :model/Collection (:id collection) {:name "Renamed metrics"})
+        (is (=? {:sources [{:card_id      987654
+                            :last_used_at (used-at? "2026-09-01T10:00:00Z")
+                            :collection   {:id              (:id collection)
+                                           :name            "Renamed metrics"
+                                           :authority_level "official"}}
+                           {:card_id      987655
+                            :last_used_at nil
+                            :collection   nil}]}
+                (mt/user-http-request :crowberto :get 200
+                                      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate)))))))))
 
 (deftest refresh-status-normalizes-snapshot-summary-test
   (mt/with-premium-features #{:library}
