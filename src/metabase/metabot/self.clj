@@ -370,7 +370,9 @@
                                          :duration-ms                   (some-> (:duration-ms part) long)
                                          :result                        (if (:error part) "error" "success")
                                          :event-details                 (cond-> {"tool_name" (:function part)}
-                                                                          (some? iteration) (assoc "step" iteration))}))
+                                                                          (some? iteration) (assoc "step" iteration)
+                                                                          (:error part)     (assoc "error_class" (get-in part [:error :error-class])
+                                                                                                   "agent_error" (boolean (get-in part [:error :agent-error?]))))}))
          part)))
 
 (defn- with-retries

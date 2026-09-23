@@ -147,8 +147,10 @@
    [:result            {:optional true} [:maybe ToolResult]]
    [:duration-ms       {:optional true} [:maybe number?]]
    [:error             {:optional true} [:maybe [:map {:closed true}
-                                                 [:message {:optional true} [:maybe :string]]
-                                                 [:type    {:optional true} [:maybe :string]]]]]
+                                                 [:message      {:optional true} [:maybe :string]]
+                                                 [:type         {:optional true} [:maybe :string]]
+                                                 [:error-class  {:optional true} [:maybe :string]]
+                                                 [:agent-error? {:optional true} :boolean]]]]
    [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
@@ -849,6 +851,14 @@
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
 
+(defn- tool-error-class
+  "Name of a tool exception's ex-data `:type` keyword, or the exception's simple class name when it has none."
+  [^Exception e]
+  (let [error-type (:type (ex-data e))]
+    (if (keyword? error-type)
+      (u/qualified-name error-type)
+      (.getSimpleName (class e)))))
+
 (def ^:private stringified-scalar-transformer
   "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
   Restricted to the types models get wrong — strings, keywords and enums are left alone."
@@ -974,8 +984,10 @@
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
-                           :error        {:message (concise-tool-error e)
-                                          :type    (str (type e))}}]))]
+                           :error        {:message      (concise-tool-error e)
+                                          :type         (str (type e))
+                                          :error-class  (tool-error-class e)
+                                          :agent-error? (boolean (:agent-error? (ex-data e)))}}]))]
         (when (ait/capture-active?)
           (ait/record! {:ai/tool-output results}))
         (mapv (assoc-ms (u/since-ms start-ms))

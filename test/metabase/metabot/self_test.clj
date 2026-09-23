@@ -562,9 +562,13 @@
       (is (=? {:type       :tool-output-available
                :toolCallId "call-err"
                :toolName   "get-time"
-               :error      {:message string?
-                            :type    string?}}
-              (last result))))))
+               :error      {:message      string?
+                            :type         string?
+                            :error-class  "ZoneRulesException"
+                            :agent-error? false}}
+              (last result)))
+      (testing "the error part can be replayed to a provider adapter"
+        (is (mr/validate self.core/LLMRequestOpts {:input (into [] (self.core/aisdk-xf) [(last result)])}))))))
 
 (deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
