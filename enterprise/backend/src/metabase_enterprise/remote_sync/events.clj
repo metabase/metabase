@@ -78,9 +78,21 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
+(defn- path-dir
+  "The directory part of repo `path`, trailing slash included (\"\" for a top-level file)."
+  [path]
+  (or (re-find #"^.*/" path) ""))
+
 (defn- resolve-status
-  "Suppresses a no-op 'update' whose content_hash and stored file_path both still match, otherwise keeps status
-  unchanged."
+  "Suppresses a no-op 'update' whose content_hash still matches and whose stored file_path is still in the
+  directory the entity now serializes to, otherwise keeps status unchanged.
+
+  Only the directory is compared. It comes from the entity's parents (collection, dashboard, transform), which can
+  be renamed without changing the entity's own serialization, and then the entity's file has to move. The file
+  name comes from the entity's own label (name and entity id), which is in its serialization, so while the hash
+  matches the file name the entity would get cannot have changed since the sync; a stored file name that differs
+  was already different then, e.g. a `name:` edited in the repo without renaming the file, and there is nothing to
+  push."
   [model-type model-id status existing]
   (if (or (not= "update" status)
           (nil? (:content_hash existing)))
@@ -88,7 +100,7 @@
     (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
       (if (and (= (:content_hash existing) content-hash)
                (or (nil? (:file_path existing))
-                   (= (:file_path existing) path)))
+                   (and path (= (path-dir (:file_path existing)) (path-dir path)))))
         "synced"
         status))))
 

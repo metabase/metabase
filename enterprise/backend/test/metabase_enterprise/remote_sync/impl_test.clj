@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -19,7 +20,11 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -695,10 +700,25 @@
                                            remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-branch ""]
           (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                      source/default-branch-from-settings (constantly "main")
                                       impl/async-import! (fn [& _args] (reset! import-started? true) 123)]
             (impl/finish-remote-config!)
             (is (= "main" (setting/get :remote-sync-branch))
                 "Should set branch to default branch")))))))
+
+(deftest finish-remote-config!-default-branch-does-not-clone-test
+  (testing "HACKRDE-26: filling in a blank branch asks the remote for its HEAD without cloning the repository"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url             (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^File clone-dir (#'git/repo-path {:remote-url url :token nil})]
+        (mt/with-temporary-setting-values [remote-sync-url    url
+                                           remote-sync-token  nil
+                                           remote-sync-type   :read-write
+                                           remote-sync-branch ""]
+          (is (not (.exists clone-dir)) "Precondition: no local clone yet")
+          (is (nil? (impl/finish-remote-config!)))
+          (is (= "master" (setting/get :remote-sync-branch)) "the remote's default branch is recorded")
+          (is (not (.exists clone-dir)) "saving settings must not clone the repository"))))))
 
 (deftest finish-remote-config!-starts-import-in-read-only-mode-test
   (testing "finish-remote-config! starts import in read-only mode even when collection exists"
@@ -2039,7 +2059,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge-changes     (fn [_ _ _ & _]
                                                                    {:clean? true :conflicts []
                                                                     :summary {:added 1 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
@@ -2051,7 +2071,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge-changes     (fn [_ _ _ & _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
                                                                     :summary {:added 0 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? false
@@ -2059,21 +2079,26 @@ serdes/meta:
               :summary {:added 0 :updated 0 :removed 0}}
              (impl/preview-export-merge "main"))))))
 
-(deftest preview-export-merge-streams-extraction-test
-  (testing "preview hands the extraction stream to the merge unrealized and walks the targets once"
-    (let [walks    (atom 0)
-          stream   (eduction (map identity) [{:dummy true}])
-          received (atom nil)]
+(deftest preview-export-merge-extracts-only-remote-changes-test
+  (testing "preview walks the targets once and extracts only the targets the remote-changed paths need"
+    (let [walks     (atom 0)
+          stream    (eduction (map identity) [{:dummy true}])
+          extracted (atom nil)
+          resolved  (atom nil)]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                   source/source-from-settings      (constantly (export-test-source))
-                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1]})
-                                  spec/extract-entities-for-export (fn [_targets] stream)
-                                  source/preview-merge             (fn [s _ _ _]
-                                                                     (reset! received s)
+                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1 2]})
+                                  spec/targets-for-paths           (fn [targets paths]
+                                                                     (reset! resolved [targets paths])
+                                                                     {"Card" [2]})
+                                  spec/extract-entities-for-export (fn [targets] (reset! extracted targets) stream)
+                                  source/preview-merge-changes     (fn [extract-for _ _ & _]
+                                                                     (is (identical? stream (extract-for [[{:model "Card" :id "x"}]])))
                                                                      {:clean? true :conflicts []
                                                                       :summary {:added 0 :updated 0 :removed 0}})]
         (impl/preview-export-merge "main")
-        (is (identical? stream @received))
+        (is (= [{"Card" [1 2]} [[{:model "Card" :id "x"}]]] @resolved))
+        (is (= {"Card" [2]} @extracted))
         (is (= 1 @walks))))))
 
 (deftest preview-export-merge-nothing-exportable-test

@@ -102,8 +102,11 @@
                                   git-source)
       (log/info "Successfully fetched repository"))))
 
-(defn- repo-path [{:keys [^String remote-url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path
+  "The local bare clone directory for `remote-url`. Keyed on the URL alone: credentials are passed to each remote
+  command, so rotating the token reuses the existing clone instead of cloning into (and leaking) a new directory."
+  [{:keys [^String remote-url]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
@@ -370,6 +373,17 @@
        (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
      push-response)))
 
+(defn- ref-head-branch
+  "The branch (without 'refs/heads/') that the symbolic HEAD among the `refs` returned by an lsRemote points at.
+  Throws ExceptionInfo if there is none."
+  [refs]
+  (let [head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
+    (or (when head-ref
+          (when (.isSymbolic ^Ref head-ref)
+            (when-let [target (.getTarget ^Ref head-ref)]
+              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
+
 (defn default-branch
   "Retrieves the default branch name of the git repository.
 
@@ -379,13 +393,17 @@
   Throws ExceptionInfo if no default branch is found."
   [{:keys [^Git git] :as git-source}]
   ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
-  (let [refs (call-remote-command (.lsRemote git) git-source)
-        head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
-    (or (when head-ref
-          (when (.isSymbolic ^Ref head-ref)
-            (when-let [target (.getTarget ^Ref head-ref)]
-              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
-        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
+  (ref-head-branch (call-remote-command (.lsRemote git) git-source)))
+
+(defn remote-default-branch
+  "The default branch name of the repository at `remote-url`, read straight from the remote with the optional
+  `token`. Unlike [[default-branch]], it needs no local clone, so filling in a blank branch setting does not first
+  download the repository's whole history. Throws ExceptionInfo if no default branch is found."
+  [^String remote-url ^String token]
+  ;; not `setHeads true`: that would filter out the symbolic HEAD ref this reads
+  (ref-head-branch (call-remote-command (-> (Git/lsRemoteRepository)
+                                            (.setRemote remote-url))
+                                        {:remote-url remote-url :token token})))
 
 (defn- close-commit-resources! [inserter reader rev-walk]
   (.close ^ObjectInserter inserter)
@@ -475,6 +493,15 @@
     (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
                  (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
+(defn- ref-branch-names
+  "Sorted branch names (without 'refs/heads/') among the `refs` returned by an lsRemote."
+  [refs]
+  (->> refs
+       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
+       (remove #(.isSymbolic ^Ref %))
+       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
+       sort))
+
 (defn branches
   "Retrieves all branch names from the remote repository.
 
@@ -483,11 +510,19 @@
 
   Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
   [{:keys [^Git git] :as source}]
-  (->> (call-remote-command (.lsRemote git) source)
-       (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
-       (remove #(.isSymbolic ^Ref %))
-       (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
-       sort))
+  (ref-branch-names (call-remote-command (.lsRemote git) source)))
+
+(defn remote-branches
+  "Lists the branch names of the repository at `remote-url` straight from the remote, authenticating with the
+  optional `token`. Unlike [[branches]], it needs no local clone, so validating a URL or token does not first
+  download the repository's whole history.
+
+  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
+  [^String remote-url ^String token]
+  (ref-branch-names (call-remote-command (-> (Git/lsRemoteRepository)
+                                             (.setRemote remote-url)
+                                             (.setHeads true))
+                                         {:remote-url remote-url :token token})))
 
 (defn has-data?
   "Checks if the remote git repository has any commits/data.
@@ -565,29 +600,62 @@
   (changed-files* [this from-version]
     (changed-files this from-version)))
 
-(def ^:private jgit (atom {}))
+(def ^:private jgit
+  "Open Git instances, keyed on the path of their URL's [[repo-path]]. After a stale-cache recovery the instance for a
+  URL lives in a fresh sibling directory instead: see [[replace-stale-clone!]]."
+  (atom {}))
+
+(defonce ^:private ^{:doc "Clone directories that a running operation may still hold, so they are not deleted until
+  the process exits. See [[replace-stale-clone!]]."}
+  retired-clones
+  (atom #{}))
+
+(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[retired-clones]]."}
+  retired-clones-reaper
+  (delay (.addShutdownHook (Runtime/getRuntime)
+                           (Thread. ^Runnable (fn [] (run! #(FileUtils/deleteQuietly ^File %) @retired-clones))))))
 
 (defn- stale-cache-error?
   "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
   [^Exception e]
   (some-> (ex-message e) (str/includes? "Missing commit")))
 
-(defn- clear-cached-repo!
-  "Clears a cached git repository from memory and disk."
-  [^File repo-path]
-  (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
-  (swap! jgit dissoc (.getPath repo-path))
-  (FileUtils/deleteDirectory repo-path))
+(defn- git-dir
+  "The directory of `git`'s repository (the clone directory: clones are bare)."
+  ^File [^Git git]
+  (.getDirectory (.getRepository git)))
 
-(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
-    obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                     :token      token})
-                                             (when-not (has-data? (assoc args :git <>))
-                                               (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
-         (.getPath path))))
+(defn- open-checked!
+  "Opens (cloning if absent) the repository at `path` and checks that it has data; if it has none, deletes `path` and
+  throws."
+  [^File path {:keys [remote-url token] :as args}]
+  (u/prog1 (open-jgit path {:remote-url remote-url :token token})
+    (when-not (has-data? (assoc args :git <>))
+      (FileUtils/deleteDirectory path)
+      (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+
+(defn- get-jgit [^File path args]
+  (let [k (.getPath path)]
+    (if-let [git (when-let [cached (get @jgit k)]
+                   (when (.exists (git-dir cached)) cached))]
+      git
+      (get (swap! jgit assoc k (open-checked! path args)) k))))
+
+(defn- replace-stale-clone!
+  "Recovers from a stale clone (see [[stale-cache-error?]]) of `source`'s URL: clones into a fresh sibling of its
+  [[repo-path]] and caches that, so later operations use it. Returns the fresh Git instance.
+
+  The stale clone is not deleted, because another operation (an import on another thread, a branch listing) may still
+  be using it. Both clones are deleted when the process exits, and the next process clones afresh at [[repo-path]]."
+  [{:keys [^Git git remote-url token]}]
+  (let [path  (repo-path {:remote-url remote-url})
+        fresh (io/file (.getParentFile path) (str (.getName path) "-" (random-uuid)))
+        _     (log/info "Re-cloning stale git cache" {:stale-path (str (git-dir git)) :fresh-path (str fresh)})
+        fresh-git (open-checked! fresh {:remote-url remote-url :token token})]
+    @retired-clones-reaper
+    (swap! retired-clones conj (git-dir git) fresh)
+    (swap! jgit assoc (.getPath path) fresh-git)
+    fresh-git))
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
@@ -602,17 +670,14 @@
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."
-  [{:keys [remote-url token] :as source}]
+  [source]
   (try
     (snapshot* source)
     (catch Exception e
       (if (stale-cache-error? e)
-        (let [path (repo-path {:remote-url remote-url :token token})]
-          (clear-cached-repo! path)
-          (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
-                fresh-source (assoc source :git fresh-git)]
-            (log/info "Retrying snapshot after clearing stale cache")
-            (snapshot* fresh-source)))
+        (let [fresh-source (assoc source :git (replace-stale-clone! source))]
+          (log/info "Retrying snapshot after re-cloning stale cache")
+          (snapshot* fresh-source))
         (throw e)))))
 
 (defn snapshot-at-version

@@ -29,6 +29,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase-enterprise.serialization.core :as serialization]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -240,24 +242,221 @@
              f1      (-> f0 (dissoc b-path) (assoc (str/replace b-path "card_b" "card_b_renamed") renamed))]
          (is (= :incremental (run-differential! f0 f1))))))))
 
-;;; --------------------------------------- Structural changes: fall back to full ---------------------------------------
+;;; ------------------------------------------ Collection changes stay incremental ------------------------------------------
 
-(deftest collection-rename-falls-back-test
-  (testing "GHY-3779: a Collection change falls back to the full import (a rename moves descendant paths),
-            and still reconciles to the same state as the full oracle"
+(defn- bench-collection []
+  (t2/select-one :model/Collection :name "Bench" :is_remote_synced true))
+
+(defn- loaded-counts
+  "Runs `thunk` while recording, for every `load-metabase!` call, how many entities it loaded (its `:seen`
+  set). Returns [thunk-result counts]; the last count belongs to the last import `thunk` ran."
+  [thunk]
+  (let [real   (mt/original-fn #'serialization/load-metabase!)
+        counts (atom [])]
+    (mt/with-dynamic-fn-redefs [serialization/load-metabase! (fn [& args]
+                                                               (let [r (apply real args)]
+                                                                 (swap! counts conj (count (:seen r)))
+                                                                 r))]
+      [(thunk) @counts])))
+
+(deftest add-collection-with-cards-loads-only-new-entities-test
+  (testing "HACKRDE-21: a pull that adds a collection holding K cards loads K + 1 entities, not every synced one,
+            and reconciles to the same state as the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       (let [bench (bench-collection)]
+         (mt/with-temp [:model/Collection {sub-id :id} {:name "Sub" :is_remote_synced true
+                                                        :location (str "/" (:id bench) "/")}
+                        :model/Card _ {:name "Sub One" :collection_id sub-id}
+                        :model/Card _ {:name "Sub Two" :collection_id sub-id}
+                        :model/Card _ {:name "Sub Three" :collection_id sub-id}]
+           (let [f1              (synced-tree)
+                 [path counts]   (loaded-counts #(run-differential! f0 f1))]
+             (is (= 4 (- (count f1) (count f0))) "v1 adds the collection and its three cards")
+             (is (= :incremental path))
+             (is (= 4 (last counts)) "the under-test pull loads the new collection and its 3 cards only"))))))))
+
+(deftest collection-yaml-edit-equivalence-test
+  (testing "HACKRDE-21: editing a Collection's file in place stays incremental and reconciles to the full oracle"
     (do-with-bench!
      (fn [f0]
        (let [c-path (path-with f0 "bench.yaml")
              f1     (update f0 c-path str/replace "name: Bench" "name: Workbench")]
-         (is (= :fallback (run-differential! f0 f1))))))))
+         (is (= :incremental (run-differential! f0 f1))))))))
 
-(deftest collection-delete-with-contents-falls-back-test
-  (testing "GHY-3779: deleting a collection and its contents falls back to the full import (avoids the
-            cascade trap), and still reconciles to the same state as the full oracle"
+(deftest collection-rename-moves-descendants-equivalence-test
+  (testing "HACKRDE-21: renaming a Collection moves every descendant's file (delete + add); the pull stays
+            incremental, re-loads just that subtree, keeps the entities (old paths are renames) and matches the oracle"
     (do-with-bench!
      (fn [f0]
-       ;; remove the whole bench subtree (collection + both cards)
+       (let [bench (bench-collection)
+             f1    (do (t2/update! :model/Collection (:id bench) {:name "Workbench"})
+                       (synced-tree))
+             [path counts] (loaded-counts #(run-differential! f0 f1))]
+         (is (not= (set (keys f0)) (set (keys f1))) "the rename moved files")
+         (is (= :incremental path))
+         (is (= 3 (last counts)) "the collection and its two cards are re-loaded"))))))
+
+(deftest collection-move-equivalence-test
+  (testing "HACKRDE-21: moving a sub-collection (with its card) under a sibling stays incremental and matches the oracle"
+    (do-with-bench!
+     (fn [f0]
+       (let [bench (bench-collection)
+             loc   (str "/" (:id bench) "/")]
+         (mt/with-temp [:model/Collection {sub-id :id} {:name "Sub" :is_remote_synced true :location loc}
+                        :model/Collection {other-id :id} {:name "Other" :is_remote_synced true :location loc}
+                        :model/Card _ {:name "Sub One" :collection_id sub-id}]
+           (let [g0 (synced-tree)
+                 g1 (do (t2/update! :model/Collection sub-id {:location (str loc other-id "/")})
+                        (synced-tree))]
+             (is (not= (set (keys g0)) (set (keys g1))) "the move changed paths")
+             (is (= :incremental (run-differential! g0 g1))))))))))
+
+(deftest collection-delete-with-contents-equivalence-test
+  (testing "HACKRDE-21: deleting a sub-collection and its contents falls back to the full import (the delete cascades
+            to contents the ledger doesn't track, which only the full reindex removes from search) and reconciles to
+            the same state as the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       (let [bench (bench-collection)]
+         (mt/with-temp [:model/Collection {sub-id :id} {:name "Sub" :is_remote_synced true
+                                                        :location (str "/" (:id bench) "/")}
+                        :model/Card _ {:name "Sub One" :collection_id sub-id}
+                        :model/Card _ {:name "Sub Two" :collection_id sub-id}]
+           (let [g0 (synced-tree)]
+             (is (= :fallback (run-differential! g0 f0))))))))))
+
+(deftest root-collection-delete-with-contents-equivalence-test
+  (testing "HACKRDE-21: deleting the whole synced tree (root collection and contents) falls back to the full import
+            and reconciles to the same state as the full oracle"
+    (do-with-bench!
+     (fn [f0]
        (is (= :fallback (run-differential! f0 {})))))))
+
+(deftest collection-delete-removes-untracked-contents-from-search-test
+  (testing "HACKRDE-21: a pull that deletes a collection also deletes contents the ledger doesn't track (here a
+            model's action, which has no RemoteSyncObject row); like the full import, it must leave search"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Collection {sub-id :id} {:name "Sub" :is_remote_synced true
+                                                          :location (str "/" (:id bench) "/")}
+                          :model/Card {model-id :id} {:name "Sub Model" :type :model :collection_id sub-id}
+                          :model/Action {action-id :id} {:name "Zebra action" :type :http :model_id model-id}]
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0       (synced-tree)
+                     src      (rs.test/versioned-source :trees {"v0" g0 "v1" f0} :current "v0")
+                     indexed? #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))]
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 (is (t2/exists? :model/Action action-id) "the action survives the baseline import")
+                 (is (indexed?) "precondition: the action is in the search index")
+                 (let [[result _path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)) "the pull deleting Sub succeeds")
+                   (is (not (t2/exists? :model/Action action-id)) "deleting Sub cascaded to its model's action")
+                   (is (not (indexed?)) "the cascaded action is gone from the search index")))))))))))
+
+(deftest model-delete-removes-cascaded-actions-and-indexed-entities-from-search-test
+  (testing "HACKRDE-31: a pull that deletes a model card also deletes (by FK cascade) its actions and model-index
+            values, which the ledger doesn't track; like the full import, it must drop them from search"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [_f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Card {model-id :id} {:name "Bench Model" :type :model :collection_id (:id bench)}
+                          :model/Action {action-id :id} {:name "Zebra action" :type :http :model_id model-id}
+                          :model/ModelIndex {mi-id :id} {:model_id   model-id
+                                                         :pk_ref     [:field 1 nil]
+                                                         :value_ref  [:field 2 nil]
+                                                         :schedule   "0 0 0 * * ? *"
+                                                         :state      "indexed"
+                                                         :creator_id (mt/user->id :rasta)}]
+             ;; Inserted directly: ModelIndexValue has no id column, so with-temp can't clean it up. The model
+             ;; delete cascades it away; the index row comes from the baseline import's full reindex.
+             (t2/insert! :model/ModelIndexValue {:model_index_id mi-id :model_pk 42 :name "Quokka value"})
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0         (synced-tree)
+                     model-path (path-with g0 "bench_model")
+                     g1         (dissoc g0 model-path)
+                     src        (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")
+                     action?    #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))
+                     value?     #(t2/exists? (search.index/active-table) :model "indexed-entity"
+                                             :model_id (str mi-id ":" 42))]
+                 (is (some? model-path) "precondition: the model card is in the synced tree")
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 (is (t2/exists? :model/Action action-id) "the action survives the baseline import")
+                 (is (action?) "precondition: the action is in the search index")
+                 (is (value?) "precondition: the model-index value is in the search index")
+                 (let [[result path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)) "the pull deleting the model succeeds")
+                   (is (= :incremental path) "a model delete stays on the incremental path")
+                   (is (not (t2/exists? :model/Action action-id)) "deleting the model cascaded to its action")
+                   (is (not (action?)) "the cascaded action is gone from the search index")
+                   (is (not (value?)) "the cascaded model-index value is gone from the search index")))))))))))
+
+(defn- do-with-parent-and-child-card!
+  "Inside [[do-with-bench!]], inserts a `parent-model` (Dashboard or Document) named Parent Thing into Bench and a
+  Card named Kid Question that belongs to it (dashboard_id / document_id), then calls `f` with the synced tree and
+  the tree's path for the parent's own file. The Card's FK to its parent cascades on delete."
+  [parent-model f]
+  (do-with-bench!
+   (fn [_f0]
+     (mt/with-model-cleanup [:model/Dashboard :model/Document]
+       (let [bench     (bench-collection)
+             parent-id (t2/insert-returning-pk!
+                        parent-model
+                        (cond-> {:name "Parent Thing" :collection_id (:id bench) :creator_id (mt/user->id :rasta)}
+                          (= :model/Dashboard parent-model) (assoc :parameters [])
+                          (= :model/Document parent-model)  (assoc :document {:type "doc" :content []}
+                                                                   :content_type "application/json+vnd.prose-mirror")))]
+         (t2/insert! :model/Card (cond-> {:name "Kid Question" :collection_id (:id bench)
+                                          :creator_id (mt/user->id :rasta) :display :table
+                                          :visualization_settings {} :dataset_query (mt/mbql-query venues)}
+                                   (= :model/Dashboard parent-model) (assoc :dashboard_id parent-id)
+                                   (= :model/Document parent-model)  (assoc :document_id parent-id)))
+         (let [g0 (synced-tree)]
+           (f g0 (some #(when (str/ends-with? % "/parent_thing.yaml") %) (keys g0)))))))))
+
+(deftest parent-delete-cascading-to-a-kept-child-card-equivalence-test
+  (testing "HACKRDE-42: a pull that deletes a Dashboard's or Document's file but not the file of a Card that belongs
+            to it (dashboard_id / document_id) deletes that Card by FK cascade. Like the full import, the Card's
+            ledger row must go too"
+    (doseq [parent-model [:model/Dashboard :model/Document]]
+      (testing parent-model
+        (do-with-parent-and-child-card!
+         parent-model
+         (fn [g0 parent-path]
+           (is (some? parent-path) "precondition: the parent is in the synced tree")
+           (is (= :incremental (run-differential! g0 (dissoc g0 parent-path))))))))))
+
+(deftest dashboard-delete-removes-cascaded-dashboard-questions-from-search-test
+  (testing "HACKRDE-42: a Card deleted by FK cascade from its deleted Dashboard must leave search, as in the full
+            import"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-parent-and-child-card!
+       :model/Dashboard
+       (fn [g0 parent-path]
+         (let [src       (rs.test/versioned-source :trees {"v0" g0 "v1" (dissoc g0 parent-path)} :current "v0")
+               _         (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               kid-id    (t2/select-one-pk :model/Card :name "Kid Question")
+               indexed?  #(t2/exists? (search.index/active-table) :model "card" :model_id (str kid-id))]
+           (is (indexed?) "precondition: the dashboard question is in the search index")
+           (let [[result path] (import-v1-under-test! src)]
+             (is (= :success (:status result)) "the pull deleting the dashboard succeeds")
+             (is (= :incremental path) "a dashboard delete stays on the incremental path")
+             (is (not (t2/exists? :model/Card kid-id)) "deleting the dashboard cascaded to its question")
+             (is (not (indexed?)) "the cascaded dashboard question is gone from the search index"))))))))
+
+(deftest namespaced-collection-change-falls-back-test
+  (testing "HACKRDE-21: adding a transforms-namespace collection still takes the full import (the collection's
+            presence drives the remote-sync-transforms setting), and reconciles to the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       (mt/with-temporary-setting-values [remote-sync-transforms true]
+         (mt/with-temp [:model/Collection _ {:name "Xforms" :namespace "transforms" :location "/"}]
+           (let [f1 (synced-tree)]
+             (is (some #(str/includes? % "xforms") (keys f1)) "v1 carries the transforms collection")
+             (is (= :fallback (run-differential! f0 f1))))))))))
 
 ;;; ------------------------------------------ First import: never incremental ------------------------------------------
 

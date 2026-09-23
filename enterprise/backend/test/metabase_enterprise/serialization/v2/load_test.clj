@@ -3043,3 +3043,32 @@
           (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
           (is (=? [{:term "ARR" :entity_id file-eid}]
                   (t2/select :model/Glossary))))))))
+
+(deftest failed-batch-forgets-memoized-ids-test
+  (testing "When a failure rolls back entities loaded before it, the ids the import resolver memoized for the rows
+            they created are forgotten, so the entities loaded again afterwards reference the rows that exist"
+    (mt/with-empty-h2-app-db!
+      (let [coll       (ts/create! :model/Collection :name "coll")
+            good       (ts/create! :model/Card :name "good" :collection_id (:id coll))
+            bad        (ts/create! :model/Card :name "bad" :collection_id (:id coll))
+            extracted  (into [] (serdes.extract/extract {:no-settings   true
+                                                         :no-data-model true
+                                                         :targets       [["Collection" (:id coll)]]}))
+            ;; collection first, then "good", then "bad": the failure comes after "good" resolved the new
+            ;; collection's id
+            ordered    (sort-by (fn [e] (case (:name e) "coll" 0 "good" 1 "bad" 2 3)) extracted)
+            insert!    serdes/load-insert!]
+        (t2/delete! :model/Card :id [:in [(:id good) (:id bad)]])
+        (t2/delete! :model/Collection :id (:id coll))
+        (with-redefs [serdes/load-insert! (fn [model adjusted]
+                                            (if (and (= model "Card") (= "bad" (:name adjusted)))
+                                              (throw (ex-info "oops" {}))
+                                              (insert! model adjusted)))]
+          (let [report (serdes/with-cache
+                         (serdes.load/load-metabase! (ingestion-in-memory ordered) :continue-on-error true))
+                coll-id (t2/select-one-pk :model/Collection :entity_id (:entity_id coll))]
+            (is (= 1 (count (:errors report))) "only \"bad\" fails")
+            (is (some? coll-id))
+            (is (= coll-id (t2/select-one-fn :collection_id :model/Card :entity_id (:entity_id good)))
+                "\"good\" points at the collection that was committed")
+            (is (not (t2/exists? :model/Card :entity_id (:entity_id bad))))))))))

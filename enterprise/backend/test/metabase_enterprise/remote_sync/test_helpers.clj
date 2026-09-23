@@ -1,15 +1,22 @@
 (ns metabase-enterprise.remote-sync.test-helpers
   "Test helpers for remote sync functionality, including MockSource implementation."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jgit.api Git)
+   (org.eclipse.jgit.lib PersonIdent)))
+
+(set! *warn-on-reflection* true)
 
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
@@ -422,10 +429,19 @@ width: fixed
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
+(defn clean-imported-content
+  "Test fixture that deletes the Dashboards, Cards and Collections a test created, e.g. by importing a mock
+  source's content into the main app (imports commit, so `with-temp`'s rollback does not undo them). Test users'
+  personal collections are kept."
+  [f]
+  (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Collection]
+    (f)))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
-  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  model tables (Transform, TransformTag, PythonLibrary) are clean, and that content the test imported
+  (Dashboards, Cards, Collections) does not outlive it."
+  (t/join-fixtures [clean-imported-content clean-object clean-task-table clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
@@ -826,3 +842,21 @@ serdes/meta:
   model: TransformTag
 "
           entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn init-local-git-remote!
+  "Creates a git repo in `dir` whose `master` branch holds one commit, plus `branches` pointing at that commit.
+  With `empty?`, the repo has no commits and so no branches. Returns its file:// URL."
+  [^String dir & {:keys [branches empty?]}]
+  (let [^Git git (-> (Git/init) (.setDirectory (io/file dir)) (.setInitialBranch "master") (.call))
+        commit!  (fn [msg]
+                   (spit (io/file dir (str msg ".txt")) msg)
+                   (-> (.add git) (.addFilepattern (str msg ".txt")) (.call))
+                   (-> (.commit git) (.setMessage msg)
+                       (.setAuthor (PersonIdent. "Test" "test@metabase.com"))
+                       (.setCommitter (PersonIdent. "Test" "test@metabase.com"))
+                       (.call)))]
+    (when-not empty?
+      (commit! "initial")
+      (doseq [^String b branches]
+        (-> (.branchCreate git) (.setName b) (.call))))
+    (str "file://" (.getAbsolutePath (io/file dir)))))

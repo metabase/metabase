@@ -69,38 +69,31 @@
                                        remote-sync-token  "valid-token"
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
-      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                                  source.git/branches          (fn [_] ["main"])]
+      (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] ["main"])]
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})))))))
 
 (deftest test-connection-forces-fresh-remote-call-test
-  (testing "POST /api/ee/remote-sync/test-connection always calls git/branches so rotated tokens are detected"
-    ;; check-git-settings! only authenticates when :read-only + branch is set, so the JGit cache
-    ;; would otherwise short-circuit subsequent tests with the same token. We need a fresh
-    ;; lsRemote on every click — this guards that.
+  (testing "POST /api/ee/remote-sync/test-connection always lists the remote's branches so rotated tokens are detected"
+    ;; Even in read-write mode with no branch set (where the branch-existence check is skipped), every click
+    ;; must reach the remote — this guards that.
     (let [branches-calls (atom 0)]
       (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                          remote-sync-token  "valid-token"
                                          remote-sync-branch ""
                                          remote-sync-type   :read-write]
-        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                                    source.git/branches          (fn [_] (swap! branches-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] (swap! branches-calls inc) ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})
           (is (= 1 @branches-calls)
-              "Test Connection must call git/branches even when check-git-settings! skips the remote check"))))))
+              "Test Connection must list the remote's branches even when the branch-existence check is skipped"))))))
 
 (deftest test-connection-surfaces-fresh-remote-auth-failure-test
-  (testing "POST /api/ee/remote-sync/test-connection returns 400 when the forced lsRemote rejects the token"
+  (testing "POST /api/ee/remote-sync/test-connection returns 400 when the remote rejects the token"
     (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                        remote-sync-token  "rotated-token"
                                        remote-sync-branch ""
                                        remote-sync-type   :read-write]
-      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                                  source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
+      (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ _] (throw (ex-info "Authentication failed" {})))]
         (is (= "Authentication failed: Please check your git credentials"
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
 
@@ -111,11 +104,9 @@
                                          remote-sync-token  "saved-token"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                    source.git/git-source        (fn [url _ token _]
-                                                                   (reset! captured {:url url :token token})
-                                                                   {:fake-source true})
-                                    source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [url token]
+                                                                 (reset! captured {:url url :token token})
+                                                                 ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-url   "https://github.com/other/repo.git"
                                  :remote-sync-token "new-token"})
@@ -129,15 +120,26 @@
                                          remote-sync-token  full-token
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                    source.git/git-source        (fn [_ _ token _]
-                                                                   (reset! captured token)
-                                                                   {:fake-source true})
-                                    source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [source.git/remote-branches (fn [_ token]
+                                                                 (reset! captured token)
+                                                                 ["main"])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
           (is (= full-token @captured)
               "Obfuscated tokens must be replaced with the stored token before testing"))))))
+
+(deftest test-connection-does-not-clone-test
+  (testing "HACKRDE-24: POST /api/ee/remote-sync/test-connection lists the remote's branches without cloning it"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                  (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^java.io.File clone  (#'source.git/repo-path {:remote-url url :token nil})]
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-token  nil
+                                           remote-sync-branch nil]
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
+                                       {:remote-sync-url url})))
+          (is (not (.exists clone)) "Test Connection must not clone the repository"))))))
 
 (deftest test-connection-requires-superuser-test
   (testing "POST /api/ee/remote-sync/test-connection requires superuser permissions"
@@ -416,7 +418,12 @@
                                     impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
                                                                     (swap! loaded conj :loaded)
                                                                     (when finalize! (finalize!))
-                                                                    nil)]
+                                                                    nil)
+                                    ;; a clean merge whose remote changes are incrementally loadable loads just those
+                                    impl/incremental-load-snapshot! (fn [_plan _ _ _ & {:keys [finalize!]}]
+                                                                      (swap! loaded conj :loaded)
+                                                                      (when finalize! (finalize!))
+                                                                      nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))

@@ -96,6 +96,47 @@
       (is (= ["collections/renamed.yaml"] (map :path (:merged result))))
       (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))
 
+(deftest ^:parallel unchanged-locally-entity-takes-remote-edit-test
+  (testing "ours differs from base only because the repo file isn't Metabase's own serialization; the ledger says A is
+            unchanged locally -> the remote edit merges cleanly"
+    (let [base   [(assoc (card "A" "renamed-by-hand") :path "collections/a.yaml")]
+          ours   [(card "A" "renamed-by-hand")]
+          theirs [(assoc (card "A" "renamed-again") :path "collections/a.yaml")]
+          asked  (atom [])
+          result (remote-sync.merge/three-way-merge base ours theirs
+                                                    :unchanged-locally? (fn [b o] (swap! asked conj [b o]) true))]
+      (is (empty? (:conflicts result)))
+      (is (= theirs (:merged result)))
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result)))
+      (is (= [[(first base) (first ours)]] @asked) "asked once, with the base and ours specs"))))
+
+(deftest ^:parallel unchanged-locally-entity-remote-untouched-keeps-fresh-serialization-test
+  (testing "an entity unchanged locally and untouched remotely keeps its fresh serialization, as before"
+    (let [base   [(assoc (card "A" "a" "# hand-written\n") :path "collections/a.yaml")]
+          ours   [(card "A" "a")]
+          result (remote-sync.merge/three-way-merge base ours base :unchanged-locally? (constantly true))]
+      (is (empty? (:conflicts result)))
+      (is (= ours (:merged result)))
+      (is (= {:added 0 :updated 0 :removed 0} (:summary result))))))
+
+(deftest ^:parallel changed-locally-entity-still-conflicts-test
+  (testing "when the ledger says A changed locally, a textual difference plus a remote edit is still a conflict"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  [(card "A" "a" "x: ours\n")]
+                  [(card "A" "a" "x: theirs\n")]
+                  :unchanged-locally? (constantly false))]
+      (is (= 1 (count (:conflicts result)))))))
+
+(deftest ^:parallel unchanged-locally-not-asked-for-absent-sides-test
+  (testing "a local deletion is never excused: the predicate is only asked about entities present on both sides"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  []
+                  [(card "A" "a" "x: 1\n")]
+                  :unchanged-locally? (fn [_ _] (throw (ex-info "should not be asked" {}))))]
+      (is (= 1 (count (:conflicts result)))))))
+
 (deftest ^:parallel remote-delete-takes-effect-test
   (testing "remote deletes A; local untouched -> A removed from merged, counted as remote removal"
     (let [result (remote-sync.merge/three-way-merge
@@ -235,3 +276,43 @@
               combined (counting #(remote-sync.merge/merge-with-casualties base ours theirs))]
           (is (= (+ (count base) (count ours) (count theirs))
                  (- separate combined))))))))
+
+(deftest ^:parallel preview-with-casualties-matches-full-merge-test
+  (testing "the preview computes ours only for remote-changed entities, yet reports what the full merge reports"
+    (let [base   [(card "A" "a") (card "B" "b") (card "C" "c") (card "E" "e") (card "F" "f")]
+          ;; ours: edits B (remote untouched), deletes C (remote edits it), edits E the same way as remote, adds G
+          ours   [(card "A" "a") (card "B" "b" "x: ours\n") (card "E" "e" "x: same\n") (card "F" "f") (card "G" "g")]
+          ;; theirs: edits C, edits E, deletes F, adds D
+          theirs [(card "A" "a") (card "B" "b") (card "C" "c" "x: theirs\n") (card "D" "d")
+                  (card "E" "e" "x: same\n")]
+          asked  (atom nil)
+          full   (remote-sync.merge/merge-with-casualties base ours theirs)
+          result (remote-sync.merge/preview-with-casualties
+                  base theirs
+                  (fn [paths]
+                    (reset! asked paths)
+                    (let [wanted (into #{} (map (comp :id last)) paths)]
+                      (filter #(wanted (second (re-find #"id: (\w+)" (:content %)))) ours))))]
+      (is (= #{"C" "D" "E" "F"} (into #{} (map (comp :id last)) @asked)))
+      (is (every? #(= "Card" (:model (last %))) @asked))
+      (is (= (dissoc full :merged) result))
+      (is (= 1 (count (:conflicts result))) "local delete of C vs remote edit of C"))))
+
+(deftest ^:parallel preview-with-casualties-non-serdes-file-test
+  (testing "a non-serdes file the remote edited is compared against our full export, not read as deleted locally"
+    (let [readme-base   {:path "README.md" :content "hello\n"}
+          readme-theirs {:path "README.md" :content "hello, edited remotely\n"}
+          base          [(card "A" "a") readme-base]
+          ours          [(card "A" "a") readme-base]
+          theirs        [(card "A" "a") readme-theirs]
+          full          (remote-sync.merge/merge-with-casualties base ours theirs)
+          result        (remote-sync.merge/preview-with-casualties
+                         base theirs
+                         (fn [paths]
+                           (if (= :all paths)
+                             ours
+                             (let [wanted (into #{} (map (comp :id last)) paths)]
+                               (filter #(wanted (second (re-find #"id: (\w+)" (:content %)))) ours)))))]
+      (is (= (dissoc full :merged) result))
+      (is (empty? (:conflicts result)) "a clean remote update, not an edit-vs-delete conflict")
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))

@@ -1433,9 +1433,10 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
-(defmethod serdes/descendants "Card" [_model-name id _opts]
-  (let [card               (queries.db/card id)
-        query              (not-empty (:dataset_query card))
+(defn- card-descendants
+  "[[serdes/descendants]] of the Card with `id`, given its row `card` (nil when there is no such Card)."
+  [id card]
+  (let [query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
         template-tags      (some-> query lib/all-template-tags)
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
@@ -1450,6 +1451,13 @@
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+
+(defmethod serdes/descendants "Card" [_model-name id _opts]
+  (card-descendants id (queries.db/card id)))
+
+(defmethod serdes/descendants-batch "Card" [_model-name ids _opts]
+  (let [cards (u/index-by :id (queries.db/cards ids))]
+    (transduce (map #(card-descendants % (get cards %))) (partial merge-with merge) {} ids)))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

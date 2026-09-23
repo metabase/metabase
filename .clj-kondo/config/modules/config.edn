@@ -4107,7 +4107,8 @@
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Document
@@ -4115,6 +4116,8 @@
                     :model/FieldUserSettings
                     :model/Glossary
                     :model/Measure
+                    :model/ModelIndex
+                    :model/ModelIndexValue
                     :model/NativeQuerySnippet
                     :model/PythonLibrary
                     :model/Segment

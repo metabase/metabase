@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.db-activity :as db-activity]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
@@ -89,7 +90,7 @@
         (is (= ["d/a" "d/a-b"] (source/paths->children ["d/a-b" "d/a/x"] "d")))))))
 
 (deftest preview-merge-clean-test
-  (testing "preview-merge reports a clean merge and summary without writing"
+  (testing "preview-merge-changes reports a clean merge and summary without writing"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [written     (atom nil)
             base        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
@@ -99,14 +100,14 @@
                          (create-test-entity "D" "d" "Card")]
             base-snap   (entities->snapshot base task-id (atom nil))
             remote-snap (entities->snapshot theirs task-id written)
-            result      (source/preview-merge ours remote-snap base-snap nil)]
+            result      (source/preview-merge-changes (constantly ours) remote-snap base-snap)]
         (is (true? (:clean? result)))
         (is (empty? (:conflicts result)))
         (is (= {:added 1 :updated 0 :removed 0} (:summary result)))
         (is (nil? @written) "preview must not write")))))
 
 (deftest preview-merge-conflict-test
-  (testing "preview-merge reports conflicts (with labels) without writing"
+  (testing "preview-merge-changes reports conflicts (with labels) without writing"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [written     (atom nil)
             base        [(create-test-entity "A" "a" "Card")]
@@ -114,7 +115,7 @@
             theirs      [(create-test-entity* "A" "a" "Card" "theirs")]
             base-snap   (entities->snapshot base task-id (atom nil))
             remote-snap (entities->snapshot theirs task-id written)
-            result      (source/preview-merge ours remote-snap base-snap nil)]
+            result      (source/preview-merge-changes (constantly ours) remote-snap base-snap)]
         (is (false? (:clean? result)))
         (is (= 1 (count (:conflicts result))))
         (is (every? string? (:conflicts result)))
@@ -139,3 +140,25 @@
       (let [traversals (atom 0)]
         (is (= 2 (count (source/serialize-specs (counting traversals) nil))))
         (is (= 2 @traversals))))))
+
+(deftest serialize-specs-throttles-progress-writes-test
+  (testing "serializing many entities with a task id writes progress a bounded number of times, not once per entity"
+    ;; not `with-temp`: it pins a connection opened before counting starts, hiding the writes from the counter.
+    ;; The `clean-remote-sync-state` fixture removes the row.
+    (let [task-id    (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"})
+          n          50
+          entities   (mapv #(create-test-entity (str "E" %) (str "e" %) "Card") (range n))
+          statements (fn [task-id]
+                       (let [counts (db-activity/with-db-activity (source/serialize-specs entities task-id))]
+                         (is (= n (count (:result counts))))
+                         (get-in counts [:by-thread (.threadId (Thread/currentThread)) :statements] 0)))
+          ;; serializing without a task id is the same work minus progress reporting, so the difference is exactly
+          ;; the progress writes
+          baseline   (statements nil)
+          reporting  (statements task-id)]
+      ;; each progress write is a cancelled-check SELECT, then Toucan's SELECT of the row for the `:hook/worktree-id`
+      ;; before-update hook, then the UPDATE. Unthrottled that is one write per entity (99 statements measured before
+      ;; the fix, at two per write); throttled it is the first write plus the forced final one, well inside one window.
+      (is (<= (- reporting baseline) 6))
+      (testing "the final progress still reflects the whole stream"
+        (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))
