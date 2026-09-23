@@ -725,7 +725,7 @@
   (testing "an alert with no prompt makes no LLM call and renders no Metabot block"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom 0)]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:summary "should not appear"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (swap! calls inc) {:summary "should not appear"})]
           (notification.tu/with-card-notification
             [notification {:card     {:name          notification.tu/default-card-name
                                       :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -753,7 +753,7 @@
                                            :timestamp #t "2026-02-10T00:00Z"}]
       (notification.tu/with-notification-testing-setup!
         (let [captured (atom nil)]
-          (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _ _] (reset! captured messages) {:summary "ok"})]
+          (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _] (reset! captured messages) {:summary "ok"})]
             (notification.tu/with-card-notification
               [notification {:card              {:name          notification.tu/default-card-name
                                                  :description   "Paid orders across all storefronts"
@@ -773,7 +773,7 @@
 (deftest ai-summary-failure-does-not-break-the-alert-test
   (testing "a failing LLM call still sends the alert, just without a summary"
     (notification.tu/with-notification-testing-setup!
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (throw (ex-info "provider exploded" {})))]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (throw (ex-info "provider exploded" {})))]
         (notification.tu/with-card-notification
           [notification {:card              {:name          notification.tu/default-card-name
                                              :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -793,7 +793,7 @@
   (testing "the AI gate only runs after send_condition passes, and can suppress a triggered alert"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom [])]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages tag]
                                                         (swap! calls conj tag)
                                                         {:verdict "suppress" :reason "Matches every prior weekend."})]
           (notification.tu/with-card-notification
@@ -812,7 +812,7 @@
   (testing "a gate that approves lets the alert through and still summarizes"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom [])]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages tag]
                                                         (swap! calls conj tag)
                                                         (if (= tag "alert-ai-send-gate")
                                                           {:verdict "deliver" :reason "Genuine 40% drop."}
@@ -838,7 +838,7 @@
 (deftest ai-send-gate-fails-open-test
   (testing "a gate failure sends the alert anyway rather than silently suppressing it"
     (notification.tu/with-notification-testing-setup!
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ tag]
                                                       (if (= tag "alert-ai-send-gate")
                                                         (throw (ex-info "provider exploded" {}))
                                                         {:summary "still summarized"}))]
@@ -861,7 +861,7 @@
   (testing "an alert whose send_condition says skip makes no LLM call at all"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom 0)]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:verdict "deliver" :reason "x"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (swap! calls inc) {:verdict "deliver" :reason "x"})]
           (notification.tu/with-card-notification
             [notification {:card              {:name          notification.tu/default-card-name
                                                ;; returns no rows, so :has_result never fires
@@ -879,7 +879,7 @@
 (deftest ai-send-gate-explanation-is-rendered-test
   (testing "when a gate lets an alert through, its one-line explanation opens the email"
     (notification.tu/with-notification-testing-setup!
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages tag]
                                                       (if (= tag "alert-ai-send-gate")
                                                         {:verdict     "deliver"
                                                          :reason      "internal working that should stay out of the email"

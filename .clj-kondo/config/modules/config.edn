@@ -1420,7 +1420,8 @@
 
   metabot
   {:team    "Metabot"
-   :api     #{metabase.metabot.api
+   :api     #{metabase.metabot.agent.core
+              metabase.metabot.api
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
@@ -1763,7 +1764,8 @@
 
   notification
   {:team "Gadget"
-   :api  #{metabase.notification.api
+   :api  #{metabase.notification.ai-summary
+           metabase.notification.api
            metabase.notification.card
            metabase.notification.core
            metabase.notification.init

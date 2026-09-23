@@ -264,7 +264,9 @@
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]])
+   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]
+   ;; the task a triggered alert gives the `:alert` profile; see [[metabase.metabot.tools.alert]]
+   [:alert_instructions         {:optional true} [:maybe :string]]])
 
 (defn- query-for-sql-parsing
   "Return the native query in a viewing-context item, or nil."

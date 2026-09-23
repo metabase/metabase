@@ -30,6 +30,8 @@ SELECT
                 WHEN 'transforms_codegen'        THEN 'Transforms codegen'
                 WHEN 'document-generate-content' THEN 'Documents'
                 WHEN 'explorations'              THEN 'Research'
+                WHEN 'alert'                     THEN 'Alerts'
+                WHEN 'digest'                    THEN 'Digest'
                 ELSE mm.profile_id
             END
      FROM metabot_message mm

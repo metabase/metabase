@@ -3,11 +3,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.interestingness.core :as interestingness]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.test-util :as mut]
    [metabase.notification.ai-summary :as ai-summary]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
-   [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +78,7 @@
                                                                   :display "line" :result (chart-result)})]]]
     (testing (str desc " shows the model the chart stats alongside the raw rows")
       (let [captured (atom nil)]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                         (reset! captured messages)
                                                         {:summary "ok" :verdict "deliver" :reason "ok"})]
           (call)
@@ -115,7 +117,7 @@
 (deftest question-context-reaches-the-model-test
   (let [captured (atom nil)
         result   (update-in (chart-result) [:data :cols 1] assoc :description "Order totals net of refunds")]
-    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                     (reset! captured messages)
                                                     {:summary "ok"})]
       (ai-summary/summarize {:prompt      "What's going on?"
@@ -140,14 +142,14 @@
 
 (deftest summarize-test
   (testing "returns the model's summary text"
-    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema _tag] {:summary "Revenue is up **12%**."})]
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _tag] {:summary "Revenue is up **12%**."})]
       (is (= "Revenue is up **12%**."
              (ai-summary/summarize {:prompt    "Whats going on?"
                                     :card-name "Revenue"
                                     :result    (result ["N"] [[1]])})))))
   (testing "the prompt and the result excerpt both reach the model"
     (let [captured (atom nil)]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                       (reset! captured messages)
                                                       {:summary "ok"})]
         (ai-summary/summarize {:prompt    "Flag anything odd"
@@ -159,7 +161,7 @@
           (is (str/includes? user-content "2026-01-01\t1000"))))))
   (testing "result data is delimited so the model treats it as data, not instructions"
     (let [captured (atom nil)]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                       (reset! captured messages)
                                                       {:summary "ok"})]
         (ai-summary/summarize {:prompt    "summarize"
@@ -177,7 +179,7 @@
                                          :card-name "Revenue"
                                          :result    (result ["N"] [[1]])}))))))
   (testing "an LLM failure never breaks the notification"
-    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (throw (ex-info "provider exploded" {})))]
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (throw (ex-info "provider exploded" {})))]
       (is (nil? (ai-summary/summarize {:prompt    "summarize"
                                        :card-name "Revenue"
                                        :result    (result ["N"] [[1]])})))))
@@ -192,7 +194,7 @@
   (testing "a model that never answers gives up and yields no summary, rather than holding the send thread"
     ;; `llm-timeout-ms` is a number, not an IFn, so it needs plain `with-redefs`
     (with-redefs [ai-summary/llm-timeout-ms 100]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _]
                                                       (Thread/sleep 5000)
                                                       {:summary "too late"})]
         (let [timer   (u/start-timer)
@@ -228,7 +230,7 @@
 (deftest should-send?-message-contents-test
   (testing "the sender's rule and the results both reach the model"
     (let [captured (atom nil)]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                       (reset! captured messages)
                                                       {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt "skip weekend dips"
@@ -250,13 +252,13 @@
             (is (not (false? (:send? decision)))
                 (str "response " (pr-str response) " must not suppress"))))))
     (testing "a provider failure"
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (throw (ex-info "provider exploded" {})))]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (throw (ex-info "provider exploded" {})))]
         (is (nil? (ai-summary/should-send? {:send-prompt "only real drops"
                                             :card-name   "Revenue"
                                             :result      (result ["N"] [[1]])})))))
     (testing "a timeout"
       (with-redefs [ai-summary/llm-timeout-ms 100]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (Thread/sleep 5000) {:verdict "suppress" :reason "too late"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _] (Thread/sleep 5000) {:verdict "suppress" :reason "too late"})]
           (is (nil? (ai-summary/should-send? {:send-prompt "only real drops"
                                               :card-name   "Revenue"
                                               :result      (result ["N"] [[1]])}))))))
@@ -271,7 +273,7 @@
   (testing "the model is told today's date, so a rule like \"only on Sundays\" is answerable
             without it guessing from dates in the result rows"
     (let [captured (atom nil)]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                       (reset! captured messages)
                                                       {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt       "only if it's sunday"
@@ -291,7 +293,7 @@
   (testing "the prompt frames the sender's rule as when to SEND, not when to stay quiet - a rule
             like \"only if it's wednesday\" must not be read as \"stay quiet on wednesday\""
     (let [captured (atom nil)]
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _tag]
                                                       (reset! captured messages)
                                                       {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt "only if it's wednesday"
@@ -307,14 +309,59 @@
             (is (str/includes? system-content "Owners often phrase rules negatively"))
             (is (str/includes? system-content "Resolve the negation carefully"))))))))
 
-(deftest json-schemas-are-valid-for-the-provider-test
-  (testing "both structured-output schemas satisfy the provider's own JSON-schema spec.
+(defn- scripted-provider
+  "A provider that answers each agent iteration with the next of `turns` (vectors of parts), recording
+  every request it gets in `requests`."
+  [requests turns]
+  (let [remaining (atom turns)]
+    (fn [request]
+      (swap! requests conj request)
+      (let [turn (or (first @remaining) [{:type :text :text "(out of script)"}])]
+        (swap! remaining rest)
+        (mut/mock-llm-response
+         (concat [{:type :start :id "msg"}]
+                 turn
+                 [{:type :usage :usage {:promptTokens 10 :completionTokens 5} :model "test-model" :id "msg"}]))))))
 
-           The other tests here stub `call-llm!`, so they never exercise the schema at all - an
-           `:enum` key silently shipped and threw inside every real provider call, which the gate
-           then swallowed as fail-open. This asserts the shape the provider actually accepts."
-    (let [json-schema-node (deref (requiring-resolve 'metabase.metabot.self.core/JSONSchemaNode))]
-      (doseq [[nm schema] {"summary"   (deref (var ai-summary/summary-json-schema))
-                           "send-gate" (deref (var ai-summary/send-decision-json-schema))}]
-        (testing nm
-          (is (nil? (mr/explain json-schema-node schema))))))))
+(defn- tool-call
+  [id function arguments]
+  {:type :tool-input :id id :function function :arguments arguments})
+
+(def ^:private alert-messages
+  [{:role "system" :content "Interpret this alert for its recipient."}
+   {:role "user" :content "<results>\nN\n1\n</results>"}])
+
+(deftest call-llm!-runs-the-alert-agent-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+    (mt/with-test-user :crowberto
+      (testing "the summary the agent submits is the answer"
+        (let [requests (atom [])]
+          (with-dynamic-fn-redefs [openrouter/openrouter
+                                   (scripted-provider requests [[(tool-call "c1" "submit_alert_summary" {:summary "Up **12%**."})]])]
+            (is (= {:summary "Up **12%**."} (ai-summary/call-llm! alert-messages "alert-ai-summary")))
+            (testing "the task's instructions and results reach the model, and it is told which tool finishes"
+              (let [{:keys [system input]} (first @requests)]
+                (is (str/includes? system "Interpret this alert for its recipient."))
+                (is (str/includes? system "submit_alert_summary"))
+                (is (str/includes? (pr-str input) "<results>")))))))
+      (testing "the send gate's decision comes back with all three fields"
+        (with-dynamic-fn-redefs [openrouter/openrouter
+                                 (scripted-provider (atom []) [[(tool-call "c1" "submit_send_decision"
+                                                                           {:reason "It fell." :verdict "suppress"
+                                                                            :explanation "Orders held steady."})]])]
+          (is (= {:reason "It fell." :verdict "suppress" :explanation "Orders held steady."}
+                 (ai-summary/call-llm! alert-messages "alert-ai-send-gate")))))
+      (testing "the agent can use tools before it submits"
+        (let [requests (atom [])]
+          (with-dynamic-fn-redefs [openrouter/openrouter
+                                   (scripted-provider requests [[(tool-call "c1" "run_query" {:query_id "not-built"})]
+                                                                [(tool-call "c2" "submit_alert_summary" {:summary "Done."})]])]
+            (is (= {:summary "Done."} (ai-summary/call-llm! alert-messages "alert-ai-summary")))
+            (is (= 2 (count @requests)))
+            (testing "and sees each tool's result on the next turn"
+              (is (str/includes? (pr-str (:input (second @requests))) "not found"))))))
+      (testing "nil when the agent never submits an answer"
+        (with-dynamic-fn-redefs [openrouter/openrouter
+                                 (scripted-provider (atom []) [[{:type :text :text "I think it is fine."}]])]
+          (is (nil? (ai-summary/call-llm! alert-messages "alert-ai-summary"))))))))

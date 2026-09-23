@@ -41,6 +41,7 @@
     "embedding_next"
     "explorations"
     "digest"
+    "alert"
     "nlq"
     "sql"
     "slackbot"

@@ -155,7 +155,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations :digest :subscription])
+  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations :digest :subscription :alert])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -454,7 +454,9 @@
   {:sql                       :permission/metabot-sql-generation
    :nlq                       :permission/metabot-nlq
    :document-generate-content :permission/metabot-other-tools
-   :explorations              :permission/metabot-nlq})
+   :explorations              :permission/metabot-nlq
+   ;; the alert agent builds and runs queries, which are NLQ-scoped tools
+   :alert                     :permission/metabot-nlq})
 
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the

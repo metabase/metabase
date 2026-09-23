@@ -16,6 +16,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.alert :as tools.alert]
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -258,6 +259,28 @@
   :tools           [#'tools/render-digest-tool
                     #'tools/search-tool
                     #'tools/read-resource-tool]})
+
+;; A triggered alert runs this in the background to interpret its results or to decide whether to
+;; deliver them, and may query other content to do either. It answers only through a submit tool,
+;; so every turn is a tool call and a successful submit ends the turn.
+(register-profile!
+ {:name                  :alert
+  :prompt-template       "alert.selmer"
+  :max-iterations        8
+  :required-tool-call?   true
+  :skills?               false
+  :system-prompt-context #'tools.alert/alert-system-context
+  :terminal-tools        #{"submit_alert_summary" "submit_send_decision"}
+  :tools                 [#'tools/search-tool
+                          #'tools/read-resource-tool
+                          #'tools/list-available-fields-tool
+                          #'tools/get-field-values-tool
+                          #'tools/construct-notebook-query-tool
+                          #'tools/run-query-tool
+                          #'tools/list-timelines-tool
+                          #'tools/get-timeline-details-tool
+                          #'tools/submit-alert-summary-tool
+                          #'tools/submit-send-decision-tool]})
 
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.

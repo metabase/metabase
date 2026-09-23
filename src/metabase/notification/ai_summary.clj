@@ -2,7 +2,11 @@
   "Optional Metabot-written interpretation of an alert's results.
 
   A card notification may carry a free-text `prompt`. When it does, and Metabot is available,
-  we ask an LLM to interpret the alert's result set and render the answer above the chart.
+  we ask Metabot to interpret the alert's result set and render the answer above the chart. A
+  `send_prompt` likewise asks it whether a triggered alert should be delivered at all.
+
+  Both run Metabot's `:alert` agent, which sees the alert's results and can also search for other
+  content, build queries on it, and run them, before submitting its answer through a tool.
 
   Everything here is best-effort and must stay that way: a missing provider, a usage limit, a
   timeout, or a malformed response all yield `nil`, and the notification then sends exactly as
@@ -10,8 +14,9 @@
   of it.
 
   Metabot is reached through `requiring-resolve` rather than a static require. The metabot
-  module already depends on notification (it creates alerts), so a direct require would close a
-  module cycle; late binding also keeps this a genuinely optional capability."
+  module already depends on notification (it creates alerts, and the alert agent's `run_query` tool
+  formats results with this namespace), so a direct require would close a module cycle; late
+  binding also keeps this a genuinely optional capability."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -40,10 +45,10 @@
   1000)
 
 (def llm-timeout-ms
-  "How long a send will wait for the model. A notification send runs on a Quartz worker thread, so an
-  unbounded call here stalls the scheduler, not just this one alert. On expiry the alert falls back to
-  its non-AI behaviour."
-  15000)
+  "How long a send will wait for Metabot's agent, which may run several queries before it answers. A
+  notification send runs on a Quartz worker thread, so an unbounded wait here stalls the scheduler,
+  not just this one alert. On expiry the alert falls back to its non-AI behaviour."
+  60000)
 
 (def max-explanation-chars
   "Hard cap on the gate explanation rendered at the top of an alert. The prompt asks for one short
@@ -53,18 +58,6 @@
 (def ^:private max-timeline-events
   "Cap on the timeline events shown to the model, so a busy timeline can't crowd out the stats."
   20)
-
-(def ^:private max-summary-tokens
-  "Output-token budget. The summary is short, but reasoning models spend this budget thinking
-  before they emit the forced tool call."
-  1024)
-
-(def ^:private summary-json-schema
-  {:type                 "object"
-   :properties           {"summary" {:type        "string"
-                                     :description "The interpretation, as plain text or light markdown."}}
-   :required             ["summary"]
-   :additionalProperties false})
 
 (def ^:private system-prompt
   ;; The interpretation rules are lifted from the `analyze_chart` agent tool, which has already
@@ -233,31 +226,53 @@
                                      (result->chart-analysis chart-source result)
                                      (str "## Rows\n" excerpt)])))))
 
-(defn call-llm!
-  "Send `messages` to the mini model and return the parsed map matching `json-schema`, or nil when
-  Metabot can't be called right now.
+(def ^:private tag->submit-tool
+  "The `:alert` agent tool that finishes each task, and whose structured output is the answer."
+  {"alert-ai-summary"   "submit_alert_summary"
+   "alert-ai-send-gate" "submit_send_decision"})
 
-  Split out from the callers so the LLM round-trip is a single seam: tests redefine this, and it is
-  the only place that reaches into the metabot module."
-  [messages json-schema tag]
-  (let [call-structured (requiring-resolve 'metabase.metabot.self/call-llm-structured)
-        unavailable     (requiring-resolve 'metabase.metabot.self/llm-call-unavailable-reason)
-        mini-model      (requiring-resolve 'metabase.metabot.settings/llm-mini-model)]
-    (if-let [reason (unavailable :permission/metabot-other-tools)]
-      (do (log/debug "Skipping notification LLM call" {:reason reason :tag tag})
+(defn- submitted-answer
+  "The structured output of the agent's successful `tool-name` call in `parts`, or nil when it never
+  submitted one."
+  [parts tool-name]
+  (let [call-ids (into #{}
+                       (comp (filter #(and (= :tool-input (:type %)) (= tool-name (:function %))))
+                             (map :id))
+                       parts)]
+    (some (fn [part]
+            (when (and (= :tool-output (:type part)) (call-ids (:id part)))
+              (get-in part [:result :structured-output])))
+          parts)))
+
+(defn call-llm!
+  "Run Metabot's `:alert` agent on `messages` — a system message with the task's rules, then a user
+  message with the alert's results — and return the map it submitted for the task `tag`, or nil when
+  Metabot can't be called right now or the agent never submitted.
+
+  Split out from the callers so the Metabot round-trip is a single seam: tests redefine this, and it
+  is the only place that reaches into the metabot module."
+  [[{instructions :content} {results :content}] tag]
+  (let [run-agent-loop (requiring-resolve 'metabase.metabot.agent.core/run-agent-loop)
+        unavailable    (requiring-resolve 'metabase.metabot.self/llm-call-unavailable-reason)
+        submit-tool    (tag->submit-tool tag)]
+    (if-let [reason (unavailable :permission/metabot-nlq)]
+      (do (log/debug "Skipping notification Metabot call" {:reason reason :tag tag})
           nil)
-      (call-structured (mini-model)
-                       messages
-                       json-schema
-                       nil
-                       max-summary-tokens
-                       ;; `:source` is an allow-list in `metabase-enterprise.metabot.usage/known-sources`;
-                       ;; an unregistered value throws inside the provider stream and is retried as if the
-                       ;; API had failed, so it must stay in sync with that set and the analytics views.
-                       {:request-id          (str (random-uuid))
-                        :source              "notification_alert_summary"
-                        :tag                 tag
-                        :required-permission :permission/metabot-other-tools}))))
+      (let [parts (into [] (run-agent-loop
+                            {:messages      [{:role :user :content results}]
+                             :profile-id    :alert
+                             :state         {}
+                             :context       {:alert_instructions (str instructions "\n\n"
+                                                                      "When you have your answer, call `"
+                                                                      submit-tool "`.")}
+                             ;; `:source` is an allow-list in `metabase-enterprise.metabot.usage/known-sources`;
+                             ;; an unregistered value throws inside the provider stream and is retried as if
+                             ;; the API had failed, so it must stay in sync with that set and the analytics views.
+                             :tracking-opts {:source "notification_alert_summary"
+                                             :tag    tag}}))]
+        (when-let [error (some #(when (= :error (:type %)) (:error %)) parts)]
+          (log/warn "Notification Metabot agent failed" {:tag tag :error (:message error)}))
+        (submitted-answer parts submit-tool)))))
 
 (defn- call-with-timeout
   "Run `thunk` on another thread and give up after [[llm-timeout-ms]], returning nil.
@@ -293,7 +308,6 @@
     (when-let [results (results-for-llm ctx)]
       (try
         (some-> (call-with-timeout #(call-llm! (summary-messages prompt card-name timezone-id first-day-of-week results)
-                                               summary-json-schema
                                                "alert-ai-summary"))
                 :summary
                 str/trim
@@ -304,30 +318,6 @@
           nil)))))
 
 ;;; ------------------------------------------------ Send gate ------------------------------------------------
-
-(def ^:private send-decision-json-schema
-  ;; Field order matters: the model emits them in schema order, so it works through the rule in
-  ;; `reason` before committing to `verdict`, then writes the recipient-facing `explanation` once
-  ;; the verdict is already fixed. `reason` is the thinking and stays in the logs; `explanation` is
-  ;; the one line that appears in the alert.
-  ;;
-  ;; No `:enum` - `metabase.metabot.self.core/JSONSchemaLeaf` is a closed map that rejects it, and an
-  ;; invalid schema throws inside the provider call.
-  {:type                 "object"
-   :properties           {"reason"      {:type        "string"
-                                         :description (str "Work through what the owner's rule asks for and what "
-                                                           "the data actually shows. Not shown to anyone.")}
-                          "verdict"     {:type        "string"
-                                         :description (str "Exactly one of: deliver, suppress. Say suppress when "
-                                                           "the owner's rule clearly indicates they do not want "
-                                                           "this firing; otherwise deliver.")}
-                          "explanation" {:type        "string"
-                                         :description (str "One short sentence, max 25 words, telling the "
-                                                           "recipient why this alert cleared their rule. Written "
-                                                           "to them, in plain language, naming the values that "
-                                                           "mattered. No preamble.")}}
-   :required             ["reason" "verdict" "explanation"]
-   :additionalProperties false})
 
 (def ^:private send-gate-system-prompt
   (str
@@ -378,7 +368,6 @@
     (when-let [results (results-for-llm ctx)]
       (try
         (let [decision (call-with-timeout #(call-llm! (send-gate-messages send-prompt card-name timezone-id first-day-of-week results)
-                                                      send-decision-json-schema
                                                       "alert-ai-send-gate"))]
           ;; Policy lives here, not in the model: only a definite "no" suppresses. "cannot_tell",
           ;; a missing key, or anything unrecognised falls through to nil, which the caller reads

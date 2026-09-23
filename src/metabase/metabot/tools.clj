@@ -8,6 +8,7 @@
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.alert :as tools.alert]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
    [metabase.metabot.tools.charts :as tools.charts]
@@ -40,6 +41,10 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
+ [tools.alert
+  run-query-tool
+  submit-alert-summary-tool
+  submit-send-decision-tool]
  [tools.analyze-chart
   analyze-chart-tool]
  [tools.search search-tool
@@ -126,7 +131,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource" "run_query"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks
