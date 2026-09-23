@@ -5,7 +5,7 @@ import "metabase-dev";
 import { Api } from "metabase/api";
 import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
-import { getUser } from "metabase/current-user";
+import { getUser, loadCurrentUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
@@ -35,6 +35,12 @@ if (isWithinIframe() && !IFRAMED_IN_SELF) {
 }
 
 init(mainReducers, getRoutes, (store) => {
+  // `LoadCurrentUser` gates the authenticated app on this request, but it only
+  // issues it from an effect, so it waits for the first commit. Starting it here
+  // puts it on the wire alongside the settings request instead of a round trip
+  // behind it. The effect's `initiate()` joins this one rather than repeating it.
+  store.dispatch(loadCurrentUser());
+
   // received a 401 response
   api.on(401, (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
