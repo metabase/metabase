@@ -1,0 +1,113 @@
+## Scope table remappings to a worktree.
+##
+## `workspace_table_remapping` (20260908) was keyed `(db_id, from_schema, from_table)`, which permits exactly one
+## remapping per canonical table per database: an instance-wide setting decided whether it applied, so there was
+## only ever one set of remappings to have. A worktree is per-request, and several exist at once, so the same
+## canonical table needs a remapping per worktree.
+##
+## `worktree_id` is nullable and null means the main app, matching `remote_sync_object.worktree_id`.
+##
+## The target-side constraint `(db_id, to_schema, to_table)` deliberately does NOT gain `worktree_id`: `to_table`
+## is a random UUID, so two canonical tables sharing one physical table stays a bug whichever worktree wrote them.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:00
+      author: bryan
+      comment: Add workspace_table_remapping.worktree_id
+      changes:
+        - addColumn:
+            tableName: workspace_table_remapping
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree this remapping belongs to; null for the main app
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:01
+      author: bryan
+      comment: Index on workspace_table_remapping.worktree_id (backs the FK below and every worktree-scoped query)
+      changes:
+        - createIndex:
+            tableName: workspace_table_remapping
+            indexName: idx_workspace_table_remapping_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:02
+      author: bryan
+      comment: Add foreign key on workspace_table_remapping(worktree_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_remapping
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_remapping_worktree_id
+            ## RESTRICT, not cascade. A remapping row is the only record that its workspace table exists and what
+            ## it stands for, so cascading would delete the row and leave the table behind in the warehouse,
+            ## unreferenced and unnameable. Dropping a worktree's tables has to happen before the worktree goes.
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:03
+      author: bryan
+      comment: Add workspace_table_remapping.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so the unique key below can hold it
+      ## A unique key over a nullable `worktree_id` would not hold for the main app: SQL treats NULL as unequal to
+      ## NULL, so two main-app remappings of the same canonical table would both be allowed. The generated column
+      ## restates null as 0. Same pattern as `remote_sync_object.worktree_id_helper`.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE workspace_table_remapping ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE workspace_table_remapping ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) VIRTUAL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE workspace_table_remapping ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE workspace_table_remapping DROP COLUMN worktree_id_helper;
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:04
+      author: bryan
+      comment: Drop the single-worktree unique constraint on workspace_table_remapping (db_id, from_schema, from_table)
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+            columnNames: db_id, from_schema, from_table
+
+  - changeSet:
+      id: v65.2026-09-23T10:00:05
+      author: bryan
+      comment: Add unique constraint on workspace_table_remapping (db_id, worktree_id_helper, from_schema, from_table)
+      ## `db_id` stays the leading column so MySQL keeps reusing this index for the
+      ## fk_workspace_table_remapping_db_id foreign key, as the original changeset noted.
+      ## One canonical table may now be remapped once PER WORKTREE instead of once per database.
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_remapping
+            constraintName: idx_unique_workspace_table_remapping_source
+            columnNames: db_id, worktree_id_helper, from_schema, from_table

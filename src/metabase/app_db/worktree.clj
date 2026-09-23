@@ -146,17 +146,23 @@
 
 (defn- scope-joins
   "Restrict each checked-out table `joins` joins in, in the condition it is joined on -- a left join keeps the rows
-  that match nothing, which a condition in the `:where` would drop."
+  that match nothing, which a condition in the `:where` would drop -- and each query it joins in, such as a Table
+  overlay joined by alias."
   [joins]
   (keeping-meta
    (into []
          (comp (partition-all 2)
                (mapcat (fn [[source condition :as pair]]
-                         (if-some [[table alias] (and (= (count pair) 2) (table-and-alias source))]
-                           (if (contains? (checked-out-tables) (name table))
-                             [source [:and condition [:= (u/qualified-key alias :worktree_id) *worktree-id*]]]
-                             pair)
-                           pair))))
+                         (cond
+                           (and (= (count pair) 2) (vector? source) (map? (first source)))
+                           [(assoc source 0 (scope-query (first source))) condition]
+
+                           :else
+                           (if-some [[table alias] (and (= (count pair) 2) (table-and-alias source))]
+                             (if (contains? (checked-out-tables) (name table))
+                               [source [:and condition [:= (u/qualified-key alias :worktree_id) *worktree-id*]]]
+                               pair)
+                             pair)))))
          joins)
    joins))
 
