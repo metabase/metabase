@@ -396,10 +396,37 @@
 ;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
 
 (def ^:private full-import-models
-  "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
-  descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
-  remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly)."
-  #{"Collection" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
+  "Models whose change forces a full import on the incremental fast-path: the feature models (their presence
+  drives the remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly).
+
+  Collection is not here: an ordinary collection's change is incremental (see [[plain-collection-changes?]]).
+  A rename or move changes every descendant's path, which the diff reports as delete + add, so the whole subtree
+  is re-loaded and the old paths are recognized as renames by entity_id; a delete removes the descendants' files
+  too, so they are deleted along with it, contents first (see [[incremental-load-snapshot!]])."
+  #{"Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
+
+(defn- plain-collection?
+  "True for an ordinary collection: no namespace (transforms, snippets) and no special type (library, tenant,
+  ...). Those drive settings and scoping that only the full import reconciles."
+  [collection]
+  (and (nil? (:namespace collection))
+       (nil? (:type collection))))
+
+(defn- plain-collection-changes?
+  "True when every Collection the change touches is a [[plain-collection?]], both as it arrives in `ingestable`
+  and as it is stored locally (incoming paths), and as stored locally for the `deleted-rsos`."
+  [ingestable deleted-rsos]
+  (let [incoming   (when ingestable
+                     (into []
+                           (comp (filter #(= "Collection" (:model (last %))))
+                                 (map #(serialization/ingest-one ingestable %)))
+                           (serialization/ingest-list ingestable)))
+        local-eids (into #{} (keep :entity_id) incoming)
+        local      (when (seq local-eids)
+                     (remote-sync.db/instances-with-columns-by-entity-ids :model/Collection [:namespace :type] local-eids))
+        deleted    (when-let [ids (seq (keep #(when (= "Collection" (:model_type %)) (:model_id %)) deleted-rsos))]
+                     (remote-sync.db/collections (vec ids)))]
+    (every? plain-collection? (concat incoming local deleted))))
 
 (defn- legal-yaml-path?
   "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
@@ -460,6 +487,10 @@
       (some #(not= :entity-id (:identity (spec/spec-for-model-type %))) all-models) ;; anything not entity-id model?
       :remote-sync/incremental-not-possible
 
+      (and (contains? all-models "Collection")                  ;; a namespaced or special collection?
+           (not (plain-collection-changes? ingestable deleted-rsos)))
+      :remote-sync/incremental-not-possible
+
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
 
@@ -494,12 +525,17 @@
                             :when (not (loaded-eid? model_type eid))]
                         {:model_type model_type :model_id model_id})
         model-key-of  (fn [{:keys [model_type]}] (:model-key (spec/spec-for-model-type model_type)))
+        ;; Deleted in the same dependency order as the full import's [[remove-unsynced!]]: contents before the
+        ;; Collection that holds them. (Deleting a Collection cascades to its contents anyway.)
+        deletion-rank (into {} (map-indexed (fn [i [model-key _]] [model-key i])) (spec/specs-for-deletion))
+        deletes-by-key (sort-by (fn [[model-key _]] (deletion-rank model-key Long/MAX_VALUE))
+                                (group-by model-key-of deletes))
         sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
-      (doseq [[model-key ds] (group-by model-key-of deletes)]
+      (doseq [[model-key ds] deletes-by-key]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
         (remote-sync.db/delete-rsos-of-keys! deletes))
@@ -512,7 +548,7 @@
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
-    (doseq [[model-key ds] (group-by model-key-of deletes)]
+    (doseq [[model-key ds] deletes-by-key]
       (search/delete! model-key (mapv :model_id ds)))
     (report 0.95 {:force? true})
     (log/info "Successfully reloaded entities from git repository")

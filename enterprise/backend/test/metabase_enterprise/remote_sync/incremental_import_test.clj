@@ -331,6 +331,17 @@
      (fn [f0]
        (is (= :incremental (run-differential! f0 {})))))))
 
+(deftest namespaced-collection-change-falls-back-test
+  (testing "HACKRDE-21: adding a transforms-namespace collection still takes the full import (the collection's
+            presence drives the remote-sync-transforms setting), and reconciles to the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       (mt/with-temporary-setting-values [remote-sync-transforms true]
+         (mt/with-temp [:model/Collection _ {:name "Xforms" :namespace "transforms" :location "/"}]
+           (let [f1 (synced-tree)]
+             (is (some #(str/includes? % "xforms") (keys f1)) "v1 carries the transforms collection")
+             (is (= :fallback (run-differential! f0 f1))))))))))
+
 ;;; ------------------------------------------ First import: never incremental ------------------------------------------
 
 (deftest cancelled-after-commit-keeps-the-sync-base-test
