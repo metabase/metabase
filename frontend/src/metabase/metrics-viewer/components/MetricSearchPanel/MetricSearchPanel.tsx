@@ -99,16 +99,13 @@ export function MetricSearchPanel() {
             <Button.Group>
               <Button
                 variant="light"
-                color="core-filter"
-                size="xs"
-                p="sm"
+                color="filter"
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
                     size={16}
                   />
                 }
-                className={hasFilters ? S.filterButtonWithCount : undefined}
               >
                 {t`Filter`}
               </Button>
@@ -116,16 +113,12 @@ export function MetricSearchPanel() {
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="core-filter"
-                    size="xs"
-                    py="sm"
-                    px="lg"
+                    color="filter"
                     aria-label={toggleLabel}
                     onClick={(event) => {
                       event.stopPropagation();
                       setIsFilterPillsExpanded((prev) => !prev);
                     }}
-                    className={S.filterButtonAttachment}
                   >
                     {filterCount}
                   </Button>

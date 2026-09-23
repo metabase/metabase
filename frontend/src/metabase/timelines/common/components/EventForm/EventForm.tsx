@@ -149,15 +149,20 @@ const EventForm = ({
                       setFieldValue("timestamp", date.toISOString());
                     }}
                   />
+                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   <Button
+                    size="sm"
+                    mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
+                    color="neutral"
                     leftSection={<Icon name="close" />}
                   />
                 </Flex>
               ) : (
                 <Button
+                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}

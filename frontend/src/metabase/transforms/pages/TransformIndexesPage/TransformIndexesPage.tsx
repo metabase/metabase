@@ -175,7 +175,7 @@ function useDeleteIndex() {
       title: t`Delete this index?`,
       message: t`This removes the index from the warehouse.`,
       confirmButtonText: t`Delete`,
-      confirmButtonProps: { color: "danger" },
+      confirmButtonProps: { color: "negative" },
       onConfirm: async () => {
         try {
           await deleteTableIndex(requestId).unwrap();
