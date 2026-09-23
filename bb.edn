@@ -122,6 +122,74 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
+  papercuts-scan-claude
+  {:doc "Scan Claude Code transcripts for papercuts and submit them to a papercuts server.
+Reads ~/.claude/projects, picking up each session where the previous run stopped (progress is kept in
+local/papercuts/scan-state.claude.edn). Screens new stretches with Jev (TYPESAFE_API_KEY), drills flagged ones with
+the claude CLI, and submits each papercut once."
+   :examples [["./bin/mage papercuts-scan-claude" "Scan everything new since the last run"]
+              ["./bin/mage papercuts-scan-claude --since 7d --limit 20" "Scan at most 20 sessions, looking only at the last week"]
+              ["./bin/mage papercuts-scan-claude --dry-run --session 31b066ea" "Show what one session would report, without submitting or saving progress"]
+              ["./bin/mage papercuts-scan-claude --screen-only --since 2026-09-01" "Print Jev screening scores only"]]
+   :requires [[mage.papercuts.scan :as papercuts-scan]]
+   :options [[nil "--since WHEN" "Only look at messages from this date, timestamp, or age (7d, 12h) on"]
+             ["-n" "--limit N" "Scan at most N sessions (most recently active first)" :parse-fn parse-long]
+             [nil "--session ID" "Only scan sessions whose id starts with ID"]
+             [nil "--project TEXT" "Only scan sessions whose project directory or path contains TEXT"]
+             [nil "--exclude REGEX" "Skip transcripts whose path matches REGEX"]
+             [nil "--[no-]subagents" "Include subagent transcripts" :default true]
+             [nil "--min-idle MINUTES" "Skip sessions active in the last MINUTES" :default 15 :parse-fn parse-long]
+             [nil "--threshold P" "Drill a chunk when any Jev probability reaches P" :default 0.8 :parse-fn parse-double]
+             [nil "--drill-agent AGENT" "CLI that reviews flagged chunks: claude or codex" :default "claude"
+              :validate [#{"claude" "codex"} "must be claude or codex"]]
+             [nil "--drill-model MODEL" "Model for the drill-down agent"]
+             [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "http://127.0.0.1:8765") :default-desc "$PAPERCUTS_SERVER or http://127.0.0.1:8765"]
+             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
+             [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.claude)"]
+             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.claude.edn)"]
+             [nil "--rescan" "Ignore saved progress and rescan from the start (already-reported papercuts are still skipped)"]
+             [nil "--dry-run" "Screen and drill, but submit nothing and save no progress"]
+             [nil "--screen-only" "Only print Jev scores: no drill-down, no submission, no saved progress"]
+             ["-j" "--jobs N" "Sessions to scan in parallel" :default 4 :parse-fn parse-long]
+             ["-v" "--verbose" "Print scores for clean chunks too"]]
+   :task (task! (papercuts-scan/scan! :claude parsed))}
+
+  papercuts-scan-codex
+  {:doc "Scan Codex transcripts for papercuts and submit them to a papercuts server.
+Reads ~/.codex/sessions and ~/.codex/archived_sessions, picking up each session where the previous run stopped
+(progress is kept in local/papercuts/scan-state.codex.edn). Guardian reviews are always skipped, and `codex exec`
+runs unless --include-exec. Screens new stretches with Jev (TYPESAFE_API_KEY), drills flagged ones with the codex
+CLI, and submits each papercut once."
+   :examples [["./bin/mage papercuts-scan-codex" "Scan everything new since the last run"]
+              ["./bin/mage papercuts-scan-codex --since 2026-09-01 --limit 10" "Scan at most 10 sessions from September on"]
+              ["./bin/mage papercuts-scan-codex --drill-agent claude" "Review flagged Codex chunks with claude instead"]
+              ["./bin/mage papercuts-scan-codex --dry-run --project metabase/evals" "Show what evals sessions would report"]]
+   :requires [[mage.papercuts.scan :as papercuts-scan]]
+   :options [[nil "--since WHEN" "Only look at messages from this date, timestamp, or age (7d, 12h) on"]
+             ["-n" "--limit N" "Scan at most N sessions (most recently active first)" :parse-fn parse-long]
+             [nil "--session ID" "Only scan sessions whose id starts with ID"]
+             [nil "--project TEXT" "Only scan sessions whose working directory or path contains TEXT"]
+             [nil "--exclude REGEX" "Skip transcripts whose path matches REGEX"]
+             [nil "--[no-]subagents" "Include subagent transcripts" :default true]
+             [nil "--include-exec" "Include non-interactive `codex exec` sessions, such as review bots"]
+             [nil "--min-idle MINUTES" "Skip sessions active in the last MINUTES" :default 15 :parse-fn parse-long]
+             [nil "--threshold P" "Drill a chunk when any Jev probability reaches P" :default 0.8 :parse-fn parse-double]
+             [nil "--drill-agent AGENT" "CLI that reviews flagged chunks: codex or claude" :default "codex"
+              :validate [#{"claude" "codex"} "must be claude or codex"]]
+             [nil "--drill-model MODEL" "Model for the drill-down agent"]
+             [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "http://127.0.0.1:8765") :default-desc "$PAPERCUTS_SERVER or http://127.0.0.1:8765"]
+             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
+             [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.codex)"]
+             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.codex.edn)"]
+             [nil "--rescan" "Ignore saved progress and rescan from the start (already-reported papercuts are still skipped)"]
+             [nil "--dry-run" "Screen and drill, but submit nothing and save no progress"]
+             [nil "--screen-only" "Only print Jev scores: no drill-down, no submission, no saved progress"]
+             ["-j" "--jobs N" "Sessions to scan in parallel" :default 4 :parse-fn parse-long]
+             ["-v" "--verbose" "Print scores for clean chunks too"]]
+   :task (task! (papercuts-scan/scan! :codex parsed))}
+
   tail-d
   {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
    :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]

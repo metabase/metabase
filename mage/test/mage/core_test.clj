@@ -21,6 +21,8 @@
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]
    [mage.modules-test]
+   [mage.papercuts.scan-test]
+   [mage.papercuts.transcript-test]
    [mage.project-tests-test]
    [mage.quick-test-runner-test]
    [mage.shell-test]
