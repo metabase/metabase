@@ -1,0 +1,59 @@
+# Vibes in native SQLite questions
+
+With the enterprise sources available, set `MB_VIBES_ENABLED=true` and `MB_VIBES_API_KEY` in the Metabase server
+environment. The normal SQLite driver then installs `vibes()`, `vibes_info()`, `vibes_rewrite()`, and the
+`RERANK BASED ON VIBES` rewrite on warehouse connections, including pooled connections. No semantic search
+index or vec1 extension is needed for these features.
+
+Select any SQLite database in the native SQL editor. For example:
+
+```sql
+WITH meetings(description) AS (
+  VALUES
+    ('Emergency response to a production outage'),
+    ('45 minutes to agree that the button should stay blue'),
+    ('A kickoff to schedule the pre-kickoff alignment session'),
+    ('Someone shares a spreadsheet and reads every cell aloud')
+)
+SELECT description
+FROM meetings
+RERANK BASED ON VIBES('this meeting could have been an email') DESC
+LIMIT 3;
+```
+
+`RERANK` scores the full selected rows together, with requests chunked at 100 candidates. A trailing `LIMIT`
+applies after scoring; constrain the input query when you want to score fewer candidates. The default direction
+is `DESC`. Bare `RERANK BASED ON VIBES` reads its prompt from a `user_prompt` CTE with a `prompt` column.
+
+The scalar form also works:
+
+```sql
+SELECT description
+FROM meetings
+ORDER BY vibes('this meeting could have been an email', description) DESC;
+```
+
+Here `meetings` represents your table (or the CTE above). This form makes a separate request for each distinct
+description on a cold cache. Both forms use the same five-minute score cache. Failed scoring returns `NULL`.
+Use `SELECT vibes_info()` to check the enabled flag, model, and cache statistics.
+
+When disabled, fresh warehouse connections get neither the functions nor the rewrite. Functions already
+registered on a pooled connection remain present but return `NULL` for scoring while disabled. The internal
+semantic search store continues to install its functions independently. This hook does not load vec1 for
+warehouse queries against vector virtual tables.
+
+## Other databases
+
+The Jev HTTP client, prompt construction, and scoring cache can be shared. The function registration uses
+`org.sqlite.Function`, and the rewrite emits SQLite JSON functions and materialized CTEs. Other database types
+are not enabled by this hook.
+
+H2 could use a Java function alias, with the scorer available in the H2 engine's JVM, plus an H2-specific rewrite.
+Postgres would need a server-side function/extension and a dialect-specific rewrite to support `vibes()` in
+arbitrary SQL expressions. Registering a Java callback on a JDBC client connection does not install a Postgres
+function.
+
+An alternative for portable `RERANK` support is to run the candidate query on its original database, batch-score
+the returned rows in Metabase, then sort and apply the final limit/offset. That requires result buffering,
+candidate bounds, and cancellation handling, and does not by itself support arbitrary SQL expressions using
+`vibes()`.

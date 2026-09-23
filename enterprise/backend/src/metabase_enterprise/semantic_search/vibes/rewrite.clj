@@ -155,7 +155,15 @@
   (let [kws (top-level-keywords select #{"with" "select" "values"})]
     (if (and (seq kws)
              (= "with" (second (first kws)))
-             (zero? (count (str/trim (subs select 0 (ffirst kws))))))
+             ;; The SQL editor prefixes statements with a Metabase remark. Ignore leading comments as well as
+             ;; whitespace so CTEs (especially user_prompt) remain visible to the outer scoring query.
+             (= (ffirst kws)
+                (loop [i 0]
+                  (cond
+                    (>= i (count select)) i
+                    (Character/isWhitespace (.charAt select i)) (recur (inc i))
+                    (skip-comment select i) (recur (long (skip-comment select i)))
+                    :else i))))
       (if-let [[j _] (second kws)]
         (let [[i _] (first kws)
               ctes  (str/trim (subs select (+ i 4) j))

@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -538,9 +539,15 @@
   ;; strftime strftime('%s', <timestring>) returns the unix time as an integer.
   (h2x/- (strftime "%s" y) (strftime "%s" x)))
 
+(defenterprise install-vibes-if-enabled!
+  "Install the optional vibes functions and SQL rewrite on a SQLite warehouse connection."
+  metabase-enterprise.semantic-search.vibes.sqlite
+  [conn]
+  conn)
+
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
-;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
-;; the default impl is setting the transaction isolation level
+;; step. SQLite doesn't have a notion of session timezones so don't do that either. Set the transaction isolation
+;; level and, when enabled, install the vibes functions and statement rewrite.
 (defmethod sql-jdbc.execute/do-with-connection-with-options :sqlite
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -550,7 +557,9 @@
    (fn [^Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn))
-     (f conn))))
+     (f (if (sql-jdbc.execute/recursive-connection?)
+          conn
+          (install-vibes-if-enabled! conn))))))
 
 ;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
 (defmethod sql-jdbc.execute/prepared-statement :sqlite

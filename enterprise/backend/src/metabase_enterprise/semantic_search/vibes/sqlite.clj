@@ -19,12 +19,14 @@
    [metabase-enterprise.semantic-search.vibes.prompt :as prompt]
    [metabase-enterprise.semantic-search.vibes.rewrite :as rewrite]
    [metabase-enterprise.semantic-search.vibes.settings :as vibes.settings]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.lang.reflect InvocationHandler InvocationTargetException Method Proxy)
    (java.security MessageDigest)
-   (java.sql Connection PreparedStatement Statement)))
+   (java.sql Connection PreparedStatement Statement)
+   (org.sqlite SQLiteConnection)))
 
 (set! *warn-on-reflection* true)
 
@@ -237,7 +239,16 @@
                                                            (str "ERROR: " (ex-message e))))))))
 
 (defn install!
-  "[[register-vibes!]] on the raw `conn`, then [[wrap-connection]]. Returns the wrapped connection."
+  "Register functions on the underlying SQLite connection, then wrap `conn` for rewriting. Keep any pool wrapper
+  so closing the returned connection returns it to its pool rather than closing the physical connection."
   ^Connection [^Connection conn]
-  (register-vibes! conn)
+  (register-vibes! (.unwrap conn SQLiteConnection))
   (wrap-connection conn))
+
+(defenterprise install-vibes-if-enabled!
+  "Enable vibes SQL on any SQLite warehouse when `vibes-enabled` / `MB_VIBES_ENABLED` is true."
+  :feature :none
+  [conn]
+  (if (vibes.settings/vibes-enabled)
+    (install! conn)
+    conn))

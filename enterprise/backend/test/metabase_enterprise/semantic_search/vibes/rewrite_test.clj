@@ -40,6 +40,13 @@
   (let [out (rewrite "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 5) SELECT x FROM n RERANK BASED ON VIBES(?)")]
     (is (str/starts-with? out "WITH n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 5),"))))
 
+(deftest ^:parallel with-clause-after-comments-test
+  (doseq [prefix ["-- Metabase query\n" " /* query */ \n-- another comment\n "]]
+    (let [out (rewrite (str prefix "WITH user_prompt AS (SELECT 'best' AS prompt) "
+                            "SELECT * FROM t RERANK BASED ON VIBES"))]
+      (is (str/starts-with? out "WITH user_prompt AS (SELECT 'best' AS prompt),"))
+      (is (str/includes? out "FROM (SELECT * FROM t)")))))
+
 (deftest ^:parallel bare-vibes-uses-user-prompt-test
   (let [out (rewrite "WITH user_prompt AS (SELECT 'monthly revenue' AS prompt) SELECT * FROM t RERANK BASED ON VIBES")]
     (is (str/includes? out "ORDER BY vibes((SELECT prompt FROM user_prompt), __vibes_id, __vibes_roster.j) DESC"))))
