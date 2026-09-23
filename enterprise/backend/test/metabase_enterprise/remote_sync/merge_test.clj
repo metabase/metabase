@@ -235,3 +235,43 @@
               combined (counting #(remote-sync.merge/merge-with-casualties base ours theirs))]
           (is (= (+ (count base) (count ours) (count theirs))
                  (- separate combined))))))))
+
+(deftest ^:parallel preview-with-casualties-matches-full-merge-test
+  (testing "the preview computes ours only for remote-changed entities, yet reports what the full merge reports"
+    (let [base   [(card "A" "a") (card "B" "b") (card "C" "c") (card "E" "e") (card "F" "f")]
+          ;; ours: edits B (remote untouched), deletes C (remote edits it), edits E the same way as remote, adds G
+          ours   [(card "A" "a") (card "B" "b" "x: ours\n") (card "E" "e" "x: same\n") (card "F" "f") (card "G" "g")]
+          ;; theirs: edits C, edits E, deletes F, adds D
+          theirs [(card "A" "a") (card "B" "b") (card "C" "c" "x: theirs\n") (card "D" "d")
+                  (card "E" "e" "x: same\n")]
+          asked  (atom nil)
+          full   (remote-sync.merge/merge-with-casualties base ours theirs)
+          result (remote-sync.merge/preview-with-casualties
+                  base theirs
+                  (fn [paths]
+                    (reset! asked paths)
+                    (let [wanted (into #{} (map (comp :id last)) paths)]
+                      (filter #(wanted (second (re-find #"id: (\w+)" (:content %)))) ours))))]
+      (is (= #{"C" "D" "E" "F"} (into #{} (map (comp :id last)) @asked)))
+      (is (every? #(= "Card" (:model (last %))) @asked))
+      (is (= (dissoc full :merged) result))
+      (is (= 1 (count (:conflicts result))) "local delete of C vs remote edit of C"))))
+
+(deftest ^:parallel preview-with-casualties-non-serdes-file-test
+  (testing "a non-serdes file the remote edited is compared against our full export, not read as deleted locally"
+    (let [readme-base   {:path "README.md" :content "hello\n"}
+          readme-theirs {:path "README.md" :content "hello, edited remotely\n"}
+          base          [(card "A" "a") readme-base]
+          ours          [(card "A" "a") readme-base]
+          theirs        [(card "A" "a") readme-theirs]
+          full          (remote-sync.merge/merge-with-casualties base ours theirs)
+          result        (remote-sync.merge/preview-with-casualties
+                         base theirs
+                         (fn [paths]
+                           (if (= :all paths)
+                             ours
+                             (let [wanted (into #{} (map (comp :id last)) paths)]
+                               (filter #(wanted (second (re-find #"id: (\w+)" (:content %)))) ours)))))]
+      (is (= (dissoc full :merged) result))
+      (is (empty? (:conflicts result)) "a clean remote update, not an edit-vs-delete conflict")
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))

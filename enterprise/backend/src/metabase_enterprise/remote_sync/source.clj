@@ -189,15 +189,20 @@
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
-(defn preview-merge
-  "Dry-run of the export merge: computes the 3-way merge without writing anything. Returns
+(defn preview-merge-changes
+  "Dry-run of the export merge: computes what a 3-way merge would do without writing anything, serializing only the
+  local entities the remote changed since the merge base. Returns
   `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}
-    :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote
-  content a force push (rather than a merge) would discard. Pass nil for `task-id` to skip progress
-  reporting."
-  [stream snapshot base-snapshot task-id]
+    :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote content a
+  force push (rather than a merge) would discard. `extract-for` is called once with the serdes paths of the remote-changed
+  entities and returns a stream of extracted entities that includes every local entity serializing to one of those
+  paths, or with `:all` when a remote-changed file has no serdes identity, in which case it returns every exported
+  entity (see [[remote-sync.merge/preview-with-casualties]])."
+  [extract-for snapshot base-snapshot]
   (let [{:keys [conflicts summary force-push-casualties]}
-        (compute-merge stream snapshot base-snapshot task-id)]
+        (remote-sync.merge/preview-with-casualties (snapshot->specs base-snapshot)
+                                                   (snapshot->specs snapshot)
+                                                   (fn [paths] (serialize-specs (extract-for paths) nil)))]
     {:clean?                 (empty? conflicts)
      :conflicts             (mapv remote-sync.merge/conflict-label conflicts)
      :summary               summary

@@ -2039,7 +2039,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge-changes     (fn [_ _ _]
                                                                    {:clean? true :conflicts []
                                                                     :summary {:added 1 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
@@ -2051,7 +2051,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge             (fn [_ _ _ _]
+                                source/preview-merge-changes     (fn [_ _ _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
                                                                     :summary {:added 0 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? false
@@ -2059,21 +2059,26 @@ serdes/meta:
               :summary {:added 0 :updated 0 :removed 0}}
              (impl/preview-export-merge "main"))))))
 
-(deftest preview-export-merge-streams-extraction-test
-  (testing "preview hands the extraction stream to the merge unrealized and walks the targets once"
-    (let [walks    (atom 0)
-          stream   (eduction (map identity) [{:dummy true}])
-          received (atom nil)]
+(deftest preview-export-merge-extracts-only-remote-changes-test
+  (testing "preview walks the targets once and extracts only the targets the remote-changed paths need"
+    (let [walks     (atom 0)
+          stream    (eduction (map identity) [{:dummy true}])
+          extracted (atom nil)
+          resolved  (atom nil)]
       (mt/with-dynamic-fn-redefs [remote-sync.task/last-version    (constantly "base-B")
                                   source/source-from-settings      (constantly (export-test-source))
-                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1]})
-                                  spec/extract-entities-for-export (fn [_targets] stream)
-                                  source/preview-merge             (fn [s _ _ _]
-                                                                     (reset! received s)
+                                  spec/exportable-entities         (fn [] (swap! walks inc) {"Card" [1 2]})
+                                  spec/targets-for-paths           (fn [targets paths]
+                                                                     (reset! resolved [targets paths])
+                                                                     {"Card" [2]})
+                                  spec/extract-entities-for-export (fn [targets] (reset! extracted targets) stream)
+                                  source/preview-merge-changes     (fn [extract-for _ _]
+                                                                     (is (identical? stream (extract-for [[{:model "Card" :id "x"}]])))
                                                                      {:clean? true :conflicts []
                                                                       :summary {:added 0 :updated 0 :removed 0}})]
         (impl/preview-export-merge "main")
-        (is (identical? stream @received))
+        (is (= [{"Card" [1 2]} [[{:model "Card" :id "x"}]]] @resolved))
+        (is (= {"Card" [2]} @extracted))
         (is (= 1 @walks))))))
 
 (deftest preview-export-merge-nothing-exportable-test
