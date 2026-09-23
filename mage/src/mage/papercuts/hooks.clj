@@ -66,18 +66,25 @@
       config)
     {}))
 
+(def ^:private max-link-hops
+  "More links than this in a row is taken as a loop, as the OS does."
+  40)
+
 (defn- link-target
   "The file `path` finally points at, following symlinks even when the last target doesn't exist yet. Throws on a
   symlink loop."
   [path]
-  (loop [path (str path) seen #{}]
+  (loop [path (str path) seen #{} hops 0]
     (cond
       (not (fs/sym-link? path)) path
-      (seen path)                (throw (ex-info (str "Symlink loop at " path) {:path path}))
+      (or (seen path) (>= hops max-link-hops)) (throw (ex-info (str "Symlink loop at " path) {:path path}))
       :else
       (let [target (fs/read-link path)]
-        (recur (str (fs/normalize (if (fs/absolute? target) target (fs/path (fs/parent path) target))))
-               (conj seen path))))))
+        ;; A relative target is relative to the link's real directory, which may itself sit behind a symlink. The
+        ;; directory exists, since the link is in it; the final target may not.
+        (recur (str (if (fs/absolute? target) target (fs/path (fs/real-path (fs/parent path)) target)))
+               (conj seen path)
+               (inc hops))))))
 
 (defn- write-config! [path config]
   ;; Moving over a symlink would replace the link, so a dotfile-managed config would stop being managed.
