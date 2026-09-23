@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { useSuggestEntityTypeMutation } from "metabase/api/jev";
+import S from "metabase/css/components/jev-shimmer.module.css";
 import { getEntityIcon } from "metabase/detail-view/utils";
 import {
   Button,
@@ -130,7 +131,10 @@ function EntityTypeSuggestion({
         <Button
           size="compact-sm"
           variant="subtle"
-          leftSection={<Icon name="sparkles" size={12} aria-hidden />}
+          classNames={{ label: S.label }}
+          leftSection={
+            <Icon name="sparkles" size={12} className={S.icon} aria-hidden />
+          }
           loading={isLoading}
           disabled={disabled}
           onClick={() => suggest(table)}
@@ -150,6 +154,7 @@ function EntityTypeSuggestion({
                 <Button
                   size="compact-sm"
                   variant="light"
+                  classNames={{ label: S.label }}
                   disabled={disabled}
                   onClick={() => onChange(suggestion.value)}
                 >

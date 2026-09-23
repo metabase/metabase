@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import S from "metabase/css/components/jev-shimmer.module.css";
 import { Button, Icon, KeyboardShortcut } from "metabase/ui";
-
-import S from "./JevFilterPaletteButton.module.css";
 
 interface JevFilterPaletteButtonProps {
   onClick: () => void;
