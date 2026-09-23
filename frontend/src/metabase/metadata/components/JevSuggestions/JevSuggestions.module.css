@@ -1,0 +1,33 @@
+.banner {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  background-color: var(--mb-color-background);
+}
+
+.modalList {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+/*
+ * Confidence-weighted accept button. `--confidence` (0..1) drives the opacity of a
+ * success-colored background layer, so a high-confidence suggestion reads as bold and
+ * inviting while a low-confidence one stays faint and asks to be checked. We layer the
+ * fill in a pseudo-element rather than color-mixing the variable (which the style guide
+ * forbids) so the alpha can scale freely.
+ */
+.acceptButton {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--mb-color-border);
+}
+
+.acceptButton::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-color: var(--mb-color-success);
+  opacity: var(--confidence, 0);
+}
