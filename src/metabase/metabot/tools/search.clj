@@ -13,6 +13,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -150,50 +151,58 @@
   `portable_entity_id` and must hallucinate the source (observed: `[<db>, public, customers]`) or spend a
   `read_resource` round-trip.
 
-  `report_card.source_card_id` decides which applies. A metric defined on a saved question or model is consumed from
-  that card only: `report_card.table_id` points at the card's *underlying* table, and a query sourcing that table is
-  rejected by the QP with `Incompatible metric`. Those results carry the source-card fields and omit the base-table
-  ones; only a table-based metric gets the base-table fields.
+  [[metabase.metabot.tools.util/metric-required-source]] decides which applies -- NOT `report_card.source_card_id`,
+  which only names what stage 0 reads and so cannot tell a single-stage card-based metric (consumed from that card)
+  from a multi-stage one (consumed from its base table). A metric pinned to a card carries the source-card fields
+  and omits the base-table ones, and vice versa; pairing either with the wrong source is a QP `Incompatible metric`
+  throw.
 
-  Source columns are read from `report_card` plus `metabase_table.{schema,name}`, a fixed number of small queries per
-  search call regardless of result-set size. Source metadata is attached only when the user can read that Table or
-  Card; collection access to the metric Card does not imply access to its source.
+  Source columns are read from `report_card` plus `metabase_table.{schema,name}`: a fixed number of queries per
+  search call regardless of result-set size, though no longer small ones -- deciding which source applies needs each
+  metric's `dataset_query`, so that read is now a JSON column per metric in the page rather than an int. Bounded by
+  page size, and there is no narrower column that answers the question. Source metadata is attached only when the
+  user can read that Table or Card; collection access to the metric Card does not imply access to its source.
 
   Requires `:database_name` to already be set on each metric result (done earlier by
   [[enrich-with-database-engines]]) so we can assemble the full portable FK
   `[database_name, schema, table]`."
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
-        ;; Card-based metrics first -- they take precedence over, and suppress, the base-table fields below.
         card-id->source (when (seq metric-ids)
                           (metabot.db/card-source-info metric-ids))
+        metric-id->required (into {}
+                                  (keep (fn [[metric-id row]]
+                                          (when-let [r (metabot.tools.u/metric-required-source row)]
+                                            [metric-id r])))
+                                  card-id->source)
+        ;; Card-pinned metrics first -- they take precedence over, and suppress, the base-table fields below.
         metric-id->source-card-id
         (into {}
-              (keep (fn [[metric-id {:keys [source_card_id]}]]
-                      (when source_card_id [metric-id source_card_id])))
-              card-id->source)
+              (keep (fn [[metric-id r]]
+                      (when (= :card (:kind r)) [metric-id (:card-id r)])))
+              metric-id->required)
         source-card-id->info
-        (when (seq metric-id->source-card-id)
-          (into {}
-                (comp (filter mi/can-read?)
-                      (map (juxt :id #(select-keys % [:id :name :entity_id]))))
-                (metabot.db/card-source-rows (distinct (vals metric-id->source-card-id)))))
+        (metabot.tools.u/readable-source-cards (distinct (vals metric-id->source-card-id)))
         metric-id->source-card (into {}
                                      (keep (fn [[metric-id source-card-id]]
                                              (when-let [info (get source-card-id->info source-card-id)]
                                                [metric-id info])))
                                      metric-id->source-card-id)
         metric-id->table-id (into {}
-                                  (keep (fn [[metric-id {:keys [table_id source_card_id]}]]
-                                          ;; A card-based metric's table is never a usable source, so it is dropped
-                                          ;; here rather than filtered downstream.
-                                          (when (and table_id (nil? source_card_id))
-                                            [metric-id table_id])))
-                                  card-id->source)
+                                  (keep (fn [[metric-id r]]
+                                          ;; A card-pinned metric's table is never a usable source, so it is
+                                          ;; dropped here rather than filtered downstream.
+                                          (when (and (= :table (:kind r)) (:table-id r))
+                                            [metric-id (:table-id r)])))
+                                  metric-id->required)
         table-ids (->> metric-id->table-id vals distinct)
+        ;; `can-query?`, not `can-read?`: this attribute promises the agent a table it can build a query on, and it
+        ;; must agree with `metric-details`, which gates the same disclosure on `can-query?`. Disagreeing now costs
+        ;; more than a missing attribute did -- the `:else` arm below turns a false negative into
+        ;; `source_unavailable`, which tells the agent to skip a metric the other surface hands it a source for.
         table-id->info (when (seq table-ids)
                          (into {}
-                               (comp (filter mi/can-read?)
+                               (comp (filter mi/can-query?)
                                      (map (juxt :id (juxt :schema :name))))
                                (metabot.db/table-schema-rows table-ids)))
         metric-id->table-info
@@ -205,9 +214,7 @@
                                     :table-name table-name}])))
               metric-id->table-id)]
     (cond->> results
-      ;; `metric-id->source-card-id` rather than `->source-card`: a metric whose source card is unreadable has no
-      ;; entry in the latter but still needs its `:source_unavailable` marker.
-      (or (seq metric-id->table-id) (seq metric-id->source-card-id))
+      (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
               (let [source-card (get metric-id->source-card id)
                     {:keys [table-id schema table-name]} (get metric-id->table-info id)]
@@ -229,15 +236,12 @@
                     database_name
                     (assoc :base_table_portable_fk [database_name schema table-name]))
 
-                  ;; Names a source card that cannot be offered -- unreadable, or gone -- so neither it nor the
-                  ;; base table below it is available. Say so positively: absence alone reads to the LLM as
-                  ;; "look it up elsewhere",
-                  ;; which is the guess-a-source behaviour this enrichment exists to prevent. Must agree with
-                  ;; `metric-details`, which describes the same metric on the other surface.
-                  (contains? metric-id->source-card-id id)
-                  (assoc result :source_unavailable true)
-
-                  :else result)))))))
+                  ;; No source could be offered -- unreadable, gone, or a definition we could not read. Say so
+                  ;; positively: absence alone reads to the LLM as "look it up elsewhere", which is the
+                  ;; guess-a-source behaviour this enrichment exists to prevent. Symmetric across both kinds, and
+                  ;; must agree with `metric-details`, which describes the same metric on the other surface.
+                  :else
+                  (assoc result :source_unavailable true))))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.

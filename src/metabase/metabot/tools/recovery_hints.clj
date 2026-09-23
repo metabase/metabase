@@ -40,9 +40,15 @@
 
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
+(defn- card-fields-uri
+  "The `read_resource` URI listing a source card's columns. There is no `metabase://card/...` -- the dispatcher
+  matches `model` / `question` only, and they take different handlers."
+  [card-type card-id]
+  (str "metabase://" card-type "/" card-id "/fields"))
+
 (defn recovery-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id source-card source-card-type]}]
   (case error
     :uri-in-source-table
     (uri-hint entity-type entity-id)
@@ -63,7 +69,15 @@
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
 
     :ambiguous-fk
-    (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
+    (if (and source-card source-card-type)
+      (tru "Call `read_resource` with `{0}` to list the available foreign-key columns."
+           (card-fields-uri source-card-type source-card))
+      (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."))
+
+    :column-not-returned
+    (when (and source-card source-card-type)
+      (tru "Call `read_resource` with `{0}` to list the columns it returns."
+           (card-fields-uri source-card-type source-card)))
 
     :no-fk-path
     (tru "If a metric relates to that table, read its dimensions resource `metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste and the columns it unlocks.")

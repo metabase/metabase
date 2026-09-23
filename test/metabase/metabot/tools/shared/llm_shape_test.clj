@@ -84,7 +84,9 @@
                   :description "Sum of all revenue"
                   :verified true
                   :collection {:name "Finance"}
-                  :default_time_dimension_field {:name "created_at"}
+                  ;; The key this used to be given (`:default_time_dimension_field`, a map) is not produced
+                  ;; anywhere in production, so the rendered line was empty on every real render.
+                  :default_time_dimension_field_name "date"
                   :queryable-dimensions [{:name "date" :field_id "d1" :base-type :type/Date :database_type "DATE"}]}
           xml (llm-shape/metric->xml metric)]
       (is (str/starts-with? xml "<metric"))
@@ -97,7 +99,7 @@
       (is (str/includes? xml "The following dimensions can be used for filter- or group-by operations"))
       (is (str/includes? xml "metabase://metric/42/dimensions/{field_id}"))
       (is (str/includes? xml "The metric is stored in the following collection"))
-      (is (str/includes? xml "Default Time Dimension Field: created_at"))
+      (is (str/includes? xml "Default Time Dimension Field: date"))
       (is (str/ends-with? (str/trim xml) "</metric>"))))
   (testing "handles metric without dimensions"
     (let [metric {:id 1 :name "Test" :verified false}
