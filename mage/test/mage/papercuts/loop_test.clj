@@ -70,11 +70,12 @@
 (defn- write-session!
   "Write a Claude transcript for session `id` under `projects`, one user message per text. Every message is stamped
   `ts`, so a session written after triage is observed after it."
-  [projects id ts texts]
+  [projects id ts texts & [cwd]]
   (let [file (fs/path projects "-w-metabase" (str id ".jsonl"))]
     (fs/create-dirs (fs/parent file))
     (spit (str file) (str/join "\n" (for [text texts]
-                                      (json/write-str {:type "user" :timestamp ts :message {:content text}}))))
+                                      (json/write-str (cond-> {:type "user" :timestamp ts :message {:content text}}
+                                                        cwd (assoc :cwd cwd))))))
     ;; The scanner skips sessions touched within --min-idle; backdate so the file counts as idle.
     (fs/set-last-modified-time file (.minusSeconds (Instant/now) 60))
     (str file)))
@@ -206,3 +207,18 @@
         (testing "the next scan screens it, though the transcript hasn't changed"
           (scan! server state-file projects flaky-test)
           (is (= [title] (map :title (papercuts server)))))))))
+
+(deftest repository-comes-from-the-session-test
+  (with-server!
+    (fn [server dir]
+      (let [projects   (str (fs/path dir "projects"))
+            state-file (str (fs/path dir "scan-state.claude.edn"))
+            repo       (str (fs/create-dirs (fs/path dir "evals")))]
+        (p/shell {:dir repo :out :string} "git" "init" "-q")
+        (p/shell {:dir repo} "git" "remote" "add" "origin" "git@github.com:metabase/evals.git")
+        (write-session! projects "55555555-5555-4555-8555-555555555555" "2026-09-20T10:00:00Z"
+                        flaky-test-messages repo)
+        (scan! server state-file projects flaky-test {:repository nil})
+        (is (= [["evals" title]]
+               (map (juxt :repository :title)
+                    (:papercuts (:body (request server :get "/api/papercuts?limit=500"))))))))))
