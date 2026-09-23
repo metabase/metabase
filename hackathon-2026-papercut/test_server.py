@@ -576,6 +576,17 @@ class HttpTest(unittest.TestCase):
         self.assertIn("<a href='http://localhost:3000/x'>http://localhost:3000/x</a>&#x27;onmouseover", page)
         self.assertNotIn("href='javascript", page)
 
+    def test_reports_collapse_except_the_newest(self):
+        for report_id, observed_at in (("old", "2026-09-01"), ("new", "2026-09-02")):
+            self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": report_id,
+                                               "title": f"{report_id} report", "fingerprint": "trap", "session": "s1",
+                                               "observed_at": observed_at})
+        _, page, _ = self.call("GET", "/papercuts/1")
+        self.assertIn("<details class='card' open><summary><strong>laptop</strong> <span class='muted'>"
+                      "2026-09-02T00:00:00+00:00 · session s1</span> new report</summary>", page)
+        self.assertIn("<details class='card'><summary><strong>laptop</strong> <span class='muted'>"
+                      "2026-09-01T00:00:00+00:00 · session s1</span> old report</summary>", page)
+
 
 if __name__ == "__main__":
     unittest.main()

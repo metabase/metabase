@@ -1103,15 +1103,13 @@ def pr_control(papercut):
 def papercut_html(papercut):
     esc = html.escape
     reports = "".join(
-        f"<div class='card'><strong>{esc(r['reporter'])}</strong>"
-        f"{' via ' + esc(r['agent']) if r['agent'] else ''}{' on ' + esc(r['machine']) if r['machine'] else ''} "
+        f"<details class='card'{' open' if i == 0 else ''}><summary><strong>{esc(r['reporter'])}</strong> "
         f"<span class='muted'>{esc(r['observed_at'] or r['received_at'])}"
         f"{' · ' + linked(r['source_ref']) if r['source_ref'] else ''}"
-        f"{' · session ' + esc(r['session']) if r['session'] else ''}"
-        f"{git_label(r)}"
-        f"{cost(r['cost_minutes'])}</span>"
-        f"<p>{esc(r['title'])}</p><pre>{linked(r['description'])}</pre></div>"
-        for r in papercut["reports"]
+        f"{' · session ' + esc(r['session']) if r['session'] else ''}</span> {esc(r['title'])}</summary>"
+        f"<p class='muted'>{'via ' + esc(r['agent']) if r['agent'] else ''}{' on ' + esc(r['machine']) if r['machine'] else ''}"
+        f"{git_label(r)}{cost(r['cost_minutes'])}</p><pre>{linked(r['description'])}</pre></details>"
+        for i, r in enumerate(papercut["reports"])
     )
     if papercut["report_count"] > len(papercut["reports"]):
         reports += f"<p class='muted'>Showing the latest {len(papercut['reports'])} of {papercut['report_count']} reports.</p>"
