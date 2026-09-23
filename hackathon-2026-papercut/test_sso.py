@@ -81,6 +81,7 @@ class SignInTest(HttpCase):
         self.assertEqual((status, response.getheader("Location")),
                          (302, "/auth/login?next=%2Fpapercuts%2F1%3Freports_limit%3D1"))
         self.assertEqual(self.call("GET", "/api/papercuts", headers=PROXIED)[0], 401)
+        self.assertEqual(self.call("GET", "/api/install.sh", headers=PROXIED)[0], 401)
         self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"body": "Hi"}, PROXIED)[0], 401)
         self.sign_in.proxy_only = False
         self.assertEqual(self.call("GET", "/api/papercuts")[0], 401)
