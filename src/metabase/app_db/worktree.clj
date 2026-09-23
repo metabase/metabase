@@ -11,9 +11,10 @@
   is restricted to [[*worktree-id*]] here: the main app's rows by default, and a branch's while a request, an import
   or an export works inside one.
 
-  A query that reads several of those tables at once, by joining or unioning them, is restricted for the one it
-  selects from. [[without-worktree-scoping]] lifts the restriction for the code that has to see every worktree at
-  once, such as working out which one an entity is in."
+  A query that joins several of those tables is restricted for the one it selects from, and one built out of other
+  queries -- a union, a subselect, a common table expression -- is restricted for each of them.
+  [[without-worktree-scoping]] lifts the restriction for the code that has to see every worktree at once, such as
+  working out which one an entity is in."
   (:require
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -102,6 +103,11 @@
 
 (declare scope-query)
 
+(defn- scope-queries
+  "Restrict each query map of `queries`, leaving anything else alone."
+  [queries]
+  (mapv #(cond-> % (map? %) scope-query) queries))
+
 (defn- scope-ctes
   "Restrict each common table expression of `ctes` that reads a checked-out table."
   [ctes]
@@ -111,15 +117,43 @@
             cte))
         ctes))
 
+(defn- scope-subqueries
+  "Restrict each query `sources` selects from rather than names, such as the arms of a union a listing builds."
+  [sources]
+  (cond
+    (map? sources)        (scope-query sources)
+    (sequential? sources) (mapv (fn [source]
+                                  (cond
+                                    (map? source)               (scope-query source)
+                                    (and (vector? source)
+                                         (map? (first source))) (assoc source 0 (scope-query (first source)))
+                                    :else                       source))
+                                sources)
+    :else                 sources))
+
+(def ^:private set-operations
+  "The keys under which a query holds the queries it combines."
+  [:union :union-all :intersect :except])
+
 (defn- scope-query
-  "Restrict `query`, and each common table expression it defines, to the worktree being worked in."
+  "Restrict `query` to the worktree being worked in, along with every query it is built out of: the ones it selects
+  from, the ones it combines, and the common table expressions it defines. A query that names no checked-out table
+  itself is left alone."
   [query]
-  (cond-> (if-let [column (worktree-column query)]
-            (let [clause [:= column *worktree-id*]]
-              (update query :where #(if % [:and % clause] clause)))
-            query)
-    (sequential? (:with query))           (update :with scope-ctes)
-    (sequential? (:with-recursive query)) (update :with-recursive scope-ctes)))
+  (as-> query query
+    (if-let [column (worktree-column query)]
+      (let [clause [:= column *worktree-id*]]
+        (update query :where #(if % [:and % clause] clause)))
+      query)
+    (cond-> query
+      (sequential? (:with query))           (update :with scope-ctes)
+      (sequential? (:with-recursive query)) (update :with-recursive scope-ctes)
+      (some? (:from query))                 (update :from scope-subqueries))
+    (reduce (fn [query k]
+              (cond-> query
+                (sequential? (get query k)) (update k scope-queries)))
+            query
+            set-operations)))
 
 (methodical/defmethod t2.pipeline/build :after :default
   "Read and write only the worktree being worked in."

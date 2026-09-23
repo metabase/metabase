@@ -47,3 +47,29 @@
         (mdb.worktree/with-worktree Integer/MAX_VALUE
           (is (empty? (ids)))
           (is (empty? (cte-ids))))))))
+
+(deftest ^:parallel a-query-built-out-of-others-is-restricted-throughout-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}]
+    (letfn [(union-ids []
+              (map :id (t2/query {:select [:id]
+                                  :from   [[^:allow-subquery
+                                            {:union-all [^:allow-subquery {:select [:id]
+                                                                           :from   [[:collection :c]]
+                                                                           :where  [:= :c.id collection-id]}
+                                                         ^:allow-subquery {:select [:id]
+                                                                           :from   [[:collection :c2]]
+                                                                           :where  [:= :c2.id collection-id]}]}
+                                            :both]]})))
+            (subselect-ids []
+              (map :id (t2/query {:select [:id]
+                                  :from   [[^:allow-subquery {:select [:id]
+                                                              :from   [:collection]
+                                                              :where  [:= :id collection-id]}
+                                            :mine]]})))]
+      (testing "the main app reads its own content"
+        (is (= [collection-id collection-id] (union-ids)))
+        (is (= [collection-id] (subselect-ids))))
+      (testing "a worktree reads only what it checked out"
+        (mdb.worktree/with-worktree Integer/MAX_VALUE
+          (is (empty? (union-ids)))
+          (is (empty? (subselect-ids))))))))
