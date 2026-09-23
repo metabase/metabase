@@ -1,0 +1,195 @@
+# PLAN 001 — SQLite store: initialize, index, query
+
+Part of [PLAN.md](PLAN.md) (covers its iteration 0 and the store half of iteration 1).
+
+**Goal:** a standalone SQLite + vec1 store that can be opened/initialized, filled with Metabase's searchable
+documents, kept up to date per document, and queried by vector — all driven from the REPL.
+
+**Done when:** from a fresh REPL, with one env var set, you can index every searchable document of the dev
+instance into the file, find a card by a paraphrase of its name, see renames/deletes reflected, restart and
+reopen the same file without re-indexing, and switching the embedding model rebuilds the file.
+
+**Not in this plan (→ PLAN_002):** wiring into `semantic_search/core.clj`. Reason: the write hooks
+(`update-index!`, `delete-from-index!`) only fire when the semantic engine is active, which requires
+`supported?` to be true, which would also route `results` through the engine. Writes and reads have to be
+switched together, so wiring belongs with the search work. Also out: search results/scoring, FTS5, the
+gate/indexer, uberjar extension extraction, linux builds.
+
+---
+
+## Phase A — vec1 spike ✅ done 2026-09-23
+
+Runner: `native/vec1/spike/` (`clojure -M -m spike <check>…`, one fresh temp db per check). **Run crashing
+checks in their own JVM** — the first run was in the dev nREPL and a segfault killed it
+(`hs_err_pid3068.log` in the repo root).
+
+vec1 0.7 (NEON, multi-threaded), sqlite-jdbc 3.50.3.0, macOS aarch64, JDK 25.
+
+- [x] Create `vec1(vector, model, archived)` + `rebuild '{index:"flat", distance:"cos"}'` on an **empty**
+      table works. Shadow tables: `_config _base _idx _model _meta`.
+- [x] Insert with explicit rowid → rowid kept, found by KNN **without** another rebuild.
+- [x] `DELETE … WHERE rowid = ?` → gone from KNN; re-insert same rowid → back. Inserting an existing
+      rowid → `SQLITE_CONSTRAINT_PRIMARYKEY` (so delete first).
+- [x] ❌ **`UPDATE` crashes the JVM (SIGSEGV in `vec1ColumnMethod`)** — any form: vector only, meta only,
+      all columns. Root cause confirmed: **reading the hidden `distance` column without a query vector
+      segfaults** (`select rowid, distance from search_vec where rowid = ?` crashes too); UPDATE reads all
+      columns to build the new row. `select rowid, vector, model …` without a query is fine.
+      → **Never UPDATE; always delete + insert. Never select `distance` outside a KNN call.** Report upstream.
+- [x] Meta filters are **pre-filters** (pushed into the scan): with 50 cards near the query and 50
+      dashboards far away, `k=5 where model = 'dashboard'` returns 5 dashboards. Pushed and verified:
+      `=`, `a = ? and b = ?`, `>`, `IN (…)` (single and multi value, incl. non-existent values).
+- [x] ❌ `!=` is **not** pushed: `model != 'card'` → 0 rows (post-filter over the top 5). Only use `= < > <= >= IN IS [NOT] NULL`.
+- [x] Filters on a **joined** table are post-filters: `k=5 … where v.model = 'dashboard' and d.archived = 0`
+      → 3 rows. Anything that must not shrink results belongs in a vec1 meta column.
+- [x] `k`: `search_vec(?) limit 3` works standalone, but **LIMIT is not visible through a join**
+      (`vec1: no K value or visible LIMIT clause`), and no k + no LIMIT errors. → **Always pass `{k: N}`.**
+      `k` larger than row count just returns all rows.
+- [x] `distance` for `cos` = `1 − cos`: identical 0.0, cos 0.6 → 0.4, orthogonal 1.0, opposite 2.0.
+      Same as pgvector `<=>`; the 0.7 cutoff and `cosine-distance-ceiling` 2.0 carry over unchanged.
+- [x] 100 inserts in one transaction, commit, close, reopen → all searchable. Insert + rollback → not visible.
+- [x] Timing, 5 000 random 384-dim vectors: insert (batches of 100 per tx) **112 ms total**; KNN k=50
+      **2.0 ms** avg, with `model = ?` filter **1.5 ms**; file **7.9 MB** (~1.6 KB/vector).
+
+### Consequences for the phases below
+
+- Phase C: `search_vec` meta columns should cover the **filters that must not shrink results**, not just
+  `model`/`archived`. Candidates: `model`, `archived`, `verified`, `database_id`, `creator_id`,
+  `collection_id`. Scalars only; `IN` works, `!=` does not.
+- Phase D: write = `delete from search_vec where rowid = ?` + `insert` — never `UPDATE`.
+- Phase E: always `'{k: N}'`; never project `distance` without the query arg; only pushed operators on `v.*`.
+- Guardrail: all vec1 SQL lives in the store ns behind functions — no ad-hoc SQL against `search_vec`
+  elsewhere, since a wrong query kills the process.
+- [ ] Report upstream — details and repro in [LIMITATION_001_update_crash.md](LIMITATION_001_update_crash.md).
+      Repro: `clojure -M -m spike select-distance-no-query`.
+
+## Phase B — namespace, config, connection ✅ done 2026-09-23
+
+`enterprise/backend/src/metabase_enterprise/semantic_search/sqlite.clj`, tests in
+`enterprise/backend/test/metabase_enterprise/semantic_search/sqlite_test.clj` (8 tests, 14 assertions, green:
+`./bin/test-agent :only '[metabase-enterprise.semantic-search.sqlite-test]'`). Kondo clean;
+`fix-modules-config` → `:unchanged`.
+
+- [x] `db-path` — `MB_SEMANTIC_SEARCH_SQLITE_PATH` (trimmed, nil when blank); `enabled?`.
+- [x] `platform` → `darwin-aarch64` / `linux-x86_64` / …; `extension-path` — `MB_VEC1_EXTENSION_PATH`
+      override, else **classpath resource** `vec1/<platform>/vec1.<dylib|so|dll>` (`resources` is on the dev
+      classpath, so no cwd dependence). A resource inside a jar is rejected (extraction = production work).
+      Throws `No vec1 extension for this platform…` when missing.
+- [x] State: private `lock` + `state` atom `{:conn :path}`.
+- [x] `open!` / `(open! path)` — WAL, busy timeout 5 s, `SELECT load_extension(?)`; no-op for the same path,
+      closes the previous store for another path. (Schema check is Phase C.)
+- [x] `close!`; **`delete-store!`** instead of `reset!` (avoids shadowing `clojure.core/reset!`) — closes if
+      open and deletes the db, `-wal`, `-shm`, `-journal`.
+- [x] `with-conn [conn] …` — opens from `db-path` on demand, holds the lock for the whole body. Linted as
+      `clojure.core/fn` (`.clj-kondo/config.edn`, next to `with-dbs`).
+- [x] `->blob` / `<-blob`; `vec1-info`.
+- [x] `./bin/mage fix-modules-config` → `:unchanged`.
+
+Tests: platform format, blob round trip, missing extension throws, open/close/idempotent reopen,
+switching paths, delete removes files, 200 concurrent `with-conn` writers all land, vec1 KNN smoke test.
+
+## Phase C — schema = the "migration" (1–2 h)
+
+Not Liquibase — the file is not the app DB. Idempotent DDL on open, plus a version/model check that
+recreates the file on mismatch. The index is a cache; re-indexing refills it.
+
+- [ ] `schema-version` constant = 1. Bump it whenever DDL changes (PLAN_002 will, for FTS5).
+- [ ] `meta(k text primary key, v text)` holding `schema_version`, `provider`, `model_name`, `vector_dimensions`
+      (from `semantic.embedding/resolve-model` of `get-configured-model`).
+- [ ] `ensure-schema!`:
+  - no `meta` table → create everything, write meta;
+  - meta matches → nothing;
+  - mismatch → log, `delete-store!`, reopen, create. Return `:created` / `:existing` / `:recreated` (useful in REPL + tests).
+- [ ] `search_doc` — same column names as pgvector's `index.clj` `index-table-schema`, minus `embedding` and the
+      two tsvector columns (see PLAN.md 1.2 for the DDL). `id integer primary key` = vec1 rowid.
+      `unique (model, model_id)`. Timestamps as ISO-8601 text, booleans as 0/1.
+- [ ] `search_vec` — `create virtual table search_vec using vec1(vector, model, archived, verified, database_id, creator_id, collection_id)`
+      (meta set per Phase A consequences), then
+      `insert into search_vec(cmd, arg) values ('rebuild', '{index:"flat", distance:"cos"}')`.
+      Meta columns duplicate `search_doc` columns so those filters run inside the KNN (pre-filter).
+- [ ] Everything in one transaction on create.
+
+## Phase D — write path (3–4 h)
+
+- [ ] `doc->row` — port of `index.clj` `doc->db-record` without pg bits: no tsvector, no embedding,
+      `legacy_input`/`metadata` as JSON strings (legacy_input is often already a string), booleans → 0/1,
+      instants → ISO strings. Needs `batch-resolve-personal-owner-ids` and `to-instant`/`to-boolean`
+      from `index.clj` — make them public (hackathon) rather than copy.
+- [ ] `upsert-documents!` [docs] — per batch of 100 (`partition-all`):
+  1. `text->docs (group-by :embeddable_text)` — embed each distinct text once.
+  2. Optional cache: texts whose `(model, model_id)` row already has identical `content` skip embedding and
+     only update `search_doc` (makes re-running a full index cheap). Do this if time allows.
+  3. `semantic.embedding/get-embeddings-batch model texts {:type :index :record-tokens? true}` — **outside**
+     the lock; embedding is the slow part.
+  4. Validate each vector length = `vector_dimensions`; skip + log the doc otherwise.
+  5. Inside `with-conn` + one transaction: per doc
+     - upsert `search_doc` (`insert … on conflict(model, model_id) do update set …`),
+     - `select id from search_doc where model = ? and model_id = ?` (avoid relying on RETURNING via JDBC),
+     - `delete from search_vec where rowid = ?`, then `insert into search_vec(rowid, vector, <meta cols>) values (…)`.
+       **Never `UPDATE search_vec`** — it segfaults (Phase A).
+  6. Return `{model count}` frequencies like `pgvector-api/gate-updates!` does.
+- [ ] Embedding failure for a batch → log + skip the batch (no DLQ in the hackathon), keep going.
+- [ ] `delete-documents!` [model ids] — look up `id`s, delete from `search_vec` and `search_doc` in one tx.
+- [ ] `index-all!` [documents-reducible] — `transduce` batches through `upsert-documents!`, log progress every N
+      batches, return totals + elapsed ms. Callers pass `(search.ingestion/searchable-documents)`.
+- [ ] `index-all-async!` — `future` around `index-all!` with a guard atom so only one run at a time.
+
+## Phase E — query path: "the index is queryable" (1–2 h)
+
+Raw store queries, not the search engine (that's PLAN_002).
+
+- [ ] `knn` [query-vector {:keys [k models archived?]}] →
+      `select d.id, d.model, d.model_id, d.name, d.collection_id, d.legacy_input, v.distance
+       from search_vec(?, '{k: N}') v join search_doc d on d.id = v.rowid
+       [where v.model in (…) and v.archived = ?] order by v.distance` — filters only on `v.*` meta columns,
+       only `= < > <= >= IN IS [NOT] NULL` (no `!=`); always pass `k` (LIMIT is not visible through the join).
+      Default k = 50. Returns a vector of maps (`jdbc.rs/as-unqualified-lower-maps`), `legacy_input` decoded.
+- [ ] `search-text` [text opts] — `(get-embedding model (prefix-search-query model text) {:type :query})` then `knn`.
+      Returns `{:embedding-ms :knn-ms :rows}`.
+- [ ] `stats` — doc count, vec count (must be equal), per-model counts, file size, `meta` contents, `vec1_info()`.
+- [ ] `get-doc` [model id] — the `search_doc` row, for checking updates.
+
+## Phase F — REPL workflow + tests (2–3 h)
+
+- [ ] Rewrite the `(comment …)` block in `dev/src/dev/vec1.clj` to drive the store:
+      `open!` → `stats` → `index-all!` from `searchable-documents` → `search-text` paraphrases → rename a card
+      and `upsert-documents!` it → `delete-documents!` → `close!`/`open!` (expect `:existing`) → `delete-store!`.
+- [ ] Test ns `enterprise/backend/test/metabase_enterprise/semantic_search/sqlite_test.clj`, temp file per test,
+      skipped when the extension for this platform is missing. Stub embeddings with `with-redefs` on
+      `semantic.embedding/get-embeddings-batch` / `get-embedding` returning deterministic small vectors (e.g. 8 dims):
+  - [ ] `ensure-schema!` is idempotent (`:created` then `:existing`).
+  - [ ] Changed model dims → `:recreated`, file empty.
+  - [ ] Upsert 3 docs → `stats` doc count = vec count = 3; nearest to doc 2's vector is doc 2.
+  - [ ] Re-upsert doc with new name → still 3 rows, `get-doc` shows new name, KNN still finds it.
+  - [ ] Delete → gone from both tables and from KNN.
+  - [ ] Meta filter: `:models ["dashboard"]` returns only dashboards.
+- [ ] Run with `./bin/test-agent :only '[metabase-enterprise.semantic-search.sqlite-test]'`.
+
+## Acceptance (record numbers here)
+
+- [ ] Full index of the dev instance: doc count ____, time ____, embedding provider ____, file size ____.
+- [ ] `stats`: `search_doc` count = `search_vec` count.
+- [ ] 5 paraphrase queries → expected entity in top 3: __/5.
+- [ ] Query latency: embedding ____ ms, knn ____ ms.
+- [ ] Reopen after REPL restart → `:existing`, no re-index.
+- [ ] Switch embedding model → `:recreated`.
+
+## Effort
+
+| Phase | |
+|---|---|
+| A spike | ✅ done |
+| B connection | ✅ done |
+| C schema | 1–2 h |
+| D writes | 3–4 h |
+| E queries | 1–2 h |
+| F REPL + tests | 2–3 h |
+| **Remaining** | **~1 day** |
+
+## Decisions taken (change here if needed)
+
+- Env var required; no default file location.
+- Single connection, all access serialized. Revisit only if query latency under concurrent writes hurts.
+- Batch size 100, default k 50.
+- `search_vec` carries meta columns for every filter that must not shrink results (Phase A); anything else
+  filters on `search_doc` after the KNN and may return fewer than k.
+- Synchronous writes, no gate/DLQ/repair.
