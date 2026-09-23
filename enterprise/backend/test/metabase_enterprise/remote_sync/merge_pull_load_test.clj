@@ -75,7 +75,7 @@
                                     r))]
                (assoc m :ledger (ledger) :cards (cards) :v0 v0 :v1 v1)))))))))
 
-(defn- counting-loads
+(defn- counting-loads!
   "Measures `thunk` and counts the entities `load-metabase!` loaded during it."
   [thunk]
   (let [loaded (atom 0)
@@ -88,7 +88,7 @@
 
 (deftest merge-pull-loads-only-remote-changes-test
   (testing "A clean merge pull loads the entities the remote changed, not the whole merged tree"
-    (let [m (merge-pull! counting-loads)]
+    (let [m (merge-pull! counting-loads!)]
       (is (= :success (get-in m [:result :status])))
       (is (= {:added 0 :updated 2 :removed 1} (get-in m [:result :merge-summary])))
       (is (= 2 (:entities-loaded m)) "only the two remotely modified cards are loaded")
