@@ -1073,28 +1073,47 @@
      :file-eid     (when content (try (:entity_id (yaml/parse-string content))
                                       (catch Exception _ nil)))}))
 
-(defn- dependency->incremental-export-plan [snapshot opts [row entity]]
+(defn- stage-write [commit opts [row entity]]
+  (let [path    (or (:file_path row) (source/entity->path opts entity))
+        content (source/entity->content entity)]
+    (source.p/stage-upsert! commit {:path path :content content})
+    (when (:id row)
+      [{:id (:id row) :file_path path :content_hash (source/content-hash content)}])))
+
+(defn- stage-planned-entity!
+  "Stage the extracted `entity` to `commit` at the path of each of plan `fragment`'s `:writes` (at most one), so
+  planning and staging share one extraction. Adds the staged rows' `[{:id :file_path :content_hash}]` under
+  `:synced`. Passes `:remote-sync/incremental-not-possible` through without staging."
+  [commit opts entity fragment]
+  (if (= fragment :remote-sync/incremental-not-possible)
+    fragment
+    (assoc fragment :synced (into [] (mapcat #(stage-write commit opts [% entity])) (:writes fragment)))))
+
+(defn- dependency->incremental-export-plan [commit snapshot opts [row entity]]
   (let [path (source/entity->path opts entity)]
-    (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
-      {:writes [(assoc row :file_path path)]}
-      :remote-sync/incremental-not-possible)))
+    (stage-planned-entity! commit opts entity
+                           (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
+                             {:writes [(assoc row :file_path path)]}
+                             :remote-sync/incremental-not-possible))))
 
 (defn- dependency-chunk->incremental-export-plan
-  "Plan fragment ({:writes [{:model_type :model_id :file_path}]}) for one chunk of dependency rows, or
-  `:remote-sync/incremental-not-possible` if any target path collides with a different entity."
-  [snapshot opts chunk]
+  "Plan fragment ({:writes [{:model_type :model_id :file_path}] :synced []}) for one chunk of dependency rows,
+  staged to `commit`, or `:remote-sync/incremental-not-possible` if any target path collides with a different
+  entity."
+  [commit snapshot opts chunk]
   (->> chunk
        (extract-chunk)
-       (map #(dependency->incremental-export-plan snapshot opts %))
+       (map #(dependency->incremental-export-plan commit snapshot opts %))
        (reduce merge-incremental-export-plans-reducer {})))
 
 (defn- dependencies->incremental-export-plan
-  "Plan fragment ({:writes [...]}) for the untracked dependency entities `dep-ids` ({:model_type :model_id}),
-  one chunk at a time, or `:remote-sync/incremental-not-possible` if any target path collides."
-  [snapshot opts dep-ids]
+  "Plan fragment ({:writes [...] :synced []}) for the untracked dependency entities `dep-ids`
+  ({:model_type :model_id}), staged to `commit` one chunk at a time, or `:remote-sync/incremental-not-possible` if
+  any target path collides."
+  [commit snapshot opts dep-ids]
   (->> dep-ids
        (->sized-chunks)
-       (map #(dependency-chunk->incremental-export-plan snapshot opts %))
+       (map #(dependency-chunk->incremental-export-plan commit snapshot opts %))
        (reduce merge-incremental-export-plans-reducer {})))
 
 (defn- row->incremental-export-plan
@@ -1176,28 +1195,35 @@
       :remote-sync/incremental-not-possible)))
 
 (defn- chunk->incremental-export-plan
-  "Plan fragment for one chunk of create/update rows.
+  "Plan fragment for one chunk of create/update rows, with each planned write staged to `commit`.
 
   Returns:
    - :remote-sync/incremental-not-possible when the chunk can't be synced
-   - {:writes :delete-paths :removed-ids :pull}"
-  [snapshot opts chunk]
+   - {:writes :delete-paths :removed-ids :pull :synced}"
+  [commit snapshot opts chunk]
   (let [found (extract-chunk chunk)]
     (if (< (count found) (count (:rows chunk)))
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
       (->> found
            (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity)))))
+                  (stage-planned-entity! commit opts entity
+                                         (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity))))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
-(defn- incremental-export-plan
-  "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
+(defn- stage-incremental-export-plan!
+  "Plan an incremental export of `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time, staging each
+  planned write to `commit` as it is planned so every entity is extracted once. Deletes are planned but not staged.
+
+  `on-chunk`, when non-nil, is called after each chunk of create/update rows with the cumulative number of those
+  rows planned and staged so far.
 
   Returns:
-   - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
-   - :remote-sync/incremental-not-possible when any row can't go incrementally"
-  [snapshot rows]
-  ;; Planning only reads and serializes (no Field is written), so field paths can be cached.
+   - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]
+      :synced [{:id :file_path :content_hash}]}, or
+   - :remote-sync/incremental-not-possible when any row can't go incrementally; `commit` then holds a partial
+     staging and must be aborted"
+  [commit snapshot rows on-chunk]
+  ;; Planning and staging only read and serialize (no Field is written), so field paths can be cached.
   (serdes/with-field-path-cache
     (let [opts          (source/storage-context)
           ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
@@ -1208,13 +1234,20 @@
           ;; the no-extraction rows first (cheap)
           plan          (->> other-rows
                              (map #(row->incremental-export-plan % nil))
-                             (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
-          plan          (->> cu-rows
-                             (->sized-chunks)
-                             (map #(chunk->incremental-export-plan snapshot opts %))
-                             (reduce merge-incremental-export-plans-reducer plan))
+                             (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{} :synced []}))
+          staged        (volatile! 0)
+          plan          (if (= plan :remote-sync/incremental-not-possible)
+                          plan
+                          (->> cu-rows
+                               (->sized-chunks)
+                               (map (fn [chunk]
+                                      (let [fragment (chunk->incremental-export-plan commit snapshot opts chunk)]
+                                        (vswap! staged + (count (:rows chunk)))
+                                        (when on-chunk (on-chunk @staged))
+                                        fragment)))
+                               (reduce merge-incremental-export-plans-reducer plan)))
           plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
-                             (dependencies->incremental-export-plan snapshot opts)
+                             (dependencies->incremental-export-plan commit snapshot opts)
                              (merge-incremental-export-plans plan))]
       (if (= plan :remote-sync/incremental-not-possible)
         :remote-sync/incremental-not-possible
@@ -1230,13 +1263,6 @@
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
-
-(defn- stage-write [commit opts [row entity]]
-  (let [path    (or (:file_path row) (source/entity->path opts entity))
-        content (source/entity->content entity)]
-    (source.p/stage-upsert! commit {:path path :content content})
-    (when (:id row)
-      [{:id (:id row) :file_path path :content_hash (source/content-hash content)}])))
 
 (defn- chunk-stage-writes
   [commit opts chunk]
@@ -1338,40 +1364,55 @@
            :outcome {:kind "pushed" :count (count synced) :branch (sync-branch)}})))))
 
 (defn- incremental-export!
-  [plan disabled-files task-id snapshot message sync-timestamp]
-  (let [{:keys [writes delete-paths removed-ids]} plan
-        delete-paths (into (vec delete-paths) disabled-files)
-        report       (remote-sync.task/make-progress-reporter task-id)
-        total        (max 1 (count writes))
-        span         (- export-progress-serialize export-progress-plan-done)]
-    (report export-progress-plan-done {:force? true})
-    (let [opts             (source/storage-context)
-          [synced version] (commit-staged! snapshot message
-                                           (fn [commit]
-                                             (let [synced (stage-writes commit opts writes
-                                                                        (fn [staged]
-                                                                          (report (+ export-progress-plan-done
-                                                                                     (* span (/ staged total))))))]
-                                               (stage-deletes commit delete-paths)
-                                               (report export-progress-serialize {:force? true})
-                                               synced))
-                                           report)]
-      (t2/with-transaction [_]
-        (when-not (= version :remote-sync/empty-commit)
-          (remote-sync.task/set-version! task-id version))
-        ;; delete departed rows first, then update RSO metadata — same order as full-export!
-        (doseq [removed-ids (partition-all 500 removed-ids)]
-          (remote-sync.db/delete-rsos! removed-ids))
-        (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (if (= version :remote-sync/empty-commit)
-        (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
-            {:status :success :outcome {:kind "push-skipped"}})
-        (do
-          (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
-          {:status :success
-           :outcome {:kind "pushed"
-                     :count (+ (count writes) (count delete-paths))
-                     :branch (sync-branch)}})))))
+  "Plan and stage an incremental export of the dirty `rows` in one pass (each entity is extracted once), then commit
+  it and reconcile the written RemoteSyncObjects.
+
+  Returns:
+   - {:status :success ...}, or
+   - :remote-sync/incremental-not-possible when some row can't go incrementally; nothing was committed and the
+     caller falls back to a full export"
+  [rows disabled-files task-id snapshot message sync-timestamp]
+  (let [report (remote-sync.task/make-progress-reporter task-id)
+        total  (max 1 (count rows))
+        staged (try
+                 (commit-staged! snapshot message
+                                 (fn [commit]
+                                   ;; planning and staging share the plan phase's progress range, so a fallback
+                                   ;; full export (which starts at the end of that range) never moves it backward
+                                   (let [plan (stage-incremental-export-plan!
+                                               commit snapshot rows
+                                               (fn [n] (report (* export-progress-plan-done (/ n total)))))]
+                                     (when (= plan :remote-sync/incremental-not-possible)
+                                       ;; commit-staged! aborts the commit on the way out
+                                       (throw (ex-info "Incremental export not possible" {::incremental-not-possible true})))
+                                     (stage-deletes commit (into (vec (:delete-paths plan)) disabled-files))
+                                     (report export-progress-serialize {:force? true})
+                                     plan))
+                                 report)
+                 (catch clojure.lang.ExceptionInfo e
+                   (if (::incremental-not-possible (ex-data e))
+                     :remote-sync/incremental-not-possible
+                     (throw e))))]
+    (if (= staged :remote-sync/incremental-not-possible)
+      staged
+      (let [[{:keys [writes removed-ids synced] :as plan} version] staged
+            delete-paths (into (vec (:delete-paths plan)) disabled-files)]
+        (t2/with-transaction [_]
+          (when-not (= version :remote-sync/empty-commit)
+            (remote-sync.task/set-version! task-id version))
+          ;; delete departed rows first, then update RSO metadata — same order as full-export!
+          (doseq [removed-ids (partition-all 500 removed-ids)]
+            (remote-sync.db/delete-rsos! removed-ids))
+          (mark-rows-synced! (map :id synced) synced sync-timestamp))
+        (if (= version :remote-sync/empty-commit)
+          (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
+              {:status :success :outcome {:kind "push-skipped"}})
+          (do
+            (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
+            {:status :success
+             :outcome {:kind "pushed"
+                       :count (+ (count writes) (count delete-paths))
+                       :branch (sync-branch)}}))))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -1397,9 +1438,7 @@
                                   (not= base-version remote-version))
               disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
                                              (source.p/list-files snapshot)))
-              dirty-rows     (delay (remote-sync.object/dirty-rows))
-              plan           (delay (when (seq @dirty-rows)
-                                      (incremental-export-plan snapshot @dirty-rows)))]
+              dirty-rows     (delay (remote-sync.object/dirty-rows))]
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
@@ -1434,13 +1473,13 @@
               {:status :success
                :outcome {:kind "push-skipped"}})
 
-            (not= @plan :remote-sync/incremental-not-possible)
-            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
-
-            :else ;; fall back to full
-            (do
-              (log/info "Remote sync full export: a pending change can't be applied incrementally")
-              (full-export! snapshot task-id message sync-timestamp)))))
+            :else
+            (let [result (incremental-export! @dirty-rows @disabled-files task-id snapshot message sync-timestamp)]
+              (if (= result :remote-sync/incremental-not-possible)
+                (do ;; fall back to full
+                  (log/info "Remote sync full export: a pending change can't be applied incrementally")
+                  (full-export! snapshot task-id message sync-timestamp))
+                result)))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
