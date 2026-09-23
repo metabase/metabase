@@ -157,7 +157,7 @@
           baseline   (statements nil)
           reporting  (statements task-id)]
       ;; each progress write is a cancelled-check SELECT plus an UPDATE. Unthrottled that is one write per entity
-      ;; (100 statements here); throttled it is the first write plus the forced final one, well inside one window.
+      ;; (99 measured before the fix); throttled it is the first write plus the forced final one, well inside one window.
       (is (<= (- reporting baseline) 4))
       (testing "the final progress still reflects the whole stream"
         (is (= 0.95 (double (t2/select-one-fn :progress :model/RemoteSyncTask :id task-id))))))))
