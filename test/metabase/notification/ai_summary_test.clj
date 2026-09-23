@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.interestingness.core :as interestingness]
    [metabase.notification.ai-summary :as ai-summary]
+   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
@@ -47,7 +48,7 @@
   "A monthly-revenue result shaped like real QP output: a temporal breakout and an aggregation."
   []
   {:data {:cols [{:name "CREATED_AT" :display_name "Created At: Month" :base_type :type/DateTime
-                  :unit :month :source :breakout}
+                  :unit :month :lib/temporal-unit :month :source :breakout}
                  {:name "sum" :display_name "Sum of Total" :base_type :type/Float :source :aggregation}]
           :rows (mapv (fn [i] [(format "2026-%02d-01" (inc i)) (double (+ 100 (* 10 i)))])
                       (range 6))}})
@@ -82,6 +83,53 @@
           (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)]
             (is (str/includes? user-content "**Trend**"))
             (is (str/includes? user-content "2026-01-01\t100.0"))))))))
+
+(deftest chart-analysis-timeline-events-test
+  (mt/with-temp [:model/Collection    {coll-id :id}  {}
+                 :model/Timeline      {tl-id :id}    {:collection_id coll-id :name "Launches"}
+                 :model/TimelineEvent _ {:timeline_id tl-id :name "Pricing change" :time_matters false
+                                         :description "New annual plans" :timestamp #t "2026-03-15T00:00Z"}
+                 :model/TimelineEvent _ {:timeline_id tl-id :name "Late June promo" :time_matters false
+                                         :timestamp #t "2026-06-20T00:00Z"}
+                 :model/TimelineEvent _ {:timeline_id tl-id :name "Long before the chart" :time_matters false
+                                         :timestamp #t "2020-01-01T00:00Z"}
+                 :model/TimelineEvent _ {:timeline_id tl-id :name "Archived event" :time_matters false
+                                         :archived true :timestamp #t "2026-02-01T00:00Z"}
+                 :model/Collection    {other-id :id} {}
+                 :model/Timeline      {other-tl :id} {:collection_id other-id :name "Elsewhere"}
+                 :model/TimelineEvent _ {:timeline_id other-tl :name "Other collection's event" :time_matters false
+                                         :timestamp #t "2026-03-01T00:00Z"}]
+    (mt/with-test-user :crowberto
+      (let [analysis (ai-summary/result->chart-analysis {:name "Monthly Revenue" :display "line" :collection-id coll-id}
+                                                        (chart-result))]
+        (testing "events from the card's collection within the charted period are shown alongside the stats"
+          (is (str/includes? analysis "## Timeline Events"))
+          (is (str/includes? analysis "**2026-03-15**: Pricing change - New annual plans")))
+        (testing "the period runs to the end of the last bucket, not its first day"
+          (is (str/includes? analysis "Late June promo")))
+        (testing "events outside the charted period, archived, or in other collections are left out"
+          (is (not (str/includes? analysis "Long before the chart")))
+          (is (not (str/includes? analysis "Archived event")))
+          (is (not (str/includes? analysis "Other collection's event"))))))))
+
+(deftest question-context-reaches-the-model-test
+  (let [captured (atom nil)
+        result   (update-in (chart-result) [:data :cols 1] assoc :description "Order totals net of refunds")]
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
+                                                    (reset! captured messages)
+                                                    {:summary "ok"})]
+      (ai-summary/summarize {:prompt      "What's going on?"
+                             :card-name   "Monthly Revenue"
+                             :description "Revenue across all storefronts, by order month"
+                             :display     "line"
+                             :result      result})
+      (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)
+            results      (second (re-find #"(?s)<results>(.*)</results>" user-content))]
+        (testing "the card's description and its columns' descriptions are shown, as data inside <results>"
+          (is (str/includes? results "Revenue across all storefronts, by order month"))
+          (is (str/includes? results "Sum of Total: Order totals net of refunds")))
+        (testing "columns without a description are not listed"
+          (is (not (str/includes? results "Created At: Month:"))))))))
 
 (deftest summarize-skips-without-work-test
   (testing "no prompt means no LLM call and no summary"

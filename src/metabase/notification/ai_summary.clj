@@ -14,10 +14,13 @@
   module cycle; late binding also keeps this a genuinely optional capability."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.timeline.core :as timeline]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [tech.v3.resource :as resource])
   (:import
@@ -46,6 +49,10 @@
   "Hard cap on the gate explanation rendered at the top of an alert. The prompt asks for one short
   sentence; this bounds a model that ignores it."
   200)
+
+(def ^:private max-timeline-events
+  "Cap on the timeline events shown to the model, so a busy timeline can't crowd out the stats."
+  20)
 
 (def ^:private max-summary-tokens
   "Output-token budget. The summary is short, but reasoning models spend this budget thinking
@@ -107,10 +114,51 @@
                           [(format "… %d more rows not shown." withheld)])]
           (str/join "\n" (concat [header] body truncated)))))))
 
+(def ^:private truncation-units
+  #{:minute :hour :day :week :month :quarter :year})
+
+(defn- charted-period
+  "The `[start end]` covered by `config`'s x-axis, or nil when that axis isn't a date. `end` runs to the
+  end of the last bucket, so an event on 20 June belongs to a monthly chart whose last point is 1 June."
+  [config lib-cols]
+  (let [series (vals (:series config))]
+    (when (#{"date" "datetime"} (-> series first :x :type))
+      (let [xs   (->> series
+                      (mapcat :x_values)
+                      (keep #(u/ignore-exceptions (u.date/parse (str %))))
+                      sort)
+            unit (some (comp truncation-units lib/raw-temporal-bucket) lib-cols)]
+        (when (seq xs)
+          [(first xs) (cond-> (last xs) unit (u.date/add unit 1))])))))
+
+(defn- timeline-events
+  "Unarchived events from the timelines of the collection with `collection-id` (nil is the root
+  collection) that fall within `[start end]`, shaped for [[interestingness/generate-representation]].
+
+  Only the card's own collection: anyone who can read the card can read these, so the email never
+  carries events from collections its recipients' data didn't come from. A failure yields no events
+  rather than no stats."
+  [collection-id [start end]]
+  (try
+    (->> (timeline/timelines-for-collection collection-id {:timeline/events? true
+                                                           :events/start     start
+                                                           :events/end       end})
+         (mapcat :events)
+         (sort-by :timestamp)
+         (take max-timeline-events)
+         (mapv (fn [{:keys [name description timestamp time_matters]}]
+                 (cond-> {:name      name
+                          :timestamp (u.date/format (if time_matters timestamp (t/local-date timestamp)))}
+                   (not (str/blank? description)) (assoc :description description)))))
+    (catch Throwable e
+      (log/warn "Failed to load timeline events for notification AI" {:error (ex-message e)})
+      nil)))
+
 (defn result->chart-analysis
   "The interestingness engine's markdown stats (trend, outliers, notable changes) for `result`, or
   nil when it has no chartable shape: see [[interestingness/chart-config]]. `chart-source` carries
-  the card's `:name` and `:display`.
+  the card's `:name` and `:display`, and its `:collection-id` when the timeline events in that
+  collection should be listed alongside the stats; without the key, none are looked up.
 
   The stats cover every row, which the row-capped [[result->excerpt]] cannot. Like the excerpt,
   this skips rows spilled to disk, and any failure yields nil so the model still gets the excerpt."
@@ -118,15 +166,17 @@
   (let [{:keys [cols rows]} (:data result)]
     (when-not (instance? clojure.lang.IDeref rows)
       (try
-        (when-let [config (interestingness/chart-config chart-source
-                                                        (mapv #(lib/normalize ::lib.schema.metadata/column %) cols)
-                                                        rows)]
-          ;; the stats are computed on tech.ml datasets; the resource context frees their off-heap memory
-          (resource/stack-resource-context
-           (interestingness/generate-representation
-            {:title        (:title config)
-             :display-type (:display_type config)
-             :stats        (interestingness/compute-chart-stats config {:deep? true})})))
+        (let [lib-cols (mapv #(lib/normalize ::lib.schema.metadata/column %) cols)]
+          (when-let [config (interestingness/chart-config chart-source lib-cols rows)]
+            ;; the stats are computed on tech.ml datasets; the resource context frees their off-heap memory
+            (resource/stack-resource-context
+             (interestingness/generate-representation
+              {:title           (:title config)
+               :display-type    (:display_type config)
+               :stats           (interestingness/compute-chart-stats config {:deep? true})
+               :timeline-events (when (contains? chart-source :collection-id)
+                                  (some->> (charted-period config lib-cols)
+                                           (timeline-events (:collection-id chart-source))))}))))
         (catch Throwable e
           (log/warn "Failed to compute chart stats for notification AI" {:error (ex-message e)})
           nil)))))
@@ -156,15 +206,32 @@
          "Use this whenever the sender's rule depends on the date, day of week, or time - never "
          "infer today's date from the result rows.")))
 
+(defn- question-context
+  "What the question and its columns measure, from their authored descriptions, or nil when none are
+  described. Without it the model sees \"Sum of Total\" and has to guess what is being summed."
+  [description result]
+  (let [described-cols (keep (fn [{:keys [display_name name description]}]
+                               (when-not (str/blank? description)
+                                 (str "- " (or display_name name) ": " description)))
+                             (-> result :data :cols))]
+    (when (or (not (str/blank? description)) (seq described-cols))
+      (str/join "\n" (cond-> ["## Question"]
+                       (not (str/blank? description)) (conj description)
+                       (seq described-cols)           (into (cons "Columns:" described-cols)))))))
+
 (defn- results-for-llm
-  "What goes inside `<results>`: the chart stats when there are any, then the row excerpt, so the
-  model gets both the whole-result picture and the actual values the sender may ask about. Nil when
-  there is no excerpt, since the stats alone never exist without rows to show."
-  [card-name display result]
+  "What goes inside `<results>`: what the question measures, the chart stats (with any timeline events)
+  when there are any, then the row excerpt, so the model gets both the whole-result picture and the
+  actual values the sender may ask about. Everything here is data, which is why authored descriptions
+  and event names sit inside `<results>` too. Nil when there is no excerpt, since the rest never
+  exists without rows to show."
+  [{:keys [card-name description display result] :as ctx}]
   (when-let [excerpt (result->excerpt result)]
-    (if-let [analysis (result->chart-analysis {:name card-name :display display} result)]
-      (str analysis "\n\n## Rows\n" excerpt)
-      excerpt)))
+    (let [chart-source (merge {:name card-name :display display}
+                              (select-keys ctx [:collection-id]))]
+      (str/join "\n\n" (remove nil? [(question-context description result)
+                                     (result->chart-analysis chart-source result)
+                                     (str "## Rows\n" excerpt)])))))
 
 (defn call-llm!
   "Send `messages` to the mini model and return the parsed map matching `json-schema`, or nil when
@@ -221,9 +288,9 @@
   or nil when one can't be produced.
 
   Never throws: the caller is a notification that must send regardless."
-  [{:keys [prompt card-name display result timezone-id first-day-of-week]}]
+  [{:keys [prompt card-name timezone-id first-day-of-week] :as ctx}]
   (when-not (str/blank? prompt)
-    (when-let [results (results-for-llm card-name display result)]
+    (when-let [results (results-for-llm ctx)]
       (try
         (some-> (call-with-timeout #(call-llm! (summary-messages prompt card-name timezone-id first-day-of-week results)
                                                summary-json-schema
@@ -306,9 +373,9 @@
   Callers MUST treat nil as \"send\". This gate can only ever suppress an alert on an explicit,
   successful `false` from the model — an alert that silently stops firing because a provider is down
   is a far worse failure than a noisy one."
-  [{:keys [send-prompt card-name display result timezone-id first-day-of-week]}]
+  [{:keys [send-prompt card-name timezone-id first-day-of-week] :as ctx}]
   (when-not (str/blank? send-prompt)
-    (when-let [results (results-for-llm card-name display result)]
+    (when-let [results (results-for-llm ctx)]
       (try
         (let [decision (call-with-timeout #(call-llm! (send-gate-messages send-prompt card-name timezone-id first-day-of-week results)
                                                       send-decision-json-schema

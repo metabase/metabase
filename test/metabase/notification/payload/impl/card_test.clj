@@ -745,6 +745,31 @@
                         #"should not appear")))
                 (is (zero? @calls)))})))))))
 
+(deftest ai-summary-gets-card-context-test
+  (testing "the card's description and its collection's timeline events reach the model"
+    (mt/with-temp [:model/Collection    {coll-id :id} {}
+                   :model/Timeline      {tl-id :id}   {:collection_id coll-id :name "Launches"}
+                   :model/TimelineEvent _ {:timeline_id tl-id :name "Pricing change" :time_matters false
+                                           :timestamp #t "2026-02-10T00:00Z"}]
+      (notification.tu/with-notification-testing-setup!
+        (let [captured (atom nil)]
+          (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _ _] (reset! captured messages) {:summary "ok"})]
+            (notification.tu/with-card-notification
+              [notification {:card              {:name          notification.tu/default-card-name
+                                                 :description   "Paid orders across all storefronts"
+                                                 :collection_id coll-id
+                                                 :display       :line
+                                                 :dataset_query (mt/native-query
+                                                                 {:query (str "SELECT CAST('2026-01-01' AS DATE) AS d, 10 AS n "
+                                                                              "UNION ALL SELECT CAST('2026-02-01' AS DATE), 12 "
+                                                                              "UNION ALL SELECT CAST('2026-03-01' AS DATE), 30")})}
+                             :notification-card {:prompt "Anything unusual?"}
+                             :handlers          [@notification.tu/default-email-handler]}]
+              (notification.tu/test-send-notification! notification {:channel/email (fn [_])})
+              (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)]
+                (is (str/includes? user-content "Paid orders across all storefronts"))
+                (is (str/includes? user-content "Pricing change"))))))))))
+
 (deftest ai-summary-failure-does-not-break-the-alert-test
   (testing "a failing LLM call still sends the alert, just without a summary"
     (notification.tu/with-notification-testing-setup!

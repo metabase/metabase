@@ -70,7 +70,9 @@
             ;; same zone the email renders timestamps in, so the model and the recipient agree on
             ;; what day it is; week start so "end of the week" matches a GUI query's notion
             ai-context     {:card-name         (:name card)
+                            :description       (:description card)
                             :display           (:display card)
+                            :collection-id     (:collection_id card)
                             :timezone-id       (channel.render/defaulted-timezone card)
                             :first-day-of-week (some-> (lib-be/start-of-week) name)
                             :result            card-result}

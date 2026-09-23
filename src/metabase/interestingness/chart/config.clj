@@ -122,11 +122,12 @@
 (defn- effective-display-type
   "If the query's `:display` is nil or one of the chart-less display types,
   pick a default based on the dimension's chart-type so the scorer doesn't see
-  `:unknown`."
+  `:unknown`. `display` may be a keyword, as it is on a Card."
   [display dim-chart-type]
-  (if (or (nil? display) (#{"table" "scalar" "smartscalar"} display))
-    (if (#{"datetime" "date" "time"} dim-chart-type) "line" "bar")
-    display))
+  (let [display (some-> display name)]
+    (if (or (nil? display) (#{"table" "scalar" "smartscalar"} display))
+      (if (#{"datetime" "date" "time"} dim-chart-type) "line" "bar")
+      display)))
 
 (defn- col-name
   "Human-facing name for a Lib column — display-name when present, otherwise the raw name,

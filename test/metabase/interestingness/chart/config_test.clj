@@ -184,6 +184,22 @@
         (is (= "line" (:display_type cfg))
             (str "display=" d " should fall back to line for temporal x"))))))
 
+(deftest keyword-display-test
+  (testing "a Card's keyword :display is accepted, since Card models carry display as a keyword"
+    (let [cfg (interestingness/chart-config
+               (query :bar)
+               [(lib-col {:name "c" :base-type :type/Text})
+                (lib-col {:name "n" :base-type :type/Integer})]
+               [["a" 1]])]
+      (is (= "bar" (:display_type cfg)))))
+  (testing "keyword chart-less displays still fall back"
+    (let [cfg (interestingness/chart-config
+               (query :table)
+               [(lib-col {:name "d" :base-type :type/DateTime})
+                (lib-col {:name "n" :base-type :type/Integer})]
+               [["2026-01-01T00:00" 1]])]
+      (is (= "line" (:display_type cfg))))))
+
 (deftest series-keys-are-strings-test
   (let [cfg (interestingness/chart-config
              (query "bar")
