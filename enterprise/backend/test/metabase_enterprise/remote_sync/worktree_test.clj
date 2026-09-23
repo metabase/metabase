@@ -140,3 +140,21 @@
                                     10000 {:message ::timed-out})))))
           (finally
             (remote-sync.db/delete-worktree! worktree-id)))))))
+
+(deftest a-worktree-leaves-transform-jobs-alone-test
+  (testing "transform jobs live only in the main app: a worktree reads them but changes none"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob {job-id :id} {:name "Main job" :schedule "0 0 0 * * ?"}]
+        (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "jobs-" (random-uuid))})
+              header            (worktree-header worktree-id)
+              url               (str "transform-job/" job-id)]
+          (try
+            (is (false? (:can_execute (mt/user-http-request :crowberto :get 200 url header))))
+            (mt/user-http-request :crowberto :post 403 "transform-job" header {:name "Branch job" :schedule "0 0 0 * * ?"})
+            (mt/user-http-request :crowberto :put 403 url header {:name "Renamed" :schedule "0 0 1 * * ?"})
+            (mt/user-http-request :crowberto :put 400 "transform-job/active" header {:active false})
+            (mt/user-http-request :crowberto :delete 403 url header)
+            (is (= {:name "Main job" :schedule "0 0 0 * * ?" :active true}
+                   (t2/select-one [:model/TransformJob :name :schedule :active] :id job-id)))
+            (finally
+              (remote-sync.db/delete-worktree! worktree-id))))))))
