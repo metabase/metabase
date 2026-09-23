@@ -211,3 +211,24 @@
                        :definition        "INDEX evt_minmax (a) TYPE minmax GRANULARITY 4"}]
                      (driver/fetch-table-indexes :clickhouse db "default" table))))
             (finally (drop!))))))))
+
+(deftest ^:synchronized escaped-names-live-test
+  (testing "a backtick in an index or column name survives the round trip through SHOW CREATE TABLE"
+    (mt/test-driver :clickhouse
+      (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
+            table     (str (gensym "mb_esc_"))
+            column    "col`tick"
+            index     {:name "ix`tick" :columns [{:name column}] :type :minmax :granularity 1}
+            drop!     (fn [] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" table)]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
+          (drop!)
+          (try
+            (driver/create-table! :clickhouse (:id db) (keyword table) [[column "Int64"]]
+                                  {:indexes [{:kind :order-by :columns [{:name column}]}]})
+            (driver/execute-raw-queries! :clickhouse conn-spec
+                                         (driver/compile-create-index :clickhouse nil table index))
+            (is (=? [{:name "ix`tick" :kind :skip-index :key-columns [column]}
+                     {:name nil :kind :order-by :key-columns [column]}]
+                    (driver/fetch-table-indexes :clickhouse db "default" table)))
+            (finally (drop!))))))))

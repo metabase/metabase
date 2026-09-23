@@ -275,6 +275,14 @@
         parts (filter identity (str/split (name s) #"\."))]
     (str/join "." (map #(str "`" (escape-ident %) "`") parts))))
 
+(defn- unquote-name
+  "Undo [[quote-name]] for one identifier: strip the wrapping backticks and the backslash escapes inside them, so a
+  name read back from DDL matches what the managed side stores. Bare names and expressions are left as they are."
+  [^String s]
+  (if (and (> (count s) 1) (str/starts-with? s "`") (str/ends-with? s "`"))
+    (str/replace (subs s 1 (dec (count s))) #"\\(.)" "$1")
+    s))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -350,14 +358,15 @@
   `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
   [expr]
   (if-let [s (perf/not-empty expr)]
-    (perf/mapv #(driver.common/unquote-ident (str/trim %) \`)
-               (driver.common/split-top-level-commas (strip-wrapping-parens s)))
+    (perf/mapv #(unquote-name (str/trim %))
+               (driver.common/split-top-level-commas (strip-wrapping-parens s) \\))
     []))
 
 (def ^:private skip-index-line-regex
-  "One data-skipping `INDEX` line of a `SHOW CREATE TABLE` statement. Column definitions are always back-quoted, so a
-  line that starts with the bare `INDEX` keyword is never one."
-  #"^\s*INDEX\s+(`[^`]*`|\S+)\s+(.+?)\s+TYPE\s+(\w+(?:\([^)]*\))?)\s+GRANULARITY\s+(\d+),?\s*$")
+  "One data-skipping `INDEX` line of a `SHOW CREATE TABLE` statement. The name is back-quoted only when it has to be,
+  with backslash escapes inside (see [[quote-name]]). Column definitions are always back-quoted, so a line that
+  starts with the bare `INDEX` keyword is never one."
+  #"^\s*INDEX\s+(`(?:[^`\\]|\\.)*`|\S+)\s+(.+?)\s+TYPE\s+(\w+(?:\([^)]*\))?)\s+GRANULARITY\s+(\d+),?\s*$")
 
 (def ^:private order-by-line-regex
   "The MergeTree sorting key line. `PRIMARY KEY`, `PARTITION BY` and `TTL` print as lines of their own."
@@ -378,7 +387,7 @@
   [line]
   (when-let [[_ index-name expr index-type] (re-matches skip-index-line-regex line)]
     (assoc index-defaults
-           :name          (driver.common/unquote-ident index-name \`)
+           :name          (unquote-name index-name)
            :kind          :skip-index
            :access-method (first (str/split index-type #"\(" 2))
            :key-columns   (expr->columns expr)

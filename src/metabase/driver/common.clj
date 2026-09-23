@@ -180,19 +180,24 @@
 
 (defn split-top-level-commas
   "Split `s` on commas that aren't nested in parens or inside a `` ` ``/`'`/`\"` quote span, so neither a function key
-  like `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `\"weird,name\"` is torn at an inner comma."
-  [^String s]
-  (loop [i 0, depth 0, q nil, start 0, acc []]
-    (if (< i (.length s))
-      (let [c (nth s i)]
-        (cond
-          q                               (recur (inc i) depth (when-not (= c q) q) start acc)
-          (or (= c \`) (= c \') (= c \")) (recur (inc i) depth c start acc)
-          (= c \()                        (recur (inc i) (inc depth) q start acc)
-          (= c \))                        (recur (inc i) (dec depth) q start acc)
-          (and (= c \,) (zero? depth))    (recur (inc i) depth q (inc i) (conj acc (subs s start i)))
-          :else                           (recur (inc i) depth q start acc)))
-      (conj acc (subs s start)))))
+  like `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `\"weird,name\"` is torn at an inner comma.
+  `escape-char` (ClickHouse's backslash) makes the character after it inside a quote span literal, so an escaped
+  quote doesn't end the span."
+  ([s]
+   (split-top-level-commas s nil))
+  ([^String s escape-char]
+   (loop [i 0, depth 0, q nil, start 0, acc []]
+     (if (< i (.length s))
+       (let [c (nth s i)]
+         (cond
+           (and q (= c escape-char))       (recur (+ i 2) depth q start acc)
+           q                               (recur (inc i) depth (when-not (= c q) q) start acc)
+           (or (= c \`) (= c \') (= c \")) (recur (inc i) depth c start acc)
+           (= c \()                        (recur (inc i) (inc depth) q start acc)
+           (= c \))                        (recur (inc i) (dec depth) q start acc)
+           (and (= c \,) (zero? depth))    (recur (inc i) depth q (inc i) (conj acc (subs s start i)))
+           :else                           (recur (inc i) depth q start acc)))
+       (conj acc (subs s start))))))
 
 (defn unquote-ident
   "Strip a wrapping `quote-char` pair off a quoted identifier (doubled `quote-char` unescaped), so it matches the bare

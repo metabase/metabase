@@ -53,7 +53,9 @@
       ;; a backtick-quoted name can hold a comma or paren; it must stay one column and come out bare
       "`weird,name`, b"     ["weird,name" "b"]
       "`paren(col`, b"      ["paren(col" "b"]
-      "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
+      "`back\\`tick`"       ["back`tick"]              ; a backtick in a quoted name is backslash-escaped
+      "`back\\\\slash`"     ["back\\slash"]
+      "`col\\`tick`, b"     ["col`tick" "b"]           ; the escaped backtick doesn't end the quoted span
       ""                    []                         ; blank -> [], so :key-columns stays schema-valid
       nil                   [])))
 
@@ -152,6 +154,20 @@
              "ORDER BY `weird name`"
              "SETTINGS allow_nullable_key = 1, index_granularity = 8192"))
 
+(def ^:private escaped-names-statement
+  "Names holding a backtick or a backslash are back-quoted with backslash escapes. Captured from 26.8.5."
+  (statement "CREATE TABLE default.mb_probe_esc"
+             "("
+             "    `a` Int64,"
+             "    `col\\`tick` Int64,"
+             "    INDEX `ix\\`tick` (a) TYPE minmax GRANULARITY 1,"
+             "    INDEX `ix\\\\back` (`col\\`tick`) TYPE minmax GRANULARITY 1,"
+             "    INDEX `ix space` (a) TYPE minmax GRANULARITY 1"
+             ")"
+             "ENGINE = MergeTree"
+             "ORDER BY `col\\`tick`"
+             "SETTINGS index_granularity = 8192"))
+
 (deftest ^:parallel create-table-statement->indexes-test
   (testing "every data-skipping INDEX line is parsed, in statement order (no live DB needed)"
     (let [idxs (#'clickhouse/create-table-statement->indexes every-skip-index-shape-statement)
@@ -196,7 +212,9 @@
              {:name nil :kind :order-by :key-columns ["INDEX" "TYPE"]}]
             (#'clickhouse/create-table-statement->indexes keyword-named-columns-statement))))
   (testing "ORDER BY tuple() is an unsorted table: no entry, matching the empty catalog sorting key"
-    (is (= [] (#'clickhouse/create-table-statement->indexes unsorted-statement))))
+    (is (= [] (#'clickhouse/create-table-statement->indexes unsorted-statement)))))
+
+(deftest ^:parallel create-table-statement->indexes-server-shapes-test
   (testing "a SharedMergeTree table with no skip index yields only its sorting key"
     (is (=? [{:name nil :kind :order-by :key-columns ["event_type" "session_id"]
               :definition "ORDER BY (event_type, session_id)"}]
@@ -210,7 +228,13 @@
   (testing "a projection's indented ORDER BY is not the sorting key; a bare back-quoted single column is"
     (is (=? [{:name "ng" :kind :skip-index :access-method "ngrambf_v1" :key-columns ["b"]}
              {:name nil :kind :order-by :key-columns ["weird name"] :definition "ORDER BY `weird name`"}]
-            (#'clickhouse/create-table-statement->indexes projection-statement)))))
+            (#'clickhouse/create-table-statement->indexes projection-statement))))
+  (testing "back-quoted names come out with their backslash escapes undone, matching the managed side"
+    (is (=? [{:name "ix`tick" :kind :skip-index :key-columns ["a"]}
+             {:name "ix\\back" :kind :skip-index :key-columns ["col`tick"]}
+             {:name "ix space" :kind :skip-index :key-columns ["a"]}
+             {:name nil :kind :order-by :key-columns ["col`tick"]}]
+            (#'clickhouse/create-table-statement->indexes escaped-names-statement)))))
 
 (deftest ^:parallel table-missing-exception?-test
   (testing "the codes SHOW CREATE TABLE raises for a table or database that isn't there"
