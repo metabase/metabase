@@ -1221,7 +1221,8 @@
 (defn- descendant-closure
   "Every `[model-name id]` reachable from `roots` through `serdes/descendants`, `roots` included: the keys of
   `(u/traverse roots #(serdes/descendants ...))`, found a level at a time with one `serdes/descendants-batch` call per
-  model per level, so its queries grow with the depth of the content rather than its size."
+  model per level (per chunk of `serdes/*descendants-batch-size*` ids), so its queries grow with the depth of the
+  content rather than its size, and no query gets more ids than a database accepts as bind parameters."
   [roots opts]
   (loop [frontier (set roots)
          seen     #{}]
@@ -1229,7 +1230,9 @@
       seen
       (let [seen  (into seen frontier)
             found (into #{}
-                        (mapcat (fn [[model ids]] (keys (serdes/descendants-batch model ids opts))))
+                        (mapcat (fn [[model ids]]
+                                  (mapcat #(keys (serdes/descendants-batch model % opts))
+                                          (partition-all serdes/*descendants-batch-size* ids))))
                         (u/group-by first second frontier))]
         (recur (into #{} (remove seen) found) seen)))))
 

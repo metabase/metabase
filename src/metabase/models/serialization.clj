@@ -515,8 +515,9 @@
   which may lose the detail of which entity reached it; callers that need that detail should call [[descendants]].
 
   A walk over a whole collection tree calls this once per model per level instead of [[descendants]] once per
-  entity. The default does exactly that per-entity call; models whose [[descendants]] queries per entity override it
-  to query for every entity at once, and must return the same keys.
+  entity, with at most [[*descendants-batch-size*]] ids per call. The default does exactly that per-entity call;
+  models whose [[descendants]] queries per entity override it to query for every entity at once, and must return the
+  same keys, putting no more than [[*descendants-batch-size*]] ids into any one query.
 
   NOTE: This is called during **EXPORT**.
 

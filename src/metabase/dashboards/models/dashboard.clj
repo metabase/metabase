@@ -492,8 +492,11 @@
 (defmethod serdes/descendants-batch "Dashboard" [_model-name ids _opts]
   (let [dashboards (u/index-by :id (dashboards.db/dashboards ids))
         dashcards  (dashboards.db/dashcard-serdes-columns-for-dashboards ids)
-        series     (when (seq dashcards)
-                     (group-by :dashboardcard_id (dashboards.db/dashcard-series-columns (mapv :id dashcards))))
+        ;; a Dashboard has many dashcards, so their ids are chunked again to keep this query's ids bounded too
+        series     (group-by :dashboardcard_id
+                             (into []
+                                   (mapcat dashboards.db/dashcard-series-columns)
+                                   (partition-all serdes/*descendants-batch-size* (map :id dashcards))))
         dashcards  (group-by :dashboard_id dashcards)]
     (transduce (map (fn [id]
                       (let [dcs (get dashcards id)]
