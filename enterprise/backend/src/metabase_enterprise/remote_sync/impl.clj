@@ -650,15 +650,19 @@
   (let [;; When the remote changes are incrementally loadable the merged tree isn't needed (see the load below),
         ;; and only the entities the remote changed decide the conflicts and summary, so only those local entities
         ;; are serialized.
-        plan (incremental-import-plan snapshot (source.p/version base-snapshot))
+        ;; On either route, the ledger's hashes tell an entity unchanged since the last sync from a local change.
+        plan          (incremental-import-plan snapshot (source.p/version base-snapshot))
+        synced-hashes (remote-sync.db/synced-content-hashes-by-path)
         {:keys [conflicts merged summary]}
         (serdes/with-cache
           (let [targets (spec/exportable-entities)]
             (if (= :remote-sync/incremental-not-possible plan)
               (source/compute-merge (spec/extract-entities-for-export targets)
                                     snapshot base-snapshot task-id
-                                    :total (spec/exportable-entity-count targets))
-              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot))))]
+                                    :total (spec/exportable-entity-count targets)
+                                    :synced-hashes synced-hashes)
+              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot
+                                            :synced-hashes synced-hashes))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -894,7 +898,8 @@
   Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total
+                                                                  :synced-hashes (remote-sync.db/synced-content-hashes-by-path))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1791,7 +1796,8 @@
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
               ;; only the entities the remote changed decide the preview, so extract and serialize just those
-              (assoc (source/preview-merge-changes (remote-changed-extractor targets) snapshot base-snapshot)
+              (assoc (source/preview-merge-changes (remote-changed-extractor targets) snapshot base-snapshot
+                                                   :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
                      :diverged? true)
               (assoc no-changes :diverged? true))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is

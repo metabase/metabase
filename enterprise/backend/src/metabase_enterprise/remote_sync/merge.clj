@@ -73,12 +73,10 @@
   "Two sides are the same when both are absent, or both present with equal path and content. Path equality
   matters so that a rename with otherwise identical content still counts as a change.
 
-  Known conservative edge: the storage path embeds the names of containing collections, so renaming a
-  shared parent collection on one side changes the path of every descendant. Those descendants therefore
-  read as changed (path differs) even if their content is identical; if the other side also edited one of
-  them, that surfaces as a conflict rather than auto-merging the rename with the edit. This is safe (never
-  silently wrong) but more conservative than git would be. Revisit by comparing content separately from
-  path if it proves noisy in practice."
+  On its own this reads as a local change every textual difference between a fresh serialization and the base,
+  including ones nobody made locally (a descendant whose path moved because a parent collection was renamed, or a
+  repo file not byte-identical to Metabase's serialization); the merge's `unchanged-locally?` check, which the
+  remote-sync callers answer from the ledger, tells those apart (see [[three-way-merge]])."
   [a b]
   (= a b))
 
@@ -99,20 +97,27 @@
       (and path (not= descriptor path)) (str " (" path ")"))))
 
 (defn- merge-indexed
-  "[[three-way-merge]] over sides already indexed by [[index-by-key]]."
-  [b o t]
+  "[[three-way-merge]] over sides already indexed by [[index-by-key]].
+
+  `unchanged-locally?` is called with the base and ours specs of an entity present on both sides whose texts
+  differ, and returns true when the local entity has not changed since the sync the base records (see
+  [[three-way-merge]]). Such an entity is not a local change: the remote's edit to it merges cleanly, and when the
+  remote left it alone the fresh serialization is kept, as before."
+  [b o t unchanged-locally?]
   (let [all-keys (into #{} (concat (keys b) (keys o) (keys t)))]
     (reduce
      (fn [acc k]
        (let [bv (get b k)
              ov (get o k)
              tv (get t k)
-             ours-changed? (not (same? ov bv))
+             ours-changed? (and (not (same? ov bv))
+                                (not (and bv ov (unchanged-locally? bv ov))))
              theirs-changed? (not (same? tv bv))]
          (cond
-           ;; neither side changed -> keep base (if present)
+           ;; neither side changed -> keep base (if present); an entity whose text differs from the base but that
+           ;; is unchanged locally keeps its fresh serialization
            (and (not ours-changed?) (not theirs-changed?))
-           (cond-> acc bv (update :merged conj bv))
+           (let [v (or ov bv)] (cond-> acc v (update :merged conj v)))
 
            ;; only ours changed -> take ours
            (and ours-changed? (not theirs-changed?))
@@ -146,9 +151,15 @@
   - `:merged`    - sequence of winning `{:path :content}` specs to write
   - `:conflicts` - sequence of `{:key :ours :theirs :base}` for entities changed differently on both sides
   - `:summary`   - `{:added :updated :removed}` counts of remote-originated changes folded into the result
-                   (i.e. changes coming from `theirs` that `ours` did not already have)"
-  [base ours theirs]
-  (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs)))
+                   (i.e. changes coming from `theirs` that `ours` did not already have)
+
+  `ours` is a fresh serialization, so it can differ from `base` for an entity nobody changed locally: the repo file
+  may not be byte-identical to what Metabase writes (hand-written YAML, or a `name:` edited without renaming the
+  file, since the path is derived from the name). `:unchanged-locally?`, called as `(unchanged-locally? base-spec
+  ours-spec)` for such an entity, says whether the local entity is the one the base records; when it returns true
+  the entity is not a local change. The default treats every textual difference as a local change."
+  [base ours theirs & {:keys [unchanged-locally?] :or {unchanged-locally? (constantly false)}}]
+  (merge-indexed (index-by-key base) (index-by-key ours) (index-by-key theirs) unchanged-locally?))
 
 (defn- casualties-indexed
   "[[force-push-casualties]] over sides already indexed by [[index-by-key]]."
@@ -182,12 +193,12 @@
 (defn merge-with-casualties
   "[[three-way-merge]] with `:force-push-casualties` (see [[force-push-casualties]]) assoc'd, from one
   indexing pass per side. Indexing parses every document's YAML, so callers that need both use this rather
-  than the two functions separately."
-  [base ours theirs]
+  than the two functions separately. `:unchanged-locally?` is as for [[three-way-merge]]."
+  [base ours theirs & {:keys [unchanged-locally?] :or {unchanged-locally? (constantly false)}}]
   (let [b (index-by-key base)
         o (index-by-key ours)
         t (index-by-key theirs)]
-    (assoc (merge-indexed b o t)
+    (assoc (merge-indexed b o t unchanged-locally?)
            :force-push-casualties (casualties-indexed b o t))))
 
 (defn- theirs-changed-keys
@@ -211,8 +222,8 @@
 
   A remote-changed file with no serdes identity (keyed by its path) can't be narrowed to an entity to look up, so
   when there is one, `ours-for` is called with `:all` instead and must return every local spec, as the full merge
-  would see it."
-  [base theirs ours-for]
+  would see it. `:unchanged-locally?` is as for [[three-way-merge]]."
+  [base theirs ours-for & {:keys [unchanged-locally?] :or {unchanged-locally? (constantly false)}}]
   (let [b       (index-by-key base)
         t       (index-by-key theirs)
         changed (theirs-changed-keys b t)
@@ -220,6 +231,6 @@
                   :all
                   (mapv (fn [k] (mapv (fn [[model id]] {:model model :id id}) k)) changed))
         o       (index-by-key (ours-for paths))]
-    (-> (merge-indexed b o t)
+    (-> (merge-indexed b o t unchanged-locally?)
         (dissoc :merged)
         (assoc :force-push-casualties (casualties-indexed b o t)))))
