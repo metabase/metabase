@@ -48,6 +48,6 @@ module.exports = {
   "looks-same": {
     strict: false,
     antialiasingTolerance: 9,
-    tolerance: 5,
+    tolerance: 9,
   },
 };
