@@ -1,6 +1,6 @@
 # Papercut tracker schema: final design
 
-The schema the server uses from schema version 2 on.
+The schema the server uses from schema version 3 on.
 It settles the four server reviews in this folder:
 
 - [`schema.server.claude.md`](schema.server.claude.md)
@@ -15,73 +15,104 @@ It also fits the server mapping in [`schema.papercut.claude.md`](schema.papercut
 Keep every submitted report as evidence, so that reports can be reclassified and regrouped later.
 
 - A **report** is a fact: someone submitted it, and it never changes.
-  The one exception is its issue assignment.
-- An **issue** is the current grouping and triage decision over a set of reports.
-- A **fingerprint** is a key that routes new reports to an issue.
-  An issue can have several.
-- A **relation** links two issues.
+  The one exception is which papercut it belongs to.
+- A **papercut** is the current grouping and triage decision over a set of reports.
+  Versions 1 and 2 called it an issue.
+- A **fingerprint** is a key that routes new reports to a papercut.
+  A papercut can have several.
+- A **relation** links two papercuts.
   It never merges them or their counts.
+- An **event** records one triage decision: who changed what, when, and why.
 
 ## Tables
 
 ```sql
-CREATE TABLE issues (
-    id          INTEGER PRIMARY KEY,
-    repository  TEXT NOT NULL,
-    title       TEXT NOT NULL,
-    description TEXT NOT NULL,
-    path        TEXT NOT NULL,
-    category    TEXT NOT NULL CHECK (category IN ('agent-trap', 'code-smell', 'flaky-test', 'tooling', 'documentation', 'other')),
-    status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved', 'wontfix')),
-    first_seen  TEXT NOT NULL,
-    last_seen   TEXT NOT NULL,
-    UNIQUE (id, repository)
+CREATE TABLE papercuts (
+    id                INTEGER PRIMARY KEY,
+    repository        TEXT NOT NULL,
+    title             TEXT NOT NULL,
+    description       TEXT NOT NULL,
+    path              TEXT NOT NULL,
+    area              TEXT NOT NULL DEFAULT '',
+    category          TEXT CHECK (category IN ('agent-trap', 'code-smell', 'flaky-test', 'tooling', 'documentation', 'other')),
+    status            TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved', 'wontfix')),
+    status_changed_at TEXT,
+    merged_into       INTEGER REFERENCES papercuts (id),
+    first_seen        TEXT NOT NULL,
+    last_seen         TEXT NOT NULL,
+    updated_at        TEXT NOT NULL,
+    UNIQUE (id, repository),
+    CHECK (merged_into IS NULL OR merged_into != id)
 );
 
-CREATE TABLE issue_fingerprints (
+CREATE TABLE papercut_fingerprints (
     repository  TEXT NOT NULL,
     fingerprint TEXT NOT NULL,
-    issue_id    INTEGER NOT NULL,
+    papercut_id INTEGER NOT NULL,
     PRIMARY KEY (repository, fingerprint),
-    FOREIGN KEY (issue_id, repository) REFERENCES issues (id, repository)
+    FOREIGN KEY (papercut_id, repository) REFERENCES papercuts (id, repository)
 );
 
 CREATE TABLE reports (
     id                    INTEGER PRIMARY KEY,
-    issue_id              INTEGER NOT NULL,
+    papercut_id           INTEGER NOT NULL,
     repository            TEXT NOT NULL,
     reporter              TEXT NOT NULL,
     machine               TEXT,
+    agent                 TEXT,
+    session               TEXT,
     report_id             TEXT,
     fingerprint           TEXT NOT NULL,
     submitted_fingerprint TEXT,
-    submitted_category    TEXT CHECK (submitted_category IN (...same as issues.category...)),
+    submitted_category    TEXT CHECK (submitted_category IN (...same as papercuts.category...)),
     title                 TEXT NOT NULL,
     description           TEXT NOT NULL,
     path                  TEXT NOT NULL,
+    area                  TEXT NOT NULL DEFAULT '',
+    cost_minutes          REAL CHECK (cost_minutes >= 0),
     source_type           TEXT,
     source_ref            TEXT,
     payload               TEXT,
     received_at           TEXT NOT NULL,
     observed_at           TEXT,
     UNIQUE (repository, reporter, report_id),
-    FOREIGN KEY (issue_id, repository) REFERENCES issues (id, repository)
+    FOREIGN KEY (papercut_id, repository) REFERENCES papercuts (id, repository)
 );
 
 CREATE TABLE relations (
     repository TEXT NOT NULL,
-    issue_a    INTEGER NOT NULL,
-    issue_b    INTEGER NOT NULL,
-    source     TEXT NOT NULL CHECK (source IN ('suggested', 'manual')),
+    papercut_a INTEGER NOT NULL,
+    papercut_b INTEGER NOT NULL,
+    source     TEXT NOT NULL CHECK (source IN ('suggested', 'manual', 'rejected')),
     score      REAL,
-    PRIMARY KEY (issue_a, issue_b),
-    CHECK (issue_a < issue_b),
-    FOREIGN KEY (issue_a, repository) REFERENCES issues (id, repository),
-    FOREIGN KEY (issue_b, repository) REFERENCES issues (id, repository)
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (papercut_a, papercut_b),
+    CHECK (papercut_a < papercut_b),
+    FOREIGN KEY (papercut_a, repository) REFERENCES papercuts (id, repository),
+    FOREIGN KEY (papercut_b, repository) REFERENCES papercuts (id, repository)
+);
+
+CREATE TABLE events (
+    id          INTEGER PRIMARY KEY,
+    papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+    at          TEXT NOT NULL,
+    actor       TEXT NOT NULL,
+    kind        TEXT NOT NULL CHECK (kind IN ('status', 'category', 'title', 'description', 'path', 'area', 'reopened',
+                                              'merged', 'absorbed', 'related', 'unrelated', 'fingerprint', 'comment')),
+    old_value   TEXT,
+    new_value   TEXT,
+    body        TEXT
 );
 ```
 
-The server also creates indexes on `reports(issue_id)`, `issue_fingerprints(issue_id)` and `relations(issue_b)`.
+The server also creates indexes on:
+
+- `papercuts(updated_at)`
+- `papercut_fingerprints(papercut_id)`
+- `reports(papercut_id)`
+- `relations(papercut_b)`
+- `events(papercut_id)`
+
 It records the schema version in `PRAGMA user_version`.
 
 ## Decisions
@@ -89,57 +120,126 @@ It records the schema version in `PRAGMA user_version`.
 ### Reports record what was submitted
 
 - `payload` holds the request body as JSON, including fields the server doesn't know.
-  The importer sends `transcript` and `lines` this way.
+  The ingest response names those fields in `extra_fields`, so a reporter can spot a misspelled one.
 - `submitted_fingerprint` and `submitted_category` hold what the reporter sent.
   They are NULL when the reporter sent nothing and the server computed or guessed the value.
-  A reclassifier can then tell reporter claims from server guesses.
 - `fingerprint` is the key that assigned the report: the submitted one, or the server's hash of the normalized path and title.
-  It stays on the report when the report moves to another issue.
-- `title`, `description` and `path` are the trimmed values the server uses.
+  It stays on the report when a merge moves the report to another papercut.
+- `title`, `description`, `path` and `area` are the trimmed values the server uses.
   The untrimmed values are in `payload`.
-- `source_type` and `source_ref` record where a report came from, such as `local-papercuts` and a writeup filename.
-  Before this, the importer appended that information to the description as prose.
+- `source_type` and `source_ref` record where a report came from.
+  Examples are `local-papercuts` with a writeup filename, and `transcript-scan` with a transcript line.
+- `report_id` is required from version 3 on.
+  Without it, a retry can't be told apart from a second occurrence.
 
-### Reporter and machine are separate
+### Who reported it, and what it cost
 
-The column that was called `machine_id` is now `reporter`.
-The importer sets it to `<user>.<agent>`, which is not a machine, so the old "distinct machines" count was really a count of reporters.
+- **`reporter`** is the person who reported it, and it scopes `report_id`.
+  The API still accepts `machine_id` as another name for it; a client sending both must send the same value.
+- **`agent`** records which agent hit the papercut, such as `claude` or `codex`.
+  Version 2 packed it into `reporter` as `<user>.<agent>`.
+- **`machine`** and **`session`** are optional and narrow down where it happened.
+- **`cost_minutes`** is the reporter's estimate of the time lost.
+- **Papercut lists compute** `report_count`, `reporter_count`, `agent_count` and total `cost_minutes` from the reports, and can sort by each.
 
-- `reporter` is required, and it scopes `report_id`.
-- `machine` is optional.
-- Issue responses report `reporter_count`.
-- The API still accepts `machine_id` as another name for `reporter`, so older clients keep working.
+### `path` and `area` are separate
 
-### Fingerprints route to issues through a mapping
+`path` is a file path.
+`area` is a free-text description of where the papercut lives, such as "test harness" or a list of files.
+The importer used to put writeups' free-text area in `path`, which broke the fingerprint hash's assumption that `path` is a path.
 
-`issue_fingerprints` replaces `issues.fingerprint`.
-Several fingerprints can point at one issue.
-When two issues merge, the fingerprints of both keep routing new reports to the merged issue.
-This also supports the `aliases` field in the case format.
+### An unclassified papercut has no category
+
+`papercuts.category` is NULL until a reporter or a person sets it.
+The server no longer guesses from keywords.
+The list endpoint filters for these with `category=unclassified`.
+
+- A report's category fills a NULL category on its papercut, but never overwrites one.
+- `category_votes` on a papercut counts the categories its reports sent, to help a person pick one.
+
+### Fingerprints route to papercuts through a mapping
+
+- `papercut_fingerprints` lets several fingerprints lead to one papercut.
+- `POST /api/papercuts/{id}/fingerprints` adds one.
+  If the fingerprint already routes to another papercut, the server rejects the request with 409 and asks for a merge instead.
+- The importer registers each writeup's `merged_from` slugs this way.
+  It merges when an old slug still has its own papercut.
 
 ### Replays must match the original grouping key
 
 A report with an existing `(repository, reporter, report_id)` is a replay.
 
-- **Same fingerprint:** the server returns the existing issue and stores nothing.
+- **Same fingerprint:** the server returns the existing papercut and stores nothing.
   Edited text in a replay is not recorded.
   The importer relies on this, because its writeups gain "Additional occurrence" sections over time.
 - **Different fingerprint:** the server rejects the replay with 409.
-  Before this, it silently returned the earlier issue.
+
+### A merge moves reports, keeping the papercut it moved them from
+
+`POST /api/papercuts/{source}/merge` with `{"into": target}` runs in one transaction:
+
+1. **Moves reports and fingerprints.**
+   Every report and fingerprint moves to the target, so later reports with the source's fingerprints land on the target.
+2. **Keeps the source as a pointer.**
+   The source papercut stays, with `merged_into` pointing at the target.
+   GET requests for it redirect with 301, so old links keep working.
+   Lists leave it out, except the change feed, which must tell clients to drop it.
+3. **Recomputes seen times.**
+   The target's `first_seen` and `last_seen` are recomputed from its reports.
+4. **Carries triage over only when both agree.**
+   If the two papercuts differ in status or category, the target goes back to `open`.
+   A category fills the target's only when the target has none.
+5. **Moves relations.**
+   The target's own relation to a third papercut wins, unless it was only a suggestion and the source's came from a person.
+   Suggested relations are then recomputed for the target.
+6. **Records it.**
+   `merged` and `absorbed` events are recorded on both papercuts.
+
+This follows the regroup rules from both reviews.
+Triage carries over only when it still means the same thing.
+The server never picks a status by majority.
+Earlier values stay in the event history.
+
+### Triage history is recorded
+
+Every change to status, category, title, description, path or area writes an event with the actor, the time, the old and new values, and an optional reason.
+Relation decisions, merges, added fingerprints and comments write events too.
+The actor is whatever name the client sends, and anyone with the token can claim any name.
+
+### A new report can reopen a resolved papercut
+
+A resolved papercut goes back to `open` when a new report was observed after the status changed.
+Either the fix didn't hold, or a stale copy of the trap remains.
+The server records this as a `reopened` event by the actor `server`.
+`status_changed_at` records when the status last changed, to make the comparison.
+
+### Relations can be rejected
+
+- A **`rejected`** relation hides a wrong suggestion and stops the pair from being suggested again.
+- **Suggested relations are recomputed** whenever a papercut is created, merged into, or has its title or description edited.
+  They compare title and description, at a threshold tuned on the local archive.
+  Manual and rejected relations are never recomputed.
+
+### Clients can poll for changes
+
+`updated_at` is stamped under the write lock with microsecond precision.
+It changes whenever a papercut's fields, reports, relations or events change.
+
+- `GET /api/papercuts?since=<cursor>` returns only the papercuts changed after the cursor, including merged ones.
+- Every list response includes the cursor for the next poll.
 
 ### The database enforces the rules it can
 
-- `CHECK` constraints cover category, status and relation source.
-- Composite foreign keys on `(issue_id, repository)` keep a report in its issue's repository.
-  They also stop a relation from linking issues in different repositories.
-- `issues.id` is unique on its own, so the extra `UNIQUE (id, repository)` exists only so these foreign keys can reference it.
+- `CHECK` constraints cover category, status, relation source, event kind, cost and self-merges.
+- Composite foreign keys on `(papercut_id, repository)` keep a report in its papercut's repository.
+  They also stop a relation from linking papercuts in different repositories.
+- `papercuts.id` is unique on its own, so `UNIQUE (id, repository)` exists only so these foreign keys can reference it.
 
 ### Counts are computed; seen times are stored
 
-- Report and reporter counts are computed from `reports`.
+- Report counts, reporter counts, agent counts and cost are computed from `reports`.
 - `first_seen` and `last_seen` are stored so the list can sort without an aggregate.
-  Ingest widens them with `MIN` and `MAX`.
-  Any operation that moves reports between issues must recompute both from the reports.
+  Ingest widens them with `MIN` and `MAX`, and a merge recomputes them.
 
 ### Schema changes are versioned
 
@@ -150,15 +250,18 @@ Each migration runs once, in order, inside one `BEGIN IMMEDIATE` transaction:
 - The migration re-reads `user_version` after taking the lock.
   If two servers start at the same time, only one of them migrates.
 
-## Migrating from version 1
+A server running older code against a migrated database fails on every request, so restart it after pulling a new migration.
 
-Version 1 is the original schema, including the `observed_at` column added later.
-Migration 2 rebuilds the tables and fills in only what it can prove.
+## Migrations
+
+Both migrations backfill only what the old data proves.
+
+### Version 1 to version 2
 
 | Column | Backfill | Why it is exact |
 |---|---|---|
 | `issue_fingerprints` | One row per issue, from `issues.fingerprint` | The mapping is the old column split into its own table |
-| `reports.fingerprint` | The issue's fingerprint | Version 1 grouped reports by exact fingerprint only, so every report in an issue had its issue's fingerprint |
+| `reports.fingerprint` | The issue's fingerprint | Version 1 grouped reports by exact fingerprint only |
 | `reports.submitted_fingerprint` | The issue's fingerprint, when it differs from the server hash of the report's path and title; otherwise NULL | Anything other than the server hash must have been submitted |
 | `reports.reporter` | `machine_id` | Rename only |
 | `reports.source_type`, `source_ref` | `local-papercuts` and the filename, from a trailing `Source: local-papercuts/<file>` line in the description | The importer wrote exactly this line. The description keeps it |
@@ -166,42 +269,28 @@ Migration 2 rebuilds the tables and fills in only what it can prove.
 | `reports.submitted_category` | NULL | Version 1 did not store it, and the issue category may be a server guess or a later triage edit |
 | `reports.payload` | NULL | Version 1 did not store it. NULL means "migrated from version 1" |
 
-### Not copying the issue category
+`submitted_category` is left NULL instead of copied from the issue, because the issue category is not evidence of what the reporter sent.
+Two Codex writeups (`active-search-table` and `provenance-alias`) sent no category, so their issues hold the server's keyword guess.
 
-`submitted_category` is left NULL instead of copied from the issue, because the issue category is not evidence of what the reporter sent:
+### Version 2 to version 3
 
-- Two Codex writeups (`active-search-table` and `provenance-alias`) sent no category.
-  Their issues hold the server classifier's guess.
-- A triage edit can change an issue's category after import.
+| Column | Backfill | Why it is exact |
+|---|---|---|
+| `papercuts`, `papercut_fingerprints` | Copied from `issues` and `issue_fingerprints` | Rename only |
+| `papercuts.path`, `area` | For papercuts with imported reports, `path` moves to `area` and `path` becomes empty | The importer put each writeup's free-text area in `path` |
+| `papercuts.category` | NULL when no report sent a category and every report has a recorded body; otherwise kept | Only then is the category certainly the server's guess. Version 1 rows have no body, so their categories stay |
+| `papercuts.status_changed_at` | The migration time for papercuts that aren't open; otherwise NULL | The real time was not recorded; the migration time keeps later reports able to reopen them |
+| `reports.reporter`, `agent` | For imported reports, `<user>.<agent>` is split into the two columns | The importer built the reporter that way |
+| `reports.session` | For imported reports, the transcript's file name, when the request body recorded it | The importer sent the transcript path |
+| `reports.path`, `area` | For imported reports, `path` moves to `area` | Same as for papercuts |
+| `papercuts.updated_at`, `relations.updated_at` | The migration time | Nothing earlier was recorded |
+| `events` | Empty | No history was recorded before version 3 |
 
-For the local archive, re-importing the committed writeups into an empty database gives full-fidelity rows, including `payload` and `submitted_category`.
+## Deferred
 
-## Deferred: merge, split and regroup
-
-None of these are implemented yet.
-When they are, they follow these rules:
-
-1. **One transaction per operation.**
-   It moves report assignments, moves fingerprint rows, and recomputes `first_seen` and `last_seen` for every affected issue.
-2. **Triage carries forward only when a group is unchanged.**
-   Status and category carry over to a new group only if its membership is unchanged.
-   Otherwise the group goes back to triage, and the old decisions are kept in history.
-   A majority rule may suggest a status, but never sets it.
-3. **Suggested relations are recomputed; manual relations are reviewed.**
-   Suggested relations are recomputed for every affected issue.
-   A manual relation carries over only when its endpoint maps to exactly one new issue.
-   Otherwise it is queued for review.
-4. **Merged writeups need fingerprint aliases.**
-   Since `populated.sqlite3` was built, some writeups have been merged into others, with the old slugs listed in `merged_from`.
-   Four old slugs, such as `ddl-inside-rollback-only-with-temp-leaks-rows`, still have their own issues in the migrated DB.
-   Registering each `merged_from` slug as an extra fingerprint on the surviving issue, and then merging the issues, would fix this.
-5. **Triage history needs a new table.**
-   A `triage_events` table (issue, field, old value, new value, actor, time, reason) would record these decisions.
-   It isn't needed until triage is done by more than one person or by automated regrouping.
-
-## Not changed
-
-- **Similarity suggestions** still run only when an issue is created, and still scan the issues in that repository.
-  That is fine at the current size, a few hundred rows.
-- **Search** still uses `LIKE`.
-  Consider full-text search when the issue list gets slow.
+- **Split.** No operation moves some of a papercut's reports to a new papercut yet.
+  When it exists, it should follow the merge rules: one transaction, recomputed seen times and suggestions, and triage reset whenever membership changes.
+- **Similarity scaling.** Suggestions scan every live papercut in the repository.
+  That is fine at a few hundred papercuts.
+- **Search.** Search uses `LIKE`.
+  Consider full-text search when the list gets slow.
