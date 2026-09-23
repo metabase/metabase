@@ -1,0 +1,504 @@
+diff --git a/src/expr.c b/src/expr.c
+index 7e13e5b..44a6ecf 100644
+--- a/src/expr.c
++++ b/src/expr.c
+@@ -1970,6 +1970,7 @@ Select *sqlite3SelectDup(sqlite3 *db, const Select *pDup, int flags){
+     pNew->addrOpenEphm[1] = -1;
+     pNew->nSelectRow = p->nSelectRow;
+     pNew->pWith = sqlite3WithDup(db, p->pWith);
++    pNew->pRerank = sqlite3ExprListDup(db, p->pRerank, flags);
+ #ifndef SQLITE_OMIT_WINDOWFUNC
+     pNew->pWin = 0;
+     pNew->pWinDefn = sqlite3WindowListDup(db, p->pWinDefn);
+diff --git a/src/parse.y b/src/parse.y
+index 617eb73..af99b95 100644
+--- a/src/parse.y
++++ b/src/parse.y
+@@ -290,6 +290,7 @@ columnname(A) ::= nm(A) typetoken(Y). {sqlite3AddColumn(pParse,A,Y);}
+ %endif
+   MATERIALIZED
+   REINDEX RENAME CTIME_KW IF
++  BASED VIBES
+   .
+ %wildcard ANY.
+ 
+@@ -506,6 +507,9 @@ ifexists(A) ::= .            {A = 0;}
+ %ifndef SQLITE_OMIT_VIEW
+ cmd ::= createkw(X) temp(T) VIEW ifnotexists(E) nm(Y) dbnm(Z) eidlist_opt(C)
+           AS select(S). {
++  if( pParse->nVibesRerank ){
++    sqlite3ErrorMsg(pParse, "RERANK BASED ON VIBES is not allowed in a view");
++  }
+   sqlite3CreateView(pParse, &X, &Y, &Z, C, S, T, E);
+ }
+ cmd ::= DROP VIEW ifexists(E) fullname(X). {
+@@ -550,6 +554,11 @@ cmd ::= select(X).  {
+         pLoop = pLoop->pPrior;
+         if( pLoop==0 ) break;
+         cnt++;        
++        if( pLoop->pRerank ){
++          sqlite3ErrorMsg(pParse,"RERANK clause should come after %s not before",
++             sqlite3SelectOpName(pNext->op));
++          break;
++        }
+         if( pLoop->pOrderBy || pLoop->pLimit ){
+           sqlite3ErrorMsg(pParse,"%s clause should come after %s not before",
+              pLoop->pOrderBy!=0 ? "ORDER BY" : "LIMIT",
+@@ -589,9 +598,12 @@ cmd ::= select(X).  {
+ }
+ 
+ %ifndef SQLITE_OMIT_CTE
+-select(A) ::= WITH wqlist(W) selectnowith(X). {A = attachWithToSelect(pParse,X,W);}
+-select(A) ::= WITH RECURSIVE wqlist(W) selectnowith(X).
+-                                              {A = attachWithToSelect(pParse,X,W);}
++select(A) ::= WITH wqlist(W) selectnowith(X). {
++  A = sqlite3VibesRerankWrap(pParse, attachWithToSelect(pParse,X,W));
++}
++select(A) ::= WITH RECURSIVE wqlist(W) selectnowith(X). {
++  A = sqlite3VibesRerankWrap(pParse, attachWithToSelect(pParse,X,W));
++}
+ 
+ %endif /* SQLITE_OMIT_CTE */
+ select(A) ::= selectnowith(A). {
+@@ -599,6 +611,7 @@ select(A) ::= selectnowith(A). {
+   if( p ){
+     parserDoubleLinkSelect(pParse, p);
+   }
++  A = sqlite3VibesRerankWrap(pParse, p);
+ }
+ 
+ selectnowith(A) ::= oneselect(A).
+@@ -633,22 +646,46 @@ multiselect_op(A) ::= EXCEPT|INTERSECT(OP).  {A = @OP; /*A-overwrites-OP*/}
+ 
+ oneselect(A) ::= SELECT distinct(D) selcollist(W) from(X) where_opt(Y)
+                  groupby_opt(P) having_opt(Q) 
+-                 orderby_opt(Z) limit_opt(L). {
++                 orderby_opt(Z) rerank_opt(K) limit_opt(L). {
+   A = sqlite3SelectNew(pParse,W,X,Y,P,Q,Z,D,L);
++  if( A ){
++    A->pRerank = K;
++  }else{
++    sqlite3ExprListDelete(pParse->db, K);
++  }
+ }
+ %ifndef SQLITE_OMIT_WINDOWFUNC
+ oneselect(A) ::= SELECT distinct(D) selcollist(W) from(X) where_opt(Y)
+                  groupby_opt(P) having_opt(Q) window_clause(R)
+-                 orderby_opt(Z) limit_opt(L). {
++                 orderby_opt(Z) rerank_opt(K) limit_opt(L). {
+   A = sqlite3SelectNew(pParse,W,X,Y,P,Q,Z,D,L);
+   if( A ){
+     A->pWinDefn = R;
++    A->pRerank = K;
+   }else{
+     sqlite3WindowListDelete(pParse->db, R);
++    sqlite3ExprListDelete(pParse->db, K);
+   }
+ }
+ %endif
+ 
++// RERANK BASED ON VIBES [(prompt)] [ASC|DESC] (vibes patch).  RERANK is not a
++// fallback keyword (a fallback would let "FROM t rerank" take it as an alias);
++// instead the tokenizer only reports TK_RERANK when BASED follows.  The value is a
++// one-term list holding the prompt expression and the direction (default
++// DESC); sqlite3VibesRerankWrap() turns it into ordinary SQL once the whole
++// (possibly compound) select has been parsed.
++//
++%type rerank_opt {ExprList*}
++%destructor rerank_opt {sqlite3ExprListDelete(pParse->db, $$);}
++rerank_opt(A) ::= .                        {A = 0;}
++rerank_opt(A) ::= RERANK BASED ON VIBES sortorder(Z). {
++  A = sqlite3VibesRerankClause(pParse, 0, Z);
++}
++rerank_opt(A) ::= RERANK BASED ON VIBES LP expr(X) RP sortorder(Z). {
++  A = sqlite3VibesRerankClause(pParse, X, Z);
++}
++
+ 
+ // Single row VALUES clause.
+ //
+@@ -1671,7 +1708,12 @@ cmd ::= createkw trigger_decl(A) BEGIN trigger_cmd_list(S) END(Z). {
+   Token all;
+   all.z = A.z;
+   all.n = (int)(Z.z - A.z) + Z.n;
+-  sqlite3FinishTrigger(pParse, S, &all);
++  if( pParse->nVibesRerank ){
++    sqlite3ErrorMsg(pParse, "RERANK BASED ON VIBES is not allowed in a trigger");
++    sqlite3DeleteTriggerStep(pParse->db, S);
++  }else{
++    sqlite3FinishTrigger(pParse, S, &all);
++  }
+ }
+ 
+ trigger_decl(A) ::= temp(T) TRIGGER ifnotexists(NOERR) nm(B) dbnm(Z) 
+diff --git a/src/resolve.c b/src/resolve.c
+index 3961a20..57ec552 100644
+--- a/src/resolve.c
++++ b/src/resolve.c
+@@ -2008,9 +2008,10 @@ static int resolveSelectStep(Walker *pWalker, Select *p){
+ #endif
+ 
+     /* The ORDER BY and GROUP BY clauses may not refer to terms in
+-    ** outer queries
++    ** outer queries.  Except for the ORDER BY made from a RERANK clause
++    ** (vibes patch), whose prompt may be correlated.
+     */
+-    sNC.pNext = 0;
++    sNC.pNext = (p->selFlags & SF_VibesOuterOB)!=0 ? pOuterNC : 0;
+     sNC.ncFlags |= NC_AllowAgg|NC_AllowWin;
+ 
+     /* If this is a converted compound query, move the ORDER BY clause from
+@@ -2046,6 +2047,7 @@ static int resolveSelectStep(Walker *pWalker, Select *p){
+     if( db->mallocFailed ){
+       return WRC_Abort;
+     }
++    sNC.pNext = 0;
+     sNC.ncFlags &= ~NC_AllowWin;
+  
+     /* Resolve the GROUP BY clause.  At the same time, make sure
+diff --git a/src/select.c b/src/select.c
+index 8e4c939..edf53ac 100644
+--- a/src/select.c
++++ b/src/select.c
+@@ -90,6 +90,7 @@ static void clearSelect(sqlite3 *db, Select *p, int bFree){
+     sqlite3ExprDelete(db, p->pHaving);
+     sqlite3ExprListDelete(db, p->pOrderBy);
+     sqlite3ExprDelete(db, p->pLimit);
++    sqlite3ExprListDelete(db, p->pRerank);
+     if( OK_IF_ALWAYS_TRUE(p->pWith) ) sqlite3WithDelete(db, p->pWith);
+ #ifndef SQLITE_OMIT_WINDOWFUNC
+     if( OK_IF_ALWAYS_TRUE(p->pWinDefn) ){
+@@ -164,6 +165,7 @@ Select *sqlite3SelectNew(
+   pNew->pNext = 0;
+   pNew->pLimit = pLimit;
+   pNew->pWith = 0;
++  pNew->pRerank = 0;
+ #ifndef SQLITE_OMIT_WINDOWFUNC
+   pNew->pWin = 0;
+   pNew->pWinDefn = 0;
+@@ -188,6 +190,195 @@ void sqlite3SelectDeleteGeneric(sqlite3 *db, void *p){
+   if( ALWAYS(p) ) clearSelect(db, (Select*)p, 1);
+ }
+ 
++/*
++** RERANK BASED ON VIBES (vibes patch).
++**
++**     S RERANK BASED ON VIBES [(P)] [ASC|DESC] [LIMIT L]
++**
++** is desugared at parse time into
++**
++**     [WITH ...moved from S]
++**     SELECT * FROM (SELECT row_number() OVER () AS __vibes_id, * FROM (S))
++**                   AS __vibes_cand
++**     ORDER BY vibes(P, __vibes_id, <roster>) DESC, __vibes_id ASC
++**     [LIMIT L]
++**
++** and selectExpander() later (once the column names are known) fills in
++** <roster> as
++**
++**     json_group_object(__vibes_id, json_object('c1', __vibes_cand.c1, ...))
++**         OVER ()
++**
++** and drops __vibes_id from the result set.  vibes() itself is an ordinary
++** application-defined function, resolved like any other.  P defaults to
++** (SELECT prompt FROM user_prompt).
++*/
++static Expr *vibesFunction(Parse *pParse, const char *zName, ExprList *pArgs){
++  Token t;
++  sqlite3TokenInit(&t, (char*)zName);
++  return sqlite3ExprFunction(pParse, pArgs, &t, 0);
++}
++static Expr *vibesWindowFunction(
++  Parse *pParse,
++  const char *zName,
++  ExprList *pArgs
++){
++  Expr *p = vibesFunction(pParse, zName, pArgs);
++  if( p ){
++    Window *pWin = sqlite3WindowAlloc(pParse, 0, TK_UNBOUNDED, 0,
++                                      TK_CURRENT, 0, 0);
++    if( pWin ){
++      sqlite3WindowAttach(pParse, p, pWin);
++    }else{
++      sqlite3ExprDelete(pParse->db, p);
++      p = 0;
++    }
++  }
++  return p;
++}
++
++/*
++** The value of the grammar's rerank_opt: a one-term list holding the prompt
++** expression, with the term's sort order as the direction.
++*/
++ExprList *sqlite3VibesRerankClause(Parse *pParse, Expr *pPrompt, int eDir){
++  ExprList *pList;
++  if( pPrompt==0 ){
++    Token t;
++    Select *pSel;
++    sqlite3TokenInit(&t, "user_prompt");
++    pSel = sqlite3SelectNew(pParse,
++        sqlite3ExprListAppend(pParse, 0,
++                              sqlite3Expr(pParse->db, TK_ID, "prompt")),
++        sqlite3SrcListAppend(pParse, 0, &t, 0), 0, 0, 0, 0, 0, 0);
++    pPrompt = sqlite3PExpr(pParse, TK_SELECT, 0, 0);
++    sqlite3PExprAddSelect(pParse, pPrompt, pSel);
++  }
++  pList = sqlite3ExprListAppend(pParse, 0, pPrompt);
++  sqlite3ExprListSetSortOrder(pList,
++      eDir==SQLITE_SO_UNDEFINED ? SQLITE_SO_DESC : eDir, SQLITE_SO_UNDEFINED);
++  return pList;
++}
++
++/*
++** Called for every complete select (compound, with its WITH clause
++** attached).  Returns p unchanged unless its last term carries a RERANK
++** clause, in which case returns the desugared select described above.
++*/
++Select *sqlite3VibesRerankWrap(Parse *pParse, Select *p){
++  sqlite3 *db = pParse->db;
++  ExprList *pRerank, *pEList, *pArgs, *pOrderBy;
++  Expr *pPrompt, *pLimit;
++  With *pWith;
++  SrcList *pSrc;
++  Select *pNum, *pNew;
++  Token t;
++  int eDir;
++
++  if( p==0 || p->pRerank==0 ) return p;
++  pRerank = p->pRerank;
++  p->pRerank = 0;
++  if( pParse->nVibesRerank<255 ) pParse->nVibesRerank++;
++  pPrompt = pRerank->a[0].pExpr;
++  pRerank->a[0].pExpr = 0;
++  eDir = (pRerank->a[0].fg.sortFlags & KEYINFO_ORDER_DESC)
++             ? SQLITE_SO_DESC : SQLITE_SO_ASC;
++  sqlite3ExprListDelete(db, pRerank);
++
++  pWith = p->pWith;
++  p->pWith = 0;
++  pLimit = p->pLimit;
++  p->pLimit = 0;
++  /* The select's own ORDER BY numbers the candidates: the tiebreak. */
++  if( p->pOrderBy ) p->selFlags |= SF_OrderByReqd;
++
++  /* SELECT row_number() OVER () AS __vibes_id, * FROM (p) */
++  pEList = sqlite3ExprListAppend(pParse, 0,
++                                 vibesWindowFunction(pParse, "row_number", 0));
++  sqlite3TokenInit(&t, "__vibes_id");
++  sqlite3ExprListSetName(pParse, pEList, &t, 0);
++  pEList = sqlite3ExprListAppend(pParse, pEList,
++                                 sqlite3Expr(db, TK_ASTERISK, 0));
++  t.z = 0;
++  t.n = 0;
++  pSrc = sqlite3SrcListAppendFromTerm(pParse, 0, 0, 0, &t, p, 0);
++  pNum = sqlite3SelectNew(pParse, pEList, pSrc, 0, 0, 0, 0, 0, 0);
++
++  /* SELECT * FROM (pNum) AS __vibes_cand
++  ** ORDER BY vibes(P, __vibes_id, NULL) dir, __vibes_id ASC LIMIT L */
++  sqlite3TokenInit(&t, "__vibes_cand");
++  pSrc = sqlite3SrcListAppendFromTerm(pParse, 0, 0, 0, &t, pNum, 0);
++  pArgs = sqlite3ExprListAppend(pParse, 0, pPrompt);
++  pArgs = sqlite3ExprListAppend(pParse, pArgs,
++                                sqlite3Expr(db, TK_ID, "__vibes_id"));
++  pArgs = sqlite3ExprListAppend(pParse, pArgs, sqlite3Expr(db, TK_NULL, 0));
++  pOrderBy = sqlite3ExprListAppend(pParse, 0,
++                                   vibesFunction(pParse, "vibes", pArgs));
++  sqlite3ExprListSetSortOrder(pOrderBy, eDir, SQLITE_SO_UNDEFINED);
++  pOrderBy = sqlite3ExprListAppend(pParse, pOrderBy,
++                                   sqlite3Expr(db, TK_ID, "__vibes_id"));
++  sqlite3ExprListSetSortOrder(pOrderBy, SQLITE_SO_ASC, SQLITE_SO_UNDEFINED);
++  pNew = sqlite3SelectNew(pParse, 0, pSrc, 0, 0, 0, pOrderBy, 0, pLimit);
++  if( pNew ){
++    pNew->pWith = pWith;
++    pNew->selFlags |= SF_VibesRerank;
++  }else{
++    sqlite3WithDelete(db, pWith);
++  }
++  return pNew;
++}
++
++/*
++** selectExpander() step for a select made by sqlite3VibesRerankWrap(),
++** after its "*" has been expanded: build the roster from the candidate
++** columns and hide __vibes_id.  Returns non-zero on error.
++*/
++static int vibesRerankExpand(Parse *pParse, Select *p){
++  sqlite3 *db = pParse->db;
++  ExprList *pEList = p->pEList;
++  ExprList *pObj = 0, *pArgs;
++  Expr *pVibes, *pRoster;
++  Table *pTab;
++  int i;
++
++  p->selFlags &= ~(u32)SF_VibesRerank;
++  /* The prompt may be correlated, and it lives in the ORDER BY. */
++  p->selFlags |= SF_VibesOuterOB;
++  if( pParse->nErr ) return 1;
++  pTab = p->pSrc->nSrc==1 ? p->pSrc->a[0].pSTab : 0;
++  pVibes = p->pOrderBy && p->pOrderBy->nExpr==2 ? p->pOrderBy->a[0].pExpr : 0;
++  if( pTab==0 || pEList==0 || pEList->nExpr!=pTab->nCol || pTab->nCol<2
++   || sqlite3StrICmp(pTab->aCol[0].zCnName, "__vibes_id")!=0
++   || pVibes==0 || pVibes->op!=TK_FUNCTION || !ExprUseXList(pVibes)
++   || pVibes->x.pList==0 || pVibes->x.pList->nExpr!=3
++  ){
++    sqlite3ErrorMsg(pParse, "malformed RERANK BASED ON VIBES");
++    return 1;
++  }
++  for(i=1; i<pTab->nCol; i++){
++    const char *zName = pTab->aCol[i].zCnName;
++    pObj = sqlite3ExprListAppend(pParse, pObj,
++                                 sqlite3Expr(db, TK_STRING, zName));
++    pObj = sqlite3ExprListAppend(pParse, pObj,
++        sqlite3PExpr(pParse, TK_DOT, sqlite3Expr(db, TK_ID, "__vibes_cand"),
++                     sqlite3Expr(db, TK_ID, zName)));
++  }
++  pArgs = sqlite3ExprListAppend(pParse, 0,
++                                sqlite3Expr(db, TK_ID, "__vibes_id"));
++  pArgs = sqlite3ExprListAppend(pParse, pArgs,
++                                vibesFunction(pParse, "json_object", pObj));
++  pRoster = vibesWindowFunction(pParse, "json_group_object", pArgs);
++  if( pRoster==0 ) return 1;
++  sqlite3ExprDelete(db, pVibes->x.pList->a[2].pExpr);
++  pVibes->x.pList->a[2].pExpr = pRoster;
++
++  sqlite3ExprDelete(db, pEList->a[0].pExpr);
++  sqlite3DbFree(db, pEList->a[0].zEName);
++  memmove(&pEList->a[0], &pEList->a[1], (pEList->nExpr-1)*sizeof(pEList->a[0]));
++  pEList->nExpr--;
++  return pParse->nErr!=0;
++}
++
+ /*
+ ** Return a pointer to the right-most SELECT statement in a compound.
+ */
+@@ -6417,6 +6608,9 @@ static int selectExpander(Walker *pWalker, Select *p){
+     sqlite3ExprListDelete(db, pEList);
+     p->pEList = pNew;
+   }
++  if( (p->selFlags & SF_VibesRerank)!=0 && vibesRerankExpand(pParse, p) ){
++    return WRC_Abort;
++  }
+   if( p->pEList ){
+     if( p->pEList->nExpr>db->aLimit[SQLITE_LIMIT_COLUMN] ){
+       sqlite3ErrorMsg(pParse, "too many columns in result set");
+diff --git a/src/sqliteInt.h b/src/sqliteInt.h
+index dee1d07..eaf558b 100644
+--- a/src/sqliteInt.h
++++ b/src/sqliteInt.h
+@@ -3598,6 +3598,7 @@ struct Select {
+   Window *pWin;          /* List of window functions */
+   Window *pWinDefn;      /* List of named window definitions */
+ #endif
++  ExprList *pRerank;     /* RERANK BASED ON VIBES prompt, parse-time only */
+ };
+ 
+ /*
+@@ -3640,6 +3641,8 @@ struct Select {
+ #define SF_OrderByReqd   0x8000000 /* The ORDER BY clause may not be omitted */
+ #define SF_UpdateFrom   0x10000000 /* Query originates with UPDATE FROM */
+ #define SF_Correlated   0x20000000 /* True if references the outer context */
++#define SF_VibesRerank  0x40000000 /* Desugared RERANK: roster to fill in */
++#define SF_VibesOuterOB 0x80000000 /* ORDER BY may see outer queries (RERANK) */
+ 
+ /* True if SrcItem X is a subquery that has SF_NestedFrom */
+ #define IsNestedFrom(X) \
+@@ -3888,6 +3891,7 @@ struct Parse {
+   u8 bReturning;       /* Coding a RETURNING trigger */
+   u8 eOrconf;          /* Default ON CONFLICT policy for trigger steps */
+   u8 disableTriggers;  /* True to disable triggers */
++  u8 nVibesRerank;     /* Number of RERANK BASED ON VIBES clauses */
+ #if defined(SQLITE_DEBUG) || defined(SQLITE_COVERAGE_TEST)
+   u8 earlyCleanup;     /* OOM inside sqlite3ParserAddCleanup() */
+ #endif
+@@ -4909,6 +4913,8 @@ Expr *sqlite3ExprAlloc(sqlite3*,int,const Token*,int);
+ Expr *sqlite3Expr(sqlite3*,int,const char*);
+ void sqlite3ExprAttachSubtrees(sqlite3*,Expr*,Expr*,Expr*);
+ Expr *sqlite3PExpr(Parse*, int, Expr*, Expr*);
++ExprList *sqlite3VibesRerankClause(Parse*, Expr*, int);
++Select *sqlite3VibesRerankWrap(Parse*, Select*);
+ void sqlite3PExprAddSelect(Parse*, Expr*, Select*);
+ Expr *sqlite3ExprAnd(Parse*,Expr*, Expr*);
+ Expr *sqlite3ExprSimplifiedAndOr(Expr*);
+diff --git a/src/tokenize.c b/src/tokenize.c
+index 6f7bab3..510a0eb 100644
+--- a/src/tokenize.c
++++ b/src/tokenize.c
+@@ -205,6 +205,7 @@ static int getToken(const unsigned char **pz){
+    || t==TK_JOIN_KW 
+    || t==TK_WINDOW 
+    || t==TK_OVER 
++   || t==TK_RERANK
+    || sqlite3ParserFallback(t)==TK_ID 
+   ){
+     t = TK_ID;
+@@ -258,6 +259,16 @@ static int analyzeOverKeyword(const unsigned char *z, int lastToken){
+   }
+   return TK_ID;
+ }
++/*
++** RERANK is a keyword only when BASED follows (vibes patch).
++*/
++static int analyzeRerankKeyword(const unsigned char *z){
++  int t;
++  do {
++    z += sqlite3GetToken(z, &t);
++  }while( t==TK_SPACE || t==TK_COMMENT );
++  return t==TK_BASED ? TK_RERANK : TK_ID;
++}
+ static int analyzeFilterKeyword(const unsigned char *z, int lastToken){
+   if( lastToken==TK_RP && getToken(&z)==TK_LP ){
+     return TK_FILTER;
+@@ -706,6 +717,8 @@ int sqlite3RunParser(Parse *pParse, const char *zSql){
+         sqlite3ErrorMsg(pParse, "unrecognized token: \"%T\"", &x);
+         break;
+       }
++    }else if( tokenType==TK_RERANK ){
++      tokenType = analyzeRerankKeyword((const u8*)&zSql[n]);
+     }
+     pParse->sLastToken.z = zSql;
+     pParse->sLastToken.n = n;
+diff --git a/tool/mkctimec.tcl b/tool/mkctimec.tcl
+index 1c59131..5cdc27e 100755
+--- a/tool/mkctimec.tcl
++++ b/tool/mkctimec.tcl
+@@ -440,6 +440,11 @@ foreach v $value2_options {
+ }]
+ }
+ 
++# RERANK BASED ON VIBES grammar (vibes patch): always compiled in.
++set options(VIBES_RERANK) {
++  "VIBES_RERANK",
++}
++
+ if {$argc>0} {
+   set destfile [lindex $argv 0]
+ } else {
+diff --git a/tool/mkkeywordhash.c b/tool/mkkeywordhash.c
+index 188c0a2..3864fcc 100644
+--- a/tool/mkkeywordhash.c
++++ b/tool/mkkeywordhash.c
+@@ -188,6 +188,7 @@ static Keyword aKeywordTable[] = {
+   { "ASC",              "TK_ASC",          ALWAYS,           0      },
+   { "ATTACH",           "TK_ATTACH",       ATTACH,           1      },
+   { "AUTOINCREMENT",    "TK_AUTOINCR",     AUTOINCR,         0      },
++  { "BASED",            "TK_BASED",        ALWAYS,           0      },
+   { "BEFORE",           "TK_BEFORE",       TRIGGER,          0      },
+   { "BEGIN",            "TK_BEGIN",        ALWAYS,           1      },
+   { "BETWEEN",          "TK_BETWEEN",      ALWAYS,           5      },
+@@ -290,6 +291,7 @@ static Keyword aKeywordTable[] = {
+   { "REINDEX",          "TK_REINDEX",      REINDEX,          1      },
+   { "RELEASE",          "TK_RELEASE",      ALWAYS,           1      },
+   { "RENAME",           "TK_RENAME",       ALTER,            1      },
++  { "RERANK",           "TK_RERANK",       ALWAYS,           0      },
+   { "REPLACE",          "TK_REPLACE",      CONFLICT,         10     },
+   { "RESTRICT",         "TK_RESTRICT",     FKEY,             1      },
+   { "RETURNING",        "TK_RETURNING",    RETURNING,        10     },
+@@ -315,6 +317,7 @@ static Keyword aKeywordTable[] = {
+   { "USING",            "TK_USING",        ALWAYS,           8      },
+   { "VACUUM",           "TK_VACUUM",       VACUUM,           1      },
+   { "VALUES",           "TK_VALUES",       ALWAYS,           10     },
++  { "VIBES",            "TK_VIBES",        ALWAYS,           0      },
+   { "VIEW",             "TK_VIEW",         VIEW,             1      },
+   { "VIRTUAL",          "TK_VIRTUAL",      VTAB,             1      },
+   { "WHEN",             "TK_WHEN",         ALWAYS,           1      },

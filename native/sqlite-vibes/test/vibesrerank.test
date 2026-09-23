@@ -1,0 +1,298 @@
+# RERANK BASED ON VIBES (vibes patch).
+#
+# vibes(prompt, id, roster) is a TCL fake: it returns roster[id].score, or
+# else the score of roster[id].name in ::vibes_scores, or else -1 (a TCL
+# function cannot return NULL).  It counts calls and distinct (prompt, roster)
+# batches, so orderings are deterministic and the number of batches is
+# observable.
+#
+# Run from the build directory: ./testfixture <src>/test/vibesrerank.test
+#
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+set testprefix vibesrerank
+
+proc vibes_reset {} {
+  set ::vibes_calls 0
+  set ::vibes_batches [dict create]
+}
+proc vibes {prompt id roster} {
+  incr ::vibes_calls
+  dict set ::vibes_batches "$prompt|$roster" 1
+  set ::vibes_last_prompt $prompt
+  set ::vibes_last_roster $roster
+  set key "\$.\"$id\""
+  set score [db one {SELECT json_extract($roster, $key || '.score')}]
+  if {$score ne ""} { return $score }
+  set name [db one {SELECT json_extract($roster, $key || '.name')}]
+  if {[dict exists $::vibes_scores $name]} {
+    return [expr {double([dict get $::vibes_scores $name])}]
+  }
+  return [expr {-1.0}]
+}
+set ::vibes_scores {a 0.1 b 0.9 c 0.5 e 0.5 f 0.95}
+proc vibes_batches {} { dict size $::vibes_batches }
+vibes_reset
+db func vibes vibes
+
+do_execsql_test 1.0 {
+  CREATE TABLE t(name TEXT, score REAL);
+  INSERT INTO t VALUES ('a', 0.1), ('b', 0.9), ('c', 0.5), ('d', NULL),
+                       ('e', 0.5);
+  CREATE TABLE prompts(p TEXT);
+  INSERT INTO prompts VALUES ('p1'), ('p2'), ('p3');
+  SELECT sqlite_compileoption_used('VIBES_RERANK');
+} {1}
+
+#-------------------------------------------------------------------------
+# Top-level: direction, LIMIT/OFFSET, prior ORDER BY as the tiebreak.
+#
+do_execsql_test 2.1 {
+  SELECT name FROM t RERANK BASED ON VIBES('q');
+} {b c e a d}
+do_execsql_test 2.2 {
+  SELECT name FROM t RERANK BASED ON VIBES('q') DESC;
+} {b c e a d}
+do_execsql_test 2.3 {
+  SELECT name, score FROM t RERANK BASED ON VIBES('q') ASC LIMIT 3;
+} {d {} a 0.1 c 0.5}
+do_execsql_test 2.4 {
+  SELECT name FROM t RERANK BASED ON VIBES('q') LIMIT 2 OFFSET 1;
+} {c e}
+do_execsql_test 2.5 {
+  SELECT name FROM t ORDER BY name DESC RERANK BASED ON VIBES('q');
+} {b e c a d}
+do_test 2.6 {
+  vibes_reset
+  execsql { SELECT name FROM t RERANK BASED ON VIBES('q') }
+  list $::vibes_calls [vibes_batches] $::vibes_last_prompt
+} {5 1 q}
+do_test 2.7 {
+  execsql { SELECT name, score FROM t WHERE name<'c' RERANK BASED ON VIBES('q') }
+  set ::vibes_last_roster
+} {{"1":{"name":"a","score":0.1},"2":{"name":"b","score":0.9}}}
+do_execsql_test 2.8 {
+  SELECT name FROM t RERANK /* comment */ BASED
+    ON VIBES ('q' || '') LIMIT 1;
+} {b}
+
+#-------------------------------------------------------------------------
+# Result columns keep their names, and the roster uses them.
+#
+do_test 3.1 {
+  execsql { SELECT name || '!', score FROM t WHERE name='a'
+            RERANK BASED ON VIBES('q') }
+  set ::vibes_last_roster
+} {{"1":{"name || '!'":"a!","score":0.1}}}
+do_test 3.2 {
+  set stmt [sqlite3_prepare_v2 db {
+    SELECT name AS n, score*2 FROM t RERANK BASED ON VIBES('q')
+  } -1 tail]
+  set res [list [sqlite3_column_count $stmt] \
+               [sqlite3_column_name $stmt 0] [sqlite3_column_name $stmt 1]]
+  sqlite3_finalize $stmt
+  set res
+} {2 n score*2}
+do_test 3.3 {
+  execsql { SELECT * FROM t AS x JOIN t AS y USING (name)
+            WHERE name='a' RERANK BASED ON VIBES('q') }
+  set ::vibes_last_roster
+} {{"1":{"name":"a","score":0.1,"score:1":0.1}}}
+do_execsql_test 3.4 {
+  SELECT x.* FROM t AS x, prompts WHERE p='p1' RERANK BASED ON VIBES('q')
+  LIMIT 2;
+} {b 0.9 c 0.5}
+do_execsql_test 3.5 {
+  SELECT DISTINCT score FROM t RERANK BASED ON VIBES('q');
+} {0.9 0.5 0.1 {}}
+do_execsql_test 3.6 {
+  SELECT score, count(*) FROM t GROUP BY score RERANK BASED ON VIBES('q');
+} {0.9 1 0.5 2 0.1 1 {} 1}
+do_execsql_test 3.7 {
+  SELECT name, score, rank() OVER (ORDER BY name) FROM t
+  RERANK BASED ON VIBES('q') LIMIT 2;
+} {b 0.9 2 c 0.5 3}
+
+#-------------------------------------------------------------------------
+# Prompt from the user_prompt CTE.
+#
+do_execsql_test 4.1 {
+  WITH user_prompt(prompt) AS (VALUES ('from cte'))
+  SELECT name, score FROM t RERANK BASED ON VIBES LIMIT 1;
+} {b 0.9}
+do_test 4.2 { set ::vibes_last_prompt } {from cte}
+do_catchsql_test 4.3 {
+  SELECT name FROM t RERANK BASED ON VIBES;
+} {1 {no such table: user_prompt}}
+do_execsql_test 4.4 {
+  WITH user_prompt(prompt) AS (VALUES ('p')),
+       c AS (SELECT * FROM t WHERE score IS NOT NULL)
+  SELECT name, score FROM c RERANK BASED ON VIBES ASC LIMIT 1;
+} {a 0.1}
+
+#-------------------------------------------------------------------------
+# Subqueries and other statement contexts.
+#
+do_execsql_test 5.1 {
+  SELECT upper(name) FROM
+    (SELECT name, score FROM t RERANK BASED ON VIBES('q') LIMIT 2);
+} {B C}
+do_execsql_test 5.2 {
+  SELECT (SELECT name FROM t RERANK BASED ON VIBES('q') LIMIT 1);
+} {b}
+do_execsql_test 5.3 {
+  SELECT name FROM t WHERE name IN
+    (SELECT name FROM (SELECT name, score FROM t)
+     RERANK BASED ON VIBES('q') LIMIT 2) ORDER BY name;
+} {b c}
+do_execsql_test 5.4 {
+  SELECT name FROM t WHERE name IN
+    (SELECT name FROM (SELECT name, score FROM t RERANK BASED ON VIBES('q')
+     LIMIT 2)) ORDER BY name;
+} {b c}
+do_execsql_test 5.5 {
+  SELECT EXISTS (SELECT name, score FROM t WHERE 0 RERANK BASED ON VIBES('q')),
+         EXISTS (SELECT name, score FROM t RERANK BASED ON VIBES('q'));
+} {0 1}
+do_execsql_test 5.6 {
+  WITH r AS (SELECT * FROM t RERANK BASED ON VIBES('q') LIMIT 2)
+  SELECT name FROM r;
+} {b c}
+do_execsql_test 5.7 {
+  SELECT name, score FROM t WHERE score>0.4
+  UNION ALL SELECT 'f', 0.95
+  RERANK BASED ON VIBES('q');
+} {f 0.95 b 0.9 c 0.5 e 0.5}
+do_execsql_test 5.8 {
+  CREATE TABLE best(name, score);
+  INSERT INTO best SELECT name, score FROM t RERANK BASED ON VIBES('q') LIMIT 2;
+  SELECT * FROM best;
+} {b 0.9 c 0.5}
+do_execsql_test 5.9 {
+  CREATE TABLE best2 AS
+    SELECT name, score FROM t RERANK BASED ON VIBES('q') LIMIT 2;
+  SELECT * FROM best2;
+} {b 0.9 c 0.5}
+do_execsql_test 5.10 {
+  SELECT name, score FROM
+    (SELECT name, score FROM t RERANK BASED ON VIBES('inner') LIMIT 3)
+  RERANK BASED ON VIBES('outer') ASC;
+} {c 0.5 e 0.5 b 0.9}
+
+#-------------------------------------------------------------------------
+# Correlated prompt: one batch per outer row.
+#
+do_test 6.1 {
+  vibes_reset
+  set res [execsql {
+    SELECT p, (SELECT name FROM t WHERE score IS NOT NULL
+               RERANK BASED ON VIBES(prompts.p) ASC LIMIT 1)
+    FROM prompts;
+  }]
+  list $res $::vibes_calls [vibes_batches]
+} {{p1 a p2 a p3 a} 12 3}
+do_catchsql_test 6.2 {
+  SELECT p, (SELECT name FROM t ORDER BY length(prompts.p) LIMIT 1)
+  FROM prompts;
+} {1 {no such column: prompts.p}}
+
+#-------------------------------------------------------------------------
+# Bind parameters in the prompt.
+#
+do_test 7.1 {
+  set stmt [sqlite3_prepare_v2 db {
+    SELECT name FROM t RERANK BASED ON VIBES(?1) LIMIT 1
+  } -1 tail]
+  sqlite3_bind_text $stmt 1 bound -1
+  sqlite3_step $stmt
+  set res [list [sqlite3_column_text $stmt 0] $::vibes_last_prompt]
+  sqlite3_finalize $stmt
+  set res
+} {b bound}
+
+#-------------------------------------------------------------------------
+# Errors.
+#
+do_catchsql_test 8.1 {
+  CREATE VIEW v AS SELECT * FROM t RERANK BASED ON VIBES('q');
+} {1 {RERANK BASED ON VIBES is not allowed in a view}}
+do_catchsql_test 8.2 {
+  CREATE TRIGGER tr AFTER INSERT ON t BEGIN
+    INSERT INTO best SELECT * FROM t RERANK BASED ON VIBES('q');
+  END;
+} {1 {RERANK BASED ON VIBES is not allowed in a trigger}}
+do_catchsql_test 8.3 {
+  SELECT name FROM t RERANK BASED ON VIBES('q') UNION SELECT 'x';
+} {1 {RERANK clause should come after UNION not before}}
+do_catchsql_test 8.4 {
+  VALUES (1) RERANK BASED ON VIBES('q');
+} {1 {near "RERANK": syntax error}}
+do_catchsql_test 8.5 {
+  SELECT name FROM t RERANK BASED ON VIBES('q') ORDER BY name;
+} {1 {near "ORDER": syntax error}}
+do_catchsql_test 8.6 {
+  SELECT name FROM t LIMIT 2 RERANK BASED ON VIBES('q');
+} {1 {near "RERANK": syntax error}}
+do_catchsql_test 8.7 {
+  SELECT name FROM t RERANK BASED ON VIBES(;
+} {1 {near ";": syntax error}}
+do_test 8.8 {
+  sqlite3 db2 :memory:
+  set res [catchsql {
+    SELECT 1 AS x RERANK BASED ON VIBES('q');
+  } db2]
+  db2 close
+  set res
+} {1 {no such function: vibes}}
+do_execsql_test 8.9 {
+  SELECT count(*) FROM sqlite_schema WHERE name IN ('v', 'tr');
+} {0}
+
+#-------------------------------------------------------------------------
+# RERANK, BASED and VIBES stay usable as identifiers.
+#
+do_execsql_test 9.1 {
+  CREATE TABLE vibes(based, rerank);
+  INSERT INTO vibes VALUES (1, 2);
+  SELECT based, rerank FROM vibes;
+} {1 2}
+do_execsql_test 9.2 {
+  SELECT rerank.based FROM vibes rerank;
+} {1}
+do_execsql_test 9.3 {
+  SELECT 1 rerank, 2 based, 3 vibes;
+} {1 2 3}
+do_execsql_test 9.4 {
+  SELECT based AS rerank FROM vibes AS based WHERE based.rerank=2
+  ORDER BY rerank;
+} {1}
+do_execsql_test 9.5 {
+  SELECT rerank FROM vibes rerank;
+} {2}
+do_execsql_test 9.6 {
+  CREATE TABLE rerank(vibes);
+  INSERT INTO rerank VALUES ('x');
+  SELECT vibes FROM rerank;
+} {x}
+do_execsql_test 9.7 {
+  SELECT vibes('p', 1, '{"1":{"score":3}}');
+} {3}
+
+#-------------------------------------------------------------------------
+# Query plan: the candidates are numbered once, scored in one sorter.
+#
+do_eqp_test 10.1 {
+  SELECT name FROM t RERANK BASED ON VIBES('q') LIMIT 2;
+} {
+  QUERY PLAN
+  |--CO-ROUTINE (subquery-xxxxxx)
+  |  |--CO-ROUTINE __vibes_cand
+  |  |  |--CO-ROUTINE (subquery-xxxxxx)
+  |  |  |  `--SCAN t
+  |  |  `--SCAN (subquery-xxxxxx)
+  |  `--SCAN __vibes_cand
+  |--SCAN (subquery-xxxxxx)
+  `--USE TEMP B-TREE FOR ORDER BY
+}
+
+finish_test
