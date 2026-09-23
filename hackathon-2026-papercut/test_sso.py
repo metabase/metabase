@@ -36,6 +36,15 @@ class SignInTest(HttpCase):
     def session(self):
         return self.sign_in_as()[2].getheader("Set-Cookie").split(";")[0]
 
+    def test_the_signed_in_user_claims_and_sees_the_release_button(self):
+        self.report("r1")
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        status, claim, _ = self.call("POST", "/api/papercuts/1/dispatch", {}, headers=headers)
+        self.assertEqual((status, claim["actor"], claim["state"]), (201, "ada@metabase.com", "running"))
+        page = self.call("GET", "/papercuts/1", headers=headers)[1]
+        self.assertIn("Ada is working on this", page)
+        self.assertIn(f"data-release='{claim['id']}'>Release</button>", page)
+
     def test_settings_come_from_the_environment(self):
         self.assertIsNone(sso.from_env({"PAPERCUTS_PUBLIC_URL": "https://metaouch.dev"}))
         with self.assertRaisesRegex(SystemExit, "needs GOOGLE_OAUTH_CLIENT_SECRET, PAPERCUTS_SESSION_SECRET$"):

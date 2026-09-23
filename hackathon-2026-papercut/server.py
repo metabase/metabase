@@ -859,7 +859,7 @@ class Store:
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
                                     (SELECT 'pr_opened' FROM events e WHERE e.papercut_id = p.id AND e.kind = 'comment'
                                      AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state,
-                           (SELECT json_object('id', d.id, 'state', d.state, 'linear_issue_id', d.linear_issue_id,
+                           (SELECT json_object('id', d.id, 'state', d.state, 'actor', d.actor, 'linear_issue_id', d.linear_issue_id,
                                                'linear_url', d.linear_url, 'pr_url', d.pr_url)
                             FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS dispatch,
                            (SELECT a.verdict FROM assessments a WHERE a.papercut_id = p.id
@@ -1201,15 +1201,17 @@ class Store:
         return db.execute(f"SELECT * FROM dispatches WHERE papercut_id = ? AND state IN ({one_of(ACTIVE_DISPATCH_STATES)})",
                           (papercut_id,)).fetchone()
 
-    def claim(self, papercut_id, payload):
+    def claim(self, papercut_id, payload, claimant=None):
         """Start a dispatch on an open papercut, which moves it to `investigating`. At most one dispatch per papercut
-        is in progress."""
-        if not isinstance(payload, dict) or set(payload) - {"actor", "reason", "assessment_id"}:
-            raise ValueError("Send optionally actor, reason and assessment_id")
+        is in progress. A person's claim (the signed-in user, or `claimant`) starts as `running`, since that person
+        does the work and reports the PR, so the dispatcher leaves it alone."""
+        if not isinstance(payload, dict) or set(payload) - {"actor", "reason", "assessment_id", "claimant"}:
+            raise ValueError("Send optionally actor, claimant, reason and assessment_id")
         assessment_id = payload.get("assessment_id")
         if assessment_id is not None and type(assessment_id) is not int:
             raise ValueError("assessment_id must be an integer")
-        actor, reason = actor_of(payload), text_field(payload, "reason")
+        claimant = claimant or text_field(payload, "claimant")
+        actor, reason = claimant or actor_of(payload), text_field(payload, "reason")
         with self.connect(write=True) as db:
             papercut = self._live(db, papercut_id)
             if active := self._active_dispatch(db, papercut_id):
@@ -1222,8 +1224,8 @@ class Store:
             at = precise_now()
             dispatch_id = db.execute(
                 """INSERT INTO dispatches (papercut_id, assessment_id, state, actor, created_at, updated_at)
-                   VALUES (?, ?, 'claimed', ?, ?, ?)""",
-                (papercut_id, assessment_id, actor, at, at),
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (papercut_id, assessment_id, "running" if claimant else "claimed", actor, at, at),
             ).lastrowid
             self._event(db, papercut_id, "dispatched", actor, at, new=dispatch_id, body=reason)
             self._set(db, papercut_id, "status", "investigating", actor, at, body=f"Dispatch {dispatch_id}")
@@ -1266,6 +1268,22 @@ class Store:
                 self._set(db, papercut_id, "status", STATUS_AFTER_DISPATCH[state], actor, at,
                           body=f"Dispatch {dispatch_id}: {state}")
             return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
+
+    def release(self, dispatch_id, payload):
+        """Drop a claim in progress, so the papercut is open to claim again."""
+        actor = actor_of(payload)
+        with self.connect(write=True) as db:
+            dispatch = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
+            if dispatch is None:
+                raise NotFound(f"Dispatch {dispatch_id} not found")
+            if dispatch["state"] not in ACTIVE_DISPATCH_STATES:
+                raise ConflictError(f"Dispatch {dispatch_id} is {dispatch['state']}; only claims in progress are released")
+            at, papercut_id = precise_now(), dispatch["papercut_id"]
+            db.execute("DELETE FROM dispatches WHERE id = ?", (dispatch_id,))
+            self._event(db, papercut_id, "dispatch_updated", actor, at, old=dispatch["state"], new="released")
+            if db.execute("SELECT status FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()["status"] == "investigating":
+                self._set(db, papercut_id, "status", "open", actor, at, body=f"Dispatch {dispatch_id} released")
+        return {"released": dispatch_id}
 
     def get_dispatch(self, dispatch_id):
         with self.connect() as db:
@@ -1650,6 +1668,21 @@ UI_STYLE = """<style>
 .fix-claimed, .fix-linear_created, .fix-running {background: var(--info-bg); color: var(--info-text)}
 .dispatch-control {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem}
 .dispatch-control button {min-height: 30px; padding: 0 .75rem}
+.dispatch-control .claimant {font-weight: 650}
+.detail-sidebar dd.path {overflow-wrap: normal}
+.dispatch-control .claimant::before {content: ""; display: inline-block; width: 8px; height: 8px; margin-right: .45rem; border-radius: 50%;
+                                     background: #22a06b; box-shadow: 0 0 0 3px rgba(34, 160, 107, .2); vertical-align: 1px}
+.dispatch-control .secondary {min-height: 32px; border-color: var(--control-border); background: var(--surface); color: var(--text);
+                              font-weight: 600}
+.dispatch-control .claim-button {min-height: 38px; padding: 0 1.15rem; border: 0; border-radius: 10px; color: #fff; font-weight: 700;
+  letter-spacing: .01em; background: linear-gradient(135deg, #5b5cf6 0%, #3b82f6 55%, #0ea5e9 100%); background-size: 160% 160%;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .18), 0 4px 14px rgba(59, 130, 246, .28);
+  transition: transform .12s ease, box-shadow .12s ease, background-position .3s ease}
+.dispatch-control .claim-button:hover {transform: translateY(-1px); background-position: 100% 50%;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .2), 0 8px 22px rgba(59, 130, 246, .38)}
+.dispatch-control .claim-button:active {transform: translateY(0); box-shadow: 0 1px 2px rgba(15, 23, 42, .25)}
+.dispatch-control .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
+.dispatch-control .claim-button:disabled {opacity: .7; transform: none}
 .dispatch-link a {font-weight: 600; white-space: nowrap}
 .token-control {position: relative}
 .token-control summary {cursor: pointer; list-style: none; color: var(--muted)}
@@ -1747,24 +1780,35 @@ DISPATCH_SCRIPT = """<script>
       throw new Error(response.status === 401 ? 'set the API token' : error || 'HTTP ' + response.status);
     }
   }
+  const claimant = () => {
+    if (document.body.dataset.user) return {};
+    let name = '';
+    try { name = localStorage.getItem('papercuts-claimant') || ''; } catch (_) {}
+    name = name || (window.prompt('Your name or email, for the claim') || '').trim();
+    if (!name) throw new Error('no name given');
+    try { localStorage.setItem('papercuts-claimant', name); } catch (_) {}
+    return {claimant: name};
+  };
   document.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-dispatch], button[data-cancel-dispatch]');
+    const button = event.target.closest('button[data-claim], button[data-release], button[data-copy-prompt]');
     if (!button) return;
     event.preventDefault();
-    if (button.dataset.dispatch && button.dataset.armed !== 'true') {
-      button.dataset.armed = 'true';
-      button.textContent = 'Confirm: file a Linear issue and run the fixer';
-      return;
-    }
+    const label = button.textContent;
     button.disabled = true;
     try {
-      if (button.dataset.dispatch) {
-        await write('POST', `/api/papercuts/${button.dataset.dispatch}/dispatch`,
-                    {actor: 'web', reason: 'Dispatched from the web view'});
-      } else {
-        await write('PATCH', `/api/dispatches/${button.dataset.cancelDispatch}`,
-                    {state: 'failed', actor: 'web', reason: 'Cancelled from the web view'});
+      if (button.dataset.copyPrompt) {
+        const url = `/api/papercuts/${button.dataset.copyPrompt}/prompt`;
+        try {
+          await navigator.clipboard.writeText(await (await fetch(url, {cache: 'no-store'})).text());
+          button.textContent = 'Copied';
+        } catch (_) {
+          window.open(url, '_blank');
+        }
+        setTimeout(() => { button.textContent = label; button.disabled = false; }, 1500);
+        return;
       }
+      if (button.dataset.claim) await write('POST', `/api/papercuts/${button.dataset.claim}/dispatch`, claimant());
+      else await write('DELETE', `/api/dispatches/${button.dataset.release}`, {});
       refreshPage();
     } catch (error) {
       button.textContent = 'Failed: ' + error.message;
@@ -1806,7 +1850,7 @@ def category_chips(chosen, counts):
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
             f"<meta name='viewport' content='width=device-width, initial-scale=1'><link rel='icon' href='{FAVICON}'>"
-            f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
+            f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}' data-user='{html.escape(signed_in_email() or '')}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
             "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
@@ -2135,18 +2179,58 @@ def dispatch_links(dispatch):
     return "".join(f"<span class='dispatch-link'>{link}</span>" for link in links)
 
 
-def dispatch_control(papercut, dispatch):
-    """The latest dispatch's state and links, and the button that starts or cancels one. Dispatching claims the
-    papercut; a separate `dispatcher.py watch` picks up the claim and does the work."""
+def signed_in_email():
+    return getattr(sso.signed_in, "email", None)
+
+
+def first_name(claimant):
+    """`Andrei` for andrei.simionescu@metabase.com, and the first word of a plain name."""
+    words = claimant.split("@")[0].replace(".", " ").replace("_", " ").split()
+    return words[0].capitalize() if words else claimant
+
+
+def dispatch_control(papercut, dispatch, claim_label="Claim"):
+    """Who is working on a papercut, with the buttons to copy the fix prompt and release it, or the Claim button and
+    the latest claim's outcome when nobody is."""
     active = dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES
-    parts = [fix_pill(dispatch["state"]) + dispatch_links(dispatch)] if dispatch else []
-    if active and dispatch["state"] == "claimed":
-        parts.append(f"<button type='button' data-cancel-dispatch='{dispatch['id']}'>Cancel</button>")
-    elif not active and papercut["status"] == "open" and papercut.get("merged_into") is None:
-        label = "Dispatch again" if dispatch else "Dispatch"
-        ready = " primary" if papercut.get("verdict") == "ready" else ""
-        parts.append(f"<button type='button' class='dispatch-button{ready}' data-dispatch='{papercut['id']}'>{label}</button>")
+    if active:
+        parts = [f"<span class='claimant'>{html.escape(first_name(dispatch['actor']))} is working on this</span>"
+                 f"{dispatch_links(dispatch)}"
+                 f"<button type='button' class='secondary' data-copy-prompt='{papercut['id']}'>Copy prompt</button>"]
+        if signed_in_email() in (None, dispatch["actor"]):
+            parts.append(f"<button type='button' class='secondary' data-release='{dispatch['id']}'>Release</button>")
+    else:
+        parts = [fix_pill(dispatch["state"]) + dispatch_links(dispatch)] if dispatch else []
+        if papercut["status"] == "open" and papercut.get("merged_into") is None:
+            parts.append(f"<button type='button' class='claim-button' data-claim='{papercut['id']}'>{claim_label}</button>")
     return f"<div class='dispatch-control'>{''.join(parts)}</div>" if parts else ""
+
+
+PROMPT_API = os.environ.get("PAPERCUTS_API_URL", "http://10.193.193.227:8765").rstrip("/")
+
+
+def fix_prompt(papercut):
+    """What the claimant pastes into their own agent: read the papercut, fix it, open a draft PR and report back."""
+    api, papercut_id = PROMPT_API, papercut["id"]
+    auth = "-H 'Content-Type: application/json' -H \"Authorization: Bearer $PAPERCUTS_TOKEN\""
+    lines = [f"Fix papercut #{papercut_id} in metabase/metabase: {papercut['title']}", "",
+             f"1. Read it, with its reports, evidence and links: curl -s {api}/api/papercuts/{papercut_id}",
+             "2. Confirm the problem still exists. If it doesn't, report that as in step 5 and stop.",
+             "3. Fix it with a test that fails without the fix, on a fresh branch from origin/master.",
+             "4. Open a draft PR.",
+             "5. Report the PR link back:",
+             f"   curl -s -X POST {api}/api/papercuts/{papercut_id}/comments {auth} "
+             f"-d '{json.dumps({'author': '<your name>', 'body': 'Draft PR: <PR URL>'})}'"]
+    if claim := next((d for d in papercut["dispatches"] if d["state"] in ACTIVE_DISPATCH_STATES), None):
+        lines.append(f"   curl -s -X PATCH {api}/api/dispatches/{claim['id']} {auth} "
+                     f"-d '{json.dumps({'state': 'pr_opened', 'pr_url': '<PR URL>'})}'")
+    if any(fingerprint.startswith("metabot:") for fingerprint in papercut["fingerprints"]):
+        lines += ["", "Metabot hit this. metabot-demo-break-search is a deliberate fault-injection switch: fix the product "
+                  "behaviour it exposes, not the switch.",
+                  "Run the test with ./bin/test-agent :only '[the.namespace-test/the-test]' > target/test.log 2>&1. A test "
+                  "that calls a Metabot tool through its var needs metabase.metabot.scope/*current-user-scope* bound, for "
+                  "example to metabase.api-scope.core/unrestricted."]
+    return "\n".join(lines) + "\n"
 
 
 def report_card_html(report, papercut_description, expanded=False):
@@ -2209,9 +2293,10 @@ def papercut_html(papercut):
             f"<div class='detail-meta'>{important_pill(papercut)}{status_pill(papercut['status'])}"
             f"{pill(papercut['category'] or 'unclassified')}"
             f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}"
-            f"<span class='muted'>{papercut['report_count']} reports · {papercut['reporter_count']} reporters · "
+            f"<span class='muted'>{papercut['report_count']} report{'' if papercut['report_count'] == 1 else 's'} · "
+            f"{papercut['reporter_count']} reporter{'' if papercut['reporter_count'] == 1 else 's'} · "
             f"Time lost: {cost_label(papercut)}</span></div>"
-            f"{dispatch_control(papercut | {'verdict': (assessment or {}).get('verdict')}, papercut['dispatches'][0] if papercut['dispatches'] else None)}</div>"
+            f"{dispatch_control(papercut, papercut['dispatches'][0] if papercut['dispatches'] else None, 'Claim this papercut')}</div>"
             "<div class='detail-layout'><div class='detail-content'>"
             f"<section class='card'><h2>Description</h2>{markdown_html(description) if description else '<p>No description recorded.</p>'}</section>"
             f"{'<section class=\"card suggested-fix\"><h2>Suggested fix</h2>' + markdown_html(suggested_fix) + '</section>' if suggested_fix else ''}"
@@ -2223,7 +2308,7 @@ def papercut_html(papercut):
             f"<section><h2>Reports</h2>{reports or '<p class=\"muted\">No reports yet.</p>'}</section></div>"
             "<aside class='detail-sidebar card'><h2>Details</h2><dl>"
             f"<div><dt>Repository</dt><dd>{esc(papercut['repository'])}</dd></div>"
-            f"<div><dt>Path</dt><dd>{esc(papercut['path'] or 'Not recorded')}</dd></div>"
+            f"<div><dt>Path</dt><dd class='path'>{esc(papercut['path'] or 'Not recorded').replace('/', '/<wbr>')}</dd></div>"
             f"<div><dt>Area</dt><dd>{esc(papercut['area'] or 'Not recorded')}</dd></div>"
             f"<div><dt>First seen</dt><dd><time datetime='{esc(papercut['first_seen'], quote=True)}'>{short_date(papercut['first_seen'])}</time></dd></div>"
             f"<div><dt>Last seen</dt><dd><time datetime='{esc(papercut['last_seen'], quote=True)}'>{short_date(papercut['last_seen'])}</time></dd></div>"
@@ -2289,7 +2374,7 @@ class Handler(BaseHTTPRequestHandler):
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
         papercut = re.fullmatch(
-            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch)(?:/(\d+))?)?", path)
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|prompt)(?:/(\d+))?)?", path)
         dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
         command = self.command
@@ -2323,10 +2408,14 @@ class Handler(BaseHTTPRequestHandler):
                                                                          self.input_json(optional=True)),
                 ("POST", "fingerprints", False): lambda: self.store.add_fingerprint(papercut_id, self.input_json()),
             }
+            if command == "GET" and action == "prompt" and not other:
+                if (papercut := self.store.get_papercut(papercut_id)) is None:
+                    raise NotFound(f"Papercut {papercut_id} not found")
+                return self.respond(200, fix_prompt(papercut), "text/plain")
             created = {
                 "comments": lambda: self.store.comment(papercut_id, self.input_json()),
                 "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
-                "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True)),
+                "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
             }
             if command == "POST" and action in created and not other:
                 return self.respond(201, created[action]())
@@ -2336,6 +2425,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, self.store.list_dispatches(params))
         if dispatch and command == "GET":
             return self.respond(200, self.store.get_dispatch(int(dispatch[1])))
+        if dispatch and command == "DELETE":
+            payload = {"actor": signed_in_email()} if signed_in_email() else self.input_json(optional=True)
+            return self.respond(200, self.store.release(int(dispatch[1]), payload))
         if dispatch and command == "PATCH":
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
