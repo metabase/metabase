@@ -53,7 +53,7 @@ four papercuts under `demo/metabase`, including a duplicate report and related
 issues. The seed is safe to run again: stable report IDs prevent double counting.
 
 To view real, source-backed papercuts, point the importer at the local archive:
-`python3 import_local.py ~/local-papercuts`. It accepts files or directories. Each
+`python3 import_local.py slop/chris/papercuts/claude slop/chris/papercuts/codex`. It accepts files or directories. Each
 transcript occurrence a writeup records becomes one report under a per-writeup
 fingerprint, so report counts show how often a papercut was hit. The report's
 `machine_id` is the file's `<user>.<agent>` prefix, and `observed_at` is the

@@ -1,0 +1,21 @@
+# Eval archive version change silently stopped downstream ingestion
+
+Source: Claude Code session `253f6689-2454-43e0-b1df-dece373b153a`, [transcript](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl).
+
+Observed failure: evals PR [#142](https://github.com/metabase/evals/pull/142) raised archive `schema_version` to 7 to add `error_kind`. The data-stack loader still accepted only versions 5 and 6 and quarantined the new archives with `failed_check=schema_version`. The assistant traced missing results since September 10, including 104 smoke-run archives, while the ingest job itself appeared healthy ([line 2273](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl#L2273)).
+
+Agent trap and root cause: a developer or agent can make a locally correct format change while CI stays green, because the producer and loader live in different repositories and no check enforces their compatibility. The requirement to update the loader lived in [BOT-1963](https://linear.app/metabase/issue/BOT-1963), but the producer's `SCHEMA_VERSION` declaration and local docs did not point to it ([line 2819](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl#L2819)). The transcript explicitly says CI stayed green and nothing reached `raw_evals` for about a week ([line 2780](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl#L2780)).
+
+Recorded repair: [data-stack#185](https://github.com/metabase/data-stack/pull/185) accepted version 7, added `error_kind`, and used `unknown` for older archives ([line 2444](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl#L2444)). The user then requested PRs to put the contract near the code and tests in both repositories so future agents would see it ([line 2847](/Users/christruter/.claude/projects/-Users-christruter-workspace-metabase-evals-bot-2165-expand-provider-matrix/253f6689-2454-43e0-b1df-dece373b153a.jsonl#L2847)). Backfill still depended on deploying the loader and re-driving quarantined archives.
+
+Classification: confirmed cross-repository contract papercut; silent data loss from an observability perspective; delayed detection.
+
+## Additional occurrence
+(Claude drill, batch b0: same transcript, flagged region lines 2768-3137, Jev {self_inflicted_bug: 0.40, tool_misuse: 0.94, misleading_signal: 0.76, user_correction: 0.94, codebase_trap: 0.64, flailing: 0.36, env_friction: 0.72})
+
+The flagged region is the follow-through on this trap:
+- L2780-2789: the agent explains the loader "quarantines unsupported archives silently. Eval results stopped reaching `raw_evals` for a week while CI stayed green". It traces the bump to #142 commit `e6a0fdf2` ("Signal failure only when cases do not complete", author lbrdnk), which closes BOT-2105 (L2801).
+- L2819: the issue text did not cause it. The format bump was an implementation choice, and the "format changes need a data-stack PR" rule lived only in BOT-1963.
+- L2847-2912: at the user's request the agent opened evals#159, "Treat the result archive format as a contract with data-stack". It adds a contract comment at `SCHEMA_VERSION` in `core/capture.py`, `docs/reporting.md`, a CLAUDE.md note, and a pinned test in `tests/test_results_publish.py` that asserts the version the loader accepts. It also added matching docs to data-stack#185 in `sources/evals/README.md`. The agent noted an ordering constraint: evals#159 must merge after data-stack#185, because the pin says v7 is accepted.
+- A related misleading signal from the same region: the native-provider golden run finished green, but five models hit rate limits or empty balances. Because of the BOT-2175 bug, the Metabot surface counted provider errors as poor answers, so those jobs passed (L2939). That became BOT-2178.
+- A slack-clipboard formatting miss in the same region is filed separately: `chris.claude.slack-clipboard-needs-rich-html-not-mrkdwn.md`.
