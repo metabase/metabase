@@ -29,6 +29,13 @@
   [[conn] & body]
   `(do-with-conn! (fn [~(vary-meta conn assoc :tag `Connection)] ~@body)))
 
+(defmacro ^:private with-jdbc-rewrite
+  "Run `body` with the RERANK clause rewritten on the connection, as with the stock SQLite library, even when the
+  patched engine (see `engine-grammar-test`) is loaded."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [vibes.sqlite/native-rerank? (constantly false)]
+     ~@body))
+
 (defn- q [conn sql & params]
   (jdbc/execute! conn (into [sql] params) {:builder-fn jdbc.rs/as-unqualified-maps}))
 
@@ -222,39 +229,56 @@
 
 (deftest rerank-clause-through-the-connection-test
   (let [calls (atom [])]
-    (with-conn! [conn]
-      (with-vibes (stub-scores calls)
-        (testing "prepared statement"
-          (is (= ["item 20" "item 19" "item 18"]
-                 (map :name (q conn "SELECT * FROM t RERANK BASED ON VIBES(?) DESC LIMIT 3" "best"))))
-          (is (= [["best" 20]] @calls)))
-        (testing "ASC, bare VIBES with the user_prompt CTE, and the select's own params first"
-          (is (= ["item 2" "item 3"]
-                 (map :name (q conn (str "WITH user_prompt AS (SELECT 'q' AS prompt)"
-                                         " SELECT name FROM t WHERE id > ? RERANK BASED ON VIBES ASC LIMIT 2") 1))))
-          (is (= [["best" 20] ["q" 19]] @calls)))
-        (testing "plain Statement"
-          (with-open [stmt (.createStatement conn)]
-            (let [rs (.executeQuery stmt "SELECT name FROM t RERANK BASED ON VIBES('best') LIMIT 1")]
-              (is (true? (.next rs)))
-              (is (= "item 20" (.getString rs 1))))))
-        (testing "column labels of a join with * are resolved"
-          (is (= [{:name "item 20" :description "about 20"}]
-                 (q conn "SELECT a.name, b.description FROM t a JOIN t b ON a.id = b.id RERANK BASED ON VIBES('best') LIMIT 1"))))
-        (testing "no clause: passes through untouched"
-          (is (= ["item 1"] (map :name (q conn "SELECT name FROM t WHERE name = 'RERANK BASED ON VIBES' OR id = 1")))))
-        (testing "a bad clause is a clear error"
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid RERANK clause"
-                                (q conn "SELECT * FROM t RERANK BASED ON VIBES(?) SIDEWAYS" "x"))))))))
+    (with-jdbc-rewrite
+      (with-conn! [conn]
+        (with-vibes (stub-scores calls)
+          (testing "prepared statement"
+            (is (= ["item 20" "item 19" "item 18"]
+                   (map :name (q conn "SELECT * FROM t RERANK BASED ON VIBES(?) DESC LIMIT 3" "best"))))
+            (is (= [["best" 20]] @calls)))
+          (testing "ASC, bare VIBES with the user_prompt CTE, and the select's own params first"
+            (is (= ["item 2" "item 3"]
+                   (map :name (q conn (str "WITH user_prompt AS (SELECT 'q' AS prompt)"
+                                           " SELECT name FROM t WHERE id > ? RERANK BASED ON VIBES ASC LIMIT 2") 1))))
+            (is (= [["best" 20] ["q" 19]] @calls)))
+          (testing "plain Statement"
+            (with-open [stmt (.createStatement conn)]
+              (let [rs (.executeQuery stmt "SELECT name FROM t RERANK BASED ON VIBES('best') LIMIT 1")]
+                (is (true? (.next rs)))
+                (is (= "item 20" (.getString rs 1))))))
+          (testing "column labels of a join with * are resolved"
+            (is (= [{:name "item 20" :description "about 20"}]
+                   (q conn "SELECT a.name, b.description FROM t a JOIN t b ON a.id = b.id RERANK BASED ON VIBES('best') LIMIT 1"))))
+          (testing "no clause: passes through untouched"
+            (is (= ["item 1"] (map :name (q conn "SELECT name FROM t WHERE name = 'RERANK BASED ON VIBES' OR id = 1")))))
+          (testing "a bad clause is a clear error"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid RERANK clause"
+                                  (q conn "SELECT * FROM t RERANK BASED ON VIBES(?) SIDEWAYS" "x")))))))))
 
 (deftest vibes-rewrite-function-test
-  (with-conn! [conn]
-    (let [r (:r (first (q conn "SELECT vibes_rewrite('SELECT id, name FROM t RERANK BASED ON VIBES(''q'') LIMIT 2') AS r")))]
-      (is (str/starts-with? r "WITH __vibes_cand AS MATERIALIZED"))
-      (is (str/includes? r "json_object('id', \"id\", 'name', \"name\")"))
-      (is (str/ends-with? r "LIMIT 2")))
-    (is (= "SELECT 1" (:r (first (q conn "SELECT vibes_rewrite('SELECT 1') AS r")))))
-    (is (str/starts-with? (:r (first (q conn "SELECT vibes_rewrite('SELECT 1 RERANK BY VIBES') AS r"))) "ERROR: "))))
+  (with-jdbc-rewrite
+    (with-conn! [conn]
+      (let [r (:r (first (q conn "SELECT vibes_rewrite('SELECT id, name FROM t RERANK BASED ON VIBES(''q'') LIMIT 2') AS r")))]
+        (is (str/starts-with? r "WITH __vibes_cand AS MATERIALIZED"))
+        (is (str/includes? r "json_object('id', \"id\", 'name', \"name\")"))
+        (is (str/ends-with? r "LIMIT 2")))
+      (is (= "SELECT 1" (:r (first (q conn "SELECT vibes_rewrite('SELECT 1') AS r")))))
+      (is (str/starts-with? (:r (first (q conn "SELECT vibes_rewrite('SELECT 1 RERANK BY VIBES') AS r"))) "ERROR: ")))))
+
+(deftest install-wraps-only-without-engine-grammar-test
+  (with-open [raw (DriverManager/getConnection "jdbc:sqlite::memory:")]
+    (testing "stock engine: the connection is wrapped for the RERANK rewrite"
+      (with-jdbc-rewrite
+        (is (not (identical? raw (vibes.sqlite/install! raw))))))
+    (testing "patched engine: the statement goes to SQLite untouched"
+      (mt/with-dynamic-fn-redefs [vibes.sqlite/native-rerank? (constantly true)]
+        (is (identical? raw (vibes.sqlite/install! raw)))
+        (is (= "SELECT 1 RERANK BASED ON VIBES" (vibes.sqlite/rewrite raw "SELECT 1 RERANK BASED ON VIBES")))))))
+
+(deftest native-rerank-matches-engine-test
+  (with-open [raw (DriverManager/getConnection "jdbc:sqlite::memory:")]
+    (is (= (= [{:v 1}] (q raw "SELECT sqlite_compileoption_used('VIBES_RERANK') AS v"))
+           (vibes.sqlite/native-rerank? raw)))))
 
 (deftest per-connection-registration-test
   (with-open [other (DriverManager/getConnection "jdbc:sqlite::memory:")]

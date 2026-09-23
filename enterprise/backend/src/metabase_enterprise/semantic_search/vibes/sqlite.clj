@@ -13,8 +13,9 @@
   Successful scorings are cached for five minutes; failed or partial ones never are, so re-running a statement
   asks Jev again. Which Jev question `vibes` asks (`prompt`'s `:rows` or `:search`) is fixed per connection.
 
-  Everything is per-connection: [[install!]] registers the functions on a raw sqlite-jdbc connection and returns it
-  wrapped so statements ending in `RERANK BASED ON VIBES` are rewritten (see `vibes.rewrite`)."
+  Everything is per-connection: [[install!]] registers the functions on a raw sqlite-jdbc connection. When the SQLite
+  engine parses `RERANK BASED ON VIBES` itself (the patched build in `native/sqlite-vibes`), that is all; otherwise
+  it returns the connection wrapped so statements ending in the clause are rewritten (see `vibes.rewrite`)."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.sqlite-functions :as sqlite-functions]
@@ -199,6 +200,31 @@
             :entries (count entries)}
            stats)))
 
+;;; ------------------------------------------------ Engine grammar ------------------------------------------------
+
+(defonce ^:private engine-grammar
+  ;; nil until a connection has been asked. sqlite-jdbc loads its native library once per JVM, so one answer holds
+  ;; for every connection.
+  (atom nil))
+
+(defn- engine-parses-rerank? [^Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt "SELECT sqlite_compileoption_used('VIBES_RERANK')")]
+    (and (.next rs) (= 1 (.getInt rs 1)))))
+
+(defn native-rerank?
+  "Does the SQLite engine behind `conn` parse `RERANK BASED ON VIBES` itself? True with the patched sqlite-jdbc
+  library from `native/sqlite-vibes` (loaded with `-Dorg.sqlite.lib.path`), false with the stock one."
+  [conn]
+  (let [known @engine-grammar]
+    (if (some? known)
+      known
+      (let [native? (engine-parses-rerank? conn)]
+        (log/infof "vibes: RERANK BASED ON VIBES is %s" (if native?
+                                                          "parsed by the SQLite engine"
+                                                          "rewritten on the JDBC connection"))
+        (reset! engine-grammar native?)))))
+
 ;;; ----------------------------------------------- Connection hook ------------------------------------------------
 
 (defn- column-labels
@@ -210,9 +236,9 @@
 
 (defn rewrite
   "`sql` with a trailing `RERANK BASED ON VIBES` clause rewritten (column labels resolved on `conn`), or `sql`
-  itself when it has none."
+  itself when it has none or the engine parses the clause natively."
   [^Connection conn sql]
-  (if (rewrite/candidate? sql)
+  (if (and (rewrite/candidate? sql) (not (native-rerank? conn)))
     (or (rewrite/rewrite-rerank sql (partial column-labels conn)) sql)
     sql))
 
@@ -278,12 +304,15 @@
                                                            (str "ERROR: " (ex-message e))))))))
 
 (defn install!
-  "Register functions on the underlying SQLite connection, then wrap `conn` for rewriting. Keep any pool wrapper
-  so closing the returned connection returns it to its pool rather than closing the physical connection.
-  `:question` is the `prompt` question kind `vibes()` asks: `:rows` (the default, user queries) or `:search`."
+  "Register functions on the underlying SQLite connection, then, unless the engine parses `RERANK BASED ON VIBES`
+  itself, wrap `conn` for rewriting. Keep any pool wrapper so closing the returned connection returns it to its pool
+  rather than closing the physical connection. `:question` is the `prompt` question kind `vibes()` asks: `:rows`
+  (the default, user queries) or `:search`."
   ^Connection [^Connection conn & {:keys [question] :or {question :rows}}]
   (register-vibes! (.unwrap conn SQLiteConnection) question)
-  (wrap-connection conn))
+  (if (native-rerank? conn)
+    conn
+    (wrap-connection conn)))
 
 (defenterprise install-vibes-if-enabled!
   "Enable vibes SQL on any SQLite warehouse when `vibes-enabled` / `MB_VIBES_ENABLED` is true."

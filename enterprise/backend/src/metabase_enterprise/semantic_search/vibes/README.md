@@ -48,6 +48,15 @@ registered on a pooled connection remain present but return `NULL` for scoring w
 semantic search store continues to install its functions independently. This hook does not load vec1 for
 warehouse queries against vector virtual tables.
 
+## RERANK anywhere: the patched SQLite engine
+
+The rewrite above only handles a clause at the end of the whole statement. The optional patched SQLite library in
+`native/sqlite-vibes` parses `RERANK BASED ON VIBES` itself, so the clause also works in subqueries, CTE bodies,
+compound selects, and `INSERT ... SELECT`, and with a prompt that references an outer query. Build it with
+`native/sqlite-vibes/build.sh` and start Metabase with the `:sqlite-vibes` deps alias. When SQLite reports
+`sqlite_compileoption_used('VIBES_RERANK')`, the connection hook registers the functions and skips the rewrite.
+Otherwise it falls back to the rewrite. See `native/sqlite-vibes/README.md`.
+
 ## Other databases
 
 The Jev HTTP client, prompt construction, and scoring cache can be shared. The function registration uses
