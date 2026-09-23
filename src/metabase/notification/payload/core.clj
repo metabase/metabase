@@ -44,7 +44,11 @@
    [:subscriptions           {:optional true} [:sequential ::models.notification/NotificationSubscription]]
    ;;  the subscription that triggered this notification
    [:triggering_subscription {:optional true} ::models.notification/NotificationSubscription]
-   [:creator                 {:optional true} [:maybe :metabase.users.schema/user]]
+   ;; `EchoedUser`, not `::users.schema/user`: "Send now" posts back the notification the client was
+   ;; handed, and JSON has no date type, so a hydrated creator returns with its timestamps as the ISO
+   ;; strings they were encoded as. The strict schema rejects those, which broke test sends for any
+   ;; *saved* alert (an unsaved one carries no creator, so it slipped through).
+   [:creator                 {:optional true} [:maybe ::models.notification/EchoedUser]]
    [:handlers                {:optional true}
     [:maybe [:sequential
              [:merge
