@@ -41,8 +41,6 @@
              settings
              warehouse-schema-overlay/field-user-settings-flags))
 
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
-
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]

@@ -701,8 +701,7 @@
 (mu/defn insert-task!
   "Insert `task` into the world the running sync works in, and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/insert-returning-instance! :model/RemoteSyncTask
-                                 (assoc task)))
+  (t2/insert-returning-instance! :model/RemoteSyncTask task))
 
 (mu/defn update-task!
   "Apply `changes` to the RemoteSyncTask with `task-id`."

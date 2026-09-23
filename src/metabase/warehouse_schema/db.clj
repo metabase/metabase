@@ -179,7 +179,7 @@
 (mu/defn field-user-settings-exist?
   "Whether the ::warehouse-schema.schema/field with `field-id` has a FieldUserSettings row."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings field-id))
+  (t2/exists? :model/FieldUserSettings :field_id field-id))
 
 (def ^:private field-user-settings-update-keys
   "The columns an insert or update of a FieldUserSettings accepts."
@@ -212,7 +212,7 @@
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]
-  (t2/update! :model/FieldUserSettings field-id changes))
+  (t2/update! :model/FieldUserSettings :field_id field-id changes))
 
 (mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
   "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
@@ -256,7 +256,7 @@
 (mu/defn table-user-settings-exist?
   "Whether the ::warehouse-schema.schema/table with `table-id` has a TableUserSettings row."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings table-id))
+  (t2/exists? :model/TableUserSettings :table_id table-id))
 
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
@@ -279,7 +279,7 @@
   number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings table-id changes))
+  (t2/update! :model/TableUserSettings :table_id table-id changes))
 
 (mu/defn delete-table-user-settings!
   "Delete the TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."

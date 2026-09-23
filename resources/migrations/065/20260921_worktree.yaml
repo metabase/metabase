@@ -2464,6 +2464,23 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T10:49:00
       author: ranquild
+      comment: Give metabase_table_user_settings a surrogate primary key - its natural key is now (table_id, worktree_id_helper), and a worktree never joins a primary key
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Surrogate key; the row is found by the table or field it belongs to
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-22T10:50:00
+      author: ranquild
       comment: Unique constraint on metabase_field_user_settings(field_id, worktree_id_helper) - each world holds its own field_id
       changes:
         - addUniqueConstraint:
@@ -2472,7 +2489,24 @@ databaseChangeLog:
             constraintName: uq_mb_field_user_settings_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:50:00
+      id: v65.2026-09-22T10:51:00
+      author: ranquild
+      comment: Give metabase_field_user_settings a surrogate primary key - its natural key is now (field_id, worktree_id_helper), and a worktree never joins a primary key
+      changes:
+        - addColumn:
+            tableName: metabase_field_user_settings
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Surrogate key; the row is found by the table or field it belongs to
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-22T10:52:00
       author: ranquild
       comment: Unique constraint on collection(id, worktree_id_helper) - the world foreign keys below reference it
       changes:
@@ -2482,7 +2516,7 @@ databaseChangeLog:
             constraintName: uq_collection_id_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:51:00
+      id: v65.2026-09-22T10:53:00
       author: ranquild
       comment: Unique constraint on report_dashboard(id, worktree_id_helper) - the world foreign keys below reference it
       changes:
@@ -2492,7 +2526,7 @@ databaseChangeLog:
             constraintName: uq_report_dashboard_id_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:52:00
+      id: v65.2026-09-22T10:54:00
       author: ranquild
       comment: Unique constraint on report_dashboardcard(id, worktree_id_helper) - the world foreign keys below reference it
       changes:
@@ -2502,7 +2536,7 @@ databaseChangeLog:
             constraintName: uq_report_dashboardcard_id_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:53:00
+      id: v65.2026-09-22T10:55:00
       author: ranquild
       comment: Unique constraint on timeline(id, worktree_id_helper) - the world foreign keys below reference it
       changes:
@@ -2512,7 +2546,7 @@ databaseChangeLog:
             constraintName: uq_timeline_id_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:54:00
+      id: v65.2026-09-22T10:56:00
       author: ranquild
       comment: Unique constraint on transform(id, worktree_id_helper) - the world foreign keys below reference it
       changes:
@@ -2522,7 +2556,7 @@ databaseChangeLog:
             constraintName: uq_transform_id_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:55:00
+      id: v65.2026-09-22T10:57:00
       author: ranquild
       comment: Index on report_card(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2536,7 +2570,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T10:56:00
+      id: v65.2026-09-22T10:58:00
       author: ranquild
       comment: FK report_card(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2548,7 +2582,7 @@ databaseChangeLog:
             constraintName: fk_card_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:57:00
+      id: v65.2026-09-22T10:59:00
       author: ranquild
       comment: Index on report_dashboard(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2562,7 +2596,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T10:58:00
+      id: v65.2026-09-22T11:00:00
       author: ranquild
       comment: FK report_dashboard(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2574,7 +2608,7 @@ databaseChangeLog:
             constraintName: fk_dashboard_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T10:59:00
+      id: v65.2026-09-22T11:01:00
       author: ranquild
       comment: Index on document(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2588,7 +2622,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:00:00
+      id: v65.2026-09-22T11:02:00
       author: ranquild
       comment: FK document(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2600,7 +2634,7 @@ databaseChangeLog:
             constraintName: fk_document_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:01:00
+      id: v65.2026-09-22T11:03:00
       author: ranquild
       comment: Index on timeline(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2614,7 +2648,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:02:00
+      id: v65.2026-09-22T11:04:00
       author: ranquild
       comment: FK timeline(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2626,7 +2660,7 @@ databaseChangeLog:
             constraintName: fk_timeline_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:03:00
+      id: v65.2026-09-22T11:05:00
       author: ranquild
       comment: Index on transform(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2640,7 +2674,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:04:00
+      id: v65.2026-09-22T11:06:00
       author: ranquild
       comment: FK transform(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2652,7 +2686,7 @@ databaseChangeLog:
             constraintName: fk_transform_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:05:00
+      id: v65.2026-09-22T11:07:00
       author: ranquild
       comment: Index on native_query_snippet(collection_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2666,7 +2700,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:06:00
+      id: v65.2026-09-22T11:08:00
       author: ranquild
       comment: FK native_query_snippet(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
       changes:
@@ -2678,7 +2712,7 @@ databaseChangeLog:
             constraintName: fk_snippet_collection_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:07:00
+      id: v65.2026-09-22T11:09:00
       author: ranquild
       comment: Index on report_dashboardcard(dashboard_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2692,7 +2726,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:08:00
+      id: v65.2026-09-22T11:10:00
       author: ranquild
       comment: FK report_dashboardcard(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
       changes:
@@ -2704,7 +2738,7 @@ databaseChangeLog:
             constraintName: fk_dashcard_dashboard_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:09:00
+      id: v65.2026-09-22T11:11:00
       author: ranquild
       comment: Index on dashboard_tab(dashboard_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2718,7 +2752,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:10:00
+      id: v65.2026-09-22T11:12:00
       author: ranquild
       comment: FK dashboard_tab(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
       changes:
@@ -2730,7 +2764,7 @@ databaseChangeLog:
             constraintName: fk_dashtab_dashboard_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:11:00
+      id: v65.2026-09-22T11:13:00
       author: ranquild
       comment: Index on dashboardcard_series(dashboardcard_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2744,7 +2778,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:12:00
+      id: v65.2026-09-22T11:14:00
       author: ranquild
       comment: FK dashboardcard_series(dashboardcard_id, worktree_id_helper) -> report_dashboardcard(id, worktree_id_helper) - content and the report_dashboardcard it hangs off always belong to the same world
       changes:
@@ -2756,7 +2790,7 @@ databaseChangeLog:
             constraintName: fk_series_dashcard_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:13:00
+      id: v65.2026-09-22T11:15:00
       author: ranquild
       comment: Index on timeline_event(timeline_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2770,7 +2804,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:14:00
+      id: v65.2026-09-22T11:16:00
       author: ranquild
       comment: FK timeline_event(timeline_id, worktree_id_helper) -> timeline(id, worktree_id_helper) - content and the timeline it hangs off always belong to the same world
       changes:
@@ -2782,7 +2816,7 @@ databaseChangeLog:
             constraintName: fk_event_timeline_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:15:00
+      id: v65.2026-09-22T11:17:00
       author: ranquild
       comment: Index on transform_transform_tag(transform_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2796,7 +2830,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:16:00
+      id: v65.2026-09-22T11:18:00
       author: ranquild
       comment: FK transform_transform_tag(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
       changes:
@@ -2808,7 +2842,7 @@ databaseChangeLog:
             constraintName: fk_transform_tag_transform_worktree
 
   - changeSet:
-      id: v65.2026-09-22T11:17:00
+      id: v65.2026-09-22T11:19:00
       author: ranquild
       comment: Index on transform_test(transform_id, worktree_id_helper) - it backs the world foreign key below
       changes:
@@ -2822,7 +2856,7 @@ databaseChangeLog:
                   name: worktree_id_helper
 
   - changeSet:
-      id: v65.2026-09-22T11:18:00
+      id: v65.2026-09-22T11:20:00
       author: ranquild
       comment: FK transform_test(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
       changes:

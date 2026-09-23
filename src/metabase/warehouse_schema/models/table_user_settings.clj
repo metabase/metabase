@@ -37,8 +37,6 @@
   (derive :hook/search-index)
   (derive :hook/worktree-id))
 
-(methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
-
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, and
   `is_published`/`collection_id`."
@@ -206,6 +204,7 @@
                                                       (serdes/*import-table-fk* (table-path->table-ref (serdes/path current))))}
                :fields        (serdes/nested :model/FieldUserSettings :table_id
                                              {:sort-by          :field_name
+                                              :parent-key       :table_id
                                               :delete-children! warehouse-schema.db/delete-field-user-settings-for-table!})}})
 
 (def ^:private table-user-settings-slug "___tableusersettings")
