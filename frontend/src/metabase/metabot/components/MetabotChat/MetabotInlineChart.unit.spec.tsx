@@ -21,7 +21,11 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { markChartSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotInlineChart } from "./MetabotInlineChart";
@@ -141,6 +145,25 @@ describe("MetabotInlineChart", () => {
     expect(
       await screen.findByText("There was a problem displaying this chart."),
     ).toBeInTheDocument();
+  });
+
+  it("re-runs the query when Try again is clicked after a failure", async () => {
+    setup({ status: 500 });
+    expect(
+      await screen.findByText("There was a problem displaying this chart."),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(1);
+
+    fetchMock.modifyRoute("dataset-post", {
+      response: createMockDataset(),
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByTestId("visualization")).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(2);
+    expect(
+      screen.queryByText("There was a problem displaying this chart."),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an error message when the dataset comes back with an error", async () => {
