@@ -24,7 +24,8 @@
     (spit filename (serialize/serialize instance))
     (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename)))
 
-(t2/define-after-update ::writeback [instance]
+(t2/define-after-update ::writeback
+  [instance]
   (update-file! instance))
 
 (methodical/prefer-method!
@@ -33,7 +34,23 @@
  [:toucan.query-type/update.* :hook/search-index])
 
 (comment
-  (defn- x []
+  (defn- %update! []
     (-> (t2/select-one :model/Dashboard :id 2)
         (update :name str "_2")
         t2/save!)))
+
+(t2/define-after-insert ::writeback
+  [instance]
+  (update-file! instance))
+
+(comment
+  (defn- %update! []
+    (t2/insert! :model/Card (-> (t2/select-one :model/Card)
+                                (dissoc :id :entity_id)))))
+
+(methodical/prefer-method!
+ #'toucan2.tools.after/each-row-fn
+ [:toucan.query-type/insert.* :hook/search-index]
+ [:toucan.query-type/insert.* ::writeback])
+
+;; TODO -- implement delete
