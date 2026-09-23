@@ -9,6 +9,8 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.sqlite :as sqlite]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
@@ -81,6 +83,27 @@
        :identity         (model-identity active-state)
        :total-questions  total-questions})))
 
+(defn- prepared-sqlite-run
+  "Resolve the SQLite semantic store and verify that it has caught up with saved questions."
+  []
+  (when-not (premium-features/has-feature? :semantic-search)
+    (throw (ex-info "Semantic search is not licensed" {:reason :unlicensed})))
+  (when-not (semantic.u/semantic-search-active?)
+    (throw (ex-info "Semantic search is not active" {:reason :inactive})))
+  (let [configured-model (embedding/get-configured-model)]
+    (when-not (embedding/embedding-supported? configured-model)
+      (throw (ex-info "The configured semantic embedding provider is unavailable" {:reason :embedder-unavailable})))
+    ;; Opening the store also creates it when necessary and recreates it when the configured model changes.
+    (sqlite/open!)
+    (let [total-questions (duplicates/eligible-question-count)
+          indexed-count   (get-in (sqlite/stats) [:by-model "card"] 0)]
+      (when (< indexed-count total-questions)
+        (throw (ex-info "The SQLite semantic index has not caught up with saved questions"
+                        {:reason :index-catching-up
+                         :indexed-count indexed-count
+                         :expected-count total-questions})))
+      {:total-questions total-questions})))
+
 (defn- scan-source
   [pgvector index embedding-model {:keys [id name description]}]
   (try
@@ -121,6 +144,41 @@
                           target-ids)))
           matches)))
 
+(defn- scan-source-sqlite
+  [{:keys [id name description]}]
+  (try
+    (let [text (duplicates/question-search-text name description)
+          rows (:rows (sqlite/search-text text
+                                          :models ["card"]
+                                          :k 1000
+                                          :max-distance duplicates/cosine-distance-threshold
+                                          :record-tokens? true))]
+      [id (->> rows
+               (keep (fn [{:keys [model_id]}]
+                       (try
+                         (let [target-id (Long/parseLong (str model_id))]
+                           (when (pos? target-id) target-id))
+                         (catch NumberFormatException _ nil))))
+               set)])
+    (catch InterruptedException e
+      (throw e))
+    (catch Throwable e
+      (log/errorf "SQLite semantic duplicate scan failed for question %s: %s" id (ex-message e))
+      (throw e))))
+
+(defn- scan-batch-sqlite
+  [questions]
+  (let [matches         (into {} (map scan-source-sqlite questions))
+        target-ids      (into #{} (mapcat val) matches)
+        live-target-ids (duplicates/live-eligible-question-ids target-ids)]
+    (into #{}
+          (mapcat (fn [[source-id target-ids]]
+                    (keep (fn [target-id]
+                            (when (contains? live-target-ids target-id)
+                              (duplicates/canonical-pair source-id target-id)))
+                          target-ids)))
+          matches)))
+
 (defn- ensure-index-identity!
   [identity]
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
@@ -139,24 +197,41 @@
   []
   (try
     (cluster-lock/with-detached-cluster-lock {:lock cluster-lock-key :timeout-seconds 1}
-      (let [{:keys [pgvector index embedding-model identity total-questions]} (prepared-run)]
-        (duplicates/mark-running! total-questions)
-        (loop [last-id  nil
-               processed 0
-               pairs    #{}]
-          (let [batch          (duplicates/eligible-questions last-id source-batch-size)
-                questions      (:questions batch)
-                batch-last-id  (:last-id batch)]
-            (if (nil? batch-last-id)
-              (do
-                (ensure-index-identity! identity)
-                (duplicates/publish-pairs! (sort pairs) processed total-questions))
-              (let [batch-pairs (if (seq questions)
-                                  (scan-batch pgvector index embedding-model questions)
-                                  #{})
-                    processed   (+ processed (count questions))]
-                (duplicates/mark-progress! processed)
-                (recur batch-last-id processed (into pairs batch-pairs))))))))
+      (if (sqlite-config/enabled?)
+        (let [{:keys [total-questions]} (prepared-sqlite-run)]
+          (duplicates/mark-running! total-questions)
+          (loop [last-id  nil
+                 processed 0
+                 pairs    #{}]
+            (let [batch          (duplicates/eligible-questions last-id source-batch-size)
+                  questions      (:questions batch)
+                  batch-last-id  (:last-id batch)]
+              (if (nil? batch-last-id)
+                (duplicates/publish-pairs! (sort pairs) processed total-questions)
+                (let [batch-pairs (if (seq questions)
+                                    (scan-batch-sqlite questions)
+                                    #{})
+                      processed   (+ processed (count questions))]
+                  (duplicates/mark-progress! processed)
+                  (recur batch-last-id processed (into pairs batch-pairs)))))))
+        (let [{:keys [pgvector index embedding-model identity total-questions]} (prepared-run)]
+          (duplicates/mark-running! total-questions)
+          (loop [last-id  nil
+                 processed 0
+                 pairs    #{}]
+            (let [batch          (duplicates/eligible-questions last-id source-batch-size)
+                  questions      (:questions batch)
+                  batch-last-id  (:last-id batch)]
+              (if (nil? batch-last-id)
+                (do
+                  (ensure-index-identity! identity)
+                  (duplicates/publish-pairs! (sort pairs) processed total-questions))
+                (let [batch-pairs (if (seq questions)
+                                    (scan-batch pgvector index embedding-model questions)
+                                    #{})
+                      processed   (+ processed (count questions))]
+                  (duplicates/mark-progress! processed)
+                  (recur batch-last-id processed (into pairs batch-pairs)))))))))
     (catch InterruptedException e
       (throw e))
     (catch Throwable e
