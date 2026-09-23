@@ -32,7 +32,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
-import { initializeIframeResizer } from "metabase/utils/dom";
+import { initializeFrameSizing } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
@@ -94,7 +94,7 @@ export function App() {
   useGetSettingsQuery();
 
   useEffect(() => {
-    initializeIframeResizer();
+    initializeFrameSizing();
   }, []);
 
   useEffect(() => {

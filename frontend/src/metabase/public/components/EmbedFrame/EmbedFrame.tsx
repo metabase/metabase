@@ -27,7 +27,7 @@ import { getSetting } from "metabase/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
-import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
+import { initializeFrameSizing, isSmallScreen } from "metabase/utils/dom";
 import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
@@ -130,7 +130,7 @@ export const EmbedFrame = ({
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk());
 
   useMount(() => {
-    initializeIframeResizer(() => setHasFrameScroll(false));
+    initializeFrameSizing(() => setHasFrameScroll(false));
   });
 
   const parameterPanelRef = useRef<HTMLElement>(null);
