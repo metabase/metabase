@@ -11,8 +11,10 @@ const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
 // into the jar twice: the build emits hashed copies into app/dist/fonts.
 const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
 // Per-range chunks written by the font-subset loader. The stylesheet that
-// declares them is that loader's output, not a file.
-const GENERATED_FONTS_PATH = ROOT_PATH + "/target/font-subsets";
+// declares them is that loader's output, not a file. Chunk names carry the hash
+// of their inputs, so the directory doubles as the cache that keeps a warm build
+// from re-subsetting 104 faces.
+const GENERATED_FONTS_PATH = ROOT_PATH + "/node_modules/.cache/font-subsets";
 // Backs the bare `fonts.css` import. The file holds the @font-face declarations
 // and the loader replaces each one with its per-range chunks, so what a module
 // imports under that name is built, never read off disk.
