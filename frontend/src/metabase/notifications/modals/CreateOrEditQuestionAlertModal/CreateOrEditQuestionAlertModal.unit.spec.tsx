@@ -102,6 +102,68 @@ describe("CreateOrEditQuestionAlertModal", () => {
     });
   });
 
+  describe("Metabot send gate", () => {
+    it("should not render when Metabot is disabled", async () => {
+      setup({ isAdmin: true, isMetabotEnabled: false });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("alert-metabot-send-gate"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render empty for a new alert, alongside the existing trigger select", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-goal-select")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-metabot-send-gate")).toHaveValue("");
+    });
+
+    it("should preserve spaces while typing", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      const gateBox = screen.getByTestId("alert-metabot-send-gate");
+      await userEvent.type(gateBox, "skip weekend dips");
+
+      expect(gateBox).toHaveValue("skip weekend dips");
+    });
+
+    it("should be independent of the summary prompt", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      await userEvent.type(
+        screen.getByTestId("alert-metabot-send-gate"),
+        "only real drops",
+      );
+
+      expect(screen.getByTestId("alert-metabot-prompt")).toHaveValue("");
+      expect(screen.getByTestId("alert-metabot-send-gate")).toHaveValue(
+        "only real drops",
+      );
+    });
+
+    it("should show an existing gate when editing an alert", async () => {
+      const editingNotification = createMockNotification({
+        payload: {
+          card_id: 1,
+          send_once: false,
+          send_condition: "has_result",
+          send_prompt: "Only real drops",
+        },
+        subscriptions: [createMockNotificationCronSubscription()],
+      });
+      setup({ isAdmin: true, editingNotification });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-metabot-send-gate")).toHaveValue(
+        "Only real drops",
+      );
+    });
+  });
+
   it("should show 'When this metric has results' for metric cards", async () => {
     setup({ isAdmin: true, cardType: "metric" });
 

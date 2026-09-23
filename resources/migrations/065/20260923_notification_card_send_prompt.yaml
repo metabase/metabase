@@ -1,0 +1,25 @@
+## Add notification_card.send_prompt: an optional second gate, layered on top of send_condition. When set,
+## an alert whose send_condition already passed is additionally put to Metabot, which decides whether the
+## result is worth sending. Null (the default, and the value on every pre-existing row) means the alert
+## sends whenever send_condition says so, with no LLM call on the send path.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:03
+      author: nvoxland
+      comment: Add notification_card.send_prompt, the optional Metabot gate applied after send_condition passes
+      changes:
+        - addColumn:
+            tableName: notification_card
+            columns:
+              - column:
+                  name: send_prompt
+                  type: ${text.type}
+                  remarks: Optional instruction for Metabot to decide whether a triggered alert is worth sending. Null means send whenever send_condition passes.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: notification_card
+            columnName: send_prompt

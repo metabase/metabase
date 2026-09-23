@@ -15,6 +15,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -697,7 +698,7 @@
 (deftest ai-summary-email-test
   (testing "an alert carrying a prompt renders Metabot's interpretation above the chart"
     (notification.tu/with-notification-testing-setup!
-      (with-redefs [ai-summary/call-llm! (constantly {:summary "Widgets are up **20%** this week."})]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary "Widgets are up **20%** this week."})]
         (notification.tu/with-card-notification
           [notification {:card              {:name          notification.tu/default-card-name
                                              :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -724,7 +725,7 @@
   (testing "an alert with no prompt makes no LLM call and renders no Metabot block"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom 0)]
-        (with-redefs [ai-summary/call-llm! (fn [_] (swap! calls inc) {:summary "should not appear"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:summary "should not appear"})]
           (notification.tu/with-card-notification
             [notification {:card     {:name          notification.tu/default-card-name
                                       :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -747,7 +748,7 @@
 (deftest ai-summary-failure-does-not-break-the-alert-test
   (testing "a failing LLM call still sends the alert, just without a summary"
     (notification.tu/with-notification-testing-setup!
-      (with-redefs [ai-summary/call-llm! (fn [_] (throw (ex-info "provider exploded" {})))]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (throw (ex-info "provider exploded" {})))]
         (notification.tu/with-card-notification
           [notification {:card              {:name          notification.tu/default-card-name
                                              :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -762,3 +763,90 @@
                                  notification.tu/png-attachment
                                  notification.tu/csv-attachment]})
                      (mt/summarize-multipart-single-email email card-name-regex))))}))))))
+
+(deftest ai-send-gate-declines-test
+  (testing "the AI gate only runs after send_condition passes, and can suppress a triggered alert"
+    (notification.tu/with-notification-testing-setup!
+      (let [calls (atom [])]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+                                                        (swap! calls conj tag)
+                                                        {:should_send false :reason "Matches every prior weekend."})]
+          (notification.tu/with-card-notification
+            [notification {:card              {:name          notification.tu/default-card-name
+                                               :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                           :notification-card {:send_prompt "Only tell me about real drops"
+                                               :prompt      "Summarize it"}
+                           :handlers          [@notification.tu/default-email-handler]}]
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email (fn [emails] (is (empty? emails) "the gate declined, so nothing should be sent"))})
+            (testing "only the gate ran - no summary is generated for an alert nobody receives"
+              (is (= ["alert-ai-send-gate"] @calls)))))))))
+
+(deftest ai-send-gate-approves-test
+  (testing "a gate that approves lets the alert through and still summarizes"
+    (notification.tu/with-notification-testing-setup!
+      (let [calls (atom [])]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+                                                        (swap! calls conj tag)
+                                                        (if (= tag "alert-ai-send-gate")
+                                                          {:should_send true :reason "Genuine 40% drop."}
+                                                          {:summary "Revenue fell **40%**."}))]
+          (notification.tu/with-card-notification
+            [notification {:card              {:name          notification.tu/default-card-name
+                                               :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                           :notification-card {:send_prompt "Only tell me about real drops"
+                                               :prompt      "Summarize it"}
+                           :handlers          [@notification.tu/default-email-handler]}]
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email
+              (fn [[email]]
+                (is (= (construct-email
+                        {:message [{notification.tu/default-card-name true
+                                    "Revenue fell"                    true}
+                                   notification.tu/png-attachment
+                                   notification.tu/csv-attachment]})
+                       (mt/summarize-multipart-single-email email card-name-regex #"Revenue fell"))))})
+            (is (= ["alert-ai-send-gate" "alert-ai-summary"] @calls))))))))
+
+(deftest ai-send-gate-fails-open-test
+  (testing "a gate failure sends the alert anyway rather than silently suppressing it"
+    (notification.tu/with-notification-testing-setup!
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ tag]
+                                                      (if (= tag "alert-ai-send-gate")
+                                                        (throw (ex-info "provider exploded" {}))
+                                                        {:summary "still summarized"}))]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:send_prompt "Only tell me about real drops"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= (construct-email
+                      {:message [{notification.tu/default-card-name true}
+                                 notification.tu/png-attachment
+                                 notification.tu/csv-attachment]})
+                     (mt/summarize-multipart-single-email email card-name-regex))))}))))))
+
+(deftest ai-work-skipped-when-send-condition-fails-test
+  (testing "an alert whose send_condition says skip makes no LLM call at all"
+    (notification.tu/with-notification-testing-setup!
+      (let [calls (atom 0)]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:should_send true :reason "x"})]
+          (notification.tu/with-card-notification
+            [notification {:card              {:name          notification.tu/default-card-name
+                                               ;; returns no rows, so :has_result never fires
+                                               :dataset_query (mt/native-query {:query "SELECT 1 as n WHERE 1 = 0"})}
+                           :notification-card {:send_condition :has_result
+                                               :send_prompt    "Only real drops"
+                                               :prompt         "Summarize it"}
+                           :handlers          [@notification.tu/default-email-handler]}]
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email (fn [emails] (is (empty? emails)))})
+            (testing "neither the gate nor the summary should have been paid for"
+              (is (zero? @calls)))))))))

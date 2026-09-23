@@ -60,6 +60,7 @@ import { NotificationChannelsPicker } from "../components/NotificationChannelsPi
 
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
 import { AlertMetabotPrompt } from "./components/AlertMetabotPrompt";
+import { AlertMetabotSendGate } from "./components/AlertMetabotSendGate";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { NotificationOwner } from "./components/NotificationOwner/NotificationOwner";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
@@ -362,6 +363,23 @@ export const CreateOrEditQuestionAlertModal = ({
               />
             )}
           </Flex>
+          <AlertMetabotSendGate
+            sendPrompt={notification.payload?.send_prompt}
+            onChange={(sendPrompt) => {
+              setNotification({
+                ...notification,
+                payload: {
+                  ...notification.payload,
+                  card_id: notification.payload?.card_id ?? questionId,
+                  send_condition:
+                    notification.payload?.send_condition ??
+                    triggerOptions[0].value,
+                  send_once: notification.payload?.send_once ?? false,
+                  send_prompt: sendPrompt,
+                },
+              });
+            }}
+          />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
           title={t`When do you want to check this?`}

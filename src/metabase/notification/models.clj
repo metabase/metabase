@@ -485,6 +485,8 @@
    [:disable_links   {:optional true} [:maybe :boolean]]
    ;; free text the creator writes for Metabot; nil means the alert sends with no LLM call at all
    [:prompt          {:optional true} [:maybe :string]]
+   ;; second gate, applied only after `send_condition` passes; nil means no AI gate
+   [:send_prompt     {:optional true} [:maybe :string]]
    [:created_at      {:optional true} RowTimestamp]
    [:updated_at      {:optional true} RowTimestamp]])
 
@@ -521,7 +523,7 @@
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs [[:payload       {:model        :model/NotificationCard
-                                   :compare-cols [:send_condition :send_once :prompt]
+                                   :compare-cols [:send_condition :send_once :prompt :send_prompt]
                                    :extra-cols   [:card_id]}]
                   [:subscriptions {:model        :model/NotificationSubscription
                                    :fk-column    :notification_id

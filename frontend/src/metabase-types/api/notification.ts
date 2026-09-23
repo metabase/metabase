@@ -20,6 +20,8 @@ type NotificationCardPayload = {
   send_condition: NotificationCardSendCondition;
   // instruction for Metabot to interpret the results; null means no summary is generated
   prompt?: string | null;
+  // second gate, checked only after send_condition passes; null means no AI gate
+  send_prompt?: string | null;
 
   id?: number;
   created_at?: string;

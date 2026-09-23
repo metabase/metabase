@@ -129,6 +129,10 @@
                  [:style             :map]
                  ;; Metabot's interpretation of the results; nil unless the alert carries a prompt
                  [:ai_summary {:optional true} [:maybe :string]]
+                 ;; why this send is being skipped, decided in `payload` and read back by `skip-reason`
+                 [:skip_reason {:optional true} [:maybe :keyword]]
+                 ;; the AI send gate's one-line rationale, for logging and debugging
+                 [:ai_send_reason {:optional true} [:maybe :string]]
                  [:notification_card ::models.notification/NotificationCard]
                  [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])
