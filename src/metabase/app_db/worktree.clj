@@ -1,32 +1,88 @@
 (ns metabase.app-db.worktree
-  "Keeps queries over checked-out content inside the world the caller works in.
+  "The remote-sync worktree the running request, import or export works in, and keeping the queries over checked-out
+  content inside it.
 
-  A worktree checks a branch's content out into the same tables as the main app, told apart by `worktree_id`.
-  Rather than have every caller remember to filter, the queries Toucan builds for a model that derives
-  `:hook/worktree-id` are restricted to [[metabase.worktree.core/*worktree-id*]] here: the main app's rows by
-  default, and a branch's while an endpoint, an import or an export works inside one.
+  A worktree checks a branch's content out into the same tables as the main app, told apart by `worktree_id`. Which
+  worktree a piece of work belongs to is never inferred from what it touches: a request takes it from the user it is
+  made as, and a pull or a push names the worktree it materializes.
 
-  Only a query reading the model's own table is restricted -- hand-written Honey SQL that reads from somewhere
-  else, or unions several tables, filters itself. [[metabase.worktree.core/across-worlds]] turns the restriction
-  off for the code that has to see every world, such as resolving which world an entity belongs to."
+  Rather than have every caller remember to filter, every query Toucan builds over a table a worktree checks content
+  out into -- named by a model deriving `:hook/worktree-id`, by the table itself, or in a common table expression --
+  is restricted to [[*worktree-id*]] here: the main app's rows by default, and a branch's while a request, an import
+  or an export works inside one.
+
+  A query that reads several of those tables at once, by joining or unioning them, is restricted for the one it
+  selects from. [[without-worktree-scoping]] lifts the restriction for the code that has to see every worktree at
+  once, such as working out which one an entity is in."
   (:require
-   [metabase.worktree.core :as worktree]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *worktree-id*
+  "The id of the worktree being worked in, or nil for the main app. Bound only by [[with-worktree]]."
+  nil)
+
+(defn worktree-id
+  "The id of the worktree being worked in; nil is the main app."
+  []
+  *worktree-id*)
+
+(defn do-with-worktree
+  "Impl for [[with-worktree]]."
+  [worktree-id thunk]
+  (binding [*worktree-id* worktree-id]
+    (thunk)))
+
+(defmacro with-worktree
+  "Execute `body` in the worktree `worktree-id` names, or in the main app when it is nil. What the code inside reads
+  and writes belongs to that worktree."
+  {:style/indent 1}
+  [worktree-id & body]
+  `(do-with-worktree ~worktree-id (^:once fn* [] ~@body)))
+
+(def ^:dynamic *worktree-scoping*
+  "Whether the queries Toucan builds are restricted to the worktree being worked in. Bound only by
+  [[without-worktree-scoping]]."
+  true)
+
+(defn do-without-worktree-scoping
+  "Impl for [[without-worktree-scoping]]."
+  [thunk]
+  (binding [*worktree-scoping* false]
+    (thunk)))
+
+(defmacro without-worktree-scoping
+  "Execute `body` without restricting what it reads to one worktree, so it sees the main app's content and every
+  branch's. For the code that works out which worktree something is in, and for deleting a worktree."
+  [& body]
+  `(do-without-worktree-scoping (^:once fn* [] ~@body)))
+
+(let [cache (atom nil)]
+  (defn- checked-out-tables
+    "The names of the tables a worktree checks content out into, by the models deriving `:hook/worktree-id`."
+    []
+    (let [models            (descendants :hook/worktree-id)
+          [cached-for cached] @cache]
+      (if (identical? models cached-for)
+        cached
+        (let [tables (into #{} (map (comp name t2.model/table-name)) models)]
+          (reset! cache [models tables])
+          tables)))))
+
 (defn- table-and-alias
   "The table `source` -- one entry of a `:from`, an `:update` or a `:delete-from` -- names, and what to qualify a
   column of it with."
   [source]
   (cond
-    (keyword? source)          [source source]
-    (not (vector? source))     nil
+    (keyword? source)               [source source]
+    (not (vector? source))          nil
     (not (keyword? (first source))) nil
-    (keyword? (second source)) [(first source) (second source)]
-    :else                      [(first source) (first source)]))
+    (keyword? (second source))      [(first source) (second source)]
+    :else                           [(first source) (first source)]))
 
 (defn- sources
   "The tables `query` reads or writes, as a sequence. Honey SQL takes a lone table on its own or in a vector."
@@ -35,53 +91,53 @@
     (if (sequential? clause) clause [clause])))
 
 (defn- worktree-column
-  "The `worktree_id` column to restrict `query` by, or nil when it does not read `model`'s own table."
-  [model query]
+  "The `worktree_id` column to restrict `query` by, or nil when it does not read a table a worktree checks content
+  out into."
+  [query]
   (let [sources (sources query)]
     (when (= (count sources) 1)
       (when-some [[table alias] (table-and-alias (first sources))]
-        (when (= (name table) (name (t2.model/table-name model)))
-          (keyword (name alias) "worktree_id"))))))
+        (when (contains? (checked-out-tables) (name table))
+          (u/qualified-key alias :worktree_id))))))
 
-(defn- scope
-  "Restrict `query` to the world being worked in, when it reads `model`'s own table."
-  [model query]
-  (if-let [column (and (worktree/scope-queries?) (worktree-column model query))]
-    (let [clause [:= column (worktree/worktree-id)]]
-      (update query :where #(if % [:and % clause] clause)))
+(declare scope-query)
+
+(defn- scope-ctes
+  "Restrict each common table expression of `ctes` that reads a checked-out table."
+  [ctes]
+  (mapv (fn [cte]
+          (if (and (vector? cte) (map? (second cte)))
+            (assoc cte 1 (scope-query (second cte)))
+            cte))
+        ctes))
+
+(defn- scope-query
+  "Restrict `query`, and each common table expression it defines, to the worktree being worked in."
+  [query]
+  (cond-> (if-let [column (worktree-column query)]
+            (let [clause [:= column *worktree-id*]]
+              (update query :where #(if % [:and % clause] clause)))
+            query)
+    (sequential? (:with query))           (update :with scope-ctes)
+    (sequential? (:with-recursive query)) (update :with-recursive scope-ctes)))
+
+(methodical/defmethod t2.pipeline/build :after :default
+  "Read and write only the worktree being worked in."
+  [_query-type _model _parsed-args query]
+  (if (and *worktree-scoping* (map? query))
+    (scope-query query)
     query))
-
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/select.*
-                                                #_model      :hook/worktree-id
-                                                #_query      clojure.lang.IPersistentMap]
-  "Read the world being worked in."
-  [_query-type model _parsed-args query]
-  (scope model query))
 
 (def ^:private exists-subquery-path
   "Where an `exists` query holds the select it asks about."
   [:select 0 0 1])
 
-(methodical/defmethod t2.pipeline/build [#_query-type :toucan.query-type/select.exists
-                                         #_model      :hook/worktree-id
-                                         #_query      clojure.lang.IPersistentMap]
-  "Read the world being worked in. An `exists` query ends up as `[:exists <select>]` with nothing left to
-  restrict at the top level, so the select it wraps is restricted instead."
-  [query-type model parsed-args query]
-  (let [built (next-method query-type model parsed-args query)]
-    (cond-> built
-      (map? (get-in built exists-subquery-path)) (update-in exists-subquery-path #(scope model %)))))
-
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/update.*
-                                                #_model      :hook/worktree-id
+(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/select.exists
+                                                #_model      :default
                                                 #_query      clojure.lang.IPersistentMap]
-  "Write only to the world being worked in."
-  [_query-type model _parsed-args query]
-  (scope model query))
-
-(methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
-                                                #_model      :hook/worktree-id
-                                                #_query      clojure.lang.IPersistentMap]
-  "Delete only from the world being worked in."
-  [_query-type model _parsed-args query]
-  (scope model query))
+  "An `exists` query ends up as `[:exists <select>]` with nothing left to restrict at the top level, so the select
+  it wraps is restricted instead."
+  [_query-type _model _parsed-args query]
+  (cond-> query
+    (and *worktree-scoping* (map? (get-in query exists-subquery-path)))
+    (update-in exists-subquery-path scope-query)))

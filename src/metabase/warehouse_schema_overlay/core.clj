@@ -2,9 +2,9 @@
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
   in its user-settings table."
   (:require
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (def user-settable-field-columns
@@ -77,10 +77,10 @@
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Field)
             user-settings? true
-            worktree-id    (worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                [:alias          {:optional true} :keyword]
-                                                                [:user-settings? {:optional true} :boolean]
-                                                                [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
+                                                                    [:alias          {:optional true} :keyword]
+                                                                    [:user-settings? {:optional true} :boolean]
+                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
@@ -163,10 +163,10 @@
   ([{:keys [alias user-settings? worktree-id]
      :or   {alias          (t2/table-name :model/Table)
             user-settings? true
-            worktree-id    (worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                [:alias          {:optional true} :keyword]
-                                                                [:user-settings? {:optional true} :boolean]
-                                                                [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
+                                                                    [:alias          {:optional true} :keyword]
+                                                                    [:user-settings? {:optional true} :boolean]
+                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)

@@ -30,6 +30,7 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -74,8 +75,9 @@
   `(defrecord ~name []
      CustomTaskChange
      (execute [_# database#]
-       (t2/with-transaction [_conn#]
-         ~migration-body))
+       (mdb.worktree/without-worktree-scoping
+        (t2/with-transaction [_conn#]
+          ~migration-body)))
      (getConfirmationMessage [_#]
        (str "Custom migration: " ~name))
      (setUp [_#])
@@ -85,9 +87,10 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       (t2/with-transaction [_conn#]
-         (when (should-execute-change?)
-           ~reverse-migration-body)))))
+       (mdb.worktree/without-worktree-scoping
+        (t2/with-transaction [_conn#]
+          (when (should-execute-change?)
+            ~reverse-migration-body))))))
 
 (defn no-op
   "No-op rollback function; does not log to avoid confusion #44400"

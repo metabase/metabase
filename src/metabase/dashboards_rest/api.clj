@@ -168,7 +168,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
-  {:worktree [:model/Collection :collection_id :body]}
   [_route-params
    _query-params
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
@@ -487,7 +486,7 @@
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))
-                           ;; the copy belongs to the world of the dashboard it lands in, which it inherits
+                           ;; the copy belongs to the worktree of the dashboard it lands in, which it inherits
                            (dissoc :id :entity_id :created_at :updated_at :worktree_id))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
@@ -664,8 +663,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :id]}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -685,7 +683,6 @@
   action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
 
   `paper_size` is `\"a4\"` (default) or `\"letter\"`."
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -716,7 +713,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Get Dashboard with ID."
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
@@ -749,7 +745,6 @@
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
@@ -1120,7 +1115,6 @@
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -1146,7 +1140,6 @@
                      ...]
      :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -1169,9 +1162,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Dashboard (eid-translation/->id-or-404 :dashboard (:id route))))}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
@@ -1195,7 +1186,6 @@
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
-  {:worktree [:model/Dashboard :dashboard-id]}
   [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -1221,7 +1211,6 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
-  {:worktree [:model/Dashboard :dashboard-id]}
   [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
@@ -1241,7 +1230,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  {:worktree [:model/Dashboard :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (dashboards-rest.db/dashboard id) api/read-check xrays/related))
@@ -1324,8 +1312,7 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :id]}
+  {:scope api-scope/data-app}
   [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
@@ -1348,8 +1335,7 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :id]}
+  {:scope api-scope/data-app}
   [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
@@ -1370,8 +1356,7 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :id]}
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
@@ -1423,8 +1408,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :dashboard-id]}
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1446,8 +1430,7 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  {:scope api-scope/data-app
-   :worktree [:model/Dashboard :dashboard-id]}
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
@@ -1466,9 +1449,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
@@ -1495,9 +1476,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
@@ -1535,9 +1514,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  {:scope api-scope/data-app
-   :worktree (fn [{:keys [route]}]
-               (mi/worktree-id :model/Dashboard (:dashboard-id route)))}
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]

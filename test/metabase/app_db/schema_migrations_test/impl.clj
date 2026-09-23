@@ -18,6 +18,7 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
@@ -199,8 +200,9 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (datasets/test-drivers #{:h2 :mysql :postgres}
-        (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
+      (mdb.worktree/without-worktree-scoping
+       (datasets/test-drivers #{:h2 :mysql :postgres}
+         (test-migrations-for-driver! driver/*driver* [start-id end-id] f))))))
 
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).

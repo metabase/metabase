@@ -9,6 +9,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
@@ -28,7 +29,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -72,14 +72,13 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
-  {:scope api-scope/data-app, :worktree :worktree/query}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
   (as->
    (collections.children/select-collections {:archived                       (boolean archived)
                                              :exclude-other-user-collections exclude-other-user-collections
@@ -92,7 +91,7 @@
                                              :personal-only                  personal-only
                                              :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
-    (if (or archived personal-only (worktree/worktree-id))
+    (if (or archived personal-only (mdb.worktree/worktree-id))
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
@@ -139,7 +138,7 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
-  {:scope api-scope/data-app, :worktree :worktree/query}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
@@ -150,8 +149,7 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
-       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
   (let [archived    (if exclude-archived false nil)
@@ -306,7 +304,6 @@
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
   dashboard question."
-  {:worktree [:model/Collection :id]}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
@@ -339,7 +336,6 @@
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
-  {:worktree [:model/Collection :id]}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
@@ -394,7 +390,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  {:scope api-scope/data-app, :worktree :worktree/query}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -411,8 +407,7 @@
                                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
                                                                        [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                       [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -448,7 +443,6 @@
   "Metadata about the Root Collection's items list: the models with at least one visible item plus the item count.
   Unlike `GET /api/collection/root/items`, the result does not depend on search text; pass that endpoint's other
   scope params so the metadata describes the list being shown."
-  {:worktree :worktree/query}
   [_route-params
    {:keys [models archived namespace pinned-state collection-type include-library
            show-dashboard-questions show-exploration-documents]} :- [:map {:closed true}
@@ -459,8 +453,7 @@
                                                                      [:collection-type            {:optional true} collections.children/CollectionType]
                                                                      [:include-library            {:default false} [:maybe ms/BooleanValue]]
                                                                      [:show-dashboard-questions   {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:worktree-id                {:optional true} [:maybe ms/PositiveInt]]]]
+                                                                     [:show-exploration-documents {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         restrict-models (collections.children/visible-model-kwds root-collection model-set)]
@@ -485,7 +478,6 @@
 
 (api.macros/defendpoint :post "/" :- ::Collection
   "Create a new Collection."
-  {:worktree [:model/Collection :parent_id :body]}
   [_route-params
    _query-params
    body :- [:map {:closed true}
@@ -601,8 +593,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
-  {:scope api-scope/data-app
-   :worktree [:model/Collection :id]}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
@@ -610,7 +601,6 @@
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  {:worktree [:model/Collection :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -625,7 +615,6 @@
 ;; Returns the number of Collection rows deleted, which `t2/delete!` hands back -- 1 whenever the checks above pass.
 (api.macros/defendpoint :delete "/:id" :- ms/IntGreaterThanOrEqualToZero
   "Deletes a collection permanently"
-  {:worktree [:model/Collection :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
@@ -659,8 +648,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  {:scope api-scope/data-app
-   :worktree [:model/Collection :id]}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first
@@ -705,7 +693,6 @@
   `GET /api/collection/:id/items`, the result does not depend on search text; pass that endpoint's other scope
   params -- `models`, `archived`, `pinned-state`, `show-dashboard-questions`, `show-exploration-documents` -- so the
   metadata describes the list being shown."
-  {:worktree [:model/Collection :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state

@@ -9,6 +9,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
@@ -28,7 +29,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -115,7 +115,7 @@
     "Get the (memoized) Trash collection of the world being worked in. A worktree has a Trash of its own --
     archiving is a move into it, so a shared one would hold content from every branch at once."
     []
-    (assoc (get-trash (worktree/worktree-id)) :name (deferred-tru "Trash"))))
+    (assoc (get-trash (mdb.worktree/worktree-id)) :name (deferred-tru "Trash"))))
 
 (defn create-trash-collection!
   "Create the Trash collection of the world being worked in. A worktree gets one when it is created: archiving
@@ -268,7 +268,7 @@
   knows the Library by."
   []
   (when-not (nil? (library-collection))
-    (throw (ex-info "Library already exists" {:worktree-id (worktree/worktree-id)})))
+    (throw (ex-info "Library already exists" {:worktree-id (mdb.worktree/worktree-id)})))
   (let [library       (collections.db/insert-collection! {:name      "Library"
                                                           :type      library-collection-type
                                                           :location  "/"

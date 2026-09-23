@@ -16,6 +16,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -34,7 +35,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.string :as string]
-   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -618,7 +618,7 @@
 
 (t2/define-before-insert :hook/worktree-id
   [instance]
-  (assoc instance :worktree_id (worktree/worktree-id)))
+  (assoc instance :worktree_id (mdb.worktree/worktree-id)))
 
 (t2/define-before-update :hook/worktree-id
   [instance]
@@ -673,19 +673,12 @@
   [_instance _read-or-write]
   nil)
 
-(defn worktree-content?
-  "Whether `instance` is content a remote-sync worktree checked out rather than the main app's own. Only admins
-  reach it: a branch's content is a working copy, and the permissions it carries are the branch's, not this
-  instance's."
-  [instance]
-  (some? (:worktree_id instance)))
-
 (defn worktree-id
-  "The remote-sync worktree the `model` row with `id` belongs to, whichever world the caller is working in; nil both
+  "The remote-sync worktree the `model` row with `id` belongs to, whichever one the caller is working in; nil both
   for the main app's content and for a model no worktree ever holds, which has no `worktree_id` to read."
   [model id]
   (when (and id (isa? (t2/resolve-model model) :hook/worktree-id))
-    (worktree/across-worlds
+    (mdb.worktree/without-worktree-scoping
      (models.db/worktree-id-of model id))))
 
 (defmulti can-read?
