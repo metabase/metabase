@@ -12,13 +12,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const similarity-threshold
+(def similarity-threshold
   "Initial normalized semantic similarity threshold for potential duplicates. This is not a confidence score."
-  0.82)
+  0.83)
 
-(def ^:const cosine-distance-threshold
-  "The pgvector cosine-distance equivalent of [[similarity-threshold]]."
-  0.36)
+(def cosine-distance-threshold
+  "The cosine-distance equivalent of [[similarity-threshold]], used by both pgvector and SQLite vec1."
+  (- 2 (* 2 similarity-threshold)))
 
 (def ^:private default-status
   {:state                       "pending"
