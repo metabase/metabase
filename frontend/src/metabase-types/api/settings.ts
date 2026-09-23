@@ -795,6 +795,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-deepseek-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
+  "vibes-enabled"?: boolean | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

@@ -10,6 +10,7 @@ export type LastEditedByProps = UserId[];
 export type LastEditedAtFilterProps = string | null;
 export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
+export type VibesFilterProps = true | null;
 export type SearchTrashedItemsFilterProps = true | undefined;
 export type PersonalCollectionFilterProps = "only" | undefined;
 
@@ -21,6 +22,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
   [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
+  [SearchFilterKeys.Vibes]: VibesFilterProps;
   [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilterProps;
   [SearchFilterKeys.PersonalCollections]: PersonalCollectionFilterProps;
 };

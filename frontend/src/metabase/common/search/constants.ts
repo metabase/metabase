@@ -8,6 +8,7 @@ export const SearchFilterKeys = {
   LastEditedBy: "last_edited_by",
   LastEditedAt: "last_edited_at",
   NativeQuery: "search_native_query",
+  Vibes: "vibes",
   SearchTrashedItems: "archived",
   PersonalCollections: "filter_items_in_personal_collection",
 } as const;

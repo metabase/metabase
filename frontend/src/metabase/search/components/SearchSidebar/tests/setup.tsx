@@ -5,7 +5,7 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
-import type { TokenFeatures } from "metabase-types/api";
+import type { EnterpriseSettings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
@@ -13,6 +13,7 @@ import {
 
 export interface SearchSidebarSetupOptions {
   tokenFeatures?: TokenFeatures;
+  settings?: Partial<EnterpriseSettings>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   value?: URLSearchFilterQueryParams;
   onChange?: (filters: URLSearchFilterQueryParams) => void;
@@ -22,13 +23,17 @@ const TEST_DATABASE = createMockDatabase();
 
 export const setup = ({
   tokenFeatures = createMockTokenFeatures(),
+  settings: extraSettings = {},
   enterprisePlugins,
   value = {},
   onChange = jest.fn(),
 }: SearchSidebarSetupOptions = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
 
-  const settings = mockSettings({ "token-features": tokenFeatures });
+  const settings = mockSettings({
+    "token-features": tokenFeatures,
+    ...extraSettings,
+  });
 
   const state = createMockState({
     settings,

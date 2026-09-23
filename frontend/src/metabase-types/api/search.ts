@@ -165,6 +165,7 @@ export type SearchRequest = {
   last_edited_at?: string | null;
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
+  vibes?: boolean | null;
   verified?: boolean | null;
   model_ancestors?: boolean | null;
   include_dashboard_questions?: boolean | null;

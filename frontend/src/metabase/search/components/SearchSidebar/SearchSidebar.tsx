@@ -40,6 +40,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_SEARCH_FILTERS.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
+    [SearchFilterKeys.Vibes]: PLUGIN_SEARCH_FILTERS.VibesFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
     [SearchFilterKeys.PersonalCollections]: PersonalCollectionsFilter,
   };
@@ -111,6 +112,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
+      {getFilter(SearchFilterKeys.Vibes)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
       {showOtherUsersCollections &&
         getFilter(SearchFilterKeys.PersonalCollections)}
