@@ -8,6 +8,8 @@
    [metabase-enterprise.semantic-search.sqlite :as sqlite]
    [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase-enterprise.semantic-search.vibes.jev :as jev]
+   [metabase-enterprise.semantic-search.vibes.sqlite :as vibes.sqlite]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -179,6 +181,100 @@
          (is (= [["card" 2]] (result-keys (ctx :display-type #{"bar"})))))
        (testing ":raw-count counts results before the permission filter"
          (is (= 3 (:raw-count (sqlite/query (ctx))))))))))
+
+;;; ----------------------------------------------------- Vibes ----------------------------------------------------
+
+(defn- do-with-vibes-stub!
+  "Run `f` with vibes enabled and Jev replaced by `stub`, a `(fn [prompt roster opts])` returning `{id noul}` or nil.
+  `calls` collects `[prompt roster]` per call. The score cache is cleared first."
+  [stub calls f]
+  (vibes.sqlite/reset-cache!)
+  (mt/with-temporary-setting-values [vibes-enabled true vibes-api-key "test-key" vibes-rerank-k 10]
+    (mt/with-dynamic-fn-redefs [jev/score-candidates! (fn [prompt roster opts]
+                                                        (swap! calls conj [prompt roster])
+                                                        (stub prompt roster opts))]
+      (f))))
+
+(defn- vibe-score [result]
+  (some #(when (= :vibes (:name %)) (:score %)) (:all-scores result)))
+
+(deftest query-vibes-rerank-test
+  (when (sqlite-test-extension-available?)
+    (do-with-query-docs!
+     (fn []
+       (let [calls (atom [])]
+         (do-with-vibes-stub!
+          (fn [_ roster _] (update-vals roster #(if (re-find #"close" (get % "content")) 0.9 0.1)))
+          calls
+          (fn []
+            (let [{:keys [results]} (sqlite/query (ctx :vibes true))]
+              (testing "the reranker's favourite comes first, the rest by score"
+                (is (= ["card" 2] ((juxt :model :id) (first results))))
+                (is (= #{["card" 1] ["dashboard" 1]} (set (map (juxt :model :id) (rest results))))))
+              (testing "the :vibes score is reported"
+                (is (= 0.9 (vibe-score (first results))))
+                (is (=? [{:name :rrf} {:name :semantic-distance} {:name :vibes :score 0.9 :weight 100 :contribution 90.0}]
+                        (take 3 (:all-scores (first results))))))
+              (testing "one Jev call, against the search string, over the candidates within k"
+                (is (= 1 (count @calls)))
+                (is (= "q" (ffirst @calls)))
+                (is (= #{"card" "dashboard"} (set (map #(get % "type") (vals (second (first @calls)))))))
+                (is (every? #(contains? % "content") (vals (second (first @calls)))))))
+            (testing "a :vibes-prompt overrides the search string as the judged prompt"
+              (sqlite/query (ctx :vibes true :vibes-prompt "income by kind of merchandise"))
+              (is (= "income by kind of merchandise" (first (last @calls))))))))))))
+
+(deftest query-vibes-reranker-down-test
+  (when (sqlite-test-extension-available?)
+    (do-with-query-docs!
+     (fn []
+       (let [calls (atom [])]
+         (do-with-vibes-stub!
+          (fn [& _] nil)
+          calls
+          (fn []
+            (let [{:keys [results]} (sqlite/query (ctx :vibes true))]
+              (testing "vector order survives, vibes score 0"
+                (is (= (map (juxt :model :id) (:results (sqlite/query (ctx))))
+                       (map (juxt :model :id) results)))
+                (is (every? #(= 0.0 (vibe-score %)) results)))
+              (testing "one attempt, not one per row"
+                (is (= 1 (count @calls))))))))))))
+
+(deftest query-vibes-disabled-test
+  (when (sqlite-test-extension-available?)
+    (do-with-query-docs!
+     (fn []
+       (let [calls (atom 0)]
+         (mt/with-temporary-setting-values [vibes-enabled false vibes-api-key "test-key"]
+           (mt/with-dynamic-fn-redefs [jev/score-candidates! (fn [& _] (swap! calls inc) {})]
+             (testing "the :vibes ask is ignored: plain vector order, no vibes score, no call"
+               (let [{:keys [results]} (sqlite/query (ctx :vibes true))]
+                 (is (= (map (juxt :model :id) (:results (sqlite/query (ctx))))
+                        (map (juxt :model :id) results)))
+                 (is (every? nil? (map vibe-score results)))
+                 (is (zero? @calls))))))
+         (testing "enabled but not asked for: no call either"
+           (mt/with-temporary-setting-values [vibes-enabled true vibes-api-key "test-key"]
+             (mt/with-dynamic-fn-redefs [jev/score-candidates! (fn [& _] (swap! calls inc) {})]
+               (is (every? nil? (map vibe-score (:results (sqlite/query (ctx))))))
+               (is (zero? @calls))))))))))
+
+(deftest search-api-vibes-param-test
+  (when (sqlite-test-extension-available?)
+    (do-with-query-docs!
+     (fn []
+       (let [calls (atom [])]
+         (do-with-vibes-stub!
+          (fn [_ roster _] (update-vals roster (constantly 0.5)))
+          calls
+          (fn []
+            (testing "GET /api/search?vibes=true reaches the store"
+              (mt/user-http-request :crowberto :get 200 "search" :q "q" :search_engine "semantic" :vibes true)
+              (is (= 1 (count @calls))))
+            (testing "without it, nothing is reranked"
+              (mt/user-http-request :crowberto :get 200 "search" :q "q" :search_engine "semantic")
+              (is (= 1 (count @calls)))))))))))
 
 (deftest search-api-test
   (when (sqlite-test-extension-available?)

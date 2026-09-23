@@ -18,6 +18,8 @@
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
+   [metabase-enterprise.semantic-search.vibes.settings :as vibes.settings]
+   [metabase-enterprise.semantic-search.vibes.sqlite :as vibes.sqlite]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -186,7 +188,8 @@
         conn   (DriverManager/getConnection (str "jdbc:sqlite:" path) (.toProperties config))]
     (try
       (jdbc/execute-one! conn ["SELECT load_extension(?)" (extension-path)])
-      conn
+      ;; `vibes()` and the RERANK BASED ON VIBES rewrite ride on the same connection as vec1
+      (vibes.sqlite/install! conn)
       (catch Throwable t
         (.close conn)
         (throw t)))))
@@ -586,6 +589,45 @@
     (string? (:legacy_input row)) (update :legacy_input json/decode+kw)
     (string? (:metadata row))     (update :metadata json/decode+kw)))
 
+(def ^:private knn-columns
+  "`search_doc` columns each [[knn]] row carries, besides the distance."
+  "d.id, d.model, d.model_id, d.name, d.collection_id, d.legacy_input")
+
+(defn- knn-sql
+  "`[sql & params]` for the `:k` nearest documents, nearest first. `k` is interpolated because a LIMIT isn't visible to
+  vec1 through the join."
+  [query-vector k [where & where-params]]
+  (into [(str "SELECT " knn-columns ", v.distance"
+              " FROM search_vec(?, '{k: " (long k) "}') v"
+              " JOIN search_doc d ON d.id = v.rowid"
+              (when where (str " WHERE " where))
+              " ORDER BY v.distance")
+         (->blob query-vector)]
+        where-params))
+
+(defn- vibes-knn-sql
+  "[[knn-sql]] reranked by `vibes()`: the candidates are materialized once, rolled into one JSON roster (type, name
+  and embedded content per candidate), and ordered by `vibes(prompt, id, roster)` -- one Jev call per statement
+  (see `local/order_by_vibes_plan.md` §1.1). Rows carry `vibe`; NULL vibes (reranker unavailable) keep vector
+  order. The CROSS JOIN keeps vec1 as the outer loop of the candidate query."
+  [query-vector k [where & where-params] prompt]
+  (-> [(str "WITH cand AS MATERIALIZED ("
+            " SELECT " knn-columns ", d.content, v.distance"
+            " FROM search_vec(?, '{k: " (long k) "}') v"
+            " CROSS JOIN search_doc d ON d.id = v.rowid"
+            (when where (str " WHERE " where))
+            " ORDER BY v.distance),"
+            " roster AS MATERIALIZED ("
+            " SELECT json_group_object(id, json_object('type', model, 'name', name, 'content', content)) AS j"
+            " FROM cand)"
+            " SELECT cand.id, cand.model, cand.model_id, cand.name, cand.collection_id, cand.legacy_input,"
+            " cand.distance, vibes(?, cand.id, roster.j) AS vibe"
+            " FROM cand, roster"
+            " ORDER BY vibe DESC, cand.distance ASC")
+       (->blob query-vector)]
+      (into where-params)
+      (conj prompt)))
+
 (defn knn
   "The `:k` (default 50) documents nearest to `query-vector` (a seq of numbers), nearest first, as maps of `:id`
   (the store row id) `:model` `:model_id` `:name` `:collection_id` `:legacy_input` (decoded) `:distance` (cosine
@@ -594,23 +636,19 @@
   Options filter inside the KNN, so up to `:k` matching documents come back:
   - `:models`, `:database-ids`, `:creator-ids`, `:collection-ids` -- collections of values; empty matches nothing
   - `:archived?`, `:verified?` -- booleans
-  - `:max-distance` -- drop results farther than this"
-  [query-vector & {:keys [k max-distance] :or {k 50} :as opts}]
+  - `:max-distance` -- drop results farther than this
+  - `:vibes-prompt` -- rerank the `:k` candidates by `vibes()` against this prompt (best first, ties and unscored
+    rows by distance); rows then carry `:vibe`, the reranker's probability or nil"
+  [query-vector & {:keys [k max-distance vibes-prompt] :or {k 50} :as opts}]
   (if (empty-filter? opts)
     []
-    (let [[where & where-params] (knn-where opts)
-          rows (with-conn [conn]
-                 (jdbc/execute! conn
-                                (into [(str "SELECT d.id, d.model, d.model_id, d.name, d.collection_id, d.legacy_input,"
-                                            " v.distance"
-                                            ;; k is interpolated because LIMIT isn't visible to vec1 through the join
-                                            " FROM search_vec(?, '{k: " (long k) "}') v"
-                                            " JOIN search_doc d ON d.id = v.rowid"
-                                            (when where (str " WHERE " where))
-                                            " ORDER BY v.distance")
-                                       (->blob query-vector)]
-                                      where-params)
-                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+    (let [where (knn-where opts)
+          rows  (with-conn [conn]
+                  (jdbc/execute! conn
+                                 (if vibes-prompt
+                                   (vibes-knn-sql query-vector k where vibes-prompt)
+                                   (knn-sql query-vector k where))
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
       (into []
             (comp (filter #(or (nil? max-distance) (<= (:distance %) max-distance)))
                   (map decode-doc))
@@ -698,36 +736,64 @@
       (and (or (nil? ids) (contains? ids model_id))
            (or (nil? display-types) (contains? display-types (:display_type legacy_input)))))))
 
+(def ^:private vibes-weight
+  "Default weight of the `:vibes` score (a 0..1 probability). Large enough to outrank `:rrf` (~4 at the top) and
+  `:semantic-distance` (≤ 10) so the total score follows the reranker; a request `weights` override replaces it."
+  100)
+
 (defn- ->result
   "A search result (the document's legacy input) for the `rank`-th (1-based) [[knn]] row, scored like pgvector's
-  vector-only hits: `:rrf` from the semantic rank (no keyword rank) and `:semantic-distance`."
-  [weights rank {:keys [legacy_input distance]}]
-  (let [scores {:rrf               (* 0.49 (/ 1.0 (+ 60 rank)))
-                ;; same linear map as scoring/semantic-distance-score-expr: distance 0 -> 1, 2 -> 0
-                :semantic-distance (- 1.0 (/ distance 2.0))}]
+  vector-only hits: `:rrf` from the semantic rank (no keyword rank) and `:semantic-distance`, plus `:vibes` when
+  the row was reranked (see [[knn]] `:vibes-prompt`)."
+  [weights rank {:keys [legacy_input distance] :as row}]
+  (let [scores  (cond-> {:rrf               (* 0.49 (/ 1.0 (+ 60 rank)))
+                         ;; same linear map as scoring/semantic-distance-score-expr: distance 0 -> 1, 2 -> 0
+                         :semantic-distance (- 1.0 (/ distance 2.0))}
+                  (contains? row :vibe) (assoc :vibes (double (or (:vibe row) 0))))
+        weights (cond-> weights
+                  (contains? row :vibe) (update :vibes #(or % vibes-weight)))]
     (assoc legacy_input
            :score      (reduce + (for [[k v] scores] (* v (get weights k 0))))
            :all-scores (semantic.scoring/all-scores weights (keys scores) scores))))
 
+(defn vibes?
+  "Does `search-ctx` ask for vibes reranking, and is it enabled?"
+  [search-ctx]
+  (boolean (and (:vibes search-ctx) (vibes.settings/vibes-enabled))))
+
+(defn- vibes-order
+  "`results` best vibes first (the reranker's own order), then by total score. Rows the reranker didn't score sort
+  last among themselves by score, i.e. in vector order when it was down."
+  [results]
+  (let [vibe (fn [r] (or (some #(when (= :vibes (:name %)) (:score %)) (:all-scores r)) 0.0))]
+    (vec (sort-by (juxt vibe :score) #(compare %2 %1) results))))
+
 (defn query
   "Semantic search over the store for `search-ctx`, as `{:results :raw-count}` like the pgvector engine: results
   nearest first, within [[sqlite-config/max-distance]], filtered by the search context and read permissions,
-  with appdb scores (bookmarks, recency) added. `:raw-count` counts results before the permission filter."
-  [{:keys [search-string] :as search-ctx}]
+  with appdb scores (bookmarks, recency) added. `:raw-count` counts results before the permission filter.
+
+  With `:vibes` in the context (and `vibes-enabled`), the `vibes-rerank-k` nearest candidates are reranked by
+  `vibes()` against `:vibes-prompt` (default: the search string) and the results come back best vibes first."
+  [{:keys [search-string vibes-prompt] :as search-ctx}]
   (if (str/blank? search-string)
     {:results [] :raw-count 0}
-    (let [weights (search.config/weights search-ctx)
+    (let [vibes?  (vibes? search-ctx)
+          weights (search.config/weights search-ctx)
           {:keys [rows]} (search-text search-string
-                                      (assoc (search-ctx->knn-opts search-ctx)
-                                             :k            (semantic.settings/semantic-search-results-limit)
-                                             :max-distance (sqlite-config/max-distance)))
+                                      (cond-> (assoc (search-ctx->knn-opts search-ctx)
+                                                     :k            (semantic.settings/semantic-search-results-limit)
+                                                     :max-distance (sqlite-config/max-distance))
+                                        vibes? (assoc :k            (vibes.settings/vibes-rerank-k)
+                                                      :vibes-prompt (or (not-empty vibes-prompt) search-string))))
           raw     (into [] (comp (filter (post-filter search-ctx))
                                  (map-indexed (fn [i row] (->result weights (inc i) row))))
                         rows)]
       {:raw-count (count raw)
        ;; the pgvector engine's post-processing, as in semantic.index/query-index
-       :results   (->> raw
-                       semantic.index/filter-read-permitted
-                       (semantic.index/apply-collection-id-filter search-ctx)
-                       (mapv search/collapse-id)
-                       (semantic.scoring/with-appdb-scores search-ctx (appdb-scoring/appdb-scorers search-ctx) weights))})))
+       :results   (cond-> (->> raw
+                               semantic.index/filter-read-permitted
+                               (semantic.index/apply-collection-id-filter search-ctx)
+                               (mapv search/collapse-id)
+                               (semantic.scoring/with-appdb-scores search-ctx (appdb-scoring/appdb-scorers search-ctx) weights))
+                    vibes? vibes-order)})))
