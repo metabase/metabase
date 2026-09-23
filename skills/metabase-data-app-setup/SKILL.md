@@ -58,6 +58,14 @@ scaffolding:
    in the connected database (e.g. schema `analytics`). Run each transform
    (`mb transform run <id> --wait`) and confirm `succeeded`.
 
+   **Scope `source-card` to the collection being converted** — never a card
+   borrowed from elsewhere, even one computing an identical result. A
+   warehouse table that already exists (matching target name, or already
+   published to the Library) with verified-matching data is fair to reuse or
+   publish as-is regardless of which card produced it; that's reusing data,
+   not deriving from a foreign card. On a name collision with an unverified
+   table, rename the new transform's target instead of repointing to it.
+
    **The one place this diverges from a plain "materialize the question"
    pass:** if the app should let a viewer dynamically change a filter (a date
    range, a status, a category), the transform's output **must not** bake
