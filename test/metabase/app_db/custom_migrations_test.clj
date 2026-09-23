@@ -2189,7 +2189,9 @@
             (is (= create? (sample-content-created?))))
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
-              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
+              ;; raw SQL: at this point the app db is still on the v52 schema, which the Collection model
+              ;; no longer matches
+              (let [id (:id (first (t2/query "SELECT id FROM collection WHERE is_sample = TRUE")))]
                 (is (partial=
                      {:collection_id id
                       :perm_type     :perms/collection-access
