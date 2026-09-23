@@ -25,6 +25,7 @@ jev/
     filters.clj       plain-English dashboard filters -> parameter values
     search.clj        reranking command-palette search results by intent
     saving.clj        save-time duplicate check + collection suggestion
+    classify.clj      the Jev classify step for query transforms (+ its preview endpoint)
     usage.clj         collective "what people do on this table" shape model (endpoints)
     viz.clj           rank chart types for a query result (deterministic roles + Jev scoring)
     intent.clj        per-user + per-table intent model (event-bus taps + prediction)
@@ -86,6 +87,7 @@ token to the browser, so it goes through these.
 | `POST /api/jev/` | Dumb pass-through: forwards a raw `{state, questions, model?}` body to Jev and returns its answer. For prototyping any judgment without a new backend endpoint. |
 | `GET  /api/jev/table/:id/suggestions` | Semantic-type + data-sensitivity suggestions for every field of a table, from sampled values. |
 | `POST /api/jev/joins/suggestions` | Inferred join edges among the given source tables. |
+| `POST /api/jev/classify/preview` | Run a Jev classify step over the first `limit` (default 20) rows of a query and return them, writing nothing. |
 | `POST /api/jev/explorations/rank` | Rank a set of x-ray exploration candidates against a context. |
 | `GET  /api/jev/usage/table/:id/shapes` | Collective, value-free "what people typically filter/aggregate/group here" starter chips. |
 | `POST /api/jev/filters/dashboard/:id` | Plain-English text → values for the dashboard's parameters (closed candidate sets per parameter). |
@@ -113,6 +115,11 @@ token to the browser, so it goes through these.
   geo) are derived *deterministically* from the result `:cols`; Jev only scores each chart against the
   compressed structure (score-each, not pick-one, run in parallel). Advisory: it rings/dims the picker,
   never changes the chart. (FE `ChartTypeOption` ring + `use-jev-viz-suggestions`.)
+- **Classify transform** (`apps/classify`) — a query transform whose source carries `:jev-classify`
+  judges every source row with Jev and writes the answers into the target table as real columns
+  (`new-column`, `fill-empty` or `overwrite`). Such a transform dispatches as `:jev`
+  (`transforms-base.interface/transform->transform-type`) and reuses the `:query` methods for
+  everything but writing the target. Plain `table` targets only, capped at 5,000 rows.
 
 All of it is prototype scaffolding: no caching, no cost limits, uncalibrated confidence shown but not
 gated on. When a judgment settles into a real feature, promote it to a typed endpoint that assembles

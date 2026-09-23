@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import type { JevClassifyPreview } from "metabase/api";
 import type {
   JevFilterSuggestions,
   JevQuestionSlots,
@@ -59,4 +60,14 @@ export function setupJevVizSuggestEndpoint() {
     roles: [],
     ranked: [],
   });
+}
+
+export function setupJevClassifyPreviewEndpoint(
+  response: JevClassifyPreview = {
+    columns: [],
+    rows: [],
+    stats: { rows: 0, "jev-failures": 0, "elapsed-ms": 0 },
+  },
+) {
+  fetchMock.post("path:/api/jev/classify/preview", response);
 }

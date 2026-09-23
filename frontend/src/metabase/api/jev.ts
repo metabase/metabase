@@ -1,6 +1,31 @@
-import type { FieldId, Table, TableId } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  FieldId,
+  JevClassifyStep,
+  RowValue,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 import { Api } from "./api";
+
+export interface JevClassifyPreviewRequest {
+  query: DatasetQuery;
+  classify: JevClassifyStep[];
+  limit?: number;
+}
+
+export interface JevClassifyPreview {
+  /** The columns the classify step would write, source columns first. */
+  columns: { name: string; type: string }[];
+  /** Rows parallel to `columns`. */
+  rows: RowValue[][];
+  stats: {
+    rows: number;
+    "jev-failures": number;
+    "elapsed-ms": number;
+  };
+}
 
 export interface JevUsage {
   input_tokens: number;
@@ -142,6 +167,16 @@ export const jevApi = Api.injectEndpoints({
             },
           },
         },
+      }),
+    }),
+    previewJevClassify: builder.mutation<
+      JevClassifyPreview,
+      JevClassifyPreviewRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/jev/classify/preview",
+        body,
       }),
     }),
     rankExplorations: builder.mutation<
@@ -301,6 +336,7 @@ export interface DashboardFocus {
 }
 
 export const {
+  usePreviewJevClassifyMutation,
   useSuggestEntityTypeMutation,
   useGetTableSuggestionsQuery,
   useLazyGetTableSuggestionsQuery,

@@ -19,6 +19,7 @@ import type { IconName, Transform, UserId } from "metabase-types/api";
 
 import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
+import { JevClassifySection } from "./JevClassifySection";
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -60,6 +61,7 @@ export const TransformSettingsSection = ({
         readOnly={readOnly}
         remoteSyncReadOnly={remoteSyncReadOnly}
       />
+      <JevClassifySection transform={transform} readOnly={readOnly} />
     </Stack>
   );
 };

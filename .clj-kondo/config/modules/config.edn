@@ -1155,12 +1155,15 @@
            query-processor
            settings
            task
+           transforms
+           transforms.base
            util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/Database
                     :model/Field
                     :model/Table}}
 

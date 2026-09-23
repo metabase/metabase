@@ -10,9 +10,13 @@
    [metabase.util.log :as log]))
 
 (defn transform->transform-type
-  "Extract the transform type from a transform's source."
+  "Extract the transform type from a transform's source. A query transform with a Jev classify step
+  (`:jev-classify` on its source) is `:jev`; see `metabase.jev.apps.classify`."
   [transform]
-  (-> transform :source :type keyword))
+  (let [source-type (-> transform :source :type keyword)]
+    (if (and (= :query source-type) (seq (-> transform :source :jev-classify)))
+      :jev
+      source-type)))
 
 (defmulti source-db-id
   "Return the ID of the source database for a given `transform`. The source database is where the data originates from
