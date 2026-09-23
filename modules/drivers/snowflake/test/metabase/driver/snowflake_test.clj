@@ -333,6 +333,28 @@
       (is (some? candidates))
       (is (= :wif (-> candidates first meta :auth))))))
 
+(deftest ^:synchronized snowflake-wif-live-test
+  ;; End-to-end test against a real Snowflake WIF-configured service user.
+  ;; Skips silently unless MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT
+  ;; on disk. In CI, .github/workflows/snowflake-wif.yml mints a GitHub
+  ;; Actions OIDC token into that file before invoking this test.
+  (mt/test-driver
+    :snowflake
+    (when-let [token-file (tx/db-test-env-var :snowflake :wif-token-file)]
+      (let [details {:account             (tx/db-test-env-var-or-throw :snowflake :wif-account)
+                     :user                (tx/db-test-env-var-or-throw :snowflake :wif-user)
+                     :warehouse           (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
+                     :db                  (tx/db-test-env-var-or-throw :snowflake :wif-db)
+                     :role                (tx/db-test-env-var :snowflake :wif-role)
+                     :auth-mode           "wif"
+                     :wif-provider        "OIDC"
+                     :wif-token-file-path token-file}]
+        (testing "can-connect? via WIF"
+          (is (true? (driver/can-connect? :snowflake details))))
+        (testing "session executes a trivial query"
+          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+            (is (= [{:one 1}] (jdbc/query spec ["SELECT 1 AS \"one\""])))))))))
+
 (defn- pem->private-key
   [pem]
   (let [encoded (-> pem
