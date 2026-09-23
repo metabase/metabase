@@ -9,4 +9,5 @@
    [metabase-enterprise.semantic-search.task.index-repair]
    [metabase-enterprise.semantic-search.task.indexer]
    [metabase-enterprise.semantic-search.task.metric-collector]
-   [metabase-enterprise.semantic-search.task.usage-trimmer]))
+   [metabase-enterprise.semantic-search.task.usage-trimmer]
+   [metabase-enterprise.semantic-search.vibes.settings]))
