@@ -85,10 +85,10 @@
 (def ^:private title "Agent reruns a flaky quartz test instead of reading its logs")
 
 (defn- finding
-  "What the stubbed drill-down reports for a chunk: one papercut anchored at the chunk's first new line, filed under
+  "A stubbed drill-down that reports one papercut per chunk, anchored at the chunk's first new line and filed under
   the known papercut with the same title when there is one."
-  [chunk]
-  {:slug              "reruns-flaky-quartz-test"
+  [slug title chunk]
+  {:slug              slug
    :label             "positive"
    :kind              "agent-behaviour"
    :existing_papercut (or (some #(when (= title (:title %)) (:id %)) (:existing chunk)) 0)
@@ -99,14 +99,16 @@
    :fix               "Print the log path on failure."
    :anchors           [{:line (:first-new-line chunk) :role "agent" :proves "rerun"}]})
 
-(defn- scan! [server state-file projects & [options]]
+(def ^:private flaky-test (partial finding "reruns-flaky-quartz-test" title))
+
+(defn- scan! [server state-file projects drill & [options]]
   ;; Private vars can't be named in `with-redefs`, so the redefinitions go through their vars.
   (with-redefs-fn {#'scan/sources  {:claude {:roots   [projects]
                                              :entries transcript/claude-entries
                                              :session transcript/claude-session}}
                    #'scan/api-key! (constantly "test-key")
                    #'jev/screen!   (fn [_ _] {:scores {:flailing 0.95} :model "stub"})
-                   #'drill/drill!  (fn [_ chunk] [(finding chunk)])
+                   #'drill/drill!  (fn [_ chunk] [(drill chunk)])
                    #'u/exit        (fn [code] (throw (ex-info "scan exited" {:code code})))}
     #(with-out-str
        (scan/scan! :claude {:options (merge {:server     server
@@ -134,7 +136,7 @@
             first-id   "11111111-1111-4111-8111-111111111111"
             second-id  "22222222-2222-4222-8222-222222222222"]
         (write-session! projects first-id "2026-09-20T10:00:00Z" flaky-test-messages)
-        (scan! server state-file projects)
+        (scan! server state-file projects flaky-test)
         (let [[papercut :as all] (papercuts server)
               id                 (:id papercut)]
           (testing "a finding in a transcript becomes one papercut with one report"
@@ -149,8 +151,8 @@
                        :body :reports first
                        (select-keys [:report_id :agent :session :reporter :observed_at])))))
           (testing "scanning again submits nothing new, even with --rescan"
-            (scan! server state-file projects)
-            (scan! server state-file projects {:rescan true})
+            (scan! server state-file projects flaky-test)
+            (scan! server state-file projects flaky-test {:rescan true})
             (is (= [1] (map :report_count (papercuts server)))))
           (testing "triage resolves the papercut"
             (is (= 200 (:status (request server :patch (str "/api/papercuts/" id)
@@ -160,8 +162,34 @@
             ;; The server keeps observed_at to the second, so a hit in the same second as the resolution can't be
             ;; ordered after it. Stamp the later session clearly after.
             (write-session! projects second-id (str (.plusSeconds (Instant/now) 2)) flaky-test-messages)
-            (scan! server state-file projects)
+            (scan! server state-file projects flaky-test)
             (let [detail (:body (request server :get (str "/api/papercuts/" id)))]
               (is (= [id] (map :id (papercuts server))))
               (is (= {:status "open" :report_count 2} (select-keys detail [:status :report_count])))
               (is (some #(= "reopened" (:kind %)) (:events detail))))))))))
+
+(deftest merge-routes-later-reports-test
+  (with-server!
+    (fn [server dir]
+      (let [projects      (str (fs/path dir "projects"))
+            state-file    (str (fs/path dir "scan-state.claude.edn"))
+            other-title   "Agent loops on a failing quartz test"
+            scan-session! (fn [id slug title]
+                            (write-session! projects id "2026-09-20T10:00:00Z" flaky-test-messages)
+                            (scan! server state-file projects (partial finding slug title)))]
+        (scan-session! "11111111-1111-4111-8111-111111111111" "reruns-flaky-quartz-test" title)
+        (scan-session! "22222222-2222-4222-8222-222222222222" "loops-on-quartz-test" other-title)
+        (let [ids             (into {} (map (juxt :title :id)) (papercuts server))
+              [target source] [(ids title) (ids other-title)]]
+          (testing "two sessions that describe one trap differently file two papercuts"
+            (is (= 2 (count ids))))
+          (testing "triage merges them"
+            (is (= 200 (:status (request server :post (str "/api/papercuts/" source "/merge")
+                                         {:into target :actor "tester" :reason "Same trap"}))))
+            (is (= [target] (map :id (papercuts server)))))
+          (testing "a later report under the merged-away slug lands on the target"
+            (scan-session! "33333333-3333-4333-8333-333333333333" "loops-on-quartz-test" other-title)
+            (is (= [{:id           target
+                     :report_count 3
+                     :fingerprints ["papercut:loops-on-quartz-test" "papercut:reruns-flaky-quartz-test"]}]
+                   (map #(select-keys % [:id :report_count :fingerprints]) (papercuts server))))))))))
