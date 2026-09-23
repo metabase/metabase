@@ -8,4 +8,10 @@
   ;; mssql-jdbc declares this only transitively via azure-identity as <optional>, so it is not
   ;; bundled in Metabase's uberjar unless we depend on it explicitly. Version 1.23.1 is what
   ;; azure-identity 1.18.2 (the version pinned in mssql-jdbc 13.4.0's pom) ships with.
-  com.microsoft.azure/msal4j        {:mvn/version "1.23.1"}}}
+  com.microsoft.azure/msal4j        {:mvn/version "1.23.1"}
+  ;; Same optional-declaring story as msal4j above: mssql-jdbc's Entra ID auth modes are
+  ;; implemented on top of azure-identity, which mssql-jdbc also declares <optional>. Without
+  ;; this explicit dependency the uberjar throws NoClassDefFoundError at connect time, e.g.
+  ;; com/azure/identity/ManagedIdentityCredential for ActiveDirectoryMSI. Keep the version in
+  ;; sync with what mssql-jdbc 13.4.0's pom pins.
+  com.azure/azure-identity          {:mvn/version "1.18.2"}}}
