@@ -23,6 +23,7 @@
    [mage.modules-test]
    [mage.project-tests-test]
    [mage.quick-test-runner-test]
+   [mage.readable-test]
    [mage.shell-test]
    [mage.token-scan-test]
    [mage.util :as u]
