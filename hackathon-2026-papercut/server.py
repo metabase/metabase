@@ -1035,11 +1035,7 @@ class Store:
                            {RELATED_COUNT} AS related_count,
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
                             WHERE f.papercut_id = p.id) AS fingerprints,
-                           COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
-                                    (SELECT CASE pr.state WHEN 'open' THEN 'pr_opened' WHEN 'merged' THEN 'merged' END
-                                     FROM pull_requests pr WHERE pr.papercut_id = p.id ORDER BY pr.rowid DESC LIMIT 1)) AS fix_state,
-                           (SELECT pr.url FROM pull_requests pr WHERE pr.papercut_id = p.id
-                            ORDER BY pr.rowid DESC LIMIT 1) AS pr_url,
+                           (SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS fix_state,
                            (SELECT json_object('id', d.id, 'state', d.state, 'actor', d.actor, 'linear_issue_id', d.linear_issue_id,
                                                'linear_url', d.linear_url, 'pr_url', d.pr_url)
                             FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS dispatch,
@@ -1218,6 +1214,15 @@ class Store:
             db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (papercut_id, match[0]))
             return match[0]
         return None
+
+    def link_pull_request(self, papercut_id, payload):
+        """Link a pull request without a comment. It shows once someone claims the papercut."""
+        if not isinstance(payload, dict) or set(payload) != {"url"} or not PR_URL.fullmatch(str(payload["url"])):
+            raise ValueError("Send url, a https://github.com/metabase/metabase/pull/<n> link")
+        with self.connect(write=True) as db:
+            self._live(db, papercut_id)
+            self._link_pull_request(db, papercut_id, payload["url"])
+        return self.get_papercut(papercut_id)
 
     def open_pull_requests(self):
         with self.connect() as db:
@@ -1501,10 +1506,13 @@ class Store:
                     "SELECT 1 FROM assessments WHERE id = ? AND papercut_id = ?", (assessment_id, papercut_id)).fetchone():
                 raise ValueError(f"Assessment {assessment_id} is not an assessment of papercut {papercut_id}")
             at = precise_now()
+            linked = db.execute("""SELECT url FROM pull_requests WHERE papercut_id = ? AND state = 'open'
+                                   ORDER BY rowid DESC LIMIT 1""", (papercut_id,)).fetchone()
+            state = "pr_opened" if linked else "running" if claimant else "claimed"
             dispatch_id = db.execute(
-                """INSERT INTO dispatches (papercut_id, assessment_id, state, actor, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (papercut_id, assessment_id, "running" if claimant else "claimed", actor, at, at),
+                """INSERT INTO dispatches (papercut_id, assessment_id, state, actor, pr_url, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (papercut_id, assessment_id, state, actor, linked and linked["url"], at, at),
             ).lastrowid
             self._event(db, papercut_id, "dispatched", actor, at, new=dispatch_id, body=reason)
             self._set(db, papercut_id, "status", "investigating", actor, at, body=f"Dispatch {dispatch_id}")
@@ -2535,14 +2543,13 @@ def list_card_html(p):
         f"<div title='{esc(facts[label], quote=True)}'><dt>{esc(label)}</dt><dd>{esc(excerpt(facts[label], 55))}</dd></div>"
         for label in visible_facts if facts.get(label)
     )
-    pr_link = "" if p["pr_url"] == (p["dispatch"] or {}).get("pr_url") else dispatch_links({"pr_url": p["pr_url"]})
     related = f"<span class='pill'>{p['related_count']} related</span>" if p["related_count"] else ""
     return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{title_html(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
             f"{related}"
-            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}{pr_link}</div>"
+            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}</div>"
             f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
@@ -2787,8 +2794,6 @@ def papercut_html(papercut):
         for e in papercut["events"]
     ) or "<li class='muted'>No triage yet</li>"
     votes = ", ".join(f"{esc(category)} ×{count}" for category, count in papercut["category_votes"].items())
-    pull_requests = "".join(f"{dispatch_links({'pr_url': pr['url']})} <span class='muted'>{pr['state']}</span>"
-                            for pr in papercut["pull_requests"])
     assessment = papercut["assessment"]
     readiness = ("<section class='card'><h2>Readiness</h2>"
                  f"<p>{pill(assessment['verdict'])}"
@@ -2832,7 +2837,6 @@ def papercut_html(papercut):
             f"<div><dt>First seen</dt><dd><time datetime='{esc(papercut['first_seen'], quote=True)}'>{short_date(papercut['first_seen'])}</time></dd></div>"
             f"<div><dt>Last seen</dt><dd><time datetime='{esc(papercut['last_seen'], quote=True)}'>{short_date(papercut['last_seen'])}</time></dd></div>"
             f"{'<div><dt>Category votes</dt><dd>' + votes + '</dd></div>' if votes else ''}"
-            f"{'<div><dt>Pull requests</dt><dd>' + pull_requests + '</dd></div>' if pull_requests else ''}"
             "</dl></aside></div>")
     return page(papercut["title"], body)
 
@@ -2915,7 +2919,7 @@ class Handler(BaseHTTPRequestHandler):
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
         papercut = re.fullmatch(
-            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt|candidates|suggestions)"
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt|candidates|suggestions|pull_requests)"
             r"(?:/(\d+))?)?", path)
         dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
@@ -2965,6 +2969,7 @@ class Handler(BaseHTTPRequestHandler):
                 "assessments": lambda: self.store.assess(papercut_id, self.input_json(identity="actor")),
                 "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
                 "claim": lambda: self.claim(papercut_id),
+                "pull_requests": lambda: self.store.link_pull_request(papercut_id, self.input_json()),
             }
             if command == "POST" and action in created and not other:
                 return self.respond(201, created[action]())

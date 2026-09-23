@@ -55,9 +55,20 @@ class GitHubSyncTest(unittest.TestCase):
         self.assertEqual(self.store.get_papercut(claimed)["status"], "investigating")
         self.assertEqual(self.store.get_papercut(unclaimed)["dispatches"], [])
         page = server.papercut_list_html(self.store.list_papercuts(), {})
-        self.assertEqual(page.count(">PR opened</span>"), 2)
-        self.assertEqual(page.count(f"href='{PR}'"), 2)
-        self.assertIn(f"href='{PR}'", server.papercut_html(self.store.get_papercut(unclaimed)))
+        self.assertEqual((page.count(">PR opened</span>"), page.count(f"href='{PR}'")), (1, 1))
+
+    def test_a_claim_starts_at_the_pr_linked_before_it(self):
+        papercut_id = self.papercut("Fixed already")
+        self.store.link_pull_request(papercut_id, {"url": PR})
+        self.assertNotIn(PR, server.papercut_list_html(self.store.list_papercuts(), {}))
+        self.assertNotIn(PR, server.papercut_html(self.store.get_papercut(papercut_id)))
+        self.assertEqual(self.store.get_papercut(papercut_id)["events"], [])
+        dispatch = self.store.claim(papercut_id, {"claimant": "andrei"})
+        self.assertEqual((dispatch["state"], dispatch["pr_url"]), ("pr_opened", PR))
+        page = server.papercut_list_html(self.store.list_papercuts(), {})
+        self.assertIn(f"PR opened</span><span class='dispatch-link'><a href='{PR}'", page)
+        with self.assertRaises(ValueError):
+            self.store.link_pull_request(papercut_id, {"url": "https://example.com/pull/1"})
 
     def test_the_dispatcher_records_its_own_pr(self):
         papercut_id = self.papercut("Dispatched")
@@ -79,7 +90,7 @@ class GitHubSyncTest(unittest.TestCase):
             papercut = self.store.get_papercut(papercut_id)
             self.assertEqual((papercut["status"], papercut["events"][-1]["actor"], papercut["events"][-1]["body"]),
                              ("resolved", "github", "PR #81234 merged, resolved automatically"))
-        self.assertIn(">PR merged</span>", server.papercut_list_html(self.store.list_papercuts(), {}))
+        self.assertEqual(server.papercut_list_html(self.store.list_papercuts(), {}).count(">PR merged</span>"), 1)
         self.assertEqual(self.sync(), [])
 
     def test_a_pr_closed_unmerged_leaves_a_comment_and_the_status(self):

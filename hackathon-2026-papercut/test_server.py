@@ -1254,14 +1254,12 @@ class HttpTest(HttpCase):
         for report_id in ("r1", "r2", "r3"):
             self.report(report_id, "Loud")
         self.report("r4", "Quiet")
-        self.call("POST", "/api/papercuts/2/comments",
-                  {"author": "papercut-fixer", "body": "Draft PR: https://github.com/metabase/metabase/pull/123"})
+        self.call("POST", "/api/papercuts/2/dispatch", {"actor": "dispatcher"})
         self.assertEqual([(p["title"], p["fix_state"]) for p in self.call("GET", "/api/papercuts")[1]["papercuts"]],
-                         [("Quiet", "pr_opened"), ("Loud", None)])
+                         [("Quiet", "claimed"), ("Loud", None)])
         _, page, _ = self.call("GET", "/")
         self.assertLess(page.index(">Loud</a>"), page.index(">Quiet</a>"))
         self.assertEqual(page.count("<span class='pill important'"), 1)
-        self.assertIn("<span class='pill fix-pr_opened'>PR opened</span>", page)
         self.assertIn("data-value='unclassified' aria-pressed='true'>unclassified<span class='count'>2</span>", page)
         for categories, total in (("unclassified,tooling", 2), ("tooling", 0), ("none", 0)):
             self.assertEqual(self.call("GET", f"/api/papercuts?category={categories}")[1]["total"], total)
