@@ -335,6 +335,21 @@ class DispatchTest(ServerCase):
 
 
 class HelpersTest(unittest.TestCase):
+    def test_resolve_env_prefers_the_environment_then_asks_mage(self):
+        with unittest.mock.patch.dict(dispatcher.os.environ, {"PAPERCUT_TEST_KEY": "from-env"}), \
+                unittest.mock.patch.object(dispatcher.subprocess, "run") as run:
+            self.assertEqual(dispatcher.resolve_env("PAPERCUT_TEST_KEY"), "from-env")
+            run.assert_not_called()
+        for completed, expected in ((subprocess.CompletedProcess([], 0, "from-dot-env\n", ""), "from-dot-env"),
+                                    (subprocess.CompletedProcess([], 0, "", ""), None),
+                                    (subprocess.CompletedProcess([], 1, "", "boom"), None)):
+            with self.subTest(expected), unittest.mock.patch.dict(dispatcher.os.environ, clear=False), \
+                    unittest.mock.patch.object(dispatcher.subprocess, "run", return_value=completed) as run:
+                dispatcher.os.environ.pop("PAPERCUT_TEST_KEY", None)
+                self.assertEqual(dispatcher.resolve_env("PAPERCUT_TEST_KEY"), expected)
+                self.assertEqual((run.call_args.args[0][-1], run.call_args.kwargs["cwd"]),
+                                 ("PAPERCUT_TEST_KEY", dispatcher.REPO_ROOT))
+
     def test_fixer_env_drops_session_credentials_and_settings(self):
         env = {"PATH": "/bin", "CLAUDECODE": "1", "ANTHROPIC_BASE_URL": "x", "LINEAR_API_KEY": "k",
                "TYPESAFE_API_KEY": "k", "MB_DB_TYPE": "postgres", "PAPERCUTS_TOKEN": "t", "HOME": "/h"}

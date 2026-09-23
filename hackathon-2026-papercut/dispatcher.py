@@ -642,10 +642,32 @@ class Dispatcher:
         return self.process_pending()
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+KEY_SOURCES = "the environment, mise.local.toml, .env or .lein-env"
+# Runs from REPO_ROOT, where bb.edn puts mage on the classpath.
+RESOLVE_ENV = "(require 'mage.bot.env) (some-> (mage.bot.env/resolve-env (first *command-line-args*)) print)"
+
+
+def resolve_env(name):
+    """The value of environment variable `name`, or else the one mage finds in mise.local.toml, .env or .lein-env.
+
+    Asking mage keeps the dispatcher and the transcript scanner agreeing on where keys live."""
+    if value := os.environ.get(name):
+        return value
+    try:
+        result = subprocess.run([str(REPO_ROOT / "bin" / "bb"), "-e", RESOLVE_ENV, name], cwd=REPO_ROOT,
+                                capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
 def jev_key():
-    key = os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY")
+    key = resolve_env("JEV_API_KEY") or resolve_env("TYPESAFE_API_KEY")
     if not key:
-        sys.exit("Set JEV_API_KEY or TYPESAFE_API_KEY")
+        sys.exit(f"Set JEV_API_KEY or TYPESAFE_API_KEY in {KEY_SOURCES}")
     return key
 
 
@@ -666,9 +688,10 @@ def dispatch_main(server, args):
                   budget_usd=args.budget_usd, timeout_minutes=args.timeout_minutes, base=args.base)
     linear = None
     if live:
-        if not os.environ.get("LINEAR_API_KEY"):
-            sys.exit("Set LINEAR_API_KEY")
-        linear = Linear(os.environ["LINEAR_API_KEY"]).connect()
+        linear_key = resolve_env("LINEAR_API_KEY")
+        if not linear_key:
+            sys.exit(f"Set LINEAR_API_KEY in {KEY_SOURCES}")
+        linear = Linear(linear_key).connect()
         if not linear.label_id:
             print(f"No Linear label named {LINEAR_LABEL}; issues are created without it", file=sys.stderr)
     dispatcher = Dispatcher(server, linear, fixer)

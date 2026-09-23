@@ -8,12 +8,8 @@ Run everything from `hackathon-2026-papercut/` unless a step says otherwise.
 
 ## Before the demo
 
-1. Put `TYPESAFE_API_KEY` in your shell. The mage scanner finds it in `.env`, but the
-   dispatcher reads only the environment:
-
-   ```sh
-   export TYPESAFE_API_KEY="$(sed -n 's/^TYPESAFE_API_KEY=//p' ../.env)"
-   ```
+1. Check that `TYPESAFE_API_KEY` is in the environment, `mise.local.toml`, `.env` or
+   `.lein-env`. The scanner and the dispatcher both look in all four.
 
 2. Start a server on a fresh database and load the archive. The import takes about a
    minute and gives 137 papercuts from about 290 reports.
