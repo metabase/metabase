@@ -103,7 +103,9 @@ export const getWaterfallChartModel = (
     renderingContext,
   );
 
-  // Pass waterfall dataset and keys for correct extent computation
+  // Pass waterfall dataset and keys for correct extent computation.
+  // A waterfall renders a single left axis; `getYAxisSides` in
+  // shared/settings/cartesian-chart.ts hardcodes the same — keep them in sync.
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
     [],

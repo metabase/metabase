@@ -16,7 +16,7 @@ import type {
 import type { ShowWarning } from "../../types";
 import { OTHER_DATA_KEY } from "../constants/dataset";
 
-import { getXAxisModel, getYAxesModels } from "./axis";
+import { getXAxisModel, getYAxesModels, supportsAutoYAxisSplit } from "./axis";
 import {
   applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
@@ -220,7 +220,7 @@ export const getCartesianChartModel = (
       transformedDataset,
       settings,
       columnByDataKey,
-      true,
+      supportsAutoYAxisSplit(rawSeries[0]?.card.display),
       stackModels,
       isCompactFormatting,
       gridSize,

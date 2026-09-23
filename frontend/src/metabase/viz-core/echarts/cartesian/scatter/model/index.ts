@@ -8,7 +8,11 @@ import type {
 } from "../../../../types";
 import type { ShowWarning } from "../../../types";
 import { getCardsColumns } from "../../model";
-import { getXAxisModel, getYAxesModels } from "../../model/axis";
+import {
+  getXAxisModel,
+  getYAxesModels,
+  supportsAutoYAxisSplit,
+} from "../../model/axis";
 import {
   applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
@@ -114,7 +118,7 @@ export function getScatterPlotModel(
       transformedDataset,
       settings,
       columnByDataKey,
-      false,
+      supportsAutoYAxisSplit(rawSeries[0]?.card.display),
       [],
       false,
     );

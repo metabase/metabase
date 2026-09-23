@@ -228,6 +228,9 @@ export function computeSplit(
   return best;
 }
 
+export const supportsAutoYAxisSplit = (display: string | undefined) =>
+  display !== "scatter";
+
 export const getYAxisSplit = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
