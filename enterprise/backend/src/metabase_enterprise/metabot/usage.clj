@@ -39,6 +39,7 @@
   #{"internal"
     "embedding_next"
     "explorations"
+    "digest"
     "nlq"
     "sql"
     "slackbot"

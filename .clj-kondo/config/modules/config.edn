@@ -1444,6 +1444,7 @@
               api-scope
               app-db
               audit-app
+              bookmarks
               channel
               collections
               documents

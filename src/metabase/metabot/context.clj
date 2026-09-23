@@ -384,8 +384,13 @@
   recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
   general-search fallback keeps the external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for
   a direct request.)  The slackbot and document-generate-content profiles historically did not include recent views,
-  so we preserve that behavior."
-  #{:nlq :nlq-fallback :slackbot :document-generate-content})
+  so we preserve that behavior.
+
+  The digest profile builds its own ranked candidate set, in which recent views are one signal among several and
+  already merged with bookmarks, authorship and alerts. Injecting the generic recents list alongside it puts a second,
+  recents-only list in the *user* message — more salient than the system prompt, and carrying its own instruction to
+  act on it — which drowns the digest out and makes the answer look recents-only."
+  #{:nlq :nlq-fallback :slackbot :document-generate-content :digest})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.

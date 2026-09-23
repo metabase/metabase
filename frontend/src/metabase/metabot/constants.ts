@@ -25,6 +25,11 @@ export const METABOT_PROFILES = {
       return t`Internal`;
     },
   },
+  digest: {
+    get label() {
+      return t`Digest`;
+    },
+  },
   embedding_next: {
     get label() {
       return t`Embedding`;

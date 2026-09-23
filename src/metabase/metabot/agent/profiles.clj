@@ -11,6 +11,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.digest.shape :as digest.shape]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
@@ -231,6 +232,17 @@
                     #'tools/list-timelines-tool
                     #'tools/get-timeline-details-tool
                     #'tools/select-exploration-timelines-tool]})
+
+(register-profile!
+ {:name            :digest
+  :prompt-template "digest.selmer"
+  :max-iterations  15
+  :system-prompt-context #'digest.shape/digest-system-context
+  ;; The digest reads its candidates and writes prose about them; the skill catalog is prompt weight
+  ;; it never spends. Same call `:explorations` makes.
+  :skills?         false
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool]})
 
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.

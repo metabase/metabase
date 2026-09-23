@@ -1038,3 +1038,27 @@
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+
+;;; -------------------------------------------------- Digest --------------------------------------------------
+
+(mu/defn authored-entities
+  "The `limit` most recently updated unarchived rows of `model` created by `user-id`, most recent first.
+  Whole rows: the caller filters them with `mi/can-read?`, which reads collection state, and a Card select
+  missing `:card_schema` is rejected outright."
+  [model   :- :keyword
+   user-id :- ::lib.schema.id/user
+   limit   :- ms/PositiveInt]
+  (t2/select model {:where    [:and [:= :creator_id user-id] [:= :archived false]]
+                    :order-by [[:updated_at :desc]]
+                    :limit    limit}))
+
+(mu/defn dashboards-by-ids
+  "The Dashboards with `ids`, as whole rows for a `mi/can-read?` check."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Dashboard :id [:in ids]))
+
+(mu/defn entity-view-counts
+  "The ID and instance-wide `view_count` of the `model` rows with `ids`."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (t2/select [model :id :view_count] :id [:in ids]))

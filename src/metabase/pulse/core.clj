@@ -18,6 +18,7 @@
   maybe-strip-sensitive-metadata
   retrieve-alerts-for-cards
   retrieve-pulse
+  retrieve-pulses
   update-pulse!]
  [metabase.pulse.update-alerts
   delete-alerts-if-needed!])

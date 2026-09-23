@@ -99,6 +99,22 @@
   :default    true
   :export?    false)
 
+(defsetting metabot-digest-candidate-limit
+  (deferred-tru "Maximum number of scored candidates handed to Metabot when it builds a digest.")
+  :type       :integer
+  :visibility :internal
+  :default    30
+  :export?    false)
+
+(defsetting metabot-digest-surface-target
+  (deferred-tru "Roughly how many items Metabot should feature in a digest. A target, not a cap: the
+model chooses what is worth saying. Keep it well below [[metabot-digest-candidate-limit]], or there is
+nothing left for it to choose between.")
+  :type       :integer
+  :visibility :internal
+  :default    5
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider

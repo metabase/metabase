@@ -155,7 +155,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations])
+  [:enum :embedding_next :internal :sql :nlq :document-generate-content :slackbot :explorations :digest])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
