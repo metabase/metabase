@@ -105,7 +105,7 @@
           (let [{:keys [data warehouse_error]} (mt/user-http-request :crowberto :get 200
                                                                      (str "index?transform-id=" transform-id))]
             (testing "the response is still a 200 carrying the trimmed driver message"
-              (is (= (reconcile/driver-error-message (ex-info denied {})) warehouse_error)))
+              (is (= (reconcile/driver-error-message (:engine (mt/db)) (ex-info denied {})) warehouse_error)))
             (testing "the managed request is projected as absent rather than dropped"
               (is (= [(:id created)] (map #(get-in % [:request :id]) data)))
               (is (false? (:present_in_warehouse (first data))))))))

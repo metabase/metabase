@@ -689,11 +689,11 @@
 (defn- mark-indexes-unverifiable!
   "Fail the still-running `managed` requests with the driver's reason when the warehouse read that verification needs
   has failed. Only running rows change, so the run's generic `finally` backstop finds nothing left to relabel."
-  [managed schema table-name ^Throwable t]
+  [driver managed schema table-name ^Throwable t]
   (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s: %s" schema table-name (ex-message t))
   (table-index/mark-unverified-running-indexes-failed!
    (into #{} (map :id) managed)
-   (str "Couldn't read the table's indexes to verify this one: " (reconcile/driver-error-message t))))
+   (str "Couldn't read the table's indexes to verify this one: " (reconcile/driver-error-message driver t))))
 
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
@@ -710,7 +710,7 @@
           (when-some [warehouse-indexes (try
                                           (reconcile/fetch-warehouse-indexes database schema table-name)
                                           (catch Exception e
-                                            (mark-indexes-unverifiable! managed schema table-name e)
+                                            (mark-indexes-unverifiable! (:engine database) managed schema table-name e)
                                             nil))]
             (apply-index-outcomes!
              (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))

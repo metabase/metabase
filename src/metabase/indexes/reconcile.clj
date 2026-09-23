@@ -148,9 +148,8 @@
   500)
 
 (defn driver-error-message
-  "The driver's error message for display: cut at the first `(ACCESS_DENIED)`-style code, which drops the
-  `(version ...) (queryId=...)` tail ClickHouse appends, then length-capped."
-  [^Throwable t]
-  (let [message (or (ex-message t) (str t))]
-    (u/truncate (or (second (re-find #"^(.*?\([A-Z][A-Z0-9_]+\))" message)) message)
-                max-error-message-length)))
+  "The message of `t`, an exception `driver` raised, for display: trimmed by
+  [[driver/humanize-index-error-message]], then length-capped."
+  [driver ^Throwable t]
+  (u/truncate (driver/humanize-index-error-message driver (or (ex-message t) (str t)))
+              max-error-message-length))

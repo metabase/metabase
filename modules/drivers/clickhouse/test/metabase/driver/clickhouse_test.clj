@@ -246,6 +246,18 @@
     (is (false? (#'clickhouse/table-missing-exception?
                  (java.sql.SQLException. "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)"))))))
 
+(deftest ^:parallel humanize-index-error-message-test
+  (testing "the error code ends the useful part of a message; the version/queryId tail is dropped"
+    (is (= (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to "
+                "have the grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED)")
+           (driver/humanize-index-error-message
+            :clickhouse
+            (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to "
+                 "have the grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED) "
+                 "(version 26.6.1.2047 (official build)) (queryId= 71d1c3e4-0000-0000-0000-000000000000)")))))
+  (testing "a message with no such code is kept as-is"
+    (is (= "Connection refused" (driver/humanize-index-error-message :clickhouse "Connection refused")))))
+
 (deftest ^:parallel inline-value-string-test
   (testing "inlined string literals escape the backslash before the quote"
     ;; ClickHouse treats `\` as an escape character inside a string literal, so doubling `'` alone (the default

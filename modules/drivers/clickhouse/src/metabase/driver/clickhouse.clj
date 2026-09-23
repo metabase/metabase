@@ -419,6 +419,11 @@
   (or (sql-jdbc/impl-table-known-to-not-exist? :clickhouse e)
       (str/starts-with? (or (ex-message e) "") "Code: 390.")))
 
+(defmethod driver/humanize-index-error-message :clickhouse
+  [_driver message]
+  ;; Cut at the first `(ACCESS_DENIED)`-style code, which drops the `(version ...) (queryId=...)` tail.
+  (or (second (re-find #"^(.*?\([A-Z][A-Z0-9_]+\))" message)) message))
+
 ;; One `SHOW CREATE TABLE` read, parsed by [[create-table-statement->indexes]]. It needs only `SHOW COLUMNS`, where
 ;; `system.data_skipping_indices` needs a grant Cloud Storage's shared ClickHouse doesn't give tenants.
 (defmethod driver/fetch-table-indexes :clickhouse

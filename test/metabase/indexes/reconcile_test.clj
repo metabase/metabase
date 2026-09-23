@@ -140,19 +140,10 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                             (reconcile/fetch-warehouse-indexes (mt/db) "public" "t"))))))
 
-(def ^:private clickhouse-access-denied
-  (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to have the "
-       "grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED) (version 26.6.1.2047 (official build)) "
-       "(queryId= 71d1c3e4-0000-0000-0000-000000000000)"))
-
 (deftest ^:parallel driver-error-message-test
-  (testing "a ClickHouse message keeps its error code and drops the version/queryId tail"
-    (is (= (str "Code: 497. DB::Exception: user_x: Not enough privileges. To execute this query, it's necessary to "
-                "have the grant SELECT ON system.data_skipping_indices. (ACCESS_DENIED)")
-           (reconcile/driver-error-message (ex-info clickhouse-access-denied {})))))
-  (testing "a message with no such code is kept as-is"
-    (is (= "Connection refused" (reconcile/driver-error-message (ex-info "Connection refused" {})))))
+  (testing "a driver with no trimming of its own passes the message through"
+    (is (= "Connection refused" (reconcile/driver-error-message :h2 (ex-info "Connection refused" {})))))
   (testing "a long message is capped for readability"
-    (is (= 500 (count (reconcile/driver-error-message (ex-info (apply str (repeat 900 "x")) {}))))))
+    (is (= 500 (count (reconcile/driver-error-message :h2 (ex-info (apply str (repeat 900 "x")) {}))))))
   (testing "an exception with no message still yields text"
-    (is (seq (reconcile/driver-error-message (java.sql.SQLException.))))))
+    (is (seq (reconcile/driver-error-message :h2 (java.sql.SQLException.))))))

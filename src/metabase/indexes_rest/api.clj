@@ -72,15 +72,15 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
-        database-id (transforms-base.i/target-db-id transform)
+        database    (api/check-404 (indexes-rest.db/database (transforms-base.i/target-db-id transform)))
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
         [warehouse warehouse-error]
         (try
-          [(reconcile/fetch-warehouse-indexes (indexes-rest.db/database database-id) schema table-name)]
+          [(reconcile/fetch-warehouse-indexes database schema table-name)]
           (catch Exception e
             (log/warnf "fetch-table-indexes failed for %s.%s: %s" schema table-name (ex-message e))
-            [[] (reconcile/driver-error-message e)]))]
+            [[] (reconcile/driver-error-message (:engine database) e)]))]
     (cond-> {:data (reconcile/merge-indexes managed warehouse)}
       warehouse-error (assoc :warehouse_error warehouse-error))))
 

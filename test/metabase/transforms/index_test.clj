@@ -323,7 +323,7 @@
       (testing "the running request is failed, with the driver message trimmed of its version tail"
         (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
         (is (= (str "Couldn't read the table's indexes to verify this one: "
-                    (reconcile/driver-error-message (ex-info access-denied-message {})))
+                    (reconcile/driver-error-message (:engine (mt/db)) (ex-info access-denied-message {})))
                (t2/select-one-fn :error_message :model/TableIndex running-id))))
       (testing "a request this run never started is left for the next one"
         (is (= :create-pending (t2/select-one-fn :status :model/TableIndex pending-id)))))))
