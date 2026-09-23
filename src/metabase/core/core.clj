@@ -18,6 +18,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.embeddings.startup :as embeddings.startup]
    [metabase.events.core :as events]
+   [metabase.file-watcher.core :as file-watcher]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
@@ -253,6 +254,7 @@
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
+  (file-watcher/start!)
   (log/info "Metabase Initialization COMPLETE"))
 
 (defn init!
