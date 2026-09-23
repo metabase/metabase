@@ -73,10 +73,12 @@ def occurrences(content):
     return list(unique.values())
 
 
-def transcript_start(transcript):
-    """First timestamp in a Claude or Codex transcript, when the transcript is still on disk."""
+def transcript_start(transcript, writeup_dir):
+    """First timestamp in a Claude or Codex transcript, when the transcript is still on disk.
+
+    A relative path is read from the writeup's directory, not wherever the importer runs."""
     try:
-        with open(transcript) as lines:
+        with open(writeup_dir / Path(transcript).expanduser()) as lines:
             for line in lines:
                 match = re.search(r'"timestamp"\s*:\s*"([^"]+)"', line)
                 if match:
@@ -86,12 +88,12 @@ def transcript_start(transcript):
     return None
 
 
-def observed_date(occurrence):
+def observed_date(occurrence, writeup_dir):
     """Writeup dates are hand-written ("~2026-09-17", "2026-08-21..24", "2026-09 (approx)"); keep the first day."""
     written = occurrence.get("date") or ""
     if day := re.search(r"\d{4}-\d{2}-\d{2}", written):
         return day.group(0)
-    if started := transcript_start(occurrence["transcript"]):
+    if started := transcript_start(occurrence["transcript"], writeup_dir):
         return started
     if month := re.search(r"\d{4}-\d{2}", written):
         return f"{month.group(0)}-01"
@@ -112,14 +114,14 @@ def parse_claude(path, content):
     for line in frontmatter.splitlines():
         if line and not line[0].isspace() and ":" in line:
             key, _, value = line.partition(":")
-            metadata[key] = value.strip().strip('"')
+            metadata[key] = scalar(value)
     summary = section(body, "Summary")
     if not metadata.get("title") or not summary:
         raise ValueError("no title or Summary section")
     source_status = metadata.get("status", "")
-    parts = [" ".join(summary.split())]
+    parts = [summary]
     if fix := section(body, "Suggested fix"):
-        parts.append("Suggested fix: " + " ".join(fix.split()))
+        parts.append("Suggested fix:\n" + fix)
     parts.append("\n".join(
         f"{label}: {metadata[key]}"
         for key, label in (("kind", "Kind"), ("impact", "Impact"), ("severity", "Severity"),
@@ -136,18 +138,39 @@ def parse_claude(path, content):
         "severity": metadata.get("severity", "").split("#")[0].strip(),
         "status": source_status.split("#")[0].strip(),
         "occurrences": [
-            {"transcript": o["transcript"], "lines": o.get("lines"), "observed_at": observed_date(o)}
+            {"transcript": o["transcript"], "lines": o.get("lines"), "observed_at": observed_date(o, path.parent)}
             for o in occurrences(content)
         ],
     }
 
 
+def scalar(value):
+    """A frontmatter value: plain, 'single-quoted', or "double-quoted" with backslash escapes."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        try:
+            # The writeups use only the escapes YAML shares with JSON.
+            return json.loads(value)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"unsupported escape in frontmatter value {value}") from error
+    return value
+
+
 def parse_codex(path, content):
     title = re.search(r"^# (.+)$", content, re.MULTILINE)
     source = re.search(r"^Sources?: .*$", content, re.MULTILINE)
-    transcripts = list(dict.fromkeys(re.findall(r"\]\(([^)#]+\.jsonl)", source.group(0)))) if source else []
-    if not title or not transcripts:
+    if not title or not source:
         raise ValueError("no title or Source line")
+    # A link fragment such as #L140 is the line the papercut was seen at.
+    linked = [{"transcript": transcript, "lines": fragment.removeprefix("L") or None}
+              for transcript, fragment in re.findall(r"\]\(([^)#]+\.jsonl)#?([^)]*)\)", source.group(0))]
+    found = {}
+    for occurrence in linked + occurrences(content):
+        found.setdefault((occurrence["transcript"], occurrence.get("lines")), occurrence)
+    if not found:
+        raise ValueError("no transcript on the Source line")
     paragraphs = [p.strip() for p in content[source.end():].split("\n\n") if p.strip()]
     classification = next((p for p in paragraphs if p.startswith("Classification:")), "")
     lowered = classification.lower()
@@ -160,7 +183,8 @@ def parse_codex(path, content):
         "category": category,
         "severity": "",
         "status": "open",
-        "occurrences": [{"transcript": t, "lines": None, "observed_at": transcript_start(t)} for t in transcripts],
+        "occurrences": [{"transcript": o["transcript"], "lines": o.get("lines"),
+                         "observed_at": observed_date(o, path.parent)} for o in found.values()],
     }
 
 
@@ -266,12 +290,15 @@ def main():
                 print(f"Failed {path.name}: {error.read().decode()}")
                 break
         else:
-            papercut = result["papercut"]
+            papercut_id = result["papercut"]["id"]
+            # Aliases first: merging an open papercut in would reset the status set below.
+            register_aliases(args.server, args.repository, papercut_id, writeup["aliases"])
             if status := STATUS_BY_SOURCE.get(writeup["status"]):
-                papercut = request(args.server, "PATCH", f"/api/papercuts/{papercut['id']}",
+                papercut = request(args.server, "PATCH", f"/api/papercuts/{papercut_id}",
                                    {"status": status, "actor": ACTOR, "reason": f"Source writeup is {writeup['status']}"})
-            print(f"#{papercut['id']} [{papercut['status']}] {papercut['report_count']}x {writeup['title'][:90]}")
-            register_aliases(args.server, args.repository, papercut["id"], writeup["aliases"])
+            else:
+                papercut = request(args.server, "GET", f"/api/papercuts/{papercut_id}?reports_limit=0")
+            print(f"#{papercut_id} [{papercut['status']}] {papercut['report_count']}x {writeup['title'][:90]}")
 
 
 if __name__ == "__main__":
