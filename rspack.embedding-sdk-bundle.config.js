@@ -136,7 +136,7 @@ const config = {
         test: /\.(svg|png)$/,
         // SVG font faces live under frontend/fonts and must stay files: inlining them
         // adds close to a megabyte of base64 to this bundle.
-        exclude: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
+        exclude: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/inline",
         resourceQuery: { not: [/component|source|url/] },
       },
@@ -155,7 +155,7 @@ const config = {
       {
         // Fonts are emitted as files, never inlined: base64 would add megabytes.
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
           // The app build owns these files. Emitting them here as well would race
@@ -178,7 +178,7 @@ const config = {
               "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
             options: {
               fontsDir: __dirname + "/frontend/fonts",
-              outputDir: __dirname + "/target/font-subsets",
+              outputDir: __dirname + "/node_modules/.cache/font-subsets",
             },
           },
         ],
