@@ -770,7 +770,7 @@
       (let [calls (atom [])]
         (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
                                                         (swap! calls conj tag)
-                                                        {:should_send false :reason "Matches every prior weekend."})]
+                                                        {:verdict "suppress" :reason "Matches every prior weekend."})]
           (notification.tu/with-card-notification
             [notification {:card              {:name          notification.tu/default-card-name
                                                :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
@@ -790,7 +790,7 @@
         (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
                                                         (swap! calls conj tag)
                                                         (if (= tag "alert-ai-send-gate")
-                                                          {:should_send true :reason "Genuine 40% drop."}
+                                                          {:verdict "deliver" :reason "Genuine 40% drop."}
                                                           {:summary "Revenue fell **40%**."}))]
           (notification.tu/with-card-notification
             [notification {:card              {:name          notification.tu/default-card-name
@@ -836,7 +836,7 @@
   (testing "an alert whose send_condition says skip makes no LLM call at all"
     (notification.tu/with-notification-testing-setup!
       (let [calls (atom 0)]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:should_send true :reason "x"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (swap! calls inc) {:verdict "deliver" :reason "x"})]
           (notification.tu/with-card-notification
             [notification {:card              {:name          notification.tu/default-card-name
                                                ;; returns no rows, so :has_result never fires
@@ -850,3 +850,56 @@
              {:channel/email (fn [emails] (is (empty? emails)))})
             (testing "neither the gate nor the summary should have been paid for"
               (is (zero? @calls)))))))))
+
+(deftest ai-send-gate-explanation-is-rendered-test
+  (testing "when a gate lets an alert through, its one-line explanation opens the email"
+    (notification.tu/with-notification-testing-setup!
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_messages _schema tag]
+                                                      (if (= tag "alert-ai-send-gate")
+                                                        {:verdict     "deliver"
+                                                         :reason      "internal working that should stay out of the email"
+                                                         :explanation "Orders fell for a third straight month."}
+                                                        {:summary "Revenue fell **40%**."}))]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:send_prompt "Only real drops"
+                                             :prompt      "Summarize it"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= (construct-email
+                      {:message [{notification.tu/default-card-name              true
+                                  "Orders fell for a third straight month"       true
+                                  "Revenue fell"                                 true
+                                  ;; the verbose reasoning field is for logs, not the recipient
+                                  "internal working that should stay out"        false}
+                                 notification.tu/png-attachment
+                                 notification.tu/csv-attachment]})
+                     (mt/summarize-multipart-single-email
+                      email
+                      card-name-regex
+                      #"Orders fell for a third straight month"
+                      #"Revenue fell"
+                      #"internal working that should stay out"))))})))))
+  (testing "an alert with no gate renders no explanation block"
+    (notification.tu/with-notification-testing-setup!
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:summary "Just a summary."})]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:prompt "Summarize it"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= (construct-email
+                      {:message [{notification.tu/default-card-name true
+                                  "Just a summary"                  true}
+                                 notification.tu/png-attachment
+                                 notification.tu/csv-attachment]})
+                     (mt/summarize-multipart-single-email
+                      email card-name-regex #"Just a summary"))))}))))))

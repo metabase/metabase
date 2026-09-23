@@ -41,6 +41,17 @@
                 </td>
               </tr>
             </table>
+            {{#if computed.ai_send_reason}}
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 0 0;">
+                <tr>
+                  <td style="padding: 10px 0 10px 14px; border-left: 3px solid {{payload.style.color_text_light}};">
+                    <div style="color: {{payload.style.color_text_medium}}; font-size: 13px; line-height: 18px;">
+                      {{computed.ai_send_reason}}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            {{/if}}
             {{#if computed.ai_summary}}
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 4px 0;">
                 <tr>

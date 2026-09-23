@@ -21,7 +21,7 @@ export const AlertMetabotSendGate = ({ sendPrompt, onChange }: Props) => {
   return (
     <Stack gap="xs" mt="lg">
       <Text fw="bold" size="md">
-        {t`And only send it if ${metabotName} agrees`}
+        {t`And only send it if ${metabotName} thinks this is true:`}
       </Text>
       <Textarea
         data-testid="alert-metabot-send-gate"

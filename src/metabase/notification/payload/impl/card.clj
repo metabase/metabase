@@ -86,7 +86,8 @@
         {:card_part         part
          :card              card
          :skip_reason       skip-reason
-         :ai_send_reason    (:reason gate)
+         ;; only meaningful when the alert is actually delivered; a suppressed one is never rendered
+         :ai_send_reason    (:explanation gate)
          ;; No point narrating an alert nobody will receive.
          :ai_summary        (when-not skip-reason
                               (request/with-current-user creator_id

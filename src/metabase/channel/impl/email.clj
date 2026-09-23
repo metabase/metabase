@@ -238,6 +238,7 @@
                 notification_card
                 subscriptions
                 ai_summary
+                ai_send_reason
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
@@ -261,6 +262,8 @@
                                                                   :has_result (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         html-content
+                                               ;; plain prose, rendered escaped by the template
+                                               :ai_send_reason  ai_send_reason
                                                ;; the model answers in markdown; nil renders nothing
                                                :ai_summary      (some-> ai_summary
                                                                         (markdown/process-markdown :html (system/site-url)))

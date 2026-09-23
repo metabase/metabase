@@ -5,7 +5,8 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.notification.ai-summary :as ai-summary]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +77,7 @@
       (let [captured (atom nil)]
         (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
                                                         (reset! captured messages)
-                                                        {:summary "ok" :should_send true :reason "ok"})]
+                                                        {:summary "ok" :verdict "deliver" :reason "ok"})]
           (call)
           (let [user-content (->> @captured (filter #(= "user" (:role %))) first :content)]
             (is (str/includes? user-content "**Trend**"))
@@ -164,14 +165,14 @@
 
 (deftest should-send?-decision-test
   (testing "an explicit true sends, carrying the model's reason"
-    (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:should_send true :reason "Down 40%, well outside the weekly range."})]
-      (is (= {:send? true :reason "Down 40%, well outside the weekly range."}
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:verdict "deliver" :reason "long internal working" :explanation "Down 40%, well outside the weekly range."})]
+      (is (= {:send? true :reason "long internal working" :explanation "Down 40%, well outside the weekly range."}
              (ai-summary/should-send? {:send-prompt "only real drops"
                                        :card-name   "Revenue"
                                        :result      (result ["N"] [[1]])})))))
   (testing "an explicit false suppresses"
-    (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:should_send false :reason "Matches every prior weekend."})]
-      (is (= {:send? false :reason "Matches every prior weekend."}
+    (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:verdict "suppress" :reason "Matches every prior weekend." :explanation "quiet"})]
+      (is (= {:send? false :reason "Matches every prior weekend." :explanation "quiet"}
              (ai-summary/should-send? {:send-prompt "only real drops"
                                        :card-name   "Revenue"
                                        :result      (result ["N"] [[1]])}))))))
@@ -181,7 +182,7 @@
     (let [captured (atom nil)]
       (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
                                                       (reset! captured messages)
-                                                      {:should_send true :reason "ok"})]
+                                                      {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt "skip weekend dips"
                                   :card-name   "Weekly Revenue"
                                   :result      (result ["Date" "Revenue"] [["2026-01-01" 1000]])})
@@ -193,7 +194,7 @@
 (deftest should-send?-fails-open-test
   (testing "the gate fails OPEN - anything short of an explicit decision must not suppress an alert"
     (testing "a malformed or partial response"
-      (doseq [response [{} {:reason "no verdict"} nil {:should_send nil}]]
+      (doseq [response [{} {:reason "no verdict"} nil {:verdict nil} {:verdict "cannot_tell"} {:verdict "maybe"}]]
         (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly response)]
           (let [decision (ai-summary/should-send? {:send-prompt "only real drops"
                                                    :card-name   "Revenue"
@@ -207,12 +208,12 @@
                                             :result      (result ["N"] [[1]])})))))
     (testing "a timeout"
       (with-redefs [ai-summary/llm-timeout-ms 100]
-        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (Thread/sleep 5000) {:should_send false :reason "too late"})]
+        (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [_ _ _] (Thread/sleep 5000) {:verdict "suppress" :reason "too late"})]
           (is (nil? (ai-summary/should-send? {:send-prompt "only real drops"
                                               :card-name   "Revenue"
                                               :result      (result ["N"] [[1]])}))))))
     (testing "results too large to excerpt"
-      (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:should_send false :reason "should never run"})]
+      (with-dynamic-fn-redefs [ai-summary/call-llm! (constantly {:verdict "suppress" :reason "should never run"})]
         (let [on-disk (reify clojure.lang.IDeref (deref [_] [["never read"]]))]
           (is (nil? (ai-summary/should-send? {:send-prompt "only real drops"
                                               :card-name   "Revenue"
@@ -224,7 +225,7 @@
     (let [captured (atom nil)]
       (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
                                                       (reset! captured messages)
-                                                      {:should_send true :reason "ok"})]
+                                                      {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt       "only if it's sunday"
                                   :card-name         "Revenue"
                                   :timezone-id       "UTC"
@@ -244,7 +245,7 @@
     (let [captured (atom nil)]
       (with-dynamic-fn-redefs [ai-summary/call-llm! (fn [messages _schema _tag]
                                                       (reset! captured messages)
-                                                      {:should_send true :reason "ok"})]
+                                                      {:verdict "deliver" :reason "ok"})]
         (ai-summary/should-send? {:send-prompt "only if it's wednesday"
                                   :card-name   "Revenue"
                                   :timezone-id "UTC"
@@ -253,4 +254,19 @@
               user-content   (->> @captured (filter #(= "user" (:role %))) first :content)]
           (is (str/includes? user-content "when they want it sent"))
           (is (not (str/includes? user-content "when to stay quiet")))
-          (is (str/includes? system-content "condition for SENDING, not for staying quiet")))))))
+          (testing "and the model is told how to resolve a negatively-phrased rule, which it
+                    otherwise answers inconsistently run to run"
+            (is (str/includes? system-content "Owners often phrase rules negatively"))
+            (is (str/includes? system-content "Resolve the negation carefully"))))))))
+
+(deftest json-schemas-are-valid-for-the-provider-test
+  (testing "both structured-output schemas satisfy the provider's own JSON-schema spec.
+
+           The other tests here stub `call-llm!`, so they never exercise the schema at all - an
+           `:enum` key silently shipped and threw inside every real provider call, which the gate
+           then swallowed as fail-open. This asserts the shape the provider actually accepts."
+    (let [json-schema-node (deref (requiring-resolve 'metabase.metabot.self.core/JSONSchemaNode))]
+      (doseq [[nm schema] {"summary"   (deref (var ai-summary/summary-json-schema))
+                           "send-gate" (deref (var ai-summary/send-decision-json-schema))}]
+        (testing nm
+          (is (nil? (mr/explain json-schema-node schema))))))))
