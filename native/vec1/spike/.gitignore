@@ -1,0 +1,3 @@
+*.db
+hs_err_*.log
+.cpcache

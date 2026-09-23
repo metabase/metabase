@@ -1,0 +1,225 @@
+# PLAN 002 — SQLite store as the semantic search engine, end to end ✅ complete 2026-09-23
+
+Part of [PLAN.md](PLAN.md) (the wiring half of iteration 1). Builds on the store from
+[PLAN_001_store.md](PLAN_001_store.md) (`metabase-enterprise.semantic-search.sqlite`).
+
+**Goal:** start Metabase on an **empty app DB** with one extra env var, and have the normal search (UI
+command palette / search page, `/api/search`) index into and query the SQLite store — no pgvector anywhere.
+
+**Done when:** fresh start → setup wizard → the store is created and filled on its own → a search whose
+words appear nowhere in a card's name/description finds that card in the UI → creating / renaming /
+archiving / deleting a card shows up in search within seconds → restart reuses the store → unsetting the
+env var brings back today's behaviour.
+
+**Not in this plan:** hybrid keyword + vector ranking, the pgvector scorers (recency, view count, …) —
+that's PLAN.md iteration 2 (reuse `query-index`). Here ranking = semantic distance + the app-DB scorers
+(bookmarks, recent views) that semantic search already applies.
+
+---
+
+## How search picks and feeds the semantic engine today (traced 2026-09-23)
+
+- **Selection** — `metabase.search.engine`: default order `[semantic appdb in-place]` (`engine.clj:10-15`);
+  `default-engine` = first *supported* one (`:200-210`). So semantic is used for every normal search as soon
+  as `supported-engine?` is true; nothing opts in. `MB_SEARCH_ENGINE` overrides (opt-out).
+  `active-engines` = default + additional + dependencies (semantic depends on appdb, so appdb is indexed too).
+- **`supported?`** (EE `semantic_search/core.clj:45-54`) = `:semantic-search` token feature
+  (`defenterprise :feature`) **and** `semantic-search-available?` (feature + pgvector configured — may probe
+  the app DB) **and** `embedding-supported?` (local config check of the provider).
+- **Startup** — `search/task/search_index.clj:64-72` starts a thread that calls `search/init-index!` →
+  `search.engine/init!` for each active engine → EE `init!` (`core.clj:186-195`): migrate + gate every
+  document (sync); embedding happens later in the Quartz indexer.
+- **Updates** — models with `:hook/search-index` → `search/update!` → ingestion queue → `ingestion/update!`
+  (`ingestion.clj:214-240`) → `search.engine/update!` (batches of 150) / `delete!` for **active engines only**.
+  Both must return `{model count}` (merged with `+` for logging/metrics). Deleted rows become deletes.
+- **Query** — EE `results` (`core.clj:96-143`): `pgvector-api/query` → `{:results :raw-count}`; fewer than
+  `semantic-search-min-results-threshold` (default **100**) results → appended app-DB results (deduped);
+  any exception → app-DB fallback.
+- **pgvector-only background work** — indexer, repair, cleanup, metric collector, usage trimmer, store
+  health: all *scheduled* only when `semantic-search-configured?` (feature + `MB_PGVECTOR_DB_URL` set or
+  Postgres app DB); cleanup / usage trimmer / status API / entity retrieval *run* on `semantic-search-available?`.
+  `build-hnsw-index-async!` runs on `semantic-search-active?`.
+
+## Design
+
+One switch: `sqlite/enabled?` (`MB_SEMANTIC_SEARCH_SQLITE_PATH` set). When on:
+
+- **The engine is supported without pgvector** (`supported?` takes a SQLite branch).
+- **Everything pgvector is off**: `semantic-search-configured?` and `semantic-search-available?` return
+  false, so no pgvector task is scheduled, no probe of the app DB, no status/entity-retrieval use of the
+  datasource. `build-hnsw-index-async!` no-ops.
+- **The five engine entry points in `core.clj` call the store** instead of `pgvector-api`, forking at the
+  call site so `results`' threshold / fallback / dedupe logic is reused unchanged.
+
+`sqlite/enabled?` must stay cheap (env read only): `supported-engine?` runs on every search.
+
+---
+
+## Phase A — gating ✅ done 2026-09-23
+
+`semantic_search/util.clj`, `core.clj`:
+
+- [x] `semantic-search-configured?` → `false` when `(sqlite/enabled?)` (no pgvector task gets scheduled).
+- [x] `semantic-search-available?` → `false` when `(sqlite/enabled?)` (cleanup, usage trimmer, status API,
+      entity retrieval stay off the pgvector datasource).
+- [x] **Namespace cycle** (verified): `index` requires `util` and `sqlite` requires `index`, so `util` can't
+      require `sqlite`. Move `db-path` / `enabled?` into a new dependency-free
+      `metabase-enterprise.semantic-search.sqlite-config`, required by `util`, `core` and `sqlite`
+      (`sqlite` keeps thin aliases so existing callers and tests don't change). Run `./bin/mage fix-modules-config`.
+- [x] `supported?` → `(if (sqlite/enabled?) (embedding-supported? …) (and (available?) (embedding-supported? …)))`.
+      The `:semantic-search` feature check stays (it's the `defenterprise :feature`).
+- [x] `build-hnsw-index-async!` → no-op when `(sqlite/enabled?)` (reachable via the vector-strategy setting event).
+- [x] REPL check: with the env var set, `(search.engine/supported-engines)` starts with `:search.engine/semantic`,
+      `(search.engine/active-engines)` = `[semantic appdb]`, and `(semantic.util/semantic-search-configured?)` is false.
+      Verified in the dev REPL (Postgres app DB with pgvector): without the env var semantic runs on pgvector as
+      before; with it, semantic is still supported / default / active and both pgvector gates are false.
+- [x] Test: `sqlite_engine_test.clj` `gating-test` (test app DB initialised; the store unit tests don't need one).
+
+## Phase B — write hooks ✅ done 2026-09-23
+
+`core.clj` `init!`, `update-index!`, `delete-from-index!`, `repair-index!`; store additions in `sqlite.clj`.
+
+- [x] `init!` [documents opts] → `(sqlite/open!)` (configured model; a model change recreates the store),
+      `(sqlite/delete-store!)` first when `(:force-reset? opts)`, then `(sqlite/index-all-async! documents)`.
+      Async: startup must not wait for embedding every document (same as pgvector, where the indexer embeds
+      later). Searches before it finishes get fewer results → app-DB fallback fills in.
+      *Check:* `searchable-documents` is a reducible over an app-DB query — fine to realize on the future's thread.
+- [x] **Prune on full index**: `index-all!` currently leaves docs that vanished while Metabase was down.
+      Add `:prune? true` for `init!`: collect the `[model model_id]` keys seen, then delete every other row
+      (`delete-documents!` per model). Cheap at hackathon sizes. Test it.
+- [x] `update-index!` [documents] → `(sqlite/upsert-documents! documents)`; return `{model count}` of the
+      upserted docs (frequencies of `:model`), not the store's `{:upserted …}` counts.
+- [x] `delete-from-index!` [model ids] → `(sqlite/delete-documents! model ids)`; return `{model n}`.
+- [x] `repair-index!` → in SQLite mode `index-all!` with `:prune? true`, return
+      `{:index-id 0 :orphans <pruned> :snapshot-at (Instant/now)}`. (Not scheduled in SQLite mode — the repair
+      task is pgvector-gated — but keep the contract for direct callers.)
+- [x] `diagnose` → `{:type :missing-from-index :details {:reason :sqlite-store}}` (or a present/absent
+      answer via `sqlite/get-doc` if cheap).
+- [x] `diagnose` in SQLite mode: `:candidate` when the store has the doc, `:missing-from-index` otherwise
+      (no per-filter breakdown).
+- [x] Verified in the dev REPL on the real documents (SQLite mode via redef): init → 64 docs; a planted doc is
+      pruned by the next init; update/delete return `{"card" 1}`; repair restores a deleted doc.
+- [x] Tests: `sqlite_test` `index-all-prune-test`; `sqlite_engine_test` `write-hooks-test` (init, update,
+      delete, diagnose, prune on re-init, repair, force-reset). 25 tests / 121 assertions green.
+
+## Phase C — query: `sqlite/query` [search-ctx] → `{:results :raw-count}` ✅ done 2026-09-23
+
+The standalone query from PLAN.md 1.4, on top of `sqlite/search-text`.
+
+- [x] Blank `:search-string` → `{:results [] :raw-count 0}` (core then falls back — same as pgvector).
+- [x] Map search-ctx filters (names from `index.clj` `filter-conditions`):
+  - inside the KNN (vec1 meta columns): `:models` → `:models`; `:archived?` → `:archived?`;
+    `:verified` → `:verified?`; `:created-by` → `:creator-ids`; `:table-db-id` → `:database-ids [id]`.
+  - after the KNN, in Clojure (may return fewer than k): `:ids`, `:display-type`, `:last-edited-by`,
+    `:created-at` / `:last-edited-at` ranges, `:curated?`, personal-collection filter. Hackathon: implement
+    `:ids` and `:display-type`; log-and-ignore the rest (list them in the code).
+- [x] `k` = `(semantic-search-results-limit)` (1000).
+- [x] **Distance cutoff** — needed, or every search returns the whole index (k ≥ doc count). pgvector's 0.7
+      drops 3 of 8 correct paraphrase hits with this model (PLAN_001 acceptance: hits at 0.55–0.84).
+      Start with a constant `max-distance` = 0.8, overridable by env `MB_SEMANTIC_SEARCH_SQLITE_MAX_DISTANCE`;
+      tune in Phase E with `paraphrase-check` + a few unrelated queries (e.g. "weather forecast" should
+      return little or nothing).
+- [x] Row → result: `(assoc legacy_input :score s :all-scores [{:name :semantic-distance :score s :weight w
+      :contribution (* w s)}])` with `s = 1 - distance/2` (same linear map as `scoring.clj`
+      `semantic-distance-score-expr`), `w = (search.config/weight search-ctx :semantic-distance)`.
+- [x] Reuse the pgvector post-processing, in this order (as in `index.clj` `query-index`):
+      `filter-read-permitted` → `apply-collection-id-filter` → `(mapv search/collapse-id)` →
+      `scoring/with-appdb-scores`. The first two are private in `index.clj` → make public (hackathon).
+- [x] `:raw-count` = row count before permission filtering (core uses it to decide whether to fall back).
+- [x] `core.clj` `results`: replace only the `(semantic.pgvector-api/query …)` call with
+      `(if (sqlite/enabled?) (sqlite/query search-ctx) (semantic.pgvector-api/query …))`.
+- [x] **Scoring, deviation from the plan:** each result carries pgvector's vector-only scores — `:rrf`
+      `0.49/(60 + rank)` (weight 500, no keyword rank) and `:semantic-distance` `1 - d/2` (weight 10) — so it sits on
+      the same scale as today and the appdb scorers (`:bookmarked` 1, `:user-recency` 5) weigh in as they do on
+      pgvector. With `:semantic-distance` alone, recency (weight 5) would dominate the ~1.5-point semantic spread.
+- [x] `max-distance` lives in `sqlite-config` (`MB_SEMANTIC_SEARCH_SQLITE_MAX_DISTANCE`, default 0.8).
+- [x] Unsupported filters (`:last-edited-by`, `:created-at`, `:last-edited-at`, `:curated?`,
+      `:filter-items-in-personal-collection`) are ignored with a debug log.
+- [x] Verified in the dev REPL through the full `metabase.search.core/search` (SQLite mode via redef, as admin):
+      engine `:search.engine/semantic`; "income across american regions" → Revenue by state first (6 hits within
+      0.8); `:models #{"dashboard"}` → dashboards only; "weather forecast for tomorrow" → 0 hits.
+
+## Phase D — tests ✅ done 2026-09-23
+
+`sqlite_engine_test.clj` (test app DB + test users) and `sqlite_test.clj`: 27 tests / 139 assertions green.
+
+- [x] `gating-test` — SQLite mode supported without pgvector, pgvector gates off (Phase A).
+- [x] `write-hooks-test` — init / update / delete / diagnose / prune / repair / force-reset (Phase B).
+- [x] `query-test` — blank string; nearest first within the cutoff; archived excluded by default; `:rrf` +
+      `:semantic-distance` scores; cutoff override; `:models`, `:archived`, `:ids`, `:display-type` filters;
+      `:raw-count`. The docs aren't real app-DB rows, so the permission filter is stubbed here.
+- [x] `search-api-test` — real temp cards indexed via `search.ingestion/searchable-documents`, stubbed embedder
+      (zebra texts near the query): `GET /api/search?q=striped horses&search_engine=semantic` as crowberto returns
+      `engine: search.engine/semantic` and exactly the two zebra cards; as rasta the card in a collection rasta
+      can't read is dropped.
+
+## Phase E — run it end to end ✅ done 2026-09-23
+
+Kit in `native/vec1/e2e/` (all re-run from scratch at the end):
+
+```bash
+native/vec1/e2e/run.sh                      # fresh H2 app DB + SQLite store in /tmp/mb-sqlite-e2e, port 3055
+KEEP=1 native/vec1/e2e/run.sh               # restart on the same app DB + store
+SQLITE=0 KEEP=1 native/vec1/e2e/run.sh      # kill switch
+python3 native/vec1/e2e/search.py ["query" ...]   # runs the setup wizard on a fresh instance, then searches
+python3 native/vec1/e2e/lifecycle.py        # create / rename / archive / delete a card, check search follows
+```
+
+`run.sh` needs `MB_PREMIUM_EMBEDDING_TOKEN` and an embedder in the environment, and unsets `MB_DB_*`,
+`MB_PGVECTOR_DB_URL`, `MB_SEARCH_ENGINE` so a dev shell can't leak its app DB / pgvector / engine choice in.
+
+### Results (ai-service `Snowflake/snowflake-arctic-embed-l-v2.0`, 1024 dims, cutoff 0.8)
+
+- [x] Fresh start: healthy in ~60–70 s. Log: `Opened SQLite semantic search store … (created)`, `Search will be
+      served by the :search.engine/semantic engine`, `SQLite semantic index: {:upserted 64, :embedded 41, :reused 23 …}`
+      ~26 s after opening (sample content being created meanwhile; the 23 reused rows were already written by the
+      update hooks). No non-Liquibase log line mentions pgvector/HNSW; `semantic-search-configured?` is false so no
+      pgvector job is scheduled (`Initializing task SemanticSearchIndexer` is logged by `task.impl` before the gated
+      `init!`, which then schedules nothing).
+- [x] `/api/session/properties`: `search-engine` = `semantic`, token feature `semantic_search` = true.
+- [x] `/api/search` paraphrases (no shared words): "income across american regions" → Revenue by state #1;
+      "how happy are shoppers with each kind of merchandise" → Customer satisfaction per category #1;
+      "price reductions granted every three months" → Discounts given per quarter #1; `models=dashboard` →
+      dashboards only; "weather forecast for tomorrow" → **0** results (cutoff works). Scores show `rrf` + `semantic-distance`.
+- [x] Card lifecycle through the API: created card found by a paraphrase **~1 s** after saving; rename searchable
+      ~1 s; archive hides it from normal search and `archived=true` finds it; delete removes it from results.
+- [x] Restart (`KEEP=1`): healthy ~42 s, store `(existing)`, `{:upserted 65, :embedded 0, :reused 65}` in ~0.1 s,
+      and the deleted card's row was pruned (65 docs = 65 vectors).
+- [x] Kill switch (`SQLITE=0`): `Search will be served by the :search.engine/appdb engine`; the paraphrase finds
+      nothing, "revenue" finds the revenue cards by keyword; the store file is not touched.
+
+### Findings
+
+- **Deletes reach the store only on the next full index.** Metabase has no search delete hook
+  (`search/models.clj`, commented out); `ingestion/bulk-ingest!` turns vanished ids into deletes only when those ids
+  are re-ingested. pgvector catches such lost deletes with its hourly repair job, which is pgvector-gated (off in
+  SQLite mode). The row is harmless meanwhile — the permission filter can't load the deleted card, so it never shows
+  — and the next startup prunes it. Follow-up if it matters: schedule the repair task in SQLite mode too
+  (`repair-index!` already does index-all + prune, cheap because vectors are reused).
+- The API's search results don't carry the engine's `:score`, only the per-scorer `scores` breakdown.
+
+## Risks / open questions
+
+- **Cutoff value** is model-specific; 0.8 is a guess from 8 paraphrases. If it's too loose, results look like
+  "everything"; too tight, paraphrases fall back to keyword search.
+- **Fallback always kicks in** below 100 semantic results (`semantic-search-min-results-threshold`), so on a
+  small instance app-DB keyword results are appended after the semantic ones. Expected; lower the setting to
+  see semantic-only results.
+- **vec1 crash = whole Metabase down** (LIMITATION_001). All vec1 SQL stays inside `sqlite.clj`.
+- **Concurrent writers**: startup `index-all-async!` and update hooks both write; serialized by `with-conn`,
+  embedding outside the lock, last write wins — fine.
+- **Multi-instance**: each node would have its own file and only see its own updates. Single node only.
+- **Token feature**: `:semantic-search` still comes from the premium token; no dev bypass exists (tests use
+  `mt/with-premium-features`).
+- **Uberjar**: extension resolved from the classpath only as a plain file — works from source/dev, not from
+  a built jar (extraction is production work).
+
+## Effort
+
+| Phase | |
+|---|---|
+| A gating | ✅ |
+| B write hooks | ✅ |
+| C query | ✅ |
+| D tests | ✅ |
+| E end to end | ✅ |

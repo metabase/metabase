@@ -11,6 +11,8 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.sqlite :as semantic.sqlite]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -22,6 +24,8 @@
    [next.jdbc.result-set :as jdbc.rs]
    [potemkin :as p]
    [toucan2.realize :as t2.realize]))
+
+(set! *warn-on-reflection* true)
 
 ;; import-vars requires full namespace symbols, so it can't use the alias
 #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
@@ -50,7 +54,8 @@
   ;; store, so without this the engine auto-activates with no embedder configured and every index and
   ;; query embed fails. available?/capable? skip the gate on purpose: an existing index still needs
   ;; maintenance while the embedder is temporarily unconfigured.
-  (and (semantic.util/semantic-search-available?)
+  (and (or (sqlite-config/enabled?)
+           (semantic.util/semantic-search-available?))
        (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
 (defonce ^:private hnsw-index-build-running? (atom false))
@@ -61,7 +66,8 @@
   No-ops when semantic search isn't active or this process already has a build running. Database-level
   coordination in [[semantic.pgvector-api/ensure-active-hnsw-index!]] serializes builds across instances."
   []
-  (when (and (semantic.util/semantic-search-active?)
+  (when (and (not (sqlite-config/enabled?))
+             (semantic.util/semantic-search-active?)
              (compare-and-set! hnsw-index-build-running? false true))
     (future
       (try
@@ -98,9 +104,11 @@
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
       (let [{:keys [results raw-count]}
-            (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
-                                         (semantic.env/get-index-metadata)
-                                         search-ctx)
+            (if (sqlite-config/enabled?)
+              (semantic.sqlite/query search-ctx)
+              (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
+                                           (semantic.env/get-index-metadata)
+                                           search-ctx))
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
         (if (or (>= final-count threshold)
@@ -146,38 +154,49 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/debug "update-index! called prior to init!")
-      (semantic.pgvector-api/gate-updates!
-       pgvector
-       index-metadata
-       document-reducible))))
+  (if (sqlite-config/enabled?)
+    (let [documents (into [] document-reducible)]
+      (semantic.sqlite/upsert-documents! documents)
+      (frequencies (map :model documents)))
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        (log/debug "update-index! called prior to init!")
+        (semantic.pgvector-api/gate-updates!
+         pgvector
+         index-metadata
+         document-reducible)))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/debug "delete-from-index! called prior to init!")
-      (semantic.pgvector-api/gate-deletes!
-       pgvector
-       index-metadata
-       model
-       ids))))
+  (if (sqlite-config/enabled?)
+    {model (semantic.sqlite/delete-documents! model ids)}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        (log/debug "delete-from-index! called prior to init!")
+        (semantic.pgvector-api/gate-deletes!
+         pgvector
+         index-metadata
+         model
+         ids)))))
 
 (defenterprise diagnose
   "Enterprise implementation of the semantic search engine-owned diagnostic stages."
   :feature :semantic-search
   [search-ctx expected-model expected-id]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      {:type :missing-from-index :details {:reason :no-active-index}}
-      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
+  (if (sqlite-config/enabled?)
+    ;; hackathon: presence only; the SQLite store doesn't break down which filter dropped a row
+    (if (semantic.sqlite/get-doc expected-model expected-id)
+      {:type :candidate :details {:store :sqlite}}
+      {:type :missing-from-index :details {:store :sqlite}})
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        {:type :missing-from-index :details {:reason :no-active-index}}
+        (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id)))))
 
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means
@@ -187,20 +206,24 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents opts]
-  (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata  (semantic.env/get-index-metadata)
-        embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
-    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
-    nil))
+  (if (sqlite-config/enabled?)
+    (do
+      (when (:force-reset? opts)
+        (semantic.sqlite/delete-store!))
+      ;; opening for the configured model recreates a store built for another model
+      (semantic.sqlite/open!)
+      ;; like pgvector (gate now, embed later in the indexer job), startup doesn't wait for the embeddings;
+      ;; searches meanwhile see a partial index and the appdb fallback fills in
+      (semantic.sqlite/index-all-async! searchable-documents :prune? true)
+      nil)
+    (let [pgvector        (semantic.env/get-pgvector-datasource!)
+          index-metadata  (semantic.env/get-index-metadata)
+          embedding-model (semantic.env/get-configured-embedding-model)]
+      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
+      (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
+      nil)))
 
-(defenterprise repair-index!
-  "Brings the semantic search index into consistency with the provided document set.
-  Does not fully reinitialize the index, but will add missing documents and remove stale ones.
-  Returns the repaired index ID, its stale-orphan count, and the pgvector timestamp captured before reading
-  the canonical stream."
-  :feature :semantic-search
-  [searchable-documents]
+(defn- repair-pgvector-index! [searchable-documents]
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
         snapshot-at    (capture-repair-snapshot-at pgvector)
@@ -251,6 +274,20 @@
             {:index-id       (-> active-state :metadata-row :id)
              :orphans        orphans
              :snapshot-at    snapshot-at}))))))
+
+(defenterprise repair-index!
+  "Brings the semantic search index into consistency with the provided document set.
+  Does not fully reinitialize the index, but will add missing documents and remove stale ones.
+  Returns the repaired index ID, its stale-orphan count, and the pgvector timestamp captured before reading
+  the canonical stream."
+  :feature :semantic-search
+  [searchable-documents]
+  (if (sqlite-config/enabled?)
+    ;; hackathon: a full re-index with pruning; unchanged documents reuse their vectors, so it's cheap
+    (let [snapshot-at (java.time.OffsetDateTime/now)
+          {:keys [pruned]} (semantic.sqlite/index-all! searchable-documents :prune? true)]
+      {:index-id 0 :orphans pruned :snapshot-at snapshot-at})
+    (repair-pgvector-index! searchable-documents)))
 
 (comment
   (update-index! [{:model "card"
