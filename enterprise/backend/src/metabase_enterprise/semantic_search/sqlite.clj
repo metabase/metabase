@@ -522,3 +522,128 @@
           (throw t))
         (finally
           (reset! indexing? false))))))
+
+;;; -------------------------------------------------- Query path --------------------------------------------------
+
+(def ^:private list-filters
+  ;; knn option -> vec1 meta column, for options taking a collection of values
+  {:models         "model"
+   :database-ids   "database_id"
+   :creator-ids    "creator_id"
+   :collection-ids "collection_id"})
+
+(def ^:private bool-filters
+  {:archived? "archived"
+   :verified? "verified"})
+
+(defn- knn-where
+  "`[sql & params]` for the WHERE clause of a KNN over `search_vec v`, or nil when nothing is filtered.
+  Every condition is on a vec1 meta column with `IN` or `=`: vec1 applies those inside the scan (a pre-filter).
+  It doesn't for `!=` or for columns of joined tables, which would shrink the top k instead."
+  [opts]
+  (let [clauses (concat
+                 (for [[k column] list-filters
+                       :let [values (get opts k)]
+                       :when (some? values)]
+                   (into [(format "v.%s IN (%s)" column (str/join ", " (repeat (count values) "?")))] values))
+                 (for [[k column] bool-filters
+                       :let [v (get opts k)]
+                       :when (some? v)]
+                   [(format "v.%s = ?" column) (if v 1 0)]))]
+    (when (seq clauses)
+      (into [(str/join " AND " (map first clauses))] (mapcat rest) clauses))))
+
+(defn- empty-filter?
+  "Does `opts` filter on an empty collection, i.e. match nothing?"
+  [opts]
+  (some #(and (some? (get opts %)) (empty? (get opts %))) (keys list-filters)))
+
+(defn- decode-doc [row]
+  (cond-> row
+    (string? (:legacy_input row)) (update :legacy_input json/decode+kw)
+    (string? (:metadata row))     (update :metadata json/decode+kw)))
+
+(defn knn
+  "The `:k` (default 50) documents nearest to `query-vector` (a seq of numbers), nearest first, as maps of `:id`
+  (the store row id) `:model` `:model_id` `:name` `:collection_id` `:legacy_input` (decoded) `:distance` (cosine
+  distance: 0 identical, 1 orthogonal, 2 opposite).
+
+  Options filter inside the KNN, so up to `:k` matching documents come back:
+  - `:models`, `:database-ids`, `:creator-ids`, `:collection-ids` -- collections of values; empty matches nothing
+  - `:archived?`, `:verified?` -- booleans
+  - `:max-distance` -- drop results farther than this"
+  [query-vector & {:keys [k max-distance] :or {k 50} :as opts}]
+  (if (empty-filter? opts)
+    []
+    (let [[where & where-params] (knn-where opts)
+          rows (with-conn [conn]
+                 (jdbc/execute! conn
+                                (into [(str "SELECT d.id, d.model, d.model_id, d.name, d.collection_id, d.legacy_input,"
+                                            " v.distance"
+                                            ;; k is interpolated because LIMIT isn't visible to vec1 through the join
+                                            " FROM search_vec(?, '{k: " (long k) "}') v"
+                                            " JOIN search_doc d ON d.id = v.rowid"
+                                            (when where (str " WHERE " where))
+                                            " ORDER BY v.distance")
+                                       (->blob query-vector)]
+                                      where-params)
+                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+      (into []
+            (comp (filter #(or (nil? max-distance) (<= (:distance %) max-distance)))
+                  (map decode-doc))
+            rows))))
+
+(defn- search-text* [text record-tokens? opts]
+  (let [embedding-model (embedding-model)
+        timer           (u/start-timer)
+        query-vector    (semantic.embedding/get-embedding embedding-model
+                                                          (semantic.embedding/prefix-search-query embedding-model text)
+                                                          {:type :query :record-tokens? record-tokens?})
+        embedding-ms    (u/since-ms timer)
+        knn-timer       (u/start-timer)
+        rows            (knn query-vector opts)]
+    {:rows         rows
+     :embedding-ms embedding-ms
+     :knn-ms       (u/since-ms knn-timer)}))
+
+(defn search-text
+  "Embed `text` as a search query with the store's model and return its [[knn]] (same options, plus
+  `:record-tokens?`, default true) as `{:rows :embedding-ms :knn-ms}`."
+  [text & {:keys [record-tokens?] :or {record-tokens? true} :as opts}]
+  ;; nothing can match: skip the embedding round-trip
+  (if (empty-filter? opts)
+    {:rows [] :embedding-ms 0 :knn-ms 0}
+    (search-text* text record-tokens? opts)))
+
+(defn get-doc
+  "The full `search_doc` row of `model`/`id` (JSON columns decoded) plus `:has-vector?`, or nil."
+  [model id]
+  (with-conn [conn]
+    (when-let [row (jdbc/execute-one! conn ["SELECT * FROM search_doc WHERE model = ? AND model_id = ?" model (str id)]
+                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (assoc (decode-doc row)
+             ;; only rowid: selecting distance outside a KNN crashes
+             :has-vector? (some? (jdbc/execute-one! conn ["SELECT rowid FROM search_vec WHERE rowid = ?" (:id row)]))))))
+
+(defn stats
+  "Store health: `:docs` and `:vectors` (equal in a consistent store), `:by-model` doc counts, `:file-bytes` (db +
+  WAL), plus [[store-info]] and the vec1 version."
+  []
+  (with-conn [conn]
+    (let [count-of (fn [sql] (:n (jdbc/execute-one! conn [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+          path     (:path @state)]
+      (merge (select-keys @state [:path :schema :embedding-model])
+             {:meta       (read-meta conn)
+              :vec1       (:info (jdbc/execute-one! conn ["SELECT vec1_info() AS info"]
+                                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+              :docs       (count-of "SELECT count(*) AS n FROM search_doc")
+              ;; the vec1 base shadow table holds one row per vector
+              :vectors    (count-of "SELECT count(*) AS n FROM search_vec_base")
+              :by-model   (into (sorted-map)
+                                (map (juxt :model :n))
+                                (jdbc/execute! conn ["SELECT model, count(*) AS n FROM search_doc GROUP BY model"]
+                                               {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+              :file-bytes (reduce + (for [suffix ["" "-wal"]
+                                          :let [f (io/file (str path suffix))]
+                                          :when (.exists f)]
+                                      (.length f)))}))))

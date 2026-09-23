@@ -1,10 +1,10 @@
 (ns dev.vec1-store
   "REPL walkthrough for the SQLite vec1 store as of PLAN_001 phase D (`native/vec1/PLAN_001_store.md`):
-  connection, schema and embedding-model check (steps 1-9), indexing (steps 10-14). Evaluate the numbered forms in
-  the `comment` one at a time.
+  connection, schema and embedding-model check (steps 1-9), indexing (steps 10-14), querying (steps 15-17).
+  Evaluate the numbered forms in the `comment` one at a time.
 
   Needs the vec1 binary for this machine (`resources/vec1/<platform>/`, see `native/vec1/README.md`) and, for
-  steps 7 and 10-14, a configured embedding provider.
+  steps 7 and 10-17, a configured embedding provider.
 
   vec1 bugs crash the JVM rather than throwing (`native/vec1/LIMITATION_001_update_crash.md`). Never
   `UPDATE search_vec`, and never select `distance` outside a KNN call (`search_vec(?, '{k: N}')`)."
@@ -63,31 +63,21 @@
                          id (sqlite/->blob embedding) model]))))
 
 (defn knn
-  "The `k` nearest rows to `embedding`, optionally only of `model` (filtered inside the KNN)."
+  "The `k` nearest docs to `embedding` via [[sqlite/knn]], optionally only of `model` (filtered inside the KNN)."
   [embedding k & [model]]
-  (q (cond-> [(str "SELECT v.rowid, v.distance, d.model, d.name"
-                   " FROM search_vec(?, '{k: " (long k) "}') v JOIN search_doc d ON d.id = v.rowid"
-                   (when model " WHERE v.model = ?")
-                   " ORDER BY v.distance")
-              (sqlite/->blob embedding)]
-       model (conj model))))
+  (mapv #(select-keys % [:id :distance :model :name])
+        (sqlite/knn embedding (cond-> {:k k} model (assoc :models [model])))))
 
 (defn search-text
-  "The `k` nearest docs to `text`, embedded as a search query with the store's model."
+  "`[distance model name]` of the `k` nearest docs to `text` via [[sqlite/search-text]], optionally only of `model`."
   [text k & [model]]
-  (let [embedding-model (sqlite/embedding-model)]
-    (mapv (juxt :distance :model :name)
-          (knn (semantic.embedding/get-embedding embedding-model
-                                                 (semantic.embedding/prefix-search-query embedding-model text)
-                                                 {:type :query :record-tokens? false})
-               k
-               model))))
+  (mapv (juxt :distance :model :name)
+        (:rows (sqlite/search-text text (cond-> {:k k :record-tokens? false} model (assoc :models [model]))))))
 
 (defn doc-row
-  "The `search_doc` row for `model`/`id`, or nil."
+  "The main columns of the `search_doc` row for `model`/`id` via [[sqlite/get-doc]], or nil."
   [model id]
-  (first (q ["SELECT id, model, model_id, name, archived, substr(content, 1, 80) AS content FROM search_doc
-              WHERE model = ? AND model_id = ?" model (str id)])))
+  (some-> (sqlite/get-doc model id) (select-keys [:id :model :model_id :name :archived :has-vector?])))
 
 (comment
   ;; 1. where the extension comes from, and a clean slate
@@ -178,6 +168,26 @@
    :summary (select-keys (summary) [:search_doc :search_vec])
    :churn   (search-text "customer churn" 1)}
 
-  ;; 15. clean up -> the file is gone
+  ;; --- Phase E: querying ---
+
+  ;; 15. store health -> :docs = :vectors (one fewer than step 10 after the delete), :by-model, :file-bytes, :meta
+  (dissoc (sqlite/stats) :embedding-model)
+
+  ;; 16. one doc in full -> every search_doc column, legacy_input and metadata decoded, :has-vector? true
+  (let [{:keys [model_id]} (first (q ["SELECT model_id FROM search_doc WHERE model = 'card' ORDER BY id LIMIT 1"]))]
+    (sqlite/get-doc "card" model_id))
+
+  ;; 17. search options and timings -> :embedding-ms is most of the time, :knn-ms a few ms;
+  ;;     :models / :archived? filter inside the KNN; :max-distance trims; an empty :models skips the embedding
+  (letfn [(run [opts]
+            (-> (sqlite/search-text "orders over time" (merge {:k 5 :record-tokens? false} opts))
+                (update :rows #(mapv (juxt :distance :model :name) %))))]
+    {:plain         (run {})
+     :tables-only   (run {:models ["table"]})
+     :archived-only (run {:archived? true})
+     :close-only    (run {:k 50 :max-distance 0.7})
+     :no-models     (run {:models []})})
+
+  ;; 18. clean up -> the file is gone
   (do (sqlite/delete-store! db-file)
       (.exists (java.io.File. db-file))))

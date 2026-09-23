@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.sqlite :as sqlite]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -223,10 +224,12 @@
 
 (defn- do-with-stub-embeddings
   "Call `(f sent)` with embedding stubbed: `text->vector` (or `[0.5 0.5 0.5 0.5]`), no vector for texts containing
-  `skip`, a thrown exception for texts containing `boom`. `sent` is an atom of the texts sent to the provider."
+  `skip`, a thrown exception for texts containing `boom`. `sent` is an atom of the texts sent to the provider.
+  Personal collection owners resolve to none, so no app DB is needed."
   [f]
   (let [sent (atom [])]
-    (mt/with-dynamic-fn-redefs [semantic.embedding/process-embeddings-streaming
+    (mt/with-dynamic-fn-redefs [semantic.index/batch-resolve-personal-owner-ids (constantly {})
+                                semantic.embedding/process-embeddings-streaming
                                 (fn [_model texts process-fn & _]
                                   (swap! sent into texts)
                                   (when (some #(str/includes? % "boom") texts)
@@ -352,3 +355,97 @@
            (deliver release true)
            (is (=? {:upserted 1} @run))
            (is (future? (sqlite/index-all-async! [])))))))))
+
+;;; -------------------------------------------------- Query path --------------------------------------------------
+
+(defn- seed-query-docs!
+  "Five docs: the query vector [1 0 0 0] is nearest to card 1, then card 2, ...; attributes vary per doc so each
+  filter selects the farthest ones."
+  []
+  (with-redefs [text->vector (merge text->vector {"c1" [1 0 0 0] "c2" [0.9 0.1 0 0] "c3" [0.8 0.2 0 0]
+                                                  "d1" [0.1 0.9 0 0] "d2" [0 1 0 0]})]
+    (do-with-stub-embeddings
+     (fn [_sent]
+       (sqlite/upsert-documents!
+        [(doc "card" 1 "c1" :database_id 1 :creator_id 1 :collection_id 10)
+         (doc "card" 2 "c2" :database_id 1 :creator_id 2 :collection_id 10 :verified true)
+         (doc "card" 3 "c3" :database_id 2 :creator_id 1 :collection_id 11 :archived true)
+         (doc "dashboard" 1 "d1" :creator_id 3 :collection_id 12)
+         (doc "dashboard" 2 "d2" :creator_id 3 :collection_id 12 :archived true)])))))
+
+(defn- knn-keys [& opts]
+  (mapv (juxt :model :model_id) (apply sqlite/knn [1 0 0 0] opts)))
+
+(deftest knn-test
+  (with-store! [_path]
+    (seed-query-docs!)
+    (testing "nearest first, with decoded legacy_input and cosine distance"
+      (let [[top :as rows] (sqlite/knn [1 0 0 0] :k 5)]
+        (is (= [["card" "1"] ["card" "2"] ["card" "3"] ["dashboard" "1"] ["dashboard" "2"]]
+               (mapv (juxt :model :model_id) rows)))
+        (is (=? {:model "card" :model_id "1" :name "card 1" :collection_id 10 :legacy_input {:id 1 :model "card"}}
+                top))
+        (is (< (Math/abs (double (:distance top))) 1e-6))
+        (is (apply <= (map :distance rows)))))
+    (testing ":k"
+      (is (= [["card" "1"] ["card" "2"]] (knn-keys :k 2))))
+    (testing "filters apply inside the KNN: with k = 1 the nearest *matching* doc still comes back"
+      (are [opts expected] (= expected (apply knn-keys :k 1 (mapcat identity opts)))
+        {:models ["dashboard"]}              [["dashboard" "1"]]
+        {:models ["dashboard" "metric"]}     [["dashboard" "1"]]
+        {:archived? true}                    [["card" "3"]]
+        {:archived? false :models ["card"]}  [["card" "1"]]
+        {:verified? true}                    [["card" "2"]]
+        {:database-ids [2]}                  [["card" "3"]]
+        {:creator-ids [3]}                   [["dashboard" "1"]]
+        {:collection-ids [11 12]}            [["card" "3"]]
+        {:creator-ids [3] :archived? true}   [["dashboard" "2"]]))
+    (testing "an empty collection filter matches nothing"
+      (is (= [] (knn-keys :models [])))
+      (is (= [] (knn-keys :creator-ids [] :models ["card"]))))
+    (testing ":max-distance"
+      (is (= [["card" "1"] ["card" "2"] ["card" "3"]] (knn-keys :k 5 :max-distance 0.1))))))
+
+(deftest search-text-test
+  (with-store! [_path]
+    (seed-query-docs!)
+    (let [embedded (atom [])]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/get-embedding (fn [_model text & _]
+                                                                     (swap! embedded conj text)
+                                                                     [0 1 0 0])]
+        (testing "embeds the text with the store's model and runs the KNN with the same options"
+          (is (=? {:rows         [{:model "dashboard" :model_id "2"} {:model "dashboard" :model_id "1"}]
+                   :embedding-ms number?
+                   :knn-ms       number?}
+                  (sqlite/search-text "revenue" :k 2)))
+          (is (=? {:rows [{:model "dashboard" :model_id "1"}]}
+                  (sqlite/search-text "revenue" {:k 1 :archived? false})))
+          (is (= ["revenue" "revenue"] @embedded)))
+        (testing "a filter that matches nothing skips the embedding"
+          (reset! embedded [])
+          (is (= [] (:rows (sqlite/search-text "revenue" :models []))))
+          (is (= [] @embedded)))))))
+
+(deftest get-doc-test
+  (with-store! [_path]
+    (seed-query-docs!)
+    (is (=? {:model "card" :model_id "2" :name "card 2" :content "c2" :verified 1 :archived 0
+             :legacy_input {:id 2 :model "card"} :metadata {:model "card" :id 2} :has-vector? true}
+            (sqlite/get-doc "card" 2)))
+    (is (=? {:model_id "2"} (sqlite/get-doc "card" "2")))
+    (is (nil? (sqlite/get-doc "card" 404)))))
+
+(deftest stats-test
+  (with-store! [path]
+    (seed-query-docs!)
+    (is (=? {:path       path
+             :schema     :created
+             :docs       5
+             :vectors    5
+             :by-model   {"card" 3 "dashboard" 2}
+             :vec1       #"version 0\.7.*"
+             :meta       {"vector_dimensions" "4"}
+             :file-bytes pos-int?}
+            (sqlite/stats)))
+    (sqlite/delete-documents! "card" [1])
+    (is (=? {:docs 4 :vectors 4 :by-model {"card" 2 "dashboard" 2}} (sqlite/stats)))))

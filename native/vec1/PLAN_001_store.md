@@ -144,20 +144,30 @@ In `sqlite.clj`; 18 tests / 70 assertions green (stubbed embeddings). Walkthroug
 Measured on the dev instance (64 docs, ai-service `snowflake-arctic-embed-l-v2.0`, 1024 dims):
 full index **1.2–1.5 s** (embedding dominated), re-run with nothing changed **~45 ms** (all reused).
 
-## Phase E — query path: "the index is queryable" (1–2 h)
+## Phase E — query path: "the index is queryable" ✅ done 2026-09-23
 
-Raw store queries, not the search engine (that's PLAN_002).
+Raw store queries, not the search engine (that's PLAN_002). 22 tests / 97 assertions green. Walkthrough
+steps 15–17; the walkthrough's `knn`/`search-text`/`doc-row` helpers now call these functions.
 
-- [ ] `knn` [query-vector {:keys [k models archived?]}] →
-      `select d.id, d.model, d.model_id, d.name, d.collection_id, d.legacy_input, v.distance
-       from search_vec(?, '{k: N}') v join search_doc d on d.id = v.rowid
-       [where v.model in (…) and v.archived = ?] order by v.distance` — filters only on `v.*` meta columns,
-       only `= < > <= >= IN IS [NOT] NULL` (no `!=`); always pass `k` (LIMIT is not visible through the join).
-      Default k = 50. Returns a vector of maps (`jdbc.rs/as-unqualified-lower-maps`), `legacy_input` decoded.
-- [ ] `search-text` [text opts] — `(get-embedding model (prefix-search-query model text) {:type :query})` then `knn`.
-      Returns `{:embedding-ms :knn-ms :rows}`.
-- [ ] `stats` — doc count, vec count (must be equal), per-model counts, file size, `meta` contents, `vec1_info()`.
-- [ ] `get-doc` [model id] — the `search_doc` row, for checking updates.
+- [x] `knn` [query-vector & {:keys [k max-distance] …}] — `k` default 50, interpolated into
+      `search_vec(?, '{k: N}')` (LIMIT isn't visible to vec1 through the join). Returns
+      `:id :model :model_id :name :collection_id :legacy_input :distance`, nearest first, `legacy_input` decoded.
+      Filters, all on vec1 meta columns with `IN` / `=` (pre-filter): `:models`, `:database-ids`, `:creator-ids`,
+      `:collection-ids` (collections; **empty = match nothing**, no query run), `:archived?`, `:verified?`.
+      `:max-distance` is applied in Clojure — SQL never filters on `distance`.
+- [x] `search-text` [text & opts] — embed with `prefix-search-query` + `{:type :query}` (`:record-tokens?`
+      default true), then `knn`. Returns `{:rows :embedding-ms :knn-ms}`. An empty-collection filter returns
+      at once without embedding.
+- [x] `stats` — `:docs` / `:vectors` (equal when consistent), `:by-model`, `:file-bytes` (db + WAL), `:meta`,
+      `:vec1`, plus `store-info` keys.
+- [x] `get-doc` [model id] — full `search_doc` row, `legacy_input`/`metadata` decoded, `:has-vector?`
+      (checked with `SELECT rowid`, never `distance`).
+
+Measured on the dev instance (63–64 docs, 1024 dims): KNN **0.3–7 ms**, query embedding **~200–290 ms**
+(ai-service round trip) — the embedding is >95% of a search.
+
+Test note: the write path resolves personal-collection owners from the app DB; the unit tests stub
+`semantic.index/batch-resolve-personal-owner-ids` so the store tests don't need one.
 
 ## Phase F — REPL workflow + tests (2–3 h)
 
@@ -192,9 +202,9 @@ Raw store queries, not the search engine (that's PLAN_002).
 | B connection | ✅ done |
 | C schema | ✅ done |
 | D writes | ✅ done |
-| E queries | 1–2 h |
+| E queries | ✅ done |
 | F REPL + tests | 2–3 h |
-| **Remaining** | **~3–5 h** (E, F) |
+| **Remaining** | **~2–3 h** (F) |
 
 ## Decisions taken (change here if needed)
 
