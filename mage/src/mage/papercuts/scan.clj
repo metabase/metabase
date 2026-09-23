@@ -56,12 +56,14 @@
 ;;; Sources
 
 (def ^:private sources
-  {:claude {:roots   [(fs/path (fs/home) ".claude" "projects")]
-            :entries transcript/claude-entries
-            :session transcript/claude-session}
-   :codex  {:roots   [(fs/path (fs/home) ".codex" "sessions") (fs/path (fs/home) ".codex" "archived_sessions")]
-            :entries transcript/codex-entries
-            :session transcript/codex-session}})
+  (let [env (into {} (System/getenv))
+        dir #(transcript/agent-dir env (fs/home) %)]
+    {:claude {:roots   [(fs/path (dir "claude") "projects")]
+              :entries transcript/claude-entries
+              :session transcript/claude-session}
+     :codex  {:roots   [(fs/path (dir "codex") "sessions") (fs/path (dir "codex") "archived_sessions")]
+              :entries transcript/codex-entries
+              :session transcript/codex-session}}))
 
 ;;; Time
 

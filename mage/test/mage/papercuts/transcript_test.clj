@@ -112,3 +112,9 @@
     (is (= {:branch "fix-x" :sha "b8f3e87" :repository-url "git@github.com:metabase/metabase.git"}
            (:git (session {:id "e" :git {:branch "fix-x" :commit_hash "b8f3e87"
                                          :repository_url "git@github.com:metabase/metabase.git"}}))))))
+
+(deftest agent-dir-test
+  (is (= "/h/.claude" (transcript/agent-dir {} "/h" "claude")))
+  (is (= "/h/.codex" (transcript/agent-dir {"CODEX_HOME" ""} "/h" :codex)))
+  (is (= "/c" (transcript/agent-dir {"CLAUDE_CONFIG_DIR" "/c"} "/h" "claude")))
+  (is (= "/x" (transcript/agent-dir {"CODEX_HOME" "/x"} "/h" "codex"))))

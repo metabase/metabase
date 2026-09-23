@@ -90,3 +90,16 @@
           (is (thrown-with-msg? Exception #"Symlink loop" (hooks/install-at! home ["claude"])))))
       (finally
         (fs/delete-tree home)))))
+
+(deftest install-at-config-dir-env-test
+  (let [home (fs/create-temp-dir {:prefix "papercut-hooks-test"})]
+    (try
+      (let [claude-dir (str (fs/path home "custom-claude"))
+            codex-dir  (str (fs/path home "custom-codex"))]
+        (hooks/install-at! {"CLAUDE_CONFIG_DIR" claude-dir "CODEX_HOME" codex-dir} home ["claude" "codex"])
+        (testing "CLAUDE_CONFIG_DIR and CODEX_HOME replace ~/.claude and ~/.codex"
+          (is (fs/exists? (fs/path claude-dir "settings.json")))
+          (is (fs/exists? (fs/path codex-dir "hooks.json")))
+          (is (not (fs/exists? (fs/path home ".claude"))))))
+      (finally
+        (fs/delete-tree home)))))
