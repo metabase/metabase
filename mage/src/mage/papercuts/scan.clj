@@ -27,6 +27,8 @@
    [mage.papercuts.transcript :as transcript]
    [mage.util :as u])
   (:import
+   (java.nio.channels FileChannel)
+   (java.nio.file OpenOption StandardOpenOption)
    (java.time Duration Instant)
    (java.util.concurrent Executors TimeUnit)))
 
@@ -384,11 +386,18 @@
       (do (println (c/red "TYPESAFE_API_KEY not found in mise.local.toml, .env, .lein-env, or the environment."))
           (u/exit 1))))
 
-(defn scan!
-  "Entry point for `mage papercuts-scan-claude` and `mage papercuts-scan-codex`."
-  [source {:keys [options]}]
-  (let [state-file (or (:state-file options) (default-state-file source))
-        since      (parse-since (:since options))
+(defn- with-state-lock
+  "Call `f` holding an exclusive lock beside `state-file`. Scans of the same state file, from hooks or by hand, then
+  run one at a time instead of overwriting each other's progress."
+  [state-file f]
+  (fs/create-dirs (fs/parent state-file))
+  (with-open [channel (FileChannel/open (fs/path (str state-file ".lock"))
+                                        (into-array OpenOption [StandardOpenOption/CREATE StandardOpenOption/WRITE]))]
+    (.lock channel)
+    (f)))
+
+(defn- scan-with-state! [source options state-file]
+  (let [since      (parse-since (:since options))
         opts       (merge options
                           {:since      since
                            :agent      (keyword (or (:drill-agent options) (name source)))
@@ -435,3 +444,11 @@
                             (when persist? (str " State: " state-file " (" reported " papercut report(s) recorded)."))))))
     (when (pos? @failures)
       (u/exit 1))))
+
+(defn scan!
+  "Entry point for `mage papercuts-scan-claude` and `mage papercuts-scan-codex`."
+  [source {:keys [options]}]
+  (let [state-file (or (:state-file options) (default-state-file source))]
+    (if (or (:dry-run options) (:screen-only options))
+      (scan-with-state! source options state-file)
+      (with-state-lock state-file #(scan-with-state! source options state-file)))))
