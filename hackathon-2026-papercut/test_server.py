@@ -2,11 +2,13 @@ import http.client
 import importlib.util
 import json
 import sqlite3
+import subprocess
 import tempfile
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
 
 
 spec = importlib.util.spec_from_file_location("papercut_server", Path(__file__).with_name("server.py"))
@@ -1153,6 +1155,26 @@ class HttpTest(HttpCase):
         _, page, _ = self.call("GET", "/papercuts/1")
         self.assertIn("<a href='https://github.com/metabase/metabase/pull/1'>https://github.com/metabase/metabase/pull/1</a>.",
                       page)
+
+
+
+class InstallerTest(HttpCase):
+    def installer(self, **env):
+        with mock.patch.dict(server.os.environ, env, clear=True):
+            status, script, _ = self.call("GET", "/api/install.sh")
+        self.assertEqual(status, 200)
+        return script
+
+    def test_the_installer_carries_the_servers_key(self):
+        self.assertEqual(server.INSTALLER.read_text().count(server.INSTALLER_KEY), 1)
+        script = self.installer(TYPESAFE_API_KEY="jev_live.abc-123")
+        self.assertIn("TYPESAFE_API_KEY='jev_live.abc-123'", script)
+        self.assertEqual(subprocess.run(["sh", "-n"], input=script, text=True).returncode, 0)
+
+    def test_without_a_usable_key_the_installer_says_so(self):
+        for env in ({}, {"TYPESAFE_API_KEY": ""}, {"TYPESAFE_API_KEY": "it's"}):
+            with self.subTest(env):
+                self.assertEqual(self.installer(**env), server.NO_KEY_INSTALLER)
 
 
 if __name__ == "__main__":

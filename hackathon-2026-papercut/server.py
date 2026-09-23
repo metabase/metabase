@@ -97,6 +97,12 @@ STOP_WORDS = set("""a an and are as at be but by does for from has have in into 
                     that the their then this to was were when which while with without agent agents user""".split())
 # Version 1 imports recorded their source writeup only as this last line of the description.
 LOCAL_SOURCE_TRAILER = re.compile(r"\nSource: local-papercuts/(\S+)$")
+INSTALLER = Path(__file__).with_name("install.sh")
+INSTALLER_KEY = "@TYPESAFE_API_KEY@"
+NO_KEY_INSTALLER = """#!/bin/sh
+echo "This papercuts server has no usable TYPESAFE_API_KEY, so it can't hand out the installer yet." >&2
+exit 1
+"""
 
 
 class ConflictError(ValueError):
@@ -257,6 +263,14 @@ def assessment_json(row):
 
 def actor_of(payload):
     return text_field(payload, "actor") or "anonymous"
+
+
+def install_script(key):
+    """The installer with the server's Jev key filled in. The key lands in single quotes, so anything but a plain token
+    is refused."""
+    if not key or not re.fullmatch(r"[\w.-]+", key):
+        return NO_KEY_INSTALLER
+    return INSTALLER.read_text().replace(INSTALLER_KEY, key)
 
 
 def run_script(db, script):
@@ -2771,6 +2785,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(201, created[action]())
             if handler := handlers.get((command, action, bool(other))):
                 return self.respond(200, handler())
+        if command == "GET" and path == "/api/install.sh":
+            return self.respond(200, install_script(os.environ.get("TYPESAFE_API_KEY")), "text/plain")
         if command == "GET" and path == "/api/dispatches":
             return self.respond(200, self.store.list_dispatches(params))
         if dispatch and command == "GET":
