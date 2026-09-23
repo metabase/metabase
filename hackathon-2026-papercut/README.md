@@ -93,7 +93,8 @@ curl -sS 'http://127.0.0.1:8765/api/papercuts/1?reports_limit=10'
 - **Filters:** `repository`, `status`, `category` (`unclassified` for none), `q`
   and `fingerprint`.
 - **Sorting:** `sort` is one of `recent` (the default), `oldest`, `reports`,
-  `reporters`, `cost` or `updated`.
+  `reporters`, `cost`, `related` or `updated`. `sort=related` shows only papercuts
+  with related entries, most related first; the browser calls this **Merge candidates**.
 - **Paging:** `limit` (1 to 500, default 50) and `offset`. The response carries
   `total` and `next_offset`.
 - **Polling:** each response has a `cursor`. Pass it back as `since` to get only

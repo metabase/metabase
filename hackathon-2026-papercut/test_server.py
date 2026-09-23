@@ -79,11 +79,34 @@ class WebViewTest(StoreCase):
                     "reporters": ["Alpha", "Charlie", "Delta", "Bravo"],
                     "agents": ["Alpha", "Charlie", "Delta", "Bravo"],
                     "cost": ["Alpha", "Delta", "Bravo", "Charlie"],
+                    "related": [],
                     "updated": ["Delta", "Bravo", "Charlie", "Alpha"]}
         self.assertEqual(set(expected), set(server.SORTS))
         for sort, titles in expected.items():
             with self.subTest(sort):
                 self.assertEqual([p["title"] for p in self.store.list_papercuts({"sort": sort})["papercuts"]], titles)
+
+    def test_merge_candidates_sort_shows_only_visible_relations_and_their_counts(self):
+        first, second, third, rejected, unrelated = (self.papercut(title) for title in
+                                                      ("First", "Second", "Third", "Rejected", "Unrelated"))
+        self.store.relate(first, {"papercut_id": second})
+        self.store.suggest(first, {"suggestions": [{"papercut_id": third, "verdict": "duplicate"}]})
+        self.store.unrelate(first, rejected, {})
+
+        result = self.store.list_papercuts({"sort": "related"})
+        self.assertEqual(result["total"], 3)
+        self.assertEqual([(p["id"], p["related_count"]) for p in result["papercuts"]],
+                         [(first, 2), (third, 1), (second, 1)])
+        self.assertEqual(self.store.list_papercuts()["total"], 5)
+        self.assertNotIn(unrelated, [p["id"] for p in result["papercuts"]])
+
+        page = server.papercut_list_html(result, {"sort": "related"})
+        self.assertIn("<option value='related' selected>Merge candidates (most related)</option>", page)
+        self.assertIn("<span class='pill'>2 related</span>", page)
+
+        self.store.unrelate(first, second, {})
+        self.assertEqual([(p["id"], p["related_count"]) for p in
+                          self.store.list_papercuts({"sort": "related"})["papercuts"]], [(third, 1), (first, 1)])
 
     def test_source_filter_and_chips(self):
         self.seed_sources()

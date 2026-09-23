@@ -92,10 +92,12 @@ REPORT_SOURCE = f"""CASE WHEN r.agent = 'metabot' THEN 'instance:' || COALESCE(N
 # When the papercut's claim in progress started, or NULL when nobody is working on it.
 CLAIMED_AT = f"""(SELECT MIN(d.created_at) FROM dispatches d WHERE d.papercut_id = p.id
                   AND d.state IN ({', '.join(f"'{state}'" for state in ACTIVE_DISPATCH_STATES)}))"""
+RELATED_COUNT = """(SELECT COUNT(*) FROM relations rel
+                    WHERE (rel.papercut_a = p.id OR rel.papercut_b = p.id) AND rel.source != 'rejected')"""
 # Each sort's label on the page, in menu order.
 SORT_LABELS = {"important": "Important first", "oldest-claim-first": "Oldest claim first", "recent": "Newest",
                "oldest": "Oldest", "reports": "Most reports", "reporters": "Most reporters", "agents": "Most agents",
-               "cost": "Most time lost", "updated": "Recently updated"}
+               "cost": "Most time lost", "related": "Merge candidates (most related)", "updated": "Recently updated"}
 SORTS = {
     "important": f"{IMPORTANT} DESC, p.last_seen DESC, p.id DESC",
     "oldest-claim-first": f"{CLAIMED_AT} IS NULL, {CLAIMED_AT}, p.last_seen DESC, p.id DESC",
@@ -105,6 +107,7 @@ SORTS = {
     "reporters": "reporter_count DESC, report_count DESC, p.id DESC",
     "agents": "agent_count DESC, report_count DESC, p.id DESC",
     "cost": "cost_minutes DESC, report_count DESC, p.id DESC",
+    "related": "related_count DESC, report_count DESC, p.id DESC",
     "updated": "p.updated_at DESC, p.id DESC",
 }
 # Other fields are kept in the report's stored request body and named in the response's `extra_fields`,
@@ -996,6 +999,8 @@ class Store:
         sort = filters.get("sort") or "recent"
         if sort not in SORTS:
             raise ValueError(f"sort must be one of: {', '.join(SORTS)}")
+        if sort == "related":
+            clauses.append(f"{RELATED_COUNT} > 0")
         limit = int_param(filters, "limit", 50, 1, max_limit)
         offset = int_param(filters, "offset", 0, 0)
         # A change feed returns every change: its cursor is the newest change of all, so a partial page would skip rows.
@@ -1006,6 +1011,7 @@ class Store:
             total = db.execute(f"SELECT COUNT(*) FROM papercuts p WHERE {where}", params).fetchone()[0]
             rows = db.execute(
                 f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important, {CLAIMED_AT} AS claimed_at,
+                           {RELATED_COUNT} AS related_count,
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
                             WHERE f.papercut_id = p.id) AS fingerprints,
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
@@ -2509,10 +2515,12 @@ def list_card_html(p):
         for label in visible_facts if facts.get(label)
     )
     pr_link = "" if p["pr_url"] == (p["dispatch"] or {}).get("pr_url") else dispatch_links({"pr_url": p["pr_url"]})
+    related = f"<span class='pill'>{p['related_count']} related</span>" if p["related_count"] else ""
     return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{title_html(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
+            f"{related}"
             f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}{pr_link}</div>"
             f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
