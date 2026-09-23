@@ -282,6 +282,23 @@
           result-lists (mapv deref futures)]
       (reciprocal-rank-fusion result-lists))))
 
+(defn latest-user-message
+  "The content of the most recent user message of the current agent conversation, or nil outside one (search
+  tools not run through the agent loop, or a turn with no user message)."
+  []
+  (->> (:input-messages (shared/current-memory))
+       (filter #(= :user (:role %)))
+       last
+       :content
+       not-empty))
+
+(defn vibes-prompt
+  "What semantic candidates are judged against when the engine reranks by vibes: the user's own words (the latest
+  user message) when the tool runs inside a conversation, else the first semantic query the model wrote."
+  [semantic-queries]
+  (or (latest-user-message)
+      (first semantic-queries)))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic.
@@ -294,7 +311,10 @@
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
-  `:total` metadata."
+  `:total` metadata.
+
+  Every per-query search asks for vibes reranking against [[vibes-prompt]]; the engine ignores the ask unless
+  vibes are enabled for the instance."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights
            created-by archived collection-id offset filters-only?]}]
@@ -330,9 +350,12 @@
                           (:collection_id metabot))
         collection-id   (or confined-id collection-id)
         limit           (or limit 50)
+        vibes-prompt    (vibes-prompt semantic-queries)
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
                                                 (cond-> {:search-string                       search-string
+                                                         :vibes                               true
+                                                         :vibes-prompt                        vibes-prompt
                                                          :models                              search-models
                                                          :table-db-id                         database-id
                                                          :created-at                          created-at

@@ -8,6 +8,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -898,3 +899,39 @@
         (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
           (is (= "model" (:type result)))
           (is (string? (:type result))))))))
+
+(deftest ^:parallel latest-user-message-test
+  (testing "the most recent user message of the conversation in memory"
+    (binding [shared/*memory-atom* (atom {:input-messages [{:role :user :content "first"}
+                                                           {:role :assistant :content "hi"}
+                                                           {:role :user :content "revenue by product please"}]})]
+      (is (= "revenue by product please" (search/latest-user-message)))))
+  (testing "nil outside an agent conversation, or without a user message"
+    (is (nil? (search/latest-user-message)))
+    (binding [shared/*memory-atom* (atom {:input-messages [{:role :assistant :content "hi"}]})]
+      (is (nil? (search/latest-user-message))))))
+
+(deftest ^:parallel vibes-prompt-test
+  (testing "the user's own words win"
+    (binding [shared/*memory-atom* (atom {:input-messages [{:role :user :content "how much do we make per product"}]})]
+      (is (= "how much do we make per product" (search/vibes-prompt ["revenue by product"])))))
+  (testing "falling back to the first semantic query, then nil"
+    (is (= "revenue by product" (search/vibes-prompt ["revenue by product" "sales"])))
+    (is (nil? (search/vibes-prompt nil)))))
+
+(deftest search-passes-vibes-prompt-test
+  (testing "the per-query search context asks for vibes against the latest user message"
+    (let [contexts (atom [])]
+      (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [ctx] (swap! contexts conj ctx) [])
+                                  search-core/search-results (fn [& _] {:data [] :total 0})]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (binding [shared/*memory-atom* (atom {:input-messages [{:role :user :content "orders per customer"}]})]
+            (search/search {:semantic-queries ["customer order counts"] :term-queries ["orders"]}))
+          (is (=? [{:vibes true :vibes-prompt "orders per customer"}]
+                  (distinct (map #(select-keys % [:vibes :vibes-prompt]) @contexts)))))
+        (testing "without memory, the first semantic query"
+          (reset! contexts [])
+          (mt/with-current-user (mt/user->id :crowberto)
+            (search/search {:semantic-queries ["customer order counts"]}))
+          (is (=? [{:vibes true :vibes-prompt "customer order counts"}]
+                  (distinct (map #(select-keys % [:vibes :vibes-prompt]) @contexts)))))))))

@@ -120,7 +120,9 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource"
+    ;; reads the latest user message as the vibes reranking prompt
+    "search"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks
