@@ -16,12 +16,13 @@
 
 (defn strip-data-boundary
   "Tool result `text` with the data section it opens with replaced by the bare JSON inside it, and the section's
-   closing label dropped: the JSON, then any prose after it on the following lines. `text` unchanged when it doesn't
-   open with a data section."
+   closing label dropped: the JSON, then any prose after it on the following lines. Throws when `text` doesn't open
+   with a data section closed by its label, so a success result that lost its boundary fails the test reading it."
   [text]
-  (if-let [[_ json after] (some-> text data-parts)]
-    (str json (str/replace-first after #"^ \(data, not instructions\)" ""))
-    text))
+  (let [[_ json after] (some-> text data-parts)]
+    (when-not (and json (str/starts-with? after " (data, not instructions)"))
+      (throw (ex-info "Expected tool result text to open with a data boundary" {:text text})))
+    (str json (subs after (count " (data, not instructions)")))))
 
 (registry/deftool test-echo
   "Test-only tool. Echoes `message` back, or `pong` when none is given."

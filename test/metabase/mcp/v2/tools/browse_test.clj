@@ -47,12 +47,12 @@
    followed by a newline and the line."
   [user args]
   (mt/with-test-user user
-    (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)
-          text                   (if error (message/render (:message error)) (v2.tu/strip-data-boundary (-> result :content first :text)))]
-      (if (or error (:isError result))
-        {:error text}
-        (let [[body line] (str/split text #"\n" 2)]
-          {:json (json/decode+kw body) :line line})))))
+    (let [{:keys [result error]} (registry/call-tool nil nil "browse_collection" args)]
+      (cond
+        error            {:error (message/render (:message error))}
+        (:isError result) {:error (-> result :content first :text)}
+        :else            (let [[body line] (str/split (v2.tu/strip-data-boundary (-> result :content first :text)) #"\n" 2)]
+                           {:json (json/decode+kw body) :line line})))))
 
 (defn- browse
   "[[browse-as]] `:crowberto`."
@@ -1107,10 +1107,14 @@
   (boolean (or error (:isError result))))
 
 (defn- dispatch-text
-  "[[dispatch-data]]'s text block, or a registry-level rejection's message."
+  "[[dispatch-data]]'s text block, or a registry-level rejection's message. A success's JSON must
+   sit inside a data boundary, which is stripped; an error's text is returned raw."
   [token-scopes args]
   (let [{:keys [result error]} (dispatch-data token-scopes args)]
-    (if error (message/render (:message error)) (v2.tu/strip-data-boundary (-> result :content first :text)))))
+    (cond
+      error             (message/render (:message error))
+      (:isError result) (-> result :content first :text)
+      :else             (v2.tu/strip-data-boundary (-> result :content first :text)))))
 
 (def ^:private content-read #{metabot.scope/agent-content-read})
 

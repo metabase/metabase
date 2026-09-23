@@ -55,9 +55,13 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
-  [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text v2.tu/strip-data-boundary)))
+  "The outcome's text block, or a registry-level rejection's message. A success's JSON must sit
+   inside a data boundary, which is stripped; an error's text is returned raw."
+  [{:keys [result error] :as outcome}]
+  (cond
+    error                     (message/render (:message error))
+    (dispatch-error? outcome) (-> result :content first :text)
+    :else                     (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- payload
   "The `structuredContent` of a successful response. Throws if the tool errored, so a
