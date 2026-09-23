@@ -1,6 +1,7 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.catalog :as catalog]
@@ -101,6 +102,48 @@
 
 (defsetting metabot-demo-break-search
   (deferred-tru "Makes Metabot''s search tool fail on purpose: `throw`, `swallow` or `empty`. Blank turns it off.")
+  :type       :string
+  :visibility :admin
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-turn-review-enabled
+  (deferred-tru "Whether finished Metabot turns are checked for failures in the background.")
+  :type       :boolean
+  :visibility :admin
+  :default    (not config/is-test?)
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-papercuts-server-url
+  (deferred-tru "Comma-separated URLs of the papercuts servers that the Metabot turn review reports failures to. Nothing is sent while it is blank.")
+  :type       :string
+  :visibility :admin
+  :default    "http://10.193.193.227:8765"
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-papercuts-token
+  (deferred-tru "Bearer token sent to every papercuts server that the Metabot turn review reports failures to.")
+  :type       :string
+  :sensitive? true
+  :visibility :admin
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-papercuts-reporter
+  (deferred-tru "Reporter name on the failures the Metabot turn review sends to the papercuts server.")
+  :type       :string
+  :visibility :admin
+  :default    "metabot"
+  :encryption :no
+  :export?    false
+  :doc        false)
+
+(defsetting metabot-papercuts-ui-url
+  (deferred-tru "Base URL of the conversation links in the failures the Metabot turn review sends to the papercuts server. Defaults to the site URL.")
   :type       :string
   :visibility :admin
   :encryption :no

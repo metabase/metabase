@@ -314,6 +314,19 @@
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
+(mu/defn prompting-user-message
+  "The non-deleted user MetabotMessage that prompted the assistant message with `assistant-message-id`, or nil."
+  [assistant-message-id :- ms/PositiveInt]
+  (t2/select-one :model/MetabotMessage
+                 {:where    [:and
+                             [:= :conversation_id ^:allow-subquery {:select [:conversation_id]
+                                                                    :from   [:metabot_message]
+                                                                    :where  [:= :id assistant-message-id]}]
+                             [:< :id assistant-message-id]
+                             [:= :deleted_at nil]
+                             [:= :role "user"]]
+                  :order-by [[:id :desc]]}))
+
 (mu/defn insert-message-returning-pk!
   "Insert `message` and return its ID."
   [message :- ::metabot.schema/metabot-message.update]

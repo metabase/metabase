@@ -12,6 +12,7 @@
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.turn-review :as turn-review]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -424,7 +425,8 @@
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
-    (used-tables/record-used-tables! assistant-msg-id kept-parts)))
+    (used-tables/record-used-tables! assistant-msg-id kept-parts)
+    (turn-review/review-turn! assistant-msg-id parts {:profile-id profile-id :finished? finished? :error error})))
 
 (defn leaf-message
   "The conversation's most recent, non-deleted assistant message, or nil.
