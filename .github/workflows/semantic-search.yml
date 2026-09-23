@@ -89,7 +89,7 @@ jobs:
       CI: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -154,7 +154,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -226,7 +226,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -294,7 +294,7 @@ jobs:
       MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -348,7 +348,7 @@ jobs:
       MB_APPDB_PGVECTOR_MODE_TEST: 'true'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver

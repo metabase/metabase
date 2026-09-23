@@ -211,7 +211,7 @@ jobs:
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     # Shared by every app DB job below via `*app-db-test-steps`.
     steps: &app-db-test-steps
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
