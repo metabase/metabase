@@ -107,12 +107,11 @@
   :export?    false)
 
 (defsetting metabot-digest-surface-target
-  (deferred-tru "Roughly how many items Metabot should feature in a digest. A target, not a cap: the
-model chooses what is worth saying. Keep it well below [[metabot-digest-candidate-limit]], or there is
-nothing left for it to choose between.")
+  (deferred-tru "How many items a digest renders. Keep it well below [[metabot-digest-candidate-limit]], or
+ranking has nothing to choose between.")
   :type       :integer
   :visibility :internal
-  :default    5
+  :default    8
   :export?    false)
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------

@@ -1062,3 +1062,9 @@
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select [model :id :view_count] :id [:in ids]))
+
+(mu/defn cards-by-ids
+  "The Cards with `ids`, as whole rows. Whole rows because running one needs its `:dataset_query`,
+  `:database_id` and `:display`, and a partial Card select is rejected without `:card_schema`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Card :id [:in ids]))

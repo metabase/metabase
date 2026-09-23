@@ -16,6 +16,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.digest.news :as news]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.models.interface :as mi]
    [metabase.notification.api :as notification.api]
@@ -290,13 +291,56 @@
          (sort-by :score >)
          (take (metabot.settings/metabot-digest-candidate-limit)))))
 
+;;; ---------------------------------------------------- News -------------------------------------------------------
+
+(def ^:private news-weight
+  "How much a fully-interesting data anomaly is worth, relative to the relevance weights above. Set above every
+  individual relevance signal so something genuinely happening outranks something merely familiar — but below a
+  stack of them, so a dashboard you built, bookmarked and alerted on is not displaced by a mild wobble."
+  5.0)
+
+(defn- with-news
+  "Attach data-anomaly news to `candidates` and re-score.
+
+  Runs only over cards — dashboards and tables have no single query to analyse — and
+  [[metabase.metabot.digest.news/news-for]] declines cheaply for anything without a temporal breakout, so the
+  number of warehouse queries is bounded by eligibility rather than by candidate count."
+  [candidates]
+  (let [card-ids (into [] (comp (filter #(= :card (:model %))) (map :id)) candidates)
+        cards    (when (seq card-ids)
+                   (into {} (map (juxt :id identity)) (metabot.db/cards-by-ids card-ids)))]
+    (for [candidate candidates
+          :let [news (when-let [card (get cards (:id candidate))]
+                       (try
+                         (news/news-for card)
+                         (catch Exception e
+                           (log/warnf "Digest news failed for card %s: %s" (:id candidate) (ex-message e))
+                           nil)))]]
+      (cond-> candidate
+        news (-> (assoc :news news)
+                 (update :reasons conj {:signal          :data-anomaly
+                                        :interestingness (:interestingness news)
+                                        :outliers        (:recent-outliers news)})
+                 (update :score + (* news-weight (or (:interestingness news) 0.0))))))))
+
 (defn digest-selection
   "The items the digest actually renders: the top [[metabase.metabot.settings/metabot-digest-surface-target]]
-  candidates.
+  candidates, after news has had a chance to reorder them.
+
+  News is applied across the whole candidate pool rather than to an already-chosen handful, so something newsworthy
+  can be promoted past something merely relevant — which is the entire point of computing it.
+
+  Ordering is in two tiers: everything with a data anomaly, then everything without, each tier by score. A blended
+  score alone let a heavily-bookmarked item with flat numbers outrank one whose numbers actually moved, which
+  inverts what a digest is for. Score still orders *within* each tier, so the most interesting anomaly leads and
+  relevance decides the rest.
 
   Selection is deterministic and server-owned. The model annotates this list — it does not choose it, and cannot
   add to or drop from it. Both the prompt and `render_digest` read the selection from here so they cannot disagree
   about which items are in play."
   [user-id]
-  (vec (take (metabot.settings/metabot-digest-surface-target)
-             (digest-candidates user-id))))
+  (->> (digest-candidates user-id)
+       with-news
+       (sort-by (fn [{:keys [news score]}] [(if news 0 1) (- score)]))
+       (take (metabot.settings/metabot-digest-surface-target))
+       vec))

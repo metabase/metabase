@@ -36,9 +36,23 @@
   (let [rendered (str/join " " (keep (fn [[k v]] (attr k v)) attrs))]
     (format "<%s%s/>" (name tag-name) (if (str/blank? rendered) "" (str " " rendered)))))
 
+(defn- outlier->xml
+  "One anomalous bucket. `buckets-ago` is how far back it sits, so 0 is the latest bucket — that is what makes it
+  news rather than history."
+  [{:keys [label value buckets-from-end]}]
+  (tag :point {:bucket      (some-> label str)
+               :value       (when (number? value) (Math/round (double value)))
+               :buckets-ago buckets-from-end}))
+
 (defn- reason->xml
-  [{:keys [signal viewed-at bookmarked-at condition mine?]} now]
+  [{:keys [signal viewed-at bookmarked-at condition mine? interestingness outliers]} now]
   (case signal
+    :data-anomaly
+    (str/join "\n"
+              (concat [(format "<reason signal=\"data-anomaly\" interestingness=\"%.2f\">"
+                               (double (or interestingness 0.0)))]
+                      (map #(str "  " (outlier->xml %)) outliers)
+                      ["</reason>"]))
     :bookmark     (tag :reason {:signal "bookmark"
                                 :bookmarked-days-ago (days-ago bookmarked-at now)})
     :authored     (tag :reason {:signal "authored"})
@@ -87,7 +101,12 @@
                          (keep #(reason->xml % now) reasons)
                          (keep identity [(popularity->xml view-count)]))]
     (str/join "\n" (concat [(format "  <item %s>" open)]
-                           (map #(str "    " %) children)
+                           ;; a child can be multi-line (a reason with nested points), so indent every line
+                           (map (fn [child]
+                                  (->> (str/split-lines child)
+                                       (map #(str "    " %))
+                                       (str/join "\n")))
+                                children)
                            ["  </item>"]))))
 
 (defn items->xml
