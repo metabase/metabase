@@ -224,7 +224,6 @@
 
 (search/define-spec "measure"
   {:model :model/Measure
-   :where [:= :this.worktree_id nil]
    :attrs {:archived true
            :collection-id false
            :creator-id true

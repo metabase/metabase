@@ -4,6 +4,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -318,6 +319,8 @@
    _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values ms/FieldValuesList]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "A Field's values are shared by every worktree, so they can only be edited in the main app."])
   (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "

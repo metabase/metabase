@@ -573,7 +573,6 @@
 
 (search.spec/define-spec "transform"
   {:model        :model/Transform
-   :where        [:= :this.worktree_id nil]
    :visibility   :superuser
    :attrs        {:archived      false
                   :collection-id false

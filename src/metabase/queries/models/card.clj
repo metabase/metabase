@@ -1534,13 +1534,13 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"] [:= :this.worktree_id nil])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "question"])))
 
 (search/define-spec "dataset"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"] [:= :this.worktree_id nil])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "model"])))
 
 (search/define-spec "metric"
-  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"] [:= :this.worktree_id nil])))
+  (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
 
 (defmethod staleness/find-stale-query :model/Card
   [_model args]

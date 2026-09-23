@@ -3171,7 +3171,7 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{app-db util}
+   :uses #{util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table

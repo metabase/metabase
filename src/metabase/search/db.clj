@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
@@ -30,6 +31,14 @@
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
           [column {:optional true} ::h2x/expr])))
 
+(defn- do-with-index-scope
+  "Read the rows of `search-model` the index holds: every worktree's for a model a worktree checks out, since each
+  row carries the worktree it belongs to, and the main app's for a model whose index row every worktree shares."
+  [search-model thunk]
+  (if (isa? (:model (search.spec/spec search-model)) :hook/worktree-id)
+    (mdb.worktree/without-worktree-scoping (thunk))
+    (mdb.worktree/with-worktree nil (thunk))))
+
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.
@@ -41,19 +50,24 @@
   Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
-  (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
+  (do-with-index-scope search-model
+                       #(mdb/streaming-reducible-query
+                         (ingestion.query/spec-index-query-where search-model where-clause))))
 
 (mu/defn spec-index-row
   "A probe row when the `search-model` row with the underlying model PK `id` is indexable, or nil."
   [search-model :- :string
    id           :- ms/PositiveInt]
-  (t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id id])
-                    (assoc :select [[[:inline 1] :one]] :limit 1))))
+  (do-with-index-scope search-model
+                       #(t2/query-one (-> (ingestion.query/spec-index-query-where search-model [:= :this.id id])
+                                          (assoc :select [[[:inline 1] :one]] :limit 1)))))
 
 (mu/defn spec-index-count
   "The number of indexable rows of `search-model`."
   [search-model :- :string]
-  (:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model) :select [[:%count.* :count]]))))
+  (do-with-index-scope search-model
+                       #(:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model)
+                                                     :select [[:%count.* :count]])))))
 
 (mu/defn in-place-model-set-rows
   "The `:model` rows of the in-place search engine's model-set query for `search-ctx`, or nil when no model applies."

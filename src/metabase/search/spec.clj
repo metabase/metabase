@@ -90,7 +90,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_id})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_id :worktree_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -113,6 +113,7 @@
    :updated-at              :timestamp
    :verified                :boolean
    :view-count              :int
+   :worktree-id             :int
    :display-type            :text
    :is-published            :boolean
    :source-type             :text
@@ -152,13 +153,22 @@
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
          :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
-         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
+         :data-authority                                    ;;  input to the precomputed :curated flag (authoritative tables)
+         :worktree-id])
        distinct
        vec))
 
 (def ^:private default-attrs
   {:id   true
    :name true})
+
+(defn ^:no-doc worktree-attr
+  "Select the worktree of a model a worktree checks content out into, as 0 for the main app's own, so a search reads
+  one worktree's rows and those of the models no worktree holds, which carry none. Impl for [[define-spec]]."
+  [spec]
+  (cond-> spec
+    (isa? (:model spec) :hook/worktree-id)
+    (assoc-in [:attrs :worktree-id] [:coalesce :this.worktree_id [:inline 0]])))
 
 (def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
@@ -428,7 +438,8 @@
      (let [spec# (-> ~spec
                      (assoc :name ~search-model)
                      (update :visibility #(or % :all))
-                     (update :attrs #(merge ~default-attrs %)))]
+                     (update :attrs #(merge ~default-attrs %))
+                     worktree-attr)]
        (validate-spec! spec#)
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))

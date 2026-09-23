@@ -36,24 +36,18 @@
   (t2/select :model/Transform :id [:in transform-ids]))
 
 (mu/defn transforms-of-source-types
-  "The Transforms whose source type is one of `source-types`, in the remote-sync worktree `worktree-id` (nil is
-  the main app), optionally narrowed to `database-id`, ordered by ID."
+  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
   [source-types :- [:set :string]
-   database-id  :- [:maybe ::lib.schema.id/database]
-   worktree-id  :- [:maybe ms/PositiveInt]]
+   database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/Transform {:where    [:and
-                                          [:= :worktree_id worktree-id]
                                           [:in :source_type source-types]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))
 
 (mu/defn transform-dependency-rows
-  "The ID, target, target Table ID, creation time, and table dependencies of every main-app Transform. A transform
-  a remote-sync worktree checked out is never part of a plan: it does not run, and its copy must never stand in
-  for the main app's transform."
+  "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
-             :worktree_id nil))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
 (mu/defn transform-snapshot
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -130,12 +124,9 @@
   (t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in tag-ids]))
 
 (mu/defn transform-ids-with-tags
-  "The IDs of the main-app Transforms tagged with one of `tag-ids`. A worktree's transforms never run, so a job
-  never picks them up."
+  "The IDs of the Transforms tagged with one of `tag-ids`."
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
-  (t2/select-fn-set :transform_id :model/TransformTransformTag
-                    :tag_id [:in tag-ids]
-                    :worktree_id nil))
+  (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
 (mu/defn active-job-schedules-for-transforms
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."

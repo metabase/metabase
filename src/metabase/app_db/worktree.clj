@@ -205,12 +205,17 @@
             query
             set-operations)))
 
+(defn scope
+  "Restrict `query` to the worktree being worked in, or return it as it is when it is not a query map or nothing is
+  being restricted."
+  [query]
+  (cond-> query
+    (and *worktree-scoping* (map? query)) scope-query))
+
 (methodical/defmethod t2.pipeline/build :after :default
   "Read and write only the worktree being worked in."
   [_query-type _model _parsed-args query]
-  (if (and *worktree-scoping* (map? query))
-    (scope-query query)
-    query))
+  (scope query))
 
 (def ^:private exists-subquery-path
   "Where an `exists` query holds the select it asks about."

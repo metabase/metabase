@@ -2511,7 +2511,6 @@
                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                   :location                   true}
    :where [:and
-           [:= :this.worktree_id nil]
            [:or [:= :namespace nil]
             [:= :namespace "analytics"]
             [:= :namespace "shared-tenant-collection"]
