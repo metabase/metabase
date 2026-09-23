@@ -1,7 +1,7 @@
 ---
 id: megabot-api
 title: Calling the Metabase REST API
-description: How to use call_api (with list_api_endpoints and describe_api_endpoint) to do anything the product can do — save questions, build dashboards, run actions, manage collections, trigger sync, create alerts.
+description: How to use call_api (with list_api_endpoints and describe_api_endpoint) to do anything the product can do — save questions, build dashboards, run actions, manage collections, trigger sync, create alerts, send a chart to Slack or email.
 tools: [call_api]
 ---
 `call_api` lets you make any Metabase REST API request as the current user. Anything a person can do
@@ -45,3 +45,34 @@ Notes:
   would — create things deliberately, and prefer reading (`GET`) to confirm state before mutating.
 - To discover the numeric ids of databases, tables, and fields, `query_app_db` is usually faster than
   the API (see "Finding warehouse tables and columns").
+
+## Sending a chart to Slack or email
+
+For a one-off send of a saved question (send it now, no schedule), use `POST /api/pulse/test`.
+Save the chart first with `save_result` if it isn't saved yet — you need a card id.
+
+```json
+{
+  "name": "Top users by token spend",
+  "cards": [{"id": 42509, "include_csv": false, "include_xls": false}],
+  "channels": [{"channel_type": "slack", "details": {"channel": "#analytics"},
+                "enabled": true, "schedule_type": "hourly"}],
+  "alert_condition": "rows"
+}
+```
+
+- **`alert_condition: "rows"` is required whenever there is no `dashboard_id`.** A card-only pulse
+  is treated as an alert, and without a condition it defaults to a goal check that fails for any
+  chart without a goal line. The endpoint still answers `{"ok": true}` — the failure is only logged
+  and nothing is delivered.
+- `{"ok": true}` confirms the request was accepted, not that the message arrived. Say it was sent,
+  but if the user reports nothing arrived, check the Slack integration with
+  `GET /api/pulse/form_input` (`channels.slack.configured`) and that the channel is one of
+  `channels.slack.fields[0].options`.
+- Slack: `details.channel` is the channel name with the leading `#` (or `@name` for a person).
+  Pick it from `GET /api/pulse/form_input`; the bot can only post to channels it has been added to.
+- Email: `"channel_type": "email"` with `"recipients": [{"email": "a@b.com"}]` or `[{"id": <user id>}]`
+  instead of `details`.
+- To send a whole dashboard, pass `dashboard_id` plus its cards; no `alert_condition` is needed then.
+- For a recurring subscription rather than a one-off send, create it with `POST /api/pulse`
+  (dashboards) or `POST /api/notification` (card alerts) instead.
