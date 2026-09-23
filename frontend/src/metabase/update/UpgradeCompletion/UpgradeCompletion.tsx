@@ -6,6 +6,7 @@ import {
   type useUpgradeStatus,
 } from "metabase/status/hooks/self-upgrade";
 import { Button, Paper, Stack, Text } from "metabase/ui";
+import { getBasename } from "metabase/utils/basename";
 import { reload } from "metabase/utils/dom";
 import { formatVersion } from "metabase/utils/version";
 
@@ -18,20 +19,29 @@ export function UpgradeCompletion({
   status,
   inline = false,
 }: UpgradeCompletionProps) {
-  const { hasStatus, phase, newVersion, errorMessage, reset } = status;
+  const { hasStatus, phase, newVersion, errorMessage, reset, operation } =
+    status;
   if (!hasStatus || (phase !== "done" && phase !== "failed")) {
     return null;
   }
   const displayVersion = formatVersion(newVersion ?? "");
-  const message =
-    phase === "done"
-      ? c("{0} is a version number")
-          .t`Metabase was updated to ${displayVersion}. Reload the page to use it.`
-      : errorMessage;
+  let message = errorMessage;
+  if (phase === "done") {
+    message =
+      operation === "downgrade"
+        ? c("{0} is a version number")
+            .t`Metabase was downgraded to ${displayVersion}. Reload the page to use it.`
+        : c("{0} is a version number")
+            .t`Metabase was updated to ${displayVersion}. Reload the page to use it.`;
+  }
   const handleReload = () => {
     clearUpgradeSession();
     reset();
-    window.history.replaceState(null, "", "/admin/settings/updates");
+    window.history.replaceState(
+      null,
+      "",
+      `${getBasename()}/admin/settings/updates`,
+    );
     reload();
   };
 

@@ -1,5 +1,13 @@
+import { getErrorStatus } from "metabase/api/client/errors";
+import { getBasename } from "metabase/utils/basename";
 import { compareVersions } from "metabase/utils/version";
-import type { Settings, UpgradeHealth } from "metabase-types/api";
+import type {
+  Settings,
+  UpgradeHealth,
+  UpgradeOperation,
+} from "metabase-types/api";
+
+import type { UpgradeSession } from "./upgrade-session";
 
 /** Fraction of the jar downloaded so far, or `null` while the size is unknown. */
 export function getDownloadProgress(upgradeHealth: UpgradeHealth | undefined) {
@@ -13,12 +21,32 @@ export function getDownloadProgress(upgradeHealth: UpgradeHealth | undefined) {
   return Math.max(0, Math.min(current / total, 1));
 }
 
-export function isUpgradedTo(
+export function isUpgradeComplete(
   version: string | null,
-  targetVersion: string | undefined,
+  session: UpgradeSession,
 ): version is string {
-  const comparison = compareVersions(version, targetVersion);
+  if (session.operation === "downgrade") {
+    return compareVersions(version, session.currentVersion) === -1;
+  }
+  const comparison = compareVersions(version, session.targetVersion);
   return comparison != null && comparison >= 0;
+}
+
+export function hasServerRefusedUpgrade(
+  error: unknown,
+  operation: UpgradeOperation,
+  hasStarted: boolean,
+) {
+  const status = getErrorStatus(error);
+  if (status == null) {
+    return false;
+  }
+  // Rollback can return a 5xx after swapping the jars, so verify the running
+  // version before deciding whether it failed.
+  if (operation === "downgrade") {
+    return status >= 400 && status < 500;
+  }
+  return !hasStarted;
 }
 
 /**
@@ -29,11 +57,14 @@ export function isUpgradedTo(
 export async function fetchRestartedVersion(): Promise<string | null> {
   try {
     const signal = AbortSignal.timeout(5000);
-    const health = await fetch("/api/health", { cache: "no-store", signal });
+    const health = await fetch(`${getBasename()}/api/health`, {
+      cache: "no-store",
+      signal,
+    });
     if (!health.ok) {
       return null;
     }
-    const properties = await fetch("/api/session/properties", {
+    const properties = await fetch(`${getBasename()}/api/session/properties`, {
       cache: "no-store",
       signal,
     });

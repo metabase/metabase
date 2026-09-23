@@ -15,7 +15,7 @@ export function GameUpgradeStatus({
   return (
     <header className={S.root}>
       <div className={S.heading}>
-        <h1>{getUpdateHeading(status.phase)}</h1>
+        <h1>{getUpdateHeading(status.phase, status.operation)}</h1>
         {!isComplete && <Loader size="lg" aria-hidden />}
       </div>
       <UpgradeProgress status={status} />
