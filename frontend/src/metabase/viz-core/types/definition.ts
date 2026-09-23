@@ -109,6 +109,13 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string | undefined;
+  getTitle?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
@@ -146,7 +153,7 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle" | "getHidden" | "getSection"
+  "getProps" | "getWrapperStyle" | "getHidden" | "getSection" | "getTitle"
 > & {
   id: string;
   style?: CSSProperties;

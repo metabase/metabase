@@ -713,6 +713,25 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
+// Only a split chart has a second axis to label. A chart with one axis, on
+// either side, labels it through `graph.y_axis.title_text`. The sides are
+// computed here rather than as a setting because only the sidebar needs them,
+// and computing them joins the whole dataset. The chart builds its axes from
+// the raw series, so the fields that read the sides ask for the raw series too.
+const isYAxisSplit = (
+  rawSeries: Series,
+  vizSettings: ComputedVisualizationSettings,
+) => {
+  // The sidebar also opens for charts that cannot render yet, such as a bar
+  // chart with no breakout, and building their series throws.
+  try {
+    const sides = getYAxisSides(rawSeries, vizSettings);
+    return sides.left && sides.right;
+  } catch {
+    return false;
+  }
+};
+
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
@@ -1006,11 +1025,14 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Label`;
     },
+    getTitle: (series, vizSettings) =>
+      isYAxisSplit(series, vizSettings) ? t`Left axis label` : t`Label`,
     index: 2,
     get group() {
       return t`Y-axis`;
     },
     widget: "input",
+    useRawSeries: true,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) => {
@@ -1029,30 +1051,17 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.y_axis.right.title_text": {
     getSection: () => t`Axes`,
     get title() {
-      return t`Label`;
+      return t`Right axis label`;
     },
-    index: 1,
+    index: 2,
     get group() {
-      return t`Right y-axis`;
+      return t`Y-axis`;
     },
     widget: "input",
-    // Only a split chart has a second axis to label. A chart with one axis,
-    // on either side, labels it through `graph.y_axis.title_text`. The sides
-    // are computed here rather than as a setting because only the sidebar
-    // needs them, and computing them joins the whole dataset.
-    getHidden: (series, vizSettings) => {
-      if (vizSettings["graph.y_axis.labels_enabled"] === false) {
-        return true;
-      }
-      // The sidebar also opens for charts that cannot render yet, such as a
-      // bar chart with no breakout, and building their series throws.
-      try {
-        const sides = getYAxisSides(series, vizSettings);
-        return !(sides.left && sides.right);
-      } catch {
-        return true;
-      }
-    },
+    useRawSeries: true,
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.y_axis.labels_enabled"] === false ||
+      !isYAxisSplit(series, vizSettings),
     // No getDefault: an unset value is what makes the right axis inherit the
     // left label, so saved questions keep their current rendering.
     getProps: (_series, vizSettings) => ({
