@@ -1,6 +1,15 @@
 name: Cross-Version Migration Tests
 
 on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+    paths:
+      - "cross-version/**"
+      - ".github/workflows/cross-version.yml"
+      - ".github/scripts/build-cross-version-matrix.js"
   workflow_dispatch:
     inputs:
       source_version:
@@ -11,17 +20,6 @@ on:
         description: "Target version (e.g., v1.58.7 or HEAD)"
         required: true
         type: string
-
-  # NOTE: this workflow is temporarily disabled until the cross version tests are fixed.
-  # pull_request:
-  #   paths:
-  #     - "cross-version/**"
-  #     - ".github/workflows/cross-version.yml"
-  #     - ".github/scripts/build-cross-version-matrix.js"
-
-  # schedule:
-  #   # Run nightly at 3 AM UTC
-  #   - cron: "0 3 * * *"
 
 jobs:
   # Generate matrix for scheduled/PR runs
@@ -42,7 +40,7 @@ jobs:
         with:
           script: |
             const { buildCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
-            const { config } = buildCrossVersionMatrix(${{ vars.CURRENT_VERSION }});
+            const { config } = buildCrossVersionMatrix(${{ vars.CURRENT_VERSION }}, 1);
             const matrix = JSON.stringify({ include: config });
             core.setOutput("matrix", matrix);
             console.log("matrix:", matrix);
