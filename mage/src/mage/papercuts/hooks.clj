@@ -56,6 +56,28 @@
 (defn- ours? [handler]
   (str/includes? (str (get handler "command")) "hackathon-2026-papercut/session_scan_hook.py"))
 
+(defn- other-groups
+  "The hook groups for `event` with this installer's handlers taken out, dropping groups left empty."
+  [config event]
+  (into []
+        (keep (fn [group]
+                (let [handlers (filterv (complement ours?) (get group "hooks" []))]
+                  (when (seq handlers) (assoc group "hooks" handlers)))))
+        (get-in config ["hooks" event] [])))
+
+(defn removed-config
+  "`config` without this installer's handlers. Events and a hooks map left empty are removed too."
+  [config]
+  (let [config (reduce (fn [config event]
+                         (let [groups (other-groups config event)]
+                           (if (seq groups)
+                             (assoc-in config ["hooks" event] groups)
+                             (update config "hooks" #(some-> % (dissoc event))))))
+                       config
+                       events)]
+    (cond-> config
+      (and (contains? config "hooks") (empty? (get config "hooks"))) (dissoc "hooks"))))
+
 (defn updated-config
   "Preserve other hooks and replace only this installer's handlers. Repeated installation is idempotent."
   ([config source] (updated-config config source default-server))
@@ -63,12 +85,7 @@
    (let [server (normalize-server server)]
      (reduce
       (fn [config event]
-        (let [groups    (get-in config ["hooks" event] [])
-              preserved (into []
-                              (keep (fn [group]
-                                      (let [handlers (filterv (complement ours?) (get group "hooks" []))]
-                                        (when (seq handlers) (assoc group "hooks" handlers)))))
-                              groups)
+        (let [preserved (other-groups config event)
               handler   {"type"    "command"
                          "command" (hook-command source server)
                          "timeout" (if (and (= source "codex") (= event "SessionEnd")) 3 5)}]
@@ -142,9 +159,21 @@
                (println "Installed" source "hooks in" path)))))
      selected)))
 
-(defn install!
-  "Mage entry point. Merely running this task opts the user into automatic transcript scanning."
-  [{:keys [options]}]
+(defn uninstall-at!
+  "Remove this installer's hooks for `sources` under `home`, or where `env` points their config directories, keeping
+  every other hook. Public so tests can use a temporary home."
+  [env home sources]
+  (doseq [source sources]
+    (let [path   (config-path env home source)
+          before (read-config path)
+          after  (removed-config before)]
+      (if (= before after)
+        (println "Not installed:" path)
+        (do (write-config! path after)
+            (println "Removed" source "hooks from" path))))))
+
+(defn- install-papercut-hooks!
+  [options]
   (let [available (filterv fs/which agents)
         selected  (selected-agents (:agent options) available)
         server    (normalize-server (or (:server options) default-server))]
@@ -156,3 +185,12 @@
     (when (some #{"codex"} selected)
       (println "Codex may require trusting the new hooks with /hooks before they run."))
     (println "Hook scan log:" (fs/path u/project-root-directory "local" "papercuts" "hook-scan.log"))))
+
+(defn install!
+  "Mage entry point. Merely running this task opts the user into automatic transcript scanning; `--uninstall` opts
+  them out."
+  [{:keys [options]}]
+  (if (:uninstall options)
+    ;; An agent no longer on PATH can still have hooks to remove, so uninstalling doesn't check.
+    (uninstall-at! (into {} (System/getenv)) (fs/home) (case (:agent options) (nil "both") agents [(:agent options)]))
+    (install-papercut-hooks! options)))

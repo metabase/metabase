@@ -144,7 +144,7 @@ the claude CLI, and submits each papercut once."
               :validate [#{"claude" "codex"} "must be claude or codex"]]
              [nil "--drill-model MODEL" "Model for the drill-down agent"]
              [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "https://metaouch.dev") :default-desc "$PAPERCUTS_SERVER or https://metaouch.dev"]
-             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.claude)"]
              [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.claude.edn)"]
@@ -164,12 +164,14 @@ hook command, so it does not depend on the agent's environment. Existing hooks a
    :examples [["./bin/mage papercuts-install-hooks" "Install for every detected agent (claude and/or codex)"]
               ["./bin/mage papercuts-install-hooks --agent claude" "Install only the Claude hook"]
               ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]
-              ["./bin/mage papercuts-install-hooks --server http://127.0.0.1:8766" "Use a custom host and port"]]
+              ["./bin/mage papercuts-install-hooks --server http://127.0.0.1:8766" "Use a custom host and port"]
+              ["./bin/mage papercuts-install-hooks --uninstall" "Remove the hooks again, keeping every other hook"]]
    :requires [[mage.papercuts.hooks :as papercuts-hooks]]
    :options [[nil "--agent AGENT" "Install for claude, codex, or both (default: every agent on PATH)"
               :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]
              [nil "--server URL" "Static HTTP(S) server origin (default: https://metaouch.dev)"
-              :default "https://metaouch.dev"]]
+              :default "https://metaouch.dev"]
+             [nil "--uninstall" "Remove this installer's hooks (for both agents unless --agent is given)"]]
    :task (task! (papercuts-hooks/install! parsed))}
 
   papercuts-scan-codex
@@ -196,7 +198,7 @@ CLI, and submits each papercut once."
               :validate [#{"claude" "codex"} "must be claude or codex"]]
              [nil "--drill-model MODEL" "Model for the drill-down agent"]
              [nil "--server URL" "Papercuts server" :default (or (System/getenv "PAPERCUTS_SERVER") "https://metaouch.dev") :default-desc "$PAPERCUTS_SERVER or https://metaouch.dev"]
-             [nil "--repository NAME" "Repository the reports belong to" :default "metabase"]
+             [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token" :default (System/getenv "PAPERCUTS_TOKEN") :default-desc "$PAPERCUTS_TOKEN"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.codex)"]
              [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.codex.edn)"]

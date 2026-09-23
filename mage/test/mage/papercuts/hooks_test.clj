@@ -138,3 +138,26 @@
           (is (not (fs/exists? (fs/path home "shared" "hooks.json"))))))
       (finally
         (fs/delete-tree home)))))
+
+(deftest uninstall-at-test
+  (let [home (fs/create-temp-dir {:prefix "papercut-hooks-test"})]
+    (try
+      (let [claude   (fs/path home ".claude" "settings.json")
+            original {"model" "opus"
+                      "hooks" {"Stop" [{"hooks" [{"type" "command" "command" "existing-hook"}]}]}}
+            read     #(json/read-str (slurp (str %)) {:key-fn identity})]
+        (fs/create-dirs (fs/parent claude))
+        (spit (str claude) (json/write-str original))
+        (hooks/install-at! home ["claude"])
+        (hooks/uninstall-at! {} home ["claude" "codex"])
+        (testing "only this installer's handlers go, and events it alone used are removed"
+          (is (= original (read claude))))
+        (testing "a config with nothing of ours is left alone"
+          (hooks/uninstall-at! {} home ["claude" "codex"])
+          (is (= original (read claude)))
+          (is (not (fs/exists? (fs/path home ".codex" "hooks.json"))))))
+      (finally
+        (fs/delete-tree home)))))
+
+(deftest removed-config-test
+  (is (= {"model" "opus"} (hooks/removed-config (hooks/updated-config {"model" "opus"} "claude")))))

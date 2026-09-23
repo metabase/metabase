@@ -193,6 +193,21 @@
                          :timeout 10000}
                   body (assoc :body (json/write-str body)))))
 
+(defn repository-name
+  "A repository's short name from its remote URL: `metabase` for `git@github.com:metabase/metabase.git`."
+  [url]
+  (some->> url (re-find #"([^/:]+?)(?:\.git)?/*$") second not-empty))
+
+(defn- session-repository
+  "The repository to file a session's papercuts under: `--repository` when given, otherwise the name of the git remote
+  the session ran in, or of its working directory."
+  [{:keys [repository]} session entries]
+  (or repository
+      (let [cwd (or (some :cwd entries) (:cwd session))]
+        (or (repository-name (:repository_url (papercut-git/context {:cwd cwd :session-git (:git session)})))
+            (some-> cwd fs/file-name str not-empty)
+            "unknown"))))
+
 (defn known-papercuts
   "Open papercuts in `repository`, as `{:id :title}`, so a drill-down can file a hit under an existing one."
   [{:keys [repository] :as opts}]
@@ -205,6 +220,16 @@
       (let [{:keys [papercuts next_offset]} (json/read-str body)
             acc (into acc (map #(select-keys % [:id :title])) papercuts)]
         (if next_offset (recur next_offset acc) acc)))))
+
+(defn- known-for
+  "Known papercuts in `repository`, fetched once per run. A dry run can go ahead without a server; it just can't match
+  findings to known papercuts."
+  [{:keys [known-cache dry-run screen-only] :as opts} repository]
+  (let [opts (assoc opts :repository repository)
+        fetch (delay (if (or dry-run screen-only)
+                       (try (known-papercuts opts) (catch Exception _ []))
+                       (known-papercuts opts)))]
+    @(get (swap! known-cache #(cond-> % (not (contains? % repository)) (assoc repository fetch))) repository)))
 
 (defn- papercut-fingerprint
   "The first fingerprint of papercut `id`, so a new report joins it."
@@ -398,17 +423,19 @@
           (assoc state :line (:line (peek fresh)) :until (:ts (peek fresh)) :skipped "embargo"))
 
       :else
-      (reduce (fn [state chunk]
-                (if (and (:hold-short-tail opts) (< (count (:text chunk)) min-screen-chars))
-                  ;; Leave the stretch for the next run, and keep the session's old modified time so that run
-                  ;; picks it up even if the transcript doesn't change again, as at SessionEnd.
-                  (reduced (assoc state :modified (:modified prior)))
-                  (try
-                    (scan-chunk! opts session state chunk)
-                    (catch Exception e
-                      (reduced (assoc state ::error e))))))
-              state
-              (chunks earlier fresh)))))
+      (let [repository (session-repository opts session entries)
+            opts       (assoc opts :repository repository :known (known-for opts repository))]
+        (reduce (fn [state chunk]
+                  (if (and (:hold-short-tail opts) (< (count (:text chunk)) min-screen-chars))
+                    ;; Leave the stretch for the next run, and keep the session's old modified time so that run
+                    ;; picks it up even if the transcript doesn't change again, as at SessionEnd.
+                    (reduced (assoc state :modified (:modified prior)))
+                    (try
+                      (scan-chunk! opts session state chunk)
+                      (catch Exception e
+                        (reduced (assoc state ::error e))))))
+                state
+                (chunks earlier fresh))))))
 
 ;;; Entry point
 
@@ -440,11 +467,7 @@
         state      (atom (cond-> (load-state state-file)
                            ;; A rescan forgets how far each session was read, but not what it already reported.
                            (:rescan options) (update :sessions update-vals #(select-keys % [:reported]))))
-        ;; A dry run can go ahead without a server; it just can't match findings to known papercuts.
-        known      (if (or (:dry-run options) (:screen-only options))
-                     (try (known-papercuts opts) (catch Exception _ []))
-                     (known-papercuts opts))
-        opts       (assoc opts :known known)
+        opts       (assoc opts :known-cache (atom {}))
         sessions   (cond->> (candidate-sessions source opts @state)
                      (:limit options) (take (:limit options)))
         persist?   (not (or (:dry-run options) (:screen-only options)))

@@ -54,6 +54,11 @@ class WebViewTest(StoreCase):
         self.assertIn("setTimeout(applyFilters, event.target.matches('input') ? 300 : 0)", page)
         self.assertIn("setInterval(refreshPage, 15000)", page)
 
+    def test_list_previews_are_plain_text(self):
+        self.papercut("Markdown preview", description="Intro `code` and **bold**.\n\n## Links\n\n- [Conversation](http://x) here")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("<p class='issue-summary'>Intro code and bold. Conversation here</p>", page)
+
     def test_description_fields_and_safe_markdown(self):
         narrative, fix, facts = server.description_parts(
             "Uses `zsh` and **fails**.\n\nSuggested fix: Check *flags*.\n\n"
@@ -751,7 +756,7 @@ class MigrationTest(unittest.TestCase):
         self.assertEqual(store.get_papercut(1)["report_count"], 1)
 
 
-class HttpTest(unittest.TestCase):
+class HttpCase(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.store = server.Store(Path(self.temp.name) / "papercuts.sqlite3")
@@ -779,6 +784,8 @@ class HttpTest(unittest.TestCase):
         return self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": report_id,
                                                   "title": title, "fingerprint": title})
 
+
+class HttpTest(HttpCase):
     def test_status_codes(self):
         self.assertEqual(self.report("r1")[0], 201)
         self.assertEqual(self.report("r2")[0], 201)
