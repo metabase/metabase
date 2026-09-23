@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [metabase.config.core :as config]
    [metabase.util.log :as log])
   (:import
@@ -10,7 +11,8 @@
 
 (defn- docker-check []
   (try
-    (when (re-find #"docker" (slurp "/proc/1/cgroup")) ; TODO
+    ;; this isn't a real file so trying to read it with java io file fails
+    (when (re-find #"docker" (:out (shell/sh "cat" "/proc/1/cgroup")))
       (throw (ex-info "Automatic upgrade not supported in docker" {:status-code 400})))
     (catch Exception _)))
 
@@ -51,6 +53,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 
 (def ^:private progress (atom {:status :not-upgrading}))
 
+;; based on clojure.java.io/copy but with status reporting
 (defn- copy [^InputStream input ^OutputStream output]
   (let [buffer-size 1024
         buffer (make-array Byte/TYPE buffer-size)]
@@ -83,9 +86,11 @@ by moving %s to %s and restarting." new-jar-path jar-path))
     (let [response (http/get latest-jar-url {:as :stream})
           total (parse-long (-> response :headers (get "Content-Length")))]
       (swap! progress assoc :total total :current 0)
-      (io/copy (:body response) (io/output-stream temp-jar-path)))
+      (with-open [out (io/output-stream temp-jar-path)]
+        (io/copy (:body response) out)))
     (swap! progress assoc :status :downloaded)
     (log/info "Download complete.")
+    (log/info (prn-str @progress))
     (spit (io/file (instructions-path jar-path)) instructions)
     (.renameTo (io/file jar-path) (io/file new-jar-path))
     (.renameTo (io/file temp-jar-path) (io/file jar-path))
@@ -105,6 +110,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 ;; * bin/build.sh
 ;; * ./supervisor.sh
 ;; * curl -XPOST http://localhost:8088/api/upgrade
+;; * curl http://localhost:8088/api/upgrade/health # while it's running
 
 ;; supervisor.sh:
 
@@ -112,4 +118,3 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 ;; MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar MB_JETTY_PORT=8088 java -jar target/uberjar/metabase.jar
 ;; sleep 2 # give the user a chance to ctrl-c out of it
 ;; exec $0
-
