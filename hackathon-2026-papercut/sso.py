@@ -23,13 +23,8 @@ LOGIN_SECONDS = 10 * 60
 # Where to go after signing in: a path on this site, never `//host` or `/\host`.
 LOCAL_PATH = re.compile(r"/(?![/\\])[!-~]*")
 
-# The email signed in on the request this thread is answering, for the page header.
+# The email signed in on the request this thread is answering.
 signed_in = threading.local()
-
-
-def account_html():
-    email = getattr(signed_in, "email", None)
-    return f"<span class='muted'>{html.escape(email)} · <a href='/auth/logout'>Sign out</a></span>" if email else ""
 
 
 def from_env(environ):
