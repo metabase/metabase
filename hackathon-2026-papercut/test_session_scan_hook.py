@@ -16,11 +16,15 @@ SPEC.loader.exec_module(hook)
 class SessionScanHookTest(unittest.TestCase):
     def test_scan_command_is_single_session(self):
         session_id = "12345678-1234-1234-1234-123456789abc"
-        command = hook.scan_command("codex", session_id)
+        command = hook.scan_command("codex", session_id, "SessionEnd")
         self.assertEqual(command[1:], ["papercuts-scan-codex", "--session", session_id,
                                         "--min-idle", "0", "--no-subagents", "--jobs", "1"])
+        # A session can go on after Stop, so a short last stretch waits for the next turn.
+        self.assertEqual(hook.scan_command("codex", session_id, "Stop"), command + ["--hold-short-tail"])
         with self.assertRaises(ValueError):
-            hook.scan_command("codex", "anything --rescan")
+            hook.scan_command("codex", "anything --rescan", "Stop")
+        with self.assertRaises(ValueError):
+            hook.scan_command("codex", session_id, "SessionStart")
 
     def test_launch_only_supported_events_and_suppresses_nested_agent(self):
         session_id = "12345678-1234-1234-1234-123456789abc"
@@ -29,6 +33,7 @@ class SessionScanHookTest(unittest.TestCase):
                 mock.patch.object(hook.subprocess, "Popen") as popen:
             self.assertTrue(hook.launch("claude", payload))
             self.assertTrue(popen.call_args.kwargs["start_new_session"])
+            self.assertEqual(popen.call_args.args[0][-3:], ["claude", session_id, "Stop"])
             self.assertFalse(hook.launch("claude", {**payload, "hook_event_name": "SessionStart"}))
             with mock.patch.dict(hook.os.environ, {"PAPERCUTS_SCAN_HOOK": "1"}):
                 self.assertFalse(hook.launch("claude", payload))

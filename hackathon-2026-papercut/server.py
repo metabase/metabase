@@ -634,8 +634,18 @@ def migrate_to_v6(db):
                   WHERE json_type(payload, '$.repository_url') = 'text'""")
 
 
+def migrate_to_v7(db):
+    """Clean repository URLs again, trimmed first. Ingestion trimmed the column but stored the request body as sent, so
+    a body URL with surrounding whitespace escaped version 6's anchored match."""
+    db.create_function("public_url", 1, public_url, deterministic=True)
+    db.execute("UPDATE reports SET repository_url = public_url(trim(repository_url)) WHERE repository_url IS NOT NULL")
+    db.execute("""UPDATE reports SET payload = json_set(payload, '$.repository_url',
+                                                  public_url(trim(json_extract(payload, '$.repository_url'))))
+                  WHERE json_type(payload, '$.repository_url') = 'text'""")
+
+
 # Each entry upgrades the database by one `user_version`.
-MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6)
+MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -1551,14 +1561,21 @@ UI_STYLE = """<style>
 }
 :root[data-theme="dark"] {""" + DARK_STATES + """}
 .icon {width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round}
-.theme-switch {display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface)}
+.theme-switch {display: inline-flex; padding: 3px; border: 1px solid transparent; border-radius: 10px;
+               transition: border-color .15s, background-color .15s}
+.theme-switch:is(:hover, :focus-within) {border-color: var(--border); background: var(--surface)}
 .header-actions .theme-switch button {display: grid; place-items: center; width: 32px; min-height: 30px; padding: 0; border: 0; border-radius: 7px;
-                                      background: none; color: var(--muted)}
+                                      overflow: hidden; background: none; color: var(--muted); transition: width .15s, opacity .15s}
+.theme-switch:not(:hover, :focus-within) button:not([aria-pressed=true]) {width: 0; opacity: 0}
 .header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
-.header-actions .theme-switch button[aria-pressed=true] {color: var(--text); background: var(--pill)}
+.theme-switch:is(:hover, :focus-within) button[aria-pressed=true] {color: var(--text); background: var(--pill)}
 @media (min-width: 931px) {
   .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
   .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(190px, 1.4fr) auto}
+  .chips {flex-wrap: nowrap; gap: .35rem; overflow-x: auto; padding: .2rem; margin-inline: -.2rem}
+  .chips .eyebrow {display: none}
+  .chip {flex: none; gap: .3rem; padding: 0 .55rem; font-size: .82rem; white-space: nowrap}
+  .chips .link, .chips .muted {flex: none}
 }
 .dropdown {position: relative}
 .dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
@@ -2356,17 +2373,21 @@ def main():
           f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",
           flush=True)
     changed = threading.Event()
+    # The source version the watcher starts from: the loaded one, and None after a rejected recheck, so the watcher
+    # checks the file again at once and a fix saved in between isn't missed.
+    baseline = Path(__file__).stat().st_mtime_ns
     try:
         while True:
             if args.reload:
                 changed.clear()
-                threading.Thread(target=watch_source, args=(server, changed), daemon=True).start()
+                threading.Thread(target=watch_source, args=(server, changed, baseline), daemon=True).start()
             server.serve_forever()
             if not changed.is_set():
                 break
             # Another save may have landed while the server stopped, so check the source that would run.
             if error := source_error():
                 print(f"Not reloading: {error}", file=sys.stderr, flush=True)
+                baseline = None
                 continue
             server.server_close()
             # The listening socket is closed and not inherited, so the new process binds the same port.
@@ -2387,10 +2408,10 @@ def source_error():
     return None
 
 
-def watch_source(server, changed):
-    """Stop `server` once this file has changed, stopped changing, and compiles. A broken edit keeps the running code."""
+def watch_source(server, changed, seen):
+    """Stop `server` once this file has changed from version `seen`, stopped changing, and compiles. A broken edit keeps
+    the running code."""
     source = Path(__file__)
-    seen = source.stat().st_mtime_ns
     while True:
         time.sleep(1)
         try:
@@ -2411,6 +2432,7 @@ def watch_source(server, changed):
         changed.set()
         server.shutdown()
         return
+
 
 if __name__ == "__main__":
     main()

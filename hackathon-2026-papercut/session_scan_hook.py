@@ -17,46 +17,51 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT / "local" / "papercuts"
 SESSION_ID = re.compile(r"^[0-9a-fA-F-]{36}$")
+EVENTS = {"Stop", "SessionEnd"}
 
 
-def scan_command(source, session_id):
-    if source not in {"claude", "codex"} or not SESSION_ID.fullmatch(session_id):
-        raise ValueError("invalid source or session ID")
-    return [str(ROOT / "bin" / "mage"), f"papercuts-scan-{source}",
-            "--session", session_id, "--min-idle", "0", "--no-subagents", "--jobs", "1"]
+def scan_command(source, session_id, event):
+    if source not in {"claude", "codex"} or not SESSION_ID.fullmatch(session_id) or event not in EVENTS:
+        raise ValueError("invalid source, session ID or event")
+    command = [str(ROOT / "bin" / "mage"), f"papercuts-scan-{source}",
+               "--session", session_id, "--min-idle", "0", "--no-subagents", "--jobs", "1"]
+    # After a turn the session may go on, so a short last stretch waits to be screened with the next turn's.
+    # SessionEnd screens whatever is left.
+    return command + ["--hold-short-tail"] if event == "Stop" else command
 
 
 def launch(source, payload):
     if os.environ.get("PAPERCUTS_SCAN_HOOK") == "1":
         return False  # The drill-down agent must not scan itself.
-    if payload.get("hook_event_name") not in {"Stop", "SessionEnd"}:
+    event = payload.get("hook_event_name")
+    if event not in EVENTS:
         return False
     session_id = payload.get("session_id")
     if not isinstance(session_id, str):
         return False
-    scan_command(source, session_id)
+    scan_command(source, session_id, event)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with (LOG_DIR / "hook-scan.log").open("a") as log:
-        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker", source, session_id],
+        subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--worker", source, session_id, event],
                          cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                          start_new_session=True, close_fds=True)
     return True
 
 
-def work(source, session_id):
+def work(source, session_id, event):
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     # The last assistant message may reach the transcript just after Stop.
     time.sleep(3)
     with (LOG_DIR / f"hook-scan.{source}.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        print(f"Scanning {source} session {session_id}", flush=True)
-        return subprocess.call(scan_command(source, session_id), cwd=ROOT,
+        print(f"Scanning {source} session {session_id} after {event}", flush=True)
+        return subprocess.call(scan_command(source, session_id, event), cwd=ROOT,
                                env={**os.environ, "PAPERCUTS_SCAN_HOOK": "1"})
 
 
 def main():
-    if len(sys.argv) == 4 and sys.argv[1] == "--worker":
-        return work(sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 5 and sys.argv[1] == "--worker":
+        return work(sys.argv[2], sys.argv[3], sys.argv[4])
     if len(sys.argv) != 2 or sys.argv[1] not in {"claude", "codex"}:
         print("usage: session_scan_hook.py claude|codex", file=sys.stderr)
         return 2

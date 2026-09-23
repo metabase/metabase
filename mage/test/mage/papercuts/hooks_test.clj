@@ -103,3 +103,25 @@
           (is (not (fs/exists? (fs/path home ".claude"))))))
       (finally
         (fs/delete-tree home)))))
+
+(deftest install-at-symlink-through-directories-test
+  (let [home (fs/create-temp-dir {:prefix "papercut-hooks-test"})]
+    (try
+      (testing "a loop through a symlinked directory fails instead of hanging"
+        (let [dir (fs/path home ".claude")]
+          (fs/create-dirs dir)
+          (fs/create-sym-link (fs/path dir "loop") ".")
+          (fs/create-sym-link (fs/path dir "settings.json") "loop/settings.json")
+          (is (thrown-with-msg? Exception #"Symlink loop" (hooks/install-at! home ["claude"])))))
+      (testing "a relative target resolves from the link's real directory"
+        (let [dotfiles (fs/path home "dotfiles" "claude")
+              shared   (fs/path home "dotfiles" "shared")]
+          (fs/create-dirs dotfiles)
+          (fs/create-dirs shared)
+          (fs/create-sym-link (fs/path home ".codex") dotfiles)
+          (fs/create-sym-link (fs/path dotfiles "hooks.json") "../shared/hooks.json")
+          (hooks/install-at! home ["codex"])
+          (is (fs/exists? (fs/path shared "hooks.json")))
+          (is (not (fs/exists? (fs/path home "shared" "hooks.json"))))))
+      (finally
+        (fs/delete-tree home)))))

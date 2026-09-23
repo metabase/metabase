@@ -39,6 +39,10 @@
   "Chunk size. Jev takes at most 32k tokens of state; 60k characters of transcript stays well under that."
   60000)
 
+(def ^:private min-screen-chars
+  "A stretch shorter than this is too little for Jev to judge alone. With `--hold-short-tail` it waits for more."
+  500)
+
 (def ^:private context-chars
   "How much of the preceding stretch each chunk carries as context."
   6000)
@@ -313,9 +317,7 @@
 (defn- scan-chunk!
   "Screen one chunk, drill it if flagged, and submit what it finds. Returns the session state advanced past it."
   [{:keys [threshold dry-run screen-only verbose api-key known log] :as opts} session state chunk]
-  (let [{:keys [scores model]} (if (< (count (:text chunk)) 500)
-                                 {:scores {}}
-                                 (jev/screen! api-key chunk))
+  (let [{:keys [scores model]} (jev/screen! api-key chunk)
         flagged   (jev/flagged? scores threshold)
         found     (when (and flagged (not screen-only))
                     (drill/drill! opts (assoc chunk :session session :existing known)))
@@ -382,10 +384,14 @@
 
       :else
       (reduce (fn [state chunk]
-                (try
-                  (scan-chunk! opts session state chunk)
-                  (catch Exception e
-                    (reduced (assoc state ::error e)))))
+                (if (and (:hold-short-tail opts) (< (count (:text chunk)) min-screen-chars))
+                  ;; Leave the stretch for the next run, and keep the session's old modified time so that run
+                  ;; picks it up even if the transcript doesn't change again, as at SessionEnd.
+                  (reduced (assoc state :modified (:modified prior)))
+                  (try
+                    (scan-chunk! opts session state chunk)
+                    (catch Exception e
+                      (reduced (assoc state ::error e))))))
               state
               (chunks earlier fresh)))))
 

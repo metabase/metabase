@@ -80,7 +80,6 @@
     (str file)))
 
 (def ^:private flaky-test-messages
-  ;; Chunks under 500 characters are never screened, so the session needs some bulk.
   [(str "The quartz test failed again. " (str/join " " (repeat 40 "retrying.")))
    (str "It failed the same way. " (str/join " " (repeat 40 "retrying again.")))])
 
@@ -193,3 +192,17 @@
                      :report_count 3
                      :fingerprints ["papercut:loops-on-quartz-test" "papercut:reruns-flaky-quartz-test"]}]
                    (map #(select-keys % [:id :report_count :fingerprints]) (papercuts server))))))))))
+
+(deftest short-tail-waits-for-the-next-scan-test
+  (with-server!
+    (fn [server dir]
+      (let [projects   (str (fs/path dir "projects"))
+            state-file (str (fs/path dir "scan-state.claude.edn"))]
+        (write-session! projects "44444444-4444-4444-8444-444444444444" "2026-09-20T10:00:00Z"
+                        ["No, use ./bin/test-agent."])
+        (testing "after a turn, a stretch too short to screen waits"
+          (scan! server state-file projects flaky-test {:hold-short-tail true})
+          (is (empty? (papercuts server))))
+        (testing "the next scan screens it, though the transcript hasn't changed"
+          (scan! server state-file projects flaky-test)
+          (is (= [title] (map :title (papercuts server)))))))))
