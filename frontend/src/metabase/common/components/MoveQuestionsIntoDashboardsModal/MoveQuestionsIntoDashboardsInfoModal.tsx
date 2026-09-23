@@ -35,7 +35,11 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
     </List>
 
     <Flex justify="flex-end" gap="lg" pt="1rem">
-      <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
+      <Button
+        variant="subtle"
+        color="neutral"
+        onClick={onCancel}
+      >{t`Cancel`}</Button>
       <Button variant="filled" onClick={onConfirm}>
         {t`Preview the changes`}
       </Button>

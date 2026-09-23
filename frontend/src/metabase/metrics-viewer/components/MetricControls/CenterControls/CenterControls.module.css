@@ -36,11 +36,6 @@
   height: 2rem;
   padding-inline: 1rem;
   border-radius: 0.5rem;
-
-  &.controlButton:hover {
-    color: var(--mb-color-text-primary);
-    background-color: var(--mb-color-background_surface-hover);
-  }
 }
 
 .compactCenterControls {
@@ -52,8 +47,6 @@
   border-radius: 0.75rem;
   border: 1px solid var(--mb-color-border-neutral);
   color: var(--mb-color-text-primary);
-  font-weight: 700;
-  height: 2.5rem;
   width: 100%;
 
   &.xAxisButton:hover {

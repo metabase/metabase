@@ -107,8 +107,8 @@ export function MetabotIconField() {
           className={cx(CS.bgLight, CS.bordered, CS.rounded)}
           align="center"
           justify="center"
-          w="2.25rem"
-          h="2.25rem"
+          w="2rem"
+          h="2rem"
           flex="0 0 auto"
         >
           {iconPreviewSrc ? (
@@ -132,11 +132,7 @@ export function MetabotIconField() {
           multiple={false}
           onChange={handleIconUpload}
         />
-        <Button
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          flex="0 0 auto"
-        >
+        <Button onClick={() => fileInputRef.current?.click()} flex="0 0 auto">
           {t`Upload a custom icon`}
         </Button>
         {(iconFileName || !isDefaultIcon) && (
