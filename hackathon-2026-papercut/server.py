@@ -1420,7 +1420,6 @@ showTheme();
 </script>"""
 
 LIVE_REFRESH = """<script>
-const refreshButton = document.getElementById('refresh-now');
 const liveStatus = document.getElementById('live-status');
 const filterForm = document.getElementById('filters');
 let refreshSerial = 0;
@@ -1428,7 +1427,6 @@ let filterTimer;
 async function refreshPage(url = window.location.href) {
   if (document.hidden || filterTimer) return;
   const serial = ++refreshSerial;
-  liveStatus.textContent = 'Checking for updates…';
   try {
     const response = await fetch(url, {cache: 'no-store'});
     if (serial !== refreshSerial) return;
@@ -1452,6 +1450,10 @@ async function refreshPage(url = window.location.href) {
       window.location.reload();
       return;
     }
+    for (const card of nextMain.querySelectorAll('[data-report]')) {
+      const details = currentMain.querySelector(`[data-report="${card.dataset.report}"] details`);
+      if (details) card.querySelector('details').open = details.open;
+    }
     const currentResults = document.getElementById('results');
     const nextResults = next.getElementById('results');
     if (currentResults && nextResults) {
@@ -1459,7 +1461,7 @@ async function refreshPage(url = window.location.href) {
     } else if (currentMain.innerHTML !== nextMain.innerHTML) {
       currentMain.replaceWith(nextMain);
     }
-    liveStatus.textContent = 'Live · just checked';
+    liveStatus.textContent = 'Live';
   } catch (_) {
     if (serial === refreshSerial) liveStatus.textContent = 'Connection lost · retrying';
   }
@@ -1490,7 +1492,21 @@ if (filterForm) {
     applyFilters();
   });
 }
-refreshButton.addEventListener('click', () => refreshPage());
+let cursor;
+async function checkForChanges() {
+  if (document.hidden || filterTimer) return;
+  try {
+    const feed = await (await fetch('/api/papercuts?' + new URLSearchParams(cursor ? {since: cursor} : {limit: 1}),
+                                     {cache: 'no-store'})).json();
+    liveStatus.textContent = 'Live';
+    if (cursor !== undefined && feed.cursor !== cursor) refreshPage();
+    cursor = feed.cursor;
+  } catch (_) {
+    liveStatus.textContent = 'Connection lost · retrying';
+  }
+}
+checkForChanges();
+setInterval(checkForChanges, 3000);
 setInterval(refreshPage, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPage(); });
 </script>"""
@@ -1516,8 +1532,8 @@ UI_STYLE = """<style>
 .header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
 .header-actions .theme-switch button[aria-pressed=true] {color: var(--text); background: var(--pill)}
 @media (min-width: 931px) {
-  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(145px, 1.2fr) minmax(75px, .65fr) auto}
-  .toolbar.single-repository {grid-template-columns: minmax(230px, 2.2fr) minmax(120px, 1fr) minmax(155px, 1.25fr) minmax(75px, .65fr) auto}
+  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
+  .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(190px, 1.4fr) auto}
 }
 .dropdown {position: relative}
 .dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
@@ -1547,6 +1563,14 @@ UI_STYLE = """<style>
 .chip[data-value=documentation] {--dot: #4f86e0}
 .chips .link {min-height: 0; padding: 0 .2rem; border: 0; background: none; color: var(--link)}
 .issue-card.important {border-left: 4px solid var(--important)}
+.issue-card {position: relative}
+.issue-card h3 a::after {content: ""; position: absolute; inset: 0}
+.issue-card :is(a, button, summary, input, select, label):not(h3 a) {position: relative; z-index: 1}
+.issue-card:hover h3 a {text-decoration: underline}
+.issue-card h3 a:focus-visible {outline: none}
+.issue-card:has(h3 a:focus-visible) {outline: 3px solid var(--accent); outline-offset: 2px}
+#live-status::before {content: ""; display: inline-block; width: 7px; height: 7px; margin-right: .4rem; border-radius: 50%;
+                      background: #22a06b; vertical-align: 1px}
 .pill.important {display: inline-flex; align-items: center; gap: .3rem; color: var(--important); background: none; box-shadow: inset 0 0 0 1px currentColor}
 .pill.important .icon {width: 12px; height: 12px; fill: currentColor; stroke-width: 1.5}
 .severity-high, .fix-failed {background: var(--danger-bg); color: var(--danger-text)}
@@ -1661,13 +1685,19 @@ def page(title, body):
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             "<a class='brand' href='/'>✳ Papercuts</a><div class='header-actions'>"
-            "<span id='live-status' class='muted' role='status' aria-live='polite'>Live · updates every 15s</span>"
-            "<button id='refresh-now' type='button'>Refresh now</button>"
+            "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
             f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}</body></html>")
 
 
+def duration(minutes):
+    """Time lost as people say it: `< 1 min`, `12 min`, `1.5 h`."""
+    if minutes < 1:
+        return "< 1 min"
+    return f"{minutes:.0f} min" if minutes < 60 else f"{round(minutes / 60, 1):g} h"
+
+
 def cost(minutes):
-    return f" · {minutes:g} min lost" if minutes else ""
+    return f" · {html.escape(duration(minutes))} lost" if minutes else ""
 
 
 def pill(value):
@@ -1701,7 +1731,7 @@ def short_date(value):
 
 
 def cost_label(papercut):
-    return f"{papercut['cost_minutes']:g} min" if papercut["cost_reports"] else "Not estimated"
+    return html.escape(duration(papercut["cost_minutes"])) if papercut["cost_reports"] else "Not estimated"
 
 
 DESCRIPTION_FIELDS = ("Kind", "Impact", "Severity", "Source status", "Area", "Source", "Classification")
@@ -1977,7 +2007,7 @@ def report_card_html(report, papercut_description, expanded=False):
     esc = html.escape
     same_description = report["description"] == papercut_description
     description, suggested_fix, facts = description_parts(report["description"]) if not same_description else ("", None, {})
-    return (f"<article class='card report-card'><h3>{esc(report['reporter'])}"
+    return (f"<article class='card report-card' data-report='{report['id']}'><h3>{esc(report['reporter'])}"
             f"{' via ' + esc(report['agent']) if report['agent'] else ''}"
             f"{' on ' + esc(report['machine']) if report['machine'] else ''}</h3>"
             f"<p class='muted'>{esc(report['observed_at'] or report['received_at'])}"

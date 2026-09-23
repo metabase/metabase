@@ -898,6 +898,9 @@ class HttpTest(unittest.TestCase):
         for categories, total in (("unclassified,tooling", 2), ("tooling", 0), ("none", 0)):
             self.assertEqual(self.call("GET", f"/api/papercuts?category={categories}")[1]["total"], total)
 
+    def test_time_lost_reads_for_people(self):
+        self.assertEqual([server.duration(minutes) for minutes in (0.001, 12.4, 60, 90)], ["< 1 min", "12 min", "1 h", "1.5 h"])
+
     def test_html_escapes_titles(self):
         papercut_id = self.report("r1", "<script>alert(1)</script>")[1]["papercut"]["id"]
         _, page, _ = self.call("GET", f"/papercuts/{papercut_id}")
