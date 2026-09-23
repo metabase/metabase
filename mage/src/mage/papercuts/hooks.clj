@@ -66,12 +66,17 @@
     {}))
 
 (defn- link-target
-  "The file `path` finally points at, following symlinks even when the last target doesn't exist yet."
+  "The file `path` finally points at, following symlinks even when the last target doesn't exist yet. Throws on a
+  symlink loop."
   [path]
-  (if (fs/sym-link? path)
-    (let [target (fs/read-link path)]
-      (recur (str (if (fs/absolute? target) target (fs/path (fs/parent path) target)))))
-    (str path)))
+  (loop [path (str path) seen #{}]
+    (cond
+      (not (fs/sym-link? path)) path
+      (seen path)                (throw (ex-info (str "Symlink loop at " path) {:path path}))
+      :else
+      (let [target (fs/read-link path)]
+        (recur (str (fs/normalize (if (fs/absolute? target) target (fs/path (fs/parent path) target))))
+               (conj seen path))))))
 
 (defn- write-config! [path config]
   ;; Moving over a symlink would replace the link, so a dotfile-managed config would stop being managed.
