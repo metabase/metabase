@@ -19,6 +19,7 @@
    [metabase.jev.apps.joins :as jev.joins]
    [metabase.jev.apps.tables :as jev.tables]
    [metabase.jev.apps.usage :as jev.usage]
+   [metabase.jev.apps.viz :as jev.viz]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -48,4 +49,5 @@
                     jev.explorations/routes
                     jev.joins/routes
                     jev.usage/routes
+                    jev.viz/routes
                     (api.macros/ns-handler *ns*)))

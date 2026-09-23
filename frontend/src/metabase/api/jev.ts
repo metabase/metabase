@@ -218,6 +218,13 @@ export const jevApi = Api.injectEndpoints({
         url: `/api/jev/usage/table/${tableId}/shapes`,
       }),
     }),
+    suggestViz: builder.mutation<VizSuggestion, VizSuggestRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/jev/viz/suggest",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -234,6 +241,27 @@ export interface TableShapes {
   chips: TableShapeChip[];
 }
 
+/** One result column, as Jev's viz-suggest endpoint accepts it (from result `cols` metadata). */
+export interface VizSuggestColumn {
+  name: string;
+  base_type?: string;
+  semantic_type?: string | null;
+  source?: string;
+  unit?: string | null;
+}
+
+export interface VizSuggestRequest {
+  cols: VizSuggestColumn[];
+}
+
+export interface VizSuggestion {
+  /** One-line English description of the result's structure (deterministic). */
+  structure: string;
+  roles: { name: string; role: string; unit?: string | null }[];
+  /** Chart display types ranked by Jev fit score, high to low. */
+  ranked: { display: string; score: number }[];
+}
+
 export const {
   useSuggestEntityTypeMutation,
   useGetTableSuggestionsQuery,
@@ -242,4 +270,5 @@ export const {
   useSuggestJoinEdgesMutation,
   useRankQueryStepsMutation,
   useRankExplorationsMutation,
+  useSuggestVizMutation,
 } = jevApi;
