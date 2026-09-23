@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
@@ -104,7 +105,9 @@
   "Reducible Notifications, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
   creator or a recipient), `recipient-id`, `card-id`, and `payload-type`; active Notifications only unless
   `include-inactive?` or `legacy-active` (a boolean, overriding both) is given. `legacy-user-id` narrows to a User
-  who is either the creator or a recipient."
+  who is either the creator or a recipient. A card Notification belongs to the world its Card is in: the Card join is
+  worktree-scoped, so one whose Card another worktree owns, or whose Card a deleted worktree took with it, joins
+  nothing and drops out."
   [{:keys [creator-id creator-or-recipient-id recipient-id card-id payload-type include-inactive? legacy-active
            legacy-user-id]}
    :- [:map {:closed true}
@@ -118,7 +121,16 @@
        [:legacy-user-id           {:optional true} [:maybe ::lib.schema.id/user]]]]
   (t2/reducible-select
    :model/Notification
-   (cond-> {:select-distinct [:notification.*]}
+   (cond-> (-> {:select-distinct [:notification.*]}
+               (sql.helpers/left-join :notification_card
+                                      [:and
+                                       [:= :notification_card.id :notification.payload_id]
+                                       [:= :notification.payload_type "notification/card"]]
+                                      [:report_card :payload_card]
+                                      [:= :payload_card.id :notification_card.card_id])
+               (sql.helpers/where [:or
+                                   [:not= :notification.payload_type "notification/card"]
+                                   [:not= :payload_card.id nil]]))
      creator-id
      (sql.helpers/where [:= :notification.creator_id creator-id])
 
@@ -138,12 +150,7 @@
                              [:= :notification.creator_id creator-or-recipient-id]]))
 
      card-id
-     (-> (sql.helpers/left-join
-          :notification_card
-          [:and
-           [:= :notification_card.id :notification.payload_id]
-           [:= :notification.payload_type "notification/card"]])
-         (sql.helpers/where [:= :notification_card.card_id card-id]))
+     (sql.helpers/where [:= :notification_card.card_id card-id])
 
      (and (nil? legacy-active) (not (true? include-inactive?)))
      (sql.helpers/where [:= :notification.active true])
@@ -237,6 +244,13 @@
   "Whether a NotificationCard with `notification-card-id` exists."
   [notification-card-id :- ::lib.schema.id/card]
   (t2/exists? :model/NotificationCard notification-card-id))
+
+(mu/defn card-worktree-id
+  "The `:worktree_id` of the Card with `card-id`, read across every world: a Card of a worktree is invisible to the
+  main app, and a notification has to know about it either way."
+  [card-id :- ::lib.schema.id/card]
+  (mdb.worktree/without-worktree-scoping
+   (t2/select-one-fn :worktree_id :model/Card card-id)))
 
 (mu/defn notification-card-card-id
   "The `:card_id` of the NotificationCard with `notification-card-id`."
