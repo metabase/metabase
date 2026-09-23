@@ -68,3 +68,11 @@
                             [:commit_sha :commit_source]))))
       (testing "without a repository only the branch is known"
         (is (= {:branch "gone"} (papercut-git/context {:cwd "/no/such/dir" :branch "gone" :ts "2020-03-01T00:00:00Z"})))))))
+
+(deftest public-url-test
+  (testing "credentials and query parameters are dropped from URL remotes"
+    (is (= "https://github.com/org/repo.git"
+           (papercut-git/public-url "https://user:ghp_secret@github.com/org/repo.git?token=x#frag")))
+    (is (= "https://github.com/org/repo.git" (papercut-git/public-url "https://ghp_secret@github.com/org/repo.git"))))
+  (testing "scp-style remotes name only a login user, and pass through"
+    (is (= "git@github.com:org/repo.git" (papercut-git/public-url "git@github.com:org/repo.git")))))
