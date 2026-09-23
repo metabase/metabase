@@ -15,12 +15,162 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
 - "I want to build a data app" / any vague intent to author a data app
+- "turn this collection into a data app" / "build a data app from these saved
+  questions/this collection" / any request to convert existing saved-question
+  content into an app — see *Starting from an existing collection* below
+  before Step 1.
+- "turn this dashboard into a data app" / "build a data app from this
+  dashboard" — see *Starting from an existing dashboard* below before Step 1:
+  the collection pipeline plus dashboard-specific layout, filter, and tab
+  handling.
 - Starting a fresh agent task that will produce a data-app bundle.
 - Do **not** use this skill for an existing data-app project when the task is to
   build screens, use Metabase data, generate or refresh schema files, wire saved
   questions / tables / metrics / actions, add filters, or author data hooks.
   Treat those as existing-data-app editing tasks and use the agent's normal
   skill-discovery flow from the user's wording.
+
+## Starting from an existing collection
+
+A data app never queries a saved question directly — the semantic layer's
+typed schema only exposes tables and metrics (`schema.tables.*` /
+`schema.metrics.*`), never `schema.questions.*`. So "turn collection X into a
+data app" is not just Step 1 below; it's this pipeline first, run once before
+scaffolding:
+
+1. **Read the source collection.** Prefer the remote-sync repository's
+   `collections/` directory — the serialized YAML there names every saved
+   question, its `dataset_query`, and its dashboards without extra API calls.
+   Fall back to `mb collection items <id> --json` if the repo copy is stale or
+   the collection isn't serialized yet.
+
+   Build a worksheet of every saved question in scope: its name, id, source
+   database, and — critically — which of its columns/filters the app should
+   let a viewer change at runtime (a date range, a status picker, a
+   store/franchise selector, etc.). Ask the user only if the app's filtering
+   needs aren't stated or obvious from the questions themselves.
+
+2. **Materialize each saved question as a transform.** Load `mb skills get
+   transform` (and `mb skills get mbql` if a `dataset_query` needs
+   restructuring) first. For each question, create a transform whose
+   `source.query` reproduces it — the simplest form is one
+   `mbql.stage/mbql` stage with `source-card: <card-id>` — targeting a table
+   in the connected database (e.g. schema `analytics`). Run each transform
+   (`mb transform run <id> --wait`) and confirm `succeeded`.
+
+   **Run each `mb transform create` / `mb transform run` as its own tool
+   call, never inside a shell loop with command substitution.** Such loops
+   have hung indefinitely in sandboxed shells even though each individual
+   `mb transform run` completes in about a second on its own — sequential
+   calls are simpler and more reliable for the handful of transforms a
+   collection typically needs.
+
+   **Scope `source-card` to the collection being converted** — never a card
+   borrowed from elsewhere, even one computing an identical result. A
+   warehouse table that already exists (matching target name, or already
+   published to the Library) with verified-matching data is fair to reuse or
+   publish as-is regardless of which card produced it; that's reusing data,
+   not deriving from a foreign card. On a name collision with an unverified
+   table, rename the new transform's target instead of repointing to it.
+
+   **The one place this diverges from a plain "materialize the question"
+   pass:** if the app should let a viewer dynamically change a filter (a date
+   range, a status, a category), the transform's output **must not** bake
+   that filter in as a fixed `WHERE`/`filter` clause, and must preserve the
+   raw column the filter needs (as a breakout, not aggregated away). A
+   transform is a fixed materialization; a dynamic filter is a second query
+   stage the data app layers on top of it at runtime (see the semantic-layer
+   skill's *Static and dynamic query parts*) — the two are not
+   interchangeable, and a filter baked into the transform can't be un-baked
+   from inside the app. Everything else about the question — fixed
+   aggregations, joins, non-interactive breakouts — belongs in the transform
+   as normal; only the dimensions a viewer will actually control need to
+   survive unfiltered/ungrouped into the transform's output.
+
+3. **Publish the transformed tables to a Library sub-collection.** Load `mb
+   skills get core` (the library section) if needed.
+   - Create a sub-collection under the Library's Data collection, named after
+     the source collection or another name the user gives:
+     `mb collection create --body '{"name":"<name>","parent_id":<data-collection-id>}'`
+     (`mb library get --json` finds the Data collection id).
+   - Publish every transform's output table:
+     `mb library publish --table-ids <id1,id2,...>`.
+   - Move each published table into the new sub-collection — there's no bulk
+     move, loop `mb table update <table-id> --body '{"collection_id":<sub-collection-id>}'`
+     over the ids (read each `target_table_id` off its transform run).
+   - Verify with `mb collection items <sub-collection-id> --json`: every
+     transformed table listed, `is_published: true`.
+   - If remote-sync is configured, the Library Data collection is typically
+     already in git-sync scope (check `is_remote_synced`); if not,
+     `mb git-sync add-collection <data-collection-id>`.
+
+4. **Scaffold the app from here on as normal (Steps 1–5 below)**, scoping the
+   generated schema (in the semantic-layer skill's *Generate Schema* step) to
+   the new sub-collection with `library-collections=<id-or-entity-id>`. If
+   that scoped export 500s on the running instance, fall back to
+   `database=<db-id>` and tell the user — that's a server-side limitation, not
+   a sign the sub-collection is wrong.
+
+   **Split into multiple pages when the collection spans several domains or
+   is large.** Group the transformed tables by business domain (e.g.
+   revenue/growth, customers, operations, franchise/store performance). One
+   or two domains with a handful of tables each → a single page with labeled
+   sections is enough. Three or more distinct domains, or enough tables that
+   one page would need heavy scrolling to reach the later ones → give each
+   domain its own page and wire them with the `metabase-data-app-routing`
+   skill's `DataAppRouter`/`DataAppLink`, making sure the first/leftmost page
+   is what loads at the base route (see *If the app has multiple tabs...*
+   below).
+
+## Starting from an existing dashboard
+
+Same pipeline as *Starting from an existing collection* above — materialize as
+transforms, publish to a Library sub-collection, scope the schema to it — plus
+three dashboard-only deltas: preserve the grid layout, carry dashboard filters
+over as dynamic filters, and turn tabs into router pages.
+
+1. **Read the source dashboard**, same as collection step 1, plus its
+   `dashcards` (`card_id`, `col`, `row`, `size_x`, `size_y`,
+   `dashboard_tab_id`), `tabs`, and `parameters` (each dashcard's
+   `parameter_mappings`) — from the repo's `collections/` YAML or
+   `mb dashboard get <id> --json`. Note each card's grid position and tab, and
+   which parameters map to which cards.
+
+2. **Materialize and publish per collection steps 2–3.** Extend the
+   "don't pre-filter" rule from user-requested filters to every
+   `parameter_mappings` column: it must survive unfiltered/ungrouped into the
+   transform's output, same as a user-requested dynamic filter.
+
+3. **Give the app one dynamic filter per dashboard parameter**, state lifted
+   above the router so every mapped page/card shares it (see the
+   semantic-layer skill's *Filter UI Patterns* for the control per `type`, and
+   *Static and dynamic query parts* for keeping the parameter's column a
+   static breakout with the filter applied dynamically). Scope each filter to
+   exactly the tabs its `parameter_mappings` named — a parameter mapped to one
+   tab's cards shows, and filters, only there.
+
+4. **One route per dashboard tab**, via the routing skill's
+   `DataAppRouter`/`DataAppLink`. Style the links as a tab strip — active tab
+   marked — not a sidebar or dropdown, and load the leftmost tab at the base
+   route (that skill's *Always preselect the default tab*).
+
+5. **Keep each tab's grid grouping**: KPI rows stay a row, half-width charts
+   stay side by side, full-width tables stay full-width. Recognizable parity,
+   not pixel parity with the 24-column grid.
+
+6. **Scaffold and build per collection step 4** — schema scoped to the new
+   sub-collection, then Steps 1–5 below.
+
+### Nested navigation when a collection includes a dashboard
+
+Mirror the source hierarchy instead of flattening every dashboard's tabs into
+one page list: top-level navigation (sidebar, or another page picker) for the
+collection's areas/dashboards, and inside each dashboard a local tab strip
+(step 4 above) scoped under that dashboard's own path prefix
+(`/franchise-performance`, `/franchise-performance/orders`, …, alongside a
+sibling dashboard's own `/other-dashboard/*` tree). Top-level nav answers
+"which area"; the local tab strip answers "which view of this dashboard" —
+the split the source collection and dashboard already draw.
 
 ## Step 1 — Locate the remote-sync repository
 
