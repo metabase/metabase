@@ -59,7 +59,10 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.util :as t2.util]))
 
-(events/derive! :event/table-fields-added :metabase/event)
+;; derive through a local key, never straight from :metabase/event: a handler also derives this topic from its own key
+;; under :metabase/event, and a direct edge next to that path makes `events/underive!` throw
+(events/derive! ::event :metabase/event)
+(events/derive! :event/table-fields-added ::event)
 
 (mr/def :event/table-fields-added
   [:map {:closed true}
