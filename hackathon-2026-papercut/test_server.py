@@ -104,9 +104,13 @@ class WebViewTest(StoreCase):
         self.assertIn("<option value='related' selected>Merge candidates (most related)</option>", page)
         self.assertIn("<span class='pill'>2 related</span>", page)
 
+        cursor = result["cursor"]
         self.store.unrelate(first, second, {})
         self.assertEqual([(p["id"], p["related_count"]) for p in
                           self.store.list_papercuts({"sort": "related"})["papercuts"]], [(third, 1), (first, 1)])
+        # The change feed still reports the papercut that left the merge candidates, so clients can drop it.
+        self.assertIn((second, 0), [(p["id"], p["related_count"])
+                                    for p in self.store.list_papercuts({"sort": "related", "since": cursor})["papercuts"]])
 
     def test_source_filter_and_chips(self):
         self.seed_sources()

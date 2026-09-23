@@ -1020,7 +1020,9 @@ class Store:
         sort = filters.get("sort") or "recent"
         if sort not in SORTS:
             raise ValueError(f"sort must be one of: {', '.join(SORTS)}")
-        if sort == "related":
+        # Merge candidates are papercuts with related ones. A change feed still returns the ones that left the set, so
+        # clients can drop them.
+        if sort == "related" and not filters.get("since"):
             clauses.append(f"{RELATED_COUNT} > 0")
         limit = int_param(filters, "limit", 50, 1, max_limit)
         offset = int_param(filters, "offset", 0, 0)
@@ -2993,7 +2995,8 @@ class Handler(BaseHTTPRequestHandler):
         if command == "GET" and path == "/":
             # The page lists live papercuts; a change feed is for API clients.
             filters = {key: params[key] for key in ("repository", "status", "category", "source", "q", "sort") if key in params}
-            others = {key: filters[key] for key in ("q", "status", "repository") if filters.get(key)}
+            # `sort=related` also narrows the list, so the facet counts take it too.
+            others = {key: filters[key] for key in ("q", "status", "repository", "sort") if filters.get(key)}
             every = {"limit": sys.maxsize}
             by_category = self.store.list_papercuts({**others, **pick(filters, "source"), **every}, max_limit=sys.maxsize)
             counts = Counter(p["category"] or "unclassified" for p in by_category["papercuts"])

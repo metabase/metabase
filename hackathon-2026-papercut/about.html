@@ -282,7 +282,7 @@
 
   <section id="dedup">
     <h2>How a sighting becomes a papercut</h2>
-    <p class="sub">Deduplication and classification happen in six steps. Two use AI judgement: the drill-down agent in step 3 when a sighting arrives, and Jev in step 5, which checks again for duplicates the agent missed. Only people merge.</p>
+    <p class="sub">Deduplication and classification happen in six steps. Two use AI judgement: the drill-down agent in step 3 when a sighting arrives, and Jev in step 5, which checks again for duplicates the agent missed. Only people merge what the AI suggests; the archive importer is the one automated exception.</p>
     <ol class="steps">
       <li class="step">
         <div><div class="who"><span class="pill rule">rule</span></div><h3>Read only what's new</h3></div>
@@ -309,7 +309,7 @@
         <div class="detail">On a flagged pair, people choose <b>Merge</b>, <b>Related</b> or <b>Not related</b>. Before a merge, the page shows which papercut stays, how many reports move, and whether triage resets. A merge can't be undone yet. Every decision is recorded under the person's Google account. Optionally, the dispatcher marks a papercut <code>ready</code> when it has enough evidence and Jev thinks it's fixable repo code. Enough evidence means two reporters, three reports, an hour lost, or high severity.<span class="src">web view · dispatcher.py assess</span></div>
       </li>
     </ol>
-    <p class="callout"><b>Why two AI steps.</b> The agent in step 3 matches a sighting against every open papercut's title, and it sometimes misses a reworded duplicate. Step 5 reads full descriptions of a shortlist and costs one Jev call per changed papercut, so it catches most of what step 3 misses. A person still makes every merge.</p>
+    <p class="callout"><b>Why two AI steps.</b> The agent in step 3 matches a sighting against every open papercut's title, and it sometimes misses a reworded duplicate. Step 5 reads full descriptions of a shortlist and costs one Jev call per changed papercut, so it catches most of what step 3 misses. A person still makes every merge it suggests.</p>
   </section>
 
   <section id="fields">
@@ -339,7 +339,7 @@
       <li><b>A fix in progress moves with it.</b> A dispatch running on the merged papercut now works on the one that stays. When both have a dispatch running, the merge is refused.</li>
       <li><b>Related links move too.</b> Where both papercuts had a view on the same third papercut, a person's decision beats an AI suggestion.</li>
       <li><b>History records it</b> on both papercuts, with who merged, when and why.</li>
-      <li><b>The archive importer merges as well.</b> A mined writeup that lists <code>merged_from</code> routes those slugs to its papercut and merges any papercut they already created.</li>
+      <li><b>The archive importer merges as well, without a person.</b> A mined writeup that lists <code>merged_from</code> routes those slugs to its papercut and merges any papercut they already created. Someone already decided those merges when they merged the writeups.</li>
       <li><b>There's no undo yet.</b> Reports don't remember which papercut they came from, so a merge can't be reversed. That's on the to-do list.</li>
     </ul>
   </section>
