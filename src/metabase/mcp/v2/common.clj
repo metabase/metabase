@@ -50,7 +50,9 @@
    `text` self-sufficient: everything the model needs to reason or make its next call. Pass
    `structured` only when a concrete programmatic consumer reads it (e.g. an MCP Apps iframe),
    and make it a faithful mirror of the text — never a subset, never the sole home of anything
-   the model needs. A message or string `text` is [[message/render]]ed; anything else renders as [[message/data]]."
+   the model needs. Keep untrusted instance content (names, descriptions, rows) out of `structured`: it reaches
+   the model with no data boundary and, once decoded, with invisible characters raw. A message or string `text`
+   is [[message/render]]ed; anything else renders as [[message/data]]."
   ([text] (success-content text nil))
   ([text structured]
    (cond-> {:content [{:type "text" :text (message/render (if (or (message/message? text) (string? text))
