@@ -548,7 +548,8 @@
 ;;; to filter by (the palette's rows, before any typing); then typing selects values for those "slots", plus any other
 ;;; column the text clearly mentions (found cheaply in code), exactly like dashboard parameters.
 
-(def ^:private QuestionColumn
+(def QuestionColumn
+  "A question column as the FE describes it: a stable `key` it can map back to a Lib column, plus what Jev needs."
   [:map {:closed true}
    [:key :string]
    [:field_id {:optional true} [:maybe ms/PositiveInt]]
@@ -567,7 +568,7 @@
 
 (def ^:private min-slots 3)
 
-(defn- readable-fields
+(defn readable-fields
   "`field-id -> Field` for the readable, active fields among `columns`."
   [columns]
   (let [ids (seq (keep :field_id columns))]
@@ -687,6 +688,25 @@
       (and (= "number" (:kind c)) (seq (numbers-in text)))
       (some #(>= (match-score text (str (if (sequential? %) (or (second %) (first %)) %))) 10) values)))
 
+;; "over 100 dollars" reads as ≥ 100 on Subtotal AND Total; applying both is wrong, and Jev only knows which is likelier.
+(def ^:private duplicate-number-confidence-cap
+  "Confidence ceiling for a number filter whose exact value and comparison a likelier column already took: below the
+  FE's auto-apply bar, so it stays offered but not applied."
+  0.5)
+
+(defn demote-duplicate-numbers
+  "Keep only the most confident of several number filters with the same comparison and value; cap the rest."
+  [filters]
+  (let [number? #(str/starts-with? (str (:parameter_type %)) "number/")
+        best    (->> (filter number? filters)
+                     (group-by (juxt :parameter_type :value))
+                     (into {} (map (fn [[k fs]] [k (apply max-key :confidence fs)]))))]
+    (mapv (fn [f]
+            (if (and (number? f) (not (identical? f (get best [(:parameter_type f) (:value f)]))))
+              (update f :confidence min duplicate-number-confidence-cap)
+              f))
+          filters)))
+
 (defn suggest-question
   "Filters for a question from free `text`: the Jev-proposed `slot-keys` plus any other usable column the text
   lexically mentions, capped at [[max-question-filters]]."
@@ -700,10 +720,11 @@
                                      usable))
                      (take max-question-filters))
         by-key  (into {} (map (juxt :key identity)) chosen)]
-    (suggest* (let [main-date (some #(when (= "date" (:kind %)) (:display_name %)) chosen)]
-                (mapv #(assoc (column->param %) :main-date main-date) chosen))
-              text {:question (or question-name "Untitled question")}
-              (assoc opts :values-fn (fn [param] (values (by-key (:id param))))))))
+    (update (suggest* (let [main-date (some #(when (= "date" (:kind %)) (:display_name %)) chosen)]
+                        (mapv #(assoc (column->param %) :main-date main-date) chosen))
+                      text {:question (or question-name "Untitled question")}
+                      (assoc opts :values-fn (fn [param] (values (by-key (:id param))))))
+            :filters demote-duplicate-numbers)))
 
 (api.macros/defendpoint :post "/filters/question/slots" :- :any
   "The few filterable columns someone looking at this question most likely wants to filter by, most likely first."

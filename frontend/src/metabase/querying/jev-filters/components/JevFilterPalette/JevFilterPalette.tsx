@@ -1,7 +1,4 @@
-import cx from "classnames";
 import {
-  type KeyboardEvent,
-  type MouseEvent,
   useCallback,
   useEffect,
   useId,
@@ -13,11 +10,10 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import type {
-  JevFilterAlternative,
   JevFilterSuggestion,
   JevFilterSuggestions,
 } from "metabase/api/jev-filters";
-import { Box, Icon, Loader, Modal, Skeleton, Stack, Text } from "metabase/ui";
+import { Stack, Text } from "metabase/ui";
 
 import type {
   JevAppliedFilter,
@@ -28,18 +24,26 @@ import type {
 import { isJevFilterHotkey } from "../../use-jev-filter-hotkey";
 import {
   cycleSelection,
-  formatProbability,
   getAppliedFilters,
   getDefaultSelection,
   getNoChangeIndex,
   getSelection,
   mergeRows,
 } from "../../utils";
-
-import S from "./JevFilterPalette.module.css";
+import {
+  JevPaletteChip,
+  JevPaletteFooter,
+  JevPaletteInput,
+  JevPaletteList,
+  JevPaletteModal,
+  JevPaletteNotice,
+  JevPaletteRowFrame,
+  JevPaletteSkeleton,
+  getJevPaletteRowElementId,
+  useJevPaletteKeys,
+} from "../JevPalette";
 
 export const JEV_FILTER_DEBOUNCE_MS = 300;
-const SKELETON_ROW_COUNT = 3;
 
 export interface JevFilterPaletteProps {
   opened: boolean;
@@ -61,24 +65,14 @@ export function JevFilterPalette({
   ...contentProps
 }: JevFilterPaletteProps) {
   return (
-    <Modal.Root
+    <JevPaletteModal
       opened={opened}
       onClose={onClose}
-      size={680}
-      centered={false}
-      yOffset="10vh"
-      closeOnEscape={false}
-      padding={0}
+      ariaLabel={t`Filter with Jev`}
+      testId="jev-filter-palette"
     >
-      <Modal.Overlay />
-      <Modal.Content
-        className={S.content}
-        aria-label={t`Filter with Jev`}
-        data-testid="jev-filter-palette"
-      >
-        <JevFilterPaletteContent onClose={onClose} {...contentProps} />
-      </Modal.Content>
-    </Modal.Root>
+      <JevFilterPaletteContent onClose={onClose} {...contentProps} />
+    </JevPaletteModal>
   );
 }
 
@@ -110,7 +104,6 @@ function JevFilterPaletteContent({
   const latestRequestIdRef = useRef(0);
   const lastRequestedTextRef = useRef("");
   const applyOnArrivalRef = useRef(false);
-  const lastKeyWasCycleRef = useRef(false);
   const suggestRef = useLatest(suggest);
   const rowSpecsRef = useLatest(rowSpecs);
   const describeExtraRowRef = useLatest(describeExtraRow);
@@ -216,108 +209,42 @@ function JevFilterPaletteContent({
     }
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    const input = event.currentTarget;
-    const isCaretAtEnd =
-      input.selectionStart === input.value.length &&
-      input.selectionEnd === input.value.length;
-    const wasCycling = lastKeyWasCycleRef.current;
-    lastKeyWasCycleRef.current = false;
-
-    switch (event.key) {
-      case "ArrowDown":
-      case "ArrowUp":
-        event.preventDefault();
-        moveActiveRow(event.key === "ArrowDown" ? 1 : -1);
-        return;
-      case "Tab":
-        // Stop the modal's focus trap from moving focus off the input.
-        event.preventDefault();
-        event.stopPropagation();
-        cycleActiveRow(event.shiftKey ? -1 : 1);
-        lastKeyWasCycleRef.current = true;
-        return;
-      case "ArrowRight":
-        if (isCaretAtEnd && !event.shiftKey) {
-          event.preventDefault();
-          cycleActiveRow(1);
-          lastKeyWasCycleRef.current = true;
-        }
-        return;
-      case "ArrowLeft":
-        // ← only cycles right after a cycle (or on empty text) so it can still move the caret.
-        if (
-          isCaretAtEnd &&
-          !event.shiftKey &&
-          (wasCycling || input.value === "")
-        ) {
-          event.preventDefault();
-          cycleActiveRow(-1);
-          lastKeyWasCycleRef.current = true;
-        }
-        return;
-      case "Enter":
-        event.preventDefault();
-        handleEnter();
-        return;
-      case "Escape":
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-        return;
-      default:
-        if (isJevFilterHotkey(event.nativeEvent)) {
-          event.preventDefault();
-        }
-    }
-  };
-
-  const keepInputFocus = (event: MouseEvent) => event.preventDefault();
+  const handleKeyDown = useJevPaletteKeys({
+    onMove: moveActiveRow,
+    onCycle: cycleActiveRow,
+    onEnter: handleEnter,
+    onClose,
+    isOwnHotkey: isJevFilterHotkey,
+  });
 
   const latencyMs = result
     ? (result.response.jev_ms ?? result.response.elapsed_ms)
     : rowsLatencyMs;
   const status = result?.response.status;
   const activeDescendant = activeRow
-    ? getRowElementId(listId, clampedActiveIndex)
+    ? getJevPaletteRowElementId(listId, clampedActiveIndex)
     : undefined;
 
   return (
     <Stack gap={0}>
-      <Box className={S.inputRow}>
-        <Icon name="sparkles" className={S.inputIcon} />
-        <input
-          className={S.input}
-          data-autofocus
-          role="combobox"
-          aria-expanded
-          aria-autocomplete="list"
-          aria-controls={listId}
-          aria-activedescendant={activeDescendant}
-          aria-label={t`Describe your filters`}
-          placeholder={placeholder}
-          value={text}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => setText(event.currentTarget.value)}
-          onKeyDown={handleKeyDown}
-        />
-        {isFetching && <Loader size="xs" className={S.inputLoader} />}
-      </Box>
-      <Box
-        id={listId}
-        role="listbox"
-        aria-label={t`Filters`}
-        className={S.list}
-        onMouseDown={keepInputFocus}
-      >
+      <JevPaletteInput
+        listId={listId}
+        activeDescendant={activeDescendant}
+        ariaLabel={t`Describe your filters`}
+        placeholder={placeholder}
+        value={text}
+        isFetching={isFetching}
+        onChange={setText}
+        onKeyDown={handleKeyDown}
+      />
+      <JevPaletteList id={listId} ariaLabel={t`Filters`}>
         {isLoadingRows && rows.length === 0 ? (
-          <JevPaletteSkeleton />
+          <JevPaletteSkeleton testId="jev-filter-palette-skeleton" />
         ) : (
           rows.map((row, index) => (
             <JevPaletteRowItem
               key={row.suggestion ? `${row.id}:${result?.requestId}` : row.id}
-              id={getRowElementId(listId, index)}
+              id={getJevPaletteRowElementId(listId, index)}
               row={row}
               isActive={index === clampedActiveIndex}
               selection={getSelection(row, selections)}
@@ -334,47 +261,18 @@ function JevFilterPaletteContent({
             {emptyMessage}
           </Text>
         )}
-      </Box>
+      </JevPaletteList>
       {status === "unavailable" && (
-        <Text size="sm" c="text-secondary" px="xl" pb="sm">
-          {t`Jev is unavailable right now`}
-        </Text>
+        <JevPaletteNotice>{t`Jev is unavailable right now`}</JevPaletteNotice>
       )}
       {status === "ok" && result?.response.filters.length === 0 && (
-        <Text size="sm" c="text-secondary" px="xl" pb="sm">
-          {t`No matching filters`}
-        </Text>
+        <JevPaletteNotice>{t`No matching filters`}</JevPaletteNotice>
       )}
-      <Box className={S.footer}>
-        <Text component="span" size="xs" c="inherit">
-          {t`↑↓ filter · ⇥ ←→ value · ↵ apply · esc close`}
-        </Text>
-        {latencyMs != null && (
-          <Text
-            component="span"
-            size="xs"
-            c="inherit"
-            className={S.latency}
-            data-testid="jev-filter-latency"
-          >
-            {t`Jev · ${Math.round(latencyMs)}ms`}
-          </Text>
-        )}
-      </Box>
-    </Stack>
-  );
-}
-
-function getRowElementId(listId: string, index: number) {
-  return `${listId}-row-${index}`;
-}
-
-function JevPaletteSkeleton() {
-  return (
-    <Stack gap="sm" p="sm" data-testid="jev-filter-palette-skeleton">
-      {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
-        <Skeleton key={index} h="1.75rem" radius="sm" />
-      ))}
+      <JevPaletteFooter
+        hints={t`↑↓ filter · ⇥ ←→ value · ↵ apply · esc close`}
+        latencyMs={latencyMs}
+        latencyTestId="jev-filter-latency"
+      />
     </Stack>
   );
 }
@@ -403,87 +301,31 @@ function JevPaletteRowItem({
     selection === noChangeIndex;
 
   return (
-    <Box
+    <JevPaletteRowFrame
       id={id}
-      role="option"
-      aria-selected={isActive}
-      aria-label={row.name}
-      className={cx(S.row, {
-        [S.rowActive]: isActive,
-        [S.rowSuggested]: row.suggestion != null,
-      })}
-      onClick={onActivate}
-      data-testid="jev-filter-row"
+      name={row.name}
+      icon={row.icon ?? "filter"}
+      detail={row.currentValue}
+      isActive={isActive}
+      isHighlighted={row.suggestion != null}
+      testId="jev-filter-row"
+      onActivate={onActivate}
     >
-      <Icon name={row.icon ?? "filter"} c="text-secondary" />
-      <Box className={S.rowName}>
-        <Text fw="bold" truncate>
-          {row.name}
-        </Text>
-        {row.currentValue != null && (
-          <Text size="xs" c="text-secondary" truncate>
-            {row.currentValue}
-          </Text>
-        )}
-      </Box>
-      <Box className={S.options}>
-        {row.options.map((option, index) => (
-          <JevOptionChip
-            key={index}
-            option={option}
-            isSelected={selection === index}
-            isGhost={isGhostPick && index === 0}
-            onClick={() => onSelect(index)}
-          />
-        ))}
-        <button
-          type="button"
-          className={cx(S.option, {
-            [S.optionSelected]: selection === noChangeIndex,
-          })}
-          aria-pressed={selection === noChangeIndex}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(noChangeIndex);
-          }}
-        >
-          {t`No change`}
-        </button>
-      </Box>
-    </Box>
-  );
-}
-
-interface JevOptionChipProps {
-  option: JevFilterAlternative;
-  isSelected: boolean;
-  isGhost: boolean;
-  onClick: () => void;
-}
-
-function JevOptionChip({
-  option,
-  isSelected,
-  isGhost,
-  onClick,
-}: JevOptionChipProps) {
-  return (
-    <button
-      type="button"
-      className={cx(S.option, {
-        [S.optionSelected]: isSelected,
-        [S.optionGhost]: isGhost,
-      })}
-      aria-pressed={isSelected}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-    >
-      <span className={S.optionLabel}>{option.label}</span>
-      <span className={S.probability}>
-        {formatProbability(option.probability)}
-      </span>
-    </button>
+      {row.options.map((option, index) => (
+        <JevPaletteChip
+          key={index}
+          label={option.label}
+          probability={option.probability}
+          isSelected={selection === index}
+          isGhost={isGhostPick && index === 0}
+          onClick={() => onSelect(index)}
+        />
+      ))}
+      <JevPaletteChip
+        label={t`No change`}
+        isSelected={selection === noChangeIndex}
+        onClick={() => onSelect(noChangeIndex)}
+      />
+    </JevPaletteRowFrame>
   );
 }

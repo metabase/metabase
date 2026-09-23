@@ -118,7 +118,7 @@
                                   (jev/noul (str "Is the filter \"" name "\" (a " type " filter) useful for "
                                                  "narrowing this dashboard to answer the question?"))]))
                           filters)
-        result      (jev/ask state (merge card-qs filter-qs))]
+        result      (jev/ask state (merge card-qs filter-qs) {:timeout-ms 4000})]
     (when (:ok result)
       (let [answers (:answers result)]
         {:card-scores   (into {} (map (fn [{:keys [dashcard-id]}]

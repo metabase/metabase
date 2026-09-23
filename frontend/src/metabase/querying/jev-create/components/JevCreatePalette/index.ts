@@ -1,0 +1,1 @@
+export { JevCreatePalette } from "./JevCreatePalette";

@@ -142,3 +142,8 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+.optionIcon {
+  align-self: center;
+  flex-shrink: 0;
+}

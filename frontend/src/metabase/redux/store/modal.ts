@@ -4,7 +4,8 @@ export type ModalName =
   | "dashboard"
   | "action"
   | "help"
-  | "upgrade";
+  | "upgrade"
+  | "jev-create";
 
 export type ModalState<TProps = Record<string, unknown>> = {
   id: ModalName;

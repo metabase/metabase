@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import { useLatest } from "react-use";
 
-import { isMac } from "metabase/utils/browser";
-
-function isEditableElement(element: Element | null): boolean {
+export function isEditableElement(element: Element | null): boolean {
   if (!(element instanceof HTMLElement)) {
     return false;
   }
@@ -18,43 +16,53 @@ function isEditableElement(element: Element | null): boolean {
   );
 }
 
+/**
+ * Ctrl or Cmd on any platform: people reach for Ctrl+F/J on a Mac too, and the palettes never open
+ * while an editable element is focused, so Ctrl doesn't collide with text-editing shortcuts there.
+ */
+export function hasPaletteModifier(event: KeyboardEvent): boolean {
+  return event.ctrlKey !== event.metaKey;
+}
+
 export function isJevFilterHotkey(event: KeyboardEvent): boolean {
-  const hasModifier = isMac() ? event.metaKey : event.ctrlKey;
   return (
-    hasModifier &&
+    hasPaletteModifier(event) &&
     !event.altKey &&
     !event.shiftKey &&
     event.key.toLowerCase() === "f"
   );
 }
 
-interface UseJevFilterHotkeyOptions {
+interface UseJevHotkeyOptions {
   enabled: boolean;
   isOpen: boolean;
   onOpen: () => void;
+  isHotkey: (event: KeyboardEvent) => boolean;
 }
 
 /**
- * Cmd/Ctrl+F opens the Jev filter palette instead of the browser's find, but only when
- * nothing editable is focused, so e.g. the native editor keeps its own find.
+ * Opens a Jev palette on a chord, but only when nothing editable is focused, so
+ * e.g. the native editor keeps its own shortcuts.
  *
  * This is a dedicated listener rather than a kbar shortcut because the shortcuts
  * registry deliberately rejects browser-reserved chords like `$mod+f`.
  */
-export function useJevFilterHotkey({
+export function useJevHotkey({
   enabled,
   isOpen,
   onOpen,
-}: UseJevFilterHotkeyOptions) {
+  isHotkey,
+}: UseJevHotkeyOptions) {
   const isOpenRef = useLatest(isOpen);
   const onOpenRef = useLatest(onOpen);
+  const isHotkeyRef = useLatest(isHotkey);
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || !isJevFilterHotkey(event)) {
+      if (event.defaultPrevented || !isHotkeyRef.current(event)) {
         return;
       }
       if (isOpenRef.current) {
@@ -69,5 +77,12 @@ export function useJevFilterHotkey({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, isOpenRef, onOpenRef]);
+  }, [enabled, isOpenRef, onOpenRef, isHotkeyRef]);
+}
+
+type UseJevFilterHotkeyOptions = Omit<UseJevHotkeyOptions, "isHotkey">;
+
+/** Cmd/Ctrl+F opens the Jev filter palette instead of the browser's find. */
+export function useJevFilterHotkey(options: UseJevFilterHotkeyOptions) {
+  useJevHotkey({ ...options, isHotkey: isJevFilterHotkey });
 }

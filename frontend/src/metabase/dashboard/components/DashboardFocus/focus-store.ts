@@ -1,25 +1,35 @@
 import { useSyncExternalStore } from "react";
 
+import type { DashboardFocus } from "metabase/api/jev";
+
 import { type CardShape, classifyKind } from "./classify-kind";
 import { type FocusCardInput, packLayout } from "./layout-engine";
 
 /**
- * A tiny shared store for the dashboard "focus" reflow. The DashboardFocus panel writes per-dashcard
- * relevance scores here; DashboardGrid subscribes and re-flows its layout so relevant cards rise to the
- * top and irrelevant ones sink — animated by react-grid-layout. Kept as a standalone observable (not
- * Redux) so the feature stays self-contained and doesn't touch dashboard state/save flow.
+ * A tiny shared store for the dashboard "focus" reflow. The Jev filter palette writes a focus result
+ * here; DashboardGrid subscribes and re-flows its layout so relevant cards rise to the top and irrelevant
+ * ones sink — animated by react-grid-layout — and the DashboardFocus chip shows what the dashboard is
+ * focused on. Kept as a standalone observable (not Redux) so the feature stays self-contained and doesn't
+ * touch dashboard state/save flow.
  */
 
-export interface FocusState {
-  /** Whether a focus is active (a question has been asked). */
-  active: boolean;
+interface FocusLayoutState {
   /** dashcard id -> relevance score (higher = more relevant). */
   scores: Record<number, number>;
   /** dashcard ids the backend marked focused (top-ranked). The rest are demoted. */
   focused: Set<number>;
 }
 
-const EMPTY: FocusState = { active: false, scores: {}, focused: new Set() };
+export type FocusState =
+  | (FocusLayoutState & { active: false; result: null })
+  | (FocusLayoutState & { active: true; result: DashboardFocus });
+
+const EMPTY: FocusState = {
+  active: false,
+  scores: {},
+  focused: new Set(),
+  result: null,
+};
 
 let state: FocusState = EMPTY;
 const listeners = new Set<() => void>();
@@ -30,11 +40,19 @@ function emit() {
   }
 }
 
-export function setFocus(
-  scores: Record<number, number>,
-  focused: Iterable<number>,
-) {
-  state = { active: true, scores, focused: new Set(focused) };
+export function setFocus(result: DashboardFocus) {
+  state = {
+    active: true,
+    scores: Object.fromEntries(
+      result.cards.map((card) => [card.dashcard_id, card.score]),
+    ),
+    focused: new Set(
+      result.cards
+        .filter((card) => card.focused)
+        .map((card) => card.dashcard_id),
+    ),
+    result,
+  };
   emit();
 }
 

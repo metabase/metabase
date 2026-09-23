@@ -51,7 +51,7 @@ export function ConversationReviewCard({
         <Title order={3}>{t`Quality`}</Title>
         <Button
           variant="subtle"
-          size="xs"
+          size="sm"
           loading={isLoading}
           onClick={() => scoreConversation(conversationId)}
         >

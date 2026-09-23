@@ -26,6 +26,7 @@ jev/
     search.clj        reranking command-palette search results by intent
     saving.clj        save-time duplicate check + collection suggestion
     classify.clj      the Jev classify step for query transforms (+ its preview endpoint)
+    create.clj        "New with Jev" (Cmd/Ctrl+J): question, dashboard or document; tables; then the plan
     usage.clj         collective "what people do on this table" shape model (endpoints)
     viz.clj           rank chart types for a query result (deterministic roles + Jev scoring)
     intent.clj        per-user + per-table intent model (event-bus taps + prediction)
@@ -93,6 +94,9 @@ token to the browser, so it goes through these.
 | `POST /api/jev/filters/dashboard/:id` | Plain-English text → values for the dashboard's parameters (closed candidate sets per parameter). |
 | `POST /api/jev/filters/question/slots` | For a question's filterable columns: the few someone most likely filters by (the palette's rows). |
 | `POST /api/jev/filters/question` | Plain-English text → filter values for a question's slots, plus any column the text mentions. |
+| `POST /api/jev/create/intent` | Question, dashboard or document, plus ranked candidate tables (single-table probability and per-table relevance). |
+| `POST /api/jev/create/question` | For one table's columns: ranked filters, summary, grouping, time unit and chart type for a new question. |
+| `POST /api/jev/create/dashboard` | For the chosen tables: which existing questions belong on a new dashboard or document (`kind`). Documents get copies — the document API clones embedded cards. |
 | `POST /api/jev/search/rerank` | Rerank the caller's search results against the query's intent; pins a confident best match. |
 | `POST /api/jev/saving/check` | For a draft question: an existing card that already answers it, and the collection it belongs in. |
 | `POST /api/jev/usage/observe` | Feed the usage shape-model an MBQL query the caller ran/built (value-free facets only). |
@@ -141,7 +145,9 @@ Frontend:
 - `query_builder/.../ChartTypeSidebar` — fetches viz suggestions on result-load
   (`use-jev-viz-suggestions`) and rings/dims the chart-type picker by fit.
 - `dashboard/components/JevDashboardFilterPalette` + `query_builder/.../JevFilterHeaderButton` — the Cmd/Ctrl+F
-  plain-English filter palette (`querying/jev-filters`) for dashboards and questions.
+  plain-English filter palette (`querying/jev-filters`) for dashboards and questions. On a dashboard the same
+  phrase also asks `/api/jev/dashboard/:id/focus`, offered as a "Focus cards" row; applying it re-flows the grid
+  and shows a `<DashboardFocus>` chip (question, helpful filters, clear).
 - `palette/hooks/useCommandPalette` — `useJevRerankedResults` reorders search results, `JevBestMatchBadge`.
 - `common/components/SaveQuestionForm` — renders `<JevSaveHints>` (duplicate callout + collection chip).
 - `api/jev.ts` (+ `api/jev-*.ts`) — the RTK Query slices all of the above call through.

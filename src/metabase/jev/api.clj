@@ -16,6 +16,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.jev.apps.classify :as jev.classify]
    [metabase.jev.apps.conversations.api :as jev.conversations.api]
+   [metabase.jev.apps.create :as jev.create]
    [metabase.jev.apps.dashboard-focus :as jev.dashboard-focus]
    [metabase.jev.apps.explorations :as jev.explorations]
    [metabase.jev.apps.filters :as jev.filters]
@@ -62,4 +63,5 @@
                     jev.filters/routes
                     jev.search/routes
                     jev.saving/routes
+                    jev.create/routes
                     (api.macros/ns-handler *ns*)))
