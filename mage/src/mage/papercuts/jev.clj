@@ -69,7 +69,8 @@
           (let [{:keys [answers model usage]} (json/read-str body)]
             {:scores (update-vals answers :noul) :model model :usage usage})
 
-          (and (#{429 500 502 503 504} status) (< attempt 7))
+          ;; 529 is Jev's "system overloaded", which passes like a 503.
+          (and (#{429 500 502 503 504 529} status) (< attempt 7))
           (do (Thread/sleep (long (* 1000 (or (some-> (get headers "retry-after") parse-double)
                                               (Math/pow 2 attempt)))))
               (recur (inc attempt)))
