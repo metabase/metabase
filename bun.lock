@@ -286,6 +286,7 @@
         "fast-xml-builder": "^1.2.0",
         "fast-xml-parser": "^5.8.0",
         "fetch-mock": "^12.0.0",
+        "fontverter": "^2.0.0",
         "get-nonce": "^1.0.1",
         "glob": "^7.1.1",
         "globals": "^15.14.0",

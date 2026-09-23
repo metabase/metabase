@@ -244,6 +244,7 @@ const config = {
         include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
+          /** @param {{ filename: string }} pathData */
           filename: (pathData) => fontAssetName(pathData, "fonts"),
         },
       },
@@ -251,7 +252,7 @@ const config = {
         // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
         // loader, so css-loader sees the rewritten stylesheet and resolves its
         // url() against the generated chunks.
-        test: /[\\/]css[\\/]core[\\/]fonts\.css$/,
+        test: /[\\/]frontend[\\/]fonts[\\/]fonts\.css$/,
         enforce: "pre",
         use: [
           {
@@ -373,6 +374,12 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin({
+      // Holds the place for `import "fonts.css"`. The font-subset loader
+      // discards this and builds every rule from frontend/fonts.
+      [__dirname + "/frontend/fonts/fonts.css"]:
+        "/* built by FontSubsetLoader */\n",
+    }),
     ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({

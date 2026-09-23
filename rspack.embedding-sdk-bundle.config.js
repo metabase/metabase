@@ -157,6 +157,7 @@ const config = {
           // with its `clean`, and would leave removed fonts behind if that clean
           // had to skip the directory. This build only needs the URL.
           emit: false,
+          /** @param {{ filename: string }} pathData */
           filename: (pathData) => fontAssetName(pathData, "../dist/fonts"),
         },
       },
@@ -164,7 +165,7 @@ const config = {
         // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
         // loader, so css-loader sees the rewritten stylesheet and resolves its
         // url() against the generated chunks.
-        test: /[\\/]css[\\/]core[\\/]fonts\.css$/,
+        test: /[\\/]frontend[\\/]fonts[\\/]fonts\.css$/,
         enforce: "pre",
         use: [
           {
@@ -316,6 +317,12 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin({
+      // Holds the place for `import "fonts.css"`. The font-subset loader
+      // discards this and builds every rule from frontend/fonts.
+      [__dirname + "/frontend/fonts/fonts.css"]:
+        "/* built by FontSubsetLoader */\n",
+    }),
     ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
