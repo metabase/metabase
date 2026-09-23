@@ -836,7 +836,12 @@ class Store:
                             WHERE f.papercut_id = p.id) AS fingerprints,
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
                                     (SELECT 'pr_opened' FROM events e WHERE e.papercut_id = p.id AND e.kind = 'comment'
-                                     AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state
+                                     AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state,
+                           (SELECT json_object('id', d.id, 'state', d.state, 'linear_issue_id', d.linear_issue_id,
+                                               'linear_url', d.linear_url, 'pr_url', d.pr_url)
+                            FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS dispatch,
+                           (SELECT a.verdict FROM assessments a WHERE a.papercut_id = p.id
+                            ORDER BY a.id DESC LIMIT 1) AS verdict
                     FROM papercuts p LEFT JOIN ({STATS}) s ON s.papercut_id = p.id
                     WHERE {where} ORDER BY {SORTS[sort]} LIMIT ? OFFSET ?""",
                 [*params, limit, offset],
@@ -844,7 +849,8 @@ class Store:
             # Commits are serialized and stamp updated_at under the write lock, so this is a safe resume point.
             cursor = db.execute("SELECT MAX(updated_at) FROM papercuts").fetchone()[0]
         # Clients that reuse an existing grouping, such as the transcript scanner, read fingerprints from the list.
-        papercuts = [dict(row) | {"fingerprints": sorted(json.loads(row["fingerprints"]))} for row in rows]
+        papercuts = [dict(row) | {"fingerprints": sorted(json.loads(row["fingerprints"])),
+                                  "dispatch": json.loads(row["dispatch"]) if row["dispatch"] else None} for row in rows]
         return {"papercuts": papercuts, "total": total, "limit": limit if limit > 0 else None, "offset": offset,
                 "next_offset": offset + limit if 0 < offset + limit < total else None, "cursor": cursor}
 
@@ -910,8 +916,11 @@ class Store:
             latest = db.execute("SELECT * FROM assessments WHERE papercut_id = ? ORDER BY id DESC LIMIT 1",
                                 (papercut_id,)).fetchone()
             papercut["assessment"] = assessment_json(latest) if latest else None
+            # A dispatch's latest change is recorded in the same transaction, so its event shares the timestamp.
             papercut["dispatches"] = [dict(r) for r in db.execute(
-                "SELECT * FROM dispatches WHERE papercut_id = ? ORDER BY id DESC", (papercut_id,))]
+                """SELECT d.*, (SELECT e.body FROM events e WHERE e.papercut_id = d.papercut_id
+                                AND e.kind = 'dispatch_updated' AND e.at = d.updated_at ORDER BY e.id DESC LIMIT 1) AS reason
+                   FROM dispatches d WHERE d.papercut_id = ? ORDER BY d.id DESC""", (papercut_id,))]
             return papercut
 
     # --- triage ---
@@ -1558,6 +1567,15 @@ UI_STYLE = """<style>
 .severity-medium, .fix-needs_human {background: var(--warning-bg); color: var(--warning-text)}
 .fix-pr_opened, .fix-already_fixed {background: var(--success-bg); color: var(--success-text)}
 .fix-claimed, .fix-linear_created, .fix-running {background: var(--info-bg); color: var(--info-text)}
+.dispatch-control {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem}
+.dispatch-control button {min-height: 30px; padding: 0 .75rem}
+.dispatch-link a {font-weight: 600; white-space: nowrap}
+.token-control {position: relative}
+.token-control summary {cursor: pointer; list-style: none; color: var(--muted)}
+.token-control summary::-webkit-details-marker {display: none}
+.token-control[data-set=true] summary {color: var(--text)}
+.token-control input {position: absolute; right: 0; top: 2rem; z-index: 10; width: 18rem; padding: .4rem .6rem;
+                      border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text)}
 </style>"""
 
 UI_SCRIPT = """<script>
@@ -1625,7 +1643,56 @@ UI_SCRIPT = """<script>
 })();
 </script>""".replace("CHEVRON", icon("chevron"))
 
-FIX_LABELS = {"claimed": "claimed", "linear_created": "ticket filed", "running": "fixing", "pr_opened": "PR opened",
+# Writes from the page send the token the viewer stored under "API token". Dispatches from the page are recorded as
+# actor `web`; naming the person who clicked is still to do.
+DISPATCH_SCRIPT = """<script>
+(() => {
+  const tokenInput = document.getElementById('api-token');
+  const tokenControl = tokenInput.closest('details');
+  const storedToken = () => { try { return localStorage.getItem('papercuts-token') || ''; } catch (_) { return ''; } };
+  const showToken = () => { tokenControl.dataset.set = Boolean(storedToken()); };
+  tokenInput.value = storedToken();
+  showToken();
+  tokenInput.addEventListener('change', () => {
+    try { localStorage.setItem('papercuts-token', tokenInput.value.trim()); } catch (_) {}
+    showToken();
+  });
+  async function write(method, url, body) {
+    const headers = {'Content-Type': 'application/json'};
+    if (storedToken()) headers.Authorization = 'Bearer ' + storedToken();
+    const response = await fetch(url, {method, headers, body: JSON.stringify(body)});
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))).error;
+      throw new Error(response.status === 401 ? 'set the API token' : error || 'HTTP ' + response.status);
+    }
+  }
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-dispatch], button[data-cancel-dispatch]');
+    if (!button) return;
+    event.preventDefault();
+    if (button.dataset.dispatch && button.dataset.armed !== 'true') {
+      button.dataset.armed = 'true';
+      button.textContent = 'Confirm: file a Linear issue and run the fixer';
+      return;
+    }
+    button.disabled = true;
+    try {
+      if (button.dataset.dispatch) {
+        await write('POST', `/api/papercuts/${button.dataset.dispatch}/dispatch`,
+                    {actor: 'web', reason: 'Dispatched from the web view'});
+      } else {
+        await write('PATCH', `/api/dispatches/${button.dataset.cancelDispatch}`,
+                    {state: 'failed', actor: 'web', reason: 'Cancelled from the web view'});
+      }
+      document.getElementById('refresh-now').click();
+    } catch (error) {
+      button.textContent = 'Failed: ' + error.message;
+    }
+  });
+})();
+</script>"""
+
+FIX_LABELS = {"claimed": "queued", "linear_created": "ticket filed", "running": "fixing", "pr_opened": "PR opened",
               "already_fixed": "already fixed", "needs_human": "needs a human", "not_reproducible": "not reproducible",
               "failed": "fix failed"}
 
@@ -1663,7 +1730,9 @@ def page(title, body):
             "<a class='brand' href='/'>✳ Papercuts</a><div class='header-actions'>"
             "<span id='live-status' class='muted' role='status' aria-live='polite'>Live · updates every 15s</span>"
             "<button id='refresh-now' type='button'>Refresh now</button>"
-            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}</body></html>")
+            "<details class='token-control'><summary>API token</summary>"
+            "<input id='api-token' type='password' autocomplete='off' placeholder='Bearer token for dispatching'></details>"
+            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 
 def cost(minutes):
@@ -1903,7 +1972,7 @@ def list_card_html(p):
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
-            f"{severity_pill(p['severity'])}{fix_pill(p['fix_state'])}</div>"
+            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}</div>"
             f"<p class='issue-summary'>{esc(excerpt(description))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
@@ -1912,7 +1981,7 @@ def list_card_html(p):
             f"<div><strong>{p['reporter_count']}</strong><span>Reporters</span></div>"
             f"<div><strong>{cost_label(p)}</strong><span>Time lost</span></div>"
             f"<div><strong><time datetime='{esc(p['last_seen'], quote=True)}'>{short_date(p['last_seen'])}</time></strong><span>Last seen</span></div></div>"
-            f"</article></li>")
+            f"{dispatch_control(p, p['dispatch'])}</article></li>")
 
 
 def papercut_list_html(result, filters, repositories=(), category_counts=None):
@@ -1956,21 +2025,33 @@ def git_label(report):
     return label
 
 
-PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
+def external_link(url, text):
+    return f"<a href='{html.escape(url, quote=True)}' target='_blank' rel='noopener'>{html.escape(text)} ↗</a>" \
+        if url and url.startswith("https://") else html.escape(text or "")
 
 
-def pr_control(papercut):
-    """On a Metabot papercut, the PR link from its comments, or a button that asks the fixer for a PR."""
-    if not any(fingerprint.startswith("metabot:") for fingerprint in papercut["fingerprints"]):
-        return ""
-    urls = [url for e in papercut["events"] if e["kind"] == "comment" for url in PR_URL.findall(e["body"] or "")]
-    if urls:
-        return f"<p>PR: <a href='{html.escape(urls[-1])}'>{html.escape(urls[-1])}</a></p>"
-    return ("<p><button type='button' class='primary' onclick=\"this.disabled = true; "
-            f"fetch('/api/papercuts/{papercut['id']}/comments', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, "
-            "body: JSON.stringify({author: 'andrei', body: '/pr'})}).then((r) => r.ok ? location.reload() "
-            ": this.textContent = 'Failed: HTTP ' + r.status, (e) => this.textContent = 'Failed: ' + e.message)\">"
-            "Open PR</button></p>")
+def dispatch_links(dispatch):
+    links = []
+    if dispatch.get("linear_url") or dispatch.get("linear_issue_id"):
+        links.append(external_link(dispatch.get("linear_url"), dispatch.get("linear_issue_id") or "Linear issue"))
+    if dispatch.get("pr_url"):
+        number = dispatch["pr_url"].rstrip("/").rsplit("/", 1)[-1]
+        links.append(external_link(dispatch["pr_url"], f"PR #{number}" if number.isdigit() else "Draft PR"))
+    return "".join(f"<span class='dispatch-link'>{link}</span>" for link in links)
+
+
+def dispatch_control(papercut, dispatch):
+    """The latest dispatch's state and links, and the button that starts or cancels one. Dispatching claims the
+    papercut; a separate `dispatcher.py watch` picks up the claim and does the work."""
+    active = dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES
+    parts = [fix_pill(dispatch["state"]) + dispatch_links(dispatch)] if dispatch else []
+    if active and dispatch["state"] == "claimed":
+        parts.append(f"<button type='button' data-cancel-dispatch='{dispatch['id']}'>Cancel</button>")
+    elif not active and papercut["status"] == "open" and papercut.get("merged_into") is None:
+        label = "Dispatch again" if dispatch else "Dispatch"
+        ready = " primary" if papercut.get("verdict") == "ready" else ""
+        parts.append(f"<button type='button' class='dispatch-button{ready}' data-dispatch='{papercut['id']}'>{label}</button>")
+    return f"<div class='dispatch-control'>{''.join(parts)}</div>" if parts else ""
 
 
 def report_card_html(report, papercut_description, expanded=False):
@@ -2020,14 +2101,12 @@ def papercut_html(papercut):
                  + f" <span class='muted'>{esc(assessment['at'][:19])} {esc(assessment['actor'])}"
                  f"{' · ' + esc(assessment['model']) if assessment['model'] else ''}</span></p>"
                  f"{markdown_html(assessment['reason']) if assessment['reason'] else ''}</section>") if assessment else ""
-    def link(url, text):
-        return f"<a href='{esc(url, quote=True)}'>{esc(text)}</a>" if url and url.startswith("https://") else esc(text or "")
-
     dispatches = "".join(
-        f"<li>#{d['id']} {pill(d['state'])}<span class='muted'>{esc(d['updated_at'][:19])} {esc(d['actor'])}</span>"
-        f"{' · ' + link(d['linear_url'], d['linear_issue_id'] or 'Linear') if d['linear_url'] or d['linear_issue_id'] else ''}"
-        f"{' · ' + link(d['pr_url'], 'PR') if d['pr_url'] else ''}"
-        f"{' · ' + esc(d['branch']) if d['branch'] else ''}</li>"
+        f"<li>#{d['id']} {fix_pill(d['state'])}{dispatch_links(d)}"
+        f"<span class='muted'>{esc(d['updated_at'][:19])} {esc(d['actor'])}"
+        f"{' · ' + esc(d['branch']) if d['branch'] else ''}"
+        f"{' · $%.2f' % d['cost_usd'] if d['cost_usd'] is not None else ''}</span>"
+        f"{markdown_html(d['reason']) if d['reason'] else ''}</li>"
         for d in papercut["dispatches"]
     )
     body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
@@ -2035,9 +2114,9 @@ def papercut_html(papercut):
             f"<div class='detail-meta'>{important_pill(papercut)}{status_pill(papercut['status'])}"
             f"{pill(papercut['category'] or 'unclassified')}"
             f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}"
-            f"{fix_pill(papercut['dispatches'][0]['state'] if papercut['dispatches'] else None)}"
             f"<span class='muted'>{papercut['report_count']} reports · {papercut['reporter_count']} reporters · "
-            f"Time lost: {cost_label(papercut)}</span></div>{pr_control(papercut)}</div>"
+            f"Time lost: {cost_label(papercut)}</span></div>"
+            f"{dispatch_control(papercut | {'verdict': (assessment or {}).get('verdict')}, papercut['dispatches'][0] if papercut['dispatches'] else None)}</div>"
             "<div class='detail-layout'><div class='detail-content'>"
             f"<section class='card'><h2>Description</h2>{markdown_html(description) if description else '<p>No description recorded.</p>'}</section>"
             f"{'<section class=\"card suggested-fix\"><h2>Suggested fix</h2>' + markdown_html(suggested_fix) + '</section>' if suggested_fix else ''}"

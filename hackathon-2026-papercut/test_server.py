@@ -868,19 +868,67 @@ class HttpTest(unittest.TestCase):
                 self.assertEqual(status, expected)
                 self.assertIn("error", body)
 
-    def test_metabot_papercut_offers_a_pr_until_a_pr_link_is_commented(self):
-        for report_id, fingerprint in (("r1", "metabot:abc"), ("r2", "other")):
-            self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": report_id,
-                                               "title": report_id, "fingerprint": fingerprint})
-        self.assertIn("fetch('/api/papercuts/1/comments'", self.call("GET", "/papercuts/1")[1])
-        self.assertIn("JSON.stringify({author: 'andrei', body: '/pr'})", self.call("GET", "/papercuts/1")[1])
-        self.assertNotIn("Open PR", self.call("GET", "/papercuts/2")[1])
-        self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"author": "andrei", "body": "/pr"})[0], 201)
-        self.call("POST", "/api/papercuts/1/comments",
-                  {"author": "papercut-fixer", "body": "Draft PR: https://github.com/metabase/metabase/pull/123"})
+    def test_open_papercut_without_a_dispatch_offers_one(self):
+        self.report("r1", "Open")
+        self.report("r2", "Closed")
+        self.call("PATCH", "/api/papercuts/2", {"status": "wontfix"})
+        self.store.assess(1, {"verdict": "ready"})
+        _, page, _ = self.call("GET", "/")
+        self.assertIn("<button type='button' class='dispatch-button primary' data-dispatch='1'>Dispatch</button>", page)
+        self.assertNotIn("data-dispatch='2'", page)
+        self.assertIn("data-dispatch='1'", self.call("GET", "/papercuts/1")[1])
+        self.assertNotIn("data-dispatch=", self.call("GET", "/papercuts/2")[1])
+
+    def test_dispatch_from_the_page_queues_it_and_shows_its_links(self):
+        self.report("r1", "Trap")
+        status, dispatch, _ = self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web", "reason": "Dispatched from the web view"})
+        self.assertEqual((status, dispatch["actor"], dispatch["state"]), (201, "web", "claimed"))
+        for path in ("/", "/papercuts/1"):
+            page = self.call("GET", path)[1]
+            self.assertIn("<span class='pill fix-claimed'>queued</span>", page)
+            self.assertIn(f"data-cancel-dispatch='{dispatch['id']}'>Cancel</button>", page)
+            self.assertNotIn("data-dispatch=", page)
+
+        for state, changes in (("linear_created", {"linear_issue_id": "BOT-12", "linear_url": "https://linear.app/metabase/issue/BOT-12"}),
+                               ("running", {"branch": "bot-12-papercut-trap"}),
+                               ("pr_opened", {"pr_url": "https://github.com/metabase/metabase/pull/82950", "cost_usd": 2.5,
+                                              "reason": "Copy configs first"})):
+            self.assertEqual(self.call("PATCH", f"/api/dispatches/{dispatch['id']}", {"state": state, **changes})[0], 200)
+        latest = self.call("GET", "/api/papercuts")[1]["papercuts"][0]["dispatch"]
+        self.assertEqual(latest, {"id": dispatch["id"], "state": "pr_opened", "linear_issue_id": "BOT-12",
+                                  "linear_url": "https://linear.app/metabase/issue/BOT-12",
+                                  "pr_url": "https://github.com/metabase/metabase/pull/82950"})
+        linear = "<a href='https://linear.app/metabase/issue/BOT-12' target='_blank' rel='noopener'>BOT-12 ↗</a>"
+        pr = "<a href='https://github.com/metabase/metabase/pull/82950' target='_blank' rel='noopener'>PR #82950 ↗</a>"
+        for path in ("/", "/papercuts/1"):
+            page = self.call("GET", path)[1]
+            self.assertIn(linear, page)
+            self.assertIn(pr, page)
+            self.assertNotIn("data-dispatch=", page)
+        detail = self.call("GET", "/papercuts/1")[1]
+        self.assertIn("$2.50", detail)
+        self.assertIn("Copy configs first", detail)
+        self.assertEqual(self.call("GET", "/api/papercuts/1")[1]["dispatches"][0]["reason"],
+                         "Copy configs first\npr_url: https://github.com/metabase/metabase/pull/82950; cost_usd: 2.5")
+
+    def test_cancelling_a_queued_dispatch_reopens_the_papercut_for_another(self):
+        self.report("r1", "Trap")
+        dispatch = self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"})[1]
+        status, cancelled, _ = self.call("PATCH", f"/api/dispatches/{dispatch['id']}",
+                                         {"state": "failed", "actor": "web", "reason": "Cancelled from the web view"})
+        self.assertEqual((status, cancelled["state"]), (200, "failed"))
+        self.assertEqual(self.call("GET", "/api/papercuts/1")[1]["status"], "open")
         page = self.call("GET", "/papercuts/1")[1]
-        self.assertIn("PR: <a href='https://github.com/metabase/metabase/pull/123'>", page)
-        self.assertNotIn("Open PR", page)
+        self.assertIn("data-dispatch='1'>Dispatch again</button>", page)
+        self.assertIn("Cancelled from the web view", page)
+
+    def test_page_dispatch_needs_the_token_when_the_server_has_one(self):
+        self.report("r1", "Trap")
+        self.handler.token = "secret"
+        self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"})[0], 401)
+        self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"},
+                                   headers={"Authorization": "Bearer secret"})[0], 201)
+        self.assertIn("<input id='api-token' type='password'", self.call("GET", "/")[1])
 
     def test_list_puts_important_papercuts_first_and_shows_fixes(self):
         for report_id in ("r1", "r2", "r3"):
