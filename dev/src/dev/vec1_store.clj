@@ -6,6 +6,8 @@
   Needs the vec1 binary for this machine (`resources/vec1/<platform>/`, see `native/vec1/README.md`) and, for
   steps 7 and 10-18, a configured embedding provider.
 
+  `dev.vec1` is the original proof of concept (raw vec1 over a bare connection); kept as is for reference.
+
   vec1 bugs crash the JVM rather than throwing (`native/vec1/LIMITATION_001_update_crash.md`). Never
   `UPDATE search_vec`, and never select `distance` outside a KNN call (`search_vec(?, '{k: N}')`)."
   (:require

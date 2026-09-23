@@ -1,4 +1,4 @@
-# PLAN 001 — SQLite store: initialize, index, query
+# PLAN 001 — SQLite store: initialize, index, query ✅ complete 2026-09-23
 
 Part of [PLAN.md](PLAN.md) (covers its iteration 0 and the store half of iteration 1).
 
@@ -169,21 +169,28 @@ Measured on the dev instance (63–64 docs, 1024 dims): KNN **0.3–7 ms**, quer
 Test note: the write path resolves personal-collection owners from the app DB; the unit tests stub
 `semantic.index/batch-resolve-personal-owner-ids` so the store tests don't need one.
 
-## Phase F — REPL workflow + tests (2–3 h)
+## Phase F — REPL workflow + tests ✅ done 2026-09-23
 
-- [ ] Rewrite the `(comment …)` block in `dev/src/dev/vec1.clj` to drive the store:
-      `open!` → `stats` → `index-all!` from `searchable-documents` → `search-text` paraphrases → rename a card
-      and `upsert-documents!` it → `delete-documents!` → `close!`/`open!` (expect `:existing`) → `delete-store!`.
-- [ ] Test ns `enterprise/backend/test/metabase_enterprise/semantic_search/sqlite_test.clj`, temp file per test,
-      skipped when the extension for this platform is missing. Stub embeddings with `with-redefs` on
-      `semantic.embedding/get-embeddings-batch` / `get-embedding` returning deterministic small vectors (e.g. 8 dims):
-  - [ ] `ensure-schema!` is idempotent (`:created` then `:existing`).
-  - [ ] Changed model dims → `:recreated`, file empty.
-  - [ ] Upsert 3 docs → `stats` doc count = vec count = 3; nearest to doc 2's vector is doc 2.
-  - [ ] Re-upsert doc with new name → still 3 rows, `get-doc` shows new name, KNN still finds it.
-  - [ ] Delete → gone from both tables and from KNN.
-  - [ ] Meta filter: `:models ["dashboard"]` returns only dashboards.
-- [ ] Run with `./bin/test-agent :only '[metabase-enterprise.semantic-search.sqlite-test]'`.
+- [x] REPL workflow: **new** `dev/src/dev/vec1_store.clj` (19 numbered steps: schema 1–9, indexing 10–14,
+      querying 15–17, end-to-end paraphrase check 18, clean-up 19) instead of rewriting `dev/src/dev/vec1.clj`.
+      The original POC `dev.vec1` is **kept unchanged for reference**, and still runs end to end against the
+      current code (re-checked 2026-09-23, steps 1–7).
+- [x] Test ns `sqlite_test.clj` — 22 tests / 97 assertions, green with
+      `./bin/test-agent :only '[metabase-enterprise.semantic-search.sqlite-test]'`. Temp file per test, skipped
+      when there is no extension for the platform, embeddings stubbed at `process-embeddings-streaming` /
+      `get-embedding`, personal owners stubbed (no app DB needed). Everything the plan listed is covered:
+  - [x] schema `:created` → `:existing`; recreated on dims / space id / model name / provider / schema version /
+        foreign file;
+  - [x] upsert → doc count = vec count; nearest to a doc's vector is that doc;
+  - [x] re-upsert renamed → same row count, new name, KNN still finds it; unchanged content reuses the vector;
+  - [x] delete → gone from both tables and from KNN;
+  - [x] meta filters (`:models`, `:archived?`, `:verified?`, `:database-ids`, `:creator-ids`, `:collection-ids`)
+        run inside the KNN.
+- [x] Kondo clean on every Clojure file the branch touches (except the standalone `native/vec1/spike` runner);
+      `fix-modules-config` → `:unchanged`.
+- [ ] Not run: the existing pgvector semantic-search tests (they need `MB_PGVECTOR_DB_URL`). The only change
+      to shared code is making `to-instant`, `to-boolean`, `batch-resolve-personal-owner-ids` in `index.clj`
+      public (+ a docstring) — no behaviour change.
 
 ## Acceptance (record numbers here)
 
@@ -211,8 +218,8 @@ before reusing it.
 | C schema | ✅ done |
 | D writes | ✅ done |
 | E queries | ✅ done |
-| F REPL + tests | 2–3 h |
-| **Remaining** | **~2–3 h** (F) |
+| F REPL + tests | ✅ done |
+| **Remaining** | **none — PLAN_001 complete** |
 
 ## Decisions taken (change here if needed)
 

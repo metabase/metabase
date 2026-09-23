@@ -9,7 +9,8 @@ https://claude.ai/code/artifact/5ec62385-4ab5-4d20-baf6-4aa7506071df. The REPL P
 
 Sub-plans (concrete checklists):
 
-- [PLAN_001_store.md](PLAN_001_store.md) — store init, indexing, raw queryability (iteration 0 + store half of iteration 1)
+- [PLAN_001_store.md](PLAN_001_store.md) — store init, indexing, raw queryability (iteration 0 + store half of iteration 1) ✅ complete
+- [LIMITATION_001_update_crash.md](LIMITATION_001_update_crash.md) — vec1 `UPDATE` / non-query `distance` segfault
 - PLAN_002 (todo) — engine wiring in `core.clj` + search results
 
 Two iterations:
