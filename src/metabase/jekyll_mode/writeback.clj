@@ -69,13 +69,23 @@
   (when-not *suppress-file-updates*
     (let [model    (t2/model instance)
           root-dir (files/directory-prefix)]
-      (serdes/with-cache
-        (let [entity-stream (v2.extract/extract {:targets [[(name model) id]]})
-              writer        (v2.storage.files/file-writer root-dir)]
-          (v2.storage/store! entity-stream writer)))
-      (when entity-id
-        (prune-stale-exports! root-dir entity-id))
-      (printf "Wrote %s %d to %s.\n" (t2/model instance) id root-dir))))
+      ;; Never let an export failure escape. This runs from an after-update/after-insert hook, inside the
+      ;; transaction doing the write, so throwing here rolls the user's edit back -- renaming a card whose
+      ;; references serialization can't satisfy would silently fail in the UI. Writing files is a
+      ;; side-channel; the app-db write is what matters, so a broken export is logged and dropped.
+      (try
+        (serdes/with-cache
+          (let [entity-stream (v2.extract/extract {:targets [[(name model) id]]
+                                                   :no-data-model true
+                                                   :no-settings true
+                                                   :no-transforms true})
+                writer        (v2.storage.files/file-writer root-dir)]
+            (v2.storage/store! entity-stream writer)))
+        (when entity-id
+          (prune-stale-exports! root-dir entity-id))
+        (printf "Wrote %s %d to %s.\n" (t2/model instance) id root-dir)
+        (catch Exception e
+          (log/errorf e "Error writing %s %d to %s; app-db write is unaffected" model id root-dir))))))
 
 (t2/define-after-update ::writeback
   [instance]
