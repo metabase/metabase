@@ -445,7 +445,7 @@
               [multi-p multi-stub]     (capture-first-query)
               [single-p single-stub]   (capture-first-query)]
           (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
-            (#'qp.pivot/run-pivot-query-multi query nil))
+            (#'qp.pivot/run-multi-query-pivot query nil))
           (mt/with-dynamic-fn-redefs [qp.core/process-query single-stub]
             (#'qp.pivot/run-single-query-pivot query nil))
           (is (some? (get-in @multi-p [:middleware :pivot-options])))
