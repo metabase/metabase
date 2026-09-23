@@ -99,6 +99,14 @@
   :default    true
   :export?    false)
 
+(defsetting metabot-demo-break-search
+  (deferred-tru "Makes Metabot''s search tool fail on purpose: `throw`, `swallow` or `empty`. Blank turns it off.")
+  :type       :string
+  :visibility :admin
+  :encryption :no
+  :export?    false
+  :doc        false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def default-llm-metabot-provider
