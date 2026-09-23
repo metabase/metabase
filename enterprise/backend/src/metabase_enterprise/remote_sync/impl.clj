@@ -641,7 +641,9 @@
   (let [;; When the remote changes are incrementally loadable the merged tree isn't needed (see the load below),
         ;; and only the entities the remote changed decide the conflicts and summary, so only those local entities
         ;; are serialized.
-        plan (incremental-import-plan snapshot (source.p/version base-snapshot))
+        ;; On either route, the ledger's hashes tell an entity unchanged since the last sync from a local change.
+        plan          (incremental-import-plan snapshot (source.p/version base-snapshot))
+        synced-hashes (remote-sync.db/synced-content-hashes-by-path)
         {:keys [conflicts merged summary]}
         (serdes/with-cache
           (let [targets (spec/exportable-entities)]
@@ -649,8 +651,9 @@
               (source/compute-merge (spec/extract-entities-for-export targets)
                                     snapshot base-snapshot task-id
                                     :total (spec/exportable-entity-count targets)
-                                    :synced-hashes (remote-sync.db/synced-content-hashes-by-path))
-              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot))))]
+                                    :synced-hashes synced-hashes)
+              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot
+                                            :synced-hashes synced-hashes))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
