@@ -193,8 +193,25 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName    driver-api/mb-version-and-process-identifier
-       :subprotocol        "sqlserver"
+  (if (str/blank? (get details :password))
+    ;; Azure SQL with Entra ID: when no password is provided, authenticate as a managed
+    ;; identity via mssql-jdbc's ActiveDirectoryMSI mode. The username, when present, is
+    ;; the client ID of a user-assigned managed identity (mssql-jdbc's msiClientId
+    ;; property); a blank username uses the environment's default identity.
+    (-> {:applicationName    driver-api/mb-version-and-process-identifier
+         :subprotocol        "sqlserver"
+         :subname            (str "//" host)
+         :database           db
+         :loginTimeout       10
+         :authentication     "ActiveDirectoryMSI"
+         :encrypt            true
+         :sendTimeAsDatetime false}
+        (merge (when port {:port port})
+               (when-not (str/blank? (get details :user))
+                 {:msiClientId (get details :user)})))
+    ;; otherwise: stock user/password SQL auth, unchanged
+    (-> {:applicationName    driver-api/mb-version-and-process-identifier
+         :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
        :subname            (str "//" host)
@@ -220,7 +237,7 @@
       ;; that drop the connection whenever the property is present (#81270)
       (merge (when port {:port port})
              (when-not (str/blank? instance) {:instanceName instance}))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
 (def ^:private disallowed-additional-opts
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
