@@ -157,7 +157,7 @@ index 3961a20..57ec552 100644
   
      /* Resolve the GROUP BY clause.  At the same time, make sure
 diff --git a/src/select.c b/src/select.c
-index 8e4c939..edf53ac 100644
+index 8e4c939..f72653d 100644
 --- a/src/select.c
 +++ b/src/select.c
 @@ -90,6 +90,7 @@ static void clearSelect(sqlite3 *db, Select *p, int bFree){
@@ -176,7 +176,7 @@ index 8e4c939..edf53ac 100644
  #ifndef SQLITE_OMIT_WINDOWFUNC
    pNew->pWin = 0;
    pNew->pWinDefn = 0;
-@@ -188,6 +190,195 @@ void sqlite3SelectDeleteGeneric(sqlite3 *db, void *p){
+@@ -188,6 +190,204 @@ void sqlite3SelectDeleteGeneric(sqlite3 *db, void *p){
    if( ALWAYS(p) ) clearSelect(db, (Select*)p, 1);
  }
  
@@ -190,7 +190,7 @@ index 8e4c939..edf53ac 100644
 +**     [WITH ...moved from S]
 +**     SELECT * FROM (SELECT row_number() OVER () AS __vibes_id, * FROM (S))
 +**                   AS __vibes_cand
-+**     ORDER BY vibes(P, __vibes_id, <roster>) DESC, __vibes_id ASC
++**     ORDER BY vibes(P, __vibes_id, <roster>, <nonce>) DESC, __vibes_id ASC
 +**     [LIMIT L]
 +**
 +** and selectExpander() later (once the column names are known) fills in
@@ -199,7 +199,9 @@ index 8e4c939..edf53ac 100644
 +**     json_group_object(__vibes_id, json_object('c1', __vibes_cand.c1, ...))
 +**         OVER ()
 +**
-+** and drops __vibes_id from the result set.  vibes() itself is an ordinary
++** and <nonce> as min(random()) OVER (), one random number per execution that
++** lets the rows of one statement share a failed scoring, and drops __vibes_id
++** from the result set.  vibes() itself is an ordinary
 +** application-defined function, resolved like any other.  P defaults to
 +** (SELECT prompt FROM user_prompt).
 +*/
@@ -295,12 +297,13 @@ index 8e4c939..edf53ac 100644
 +  pNum = sqlite3SelectNew(pParse, pEList, pSrc, 0, 0, 0, 0, 0, 0);
 +
 +  /* SELECT * FROM (pNum) AS __vibes_cand
-+  ** ORDER BY vibes(P, __vibes_id, NULL) dir, __vibes_id ASC LIMIT L */
++  ** ORDER BY vibes(P, __vibes_id, NULL, NULL) dir, __vibes_id ASC LIMIT L */
 +  sqlite3TokenInit(&t, "__vibes_cand");
 +  pSrc = sqlite3SrcListAppendFromTerm(pParse, 0, 0, 0, &t, pNum, 0);
 +  pArgs = sqlite3ExprListAppend(pParse, 0, pPrompt);
 +  pArgs = sqlite3ExprListAppend(pParse, pArgs,
 +                                sqlite3Expr(db, TK_ID, "__vibes_id"));
++  pArgs = sqlite3ExprListAppend(pParse, pArgs, sqlite3Expr(db, TK_NULL, 0));
 +  pArgs = sqlite3ExprListAppend(pParse, pArgs, sqlite3Expr(db, TK_NULL, 0));
 +  pOrderBy = sqlite3ExprListAppend(pParse, 0,
 +                                   vibesFunction(pParse, "vibes", pArgs));
@@ -321,13 +324,14 @@ index 8e4c939..edf53ac 100644
 +/*
 +** selectExpander() step for a select made by sqlite3VibesRerankWrap(),
 +** after its "*" has been expanded: build the roster from the candidate
-+** columns and hide __vibes_id.  Returns non-zero on error.
++** columns, add the per-execution nonce and hide __vibes_id.  Returns non-zero
++** on error.
 +*/
 +static int vibesRerankExpand(Parse *pParse, Select *p){
 +  sqlite3 *db = pParse->db;
 +  ExprList *pEList = p->pEList;
 +  ExprList *pObj = 0, *pArgs;
-+  Expr *pVibes, *pRoster;
++  Expr *pVibes, *pRoster, *pNonce;
 +  Table *pTab;
 +  int i;
 +
@@ -340,7 +344,7 @@ index 8e4c939..edf53ac 100644
 +  if( pTab==0 || pEList==0 || pEList->nExpr!=pTab->nCol || pTab->nCol<2
 +   || sqlite3StrICmp(pTab->aCol[0].zCnName, "__vibes_id")!=0
 +   || pVibes==0 || pVibes->op!=TK_FUNCTION || !ExprUseXList(pVibes)
-+   || pVibes->x.pList==0 || pVibes->x.pList->nExpr!=3
++   || pVibes->x.pList==0 || pVibes->x.pList->nExpr!=4
 +  ){
 +    sqlite3ErrorMsg(pParse, "malformed RERANK BASED ON VIBES");
 +    return 1;
@@ -361,6 +365,11 @@ index 8e4c939..edf53ac 100644
 +  if( pRoster==0 ) return 1;
 +  sqlite3ExprDelete(db, pVibes->x.pList->a[2].pExpr);
 +  pVibes->x.pList->a[2].pExpr = pRoster;
++  pNonce = vibesWindowFunction(pParse, "min",
++      sqlite3ExprListAppend(pParse, 0, vibesFunction(pParse, "random", 0)));
++  if( pNonce==0 ) return 1;
++  sqlite3ExprDelete(db, pVibes->x.pList->a[3].pExpr);
++  pVibes->x.pList->a[3].pExpr = pNonce;
 +
 +  sqlite3ExprDelete(db, pEList->a[0].pExpr);
 +  sqlite3DbFree(db, pEList->a[0].zEName);
@@ -372,7 +381,7 @@ index 8e4c939..edf53ac 100644
  /*
  ** Return a pointer to the right-most SELECT statement in a compound.
  */
-@@ -6417,6 +6608,9 @@ static int selectExpander(Walker *pWalker, Select *p){
+@@ -6417,6 +6617,9 @@ static int selectExpander(Walker *pWalker, Select *p){
      sqlite3ExprListDelete(db, pEList);
      p->pEList = pNew;
    }

@@ -126,6 +126,17 @@
         (testing "one Jev call per outer row's prompt"
           (is (= ["p1" "p2" "p3"] (sort (map first @calls)))))))))
 
+(deftest failed-scoring-shared-per-statement-test
+  (let [calls (atom 0)]
+    (with-raw-conn! [conn]
+      (with-vibes (fn [& _] (swap! calls inc) nil)
+        (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")
+        (testing "the rows of one statement share the failed attempt"
+          (is (= 1 @calls)))
+        (q conn "SELECT name FROM t RERANK BASED ON VIBES('best')")
+        (testing "the next statement asks Jev again"
+          (is (= 2 @calls)))))))
+
 (deftest rerank-errors-test
   (with-raw-conn! [conn]
     (testing "a malformed clause is SQLite's syntax error"

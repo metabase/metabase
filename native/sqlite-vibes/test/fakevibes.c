@@ -1,7 +1,7 @@
 /*
 ** A deterministic stand-in for vibes() for the RERANK tests.
 **
-**   vibes(prompt, id, roster)  -> roster[id].score, or NULL when there is none
+**   vibes(prompt, id, roster [, nonce])  -> roster[id].score, or NULL when there is none
 **   vibes_calls()              -> number of vibes() calls so far
 **   vibes_rosters()            -> number of distinct (prompt, roster) pairs seen
 **   vibes_last()               -> the last "prompt|roster" seen
@@ -64,6 +64,7 @@ int sqlite3_fakevibes_init(sqlite3 *db, char **pzErrMsg,
                            const sqlite3_api_routines *pApi){
   SQLITE_EXTENSION_INIT2(pApi);
   sqlite3_create_function(db, "vibes", 3, SQLITE_UTF8, 0, vibesFunc, 0, 0);
+  sqlite3_create_function(db, "vibes", 4, SQLITE_UTF8, 0, vibesFunc, 0, 0);
   sqlite3_create_function(db, "vibes_calls", 0, SQLITE_UTF8, 0, callsFunc, 0, 0);
   sqlite3_create_function(db, "vibes_rosters", 0, SQLITE_UTF8, 0, rostersFunc, 0, 0);
   sqlite3_create_function(db, "vibes_last", 0, SQLITE_UTF8, 0, lastFunc, 0, 0);

@@ -32,7 +32,7 @@ following files to the ignored `out/` directory:
 |---|---|
 | `out/darwin-aarch64/libsqlitejdbc.dylib` | Drop-in native library for sqlite-jdbc |
 | `out/sqlite3-vibes` | `sqlite3` shell |
-| `out/fakevibes.dylib` | Deterministic `vibes()` for the shell, which returns `roster[id].score` |
+| `out/fakevibes.dylib` | Deterministic `vibes()` for the shell (3 or 4 arguments), which returns `roster[id].score` |
 
 ```sh
 out/sqlite3-vibes
@@ -74,12 +74,14 @@ The patch changes the following files. Under `src/`, it changes `parse.y`, `toke
   ```sql
   [WITH ... moved from S]
   SELECT * FROM (SELECT row_number() OVER () AS __vibes_id, * FROM (S)) AS __vibes_cand
-  ORDER BY vibes(P, __vibes_id, <roster>) dir, __vibes_id ASC
+  ORDER BY vibes(P, __vibes_id, <roster>, <nonce>) dir, __vibes_id ASC
   LIMIT L
   ```
 - **Roster, at `*` expansion.** In `selectExpander()`, once the column names are known, `<roster>` becomes
   `json_group_object(__vibes_id, json_object('c1', __vibes_cand.c1, ...)) OVER ()` and `__vibes_id` is removed
-  from the result. The call shape `vibes(prompt, integer id, roster object)` and the roster JSON match the JDBC
+  from the result, and `<nonce>` becomes `min(random()) OVER ()`, one number per execution (per outer row when
+  correlated), so one statement's rows share a failed scoring without caching it. The call shape
+  `vibes(prompt, integer id, roster object, nonce)` and the roster JSON match the JDBC
   rewrite (byte for byte when the column names are unique), so the score cache is shared. A window aggregate
   replaces the rewrite's second CTE, so the candidates are computed once, with no CTE referenced twice.
 - **Correlated prompts.** Stock 3.50.3 doesn't let a subquery's `ORDER BY` reference outer columns (newer releases

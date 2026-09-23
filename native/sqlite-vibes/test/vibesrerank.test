@@ -1,6 +1,6 @@
 # RERANK BASED ON VIBES (vibes patch).
 #
-# vibes(prompt, id, roster) is a TCL fake: it returns roster[id].score, or
+# vibes(prompt, id, roster, nonce) is a TCL fake: it returns roster[id].score, or
 # else the score of roster[id].name in ::vibes_scores, or else -1 (a TCL
 # function cannot return NULL).  It counts calls and distinct (prompt, roster)
 # batches, so orderings are deterministic and the number of batches is
@@ -15,9 +15,11 @@ set testprefix vibesrerank
 proc vibes_reset {} {
   set ::vibes_calls 0
   set ::vibes_batches [dict create]
+  set ::vibes_nonces [dict create]
 }
-proc vibes {prompt id roster} {
+proc vibes {prompt id roster {nonce ""}} {
   incr ::vibes_calls
+  dict set ::vibes_nonces $nonce 1
   dict set ::vibes_batches "$prompt|$roster" 1
   set ::vibes_last_prompt $prompt
   set ::vibes_last_roster $roster
@@ -67,6 +69,13 @@ do_test 2.6 {
   execsql { SELECT name FROM t RERANK BASED ON VIBES('q') }
   list $::vibes_calls [vibes_batches] $::vibes_last_prompt
 } {5 1 q}
+do_test 2.6.1 {
+  vibes_reset
+  execsql { SELECT name FROM t RERANK BASED ON VIBES('q') }
+  execsql { SELECT name FROM t RERANK BASED ON VIBES('q') }
+  set nonces [dict keys $::vibes_nonces]
+  list [llength $nonces] [string is wideinteger -strict [lindex $nonces 0]]
+} {2 1}
 do_test 2.7 {
   execsql { SELECT name, score FROM t WHERE name<'c' RERANK BASED ON VIBES('q') }
   set ::vibes_last_roster
