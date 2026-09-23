@@ -854,7 +854,13 @@
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
    metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
-   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world
+   potemkin/import-def                                                                          macros.potemkin.namespaces/import-def
+   potemkin/import-fn                                                                           macros.potemkin.namespaces/import-fn
+   potemkin/import-macro                                                                        macros.potemkin.namespaces/import-macro
+   potemkin.namespaces/import-def                                                               macros.potemkin.namespaces/import-def
+   potemkin.namespaces/import-fn                                                                macros.potemkin.namespaces/import-fn
+   potemkin.namespaces/import-macro                                                             macros.potemkin.namespaces/import-macro}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}

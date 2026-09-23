@@ -137,15 +137,21 @@
        first))
 
 (defmethod driver.sql/default-schema :clickhouse
-  [_driver database]
+  [driver database]
   ;; ClickHouse opens a database where other engines have a default schema, so an unqualified reference resolves to
   ;; the one this connection opened rather than to anything the driver could name on its own. `:db` is the older
-  ;; spelling of `:dbname`, and both are still in the wild.
+  ;; spelling of `:dbname`, and only `:dbname` reaches the JDBC URL, so details naming a database answer for
+  ;; themselves; details naming none connect anyway, and the server reports where they landed.
   (let [details (:details database)]
     (or (first-db-name (:dbname details))
         (first-db-name (:db details))
-        ;; Details carrying neither still connect, to the database `default-connection-details` names.
-        (first-db-name (:dbname default-connection-details)))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver database nil
+         (fn [^java.sql.Connection conn]
+           (with-open [stmt (.createStatement conn)
+                       rset (.executeQuery stmt "SELECT currentDatabase()")]
+             (when (.next rset)
+               (.getString rset 1))))))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -287,6 +293,14 @@
         parts (filter identity (str/split (name s) #"\."))]
     (str/join "." (map #(str "`" (escape-ident %) "`") parts))))
 
+(defn- unquote-name
+  "Undo [[quote-name]] for one identifier: strip the wrapping backticks and the backslash escapes inside them, so a
+  name read back from DDL matches what the managed side stores. Bare names and expressions are left as they are."
+  [^String s]
+  (if (and (> (count s) 1) (str/starts-with? s "`") (str/ends-with? s "`"))
+    (str/replace (subs s 1 (dec (count s))) #"\\(.)" "$1")
+    s))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Indexes (Index Manager)                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -362,52 +376,87 @@
   `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
   [expr]
   (if-let [s (perf/not-empty expr)]
-    (perf/mapv #(driver.common/unquote-ident (str/trim %) \`)
-               (driver.common/split-top-level-commas (strip-wrapping-parens s)))
+    (perf/mapv #(unquote-name (str/trim %))
+               (driver.common/split-top-level-commas (strip-wrapping-parens s) \\))
     []))
 
-;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
-;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
+(def ^:private skip-index-line-regex
+  "One data-skipping `INDEX` line of a `SHOW CREATE TABLE` statement. The name is back-quoted only when it has to be,
+  with backslash escapes inside (see [[quote-name]]). Column definitions are always back-quoted, so a line that
+  starts with the bare `INDEX` keyword is never one."
+  #"^\s*INDEX\s+(`(?:[^`\\]|\\.)*`|\S+)\s+(.+?)\s+TYPE\s+(\w+(?:\([^)]*\))?)\s+GRANULARITY\s+(\d+),?\s*$")
+
+(def ^:private order-by-line-regex
+  "The MergeTree sorting key line. `PRIMARY KEY`, `PARTITION BY` and `TTL` print as lines of their own."
+  #"^ORDER BY (.+)$")
+
+(defn- line->definition
+  "A statement line as a standalone clause: indentation and the list separator dropped."
+  [line]
+  (str/replace line #"^\s+|,?\s*$" ""))
+
+(def ^:private index-defaults
+  "The `::driver/table-index` fields a MergeTree index never varies: not unique, not primary, no covering columns, no
+  partial predicate."
+  {:is-unique false :is-primary false :is-valid true :include-columns [] :partial-predicate nil})
+
+(defn- skip-index-line->index
+  "The `::driver/table-index` for a data-skipping `INDEX` line, else nil."
+  [line]
+  (when-let [[_ index-name expr index-type] (re-matches skip-index-line-regex line)]
+    (assoc index-defaults
+           :name          (unquote-name index-name)
+           :kind          :skip-index
+           :access-method (first (str/split index-type #"\(" 2))
+           :key-columns   (expr->columns expr)
+           :definition    (line->definition line))))
+
+(defn- order-by-line->index
+  "The `::driver/table-index` for the `ORDER BY` line, else nil. `tuple()` is an unsorted table, so it yields nil too."
+  [line]
+  (when-let [[_ expr] (re-matches order-by-line-regex line)]
+    (when (not= "tuple()" (str/trim expr))
+      (assoc index-defaults
+             :name          nil
+             :kind          :order-by
+             :access-method nil
+             :key-columns   (expr->columns expr)
+             :definition    (line->definition line)))))
+
+(defn- create-table-statement->indexes
+  "Parse a `SHOW CREATE TABLE` statement into `::driver/table-index` maps: the data-skipping indexes, then the sorting
+  key."
+  [statement]
+  (let [lines (str/split-lines (or statement ""))]
+    (into (vec (keep skip-index-line->index lines)) (keep order-by-line->index lines))))
+
+(defn- table-missing-exception?
+  "[[sql-jdbc/impl-table-known-to-not-exist?]] plus `CANNOT_GET_CREATE_TABLE_QUERY` (390), which only
+  `SHOW CREATE TABLE` raises."
+  [^SQLException e]
+  (or (sql-jdbc/impl-table-known-to-not-exist? :clickhouse e)
+      (str/starts-with? (or (ex-message e) "") "Code: 390.")))
+
+(defmethod driver/humanize-index-error-message :clickhouse
+  [_driver message]
+  ;; Cut at the first `(ACCESS_DENIED)`-style code, which drops the `(version ...) (queryId=...)` tail.
+  (or (second (re-find #"^(.*?\([A-Z][A-Z0-9_]+\))" message)) message))
+
+;; One `SHOW CREATE TABLE` read, parsed by [[create-table-statement->indexes]]. It needs only `SHOW COLUMNS`, where
+;; `system.data_skipping_indices` needs a grant Cloud Storage's shared ClickHouse doesn't give tenants.
 (defmethod driver/fetch-table-indexes :clickhouse
   [_driver database schema table]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-        db        (perf/not-empty schema)
-        skip-idxs (->> (jdbc/query
-                        conn-spec
-                        [(str "SELECT name, type, type_full, expr, granularity "
-                              "FROM system.data_skipping_indices "
-                              "WHERE database = coalesce(?, currentDatabase()) AND table = ? "
-                              "ORDER BY name")
-                         db table])
-                       (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
-                                    {:name              name
-                                     :kind              :skip-index
-                                     :access-method     type
-                                     :is-unique         false
-                                     :is-primary        false
-                                     :is-valid          true
-                                     :key-columns       (expr->columns expr)
-                                     :include-columns   []
-                                     :partial-predicate nil
-                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
-                                                                name expr type_full granularity)})))
-        sorting   (-> (jdbc/query
-                       conn-spec
-                       [(str "SELECT sorting_key FROM system.tables "
-                             "WHERE database = coalesce(?, currentDatabase()) AND name = ?")
-                        db table])
-                      first :sorting_key)]
-    (cond-> skip-idxs
-      (perf/not-empty sorting) (conj {:name              nil
-                                      :kind              :order-by
-                                      :access-method     nil
-                                      :is-unique         false
-                                      :is-primary        false
-                                      :is-valid          true
-                                      :key-columns       (expr->columns sorting)
-                                      :include-columns   []
-                                      :partial-predicate nil
-                                      :definition        (format "ORDER BY (%s)" sorting)}))))
+        target    (quote-name (if (seq schema) (keyword schema table) (keyword table)))]
+    (try
+      (-> (jdbc/query conn-spec [(str "SHOW CREATE TABLE " target)])
+          first
+          :statement
+          create-table-statement->indexes)
+      (catch SQLException e
+        (if (table-missing-exception? e)
+          []
+          (throw e))))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,

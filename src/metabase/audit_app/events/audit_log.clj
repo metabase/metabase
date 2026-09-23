@@ -334,6 +334,11 @@
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)
 (events/derive! :event/transform-run-timeout ::transform-event)
+(events/derive! :event/transform-test-create ::transform-event)
+(events/derive! :event/transform-test-update ::transform-event)
+(events/derive! :event/transform-test-delete ::transform-event)
+(events/derive! :event/transform-test-run-start ::transform-event)
+(events/derive! :event/transform-test-run-timeout ::transform-event)
 (events/derive! :event/transform-inspect-discover ::transform-event)
 (events/derive! :event/transform-inspect-lens ::transform-event)
 
