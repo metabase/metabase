@@ -7,8 +7,8 @@ export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "bar",
 ] as const satisfies readonly VisualizationDisplay[];
 
-/** Every graph display that resolves `graph.goal_value`, including the non-cartesian row chart. */
-export const DYNAMIC_GOAL_GRAPH_DISPLAYS = [
+// Every display that resolves `graph.goal_value`
+export const DYNAMIC_GOAL_DISPLAYS = [
   ...DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
   "row",
 ] as const satisfies readonly VisualizationDisplay[];
