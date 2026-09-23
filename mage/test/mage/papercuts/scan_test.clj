@@ -18,6 +18,17 @@
     (is (= "2026-09-01T08:30:00Z" (scan/parse-since "2026-09-01T10:30:00+02:00" now)))
     (is (thrown? Exception (scan/parse-since "last tuesday" now)))))
 
+(deftest state-and-log-files-test
+  (testing "each server keeps its own progress and log"
+    (let [shared (scan/default-state-file :claude "http://10.193.193.227:8765")
+          local  (scan/default-state-file :claude "http://127.0.0.1:8766/")]
+      (is (= "scan-state.claude.10.193.193.227-8765.edn" (str (fs/file-name shared))))
+      (is (= "scan-state.claude.127.0.0.1-8766.edn" (str (fs/file-name local))))
+      (is (= "scan-log.claude.10.193.193.227-8765.jsonl" (str (fs/file-name (#'scan/log-file shared)))))
+      (is (= "scan-state.claude.metaouch.dev.edn" (str (fs/file-name (scan/default-state-file :claude "https://metaouch.dev")))))))
+  (testing "a state file named some other way doesn't have its log written over it"
+    (is (= "/tmp/progress.edn.log.jsonl" (#'scan/log-file "/tmp/progress.edn")))))
+
 (defn- entry [line ts]
   {:line line :ts ts :tag "USER" :text (str "message " line)})
 

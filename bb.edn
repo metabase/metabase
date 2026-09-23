@@ -125,7 +125,7 @@
   papercuts-scan-claude
   {:doc "Scan Claude Code transcripts for papercuts and submit them to a papercuts server.
 Reads ~/.claude/projects (or $CLAUDE_CONFIG_DIR/projects), picking up each session where the previous run stopped (progress is kept in
-local/papercuts/scan-state.claude.edn). Screens new stretches with Jev (TYPESAFE_API_KEY), drills flagged ones with
+local/papercuts/scan-state.claude.<host>-<port>.edn, one per server). Screens new stretches with Jev (TYPESAFE_API_KEY), drills flagged ones with
 the claude CLI, and submits each papercut once."
    :examples [["./bin/mage papercuts-scan-claude" "Scan everything new since the last run"]
               ["./bin/mage papercuts-scan-claude --since 7d --limit 20" "Scan at most 20 sessions, looking only at the last week"]
@@ -147,7 +147,7 @@ the claude CLI, and submits each papercut once."
              [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token (default: PAPERCUTS_TOKEN)"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.claude)"]
-             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.claude.edn)"]
+             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.claude.<host>-<port>.edn, one per server)"]
              [nil "--rescan" "Ignore saved progress and rescan from the start (already-reported papercuts are still skipped)"]
              [nil "--hold-short-tail" "Leave a final stretch too short to screen for the next run (for hooks on a session still in progress)"]
              [nil "--dry-run" "Screen and drill, but submit nothing and save no progress"]
@@ -176,7 +176,7 @@ hook command, so it does not depend on the agent's environment. Existing hooks a
   papercuts-scan-codex
   {:doc "Scan Codex transcripts for papercuts and submit them to a papercuts server.
 Reads sessions and archived_sessions under ~/.codex (or $CODEX_HOME), picking up each session where the previous run stopped
-(progress is kept in local/papercuts/scan-state.codex.edn). Guardian reviews are always skipped, and `codex exec`
+(progress is kept per server in local/papercuts/scan-state.codex.<host>-<port>.edn). Guardian reviews are always skipped, and `codex exec`
 runs unless --include-exec. Screens new stretches with Jev (TYPESAFE_API_KEY), drills flagged ones with the codex
 CLI, and submits each papercut once."
    :examples [["./bin/mage papercuts-scan-codex" "Scan everything new since the last run"]
@@ -200,7 +200,7 @@ CLI, and submits each papercut once."
              [nil "--repository NAME" "Repository the reports belong to (default: the name of each session's git remote)"]
              [nil "--token TOKEN" "Bearer token, for a server started with --token (default: PAPERCUTS_TOKEN)"]
              [nil "--reporter NAME" "Reporter name sent with each report (default: <user>.codex)"]
-             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.codex.edn)"]
+             [nil "--state-file PATH" "Progress file (default: local/papercuts/scan-state.codex.<host>-<port>.edn, one per server)"]
              [nil "--rescan" "Ignore saved progress and rescan from the start (already-reported papercuts are still skipped)"]
              [nil "--hold-short-tail" "Leave a final stretch too short to screen for the next run (for hooks on a session still in progress)"]
              [nil "--dry-run" "Screen and drill, but submit nothing and save no progress"]

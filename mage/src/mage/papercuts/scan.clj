@@ -95,13 +95,25 @@
 
 ;;; State
 
+(defn- server-key
+  "`server` as part of a file name: its host, and its port when it has one, such as `10.193.193.227-8765`."
+  [server]
+  (let [uri (java.net.URI. server)]
+    (str (.getHost uri) (when (pos? (.getPort uri)) (str "-" (.getPort uri))))))
+
 (defn default-state-file
-  "Progress file for `source` in the gitignored `local/` directory of this checkout."
-  [source]
-  (str (fs/path u/project-root-directory "local" "papercuts" (str "scan-state." (name source) ".edn"))))
+  "Progress file for `source` and `server` in the gitignored `local/` directory of this checkout."
+  [source server]
+  ;; One file per server: a session scanned for one server must still be scanned for another.
+  (str (fs/path u/project-root-directory "local" "papercuts"
+                (str "scan-state." (name source) "." (server-key server) ".edn"))))
 
 (defn- log-file [state-file]
-  (str/replace (str state-file) #"scan-state\.(\w+)\.edn$" "scan-log.$1.jsonl"))
+  (let [path (str state-file)]
+    ;; A state file named some other way gets its log beside it, rather than the log overwriting it.
+    (if (re-find #"scan-state\.(.+)\.edn$" path)
+      (str/replace path #"scan-state\.(.+)\.edn$" "scan-log.$1.jsonl")
+      (str path ".log.jsonl"))))
 
 (defn load-state
   "Saved progress: `{:sessions {session-id {:line :until :modified :path :reported [...]}}}`."
@@ -369,7 +381,8 @@
     (doseq [p found :when (not= "positive" (:label p))]
       (say session (c/magenta (:label p)) (:slug p) "-" (:title p)))
     (when-not dry-run
-      (log! log {:session   (:id session)
+      (log! log {:server    (:server opts)
+                 :session   (:id session)
                  :path      (:path session)
                  :lines     [(:first-new-line chunk) (:last-line chunk)]
                  :jev_model model
@@ -515,7 +528,9 @@
 (defn scan!
   "Entry point for `mage papercuts-scan-claude` and `mage papercuts-scan-codex`."
   [source {:keys [options]}]
-  (let [state-file (or (:state-file options) (default-state-file source))]
+  (let [server     (or (:server options) (bot-env/resolve-env "PAPERCUTS_SERVER") hooks/default-server)
+        options    (assoc options :server server)
+        state-file (or (:state-file options) (default-state-file source server))]
     (if (or (:dry-run options) (:screen-only options))
       (scan-with-state! source options state-file)
       (with-state-lock state-file #(scan-with-state! source options state-file)))))
