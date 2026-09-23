@@ -139,10 +139,15 @@ export type BreakpointName = keyof typeof breakpoints;
 export const getThemeOverrides = (
   colorScheme: "light" | "dark" = "light",
   whitelabelColors?: ColorSettings | null,
+  forceDynamicBrandRamp?: boolean,
 ): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getMantineThemeColors(colorScheme, whitelabelColors),
+  colors: getMantineThemeColors({
+    colorScheme,
+    whitelabelColors,
+    forceDynamicBrandRamp,
+  }),
   primaryColor: "core-brand",
   primaryShade: 0,
   // Store colorScheme in other property for access later

@@ -4,7 +4,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
-import { resolveBrandRampToOcean } from "./constants/brand-ramp";
+import { replaceBrandRampWithOcean } from "./constants/brand-ramp";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type {
@@ -63,7 +63,7 @@ export function deriveFullMetabaseTheme({
         // if instance has custom brand color set. Because of this we replace value of
         // every semantic token matching one of default brand ramp stops with matching
         // stop from ocean ramp (as opposed to modifying baseColors.brand directly)
-        resolveBrandRampToOcean(baseTheme.colors)),
+        replaceBrandRampWithOcean(baseTheme.colors)),
     ...mapChartColorsToAccents(baseTheme.chartColors),
     ...deriveAllAccentColors(whitelabelColors ?? {}),
     ...filteredEmbeddingColors,

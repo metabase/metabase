@@ -1,6 +1,8 @@
 import { waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
@@ -8,6 +10,7 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
+import { getBaseColorsForThemeDefinitionOnly } from "metabase/ui/colors/constants/base-colors";
 
 const EXAMPLE_COLOR = "background_page-primary-inverse";
 
@@ -71,13 +74,25 @@ const SdkCssVariablesTester = ({
 const renderSdkThemeProvider = (
   theme: React.ComponentProps<typeof SdkThemeProvider>["theme"],
   onCssVariablesChange: (cssVariables: string) => void,
+  whitelabelColors?: Record<string, string>,
 ) =>
   renderWithProviders(
     <SdkThemeProvider theme={theme}>
       <div className="mb-wrapper">SDK content</div>
       <SdkCssVariablesTester onChange={onCssVariablesChange} />
     </SdkThemeProvider>,
+    whitelabelColors && {
+      storeInitialState: createMockState({
+        settings: mockSettings({ "application-colors": whitelabelColors }),
+      }),
+    },
   );
+
+const winningValue = (cssVariables: string, variable: string) =>
+  [...cssVariables.matchAll(new RegExp(`${variable}:\\s*([^;]+);`, "g"))]
+    .at(-1)
+    ?.at(1)
+    ?.trim();
 
 describe("SdkThemeProvider", () => {
   beforeEach(() => {
@@ -104,6 +119,73 @@ describe("SdkThemeProvider", () => {
     expect(handleCssVariablesChange.mock.lastCall?.[0]).toContain(
       "--mb-color-background_page-primary: #123456",
     );
+  });
+
+  describe("brand ramp", () => {
+    const OCEAN_TEXT_HOVER = getBaseColorsForThemeDefinitionOnly().ocean[60];
+    const OCEAN_TEXT_BRAND = getBaseColorsForThemeDefinitionOnly().ocean[50];
+
+    // Read what the provider actually rendered rather than calling the emitter again,
+    // so the flag it decides on is part of what we assert
+    const emittedStyles = () =>
+      // eslint-disable-next-line testing-library/no-node-access -- emotion writes these <style> tags; there is no Testing Library query for them
+      [...document.querySelectorAll("style")]
+        .map((element) => element.textContent ?? "")
+        .join("\n");
+
+    const setup = async (
+      theme: React.ComponentProps<typeof SdkThemeProvider>["theme"],
+      whitelabelColors?: Record<string, string>,
+    ) => {
+      renderSdkThemeProvider(theme, jest.fn(), whitelabelColors);
+
+      await waitFor(() =>
+        expect(emittedStyles()).toContain("--mb-color-text-brand:"),
+      );
+
+      return (variable: string) => winningValue(emittedStyles(), variable);
+    };
+
+    it.each([
+      ["a V1 theme", { colors: { brand: "#DF75E9" } }],
+      // A V2 theme addresses it as `brand` until GDGT-2536 removes the compatibility
+      // assignment in `deriveFullMetabaseTheme` that overwrites `core-brand` with it
+      ["a V2 theme", { version: 2 as const, colors: { brand: "#DF75E9" } }],
+    ])("tracks a brand color from %s", async (_name, theme) => {
+      const cssVariable = await setup(theme);
+
+      expect(cssVariable("--mb-color-core-brand")).toBe("#DF75E9");
+      expect(cssVariable("--mb-color-text-hover")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+      expect(cssVariable("--mb-color-text-brand-hover")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+
+      // `text-brand` is a ramp color the SDK mapping does not re-emit, so it only
+      // tracks the brand if `createColorVars` left it dynamic
+      expect(cssVariable("--mb-color-text-brand")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+    });
+
+    it("tracks a whitelabel brand color when the theme sets none", async () => {
+      const cssVariable = await setup(undefined, { brand: "#DF75E9" });
+
+      expect(cssVariable("--mb-color-text-hover")).toContain(
+        "var(--mb-color-core-brand)",
+      );
+    });
+
+    it.each([
+      ["no theme", undefined],
+      ["a theme without a brand", { colors: { "text-primary": "#111111" } }],
+    ])("replaces the brand ramp with Ocean given %s", async (_name, theme) => {
+      const cssVariable = await setup(theme);
+
+      expect(cssVariable("--mb-color-text-hover")).toBe(OCEAN_TEXT_HOVER);
+      expect(cssVariable("--mb-color-text-brand")).toBe(OCEAN_TEXT_BRAND);
+    });
   });
 
   it.each(THEME_CASES)(

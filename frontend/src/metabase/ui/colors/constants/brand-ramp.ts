@@ -11,7 +11,7 @@ export const BRAND_RAMP_TO_OCEAN: Record<string, string> = Object.fromEntries(
 );
 
 /** Swaps brand ramp values for the matching Ocean stops. */
-export const resolveBrandRampToOcean = (colors: Record<string, string>) =>
+export const replaceBrandRampWithOcean = (colors: Record<string, string>) =>
   Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
       key,

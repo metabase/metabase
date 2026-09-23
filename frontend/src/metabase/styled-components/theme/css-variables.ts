@@ -70,10 +70,12 @@ export function getMetabaseSdkCssVariables({
   theme,
   font,
   whitelabelColors,
+  forceDynamicBrandRamp,
 }: {
   theme: MantineTheme;
   font: string;
   whitelabelColors?: ColorSettings | null;
+  forceDynamicBrandRamp?: boolean;
 }) {
   const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
 
@@ -84,7 +86,7 @@ export function getMetabaseSdkCssVariables({
       ${createColorVars({
         colorScheme,
         whitelabelColors,
-        forceDynamicBrandRamp: true,
+        forceDynamicBrandRamp,
       })}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}

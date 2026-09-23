@@ -145,7 +145,7 @@ describe("deriveFullMetabaseTheme", () => {
       ["light" as const, METABASE_LIGHT_THEME],
       ["dark" as const, METABASE_DARK_THEME],
     ])(
-      "resolves the %s brand ramp to Ocean when the brand color is not customized",
+      "replaces the %s brand ramp with Ocean when the brand color is not customized",
       (colorScheme, theme) => {
         const derived = deriveFullMetabaseTheme({ colorScheme });
 
@@ -155,7 +155,7 @@ describe("deriveFullMetabaseTheme", () => {
       },
     );
 
-    it("resolves brand ramp stops to their matching Ocean stops", () => {
+    it("replaces brand ramp stops with their matching Ocean stops", () => {
       const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
 
       // METABASE_LIGHT_THEME defines these off brand[50], brand[60] and brand[10]

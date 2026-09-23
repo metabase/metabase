@@ -14,8 +14,8 @@ const TEXT_BRAND_RAMP = baseColors.brand[50];
 const TEXT_BRAND_OCEAN = baseColors.ocean[50];
 
 const createSdkTheme = (colors: Record<string, string>) =>
-  // The helpers under test read only these three fields off the theme, so a stub
-  // carrying them stands in for a full Mantine theme.
+  // The helpers under test read only these fields off the theme, so a stub carrying
+  // them stands in for a full Mantine theme.
   ({
     fontFamilyMonospace: "monospace",
     fn: {
@@ -48,15 +48,25 @@ describe("getThemeSpecificCssVariables", () => {
 });
 
 describe("getMetabaseSdkCssVariables", () => {
-  it("keeps the brand ramp dynamic so it tracks the SDK theme's brand", () => {
+  it("keeps the brand ramp dynamic when forceDynamicBrandRamp is set", () => {
     // A v1 SDK theme never reaches `deriveFullMetabaseTheme`; its brand lands as
     // `--mb-color-core-brand` later in the same block, which the ramp resolves against
     const styles = getMetabaseSdkCssVariables({
       theme: createSdkTheme({ "core-brand": "#DF75E9" }),
       font: "Lato",
+      forceDynamicBrandRamp: true,
     }).styles;
 
     expect(styles).toContain(`--mb-color-text-brand: ${TEXT_BRAND_RAMP};`);
     expect(styles).not.toContain(`--mb-color-text-brand: ${TEXT_BRAND_OCEAN};`);
+  });
+
+  it("replaces the brand ramp with Ocean when forceDynamicBrandRamp is not set", () => {
+    const styles = getMetabaseSdkCssVariables({
+      theme: createSdkTheme({}),
+      font: "Lato",
+    }).styles;
+
+    expect(styles).toContain(`--mb-color-text-brand: ${TEXT_BRAND_OCEAN};`);
   });
 });
