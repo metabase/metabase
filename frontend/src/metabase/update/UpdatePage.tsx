@@ -30,6 +30,7 @@ const GAME_REVEAL_DELAY_MS = 350;
 
 export function UpdatePage() {
   const status = useUpgradeStatus();
+  const hasUpgradeFailed = status.phase === "failed";
   const [sequence, setSequence] = useState({ progress: 0, attempt: 0 });
   const [screen, setScreen] = useState<"code" | "ready" | "playing">("code");
   const [gameAudio, setGameAudio] = useState<GameAudioState>({
@@ -116,11 +117,13 @@ export function UpdatePage() {
 
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
-      <UpdateMusic
-        track={screen === "playing" ? "game" : "elevator"}
-        paused={screen === "playing" && !gameAudio.playing}
-        playbackRate={screen === "playing" ? gameAudio.playbackRate : 1}
-      />
+      {!hasUpgradeFailed && (
+        <UpdateMusic
+          track={screen === "playing" ? "game" : "elevator"}
+          paused={screen === "playing" && !gameAudio.playing}
+          playbackRate={screen === "playing" ? gameAudio.playbackRate : 1}
+        />
+      )}
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <LogoIcon height={56} />
@@ -128,7 +131,9 @@ export function UpdatePage() {
           <UpgradeProgress status={status} />
           {!isGameRevealed && <UpgradeCompletion status={status} />}
         </header>
-        <p className={S.hint}>{t`Enter KONAMI code if you're bored`}</p>
+        {!hasUpgradeFailed && (
+          <p className={S.hint}>{t`Enter KONAMI code if you're bored`}</p>
+        )}
         <div className={S.symbols} role="status" aria-label={t`Konami code`}>
           {KONAMI_CODE.slice(0, sequence.progress).map((entry, index) => (
             <span

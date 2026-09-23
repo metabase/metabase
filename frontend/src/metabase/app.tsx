@@ -48,6 +48,7 @@ import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { OldVersionOverlay } from "metabase/update/OldVersionOverlay";
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
@@ -135,6 +136,7 @@ function _init(
           <OverlayStackProvider>
             <AppThemeProvider>
               <GlobalStyles />
+              <OldVersionOverlay />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
                 <RouterProvider

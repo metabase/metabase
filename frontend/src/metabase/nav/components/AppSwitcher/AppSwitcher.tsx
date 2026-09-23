@@ -8,6 +8,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import { useHelpLink } from "metabase/common/hooks";
+import { useIsOldDemoVersion } from "metabase/common/hooks/use-is-old-demo-version";
 import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
@@ -63,6 +64,9 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const canAccessMonitor = useSelector(canAccessMonitorSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
+  const isOldDemoVersion = useIsOldDemoVersion();
+  const showDataStudio = canAccessDataStudio && !isOldDemoVersion;
+  const showMonitor = canAccessMonitor && !isOldDemoVersion;
 
   const openModal = (modalName: string) => {
     setModalOpen(modalName);
@@ -77,7 +81,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !canAccessMonitor && !showAdminSettingsItem) {
+    if (!showDataStudio && !showMonitor && !showAdminSettingsItem) {
       return null;
     }
 
@@ -97,7 +101,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
       </Menu.Item>,
     ];
 
-    if (canAccessDataStudio) {
+    if (showDataStudio) {
       items.push(
         <Menu.Item
           key="data-studio-app-link"
@@ -118,7 +122,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
-    if (canAccessMonitor) {
+    if (showMonitor) {
       items.push(
         <Menu.Item
           key="monitor-app-link"
@@ -161,7 +165,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Box px="lg">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
+  }, [showDataStudio, showMonitor, adminItems, currentApp]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;

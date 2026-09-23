@@ -1,0 +1,7 @@
+{
+  "latest": {
+    "version": "v0.65.0",
+    "rollout": 100,
+    "highlights": ["Local self-upgrade demo"]
+  }
+}

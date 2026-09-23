@@ -6,6 +6,7 @@
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   color: var(--update-game-text);
+  font-family: "Press Start 2P", monospace;
   text-align: center;
 
   h1 {
