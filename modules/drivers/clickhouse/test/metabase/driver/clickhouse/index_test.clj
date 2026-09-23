@@ -231,3 +231,34 @@
                      {:name nil :kind :order-by :key-columns [column]}]
                     (driver/fetch-table-indexes :clickhouse db "default" table)))
             (finally (drop!))))))))
+
+(deftest ^:synchronized restricted-user-live-test
+  (testing "reading indexes needs only SELECT on the table; the system database stays off-limits"
+    (mt/test-driver :clickhouse
+      (let [admin-details  (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            admin-spec     (sql-jdbc.conn/connection-details->spec :clickhouse admin-details)
+            user           "mb_index_reader"
+            reader-details (assoc admin-details :user user :password "")
+            reader-spec    (sql-jdbc.conn/connection-details->spec :clickhouse reader-details)
+            table          (str (gensym "mb_reader_"))
+            index          {:name "evt_minmax" :columns [{:name "a"}] :type :minmax :granularity 4}
+            exec!          (fn [sql] (jdbc/execute! admin-spec [sql]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details reader-details}]
+          (exec! (format "DROP TABLE IF EXISTS `%s`" table))
+          (exec! (format "DROP USER IF EXISTS `%s`" user))
+          (try
+            (exec! (format "CREATE USER `%s` NOT IDENTIFIED" user))
+            (exec! (format "GRANT SELECT ON default.* TO `%s`" user))
+            (exec! (format "CREATE TABLE `%s` (`a` Int64, `b` Int64) ENGINE = MergeTree ORDER BY (`a`, `b`)" table))
+            (driver/execute-raw-queries! :clickhouse admin-spec
+                                         (driver/compile-create-index :clickhouse nil table index))
+            (testing "the catalog table the old read used is denied to this user"
+              (is (thrown-with-msg? Exception #"ACCESS_DENIED"
+                                    (jdbc/query reader-spec ["SELECT count() FROM system.data_skipping_indices"]))))
+            (testing "fetch-table-indexes still reads both index kinds"
+              (is (=? [{:name "evt_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}
+                       {:name nil :kind :order-by :key-columns ["a" "b"]}]
+                      (driver/fetch-table-indexes :clickhouse db "default" table))))
+            (finally
+              (exec! (format "DROP TABLE IF EXISTS `%s`" table))
+              (exec! (format "DROP USER IF EXISTS `%s`" user)))))))))
