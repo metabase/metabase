@@ -5,11 +5,6 @@ import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  getFocusState,
-  reflowLayoutByScore,
-  subscribeFocus,
-} from "metabase/dashboard/components/DashboardFocus/focus-store";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import {
   type OmniPickerItem,
@@ -22,6 +17,12 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
+import type { CardShape } from "metabase/dashboard/components/DashboardFocus/classify-kind";
+import {
+  getFocusState,
+  reflowLayoutByScore,
+  subscribeFocus,
+} from "metabase/dashboard/components/DashboardFocus/focus-store";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { connect } from "metabase/redux";
@@ -639,6 +640,27 @@ class DashboardGridInner extends Component<
     );
   };
 
+  /**
+   * Structural facts for a dashcard, read off its rendered result — the input the focus layout engine
+   * uses to classify what a card IS (callout / trend / table …). Returns undefined when the card hasn't
+   * loaded, in which case the engine falls back to a neutral kind.
+   */
+  getCardShape = (dashcardId: number): CardShape | undefined => {
+    const dashcard = this.getVisibleCards().find((dc) => dc.id === dashcardId);
+    if (!dashcard) {
+      return undefined;
+    }
+    const dataset =
+      dashcard.card_id != null
+        ? this.props.dashcardData?.[dashcardId]?.[dashcard.card_id]
+        : undefined;
+    return {
+      display: dashcard.card?.display,
+      rowCount: dataset?.row_count ?? dataset?.data?.rows?.length,
+      colCount: dataset?.data?.cols?.length,
+    };
+  };
+
   renderGrid() {
     const { width } = this.props;
     const { layouts, visualizerModalStatus } = this.state;
@@ -651,7 +673,11 @@ class DashboardGridInner extends Component<
     const displayLayouts =
       focus.active && !this.isEditingLayout
         ? {
-            desktop: reflowLayoutByScore(layouts.desktop ?? [], focus.scores),
+            desktop: reflowLayoutByScore(
+              layouts.desktop ?? [],
+              focus.scores,
+              this.getCardShape,
+            ),
             mobile: layouts.mobile ?? [],
           }
         : layouts;

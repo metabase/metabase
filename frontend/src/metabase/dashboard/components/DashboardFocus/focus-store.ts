@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from "react";
 
+import { type CardShape, classifyKind } from "./classify-kind";
+import { type FocusCardInput, packLayout } from "./layout-engine";
+
 /**
  * A tiny shared store for the dashboard "focus" reflow. The DashboardFocus panel writes per-dashcard
  * relevance scores here; DashboardGrid subscribes and re-flows its layout so relevant cards rise to the
@@ -65,35 +68,44 @@ export function subscribeFocus(listener: () => void): () => void {
 type LayoutItem = { i: string; x: number; y: number; w: number; h: number };
 
 /**
- * Re-flow a react-grid-layout by relevance: cards with higher scores move to the top, lower scores sink
- * to the bottom. Preserves each card's width/height and column, only rewriting the row (`y`), so
- * react-grid-layout animates the vertical slide. Cards with no score keep their relative order in the
- * middle. Returns a new layout array; does not mutate the input. Generic over the caller's item type so
- * extra fields (react-grid-layout's `minW`, `dashcard`, etc.) pass through untouched.
+ * Re-flow a react-grid-layout by relevance AND kind. Cards are ordered by score (most relevant first),
+ * then each is resized and repacked by what it IS (a callout stays small, a table grows with its rows, a
+ * trend goes wide) via the layout engine, and the resulting geometry is mapped back onto the caller's
+ * items — so react-grid-layout animates the whole rearrangement. This is the fix for the old "staircase":
+ * we no longer preserve each card's original width/column, we recompute them from kind × score.
+ *
+ * `shapeOf` reads a card's structural facts (display type, row count) from the rendered result; the grid
+ * supplies it from its dashcardData. When a card's shape is unknown it falls back to "other".
+ *
+ * Returns a new layout array; does not mutate the input. Generic over the caller's item type so extra
+ * fields (react-grid-layout's `minW`, `dashcard`, etc.) pass through untouched.
  */
 export function reflowLayoutByScore<T extends LayoutItem>(
   layout: T[],
   scores: Record<number, number>,
+  shapeOf?: (dashcardId: number) => CardShape | undefined,
 ): T[] {
   // Sort by score descending; unscored cards (score undefined) sort as 0 but keep stable order.
   const scoreOf = (item: LayoutItem) => scores[Number(item.i)] ?? 0;
   const ordered = [...layout].sort((a, b) => scoreOf(b) - scoreOf(a));
 
-  // Greedy vertical packing across GRID_COLUMNS: place each card at the lowest row where its column
-  // span fits, keeping its original x/w. columnBottoms tracks the current filled height per column.
-  const GRID_COLUMNS = 24;
-  const columnBottoms = new Array(GRID_COLUMNS).fill(0);
+  const inputs: FocusCardInput[] = ordered.map((item) => {
+    const id = Number(item.i);
+    const shape = shapeOf?.(id);
+    return {
+      id,
+      kind: shape ? classifyKind(shape) : "other",
+      score: scores[id] ?? 0,
+      rowCount: shape?.rowCount,
+      originalSize: { w: item.w, h: item.h },
+    };
+  });
+
+  const placed = packLayout(inputs);
+  const placedById = new Map(placed.map((p) => [p.id, p]));
 
   return ordered.map((item) => {
-    const x = Math.max(0, Math.min(item.x, GRID_COLUMNS - item.w));
-    // The row is the max filled height across the columns this card spans.
-    let y = 0;
-    for (let c = x; c < x + item.w && c < GRID_COLUMNS; c++) {
-      y = Math.max(y, columnBottoms[c]);
-    }
-    for (let c = x; c < x + item.w && c < GRID_COLUMNS; c++) {
-      columnBottoms[c] = y + item.h;
-    }
-    return { ...item, x, y };
+    const p = placedById.get(Number(item.i));
+    return p ? { ...item, x: p.x, y: p.y, w: p.w, h: p.h } : item;
   });
 }
