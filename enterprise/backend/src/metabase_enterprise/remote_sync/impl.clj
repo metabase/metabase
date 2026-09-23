@@ -297,9 +297,12 @@
   "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
+  ;; Hashing re-serializes every imported entity after the load, so no Field is written meanwhile; synced cards
+  ;; reference a few fields many times, so a bounded field-path cache turns one query per ref into one per field.
   (serdes/with-cache
-    (doseq [chunk (partition-all app-db-batch-size rows)]
-      (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
+    (serdes/with-field-path-cache
+      (doseq [chunk (partition-all app-db-batch-size rows)]
+        (remote-sync.db/insert-rsos! (merge-content-metadata chunk (import-content-metadata chunk repo-paths)))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
