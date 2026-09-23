@@ -1888,6 +1888,7 @@
            warehouse-schema-overlay
            warehouses
            warehouses.schema
+           worktree
            enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
                     :model/CollectionPermissionGraphRevision
@@ -3242,7 +3243,8 @@
            warehouse-schema-overlay
            warehouses
            warehouses.schema
-           warehouses.secrets}
+           warehouses.secrets
+           worktree}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database

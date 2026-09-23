@@ -15,6 +15,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
@@ -620,6 +621,8 @@
                       (namespace-clause :namespace (u/qualified-name collection-namespace))
                       [:not :archived]
                       [:= :personal_owner_id nil]
+                      ;; a hand-written query, so it restricts itself to the world being worked in
+                      (worktree/world-clause :collection)
                       (when (seq ids-without-root)
                         [:in :id ids-without-root])
                       [:not [:exists ^:allow-subquery

@@ -27,6 +27,12 @@
   []
   *scope-queries?*)
 
+(defn world-clause
+  "Honey SQL restricting `table` to the world being worked in, for a hand-written query that names its table rather
+  than a model and so is not restricted for it."
+  [table]
+  [:= (keyword (name table) "worktree_id") *worktree-id*])
+
 (defn do-across-worlds
   "Impl for [[across-worlds]]."
   [thunk]

@@ -13,6 +13,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
@@ -70,7 +71,9 @@
                                     (nil? collection-scope)          nil
                                     (= collection-scope :root)       [:= :collection_id nil]
                                     :else                            [:in :collection_id collection-scope])
-                                  (collection/visible-collection-filter-clause)]
+                                  (collection/visible-collection-filter-clause)
+                                  ;; a hand-written query, so it restricts itself to the world being worked in
+                                  (worktree/world-clause :report_card)]
                        :order-by [[:%lower.name :asc]]}))
 
 (mu/defn databases-where
