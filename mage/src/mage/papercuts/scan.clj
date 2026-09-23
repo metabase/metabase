@@ -216,9 +216,13 @@
   the session ran in, or of its working directory."
   [{:keys [repository]} session entries]
   (or repository
-      (let [cwd (or (some :cwd entries) (:cwd session))]
-        (or (repository-name (:repository_url (papercut-git/context {:cwd cwd :session-git (:git session)})))
-            (some-> cwd fs/file-name str not-empty)
+      ;; The directories the session worked in, most used first. The first entry's may be a scratch directory that
+      ;; isn't a checkout, whose folder name says nothing about the repository.
+      (let [dirs (distinct (concat (->> entries (keep :cwd) frequencies (sort-by val >) (map key))
+                                   (some-> (:cwd session) vector)))]
+        (or (some #(repository-name (:repository_url (papercut-git/context {:cwd % :session-git (:git session)})))
+                  dirs)
+            (some-> (first dirs) fs/file-name str not-empty)
             "unknown"))))
 
 (defn known-papercuts

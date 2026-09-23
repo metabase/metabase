@@ -1,6 +1,7 @@
 (ns mage.papercuts.scan-test
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [clojure.test :refer [deftest is testing]]
    [mage.papercuts.scan :as scan]
    [mage.papercuts.transcript :as transcript])
@@ -170,3 +171,21 @@
                     "\"content\":[{\"type\":\"input_text\",\"text\":\"look at this\"}]}}\n"))
     (testing "a session that starts public and moves into metabase-private counts as security work"
       (is (scan/security-worktree? {:cwd "/w/metabase"} (transcript/codex-entries file))))))
+
+(deftest session-repository-test
+  (let [root    (fs/create-temp-dir {:prefix "papercut-repository"})
+        repo    (str (fs/path root "checkout"))
+        scratch (str (fs/path root "pc"))
+        git!    #(p/shell {:dir repo :out :string :err :string} "git" %1 %2 %3 %4)]
+    (try
+      (fs/create-dirs repo)
+      (fs/create-dirs scratch)
+      (p/shell {:dir repo :out :string :err :string} "git" "init" "-q")
+      (git! "remote" "add" "upstream" "git@github.com:metabase/evals.git")
+      (testing "the remote of the directory the session used most, not the folder name of its first one"
+        (is (= "evals" (#'scan/session-repository {} {:cwd scratch}
+                                                  [{:cwd scratch} {:cwd repo} {:cwd repo} {:cwd repo}]))))
+      (testing "--repository wins"
+        (is (= "metabase" (#'scan/session-repository {:repository "metabase"} {:cwd scratch} []))))
+      (finally
+        (fs/delete-tree root)))))

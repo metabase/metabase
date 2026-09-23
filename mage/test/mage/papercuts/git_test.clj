@@ -79,3 +79,10 @@
     (is (= "https://host/repo" (papercut-git/public-url "https://host/repo#user@secret"))))
   (testing "scp-style remotes name only a login user, and pass through"
     (is (= "git@github.com:org/repo.git" (papercut-git/public-url "git@github.com:org/repo.git")))))
+
+(deftest context-without-an-origin-remote-test
+  (with-repo!
+    (fn [dir _ _]
+      (git! dir {} "remote" "rename" "origin" "fork")
+      (testing "a checkout whose remote isn't called origin still names it"
+        (is (= "git@example.com:org/repo.git" (:repository_url (papercut-git/context {:cwd dir}))))))))
