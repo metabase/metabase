@@ -169,7 +169,6 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
             triggeredFrom: "conflict-modal",
           });
 
-          // createBranch switches the instance to the new branch, so the push follows it there.
           await exportChanges({
             message,
           }).unwrap();

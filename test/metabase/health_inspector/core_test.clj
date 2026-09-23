@@ -30,7 +30,6 @@
                      "query" {"expressions" "extremely invalid"
                               "source-table" 2}
                      "type" "query"}
-          ;; worktree_id_helper is generated, so the copy may not carry it over
           bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id :worktree_id_helper)
                           :entity_id (u/generate-nano-id)
                           :dataset_query (json/encode bad-query)

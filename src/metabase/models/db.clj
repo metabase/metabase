@@ -12,12 +12,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.identity-query :as t2.identity-query]))
 
-(defn worktree-id-of
-  "The `worktree_id` of the `model` row `id` names, by primary key or, when `id` is a string, by `entity_id`; nil
-  for the main app's."
-  [model id]
-  (t2/select-one-fn :worktree_id model (if (string? id) :entity_id :id) id))
-
 (mu/defn entity-by-pk
   "The `model` row whose `pk-column` is `id`, or nil."
   [model     :- [:or :keyword symbol?]

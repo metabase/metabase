@@ -613,7 +613,6 @@
 
 (t2/define-after-select :hook/worktree-id
   [instance]
-  ;; the database keeps worktree_id_helper in step with worktree_id, and only its own constraints read it
   (dissoc instance :worktree_id_helper))
 
 (t2/define-before-insert :hook/worktree-id
@@ -672,14 +671,6 @@
 (defmethod perms-objects-set :default
   [_instance _read-or-write]
   nil)
-
-(defn worktree-id
-  "The remote-sync worktree the `model` row with `id` belongs to, whichever one the caller is working in; nil both
-  for the main app's content and for a model no worktree ever holds, which has no `worktree_id` to read."
-  [model id]
-  (when (and id (isa? (t2/resolve-model model) :hook/worktree-id))
-    (mdb.worktree/without-worktree-scoping
-     (models.db/worktree-id-of model id))))
 
 (defmulti can-read?
   "Return whether [[metabase.api.common/*current-user*]] has *read* permissions for an object. You should typically use

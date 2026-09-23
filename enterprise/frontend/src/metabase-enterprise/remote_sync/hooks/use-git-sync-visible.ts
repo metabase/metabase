@@ -8,10 +8,8 @@ import { useGetWorktreeQuery } from "metabase-enterprise/api";
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
 
 export interface GitSyncVisibleState {
-  /** whether an admin can work with remote sync at all, whichever mode it is in */
   isVisible: boolean;
   isReadWrite: boolean;
-  /** the branch the user syncs with: the worktree's while they work in one, the instance's otherwise */
   currentBranch: string | null | undefined;
   isInWorktree: boolean;
   isBranchSetByEnv: boolean;

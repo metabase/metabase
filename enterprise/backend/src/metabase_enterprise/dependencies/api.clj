@@ -11,7 +11,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
@@ -221,13 +220,9 @@
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- current-user-visibility
-  "The current user and the world being asked about, as the `:visible` filter-spec opts consumed by
-  `metabase-enterprise.dependencies.db`."
+  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
   [{:keys [include-archived-items]}]
-  (cond-> {:user-id                api/*current-user-id*
-           :is-superuser?          api/*is-superuser?*
-           :is-data-analyst?       api/*is-data-analyst?*
-           :worktree-id            (mdb.worktree/worktree-id)}
+  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies

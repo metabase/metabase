@@ -2,7 +2,6 @@
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
   in its user-settings table."
   (:require
-   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -39,12 +38,9 @@
   "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
   `field-alias`; see [[field-user-settings-column]]."
   [field-alias    :- :keyword
-   settings-alias :- :keyword
-   worktree-id    :- [:maybe pos-int?]]
+   settings-alias :- :keyword]
   [[(t2/table-name :model/FieldUserSettings) settings-alias]
-   [:and
-    [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]
-    [:= (u/qualified-key settings-alias :worktree_id) worktree-id]]])
+   [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
 
 (mu/defn- field-user-set-condition
   "Honey SQL test for whether the user set `column`, or nil when a non-NULL value says so itself."
@@ -74,20 +70,18 @@
   ([]
    (field-query nil))
 
-  ([{:keys [alias user-settings? worktree-id]
+  ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Field)
-            user-settings? true
-            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                    [:alias          {:optional true} :keyword]
-                                                                    [:user-settings? {:optional true} :boolean]
-                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            user-settings? true}} :- [:maybe [:map {:closed true}
+                                              [:alias          {:optional true} :keyword]
+                                              [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
                         (map (fn [column] [(field-user-settings-column column :f :u) column]))
                         (sort user-settable-field-columns))
        :from      [[(t2/table-name :model/Field) :f]]
-       :left-join (field-user-settings-join :f :u worktree-id)}
+       :left-join (field-user-settings-join :f :u)}
       (t2/table-name :model/Field))
     alias]))
 
@@ -124,12 +118,9 @@
   "The `:left-join` entries joining `metabase_table_user_settings` as `settings-alias` to the Table table aliased
   `table-alias`; see [[table-user-settings-column]]."
   [table-alias    :- :keyword
-   settings-alias :- :keyword
-   worktree-id    :- [:maybe pos-int?]]
+   settings-alias :- :keyword]
   [[(t2/table-name :model/TableUserSettings) settings-alias]
-   [:and
-    [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]
-    [:= (u/qualified-key settings-alias :worktree_id) worktree-id]]])
+   [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]])
 
 (mu/defn- table-user-set-condition
   "Honey SQL test for whether the user set `column`, or nil when a non-NULL value says so itself; `collection_id`
@@ -160,19 +151,17 @@
   ([]
    (table-query nil))
 
-  ([{:keys [alias user-settings? worktree-id]
+  ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Table)
-            user-settings? true
-            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                    [:alias          {:optional true} :keyword]
-                                                                    [:user-settings? {:optional true} :boolean]
-                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            user-settings? true}} :- [:maybe [:map {:closed true}
+                                              [:alias          {:optional true} :keyword]
+                                              [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :t %) sync-owned-table-columns)
                         (map (fn [column] [(table-user-settings-column column :t :u) column]))
                         (sort user-settable-table-columns))
        :from      [[(t2/table-name :model/Table) :t]]
-       :left-join (table-user-settings-join :t :u worktree-id)}
+       :left-join (table-user-settings-join :t :u)}
       (t2/table-name :model/Table))
     alias]))

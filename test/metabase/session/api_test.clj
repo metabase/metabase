@@ -258,8 +258,6 @@
                 " session insert and the login_history insert must not fail the login with an"
                 " fk_login_history_session_id violation. Each such failure was a 401 that the throttle counted, so"
                 " enough of them locked out a user with correct credentials.")
-    ;; not `mt/with-temp`: it binds a transaction that the test client conveys into the request, so the login's
-    ;; uncommitted rows would stay invisible to the delete below whether or not the login uses its own transaction
     (mt/with-model-cleanup [:model/User]
       (let [email                 (mt/random-email)
             user-id               (t2/insert-returning-pk! :model/User {:email      email
@@ -268,14 +266,9 @@
             _                     (auth-identity/set-password! user-id "Correct-Horse-12!")
             creds                 {:username email, :password "Correct-Horse-12!"}
             insert-login-history! (mt/original-fn #'login-history.db/insert-login-history!)
-            ;; more logins than the username throttler allows failures, so a counted failure would lock the user out
             attempts              11]
         (mt/with-dynamic-fn-redefs [login-history.db/insert-login-history!
                                     (fn [row]
-                                      ;; a plain Thread, not a future: a future conveys the login transaction's
-                                      ;; connection binding, and the delete must run on its own connection, as a
-                                      ;; concurrent request would. The join has a timeout because the delete may
-                                      ;; block on the login transaction's uncommitted session row.
                                       (doto (Thread. ^Runnable (fn [] (t2/delete! :model/Session :user_id user-id)))
                                         (.start)
                                         (.join 1000))

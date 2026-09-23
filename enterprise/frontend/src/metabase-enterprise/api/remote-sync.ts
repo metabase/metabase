@@ -5,13 +5,11 @@ import type {
   ExportChangesResponse,
   ExportPreflightResponse,
   GetBranchesResponse,
-  HasRemoteChangesRequest,
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
   ImportFromBranchResponse,
   RemoteSyncChangesResponse,
   RemoteSyncConfigurationSettings,
-  RemoteSyncCurrentTaskRequest,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
   TestRemoteSyncConnectionRequest,
@@ -96,14 +94,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    getHasRemoteChanges: builder.query<
-      HasRemoteChangesResponse,
-      HasRemoteChangesRequest | void
-    >({
-      query: (params) => ({
+    getHasRemoteChanges: builder.query<HasRemoteChangesResponse, void>({
+      query: () => ({
         url: `/api/ee/remote-sync/has-remote-changes`,
         method: "GET",
-        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),
@@ -155,7 +149,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/remote-sync/worktree/current`,
         body,
       }),
-      // The worktree every request reads has changed, so nothing cached still speaks for it.
       invalidatesTags: () => ENTERPRISE_TAG_TYPES.map((type) => ({ type })),
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
@@ -178,25 +171,17 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
-    getRemoteSyncCurrentTask: builder.query<
-      RemoteSyncTask,
-      RemoteSyncCurrentTaskRequest | void
-    >({
-      query: (params) => ({
+    getRemoteSyncCurrentTask: builder.query<RemoteSyncTask, void>({
+      query: () => ({
         method: "GET",
         url: `/api/ee/remote-sync/current-task`,
-        params: params ?? undefined,
       }),
       providesTags: () => [tag("remote-sync-current-task")],
     }),
-    cancelRemoteSyncCurrentTask: builder.mutation<
-      void,
-      RemoteSyncCurrentTaskRequest | void
-    >({
-      query: (params) => ({
+    cancelRemoteSyncCurrentTask: builder.mutation<void, void>({
+      query: () => ({
         method: "POST",
         url: `/api/ee/remote-sync/current-task/cancel`,
-        params: params ?? undefined,
       }),
       invalidatesTags: () => [tag("remote-sync-current-task")],
     }),

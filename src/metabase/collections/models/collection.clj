@@ -105,8 +105,6 @@
   :snippets)
 
 (let [get-trash (mdb/memoize-for-application-db
-                 ;; the world is the cache key rather than something the query reads, since each world has a
-                 ;; Trash of its own
                  (fn [worktree-id]
                    (u/prog1 (collections.db/collection-of-type trash-collection-type)
                      (when-not <>
@@ -741,9 +739,6 @@
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
   [user-or-id :- UserOrId]
-  ;; A Personal Collection is the user's own rather than a branch's content, so there is one, in the main app,
-  ;; whichever worktree the caller is working in -- and only one, which the unique key on `personal_owner_id` holds
-  ;; the caller to.
   (mdb.worktree/with-worktree nil
     (collections.db/personal-collection-of-user (u/the-id user-or-id))))
 

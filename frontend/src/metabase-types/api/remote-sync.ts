@@ -51,10 +51,6 @@ export type RemoteSyncHasChangesResponse = {
   is_dirty: boolean;
 };
 
-export type HasRemoteChangesRequest = {
-  "worktree-id"?: number;
-};
-
 export type HasRemoteChangesResponse = {
   has_changes: boolean;
 };
@@ -86,12 +82,6 @@ export type ForcePushCasualties = {
   overwritten: string[];
 };
 
-/** Dry-run preview of what pushing the current state would do, given the live remote branch. */
-export type RemoteSyncCurrentTaskRequest = {
-  /** undefined is the main app */
-  "worktree-id"?: number;
-};
-
 export type ExportPreflightResponse = {
   /** Whether the remote branch has advanced beyond the last synced version. */
   has_changes: boolean;
@@ -107,7 +97,6 @@ export type ExportPreflightResponse = {
 };
 
 export type ImportFromBranchRequest = {
-  /** The branch to import from; the one the instance is on when left out. */
   branch?: string;
   force?: boolean;
   /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */

@@ -31,7 +31,6 @@
     :public_uuid_prefix
     :updated_at
     :view_count
-    ;; a revert must never move a row between the main app and a worktree
     :worktree_id})
 
 (defmethod revision/revert-to-revision! :model/Card

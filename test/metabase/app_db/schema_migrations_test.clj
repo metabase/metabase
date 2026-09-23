@@ -107,7 +107,7 @@
 (defn- collection-created-at
   "The Collection's `created_at` read without the model, whose schema the app db does not match mid-migration."
   [collection-id]
-  (:created_at (first (t2/query {:select [:created_at] :from [:collection] :where [:= :id collection-id]}))))
+  (:created_at (t2/query-one {:select [:created_at] :from [:collection] :where [:= :id collection-id]})))
 
 (deftest ^:mb/old-migrations-test populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
@@ -154,7 +154,6 @@
         ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
         ;; that so.
         (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
-          ;; raw SQL: the app db is on an old schema here, which the Collection model no longer matches
           (testing "A personal Collection should get created_at set by to the date_joined from its owner"
             (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
                    (t/offset-date-time (collection-created-at personal-collection-id)))))
@@ -228,7 +227,6 @@
                                                                       :type       "internal"
                                                                       :created_at #t "2022-12-07T18:45:30.000-08:00"
                                                                       :updated_at #t "2022-12-07T18:45:30.000-08:00"})]
-        ;; raw SQL: the app db is on an old schema here, which the Dimension model no longer matches
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
@@ -547,12 +545,11 @@
         (let [collection-id (first (t2/insert-returning-pks! (t2/table-name :model/Collection) {:name "Amazing collection"
                                                                                                 :slug "amazing_collection"
                                                                                                 :color "#509EE3"}))]
-          ;; raw SQL: the app db is on an old schema here, which the Collection model no longer matches
           (testing "Collection should exist and have the color set by the user prior to migration"
-            (is (= "#509EE3" (:color (first (t2/query {:select [:color] :from [:collection] :where [:= :id collection-id]}))))))
+            (is (= "#509EE3" (:color (t2/query-one {:select [:color] :from [:collection] :where [:= :id collection-id]})))))
           (migrate!)
           (testing "should drop the existing color column"
-            (is (not (contains? (first (t2/query {:select [:*] :from [:collection] :where [:= :id collection-id]})) :color)))))))))
+            (is (not (contains? (t2/query-one {:select [:*] :from [:collection] :where [:= :id collection-id]}) :color)))))))))
 
 (deftest ^:mb/old-migrations-test audit-v2-views-test
   (testing "Migrations v48.00-029 - end"

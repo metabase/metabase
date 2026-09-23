@@ -20,10 +20,8 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -94,8 +92,15 @@
         "synced"
         status))))
 
-(defn- upsert-remote-sync-object-entry!
-  "Impl for [[create-or-update-remote-sync-object-entry!]], which picks the worktree it writes in."
+(defn- create-or-update-remote-sync-object-entry!
+  "Creates or updates a remote sync object entry for a model change.
+
+   Parameters:
+   - model-type: Type of model ('Card', 'Dashboard', 'Document', 'Collection', etc.)
+   - model-id: ID of the affected model
+   - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
+   - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
+                         and optionally :display, :table_id, :table_name"
   [model-type model-id status hydrate-details-fn]
   (let [existing (remote-sync.db/rso model-type model-id)]
     (cond
@@ -128,21 +133,6 @@
                                      :model_table_id (:table_id model-details)
                                      :model_table_name (:table_name model-details)})))))
 
-(defn- create-or-update-remote-sync-object-entry!
-  "Creates or updates a remote sync object entry for a model change, in the worktree the entity belongs to: a branch's
-  content is dirty in that branch's ledger, not in the main app's.
-
-   Parameters:
-   - model-type: Type of model ('Card', 'Dashboard', 'Document', 'Collection', etc.)
-   - model-id: ID of the affected model
-   - status: Sync status ('create', 'update', 'removed', 'delete', 'error', 'synced')
-   - hydrate-details-fn: Function that takes model-id and returns a map with :name, :collection_id,
-                         and optionally :display, :table_id, :table_name"
-  [model-type model-id status hydrate-details-fn]
-  (mdb.worktree/do-with-worktree (some-> (spec/spec-for-model-type model-type) :model-key (mi/worktree-id model-id))
-                                 (fn []
-                                   (upsert-remote-sync-object-entry! model-type model-id status hydrate-details-fn))))
-
 ;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 
 (defn- still-eligible?
@@ -152,8 +142,8 @@
   (boolean (when-let [instance (remote-sync.db/instance (:model-key model-spec) model-id)]
              (spec/check-eligibility model-spec instance))))
 
-(defn- upsert-sync-object-from-spec!
-  "Impl for [[create-or-update-sync-object-from-spec!]], which picks the worktree it writes in.
+(defn- create-or-update-sync-object-from-spec!
+  "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
 
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and
@@ -205,13 +195,6 @@
                                       (merge {:status            (resolve-status model-type model-id status existing)
                                               :status_changed_at (t/offset-date-time)}
                                              fields)))))))
-
-(defn- create-or-update-sync-object-from-spec!
-  "Creates or updates a RemoteSyncObject entry using a spec for field hydration, in the worktree the entity belongs
-  to: a branch's content is dirty in that branch's ledger, not in the main app's."
-  [model-spec model-id status]
-  (mdb.worktree/with-worktree (mi/worktree-id (:model-key model-spec) model-id)
-    (upsert-sync-object-from-spec! model-spec model-id status)))
 
 (defn- cascade-filter
   "Derives the filter conditions for querying eligible children from a child spec."
