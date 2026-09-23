@@ -1,32 +1,23 @@
 (ns metabase.jekyll-mode.writeback
   (:require
+   [metabase.jekyll-mode.files :as files]
    [metabase.jekyll-mode.writeback.serialize :as serialize]
-   [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.after]))
 
+;;; TODO -- move model-related stuff into separate `.models.writeback` namespace
+
 (derive :model/Dashboard ::writeback)
 
-(mu/defn- directory :- :string
-  [instance]
-  (case (t2/model instance)
-    :model/Dashboard "static/dashboards"))
-
-(mu/defn- filename :- :string
-  [instance]
-  (format "%s/%d.yaml" (directory instance) (:id instance)))
-
 (mu/defn- update-file!
-  [instance :- [:map
-                [:id pos-int?]]]
-  (u.files/create-dir-if-not-exists! (u.files/get-path (directory instance)))
-  (spit (filename instance) (serialize/serialize instance))
-  (printf "Wrote %s %d to %s.\n"
-          (t2/model instance)
-          (:id instance)
-          (filename instance)))
+  [{:keys [id], :as instance} :- [:map
+                                  [:id pos-int?]]]
+  (files/create-model-directory-if-not-exists! (t2/model instance))
+  (let [filename (files/instance-filename instance)]
+    (spit filename (serialize/serialize instance))
+    (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename)))
 
 (t2/define-after-update ::writeback [instance]
   (update-file! instance))
