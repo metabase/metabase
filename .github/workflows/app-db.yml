@@ -130,7 +130,7 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.target == '' || github.event.inputs.target == 'app-db-mariadb') }}
+    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -191,7 +191,7 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.target == '' || github.event.inputs.target == 'app-db-mysql') }}
+    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -250,7 +250,7 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (github.event.inputs.target == '' || github.event.inputs.target == 'app-db-postgres') }}
+    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

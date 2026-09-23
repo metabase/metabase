@@ -157,7 +157,7 @@ runs:
         #
         # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen job
         # runs the whole list.
-        PROFILE_TESTS: ${{ github.event.inputs.target != '' }}
+        PROFILE_TESTS: ${{ github.event.inputs.suite != '' }}
         ONLY_TESTS: ${{ github.event.inputs.tests }}
         TEST_RUNNER_INDEX: ${{ inputs.runner-index }}
         TEST_RUNNER_COUNT: ${{ inputs.runner-count }}

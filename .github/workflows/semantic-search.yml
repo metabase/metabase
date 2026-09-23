@@ -24,7 +24,7 @@ env:
 
 jobs:
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.target == '' || github.event.inputs.target == 'semantic-search-h2') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.db == '' || github.event.inputs.db == 'h2') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -68,7 +68,7 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.target == '' || github.event.inputs.target == 'semantic-search-mariadb') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.db == '' || github.event.inputs.db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -133,7 +133,7 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.target == '' || github.event.inputs.target == 'semantic-search-mysql') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.db == '' || github.event.inputs.db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -205,7 +205,7 @@ jobs:
             :exclude-tags '[${{ matrix.job.exclude-tag }}]'
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip && (github.event.inputs.target == '' || github.event.inputs.target == 'semantic-search-postgres') }}
+    if: ${{ !inputs.skip && (github.event.inputs.db == '' || github.event.inputs.db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -276,7 +276,7 @@ jobs:
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.target == '' || github.event.inputs.target == 'semantic-search-appdb-mode') }}
+    if: ${{ !inputs.skip && !inputs.smoke-only && (github.event.inputs.db == '' || github.event.inputs.db == 'appdb-mode') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

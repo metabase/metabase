@@ -359,7 +359,7 @@ jobs:
           # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole
           # list: the partition args no longer apply, and legs that hold none of the named tests run
           # nothing.
-          PROFILE_TESTS: ${{ github.event.inputs.target != '' }}
+          PROFILE_TESTS: ${{ github.event.inputs.suite != '' }}
           ONLY_TESTS: ${{ github.event.inputs.tests }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
