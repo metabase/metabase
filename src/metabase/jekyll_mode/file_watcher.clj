@@ -63,13 +63,13 @@
     (swap! events conj ev)
     (when-not dir?
       (case (:type ev)
-        :create (log/warn "Heads up: we don't support create yet")
-        :modify (try
-                  ;; FIXME: Infer the paths from the file.
-                  (binding [writeback/*suppress-file-updates* true]
-                    (load/load-instance-from-file! (str (:path ev))))
-                  (catch Exception e
-                    (log/error e "IT BROKE")))
+        (:create :modify)
+        (try
+          ;; FIXME: Infer the paths from the file.
+          (binding [writeback/*suppress-file-updates* true]
+            (load/load-instance-from-file! (str (:path ev))))
+          (catch Exception e
+            (log/error e "IT BROKE")))
         :delete (log/warn "Heads up: we don't support delete yet")))))
 
 (defn start!
