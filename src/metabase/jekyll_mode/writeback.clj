@@ -16,13 +16,16 @@
                :model/Segment]]
   (derive model ::writeback))
 
+(def ^:dynamic *suppress-file-updates* false)
+
 (mu/defn- update-file!
   [{:keys [id], :as instance} :- [:map
                                   [:id pos-int?]]]
-  (files/create-model-directory-if-not-exists! (t2/model instance))
-  (let [filename (files/instance-filename instance)]
-    (spit filename (serialize/serialize instance))
-    (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename)))
+  (when-not *suppress-file-updates*
+    (files/create-model-directory-if-not-exists! (t2/model instance))
+    (let [filename (files/instance-filename instance)]
+      (spit filename (serialize/serialize instance))
+      (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename))))
 
 (t2/define-after-update ::writeback
   [instance]
@@ -53,4 +56,4 @@
  [:toucan.query-type/insert.* :hook/search-index]
  [:toucan.query-type/insert.* ::writeback])
 
-;; TODO -- implement delete
+;; TODO -- implement delete?

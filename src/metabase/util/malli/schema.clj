@@ -378,8 +378,11 @@
 (def TemporalInstant
   "Schema for temporal values (java.time objects) that serialize to ISO-8601 strings in JSON responses."
   (mu/with-api-error-message
-   [:fn {:json-schema {:type "string" :format "date-time"}
-         :description "ISO-8601 date-time string"}
+   [:fn {:json-schema      {:type "string" :format "date-time"}
+         :description      "ISO-8601 date-time string"
+         :decode/normalize (fn [t]
+                             (cond-> t
+                               (string? t) u.date/parse))}
     #(instance? java.time.temporal.Temporal %)]
    (deferred-tru "value must be a valid date/time/datetime")))
 
