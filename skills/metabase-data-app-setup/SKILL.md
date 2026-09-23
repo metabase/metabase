@@ -58,6 +58,13 @@ scaffolding:
    in the connected database (e.g. schema `analytics`). Run each transform
    (`mb transform run <id> --wait`) and confirm `succeeded`.
 
+   **Run each `mb transform create` / `mb transform run` as its own tool
+   call, never inside a shell loop with command substitution.** Such loops
+   have hung indefinitely in sandboxed shells even though each individual
+   `mb transform run` completes in about a second on its own — sequential
+   calls are simpler and more reliable for the handful of transforms a
+   collection typically needs.
+
    **Scope `source-card` to the collection being converted** — never a card
    borrowed from elsewhere, even one computing an identical result. A
    warehouse table that already exists (matching target name, or already
