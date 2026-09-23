@@ -1,5 +1,6 @@
 (ns mage.papercuts.scan-test
   (:require
+   [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
    [mage.papercuts.scan :as scan])
   (:import
@@ -89,3 +90,16 @@
     (is (= "Trap.\n\nMechanism.\n\nSuggested fix: Fix.\n\nTranscript: /t/31b066ea.jsonl#L12" (:description report)))
     (is (= {:lines [12 14] :slug "console-hides-warnings" :kind "misleading-signal" :screen {:misleading_signal 0.9}}
            (select-keys (:details report) [:lines :slug :kind :screen])))))
+
+(deftest mentions-embargo-test
+  (let [dir (fs/create-temp-dir {:prefix "papercut-embargo"})]
+    (try
+      (testing "a marker inside a value that redaction would mask still counts"
+        (let [path (fs/path dir "masked.jsonl")]
+          (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"PRIVATE_NOTE=embargo until the fix ships\"}}\n")
+          (is (scan/mentions-embargo? path))))
+      (let [path (fs/path dir "clean.jsonl")]
+        (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"run the tests\"}}\n")
+        (is (not (scan/mentions-embargo? path))))
+      (finally
+        (fs/delete-tree dir)))))

@@ -17,6 +17,7 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [mage.bot.env :as bot-env]
@@ -354,6 +355,13 @@
                                   :line        (first (get-in r [:details :lines]))
                                   :report_id   (:report_id r)})))))
 
+(defn mentions-embargo?
+  "Whether the raw transcript at `path` mentions embargoed work. Rendered entries are truncated and redacted, which can
+  cut or mask a marker, so the file itself is read."
+  [path]
+  (with-open [reader (io/reader (str path))]
+    (boolean (some #(re-find embargo-pattern %) (line-seq reader)))))
+
 (defn- scan-session!
   "Scan the new stretch of one session. Returns the session's next state. When a chunk fails, the state stops
   before that chunk and carries the exception under `::error`, so finished chunks are not redone."
@@ -366,7 +374,7 @@
       (empty? fresh)
       state
 
-      (some #(re-find embargo-pattern (:text %)) entries)
+      (mentions-embargo? (:path session))
       (do (say session (c/yellow "skipped: mentions embargoed work"))
           (assoc state :line (:line (peek fresh)) :until (:ts (peek fresh)) :skipped "embargo"))
 
