@@ -67,6 +67,14 @@ describe("command palette", () => {
       description: "The best question",
     });
 
+    // Create a document so that it appears in the recents list. It goes first so
+    // the dashboard below stays the most recent, and therefore selected, entry.
+    cy.request(
+      "POST",
+      "/api/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -79,6 +87,13 @@ describe("command palette", () => {
       "aria-selected",
       "true",
     );
+
+    // UXW-1786
+    cy.findByRole("option", { name: "Test Document" }).should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
+
     H.closeCommandPalette();
     H.commandPalette().should("not.exist");
 
@@ -202,29 +217,6 @@ describe("command palette", () => {
           });
       });
     });
-  });
-
-  // Making this a separate test for now because it requires the bleeding edge token, which
-  // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
-  // test. In the future, this can be integrated into the test above, or moved to a BE test
-  it("should display collection names for documents in recents", () => {
-    //Create a document so that it appears in the recents list
-    cy.request(
-      "POST",
-      "/api/document",
-      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
-    );
-
-    cy.visit("/");
-
-    cy.findByRole("button", { name: /search/i }).click();
-    H.commandPalette().should("be.visible");
-
-    // UXW-1786
-    cy.findByRole("option", { name: "Test Document" }).should(
-      "contain.text",
-      "Bobby Tables's Personal Collection",
-    );
   });
 
   it("should render admin links for non-admins that have specific privileges", () => {
