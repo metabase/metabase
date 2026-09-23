@@ -41,7 +41,7 @@ export function useEmbeddingThemeOverride(
       setGlobalEmbeddingColors(themeWithPreset?.colors, appColors ?? {});
 
       return getEmbeddingThemeOverride(
-        themeWithPreset ?? {},
+        theme || {},
         font,
         appColors ?? {},
         resolvedColorScheme,
