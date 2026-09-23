@@ -142,53 +142,8 @@
 
 .invader {
   position: absolute;
-  width: 7%;
   aspect-ratio: 1;
   filter: drop-shadow(0.2rem 0.25rem 0 var(--mb-color-shadow-default));
-}
-
-.pixelSprite {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  image-rendering: pixelated;
-}
-
-.pixel {
-  width: 100%;
-  height: 100%;
-}
-
-.pixelBrand {
-  background: var(--mb-color-core-brand);
-}
-
-.pixelLightBrand {
-  background: var(--mb-color-icon-brand-inverse);
-}
-
-.pixelDarkSkin {
-  background: var(--mb-color-core-purple-saturated);
-}
-
-.pixelBlack {
-  background: var(--mb-color-background_page-primary-inverse);
-}
-
-.pixelPurple {
-  background: var(--mb-color-core-filter);
-}
-
-.pixelSkin {
-  background: var(--mb-color-core-yellow-saturated);
-}
-
-.pixelWhite {
-  background: var(--mb-color-core-white_constant);
-}
-
-.pixelYellow {
-  background: var(--mb-color-core-green-saturated);
 }
 
 .shot {
@@ -203,8 +158,6 @@
 
 .ship {
   position: absolute;
-  top: 84%;
-  width: 10%;
   min-width: 2.75rem;
   aspect-ratio: 4 / 3;
   filter: drop-shadow(0 0 0.4rem var(--mb-color-core-brand))
@@ -230,33 +183,6 @@
   }
 }
 
-.nameEntry {
-  margin-top: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.75rem;
-
-  input {
-    width: min(20rem, 80vw);
-    padding: 0.75rem 1rem;
-    color: var(--mb-color-text-primary-inverse);
-    border: 2px solid var(--mb-color-border-on_dark);
-    border-radius: 0.25rem;
-    outline: none;
-    background: var(--mb-color-background_page-primary-inverse);
-    font-size: 1rem;
-    text-align: center;
-    text-transform: uppercase;
-
-    &:focus {
-      border-color: var(--mb-color-core-brand);
-      box-shadow: 0 0 0 2px var(--mb-color-focus);
-    }
-  }
-}
-
 .highScoreTable {
   width: min(30rem, 80vw);
   margin: 1.5rem auto 0;
@@ -275,6 +201,20 @@
   th:last-child,
   td:last-child {
     text-align: end;
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    color: inherit;
+    border: 0;
+    outline: 0;
+    appearance: none;
+    background: transparent;
+    box-shadow: none;
+    font-size: inherit;
+    text-transform: uppercase;
   }
 }
 
