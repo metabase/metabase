@@ -2,7 +2,7 @@
 id: megabot-discovery
 title: Finding warehouse tables and columns
 description: How to find the tables and columns a warehouse query needs when they aren't already listed in your prompt.
-profiles: [megabot]
+tools: [run_warehouse_query, query_app_db]
 ---
 ## Finding warehouse tables and columns
 

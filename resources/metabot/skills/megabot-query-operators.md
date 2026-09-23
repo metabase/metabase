@@ -2,7 +2,7 @@
 id: megabot-query-operators
 title: Structured query operators
 description: Every filter, aggregation, expression, and temporal-unit operator run_warehouse_query accepts, with its arguments. Load it when you need an operator the structured-query section leaves out, or after an unknown-operator rejection.
-profiles: [megabot]
+tools: [run_warehouse_query]
 ---
 ## Structured query operators
 

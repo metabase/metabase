@@ -2,7 +2,7 @@
 id: megabot-api
 title: Calling the Metabase REST API
 description: How to use call_api (with list_api_endpoints and describe_api_endpoint) to do anything the product can do — save questions, build dashboards, run actions, manage collections, trigger sync, create alerts.
-profiles: [megabot]
+tools: [call_api]
 ---
 `call_api` lets you make any Metabase REST API request as the current user. Anything a person can do
 in the product, you can do through it: create and save questions, build dashboards, run actions,

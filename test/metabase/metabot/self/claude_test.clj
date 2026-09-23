@@ -732,7 +732,11 @@
                                    #"\{%\s*if\s+viewing_context\s*%\}"
                                    #"\{\{\s*viewing_context"
                                    #"\{\{\s*first_day_of_week\s*\}\}"
-                                   #"\{%\s*if\s+research_plan\s*%\}"])]
+                                   #"\{%\s*if\s+research_plan\s*%\}"
+                                   ;; a profile's :system-prompt-context may prime per-user content of its
+                                   ;; own — the megabot instance snapshot changes per user and per request,
+                                   ;; so a template rendering it needs the split just as much
+                                   #"\{\{\s*megabot_instance"])]
           (testing (.getName f)
             (if has-volatile?
               (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")

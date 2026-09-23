@@ -9,6 +9,7 @@
    ;; loaded so its `(mr/def ::profile-id …)` registers the schema the enum-acceptance test validates
    [metabase.metabot.agent.core]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as tools]
@@ -34,7 +35,7 @@
         (is (some? profile))
         (is (= :internal (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 60 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
@@ -192,8 +193,9 @@
     (is (= #{"document_construct_model_chart" "document_construct_sql_chart"}
            (:terminal-tools (profiles/get-profile :document-generate-content)))))
   (testing "terminality is per-profile — profiles that share these tools don't inherit it"
-    (is (nil? (:terminal-tools (profiles/get-profile :internal))))
-    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))))
+    (is (nil? (:terminal-tools (profiles/get-profile :nlq)))))
+  (testing ":internal ends the turn on ask_user, the one terminal tool it carries with the megabot tools"
+    (is (= #{"ask_user"} (:terminal-tools (profiles/get-profile :internal))))))
 
 (deftest register-profile-validation-test
   (let [base {:name            :scratch
@@ -263,19 +265,25 @@
           manifest (skills/build-skill-manifest profile (map #(:tool-name (meta %)) (:tools profile)) [])]
       (is (= [:megabot-discovery :megabot-query] (map :id (:always-on manifest))))
       (is (some #(= "megabot-query-operators" (:id %)) (:catalog manifest)))))
-  (testing "megabot's skills don't reach any other profile"
-    (doseq [profile-id (remove #{:megabot} (keys @@#'profiles/*profiles))
-            :let       [profile (profiles/get-profile profile-id)]]
+  (testing "megabot's skills follow their tools: a profile gets them only when the tool is active"
+    (doseq [profile-id (keys @@#'profiles/*profiles)
+            :let       [profile    (profiles/get-profile profile-id)
+                        tool-names (map #(:tool-name (meta %)) (:tools profile))
+                        megabot?   (fn [s] (str/starts-with? (name (:id s)) "megabot"))
+                        relevant   (#'skills/skills-for-profile profile tool-names)]]
       (testing profile-id
-        (is (not-any? #(str/starts-with? (name (:id %)) "megabot")
-                      (#'skills/skills-for-profile profile (map #(:tool-name (meta %)) (:tools profile))))))))
-  (testing "the megabot-discovery skill is scoped to :megabot only — it does not leak into other profiles"
+        (if (some #{"run_warehouse_query" "call_api"} tool-names)
+          (is (some megabot? relevant)
+              "a profile holding the tools gets the skills that document them")
+          (is (not-any? megabot? relevant)
+              "a profile without the tools gets none of them")))))
+  (testing "the megabot-discovery skill follows run_warehouse_query, not a profile name"
     (is (some #(= :megabot-discovery (:id %))
-              (#'skills/skills-for-profile (profiles/get-profile :megabot) ["run_warehouse_sql"]))
-        "discovery skill is relevant to :megabot")
+              (#'skills/skills-for-profile (profiles/get-profile :megabot) ["run_warehouse_query"]))
+        "discovery skill is relevant wherever the tool is active")
     (is (not-any? #(= :megabot-discovery (:id %))
                   (#'skills/skills-for-profile (profiles/get-profile :internal) ["search"]))
-        "discovery skill must NOT be relevant to :internal"))
+        "discovery skill must NOT be relevant when the tool is not active"))
   (testing "the ::profile-id schema (enforced by run-agent-loop in dev/test) accepts :megabot"
     (is (mr/validate :metabase.metabot.agent.core/profile-id :megabot))))
 
@@ -301,6 +309,59 @@
       (doseq [[source text] texts]
         (testing source
           (is (= #{} (set/difference (mentioned text) allowed))))))))
+
+(deftest internal-carries-the-megabot-tools-test
+  (testing "the in-app profile keeps its own tools and adds the megabot set"
+    (let [profile    (profiles/get-profile :internal)
+          tool-names (set (map #(:tool-name (meta %)) (:tools profile)))]
+      (is (set/subset? megabot-tool-names tool-names)
+          "every megabot tool is present")
+      (is (set/subset? #{"search" "construct_notebook_query" "analyze_chart" "save_entity"} tool-names)
+          ":internal keeps the tools it already had")
+      (testing "the loop knobs that make the longer budget usable are set"
+        (is (= 60 (:max-iterations profile)))
+        (is (= 16384 (:max-output-tokens profile)))
+        (is (true? (:compact-history? profile))))
+      (testing "the primed app-db map, instance snapshot and note catalog are injected"
+        (is (ifn? (:system-prompt-context profile))))))
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (testing "capability gating still applies to the tools that declare one"
+      (let [without-sql (set (keys (profiles/get-tools-for-profile :internal [])))
+            with-sql    (set (keys (profiles/get-tools-for-profile :internal ["permission:write_sql_queries"])))]
+        (is (not (contains? without-sql "run_warehouse_sql"))
+            "a user who may not write SQL is not offered run_warehouse_sql")
+        (is (contains? with-sql "run_warehouse_sql"))
+        (testing "the ungated megabot tools are there either way"
+          (doseq [tool-name ["run_warehouse_query" "query_app_db" "call_api" "write_note" "ask_user"]]
+            (testing tool-name
+              (is (contains? without-sql tool-name)))))))
+    (testing "the prompt gains the execution sections, and the cache breakpoint only when primed context is rendered"
+      (let [profile  (profiles/get-profile :internal)
+            tools    (profiles/profile->tools profile ["permission:write_sql_queries"])
+            rendered (prompts/build-system-message-content profile {} tools ["permission:write_sql_queries"])]
+        (is (str/includes? rendered "# Running queries and reading the results"))
+        (is (str/includes? rendered "# Doing things in Metabase"))
+        (is (not (str/includes? rendered "**You cannot create dashboards or documents.**"))
+            "the prompt no longer claims it can't do what call_api does")
+        (is (not (str/includes? rendered "<<<METABOT_CACHE_BREAKPOINT>>>"))
+            "no breakpoint without the primed app-db map: nothing dynamic follows it")
+        (testing "and the breakpoint appears once the profile's own context hook supplies the map"
+          (let [primed (prompts/build-system-message-content
+                        profile {:megabot_app_db_map "## App DB" :megabot_instance "## This instance"}
+                        tools ["permission:write_sql_queries"])]
+            (is (str/includes? primed "<<<METABOT_CACHE_BREAKPOINT>>>"))
+            (is (< (.indexOf ^String primed "## App DB")
+                   (.indexOf ^String primed "<<<METABOT_CACHE_BREAKPOINT>>>")
+                   (.indexOf ^String primed "## This instance"))
+                "static map before the breakpoint, per-user snapshot after it")))))
+    (testing "the structured-query skills follow the tools into :internal"
+      (let [profile  (profiles/get-profile :internal)
+            manifest (skills/build-skill-manifest profile
+                                                  (keys (profiles/profile->tools profile []))
+                                                  [])]
+        (is (= [:megabot-discovery :megabot-query] (map :id (:always-on manifest))))
+        (is (some #(= "megabot-query-operators" (:id %)) (:catalog manifest)))
+        (is (some #(= "megabot-api" (:id %)) (:catalog manifest)))))))
 
 (deftest explorations-profile-disables-skills-test
   (binding [scope/*current-user-scope* api-scope/unrestricted]

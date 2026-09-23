@@ -2,7 +2,7 @@
 id: megabot-query
 title: Structured warehouse queries
 description: How to write the MBQL 5 queries run_warehouse_query takes — numeric-id references, filters and relative dates, grouping by time, sorting and limits, joins, later stages, models, and metrics.
-profiles: [megabot]
+tools: [run_warehouse_query]
 ---
 ## Structured warehouse queries
 

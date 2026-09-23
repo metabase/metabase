@@ -27,6 +27,13 @@
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
+;; Same reasoning as above: a prompt section about a tool is rendered only when that tool survived
+;; capability and scope filtering for this request. A profile that lists none of them renders none of
+;; the sections, so `internal.selmer` reads exactly as it did before these tools existed.
+(def ^:private warehouse-execution-tool-names
+  "Tools that run a query and return its rows to the model."
+  #{"run_warehouse_query" "run_warehouse_sql"})
+
 ;;; Template Loading
 
 (defn- load-resource
@@ -162,7 +169,14 @@
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
-            template-context     {:metabot_name              (metabot.settings/metabot-name)
+            tool-names           (set (keys tools))
+            template-context     {:has_warehouse_execution  (boolean (some tool-names warehouse-execution-tool-names))
+                                  :has_warehouse_sql        (contains? tool-names "run_warehouse_sql")
+                                  :has_app_db_access        (contains? tool-names "query_app_db")
+                                  :has_api_calls            (contains? tool-names "call_api")
+                                  :has_notes                (contains? tool-names "write_note")
+                                  :has_navigate             (contains? tool-names "navigate")
+                                  :metabot_name             (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
