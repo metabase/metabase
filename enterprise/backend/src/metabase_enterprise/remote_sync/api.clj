@@ -362,8 +362,7 @@
   (api/check-superuser)
   (t2/hydrate (remote-sync.db/worktrees) :creator))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/worktree/current"
+(api.macros/defendpoint :put "/worktree/current" :- :nil
   "Enter the remote-sync worktree `worktree_id` names, or leave for the main app when it is null. What the user
   reads and writes from then on belongs to that worktree. Requires superuser permissions."
   [_route
@@ -373,7 +372,7 @@
   (api/check-superuser)
   (remote-sync/check-worktree-exists! worktree_id)
   (remote-sync.db/set-user-worktree! api/*current-user-id* worktree_id)
-  api/generic-204-no-content)
+  nil)
 
 (api.macros/defendpoint :get "/worktree/:id" :- remote-sync.schema/Worktree
   "Get a single remote-sync worktree by id. Requires superuser permissions."

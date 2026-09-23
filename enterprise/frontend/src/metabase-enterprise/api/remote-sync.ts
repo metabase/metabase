@@ -1,5 +1,6 @@
 import type {
   CreateBranchRequest,
+  CreateWorktreeRequest,
   ExportChangesRequest,
   ExportChangesResponse,
   ExportPreflightResponse,
@@ -140,6 +141,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [listTag("worktree")],
     }),
+    createWorktree: builder.mutation<Worktree, CreateWorktreeRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/worktree`,
+        body,
+      }),
+      invalidatesTags: () => [listTag("worktree")],
+    }),
     updateUserWorktree: builder.mutation<void, UpdateUserWorktreeRequest>({
       query: (body) => ({
         method: "PUT",
@@ -218,6 +227,7 @@ export const {
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
+  useCreateWorktreeMutation,
   useGetWorktreeQuery,
   useListWorktreesQuery,
   useUpdateUserWorktreeMutation,

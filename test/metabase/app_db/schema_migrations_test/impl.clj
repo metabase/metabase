@@ -80,6 +80,9 @@
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
                  custom-migrations.util/*allow-temp-scheduling* false
+                 ;; the schema here is only migrated as far as the test takes it, so nothing may be restricted
+                 ;; to a worktree -- the columns that would be restricted by may not be there yet
+                 mdb.worktree/*worktree-scoping* false
                  ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
                  ;; prewarming the test-data Database within it.
                  data.impl/*skip-dataset-prewarm?* true]
@@ -200,9 +203,8 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (mdb.worktree/without-worktree-scoping
-       (datasets/test-drivers #{:h2 :mysql :postgres}
-         (test-migrations-for-driver! driver/*driver* [start-id end-id] f))))))
+      (datasets/test-drivers #{:h2 :mysql :postgres}
+        (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
 
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).

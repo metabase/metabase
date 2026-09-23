@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import {
   Form,
@@ -8,7 +9,10 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Button, Group, Modal, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import {
+  useCreateWorktreeMutation,
+  useGetBranchesQuery,
   useListWorktreesQuery,
   useUpdateUserWorktreeMutation,
 } from "metabase-enterprise/api";
@@ -18,9 +22,11 @@ type EnterWorktreeModalProps = {
   onClose: VoidFunction;
 };
 
-type EnterWorktreeValues = {
-  worktreeId: string;
-};
+const ENTER_WORKTREE_SCHEMA = Yup.object({
+  branch: Yup.string().required(Errors.required),
+});
+
+type EnterWorktreeValues = Yup.InferType<typeof ENTER_WORKTREE_SCHEMA>;
 
 export function EnterWorktreeModal({
   opened,
@@ -34,32 +40,37 @@ export function EnterWorktreeModal({
 }
 
 function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
+  const { data: branchesData } = useGetBranchesQuery();
   const { data: worktrees = [] } = useListWorktreesQuery();
+  const [createWorktree] = useCreateWorktreeMutation();
   const [updateUserWorktree] = useUpdateUserWorktreeMutation();
+  const branches = branchesData?.items ?? [];
 
-  const options = worktrees.map((worktree) => ({
-    value: String(worktree.id),
-    label: worktree.branch,
-  }));
-
-  const handleSubmit = async ({ worktreeId }: EnterWorktreeValues) => {
-    await updateUserWorktree({ worktree_id: Number(worktreeId) }).unwrap();
+  const handleSubmit = async ({ branch }: EnterWorktreeValues) => {
+    const worktree = worktrees.find((worktree) => worktree.branch === branch);
+    if (worktree) {
+      await updateUserWorktree({ worktree_id: worktree.id }).unwrap();
+    } else {
+      const newWorktree = await createWorktree({ branch }).unwrap();
+      await updateUserWorktree({ worktree_id: newWorktree.id }).unwrap();
+    }
     onClose();
   };
 
   return (
     <FormProvider
-      initialValues={{ worktreeId: options[0]?.value ?? "" }}
-      enableReinitialize
+      initialValues={{ branch: "" }}
+      validationSchema={ENTER_WORKTREE_SCHEMA}
       onSubmit={handleSubmit}
     >
       <Form>
         <Stack gap="lg" mt="lg">
           <FormSelect
-            name="worktreeId"
+            name="branch"
             label={t`Branch`}
-            data={options}
-            nothingFoundMessage={t`No worktrees`}
+            data={branches}
+            searchable
+            nothingFoundMessage={t`No branches`}
           />
           <FormErrorMessage />
           <Group gap="sm" justify="end">
@@ -67,7 +78,7 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
             <FormSubmitButton
               variant="filled"
               label={t`Enter`}
-              disabled={options.length === 0}
+              disabled={branches.length === 0}
             />
           </Group>
         </Stack>
