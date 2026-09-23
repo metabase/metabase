@@ -162,7 +162,8 @@
            permissions
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           worktree}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
