@@ -55,7 +55,13 @@ main() {
     *) lack "macOS or Linux" ;;
   esac
   command -v git >/dev/null 2>&1 || lack "git"
-  java -version >/dev/null 2>&1 || lack "Java: the scanner needs it to download its Clojure dependencies"
+  if [ "$(uname -s)" = Darwin ]; then java_hint="brew install --cask temurin"; else java_hint="your package manager's openjdk"; fi
+  if find_jdk; then
+    # Babashka runs JAVA_CMD, else $JAVA_HOME/bin/java, so a stale JAVA_HOME or a stub java would win otherwise.
+    export JAVA_HOME="$JDK" JAVA_CMD="$JDK/bin/java" PATH="$JDK/bin:$PATH"
+  else
+    lack "Java. Install one with $java_hint"
+  fi
   [ -n "$claude_cli$codex_cli" ] || lack "the claude CLI (or codex): it reviews the chunks Jev flags"
   curl -fsS -m 5 "$SERVER/api/papercuts?limit=1" >/dev/null 2>&1 || lack "a connection to $host: is Tailscale up?"
   if [ -n "$missing" ]; then
@@ -98,6 +104,23 @@ main() {
     printf '  %sSome sessions failed; a rerun retries them. Details: %s%s\n' "$Y" "$LOG" "$N"
   fi
   printf '  Nothing is left running. To clean up: rm -rf ~/.papercuts\n\n'
+}
+
+# The java.home of the Java at $1, when it runs.
+java_home() {
+  "$1" -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java\.home = //p' | head -n 1
+}
+
+# Sets JDK to the first Java that actually runs: the one on PATH, then the usual install places.
+find_jdk() {
+  registered=$(/usr/libexec/java_home 2>/dev/null) || registered=
+  for java in java ${registered:+"$registered/bin/java"} "$HOME"/.local/share/mise/installs/java/*/bin/java \
+    "$HOME"/.local/share/mise/installs/java/*/Contents/Home/bin/java "$HOME"/.sdkman/candidates/java/current/bin/java \
+    /opt/homebrew/opt/openjdk*/bin/java /usr/local/opt/openjdk*/bin/java; do
+    JDK=$(java_home "$java")
+    if [ -n "$JDK" ] && [ -x "$JDK/bin/java" ]; then return 0; fi
+  done
+  return 1
 }
 
 use_proxy() {
@@ -194,7 +217,11 @@ step() {
     printf '%s  %s✓%s %s%s %s(%ss)%s\n' "$CLR" "$G" "$N" "$label" "$via" "$D" "$elapsed" "$N"
   else
     printf '%s  %s✗%s %s %s(%ss)%s\n\n' "$CLR" "$R" "$N" "$label" "$D" "$elapsed" "$N"
-    tail -n 15 "$LOG" | sed 's/^/    /'
+    if grep -q 'Unable to locate a Java Runtime' "$LOG"; then
+      printf '  No working Java found. Install one with %s, then run this again.\n' "$java_hint"
+    else
+      tail -n 15 "$LOG" | sed 's/^/    /'
+    fi
     printf '\n  Full log: %s. Run the command again to retry.\n' "$LOG"
     exit 1
   fi
