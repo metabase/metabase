@@ -28,8 +28,17 @@
        (is (nil? (t2/select-one :model/Card :id card-id)))
        (is (zero? (t2/count :model/Collection :worktree_id worktree-id)))))))
 
-(defn- root-item-names []
-  (->> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+(defn- worktree-header
+  "Request options that work a request inside the worktree `worktree-id` names."
+  [worktree-id]
+  {:request-options {:headers {"x-metabase-worktree-id" (str worktree-id)}}})
+
+(defn- root-item-names
+  "The names in the root collection listing: the main app's, or the worktree `worktree-id`'s when it is non-nil."
+  [worktree-id]
+  (->> (if worktree-id
+         (mt/user-http-request :crowberto :get 200 "collection/root/items" (worktree-header worktree-id))
+         (mt/user-http-request :crowberto :get 200 "collection/root/items"))
        :data
        (map :name)
        set))
@@ -42,31 +51,40 @@
                                                     {:name "Branch card" :collection_id nil})))
       (try
         (testing "the main app lists its own content"
-          (let [names (root-item-names)]
+          (let [names (root-item-names nil)]
             (is (contains? names "Main app card"))
             (is (not (contains? names "Branch card")))))
         (testing "a worktree lists only what it checked out"
-          (remote-sync.db/set-user-worktree! (mt/user->id :crowberto) worktree-id)
-          (let [names (root-item-names)]
+          (let [names (root-item-names worktree-id)]
             (is (contains? names "Branch card"))
             (is (not (contains? names "Main app card")))))
         (finally
-          (remote-sync.db/set-user-worktree! (mt/user->id :crowberto) nil)
           (remote-sync.db/delete-worktree! worktree-id))))))
 
 (deftest a-root-listing-shows-the-worktree-own-collections-test
-  (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "listing-coll-" (random-uuid))})
-        user-id           (mt/user->id :crowberto)]
+  (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "listing-coll-" (random-uuid))})]
     (try
       (mdb.worktree/with-worktree worktree-id
         (t2/insert-returning-pk! :model/Collection {:name "Branch collection" :location "/"}))
       (testing "the main app lists its own"
-        (is (not (contains? (root-item-names) "Branch collection"))))
+        (is (not (contains? (root-item-names nil) "Branch collection"))))
       (testing "a worktree lists the collections it checked out"
-        (remote-sync.db/set-user-worktree! user-id worktree-id)
-        (is (contains? (root-item-names) "Branch collection")))
+        (is (contains? (root-item-names worktree-id) "Branch collection")))
       (finally
-        (remote-sync.db/set-user-worktree! user-id nil)
+        (remote-sync.db/delete-worktree! worktree-id)))))
+
+(deftest worktree-header-refusals-test
+  (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "header-" (random-uuid))})]
+    (try
+      (testing "a header that is not a positive integer is a 400"
+        (doseq [bad ["abc" "0" "-1" "1.5" ""]]
+          (mt/user-http-request :crowberto :get 400 "collection/root/items"
+                                {:request-options {:headers {"x-metabase-worktree-id" bad}}})))
+      (testing "a non-superuser may not enter a worktree"
+        (mt/user-http-request :rasta :get 403 "collection/root/items" (worktree-header worktree-id)))
+      (testing "a header naming no worktree is a 404"
+        (mt/user-http-request :crowberto :get 404 "collection/root/items" (worktree-header Integer/MAX_VALUE)))
+      (finally
         (remote-sync.db/delete-worktree! worktree-id)))))
 
 (deftest search-reads-one-worktree-test
@@ -83,9 +101,8 @@
             (is (contains? (names) "Zzyzx main app card"))
             (is (not (contains? (names) "Zzyzx branch card"))))
           (testing "a worktree finds what it checked out"
-            (remote-sync.db/set-user-worktree! user-id worktree-id)
-            (is (contains? (names) "Zzyzx branch card"))
-            (is (not (contains? (names) "Zzyzx main app card"))))
+            (mdb.worktree/with-worktree worktree-id
+              (is (contains? (names) "Zzyzx branch card"))
+              (is (not (contains? (names) "Zzyzx main app card")))))
           (finally
-            (remote-sync.db/set-user-worktree! user-id nil)
             (remote-sync.db/delete-worktree! worktree-id)))))))

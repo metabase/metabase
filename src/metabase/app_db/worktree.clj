@@ -3,8 +3,8 @@
   content inside it.
 
   A worktree checks a branch's content out into the same tables as the main app, told apart by `worktree_id`. Which
-  worktree a piece of work belongs to is never inferred from what it touches: a request takes it from the user it is
-  made as, and a pull or a push names the worktree it materializes.
+  worktree a piece of work belongs to is never inferred from what it touches: a request takes it from its
+  `X-Metabase-Worktree-Id` header, and a pull or a push names the worktree it materializes.
 
   Rather than have every caller remember to filter, every query Toucan builds over a table a worktree checks content
   out into -- named by a model deriving `:hook/worktree-id`, by the table itself, or in a common table expression --

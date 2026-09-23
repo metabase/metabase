@@ -2621,3 +2621,55 @@ databaseChangeLog:
         - sqlFile:
             path: ../instance_analytics_views/dashboardcard/v1/dashboardcard.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v65.2026-09-23T17:00:00
+      author: bcm
+      comment: Drop the FK on core_user.worktree_id - the worktree a request works in comes from a request header now
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: core_user
+            constraintName: fk_core_user_worktree_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: worktree_id
+            referencedTableName: worktree
+            referencedColumnNames: id
+            constraintName: fk_core_user_worktree_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-23T17:01:00
+      author: bcm
+      comment: Drop the index on core_user.worktree_id
+      changes:
+        - dropIndex:
+            tableName: core_user
+            indexName: idx_core_user_worktree_id
+      rollback:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: v65.2026-09-23T17:02:00
+      author: bcm
+      comment: Drop core_user.worktree_id - the worktree a request works in comes from a request header now
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  remarks: Worktree the user is working in; null for the main app
+                  constraints:
+                    nullable: true

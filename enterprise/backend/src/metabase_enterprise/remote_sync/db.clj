@@ -798,13 +798,6 @@
    branch      :- :string]
   (t2/update! :model/Worktree worktree-id {:branch branch}))
 
-(mu/defn set-user-worktree!
-  "Put the user with `user-id` in the worktree `worktree-id` names, or in the main app when it is nil, returning
-  the number updated."
-  [user-id     :- ms/PositiveInt
-   worktree-id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/User user-id {:worktree_id worktree-id}))
-
 (mu/defn delete-worktree!
   "Delete the Worktree with `worktree-id`, which takes every piece of content it checked out with it: each
   `worktree_id` foreign key cascades."
