@@ -11,7 +11,6 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import { useStore } from "metabase/redux";
 import { Icon, Menu, type MenuProps } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
@@ -90,7 +89,7 @@ export const DashCardMenu = ({
 
   if (typeof dashcardMenu === "function") {
     return dashcardMenu({
-      question: transformSdkQuestion(question),
+      question,
       dashcard,
       result,
       downloadsEnabled,
