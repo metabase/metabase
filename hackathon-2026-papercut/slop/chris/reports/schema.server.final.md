@@ -1,6 +1,6 @@
 # Papercut tracker schema: final design
 
-The schema the server uses from schema version 6 on.
+The schema the server uses from schema version 9 on.
 It settles the four server reviews in this folder:
 
 - [`schema.server.claude.md`](schema.server.claude.md)
@@ -391,6 +391,16 @@ Adds `owner` and `severity` to papercuts, the `assessments` and `dispatches` tab
 
 Removes credentials from repository URLs stored before the server cleaned them.
 It cleans both the `repository_url` column and the copy in each stored request body.
+
+### Version 6 to version 7
+
+Cleans repository URLs again, trimmed first.
+Ingestion trimmed the column but stored the request body as sent, so a body URL with surrounding spaces escaped version 6.
+
+### Version 8 to version 9
+
+Cleans repository URLs once more, stripped in Python the way ingestion strips them.
+SQLite's `trim()` removes only spaces, so a URL wrapped in tabs, newlines or other whitespace kept its credentials.
 
 ## Deferred
 

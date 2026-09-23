@@ -682,9 +682,19 @@ def migrate_to_v8(db):
             db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (row["papercut_id"], match[0]))
 
 
+def migrate_to_v9(db):
+    """Clean repository URLs once more, stripped the way ingestion strips them. SQLite's trim() in version 7 removes only
+    spaces, so a URL wrapped in tabs, newlines or other whitespace kept its credentials."""
+    db.create_function("public_url", 1, lambda url: public_url(url.strip()), deterministic=True)
+    db.execute("UPDATE reports SET repository_url = public_url(repository_url) WHERE repository_url IS NOT NULL")
+    db.execute("""UPDATE reports SET payload = json_set(payload, '$.repository_url',
+                                                  public_url(json_extract(payload, '$.repository_url')))
+                  WHERE json_type(payload, '$.repository_url') = 'text'""")
+
+
 # Each entry upgrades the database by one `user_version`.
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
-              migrate_to_v8)
+              migrate_to_v8, migrate_to_v9)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -2655,7 +2665,7 @@ def main():
     changed = threading.Event()
     # The source version the watcher starts from: the loaded one, and None after a rejected recheck, so the watcher
     # checks the file again at once and a fix saved in between isn't missed.
-    baseline = Path(__file__).stat().st_mtime_ns
+    baseline = Path(__file__).stat().st_mtime_ns if args.reload else None
     try:
         while True:
             if args.reload:
