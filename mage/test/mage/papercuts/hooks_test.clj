@@ -63,3 +63,17 @@
           (is (= 1 (count (get-in (json/read-str (slurp (str target)) {:key-fn identity}) ["hooks" "Stop"]))))))
       (finally
         (fs/delete-tree home)))))
+
+(deftest install-at-dangling-symlink-test
+  (let [home (fs/create-temp-dir {:prefix "papercut-hooks-test"})]
+    (try
+      (let [target (fs/path home "dotfiles" "claude" "settings.json")
+            link   (fs/path home ".claude" "settings.json")]
+        (fs/create-dirs (fs/parent link))
+        (fs/create-sym-link link (fs/relativize (fs/parent link) target))
+        (hooks/install-at! home ["claude"])
+        (testing "a link whose target doesn't exist yet gets the target created"
+          (is (fs/sym-link? link))
+          (is (= 1 (count (get-in (json/read-str (slurp (str target)) {:key-fn identity}) ["hooks" "Stop"]))))))
+      (finally
+        (fs/delete-tree home)))))

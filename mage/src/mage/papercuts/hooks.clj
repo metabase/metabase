@@ -65,10 +65,18 @@
       config)
     {}))
 
+(defn- link-target
+  "The file `path` finally points at, following symlinks even when the last target doesn't exist yet."
+  [path]
+  (if (fs/sym-link? path)
+    (let [target (fs/read-link path)]
+      (recur (str (if (fs/absolute? target) target (fs/path (fs/parent path) target)))))
+    (str path)))
+
 (defn- write-config! [path config]
-  (fs/create-dirs (fs/parent path))
   ;; Moving over a symlink would replace the link, so a dotfile-managed config would stop being managed.
-  (let [path (if (fs/sym-link? path) (str (fs/real-path path)) path)
+  (let [path (link-target path)
+        _    (fs/create-dirs (fs/parent path))
         temp (fs/create-temp-file {:dir (fs/parent path)
                                    :prefix (str (fs/file-name path) ".tmp.")
                                    :posix-file-permissions "rw-------"})]
