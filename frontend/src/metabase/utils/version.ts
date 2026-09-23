@@ -103,3 +103,8 @@ export function versionIsLatest({
   const result = compareVersions(currentVersion, latestVersion);
   return result != null && result >= 0;
 }
+
+/** Strips the leading "v" from a version tag for display, e.g. "v0.63.18" -> "0.63.18". */
+export function formatVersion(version = "") {
+  return version.replace(/^v/, "");
+}

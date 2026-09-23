@@ -1,13 +1,18 @@
-import cx from "classnames";
 import { c, t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { useGetVersionInfoQuery } from "metabase/settings";
-import { Button, Tabs } from "metabase/ui";
-import { newVersionAvailable, versionIsLatest } from "metabase/utils/version";
+import { Alert, Button, Group, Icon, Tabs, Text } from "metabase/ui";
+import {
+  formatVersion,
+  newVersionAvailable,
+  versionIsLatest,
+} from "metabase/utils/version";
+
+import { SelfUpgradeButton } from "../SelfUpgrade";
+import { getUpgradeGuideUrl } from "../SelfUpgrade/utils";
 
 import S from "./VersionUpdateNotice.module.css";
 
@@ -64,39 +69,28 @@ function NewVersionAvailable({
   latestVersion: string;
 }) {
   return (
-    <div>
-      <div
-        className={cx(
-          S.container,
-          CS.p2,
-          CS.bordered,
-          CS.rounded,
-          CS.borderSuccess,
-          CS.flex,
-          CS.flexRow,
-          CS.alignCenter,
-          CS.justifyBetween,
-        )}
-      >
-        <span className={cx(CS.textWhite, CS.textBold)}>
+    <Alert
+      color="success"
+      icon={<Icon name="sparkles" />}
+      classNames={{ wrapper: S.alertWrapper }}
+    >
+      <Group justify="space-between" wrap="nowrap">
+        <Text fw="bold">
           {t`Metabase ${formatVersion(latestVersion)} is available. You're running ${currentVersion}.`}
-        </span>
-        <Button
-          className={S.updateButton}
-          component={ExternalLink}
-          flex="0 0 auto"
-          ml="sm"
-          size="sm"
-          href={
-            "https://www.metabase.com/docs/" +
-            latestVersion +
-            "/operations-guide/upgrading-metabase.html"
-          }
-        >
-          {t`Update`}
-        </Button>
-      </div>
-    </div>
+        </Text>
+        <Group gap="sm" wrap="nowrap">
+          <Button
+            component={ExternalLink}
+            flex="0 0 auto"
+            size="sm"
+            href={getUpgradeGuideUrl(latestVersion)}
+          >
+            {t`Upgrade guide`}
+          </Button>
+          <SelfUpgradeButton targetVersion={latestVersion} />
+        </Group>
+      </Group>
+    </Alert>
   );
 }
 
@@ -132,8 +126,4 @@ export function NewVersionInfo() {
 
 function getLatestMajorVersion(version: string | null | undefined) {
   return version?.split(".")[1] ?? "";
-}
-
-function formatVersion(versionLabel = "") {
-  return versionLabel.replace(/^v/, "");
 }
