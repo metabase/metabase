@@ -16,12 +16,13 @@ import threading
 import time
 import traceback
 from collections import Counter
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
+import github_sync
 import sso
 
 SOURCE_VERSION = Path(__file__).stat().st_mtime_ns
@@ -41,16 +42,19 @@ OWNERS = ("repo-code", "repo-tooling", "personal-tooling", "third-party", "harne
 SEVERITIES = ("low", "medium", "high")
 VERDICTS = ("not_ready", "ready", "needs_human")
 ACTIVE_DISPATCH_STATES = ("claimed", "linear_created", "running")
-FINAL_DISPATCH_STATES = ("pr_opened", "already_fixed", "needs_human", "not_reproducible", "failed")
+FINAL_DISPATCH_STATES = ("pr_opened", "already_fixed", "needs_human", "not_reproducible", "failed", "merged")
 DISPATCH_STATES = (*ACTIVE_DISPATCH_STATES, *FINAL_DISPATCH_STATES)
 DISPATCH_TRANSITIONS = {
     "claimed": {"linear_created", "failed"},
     "linear_created": {"running", "failed"},
-    "running": set(FINAL_DISPATCH_STATES),
+    "running": set(FINAL_DISPATCH_STATES) - {"merged"},
+    "pr_opened": {"merged"},
 }
 # The papercut status a final dispatch state leaves behind, applied only while the papercut is still `investigating`.
-STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "needs_human": "open", "not_reproducible": "open", "failed": "open"}
+STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "merged": "resolved", "needs_human": "open",
+                         "not_reproducible": "open", "failed": "open"}
 DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log")
+PR_URL = re.compile(r"https://github\.com/metabase/metabase/pull/(\d+)")
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
@@ -561,6 +565,27 @@ def migrate_to_v4(db):
                        (*git.values(), row["id"]))
 
 
+DISPATCHES_TABLE = f"""
+    CREATE TABLE dispatches (
+        id INTEGER PRIMARY KEY,
+        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+        assessment_id INTEGER REFERENCES assessments (id),
+        state TEXT NOT NULL CHECK (state IN ({one_of(DISPATCH_STATES)})),
+        actor TEXT NOT NULL,
+        linear_issue_id TEXT,
+        linear_url TEXT,
+        branch TEXT,
+        pr_url TEXT,
+        run_log TEXT,
+        cost_usd REAL CHECK (cost_usd >= 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX dispatches_active ON dispatches (papercut_id) WHERE state IN ({one_of(ACTIVE_DISPATCH_STATES)});
+    CREATE INDEX dispatches_state ON dispatches (state)
+"""
+
+
 SCHEMA_V5 = f"""
     ALTER TABLE papercuts ADD COLUMN owner TEXT CHECK (owner IN ({one_of(OWNERS)}));
     ALTER TABLE papercuts ADD COLUMN severity TEXT CHECK (severity IN ({one_of(SEVERITIES)}));
@@ -589,24 +614,7 @@ SCHEMA_V5 = f"""
         reason TEXT
     );
     CREATE INDEX assessments_papercut ON assessments (papercut_id);
-    CREATE TABLE dispatches (
-        id INTEGER PRIMARY KEY,
-        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
-        assessment_id INTEGER REFERENCES assessments (id),
-        state TEXT NOT NULL CHECK (state IN ({one_of(DISPATCH_STATES)})),
-        actor TEXT NOT NULL,
-        linear_issue_id TEXT,
-        linear_url TEXT,
-        branch TEXT,
-        pr_url TEXT,
-        run_log TEXT,
-        cost_usd REAL CHECK (cost_usd >= 0),
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-    );
-    CREATE UNIQUE INDEX dispatches_active ON dispatches (papercut_id) WHERE state IN ({one_of(ACTIVE_DISPATCH_STATES)});
-    CREATE INDEX dispatches_state ON dispatches (state)
-"""
+    {DISPATCHES_TABLE}"""
 
 
 def first_detail(field, values):
@@ -652,8 +660,31 @@ def migrate_to_v7(db):
                   WHERE json_type(payload, '$.repository_url') = 'text'""")
 
 
+def migrate_to_v8(db):
+    """Add the `merged` dispatch state, and the pull requests linked to papercuts, backfilled from the pull request links
+    in comments and dispatches."""
+    for index in ("dispatches_active", "dispatches_state"):
+        db.execute(f"DROP INDEX {index}")
+    db.execute("ALTER TABLE dispatches RENAME TO v7_dispatches")
+    run_script(db, DISPATCHES_TABLE)
+    db.execute("INSERT INTO dispatches SELECT * FROM v7_dispatches")
+    db.execute("DROP TABLE v7_dispatches")
+    db.execute("""CREATE TABLE pull_requests (
+                      papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+                      url TEXT NOT NULL,
+                      state TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open', 'closed', 'merged')),
+                      etag TEXT,
+                      PRIMARY KEY (papercut_id, url)
+                  )""")
+    for row in db.execute("""SELECT papercut_id, pr_url AS text FROM dispatches
+                             UNION ALL SELECT papercut_id, body FROM events WHERE kind = 'comment'""").fetchall():
+        if match := PR_URL.search(row["text"] or ""):
+            db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (row["papercut_id"], match[0]))
+
+
 # Each entry upgrades the database by one `user_version`.
-MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7)
+MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
+              migrate_to_v8)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -863,8 +894,10 @@ class Store:
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
                             WHERE f.papercut_id = p.id) AS fingerprints,
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
-                                    (SELECT 'pr_opened' FROM events e WHERE e.papercut_id = p.id AND e.kind = 'comment'
-                                     AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state,
+                                    (SELECT CASE pr.state WHEN 'open' THEN 'pr_opened' WHEN 'merged' THEN 'merged' END
+                                     FROM pull_requests pr WHERE pr.papercut_id = p.id ORDER BY pr.rowid DESC LIMIT 1)) AS fix_state,
+                           (SELECT pr.url FROM pull_requests pr WHERE pr.papercut_id = p.id
+                            ORDER BY pr.rowid DESC LIMIT 1) AS pr_url,
                            (SELECT json_object('id', d.id, 'state', d.state, 'actor', d.actor, 'linear_issue_id', d.linear_issue_id,
                                                'linear_url', d.linear_url, 'pr_url', d.pr_url)
                             FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS dispatch,
@@ -941,6 +974,8 @@ class Store:
             )]
             papercut["events"] = [dict(r) for r in db.execute(
                 "SELECT * FROM events WHERE papercut_id = ? ORDER BY id", (papercut_id,))]
+            papercut["pull_requests"] = [dict(r) for r in db.execute(
+                "SELECT url, state FROM pull_requests WHERE papercut_id = ? ORDER BY rowid DESC", (papercut_id,))]
             latest = db.execute("SELECT * FROM assessments WHERE papercut_id = ? ORDER BY id DESC LIMIT 1",
                                 (papercut_id,)).fetchone()
             papercut["assessment"] = assessment_json(latest) if latest else None
@@ -1017,12 +1052,43 @@ class Store:
     def comment(self, papercut_id, payload):
         if not isinstance(payload, dict) or set(payload) - {"author", "body"}:
             raise ValueError("Send body and optionally author")
-        body = text_field(payload, "body", required=True)
+        body, author = text_field(payload, "body", required=True), text_field(payload, "author") or "anonymous"
         with self.connect(write=True) as db:
             self._live(db, papercut_id)
-            self._event(db, papercut_id, "comment", text_field(payload, "author") or "anonymous", precise_now(),
-                        body=body)
+            self._event(db, papercut_id, "comment", author, precise_now(), body=body)
+            url, dispatch = self._link_pull_request(db, papercut_id, body), self._active_dispatch(db, papercut_id)
+            if url and dispatch and "pr_opened" in DISPATCH_TRANSITIONS[dispatch["state"]]:
+                self.update_dispatch(dispatch["id"], {"state": "pr_opened", "pr_url": url, "actor": author}, db)
         return self.get_papercut(papercut_id)
+
+    @staticmethod
+    def _link_pull_request(db, papercut_id, text):
+        """Link the first metabase pull request URL in `text` to the papercut, and return it."""
+        if match := PR_URL.search(text or ""):
+            db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (papercut_id, match[0]))
+            return match[0]
+        return None
+
+    def open_pull_requests(self):
+        with self.connect() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM pull_requests WHERE state = 'open' ORDER BY rowid")]
+
+    def pull_request_checked(self, papercut_id, url, state, etag):
+        """Record a linked pull request's state on GitHub. A merge ends its dispatch as `merged` and resolves the
+        papercut; closing it unmerged only leaves a comment."""
+        with self.connect(write=True) as db:
+            db.execute("UPDATE pull_requests SET state = ?, etag = ? WHERE papercut_id = ? AND url = ?",
+                       (state, etag, papercut_id, url))
+            if state == "open":
+                return
+            papercut_id, number, at = self._resolve(db, papercut_id), PR_URL.fullmatch(url)[1], precise_now()
+            if state == "merged":
+                for dispatch in db.execute("SELECT id FROM dispatches WHERE pr_url = ? AND state = 'pr_opened'",
+                                           (url,)).fetchall():
+                    self.update_dispatch(dispatch["id"], {"state": "merged", "actor": "github"}, db)
+                self._set(db, papercut_id, "status", "resolved", "github", at, body=f"PR #{number} merged")
+            self._event(db, papercut_id, "comment", "github", at, body=f"PR #{number} merged, resolved automatically"
+                        if state == "merged" else f"PR #{number} closed without merging")
 
     def add_fingerprint(self, papercut_id, payload):
         if not isinstance(payload, dict) or set(payload) - {"fingerprint", "actor"}:
@@ -1237,9 +1303,10 @@ class Store:
             self._set(db, papercut_id, "status", "investigating", actor, at, body=f"Dispatch {dispatch_id}")
             return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
 
-    def update_dispatch(self, dispatch_id, payload):
-        """Move a dispatch forward and record its links. A final state hands the papercut back: `already_fixed`
-        resolves it, and the other outcomes except `pr_opened` reopen it, unless someone has already changed its status."""
+    def update_dispatch(self, dispatch_id, payload, db=None):
+        """Move a dispatch forward and record its links, in `db`'s transaction when given. A final state hands the
+        papercut back: `already_fixed` and `merged` resolve it, and the other outcomes except `pr_opened` reopen it,
+        unless someone has already changed its status."""
         fields = {"state", *DISPATCH_FIELDS, "cost_usd", "actor", "reason"}
         if not isinstance(payload, dict) or not set(payload) & (fields - {"actor", "reason"}) or set(payload) - fields:
             raise ValueError(f"Send at least one of: {', '.join(sorted(fields - {'actor', 'reason'}))}; "
@@ -1247,7 +1314,7 @@ class Store:
         links = {key: text_field(payload, key) for key in DISPATCH_FIELDS if key in payload}
         cost_usd = number_field(payload, "cost_usd", 0)
         actor, reason, state = actor_of(payload), text_field(payload, "reason"), payload.get("state")
-        with self.connect(write=True) as db:
+        with (self.connect(write=True) if db is None else nullcontext(db)) as db:
             dispatch = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
             if dispatch is None:
                 raise NotFound(f"Dispatch {dispatch_id} not found")
@@ -1266,6 +1333,7 @@ class Store:
             assignments = ", ".join(f"{key} = ?" for key in ("state", *changed, "updated_at"))
             db.execute(f"UPDATE dispatches SET {assignments} WHERE id = ?", (state, *changed.values(), at, dispatch_id))
             papercut_id = dispatch["papercut_id"]
+            self._link_pull_request(db, papercut_id, changed.get("pr_url"))
             details = "; ".join(f"{key}: {value}" for key, value in changed.items())
             self._event(db, papercut_id, "dispatch_updated", actor, at, old=dispatch["state"], new=state,
                         body="\n".join(part for part in (reason, details) if part) or None)
@@ -1679,7 +1747,7 @@ UI_STYLE = """<style>
                               transform: rotate(-45deg); transition: transform .15s}
 .report-card details[open] > summary::before {transform: rotate(45deg)}
 .severity-medium, .fix-needs_human {background: var(--warning-bg); color: var(--warning-text)}
-.fix-pr_opened, .fix-already_fixed {background: var(--success-bg); color: var(--success-text)}
+.fix-pr_opened, .fix-already_fixed, .fix-merged {background: var(--success-bg); color: var(--success-text)}
 .fix-claimed, .fix-linear_created, .fix-running {background: var(--info-bg); color: var(--info-text)}
 .dispatch-control {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem}
 .dispatch-control button {min-height: 30px; padding: 0 .75rem}
@@ -1824,7 +1892,7 @@ DISPATCH_SCRIPT = """<script>
 
 FIX_LABELS = {"claimed": "queued", "linear_created": "ticket filed", "running": "fixing", "pr_opened": "PR opened",
               "already_fixed": "already fixed", "needs_human": "needs a human", "not_reproducible": "not reproducible",
-              "failed": "fix failed"}
+              "failed": "fix failed", "merged": "PR merged"}
 
 
 def fix_pill(state):
@@ -2114,11 +2182,12 @@ def list_card_html(p):
         f"<div title='{esc(facts[label], quote=True)}'><dt>{esc(label)}</dt><dd>{esc(excerpt(facts[label], 55))}</dd></div>"
         for label in visible_facts if facts.get(label)
     )
+    pr_link = "" if p["pr_url"] == (p["dispatch"] or {}).get("pr_url") else dispatch_links({"pr_url": p["pr_url"]})
     return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
-            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}</div>"
+            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}{pr_link}</div>"
             f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
@@ -2304,6 +2373,8 @@ def papercut_html(papercut):
         for e in papercut["events"]
     ) or "<li class='muted'>No triage yet</li>"
     votes = ", ".join(f"{esc(category)} ×{count}" for category, count in papercut["category_votes"].items())
+    pull_requests = "".join(f"{dispatch_links({'pr_url': pr['url']})} <span class='muted'>{pr['state']}</span>"
+                            for pr in papercut["pull_requests"])
     assessment = papercut["assessment"]
     readiness = ("<section class='card'><h2>Readiness</h2>"
                  f"<p>{pill(assessment['verdict'])}"
@@ -2347,6 +2418,7 @@ def papercut_html(papercut):
             f"<div><dt>First seen</dt><dd><time datetime='{esc(papercut['first_seen'], quote=True)}'>{short_date(papercut['first_seen'])}</time></dd></div>"
             f"<div><dt>Last seen</dt><dd><time datetime='{esc(papercut['last_seen'], quote=True)}'>{short_date(papercut['last_seen'])}</time></dd></div>"
             f"{'<div><dt>Category votes</dt><dd>' + votes + '</dd></div>' if votes else ''}"
+            f"{'<div><dt>Pull requests</dt><dd>' + pull_requests + '</dd></div>' if pull_requests else ''}"
             "</dl></aside></div>")
     return page(papercut["title"], body)
 
@@ -2542,6 +2614,7 @@ def main():
     Handler.store = Store(args.db)
     Handler.token = args.token or None
     Handler.sign_in = sso.from_env(os.environ)
+    github_sync.start(Handler.store, os.environ)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Papercuts at http://{args.host}:{server.server_port}/ (database: {args.db}"
           f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",

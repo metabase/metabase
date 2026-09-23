@@ -254,15 +254,22 @@ curl -sS 'http://127.0.0.1:8765/api/dispatches?state=active'
   dispatch in progress, and concurrent claims start only one.
 - **Dispatch states** only move forward: `claimed` → `linear_created` → `running`
   → one of `pr_opened`, `already_fixed`, `needs_human`, `not_reproducible` or
-  `failed`. An active dispatch can also go straight to `failed`. Resending the
-  current state does nothing. Links (`linear_issue_id`, `linear_url`, `branch`,
-  `pr_url`, `run_log`) and `cost_usd` can be updated at any time.
-- **A finished dispatch hands the papercut back:** `already_fixed` resolves it,
-  `pr_opened` leaves it `investigating` for a human to take over, and the other
-  outcomes reopen it. Nothing changes when someone has already moved the papercut
+  `failed`, and `pr_opened` → `merged`. An active dispatch can also go straight to
+  `failed`. Resending the current state does nothing. Links (`linear_issue_id`,
+  `linear_url`, `branch`, `pr_url`, `run_log`) and `cost_usd` can be updated at any
+  time.
+- **A finished dispatch hands the papercut back:** `already_fixed` and `merged`
+  resolve it, `pr_opened` leaves it `investigating` for a human to take over, and the
+  other outcomes reopen it. Nothing changes when someone has already moved the papercut
   out of `investigating`.
 - **Merging** moves an active dispatch to the target. It is refused when both
   papercuts have a dispatch in progress.
+- **Pull requests:** a comment with a `https://github.com/metabase/metabase/pull/<n>`
+  link records that PR on the papercut, and moves a `running` dispatch, such as a
+  person's claim, to `pr_opened` with it. A dispatch's `pr_url` is recorded the same way. Every `PAPERCUTS_GITHUB_SYNC`
+  minutes (5 by default, 0 turns it off) the server asks GitHub about each open PR,
+  with `GITHUB_TOKEN` when it is set. A merged PR moves its dispatch to `merged` and
+  resolves the papercut; one closed without merging gets a comment and nothing else.
 
 Errors are JSON: 400 for bad input, 401 for a missing token, 404, 409 for conflicts
 such as editing a merged papercut, 503 when the database is busy, and 500 otherwise.
