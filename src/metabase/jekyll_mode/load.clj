@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.segments.schema :as segments.schema]
+   [metabase.util.malli :as mu]
    [metabase.util.yaml :as u.yaml]
    [toucan2.core :as t2]))
 
@@ -31,23 +32,19 @@
       (let [id (t2/insert-returning-pk! model instance)]
         (printf "Inserted new %s %d.\n" model id)))))
 
-(mu/defn- load-instance-from-file! [filename :- :string]
+(mu/defn load-instance-from-file! [filename :- :string]
   (let [model (files/filename->model filename)]
     (load-instance! model (file->instance model filename))))
 
 (comment
-  (defn- %read-file-for-update! []
-    (load-instance-from-file! :model/Card "/Users/camsaul/metabase/local/cards/144.yaml"))
+  (load-instance-from-file! "/Users/camsaul/metabase/local/cards/144.yaml")
 
-  (defn- %read-file-for-update-2! []
-    (load-instance-from-file! :model/Dashboard "/Users/camsaul/metabase/local/dashboards/2.yaml"))
+  (load-instance-from-file! "/Users/camsaul/metabase/local/dashboards/2.yaml")
 
-  (defn- %read-file-for-insert! []
-    (load-instance! :model/Card (-> "/Users/camsaul/metabase/local/cards/144.yaml"
-                                    (->> (file->instance :model/Card))
-                                    (dissoc :id :entity_id))))
+  (load-instance! :model/Card (-> "/Users/camsaul/metabase/local/cards/144.yaml"
+                                  (->> (file->instance :model/Card))
+                                  (dissoc :id :entity_id)))
 
-  (defn- %read-file-for-insert-2! []
-    (load-instance! :model/Dashboard (-> "/Users/camsaul/metabase/local/dashboards/2.yaml"
-                                         (->> (file->instance :model/Card))
-                                         (dissoc :id :entity_id)))))
+  (load-instance! :model/Dashboard (-> "/Users/camsaul/metabase/local/dashboards/2.yaml"
+                                       (->> (file->instance :model/Card))
+                                       (dissoc :id :entity_id))))
