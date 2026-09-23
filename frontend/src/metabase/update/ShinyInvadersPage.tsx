@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useInterval } from "react-use";
 import { t } from "ttag";
 
@@ -203,7 +203,7 @@ const fire = (state: GameState): GameState => {
   };
 };
 
-export function ShinyInvadersPage() {
+export function ShinyInvadersPage({ header }: { header: ReactNode }) {
   const [game, setGame] = useState(createGame);
   const [playerName, setPlayerName] = useState("");
   const pressedKeys = useRef(new Set<string>());
@@ -313,14 +313,7 @@ export function ShinyInvadersPage() {
 
   return (
     <main className={S.page}>
-      <div className={S.updateMessage}>
-        <div className={S.updateHeading}>
-          <h1>{t`Update in progress…`}</h1>
-          <div className={S.spinner} aria-hidden="true" />
-        </div>
-        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- The update screen intentionally names the product being restarted. */}
-        <p>{t`Metabase will be back shortly.`}</p>
-      </div>
+      {header}
 
       <section className={S.game} aria-label={t`SHINY INVADERS`}>
         <header className={S.gameHeader}>

@@ -1,4 +1,3 @@
-import type { PropsWithChildren } from "react";
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
@@ -19,14 +18,7 @@ import { FileUploadStatus } from "../FileUploadStatus";
 
 import { StatusListingRoot } from "./StatusListing.styled";
 
-export const StatusListing = ({ children }: PropsWithChildren) => {
-  if (children) {
-    return <StatusListingRoot>{children}</StatusListingRoot>;
-  }
-  return <GlobalStatusListing />;
-};
-
-const GlobalStatusListing = () => {
+export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { progressModal } = PLUGIN_REMOTE_SYNC.useSyncStatus();
 

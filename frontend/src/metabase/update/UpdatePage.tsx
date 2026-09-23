@@ -113,7 +113,6 @@ export function UpdatePage() {
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
       {screen !== "playing" && <UpdateMusic />}
-      {isGameRevealed && <GameUpgradeStatus status={status} />}
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <LogoIcon height={56} />
@@ -141,12 +140,15 @@ export function UpdatePage() {
       </main>
       {screen === "ready" && (
         <main className={S.ready}>
+          <div className={S.readyStatus}>
+            <GameUpgradeStatus status={status} />
+          </div>
           <h2>{t`PRESS SPACE`}</h2>
         </main>
       )}
       {screen === "playing" && (
         <div className={S.gameReveal}>
-          <ShinyInvadersPage />
+          <ShinyInvadersPage header={<GameUpgradeStatus status={status} />} />
         </div>
       )}
     </div>

@@ -11,12 +11,12 @@ import { formatVersion } from "metabase/utils/version";
 
 interface UpgradeCompletionProps {
   status: ReturnType<typeof useUpgradeStatus>;
-  compact?: boolean;
+  inline?: boolean;
 }
 
 export function UpgradeCompletion({
   status,
-  compact = false,
+  inline = false,
 }: UpgradeCompletionProps) {
   const { hasStatus, phase, newVersion, errorMessage, reset } = status;
   if (!hasStatus || (phase !== "done" && phase !== "failed")) {
@@ -37,25 +37,21 @@ export function UpgradeCompletion({
 
   const content = (
     <Stack
-      align={compact ? "flex-start" : "center"}
+      align="center"
       gap="md"
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <Text
-        ta={compact ? "left" : "center"}
-        size={compact ? "sm" : "md"}
-        c="text-primary"
-      >
+      <Text ta="center" size="md" c={inline ? "inherit" : "text-primary"}>
         {message}
       </Text>
       <Button
-        size={compact ? "compact-sm" : "md"}
+        size={inline ? "compact-sm" : "md"}
         onClick={handleReload}
       >{t`Reload the page`}</Button>
     </Stack>
   );
 
-  if (compact) {
+  if (inline) {
     return content;
   }
 

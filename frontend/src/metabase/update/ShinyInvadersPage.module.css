@@ -16,38 +16,6 @@
   }
 }
 
-.updateMessage {
-  flex: 0 0 auto;
-  text-align: center;
-
-  h1 {
-    margin: 0.75rem 0 0.25rem;
-    font-size: clamp(1.25rem, 3vw, 2rem);
-  }
-
-  p {
-    margin: 0;
-    color: var(--update-game-text-secondary);
-  }
-}
-
-.updateHeading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.spinner {
-  width: 2rem;
-  height: 2rem;
-  flex: 0 0 auto;
-  border: 3px solid var(--mb-color-border-on_dark);
-  border-top-color: var(--mb-color-core-brand);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-
 .game {
   width: 80vw;
   min-height: 0;
@@ -247,25 +215,10 @@
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 40rem) {
   .page {
     padding-inline: 1rem;
     gap: 0.5rem;
-  }
-
-  .updateHeading {
-    gap: 0.5rem;
-  }
-
-  .spinner {
-    width: 1.5rem;
-    height: 1.5rem;
   }
 
   .game {

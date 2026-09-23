@@ -154,3 +154,8 @@
   --update-game-text: var(--mb-color-text-primary);
   --update-game-text-secondary: var(--mb-color-text-secondary);
 }
+
+.readyStatus {
+  position: absolute;
+  inset: 0 0 auto;
+}

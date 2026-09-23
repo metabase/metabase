@@ -1,0 +1,22 @@
+.root {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--update-game-text);
+  text-align: center;
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.25rem, 3vw, 2rem);
+  }
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
