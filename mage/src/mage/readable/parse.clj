@@ -181,6 +181,7 @@
              (let [trailing? (and prev-end-row (= prev-end-row (:row (position c))))]
                (recur (rest children) skipped 1 nil true
                       (conj acc {:type :comment :text (comment-text c) :trailing? (boolean trailing?)
+                                 :row (:row (position c))
                                  :blank? (and started? (not trailing?) (>= newlines 2))})))
 
              :else

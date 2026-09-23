@@ -252,6 +252,18 @@
     :stmt   [[doc ";"]]
     :expr   doc))
 
+(defn node-row
+  "The source line `node` starts on, if known (synthetic nodes have no position)."
+  [node]
+  (:row (p/position node)))
+
+(defn mark-stmts
+  "Mark the first statement in `stmts` as coming from source line `row`."
+  [row stmts]
+  (if (and row (seq stmts))
+    (update (vec stmts) 0 #(d/mark row %))
+    stmts))
+
 (defn- attach-trailing [stmts text]
   (if (empty? stmts)
     [text]
@@ -266,7 +278,7 @@
       (case type
         :form    (let [group (conj group node)]
                    (if (= group-size (count group))
-                     (recur (rest ents) [] [] (conj items {:doc (f group) :lead pending-lead}))
+                     (recur (rest ents) [] [] (conj items {:doc (f group) :lead pending-lead :row (node-row (first group))}))
                      (recur (rest ents) pending-lead group items)))
         :comment (if (and trailing? (seq items) (empty? group) (not (:trail (peek items))))
                    (recur (rest ents) pending-lead group (update items (dec (count items)) assoc :trail text))
@@ -301,7 +313,8 @@
                     (not-any? d/has-hardline? (butlast docs))
                     (or hug? (d/has-hardline? (last docs)) (huggable-doc? (last docs))))]
      (if hug?
-       [callee "(" (d/join ", " (vec (butlast docs))) (when (next docs) ", ") (last docs) ")"]
+       (let [marked (map #(d/mark (:row %) (:doc %)) items)]
+         [callee "(" (d/join ", " (vec (butlast marked))) (when (next marked) ", ") (last marked) ")"])
        [callee (d/bracket "(" items ")")]))))
 
 (defn huggable-node?
@@ -391,15 +404,15 @@
   [ctx ents]
   (let [last-form (last (keep-indexed (fn [i e] (when (= :form (:type e)) i)) ents))]
     (reduce
-     (fn [acc [i {:keys [type node text trailing? blank?]}]]
+     (fn [acc [i {:keys [type node text trailing? blank? row]}]]
        (let [acc (if (and blank? (seq acc)) (conj acc "") acc)]
          (case type
            :form    (let [last? (= i last-form)
                           c     (-> ctx
                                     (at (if last? (:pos ctx) :stmt))
                                     (assoc :last? (and last? (:last? ctx true))))]
-                      (into acc (stmts c node)))
-           :comment (if (and trailing? (seq acc)) (attach-trailing acc text) (conj acc text))
+                      (into acc (mark-stmts (node-row node) (stmts c node))))
+           :comment (if (and trailing? (seq acc)) (attach-trailing acc text) (conj acc (d/mark row text)))
            :uneval  (into acc (raw-comment-lines "#_ (ignored) " (first (p/forms node)))))))
      []
      (map-indexed vector ents))))
@@ -873,24 +886,33 @@
 
 (defn- top-level-stmts [ctx ents]
   (reduce
-   (fn [acc {kind :type :keys [node text trailing? blank?]}]
+   (fn [acc {kind :type :keys [node text trailing? blank? row]}]
      (let [acc (if (and blank? (seq acc)) (conj acc "") acc)]
        (case kind
-         :form    (into acc (try
-                              (stmts ctx node)
-                              (catch Exception e
-                                (note! :error (str (or (some-> (resolve-head ctx (p/unwrap-meta node)) str) (name (p/tag node)))
-                                                   ": " (ex-message e)))
-                                [(str "// (could not translate this form: " (str/replace (or (ex-message e) (str (type e))) #"\s+" " ") ")")
-                                 (raw-doc node)])))
-         :comment (if (and trailing? (seq acc)) (attach-trailing acc text) (conj acc text))
+         :form    (into acc (mark-stmts
+                             (node-row node)
+                             (try
+                               (stmts ctx node)
+                               (catch Exception e
+                                 (note! :error (str (or (some-> (resolve-head ctx (p/unwrap-meta node)) str) (name (p/tag node)))
+                                                    ": " (ex-message e)))
+                                 [(str "// (could not translate this form: " (str/replace (or (ex-message e) (str (type e))) #"\s+" " ") ")")
+                                  (raw-doc node)]))))
+         :comment (if (and trailing? (seq acc)) (attach-trailing acc text) (conj acc (d/mark row text)))
          :uneval  (into acc (raw-comment-lines "#_ (ignored) " (first (p/forms node)))))))
    []
    ents))
 
+(defn translate-root-with-source-map
+  "Translate a parsed file (rewrite-clj :forms node). Returns {:text readable-text, :rows [clojure-line per output
+  line]} where each entry is the (1-based) Clojure source line that output line came from."
+  [root]
+  (let [info (p/ns-info root)
+        ctx  {:info info :pos :stmt :renames {} :declared (atom #{}) :mutable #{} :last? false}
+        {:keys [text rows]} (d/render-with-source-map (d/join :hardline (top-level-stmts ctx (p/entries root))))]
+    {:text (str text "\n") :rows rows}))
+
 (defn translate-root
   "Translate a parsed file (rewrite-clj :forms node) into readable text."
   [root]
-  (let [info (p/ns-info root)
-        ctx  {:info info :pos :stmt :renames {} :declared (atom #{}) :mutable #{} :last? false}]
-    (str (d/render (d/join :hardline (top-level-stmts ctx (p/entries root)))) "\n")))
+  (:text (translate-root-with-source-map root)))

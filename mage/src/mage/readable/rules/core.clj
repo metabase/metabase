@@ -241,9 +241,11 @@
                            simple (:simple (t/pattern ctx pat))]
                        (recur (rest ents) nil
                               (into acc
-                                    (if (and simple (t/head-is? ctx value (core 'cond-> 'cond->> 'as->)))
-                                      (cond-thread-stmts ctx value simple)
-                                      (t/bind-stmts ctx pat (t/expr c value))))))
+                                    (t/mark-stmts
+                                     (t/node-row pat)
+                                     (if (and simple (t/head-is? ctx value (core 'cond-> 'cond->> 'as->)))
+                                       (cond-thread-stmts ctx value simple)
+                                       (t/bind-stmts ctx pat (t/expr c value)))))))
                      (recur (rest ents) node acc)))
         acc))))
 

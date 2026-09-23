@@ -323,3 +323,20 @@
       (testing "unknown branches get a clear error"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No PR or branch named \"nope\""
                               (git/branch-changes "nope" nil)))))))
+
+(deftest ^:parallel source-map-test
+  (testing "every readable line maps back to the Clojure line it came from (including past 8 forms)"
+    (let [src (str "(ns a)\n\n"
+                   (str/join "\n\n" (for [i (range 12)] (str "(defn f" i " [x]\n  ;; note " i "\n  (g x " i "))"))))
+          {:keys [text rows]} (readable/translate-with-source-map src)
+          src-lines (str/split-lines src)
+          out-lines (str/split-lines text)]
+      (is (= (count out-lines) (count rows)))
+      (doseq [i (range 12)
+              :let [fn-line   (inc (.indexOf ^java.util.List src-lines (str "(defn f" i " [x]")))
+                    out-fn    (.indexOf ^java.util.List out-lines (str "function f" i "(x) {"))
+                    out-note  (.indexOf ^java.util.List out-lines (str "  // note " i))
+                    out-body  (.indexOf ^java.util.List out-lines (str "  return g(x, " i ");"))]]
+        (is (= fn-line (nth rows out-fn)))
+        (is (= (inc fn-line) (nth rows out-note)))
+        (is (= (+ fn-line 2) (nth rows out-body)))))))
