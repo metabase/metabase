@@ -1,7 +1,7 @@
 # Papercuts server proof of concept
 
 A small inbox for reports from developer machines or agents. It preserves every
-report, groups exact matches into a papercut, counts reports and distinct machines,
+report, groups exact matches into a papercut, counts reports and distinct reporters,
 suggests related papercuts, and gives each papercut a category and triage status.
 The browser view is read-only; the JSON API supports triage and manual relations.
 
@@ -20,17 +20,26 @@ Submit a report:
 ```sh
 curl -sS http://127.0.0.1:8765/api/reports \
   -H 'Content-Type: application/json' \
-  -d '{"repository":"metabase","machine_id":"laptop-1","report_id":"run-123", "title":"Agent misses hidden build step","description":"Mage must run before tests","path":"mage/src/mage/build.clj"}'
+  -d '{"repository":"metabase","reporter":"chris.claude","report_id":"run-123", "title":"Agent misses hidden build step","description":"Mage must run before tests","path":"mage/src/mage/build.clj"}'
 ```
 
-`repository`, `machine_id`, and `title` are required. Send a stable `report_id` per
-machine to make retries idempotent. An optional `fingerprint` lets reporters define
+`repository`, `reporter`, and `title` are required. `machine_id` is accepted as an
+older name for `reporter`. Send a stable `report_id` per reporter to make retries
+idempotent. Replaying a `report_id` returns the existing papercut; replaying it with a
+different fingerprint is rejected with 409. An optional `fingerprint` lets reporters define
 exact matching; otherwise the server hashes normalized title and path within the
 repository. Reports with different fingerprints remain separate even if they look
 similar. Similar titles and paths within one repository create *suggested* related
 links, which never merge counts. An optional `category` can override the server's
 small keyword classifier. Categories are `agent-trap`, `code-smell`, `flaky-test`,
-`tooling`, `documentation`, and `other`.
+`tooling`, `documentation`, and `other`. Optional `machine`, `source_type`, and
+`source_ref` fields record where a report came from. The server keeps each report's
+full request body, including fields it does not know, and records the fingerprint and
+category the reporter sent separately from the ones it computed.
+
+The schema and the reasons for it are in
+[`slop/chris/reports/schema.server.final.md`](slop/chris/reports/schema.server.final.md).
+The server migrates an older database in place when it starts.
 
 Read and triage:
 
@@ -56,7 +65,8 @@ To view real, source-backed papercuts, point the importer at the local archive:
 `python3 import_local.py slop/chris/papercuts/claude slop/chris/papercuts/codex`. It accepts files or directories. Each
 transcript occurrence a writeup records becomes one report under a per-writeup
 fingerprint, so report counts show how often a papercut was hit. The report's
-`machine_id` is the file's `<user>.<agent>` prefix, and `observed_at` is the
+`reporter` is the file's `<user>.<agent>` prefix, its `source_ref` is the file name,
+its payload keeps the transcript and lines, and `observed_at` is the
 occurrence date. Writeups marked `fixed` or `wontfix` are imported, then set to
 `resolved` or `wontfix`. Stable report IDs make repeat imports a no-op.
 

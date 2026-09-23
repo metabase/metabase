@@ -177,7 +177,7 @@ def main():
     parser.add_argument("--repository", default="metabase")
     args = parser.parse_args()
     for path in writeups(args.paths):
-        machine_id, agent, slug = reporter_and_slug(path)
+        reporter, agent, slug = reporter_and_slug(path)
         if slug in NOT_PAPERCUTS or slug.startswith("_"):
             continue
         content = path.read_text()
@@ -191,12 +191,17 @@ def main():
             session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else "writeup"
             report = {
                 "repository": args.repository,
-                "machine_id": machine_id,
+                "reporter": reporter,
                 "report_id": f"local-papercuts:{slug}:{session}:{occurrence['lines'] or ''}",
                 "fingerprint": f"local-papercuts:{slug}",
                 "title": writeup["title"],
-                "description": f"{writeup['description']}\nSource: local-papercuts/{path.name}",
+                "description": writeup["description"],
                 "path": writeup["path"],
+                "source_type": "local-papercuts",
+                "source_ref": path.name,
+                # Not columns on the server, but kept in the report's raw payload.
+                "transcript": occurrence["transcript"],
+                "lines": occurrence["lines"],
             }
             if writeup["category"]:
                 report["category"] = writeup["category"]

@@ -31,7 +31,8 @@ Regrouping also needs a rule for carrying triage state across, because status an
 - `source` is `suggested` (Jaccard similarity ≥ 0.45 on title and path) or `manual`.
 - `score` is the similarity score, or NULL for manual links.
 
-The populated DB has 139 issues, 277 reports, 2 machines and 3 suggested relations.
+The populated DB has 139 issues, 277 reports and 3 suggested relations.
+Its 2 distinct `machine_id` values are reporter labels (`chris.claude`, `chris.codex`), not machines: the importer sets `machine_id` to `<user>.<agent>`.
 
 ## Why it works
 
