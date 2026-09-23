@@ -69,8 +69,9 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
             name="branch"
             label={t`Branch`}
             data={branches}
-            searchable
+            placeholder={t`Select a branch`}
             nothingFoundMessage={t`No branches`}
+            searchable
           />
           <FormErrorMessage />
           <Group gap="sm" justify="end">

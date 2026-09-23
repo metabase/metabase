@@ -17,12 +17,14 @@
   (t2/select-one current-user-columns :id user-id))
 
 (mu/defn current-user-for-id
-  "The User with `user-id` as `{:metabase-user-id :is-superuser? :is-data-analyst? :user-locale :settings}`, or nil."
+  "The User with `user-id` as
+  `{:metabase-user-id :is-superuser? :is-data-analyst? :user-locale :worktree-id :settings}`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User
                   [:id :metabase-user-id]
                   [:is_superuser :is-superuser?]
                   [:is_data_analyst :is-data-analyst?]
                   [:locale :user-locale]
+                  [:worktree_id :worktree-id]
                   :settings]
                  :id user-id))

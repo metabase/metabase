@@ -37,7 +37,7 @@
    thunk :- ifn?]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
-            mdb.worktree/*worktree-id*         worktree-id
+            mdb.worktree/*worktree-id*     worktree-id
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *is-data-analyst?*             (boolean is-data-analyst?)

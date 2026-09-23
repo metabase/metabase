@@ -1617,8 +1617,8 @@
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
-  [branch force? import-args & {:keys [worktree-id] :as opts}]
-  (mdb.worktree/do-with-worktree worktree-id #(async-import!* branch force? import-args opts)))
+  [branch force? import-args & {:as opts}]
+  (async-import!* branch force? import-args opts))
 
 (defn- async-export!*
   [branch force? message {:keys [on-success merge?]}]
@@ -1667,8 +1667,8 @@
                          decides whether to force, branch, or merge.
 
   Returns a RemoteSyncTask."
-  [branch force? message & {:keys [worktree-id] :as opts}]
-  (mdb.worktree/do-with-worktree worktree-id #(async-export!* branch force? message opts)))
+  [branch force? message & {:as opts}]
+  (async-export!* branch force? message opts))
 
 (defn preview-export-merge
   "Dry-run preview of what exporting the current state would do given the live remote, without writing
