@@ -132,13 +132,14 @@ export function ImageUploadWidget({
                       ? fileName
                       : t`Remove uploaded image`}
                 </Text>
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {!isDefaultImage && (
                   <Button
-                    leftSection={<Icon name="close" />}
                     variant="subtle"
-                    c="text-primary"
+                    color="neutral"
+                    size="sm"
+                    leftSection={<Icon name="close" />}
                     ml="lg"
-                    size="compact-md"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}
                   />

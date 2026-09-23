@@ -986,7 +986,7 @@
         (select-keys [:id :table_id :name :values :dimensions])
         (update :dimensions (fn [dimensions]
                               (for [dim dimensions]
-                                (dissoc dim :id :entity_id :created_at :updated_at)))))))
+                                (dissoc dim :id :entity_id :created_at :updated_at :worktree_id)))))))
 
 (defn- category-id-semantic-type!
   "Field values will only be returned when the field's semantic type is set to type/Category. This function will change

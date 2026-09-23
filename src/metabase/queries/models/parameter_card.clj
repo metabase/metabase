@@ -16,7 +16,8 @@
 
 (doto :model/ParameterCard
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})

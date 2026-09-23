@@ -17,6 +17,8 @@ export const REMOTE_SYNC_KEY = "remote-sync-enabled";
 export const AUTO_IMPORT_KEY = "remote-sync-auto-import";
 export const TRANSFORMS_KEY = "remote-sync-transforms";
 export const COLLECTIONS_KEY = "collections";
+
+export const WORKTREE_PARAM = "worktree";
 // Used in modal variant when library doesn't exist yet but user wants to sync it
 export const SYNC_LIBRARY_PENDING_KEY = "sync-library-pending";
 // A running task whose progress has not moved for this long gets a "still running" hint in the modal

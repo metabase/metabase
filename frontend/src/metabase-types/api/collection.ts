@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { WorktreeId } from "./remote-sync";
 import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -75,6 +76,8 @@ export interface Collection {
   is_personal?: boolean;
   is_sample?: boolean; // true if the collection part of the sample content
   is_library_root?: boolean;
+
+  worktree_id?: WorktreeId | null;
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access

@@ -11,10 +11,12 @@
 
 (doto :model/TransformTransformTag
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod serdes/make-spec "TransformTransformTag"
   [_model-name _opts]
   {:copy [:entity_id :position]
+   :skip [:worktree_id :worktree_id_helper]
    :transform {:transform_id (serdes/parent-ref)
                :tag_id (serdes/fk :model/TransformTag)}})

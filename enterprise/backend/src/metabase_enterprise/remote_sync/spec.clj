@@ -16,6 +16,7 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -835,19 +836,26 @@
 
 ;;; -------------------------------------------- Editability Checking ------------------------------------------------
 
+(defn session-editable?
+  "Whether the caller may edit the content this instance syncs at all: a read-write instance edits its own, and a
+  worktree is where a read-only instance's content is authored."
+  []
+  (or (some? (mdb.worktree/worktree-id))
+      (= (rs-settings/remote-sync-type) :read-write)))
+
 (defn model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 
    Returns false if:
    - The model has a spec in remote-sync-specs AND
    - The instance is eligible for sync (via check-eligibility) AND
-   - remote-sync-type is :read-only
+   - the caller may not edit the content it syncs (see [[session-editable?]])
 
    For models with global eligibility (e.g., :library-synced, :setting), the instance
    argument can be nil or an empty map since eligibility doesn't depend on instance data."
   [model-key instance]
   (if-let [spec (spec-for-model-key model-key)]
-    (or (= (rs-settings/remote-sync-type) :read-write)
+    (or (session-editable?)
         (not (check-eligibility spec instance)))
     ;; Model not in spec, always editable
     true))
@@ -856,7 +864,7 @@
   "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
   [model-key instances]
   (if-let [spec (spec-for-model-key model-key)]
-    (if (= (rs-settings/remote-sync-type) :read-write)
+    (if (session-editable?)
       (into {} (map (fn [inst] [(:id inst) true])) instances)
       (let [eligibility-map (batch-check-eligibility spec instances)]
         (into {} (map (fn [[id eligible?]] [id (not eligible?)])) eligibility-map)))

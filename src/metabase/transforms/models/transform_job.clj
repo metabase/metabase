@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transforms.db :as transforms.db]
@@ -58,6 +59,16 @@
              (if (seq transforms)
                (every? mi/can-write? transforms)
                true)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_execute]
+  "Add can_execute to jobs. Running a job requires write permission, and the main app: a job runs the transforms
+  the main app shares, so a worktree runs none for now."
+  [_model k jobs]
+  (mi/instances-with-hydrated-data
+   jobs k
+   #(let [executable? (nil? (mdb.worktree/worktree-id))]
+      (into {} (map (fn [job] [(:id job) (and executable? (boolean (mi/can-write? job)))])) jobs))
+   :id))
 
 (mi/define-batched-hydration-method tag-ids
   :tag_ids

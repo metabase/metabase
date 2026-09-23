@@ -16,7 +16,9 @@
 
 (methodical/defmethod t2/table-name :model/RemoteSyncObject [_model] :remote_sync_object)
 
-(derive :model/RemoteSyncObject :metabase/model)
+(doto :model/RemoteSyncObject
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------------
 

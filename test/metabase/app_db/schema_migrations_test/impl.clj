@@ -18,6 +18,7 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
@@ -79,6 +80,7 @@
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
                  custom-migrations.util/*allow-temp-scheduling* false
+                 mdb.worktree/*worktree-scoping* false
                  ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
                  ;; prewarming the test-data Database within it.
                  data.impl/*skip-dataset-prewarm?* true]

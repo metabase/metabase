@@ -81,7 +81,8 @@
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
-   [:public_uuid_prefix      {:optional true} [:maybe :string]]])
+   [:public_uuid_prefix      {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
@@ -122,7 +123,8 @@
    [:entity_id              {:optional true} [:maybe :string]]
    [:action_id              {:optional true} [:maybe ::lib.schema.id/action]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]])
+   [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]
+   [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
@@ -136,7 +138,8 @@
   [:map {:closed true}
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
-   [:position         {:optional true} [:maybe :int]]])
+   [:position         {:optional true} [:maybe :int]]
+   [:worktree_id      {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
@@ -153,4 +156,5 @@
    [:position     {:optional true} [:maybe :int]]
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])

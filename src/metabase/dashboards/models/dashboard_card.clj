@@ -25,7 +25,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
-  #_(derive :hook/search-index))
+  #_(derive :hook/search-index)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings
@@ -348,7 +349,7 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)

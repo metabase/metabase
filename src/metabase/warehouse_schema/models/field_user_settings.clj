@@ -28,7 +28,8 @@
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
@@ -39,8 +40,6 @@
                  (assoc flag true)))
              settings
              warehouse-schema-overlay/field-user-settings-flags))
-
-(methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
@@ -106,6 +105,8 @@
 
 (defmethod serdes/entity-id "FieldUserSettings" [_ _] nil)
 
+(defmethod serdes/primary-key "FieldUserSettings" [_model-name] :field_id)
+
 (defmethod serdes/generate-path "FieldUserSettings" [_ {:keys [field_id]}]
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
@@ -122,6 +123,7 @@
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
                :description_set :semantic_type_set :fk_target_field_id_set]
+   :skip      [:worktree_id :worktree_id_helper]
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}

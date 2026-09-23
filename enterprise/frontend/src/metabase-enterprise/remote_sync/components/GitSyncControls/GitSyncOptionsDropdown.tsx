@@ -1,14 +1,18 @@
 import { t } from "ttag";
 
-import { Box, Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import { Box, Divider, Icon, Loader, Menu, Text, Tooltip } from "metabase/ui";
 
 export interface GitSyncOptionsDropdownProps {
   isPullDisabled: boolean;
   isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
+  hasSyncActions: boolean;
+  isInWorktree: boolean;
   onPullClick: VoidFunction;
   onPushClick: VoidFunction;
+  onEnterWorktreeClick: VoidFunction;
+  onLeaveWorktreeClick: VoidFunction;
 }
 
 export const GitSyncOptionsDropdown = ({
@@ -16,60 +20,78 @@ export const GitSyncOptionsDropdown = ({
   isPullError,
   isLoadingPull,
   isPushDisabled,
+  hasSyncActions,
+  isInWorktree,
   onPullClick,
   onPushClick,
+  onEnterWorktreeClick,
+  onLeaveWorktreeClick,
 }: GitSyncOptionsDropdownProps) => {
   if (isPullError) {
     return (
-      <Combobox.Dropdown p={0}>
+      <Menu.Dropdown>
         <Box p="lg">
           <Text size="sm" c="feedback-negative" ta="center">
             {t`Failed to check for changes — check your authentication token`}
           </Text>
         </Box>
-      </Combobox.Dropdown>
+      </Menu.Dropdown>
     );
   }
 
   return (
-    <Combobox.Dropdown p={0}>
-      <Combobox.Options>
-        <Tooltip
-          label={isPushDisabled ? t`No changes to push` : t`Push changes`}
-        >
-          <Combobox.Option
-            disabled={isPushDisabled}
-            onClick={onPushClick}
-            py="sm"
-            value="push"
+    <Menu.Dropdown>
+      {hasSyncActions && (
+        <>
+          <Tooltip
+            label={isPushDisabled ? t`No changes to push` : t`Push changes`}
           >
-            <Group gap="lg" wrap="nowrap">
-              <Icon name="arrow_up" size={12} />
-              <Text>{t`Push changes`}</Text>
-            </Group>
-          </Combobox.Option>
-        </Tooltip>
+            <Menu.Item
+              disabled={isPushDisabled}
+              leftSection={<Icon name="arrow_up" size={12} />}
+              onClick={onPushClick}
+            >
+              {t`Push changes`}
+            </Menu.Item>
+          </Tooltip>
 
-        <Tooltip
-          label={isPullDisabled ? t`No changes to pull` : t`Pull from remote`}
-        >
-          <Combobox.Option
-            disabled={isPullDisabled || isLoadingPull}
-            onClick={onPullClick}
-            py="sm"
-            value="pull"
+          <Tooltip
+            label={isPullDisabled ? t`No changes to pull` : t`Pull from remote`}
           >
-            <Group gap="lg" wrap="nowrap">
-              {isLoadingPull ? (
-                <Loader size={12} data-testid="pull-changes-loader" />
-              ) : (
-                <Icon name="arrow_down" size={12} />
-              )}
-              <Text>{t`Pull changes`}</Text>
-            </Group>
-          </Combobox.Option>
-        </Tooltip>
-      </Combobox.Options>
-    </Combobox.Dropdown>
+            <Menu.Item
+              disabled={isPullDisabled || isLoadingPull}
+              leftSection={
+                isLoadingPull ? (
+                  <Loader size={12} data-testid="pull-changes-loader" />
+                ) : (
+                  <Icon name="arrow_down" size={12} />
+                )
+              }
+              onClick={onPullClick}
+            >
+              {t`Pull changes`}
+            </Menu.Item>
+          </Tooltip>
+
+          <Divider my="xs" />
+        </>
+      )}
+
+      <Menu.Label>{t`Worktrees`}</Menu.Label>
+      <Menu.Item
+        leftSection={<Icon name="git_branch" size={12} />}
+        onClick={onEnterWorktreeClick}
+      >
+        {t`Enter worktree`}
+      </Menu.Item>
+      {isInWorktree && (
+        <Menu.Item
+          leftSection={<Icon name="close" size={12} />}
+          onClick={onLeaveWorktreeClick}
+        >
+          {t`Leave worktree`}
+        </Menu.Item>
+      )}
+    </Menu.Dropdown>
   );
 };

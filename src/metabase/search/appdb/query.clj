@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]))
@@ -44,13 +45,22 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
+(defn worktree-where-clause
+  "Restricts the index to the worktree being worked in: a row that belongs to no worktree, such as a table, is
+  visible from every one of them."
+  []
+  [:or
+   [:= :search_index.worktree_id nil]
+   [:= :search_index.worktree_id [:inline (or (mdb.worktree/worktree-id) 0)]]])
+
 (defn filter-layers
   "Ordered `[label add-clauses-fn]` pairs that layer the structural + permission `WHERE` clauses onto an index
   query. Defined once so `metabase.search.appdb.core` results and its debug diagnose probe share the exact same chain, and so the
   diagnostic can attribute exclusion to the first layer (per-permission, then per-filter) that drops a row."
   [search-ctx]
   (concat
-   [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
+   [[:worktree               #(sql.helpers/where % (worktree-where-clause))]
+    [:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
     [:table-permissions      (partial add-table-where-clauses search-ctx)]
     [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                                     search-ctx
@@ -81,6 +91,7 @@
   `search-ctx`."
   [index-table search-ctx]
   (->> (specialization/base-query index-table (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+       (#(sql.helpers/where % (worktree-where-clause)))
        (add-collection-join-and-where-clauses search-ctx)
        (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                search-ctx

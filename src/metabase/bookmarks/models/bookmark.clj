@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -78,7 +79,7 @@
   [user-id :- ::lib.schema.id/user]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}]
-    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
+    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope (mdb.worktree/worktree-id))
          (map normalize-bookmark-result))))
 
 (defn save-ordering!

@@ -156,7 +156,6 @@
 
 (defn- create-or-update-sync-object-from-spec!
   "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
-   This is the spec-based version of create-or-update-remote-sync-object-entry!.
 
    Row-locks the entry for the transaction, so this and a concurrent un-sync of the entity's collection
    settle in a fixed order rather than losing one of the two writes: whichever locks first commits, and

@@ -54,7 +54,8 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Measure
   ([instance]
@@ -213,7 +214,7 @@
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :table_id :worktree_id :worktree_id_helper]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}

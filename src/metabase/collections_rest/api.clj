@@ -9,6 +9,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
@@ -90,7 +91,7 @@
                                              :personal-only                  personal-only
                                              :include-library?               true}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
-    (if (or archived personal-only)
+    (if (or archived personal-only (mdb.worktree/worktree-id))
       collections
       (let [root (root-collection namespace)]
         (cond->> collections

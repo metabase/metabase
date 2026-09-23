@@ -65,6 +65,7 @@ export function AddMappingRow({
       <Group gap="lg">
         <Button
           variant="subtle"
+          color="neutral"
           onClick={handleCancelClick}
         >{t`Cancel`}</Button>
         <Button

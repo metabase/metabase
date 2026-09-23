@@ -49,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -411,7 +412,7 @@
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
+               :public_uuid_prefix :worktree_id :worktree_id_helper]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
@@ -539,7 +540,6 @@
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :moderated-status           :mr.status}
-   :where        []
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
                                             ;; a magical alias, or perhaps this clause can be implicit

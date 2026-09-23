@@ -44,13 +44,9 @@ export function MeasureList({ table }: MeasureListProps) {
         <Group gap="lg" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
-            h={32}
             leftSection={<Icon name="add" />}
             onAuxClick={onNewMeasureClick}
             onClickCapture={onNewMeasureClick}
-            px="sm"
-            py="xxs"
-            size="xs"
             to={newMeasureUrl}
           >
             {t`New measure`}

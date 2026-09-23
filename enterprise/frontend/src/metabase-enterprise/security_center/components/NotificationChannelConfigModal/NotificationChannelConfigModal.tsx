@@ -103,6 +103,7 @@ export function NotificationChannelConfigModal({
           <Group gap="lg">
             <Button
               variant="subtle"
+              color="neutral"
               onClick={() => {
                 resetConfig();
                 onClose();

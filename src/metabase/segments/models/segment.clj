@@ -76,7 +76,8 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
@@ -229,7 +230,7 @@
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
+               :table_id :worktree_id :worktree_id_helper]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}

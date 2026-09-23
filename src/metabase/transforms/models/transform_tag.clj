@@ -16,7 +16,8 @@
 (doto :model/TransformTag
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/TransformTag
   ([_instance]
@@ -108,6 +109,7 @@
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
+   :skip [:worktree_id :worktree_id_helper]
    :transform {:name {:export str :import identity}
                :created_at (serdes/date)}})
 

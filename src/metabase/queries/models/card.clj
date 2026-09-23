@@ -132,7 +132,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -1376,7 +1377,7 @@
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
           :metabot_conversation_id :metabot_chart_id
           ;; always re-derived from public_uuid on import
-          :public_uuid_prefix]
+          :public_uuid_prefix :worktree_id :worktree_id_helper]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query

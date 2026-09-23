@@ -84,8 +84,16 @@
   [resolver email]
   (when email
     (or (resolve/import-fk-keyed resolver email 'User :email)
-        ;; Need to break a circular dependency here.
-        (:id ((clojure.core/resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
+        (try
+          ;; savepoint, so a failed insert doesn't abort the enclosing import transaction
+          (t2/with-transaction [_conn]
+            ;; Need to break a circular dependency here.
+            (:id ((clojure.core/resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))
+          (catch ExceptionInfo e
+            ;; a concurrent import (e.g. a pull in another worktree) synthesized the same user first. Look it up
+            ;; uncached: the resolver may have memoized the miss above.
+            (or (import-fk-keyed email 'User :email)
+                (throw e)))))))
 
 (defn- synthesize-table!
   "Creates a new inactive Table for a deserialized reference whose `[db-name schema table-name]`

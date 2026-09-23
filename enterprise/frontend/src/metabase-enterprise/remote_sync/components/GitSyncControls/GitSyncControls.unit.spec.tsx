@@ -62,7 +62,7 @@ const setup = ({
   });
 };
 
-const findOption = (name: RegExp) => screen.findByRole("option", { name });
+const findMenuItem = (name: RegExp) => screen.findByRole("menuitem", { name });
 const getBranchButton = (name: RegExp) => screen.getByRole("button", { name });
 const queryBranchButton = (name: RegExp) =>
   screen.queryByRole("button", { name });
@@ -98,11 +98,11 @@ describe("GitSyncControls", () => {
       });
     });
 
-    it("should not render when sync type is read-only", async () => {
+    it("should render in read-only mode, where entering a worktree is the way to author", async () => {
       setup({ syncType: "read-only" });
 
       await waitFor(() => {
-        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+        expect(getBranchButton(/main/)).toBeInTheDocument();
       });
     });
 
@@ -141,8 +141,8 @@ describe("GitSyncControls", () => {
 
       await userEvent.click(getBranchButton(/main/));
 
-      expect(await findOption(/Push changes/)).toBeInTheDocument();
-      expect(await findOption(/Pull changes/)).toBeInTheDocument();
+      expect(await findMenuItem(/Push changes/)).toBeInTheDocument();
+      expect(await findMenuItem(/Pull changes/)).toBeInTheDocument();
       // Branch switching moved to the Settings panel (GHY-4019); it is no longer offered here.
       expect(screen.queryByText(/Switch branch/)).not.toBeInTheDocument();
     });
@@ -157,7 +157,7 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
 
-      expect(await findOption(/Push changes/)).toBeEnabled();
+      expect(await findMenuItem(/Push changes/)).toBeEnabled();
     });
 
     it("should be disabled and show proper tooltip when there are no changes", async () => {
@@ -167,12 +167,12 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      expect(await findOption(/Push changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+      expect(await findMenuItem(/Push changes/)).toHaveAttribute(
+        "data-disabled",
         "true",
       );
 
-      await userEvent.hover(await findOption(/Push changes/));
+      await userEvent.hover(await findMenuItem(/Push changes/));
       expect(
         await screen.findByRole("tooltip", { name: "No changes to push" }),
       ).toBeInTheDocument();
@@ -185,44 +185,11 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Push changes/));
+      await userEvent.click(await findMenuItem(/Push changes/));
 
       await waitFor(() => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
       });
-    });
-
-    it("shows a refresh modal when the branch changed in another session", async () => {
-      setup({ dirty: [createMockDirtyEntity()] });
-
-      // Another session switched the branch since this tab loaded; the preflight CAS guard rejects.
-      fetchMock.removeRoute("remote-sync-export-preflight");
-      fetchMock.get(
-        "path:/api/ee/remote-sync/export-preflight",
-        {
-          status: 409,
-          body: {
-            message:
-              "The sync branch changed to 'develop' in another session. Refresh and try again.",
-            branch_mismatch: true,
-            current_branch: "develop",
-          },
-        },
-        { name: "remote-sync-export-preflight" },
-      );
-
-      await waitFor(() => {
-        expect(getBranchButton(/main/)).toBeInTheDocument();
-      });
-      await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Push changes/));
-
-      expect(
-        await screen.findByText(/changed .* in another session/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Refresh/ }),
-      ).toBeInTheDocument();
     });
   });
 
@@ -234,54 +201,13 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      await userEvent.click(await findOption(/Pull changes/));
+      await userEvent.click(await findMenuItem(/Pull changes/));
 
       await waitFor(() => {
         expect(
           fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
         ).toBe(true);
       });
-    });
-
-    it("shows a refresh modal when a pull is rejected for a stale branch", async () => {
-      setup();
-
-      // Another session switched the branch; the import CAS guard rejects.
-      fetchMock.removeRoute("remote-sync-import");
-      fetchMock.post(
-        "path:/api/ee/remote-sync/import",
-        {
-          status: 409,
-          body: {
-            message:
-              "The sync branch changed to 'develop' in another session. Refresh and try again.",
-            branch_mismatch: true,
-            current_branch: "develop",
-          },
-        },
-        { name: "remote-sync-import" },
-      );
-
-      await waitFor(() => {
-        expect(getBranchButton(/main/)).toBeInTheDocument();
-      });
-      await userEvent.click(getBranchButton(/main/));
-      // Wait until the dirty state has settled (push disabled, since nothing is dirty) so the pull takes
-      // the non-dirty direct-import path deterministically.
-      await waitFor(async () => {
-        expect(await findOption(/Push changes/)).toHaveAttribute(
-          "data-combobox-disabled",
-          "true",
-        );
-      });
-      await userEvent.click(await findOption(/Pull changes/));
-
-      expect(
-        await screen.findByText(/changed .* in another session/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Refresh/ }),
-      ).toBeInTheDocument();
     });
 
     it("toasts when the mergeability check fails on a dirty pull", async () => {
@@ -304,11 +230,11 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
       await waitFor(async () => {
-        expect(await findOption(/Push changes/)).toBeEnabled();
+        expect(await findMenuItem(/Push changes/)).toBeEnabled();
+        expect(await findMenuItem(/Pull changes/)).toBeEnabled();
       });
-      await userEvent.click(await findOption(/Pull changes/));
+      await userEvent.click(await findMenuItem(/Pull changes/));
 
       await waitFor(() => {
         const messages = store
@@ -330,8 +256,8 @@ describe("GitSyncControls", () => {
       });
       await userEvent.click(getBranchButton(/main/));
       await waitFor(async () => {
-        expect(await findOption(/Pull changes/)).not.toHaveAttribute(
-          "data-combobox-disabled",
+        expect(await findMenuItem(/Pull changes/)).not.toHaveAttribute(
+          "data-disabled",
           "true",
         );
       });
@@ -344,8 +270,8 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      expect(await findOption(/Pull changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+      expect(await findMenuItem(/Pull changes/)).toHaveAttribute(
+        "data-disabled",
         "true",
       );
     });
@@ -358,12 +284,12 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      expect(await findOption(/Pull changes/)).toHaveAttribute(
-        "data-combobox-disabled",
+      expect(await findMenuItem(/Pull changes/)).toHaveAttribute(
+        "data-disabled",
         "true",
       );
       expect(
-        await within(await findOption(/Pull changes/)).findByTestId(
+        await within(await findMenuItem(/Pull changes/)).findByTestId(
           "pull-changes-loader",
         ),
       ).toBeInTheDocument();

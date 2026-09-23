@@ -31,6 +31,7 @@
    [:status [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed]]
    [:error_message [:maybe :string]]
    [:created_by [:maybe ms/PositiveInt]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
    [:created_at :any]
    [:updated_at :any]
    [:last_executed_at [:maybe :any]]])

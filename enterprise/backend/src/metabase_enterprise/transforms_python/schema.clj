@@ -18,4 +18,5 @@
    [:source     {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id  {:optional true} [:maybe :string]]])
+   [:entity_id  {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])

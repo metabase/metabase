@@ -44,11 +44,11 @@ import {
 } from "./utils";
 
 interface UnsyncedWarningModalProps {
+  opened: boolean;
   currentBranch: string;
+  variant: RemoteSyncConflictVariant;
   /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
-  onClose: VoidFunction;
-  variant: RemoteSyncConflictVariant;
   /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
   canMerge?: boolean;
   /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
@@ -57,18 +57,51 @@ interface UnsyncedWarningModalProps {
   forcePushCasualties?: ForcePushCasualties;
   /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
   historyRewritten?: boolean;
+  onClose: VoidFunction;
 }
 
-export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
+export const SyncConflictModal = ({
+  opened,
+  currentBranch,
+  variant,
+  nextBranch,
+  canMerge,
+  conflicts,
+  forcePushCasualties,
+  historyRewritten,
+  onClose,
+}: UnsyncedWarningModalProps) => (
+  <Modal
+    onClose={onClose}
+    opened={opened}
+    padding="xxl"
+    styles={{ title: { lineHeight: "2rem" } }}
+    title={getModalTitle(variant, canMerge)}
+    withCloseButton={false}
+  >
+    <SyncConflictForm
+      currentBranch={currentBranch}
+      variant={variant}
+      nextBranch={nextBranch}
+      canMerge={canMerge}
+      conflicts={conflicts}
+      forcePushCasualties={forcePushCasualties}
+      historyRewritten={historyRewritten}
+      onClose={onClose}
+    />
+  </Modal>
+);
+
+const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
   const {
-    onClose,
     currentBranch,
-    nextBranch,
     variant,
+    nextBranch,
     canMerge,
     conflicts,
     forcePushCasualties,
     historyRewritten,
+    onClose,
   } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
@@ -160,13 +193,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
     if (optionValue === "discard") {
       // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
-      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
-      // switched under us).
-      await discardChangesAndImport(
-        nextBranch || currentBranch,
-        currentBranch,
-        onClose,
-      );
+      await discardChangesAndImport(nextBranch || currentBranch, onClose);
     }
   };
 
@@ -188,14 +215,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   }, [existingBranches, isProcessing, newBranchName, optionValue]);
 
   return (
-    <Modal
-      onClose={onClose}
-      opened
-      padding="xxl"
-      styles={{ title: { lineHeight: "2rem" } }}
-      title={getModalTitle(variant, canMerge)}
-      withCloseButton={false}
-    >
+    <>
       <Box pt="lg">
         {variant === "setup" ? (
           <SetupConflictInfo />
@@ -241,13 +261,11 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         )}
 
         <Group gap="sm" justify="end" mt="xl">
-          <Button onClick={onClose} variant="subtle">
+          <Button onClick={onClose} variant="subtle" color="neutral">
             {t`Cancel`}
           </Button>
           <Button
-            color={
-              optionValue === "discard" ? "feedback-negative" : "core-brand"
-            }
+            color={optionValue === "discard" ? "negative" : "brand"}
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined
@@ -265,6 +283,6 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           </Button>
         </Group>
       </Box>
-    </Modal>
+    </>
   );
 };

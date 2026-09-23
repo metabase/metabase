@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -20,7 +20,7 @@ import { ChangesLists } from "../ChangesLists";
 import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
-  currentBranch: string;
+  opened: boolean;
   onClose: () => void;
 }
 
@@ -30,15 +30,27 @@ interface PushChangesModalProps {
  * SyncConflictModal (push variant) directly instead of this modal.
  */
 export const PushChangesModal = ({
+  opened,
   onClose,
-  currentBranch,
-}: PushChangesModalProps) => {
+}: PushChangesModalProps) => (
+  <Modal
+    opened={opened}
+    title={t`Push to Git`}
+    onClose={onClose}
+    size="lg"
+    padding="xxl"
+  >
+    <PushChangesForm onClose={onClose} />
+  </Modal>
+);
+
+const PushChangesForm = ({
+  onClose,
+}: Omit<PushChangesModalProps, "opened">) => {
   const [commitMessage, setCommitMessage] = useState("");
 
-  const [
-    exportChanges,
-    { isLoading: isPushing, error: exportError, isSuccess },
-  ] = useExportChangesMutation();
+  const [exportChanges, { isLoading: isPushing, error: exportError }] =
+    useExportChangesMutation();
 
   const { errorMessage } = useMemo(
     // Unjustified type cast. FIXME
@@ -46,36 +58,24 @@ export const PushChangesModal = ({
     [exportError],
   );
 
-  useEffect(() => {
-    if (isSuccess) {
-      onClose();
-    }
-  }, [isSuccess, onClose]);
-
-  const handlePush = useCallback(() => {
-    if (!currentBranch) {
-      throw new Error("Current branch is not set");
-    }
-
-    exportChanges({
+  const handlePush = useCallback(async () => {
+    const { error } = await exportChanges({
       message: commitMessage.trim() || undefined,
-      branch: currentBranch,
     });
+
+    if (error) {
+      return;
+    }
 
     trackPushChanges({
       triggeredFrom: "app-bar",
       force: false,
     });
-  }, [commitMessage, exportChanges, currentBranch]);
+    onClose();
+  }, [commitMessage, exportChanges, onClose]);
 
   return (
-    <Modal
-      opened
-      title={t`Push to Git`}
-      onClose={onClose}
-      size="lg"
-      padding="xxl"
-    >
+    <>
       <Box pt="lg">
         {errorMessage && (
           <Alert
@@ -102,11 +102,11 @@ export const PushChangesModal = ({
 
       <Box>
         <Group gap="sm" justify="end">
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button
-            color="core-brand"
+            color="brand"
             disabled={isPushing}
             leftSection={<Icon name="upload" />}
             loading={isPushing}
@@ -117,6 +117,6 @@ export const PushChangesModal = ({
           </Button>
         </Group>
       </Box>
-    </Modal>
+    </>
   );
 };

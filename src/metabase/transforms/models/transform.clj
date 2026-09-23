@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
@@ -31,7 +32,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/worktree-id]]
   (derive :model/Transform trait))
 
 (defn- transform-readable?
@@ -253,10 +254,17 @@
   [_model k transforms]
   (hydrate-permission k transforms transform-writable?))
 
+(defn- transform-executable?
+  "Whether the current user can run `instance`. Running writes to the warehouse the main app shares, which a
+  worktree may not do, so a worktree runs nothing for now."
+  [instance & args]
+  (and (nil? (mdb.worktree/worktree-id))
+       (apply transform-writable? instance args)))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
-  "Add can_execute to transforms. Executing a transform requires write permission."
+  "Add can_execute to transforms. Executing a transform requires write permission, and the main app."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms transform-executable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -472,7 +480,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :worktree_id_helper :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

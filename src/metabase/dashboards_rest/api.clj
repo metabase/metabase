@@ -486,7 +486,7 @@
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))
-                           (dissoc :id :entity_id :created_at :updated_at))))]
+                           (dissoc :id :entity_id :created_at :updated_at :worktree_id))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn- update-colvalmap-setting

@@ -57,7 +57,6 @@ export type HasRemoteChangesResponse = {
 
 export type ExportChangesRequest = {
   message?: string;
-  branch?: string;
   force?: boolean;
   /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
   merge?: boolean;
@@ -83,7 +82,6 @@ export type ForcePushCasualties = {
   overwritten: string[];
 };
 
-/** Dry-run preview of what pushing the current state would do, given the live remote branch. */
 export type ExportPreflightResponse = {
   /** Whether the remote branch has advanced beyond the last synced version. */
   has_changes: boolean;
@@ -99,16 +97,10 @@ export type ExportPreflightResponse = {
 };
 
 export type ImportFromBranchRequest = {
-  branch: string;
+  branch?: string;
   force?: boolean;
   /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
   merge?: boolean;
-  /**
-   * The branch the client believes is currently active. Rejected (409) if it disagrees with the
-   * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
-   * on a branch switch, where `branch` is the target and this is the branch being switched away from.
-   */
-  expected_branch: string;
 };
 
 export type ImportFromBranchResponse = {
@@ -268,4 +260,18 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
+export type WorktreeId = number;
+
+export type Worktree = {
+  id: WorktreeId;
+  branch: string;
+  creator_id: number | null;
+  created_at: string;
+  updated_at: string;
 };

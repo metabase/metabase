@@ -13,7 +13,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/worktree-id))
 
 ;;;; schemas
 
@@ -102,7 +103,7 @@
 ;; nested in Timeline
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
   {:copy      [:archived :description :icon :name :time_matters :timezone]
-   :skip      []
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)

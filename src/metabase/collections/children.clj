@@ -78,7 +78,7 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
+  By default, library-type collections are excluded."
   [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
    (collections.db/collections-matching
@@ -710,11 +710,12 @@
             [:not [:in :type [collection/library-collection-type
                               collection/library-metrics-collection-type
                               collection/library-data-collection-type]]]])
-         (if archived?
-           [:or
-            [:= :archived true]
-            [:= :id (collection/trash-collection-id)]]
-           [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
+         (let [trash-id (collection/trash-collection-id)]
+           (if archived?
+             [:or
+              [:= :archived true]
+              [:= :id trash-id]]
+             [:and [:= :archived false] [:not= :id trash-id]]))]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         ;; never show tenant-specific root collections as children of another collection
         [:or

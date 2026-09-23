@@ -104,6 +104,11 @@
         (is (partial= {:details {}}
                       (t2/select-one :model/Database :id database-id)))))))
 
+(defn- collection-created-at
+  "The Collection's `created_at` read without the model, whose schema the app db does not match mid-migration."
+  [collection-id]
+  (:created_at (t2/query-one {:select [:created_at] :from [:collection] :where [:= :id collection-id]})))
+
 (deftest ^:mb/old-migrations-test populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
@@ -151,12 +156,12 @@
         (mt/with-dynamic-fn-redefs [collection/is-trash? (constantly false)]
           (testing "A personal Collection should get created_at set by to the date_joined from its owner"
             (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id personal-collection-id)))))
+                   (t/offset-date-time (collection-created-at personal-collection-id)))))
           (testing "A non-personal Collection should get created_at set to its oldest object"
             (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id impersonal-collection-id)))))
+                   (t/offset-date-time (collection-created-at impersonal-collection-id)))))
           (testing "Empty Collection should not have been updated"
-            (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at :model/Collection :id empty-collection-id))]
+            (let [empty-collection-created-at (t/offset-date-time (collection-created-at empty-collection-id))]
               (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
                         empty-collection-created-at))
               (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
@@ -225,12 +230,12 @@
         (is (= #{"F1 D1"
                  "F1 D2"
                  "F2 D1"}
-               (t2/select-fn-set :name :model/Dimension {:order-by [[:id :asc]]})))
+               (into #{} (map :name) (t2/query {:select [:name] :from [:dimension] :order-by [[:id :asc]]}))))
         (migrate!)
         (testing "Keep the newest Dimensions"
           (is (= #{"F1 D2"
                    "F2 D1"}
-                 (t2/select-fn-set :name :model/Dimension {:order-by [[:id :asc]]}))))))))
+                 (into #{} (map :name) (t2/query {:select [:name] :from [:dimension] :order-by [[:id :asc]]})))))))))
 
 (deftest ^:mb/old-migrations-test able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
@@ -541,10 +546,10 @@
                                                                                                 :slug "amazing_collection"
                                                                                                 :color "#509EE3"}))]
           (testing "Collection should exist and have the color set by the user prior to migration"
-            (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+            (is (= "#509EE3" (:color (t2/query-one {:select [:color] :from [:collection] :where [:= :id collection-id]})))))
           (migrate!)
           (testing "should drop the existing color column"
-            (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))))))
+            (is (not (contains? (t2/query-one {:select [:*] :from [:collection] :where [:= :id collection-id]}) :color)))))))))
 
 (deftest ^:mb/old-migrations-test audit-v2-views-test
   (testing "Migrations v48.00-029 - end"

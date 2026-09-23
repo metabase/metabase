@@ -2,6 +2,7 @@ import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { createListenerMiddleware } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
+import { PLUGIN_API } from "metabase/api/client";
 import type { State } from "metabase/redux/store";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
@@ -9,14 +10,16 @@ import { tag } from "metabase-enterprise/api/tags";
 import type { RemoteSyncTaskStatus } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "../constants";
-import { getCurrentTask } from "../selectors";
+import { getCurrentTask, getWorktreeId } from "../selectors";
 import {
   modalDismissed,
   syncConflictVariantUpdated,
   taskCleared,
   taskStarted,
   taskUpdated,
+  worktreeChanged,
 } from "../sync-task-slice";
+import { worktreeHeaderHandler } from "../utils/worktrees";
 
 import { registerModelMutationListeners } from "./register-listeners";
 
@@ -66,6 +69,15 @@ const ALL_INVALIDATION_TAGS = [
   tag("transform"),
   tag("python-transform-library"),
 ];
+
+remoteSyncListenerMiddleware.startListening({
+  actionCreator: worktreeChanged,
+  effect: async (_action, { dispatch, getState }) => {
+    PLUGIN_API.onBeforeRequestHandlers.setWorktreeHeader =
+      worktreeHeaderHandler(getWorktreeId(getState()));
+    dispatch(EnterpriseApi.util.invalidateTags(ALL_INVALIDATION_TAGS));
+  },
+});
 
 remoteSyncListenerMiddleware.startListening({
   matcher: remoteSyncApi.endpoints.exportChanges.matchPending,

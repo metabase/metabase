@@ -269,6 +269,7 @@ export type TransformJob = {
   updated_at: string;
 
   // hydrated fields
+  can_execute?: boolean;
   tag_ids?: TransformTagId[];
   last_run?: TransformRun | null;
   next_run?: { start_time: string } | null;

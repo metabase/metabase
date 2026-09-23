@@ -166,7 +166,8 @@
     :model/TransformRunCancelation
     :model/TransformDagRun]
    (when config/ee-available?
-     [:model/MetabotGroupLimit
+     [:model/Worktree
+      :model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
@@ -260,6 +261,10 @@
     ;; else
     identity))
 
+(def ^:private drop-worktree-id-helper
+  "worktree_id_helper is a computed/generated column on every table a worktree checks content out into."
+  (map #(dissoc % :worktree_id_helper)))
+
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
     (doseq [model entities
@@ -267,7 +272,8 @@
                    sql        (sql-for-selecting-instances-from-source-db model)
                    results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
-       (comp (model-results-xform model)
+       (comp drop-worktree-id-helper
+             (model-results-xform model)
              (partition-all chunk-size))
        ;; cnt    = the total number we've inserted so far
        ;; chunkk = current chunk to insert
@@ -409,8 +415,6 @@
     :model/Session
     :model/ImplicitAction
     :model/HTTPAction
-    :model/FieldUserSettings
-    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

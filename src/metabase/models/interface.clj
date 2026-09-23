@@ -16,6 +16,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -40,6 +41,7 @@
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
@@ -608,6 +610,27 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(t2/define-after-select :hook/worktree-id
+  [instance]
+  (dissoc instance :worktree_id_helper))
+
+(t2/define-before-insert :hook/worktree-id
+  [instance]
+  (assoc instance :worktree_id (mdb.worktree/worktree-id)))
+
+(t2/define-before-update :hook/worktree-id
+  [instance]
+  (when (contains? (t2/changes instance) :worktree_id)
+    (throw (ex-info "The worktree a piece of content belongs to cannot be changed"
+                    {:status-code 400
+                     :worktree_id (:worktree_id (t2/changes instance))})))
+  instance)
+
+(doseq [hook [:hook/timestamped? :hook/entity-id :hook/created-at-timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/worktree-id)
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/worktree-id))
+
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

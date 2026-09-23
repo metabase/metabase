@@ -24,6 +24,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.app-db.value-guard]
+   [metabase.app-db.worktree]
    [metabase.config.core :as config]
    [potemkin :as p]))
 

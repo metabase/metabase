@@ -1,12 +1,18 @@
+import { skipToken } from "@reduxjs/toolkit/query";
+
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
+import { useGetWorktreeQuery } from "metabase-enterprise/api";
 
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
+import { getWorktreeId } from "../selectors";
 
 export interface GitSyncVisibleState {
   isVisible: boolean;
+  isReadWrite: boolean;
   currentBranch: string | null | undefined;
+  isInWorktree: boolean;
   isBranchSetByEnv: boolean;
 }
 
@@ -16,21 +22,20 @@ export interface GitSyncVisibleState {
  */
 export const useGitSyncVisible = (): GitSyncVisibleState => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const worktreeId = useSelector(getWorktreeId);
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
-  const { value: currentBranch, settingDetails: branchDetails } =
+  const { value: instanceBranch, settingDetails: branchDetails } =
     useAdminSetting(BRANCH_KEY);
   const { value: syncType } = useAdminSetting(TYPE_KEY);
-
-  const isVisible = !!(
-    isRemoteSyncEnabled &&
-    isAdmin &&
-    currentBranch &&
-    syncType === "read-write"
-  );
+  const { data: worktree } = useGetWorktreeQuery(worktreeId ?? skipToken);
+  const currentBranch = worktreeId != null ? worktree?.branch : instanceBranch;
 
   return {
-    isVisible,
+    isVisible:
+      (isRemoteSyncEnabled ?? false) && isAdmin && currentBranch != null,
+    isReadWrite: syncType === "read-write",
     currentBranch,
+    isInWorktree: worktreeId != null,
     isBranchSetByEnv: !!branchDetails?.is_env_setting,
   };
 };

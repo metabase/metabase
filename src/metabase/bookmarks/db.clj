@@ -246,14 +246,15 @@
 
 (mu/defn bookmark-rows-for-user :- [:sequential ::bookmark-row]
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
-  tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id` and
-  `:is-superuser?`) can still read (re-checked at read time rather than trusted from when the bookmark was created,
-  see SEC-669). The `collection_id` join uses [[h2x/identifier]] to work around
-  https://github.com/seancorfield/honeysql/issues/450."
-  [user-id    :- ::lib.schema.id/user
-   user-scope :- [:map {:closed true}
-                  [:current-user-id ::lib.schema.id/user]
-                  [:is-superuser?   :boolean]]]
+  tables, excluding archived items, items of another world than `worktree-id` names, and items the target
+  `user-scope` (a map of `:current-user-id` and `:is-superuser?`) can no longer read (re-checked at read time rather
+  than trusted from when the bookmark was created, see SEC-669). The `collection_id` join uses [[h2x/identifier]] to
+  work around https://github.com/seancorfield/honeysql/issues/450."
+  [user-id     :- ::lib.schema.id/user
+   user-scope  :- [:map {:closed true}
+                   [:current-user-id ::lib.schema.id/user]
+                   [:is-superuser?   :boolean]]
+   worktree-id :- [:maybe ms/PositiveInt]]
   (let [select-fields    [[:bookmark.created_at :created_at]
                           [:bookmark.type              :type]
                           [:bookmark.item_id           :item_id]
@@ -289,15 +290,21 @@
                                (for [table [:card :dashboard :collection :document :exploration]
                                      :let  [field (keyword (str (name table) "." "archived"))]]
                                  [:or [:= field false] [:= field nil]]))
+        world-conditions (into [:and]
+                               (for [table [:card :dashboard :collection :document]
+                                     :let  [field (keyword (str (name table) "." "worktree_id"))]]
+                                 [:or [:= field worktree-id] [:= field nil]]))
         visible?         (fn [collection-id-field]
                            (collection/visible-collection-filter-clause collection-id-field
                                                                         {:cte-name :visible_collection_ids}
                                                                         user-scope))
+        ;; the joins are restricted to the current world, so an item of another world joins as all NULLs -- which
+        ;; `world-conditions` would take for the main app's; requiring the joined id drops it
         readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "card")]       [:not= :card.id nil]       (visible? :card.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  [:not= :dashboard.id nil]  (visible? :dashboard.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "collection")] [:not= :collection.id nil] (visible? :collection.id)]
+                             [:and [:= :bookmark.type (h2x/literal "document")]   [:not= :document.id nil]   (visible? :document.collection_id)]
                              [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
     (mdb/query
      {:with [[:visible_collection_ids (collection/visible-collection-query
@@ -307,7 +314,7 @@
       :select select-fields
       :from [[(bookmarks-union-query user-id) :bookmark]]
       :left-join left-joins
-      :where [:and where-conditions readable-conditions]
+      :where [:and where-conditions world-conditions readable-conditions]
       :order-by  [[:bookmark_ordering.ordering (case (mdb/db-type)
                                                  ;; NULLS LAST is not supported by MySQL, but this is default
                                                  ;; behavior for MySQL anyway

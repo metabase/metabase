@@ -343,8 +343,13 @@
     (assert (contains? m k2)
             (format "Transform must define one of %s or %s" k1 k2))))
 
-(defn primary-key
-  "The primary key column of `model-name`'s model; serialization keys every model by one column."
+(defmulti primary-key
+  "The column `model-name`'s model is keyed by for serialization -- the column an exported id names. Its primary key,
+  unless the model overrides this because that key is a surrogate."
+  {:arglists '([model-name])}
+  identity)
+
+(defmethod primary-key :default
   [model-name]
   (first (t2/primary-keys (keyword "model" model-name))))
 

@@ -14,8 +14,8 @@
   (t2/select-one-fn :source [:model/Transform :id :source] transform-id))
 
 (mu/defn transforms-for-ordering
-  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
-   excluding [[transform-id]]."
+  "The id, name, target, target Table id, source Database id, and table dependencies of every Transform excluding
+   [[transform-id]]."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
              :id [:not= transform-id]))

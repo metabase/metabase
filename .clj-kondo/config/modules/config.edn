@@ -352,13 +352,14 @@
 
   app-db
   {:team "UX West"
-   :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
+   :api  #{metabase.app-db.cluster-lock
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.sql-errors
-           metabase.app-db.transient-error}
+           metabase.app-db.transient-error
+           metabase.app-db.worktree}
    :uses #{auth-provider
            connection-pool
            task
@@ -646,6 +647,7 @@
    :uses #{api
            api-scope
            api.eid-translation
+           app-db
            collections
            documents
            events
@@ -962,7 +964,6 @@
            util}
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
-
 
   embedding.rest
   {:team "Embedding"
@@ -2497,6 +2498,7 @@
            metabot.agent-api
            premium-features
            query-processor
+           remote-sync
            request
            session
            settings
@@ -3203,6 +3205,7 @@
                     :model/Field
                     :model/Table
                     :model/User}}
+
 
   warehouses.rest
   {:team "UX West"
@@ -4082,9 +4085,7 @@
 
   enterprise/remote-sync
   {:team "UX West"
-   :api  #{metabase-enterprise.remote-sync.api
-           metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init}
+   :api  #{metabase-enterprise.remote-sync.api metabase-enterprise.remote-sync.core metabase-enterprise.remote-sync.init}
    :uses #{analytics.interface
            api
            app-db

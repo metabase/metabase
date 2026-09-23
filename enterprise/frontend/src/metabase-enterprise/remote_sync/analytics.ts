@@ -26,7 +26,7 @@ export const trackPullChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "admin-settings" | "app-bar";
+  triggeredFrom: "admin-settings" | "app-bar" | "branch-menu";
   force: boolean;
 }) => {
   trackSimpleEvent({

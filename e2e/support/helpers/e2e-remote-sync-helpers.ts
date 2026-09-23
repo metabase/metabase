@@ -86,11 +86,7 @@ export function configureGitAndPullChanges(
     // Read-only mode automatically triggers an import, just wait for it
     pollForTask({ taskName: "import" });
   } else {
-    // Read-write mode needs manual import trigger. expected_branch asserts the client's view of the
-    // active branch against the setting (configureGit sets it to "main").
-    cy.request("POST", "/api/ee/remote-sync/import", {
-      expected_branch: "main",
-    });
+    cy.request("POST", "/api/ee/remote-sync/import", {});
     pollForTask({ taskName: "import" });
   }
 }
@@ -240,34 +236,24 @@ const ensureGitSyncMenuOpen = () => {
 
 export const getPullOption = () => {
   ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Pull changes/ });
+  return popover().findByRole("menuitem", { name: /Pull changes/ });
 };
 
 export const getPushOption = () => {
   ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Push changes/ });
+  return popover().findByRole("menuitem", { name: /Push changes/ });
 };
 
-// Mantine combobox options can drop a synthetic `.click()` if the dropdown's
-// state machine isn't fully wired yet (e.g. right after the menu opens — the
-// dropdown is visible but the option's handler isn't attached). `realClick`
-// dispatches native mouse events that Mantine processes reliably, and we then
-// verify the menu closed; if not, re-click once with a synthetic click.
-//
-// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
-// neither "any popover visible" nor the controls' `data-expanded` attribute
-// distinguishes the main menu from follow-up popovers.
 const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
-  // Clicks are swallowed while `data-combobox-disabled` is set (cleared once the git round-trips resolve)
-  getOption().should("not.have.attr", "data-combobox-disabled");
+  getOption().should("not.be.disabled");
   getOption().realClick();
   cy.get("body").then(($body) => {
     const mainMenuStillOpen =
       $body
-        .find('[role="option"]:visible')
+        .find('[role="menuitem"]:visible')
         .filter((_, el) => MAIN_MENU_OPTION_RE.test(el.textContent || ""))
         .length > 0;
     if (mainMenuStillOpen) {

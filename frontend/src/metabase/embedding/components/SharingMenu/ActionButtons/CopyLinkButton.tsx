@@ -12,9 +12,7 @@ export function CopyLinkButton({ url }: { url: string }) {
       {({ copied, copy }) => (
         <Button
           variant="filled"
-          h="2rem"
           px="lg"
-          py="sm"
           leftSection={
             <Icon name={copied ? "verified_round" : "link"} aria-hidden />
           }

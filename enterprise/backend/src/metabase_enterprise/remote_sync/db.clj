@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -97,7 +98,10 @@
 
 (mu/defn delete-removed-instances!
   "Deletes the `model-key` rows an import removes (see [[removal-exprs]]); a no-op for a scoped model with no
-  synced collections, and a delete of every row when nothing restricts it."
+  synced collections, and a delete of every row when nothing restricts it.
+
+  A pull into a worktree can never reconcile away the main app's content, nor another worktree's: the delete is
+  restricted to the worktree being imported into."
   [model-key    :- :keyword
    removal-opts :- RemovalOpts]
   (when-let [exprs (removal-exprs removal-opts)]
@@ -316,14 +320,16 @@
   (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
 (mu/defn user-settings-exist-for-table?
-  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row."
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row in the worktree being worked in."
   [table-id :- ::lib.schema.id/table]
   (or (t2/exists? :model/TableUserSettings :table_id table-id)
       (t2/exists? :model/FieldUserSettings
                   {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
                    :join  [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false})
                            [:= :f.id :u.field_id]]
-                   :where [:= :f.table_id table-id]})))
+                   :where [:and
+                           [:= :f.table_id table-id]
+                           [:= :u.worktree_id (mdb.worktree/worktree-id)]]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
@@ -522,7 +528,8 @@
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id] :status [:in ["removed" "delete"]]))
+  (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+             :status [:in ["removed" "delete"]]))
 
 (mu/defn all-rso-ids
   "The IDs of every RemoteSyncObject."
@@ -575,7 +582,8 @@
 (mu/defn content-rso-statuses
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
+  (t2/select [:model/RemoteSyncObject :id :status]
+             {:where (contents-rso-expr collection-ids)}))
 
 (mu/defn removed-content-rso-ids
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their
@@ -587,12 +595,12 @@
                               (contents-rso-expr collection-ids)]}))
 
 (mu/defn insert-rso!
-  "Insert the RemoteSyncObject `row`."
+  "Insert the RemoteSyncObject `row` into the worktree the running sync works in."
   [row :- ::remote-sync.schema/remote-sync-object.update]
   (t2/insert! :model/RemoteSyncObject row))
 
 (mu/defn insert-rsos!
-  "Insert the RemoteSyncObject `rows`."
+  "Insert the RemoteSyncObject `rows` into the worktree the running sync works in."
   [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
   (t2/insert! :model/RemoteSyncObject rows))
 
@@ -612,7 +620,7 @@
 (mu/defn mark-all-rsos-synced!
   "Mark every RemoteSyncObject as synced as of `timestamp`."
   [timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at timestamp}))
+  (t2/update! :model/RemoteSyncObject {} {:status "synced" :status_changed_at timestamp}))
 
 (mu/defn mark-rsos-synced!
   "Mark the RemoteSyncObjects with `rso-ids` as synced as of `timestamp`, writing the `:file_path` and
@@ -735,7 +743,7 @@
                              [:id :desc]]}))
 
 (mu/defn insert-task!
-  "Insert `task` and return the new instance."
+  "Insert `task` into the worktree the running sync works in, and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
   (t2/insert-returning-instance! :model/RemoteSyncTask task))
 
@@ -790,3 +798,52 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+
+(mu/defn user-summaries
+  "The display columns of the Users with `user-ids`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select [:model/User :id :first_name :last_name :email
+              :date_joined :last_login :is_superuser :is_qbnewb :is_active]
+             :id [:in user-ids]))
+
+(mu/defn worktrees
+  "Every Worktree, oldest first."
+  []
+  (t2/select :model/Worktree {:order-by [[:id :asc]]}))
+
+(mu/defn worktree
+  "The Worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/Worktree :id worktree-id))
+
+(mu/defn worktree-exists?
+  "Whether a Worktree with `worktree-id` exists."
+  [worktree-id :- ms/PositiveInt]
+  (t2/exists? :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch
+  "The branch the Worktree with `worktree-id` is checked out to, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch-taken?
+  "Whether a Worktree for `branch` already exists."
+  [branch :- :string]
+  (t2/exists? :model/Worktree :branch branch))
+
+(mu/defn insert-worktree!
+  "Insert the Worktree `row` and return the new instance."
+  [row :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/Worktree row))
+
+(mu/defn update-worktree-branch!
+  "Point the Worktree with `worktree-id` at `branch`, returning the number updated."
+  [worktree-id :- ms/PositiveInt
+   branch      :- :string]
+  (t2/update! :model/Worktree worktree-id {:branch branch}))
+
+(mu/defn delete-worktree!
+  "Delete the Worktree with `worktree-id`, which takes every piece of content it checked out with it: each
+  `worktree_id` foreign key cascades."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/Worktree :id worktree-id))

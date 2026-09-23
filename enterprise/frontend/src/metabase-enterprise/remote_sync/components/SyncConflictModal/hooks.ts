@@ -29,7 +29,6 @@ export const usePushChangesAction = () => {
       ) => {
         try {
           await exportChanges({
-            branch,
             force,
             message,
           }).unwrap();
@@ -69,7 +68,6 @@ export const useMergeChangesAction = () => {
       async (branch: string, closeModal: VoidFunction, message?: string) => {
         try {
           await exportChanges({
-            branch,
             merge: true,
             message,
           }).unwrap();
@@ -109,12 +107,9 @@ export const useMergeImportAction = () => {
     mergeImport: useCallback(
       async (branch: string, closeModal: VoidFunction) => {
         try {
-          // Pull merge: the operational branch is the current branch, so it doubles as the
-          // expected_branch assertion.
           await importChanges({
             branch,
             merge: true,
-            expected_branch: branch,
           }).unwrap();
 
           sendToast({
@@ -175,7 +170,6 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
           });
 
           await exportChanges({
-            branch: newBranchName,
             message,
           }).unwrap();
           sendToast({
@@ -206,18 +200,11 @@ export const useDiscardChangesAndImportAction = () => {
 
   return {
     discardChangesAndImport: useCallback(
-      async (
-        targetBranch: string,
-        expectedBranch: string,
-        closeModal: VoidFunction,
-      ) => {
+      async (targetBranch: string, closeModal: VoidFunction) => {
         try {
-          // targetBranch is what we import (may be a switch target); expectedBranch is the branch
-          // we believe is currently active, asserted against the setting to catch a stale tab.
           await importChanges({
             branch: targetBranch,
             force: true,
-            expected_branch: expectedBranch,
           }).unwrap();
           closeModal();
         } catch (error) {

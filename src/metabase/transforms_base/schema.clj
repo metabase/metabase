@@ -83,6 +83,7 @@
    [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]
    [:table_dependencies    {:optional true} [:maybe [:sequential [:or
                                                                   [:map {:closed true} [:table ::lib.schema.id/table]]
                                                                   [:map {:closed true} [:transform ::lib.schema.id/transform]]]]]]

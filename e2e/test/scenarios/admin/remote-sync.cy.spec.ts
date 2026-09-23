@@ -265,7 +265,7 @@ describe("Remote Sync", () => {
 
         H.waitForTask({ taskName: "export" });
         // Push button should be disabled when local changes are synced
-        H.getPushOption().should("have.attr", "data-combobox-disabled", "true");
+        H.getPushOption().should("be.disabled");
       };
 
       it("should allow you to create new branches and switch between them", () => {
@@ -534,8 +534,15 @@ describe("Remote Sync", () => {
       H.modal().should("not.exist");
       H.goToMainApp();
 
-      // In read-only mode, git sync controls should not be visible in app bar
-      H.getGitSyncControls().should("not.exist");
+      // In read-only mode the controls stay, so an admin can enter a worktree, but there is nothing to push or pull.
+      H.getGitSyncControls().should("exist").click();
+      H.popover()
+        .findByRole("menuitem", { name: /Enter worktree/ })
+        .should("exist");
+      H.popover()
+        .findByRole("menuitem", { name: /Push changes/ })
+        .should("not.exist");
+      cy.get("body").type("{esc}");
 
       H.navigationSidebar().within(() => {
         cy.findByRole("treeitem", { name: /Synced Collection/ }).click();

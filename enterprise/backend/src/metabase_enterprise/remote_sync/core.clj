@@ -26,16 +26,26 @@
  [source.p
   ->ingestable])
 
+(defenterprise check-worktree-exists!
+  "404s when `worktree-id` names no remote-sync worktree. The FK would reject a bogus id anyway, but as a 500
+  rather than a 404. Returns nil; call for side effect."
+  :feature :none
+  [worktree-id]
+  (when worktree-id
+    (api/check-404 (remote-sync.db/worktree-exists? worktree-id)))
+  nil)
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
   Takes a collection to check for editability.
 
-  Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  Returns true if the collection is editable, false otherwise. Returns true when the caller is working in a
+  worktree, which is where a read-only instance's content is authored, when remote-sync-type is :read-write, or
+  when the collection is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
+  (or (spec/session-editable?)
       (not (collections/remote-synced-collection? collection))))
 
 (defenterprise table-editable?
@@ -53,7 +63,7 @@
   If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
   :feature :none
   [table]
-  (or (= (settings/remote-sync-type) :read-write)
+  (or (spec/session-editable?)
       (not (:is_published table))
       ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
       (not (collections/remote-synced-collection? (or (:collection table)
@@ -68,8 +78,8 @@
   Always returns true on OSS."
   :feature :none
   []
-  (or (not (settings/remote-sync-enabled))
-      (= (settings/remote-sync-type) :read-write)))
+  (or (spec/session-editable?)
+      (not (settings/remote-sync-enabled))))
 
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration."

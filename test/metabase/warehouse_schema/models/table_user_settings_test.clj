@@ -25,7 +25,7 @@
         (is (=? {:id table-id :display_name "User Name" :description nil :entity_type :entity/GenericTable}
                 (user-table table-id))))
       (testing "a flag left false means the sync value shows again"
-        (t2/update! :model/TableUserSettings table-id {:description_set false})
+        (t2/update! :model/TableUserSettings :table_id table-id {:description_set false})
         (is (= "sync description" (:description (user-table table-id))))))))
 
 (deftest not-null-columns-need-no-flag-test
@@ -75,21 +75,21 @@
       (testing "a written column carries its _set flag, on insert and on update"
         (t2/insert! :model/FieldUserSettings {:field_id field-id :description "d"})
         (is (true? (t2/select-one-fn :description_set :model/FieldUserSettings :field_id field-id)))
-        (t2/update! :model/FieldUserSettings field-id {:semantic_type :type/Category})
+        (t2/update! :model/FieldUserSettings :field_id field-id {:semantic_type :type/Category})
         (is (true? (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id field-id))))
       (testing "a flag the writer set itself is left alone, which is how a value is taken back"
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "n" :description "d"})
-        (t2/update! :model/TableUserSettings table-id {:description nil :description_set false})
+        (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
       (testing "both halves of the visibility choice move together"
-        (t2/update! :model/TableUserSettings table-id {:visibility_type :hidden})
+        (t2/update! :model/TableUserSettings :table_id table-id {:visibility_type :hidden})
         (is (=? {:visibility_type :hidden :data_layer :hidden
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))
       (testing "a change a user may not make is refused whoever writes it"
-        (t2/update! :model/TableUserSettings table-id {:data_authority :authoritative})
+        (t2/update! :model/TableUserSettings :table_id table-id {:data_authority :authoritative})
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
-                              (t2/update! :model/TableUserSettings table-id
+                              (t2/update! :model/TableUserSettings :table_id table-id
                                           {:data_authority :unconfigured})))))))
 
 (deftest custom-order-fields-test

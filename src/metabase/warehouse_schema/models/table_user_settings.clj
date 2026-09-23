@@ -34,9 +34,8 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/search-index))
-
-(methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
+  (derive :hook/search-index)
+  (derive :hook/worktree-id))
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, and
@@ -157,6 +156,8 @@
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
+(defmethod serdes/primary-key "TableUserSettings" [_model-name] :table_id)
+
 (defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]
   (conj (serdes/table->path (serdes/*export-table-fk* table_id))
         {:model "TableUserSettings" :id "1"}))
@@ -188,6 +189,7 @@
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
                :description_set :visibility_type_set :caveats_set
                :points_of_interest_set :data_layer_set :data_source_set]
+   :skip      [:worktree_id :worktree_id_helper]
    :defaults  {:description_set        false
                :visibility_type_set    false
                :caveats_set            false

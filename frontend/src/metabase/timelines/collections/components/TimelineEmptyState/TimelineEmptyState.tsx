@@ -49,7 +49,7 @@ const TimelineEmptyState = ({
       </Box>
       {canWrite && (
         <Link to={link} target={shouldOpenLinkInNewTab ? "_blank" : undefined}>
-          <Button variant="filled" w="12.5rem">
+          <Button variant="filled" size="lg" w="12.5rem">
             {t`Create event`}
           </Button>
         </Link>

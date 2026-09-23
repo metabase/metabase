@@ -25,6 +25,7 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
+  create-trash-collection!
   descendant-ids
   ineligible-dependencies
   instance-analytics-collection-type

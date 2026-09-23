@@ -1,5 +1,6 @@
 import type {
   CreateBranchRequest,
+  CreateWorktreeRequest,
   ExportChangesRequest,
   ExportChangesResponse,
   ExportPreflightResponse,
@@ -14,10 +15,12 @@ import type {
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
+  Worktree,
+  WorktreeId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { listTag, tag } from "./tags";
+import { idTag, listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -25,12 +28,11 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, force, branch, merge }) => ({
+      query: ({ message, force, merge }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
           message,
-          branch,
           force,
           merge,
         },
@@ -40,14 +42,10 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
-    getExportPreflight: builder.query<
-      ExportPreflightResponse,
-      { branch: string }
-    >({
-      query: ({ branch }) => ({
+    getExportPreflight: builder.query<ExportPreflightResponse, void>({
+      query: () => ({
         url: `/api/ee/remote-sync/export-preflight`,
         method: "GET",
-        params: { branch },
       }),
       providesTags: () => [tag("remote-sync-has-remote-changes")],
     }),
@@ -55,14 +53,13 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ImportFromBranchResponse,
       ImportFromBranchRequest
     >({
-      query: ({ branch, force, merge, expected_branch }) => ({
+      query: ({ branch, force, merge }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
           branch,
           force,
           merge,
-          expected_branch,
         },
       }),
       /**
@@ -122,6 +119,28 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("collection-dirty-entities"),
         tag("collection-is-dirty"),
       ],
+    }),
+    getWorktree: builder.query<Worktree, WorktreeId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/worktree/${id}`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("worktree", id)],
+    }),
+    listWorktrees: builder.query<Worktree[], void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/worktree`,
+      }),
+      providesTags: () => [listTag("worktree")],
+    }),
+    createWorktree: builder.mutation<Worktree, CreateWorktreeRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/worktree`,
+        body,
+      }),
+      invalidatesTags: () => [listTag("worktree")],
     }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({
@@ -184,4 +203,7 @@ export const {
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
+  useCreateWorktreeMutation,
+  useGetWorktreeQuery,
+  useListWorktreesQuery,
 } = remoteSyncApi;

@@ -1,34 +1,19 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
   skipToken,
-  useListTransformJobTransformsQuery,
+  useGetTransformJobQuery,
   useUpdateTransformJobMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { TransformJobId } from "metabase-types/api";
 
-import {
-  canEditTransform,
-  useTransformPermissions,
-} from "./use-transform-permissions";
-
 export function useJobHeaderState(jobId: TransformJobId | undefined) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const { transformsDatabases } = useTransformPermissions();
-  const { data: transforms, isLoading: isCheckingPermissions } =
-    useListTransformJobTransformsQuery(jobId ?? skipToken);
-
-  const readOnly = useMemo(() => {
-    if (!transformsDatabases || !transforms) {
-      return true;
-    }
-    return !transforms.every((transform) =>
-      canEditTransform(transform, transformsDatabases),
-    );
-  }, [transforms, transformsDatabases]);
+  const { data: job, isLoading: isCheckingPermissions } =
+    useGetTransformJobQuery(jobId ?? skipToken);
+  const readOnly = job != null && !job.can_execute;
 
   const handleNameChange = async (name: string) => {
     if (jobId === undefined) {
