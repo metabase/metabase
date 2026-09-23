@@ -66,3 +66,30 @@
           "no update issued by the load would change any column")
       (is (= {:model/Card 0 :model/Dashboard 0 :model/DashboardCard 0}
              (:rewritten m))))))
+
+(deftest forced-reload-still-repairs-local-drift-test
+  (testing "A forced pull still overwrites a local row that drifted from the repo without the ledger seeing it"
+    (search.tu/with-index-disabled
+      (#'pull-cost-test/do-with-content!
+       {:cards 2}
+       (fn [tree]
+         (let [src     (rs.test/versioned-source :trees {"v0" tree} :current "v0")
+               card-id (t2/select-one-pk :model/Card :name "Cost card 001")
+               synced  (t2/select-one [:model/Card :display :dataset_query :created_at] card-id)]
+           (is (= :success (:status (#'pull-cost-test/import-at! src "v0" :force? true))) "baseline load")
+           ;; a direct DB edit: no events, so the ledger still says synced
+           (t2/query {:update :report_card
+                      :set    {:display "table" :created_at #t "2001-01-01T00:00Z"}
+                      :where  [:= :id card-id]})
+           (t2/update! :model/Card card-id {:dataset_query (assoc-in (:dataset_query synced)
+                                                                     [:stages 0 :filters 0 3] 99)})
+           (is (= {:display :table :filter-value 99}
+                  (let [c (t2/select-one [:model/Card :display :dataset_query] card-id)]
+                    {:display (:display c) :filter-value (get-in c [:dataset_query :stages 0 :filters 0 3])}))
+               "drift is in place before the pull")
+           (is (= :success (:status (#'pull-cost-test/import-at! src "v0" :force? true))) "forced pull")
+           (let [after (t2/select-one [:model/Card :display :dataset_query :created_at] card-id)]
+             (is (= :line (:display after)))
+             (is (= (.toInstant ^java.time.OffsetDateTime (:created_at synced))
+                    (.toInstant ^java.time.OffsetDateTime (:created_at after))))
+             (is (= 1 (get-in after [:dataset_query :stages 0 :filters 0 3]))))))))))

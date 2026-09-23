@@ -58,6 +58,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -85,7 +86,9 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.time Instant OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -643,12 +646,63 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
+(declare ^:private collect-required-lib-uuids)
+
+(defn- comparable-mbql
+  "`query` without the parts an export drops and an import regenerates: `:lib/metadata`, and every `:lib/uuid` no
+  `:aggregation` ref points at (see [[export-mbql-map]]). Two queries equal in this form are the same query."
+  [query]
+  (let [required (collect-required-lib-uuids query)]
+    (walk/prewalk (fn [x]
+                    (if (map? x)
+                      (cond-> (dissoc x :lib/metadata)
+                        (and (contains? x :lib/uuid) (not (contains? required (:lib/uuid x))))
+                        (dissoc :lib/uuid))
+                      x))
+                  query)))
+
+(defn- ->instant
+  "The instant a zoned or offset timestamp denotes, or nil for anything else."
+  ^Instant [x]
+  (condp instance? x
+    OffsetDateTime (.toInstant ^OffsetDateTime x)
+    ZonedDateTime  (.toInstant ^ZonedDateTime x)
+    Instant        x
+    nil))
+
+(defn- same-stored-value?
+  "True when writing `incoming` over the stored value `local` would not change what the column means, even though
+  the two differ in form: an import yields ZonedDateTimes where the app DB returns OffsetDateTimes, strings where the
+  model's transform yields keywords, and MBQL queries with freshly generated `:lib/uuid`s."
+  [local incoming]
+  (boolean
+   (or (= local incoming)
+       (when-let [l (->instant local)]
+         (= l (->instant incoming)))
+       (and (keyword? local) (string? incoming)
+            (= (u/qualified-name local) incoming))
+       (and (map? local) (map? incoming)
+            (= :mbql/query (:lib/type local) (:lib/type incoming))
+            (= (comparable-mbql local) (comparable-mbql incoming))))))
+
+(defn- drop-unchanged-columns
+  "`row` without the columns whose value is the [[same-stored-value?]] as in `local`, so an import of unchanged
+  content issues no UPDATE and runs no before-update work (such as result-metadata inference) for them. Comparing
+  against the stored row, not a ledger, keeps a forced pull repairing local drift."
+  [local row]
+  (into (empty row)
+        (remove (fn [[k v]] (and (contains? local k) (same-stored-value? (get local k) v))))
+        row))
+
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
-        id       (get local pk)]
+        id       (get local pk)
+        entity   (lib/normalize :metabase.models.db/model-row {:model model :row ingested})
+        changes  (drop-unchanged-columns local (:row entity))]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
+    (when (seq changes)
+      (models.db/update-entity! id (assoc entity :row changes)))
     (models.db/entity-by-pk model pk id)))
 
 (defmulti load-insert!
@@ -1738,7 +1792,11 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
-        (update :column_settings import-column-settings))))
+        ;; the export writes `column_settings: null` for settings without any; importing that as an explicit nil
+        ;; would differ from the `{}` the app DB reads back, and rewrite every unchanged row on a pull
+        (as-> $ (if (some? (:column_settings $))
+                  (update $ :column_settings import-column-settings)
+                  (dissoc $ :column_settings))))))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
