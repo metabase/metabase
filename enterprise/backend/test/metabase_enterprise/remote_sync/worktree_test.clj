@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.app-db.worktree :as mdb.worktree]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -178,3 +180,112 @@
       (testing "and it goes when the worktree does"
         (mdb.worktree/without-worktree-scoping
          (is (zero? (t2/count :model/Dimension :field_id field-id))))))))
+
+(defn- venues-query
+  []
+  (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
+(defn- insert-transform!
+  "Insert a Transform named `transform-name` into the world being worked in, returning its id."
+  [transform-name]
+  (t2/insert-returning-pk! :model/Transform {:name   transform-name
+                                             :source {:type "query" :query (venues-query)}
+                                             :target {:type "table" :schema "PUBLIC" :name (str "t_" (random-uuid))}}))
+
+(defn- insert-run!
+  "Insert a finished TransformRun of the Transform with `transform-id`, nil for one whose Transform is gone."
+  [transform-id]
+  (t2/insert-returning-pk! :model/TransformRun {:transform_id transform-id
+                                                :transform_name "Gone"
+                                                :status       "succeeded"
+                                                :run_method   "manual"
+                                                :start_time   (java.time.OffsetDateTime/now)
+                                                :end_time     (java.time.OffsetDateTime/now)}))
+
+(deftest a-transform-run-stays-in-its-worktree-test
+  (mt/with-premium-features #{:transforms-basic}
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "runs-" (random-uuid))})
+          header            (worktree-header worktree-id)
+          main-transform-id (insert-transform! "Main transform")
+          main-run-id       (insert-run! main-transform-id)
+          orphan-run-id     (insert-run! nil)
+          branch-run-id     (insert-run! (mdb.worktree/with-worktree worktree-id (insert-transform! "Branch transform")))
+          run-ids           (fn [url & args]
+                              (->> (apply mt/user-http-request :crowberto :get 200 url args)
+                                   :data
+                                   (keep (fn [{:keys [id run_type]}] (when (contains? #{nil "transform"} run_type) id)))
+                                   (filter #{main-run-id orphan-run-id branch-run-id})
+                                   set))]
+      (try
+        (testing "the main app lists its own runs, and the runs whose transform is gone"
+          (is (= #{main-run-id orphan-run-id} (run-ids "transform/run")))
+          (is (= #{main-run-id orphan-run-id} (run-ids "transform/runs"))))
+        (testing "a worktree lists only the runs of its own transforms"
+          (is (= #{branch-run-id} (run-ids "transform/run" header)))
+          (is (= #{branch-run-id} (run-ids "transform/runs" header))))
+        (testing "a run of another world is refused rather than failing"
+          (mt/user-http-request :crowberto :get 403 (str "transform/run/" main-run-id) header)
+          (mt/user-http-request :crowberto :get 403 (str "transform/run/" orphan-run-id) header)
+          (mt/user-http-request :crowberto :get 403 (str "transform/run/" branch-run-id)))
+        (testing "each world reads its own runs"
+          (mt/user-http-request :crowberto :get 200 (str "transform/run/" main-run-id))
+          (mt/user-http-request :crowberto :get 200 (str "transform/run/" branch-run-id) header))
+        (finally
+          (t2/delete! :model/TransformRun :id [:in [main-run-id orphan-run-id branch-run-id]])
+          (t2/delete! :model/Transform :id main-transform-id)
+          (remote-sync.db/delete-worktree! worktree-id))))))
+
+(deftest a-worktree-leaves-field-values-alone-test
+  (testing "Field values are shared by every world, so a worktree neither rescans nor discards them"
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "values-" (random-uuid))})
+          header            (worktree-header worktree-id)
+          field-id          (mt/id :venues :price)
+          table-id          (mt/id :venues)]
+      (mt/with-temp [:model/FieldValues {values-id :id} {:field_id              field-id
+                                                         :type                  :full
+                                                         :values                [1 2 3 4]
+                                                         :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+        (try
+          (doseq [url [(str "field/" field-id "/rescan_values")
+                       (str "field/" field-id "/discard_values")
+                       (str "table/" table-id "/rescan_values")
+                       (str "table/" table-id "/discard_values")
+                       (str "database/" (mt/id) "/rescan_values")
+                       (str "database/" (mt/id) "/discard_values")]]
+            (testing url
+              (mt/user-http-request :crowberto :post 400 url header)))
+          (doseq [url ["data-studio/table/rescan-values" "data-studio/table/discard-values"]]
+            (testing url
+              (mt/user-http-request :crowberto :post 400 url header {:table_ids [table-id]})))
+          (is (= ["$" "$$" "$$$" "$$$$"]
+                 (t2/select-one-fn :human_readable_values :model/FieldValues :id values-id)))
+          (finally
+            (remote-sync.db/delete-worktree! worktree-id)))))))
+
+(defn- card-on
+  "A question built on the Card with `source-card-id`."
+  [source-card-id]
+  {:name                   "Built on another card"
+   :display                "table"
+   :visualization_settings {}
+   :dataset_query          {:database (mt/id) :type "query" :query {:source-table (str "card__" source-card-id)}}})
+
+(deftest a-card-is-built-only-on-cards-of-its-worktree-test
+  (mt/with-temp [:model/Card {main-card-id :id} {:dataset_query (venues-query)}]
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "sources-" (random-uuid))})
+          header            (worktree-header worktree-id)
+          branch-card-id    (mdb.worktree/with-worktree worktree-id
+                              (t2/insert-returning-pk! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                                          {:dataset_query (venues-query)})))
+          refused           "A card can only be built on cards of its own worktree."]
+      (try
+        (testing "a card of another world is refused as a source"
+          (is (= refused (:message (mt/user-http-request :crowberto :post 400 "card" header (card-on main-card-id)))))
+          (is (= refused (:message (mt/user-http-request :crowberto :post 400 "card" (card-on branch-card-id))))))
+        (testing "a card of its own world is accepted"
+          (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card" header (card-on branch-card-id))]
+            (testing ", and cannot be repointed at another world's"
+              (is (= refused (:message (mt/user-http-request :crowberto :put 400 (str "card/" card-id) header
+                                                             {:dataset_query (:dataset_query (card-on main-card-id))})))))))
+        (finally
+          (remote-sync.db/delete-worktree! worktree-id))))))

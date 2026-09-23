@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -222,6 +223,27 @@
 
 ;;; ---------------------------------------------- Transform runs ----------------------------------------------
 
+;; A TransformRun has no `worktree_id` of its own: it belongs to the worktree of the Transform it ran, and one whose
+;; Transform is gone to the main app, where runs happen. The subselect over `transform` is restricted to the worktree
+;; being worked in like any other query over it.
+
+(defn- in-this-worktree
+  "The `:where` fragment keeping the rows whose `transform-id-column` names a Transform of the worktree being worked
+  in, and, in the main app, the rows naming none."
+  [transform-id-column]
+  (let [of-this-worktree [:in transform-id-column ^:allow-subquery {:select [:id] :from [:transform]}]]
+    (if (mdb.worktree/worktree-id)
+      of-this-worktree
+      [:or of-this-worktree [:= transform-id-column nil]])))
+
+(mu/defn run-in-this-worktree? :- :boolean
+  "Whether a TransformRun of the Transform with `transform-id` -- nil once that Transform is gone -- belongs to the
+  worktree being worked in."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (if transform-id
+    (t2/exists? :model/Transform :id transform-id)
+    (nil? (mdb.worktree/worktree-id))))
+
 (mu/defn run
   "The TransformRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
@@ -253,7 +275,7 @@
   site); either half of a pair may be nil."
   [{:keys [started-at-start started-at-end ended-at-start ended-at-end run-methods transform-ids
            transform-tag-ids statuses user-id]}]
-  (let [where-cond (cond-> []
+  (let [where-cond (cond-> [(in-this-worktree :transform_run.transform_id)]
                      started-at-start (conj [:>= :start_time started-at-start])
                      started-at-end   (conj [:<  :start_time started-at-end])
                      ended-at-start   (conj [:>= :end_time ended-at-start])
@@ -281,8 +303,7 @@
 
                      (some? user-id)
                      (conj [:= :user_id user-id]))]
-    (when (seq where-cond)
-      (into [:and] where-cond))))
+    (into [:and] where-cond)))
 
 (defn- paged-runs-join
   "Returns a `:left-join` clause for run listing sort columns that require joining other tables."
@@ -660,13 +681,13 @@
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
-   :where  (if (seq transform-ids)
-             [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                        :from   [[:transform_run :member]]
-                                        :where  [:and
-                                                 [:= :member.dag_run_id :transform_dag_run.id]
-                                                 [:in :member.transform_id transform-ids]]}]
-             true)})
+   :where  (cond-> [:and (in-this-worktree :source_transform_id)]
+             (seq transform-ids)
+             (conj [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                              :from   [[:transform_run :member]]
+                                              :where  [:and
+                                                       [:= :member.dag_run_id :transform_dag_run.id]
+                                                       [:in :member.transform_id transform-ids]]}]))})
 
 (defn- transform-run-subquery [transform-ids]
   ^:allow-subquery
@@ -683,7 +704,8 @@
    ;; standalone runs only: those not coordinated by a job or DAG run
    :where  (cond-> [:and
                     [:= :job_run_id nil]
-                    [:= :dag_run_id nil]]
+                    [:= :dag_run_id nil]
+                    (in-this-worktree :transform_id)]
              (seq transform-ids) (conj [:in :transform_id transform-ids]))})
 
 (defn- union-subquery

@@ -7,6 +7,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -1169,6 +1170,8 @@
   "Trigger a manual scan of the field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
@@ -1201,6 +1204,8 @@
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_discard_field_values" :target_id id})

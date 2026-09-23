@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.data-studio.db :as data-studio.db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
@@ -239,6 +240,8 @@
   [_
    _
    body :- ::table-selectors]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (api/check-data-analyst)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
@@ -252,6 +255,8 @@
   [_
    _
    body :- ::table-selectors]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (api/check-data-analyst)
   (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
     (data-studio.db/delete-field-values-for-tables! (map :id tables))
