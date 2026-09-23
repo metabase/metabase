@@ -1,4 +1,21 @@
-import { MultiSelect, type MultiSelectProps, Stack } from "metabase/ui";
+import type { StoryFn } from "@storybook/react";
+import { Fragment } from "react";
+
+import {
+  Box,
+  Icon,
+  MultiSelect,
+  type MultiSelectProps,
+  Stack,
+  Text,
+} from "metabase/ui";
+import {
+  StoryJsx,
+  StorySection,
+  StoryShowcase,
+} from "metabase/ui/stories/showcase";
+
+import S from "./MultiSelect.module.css";
 
 const dataWithGroupsLarge = [
   {
@@ -127,6 +144,158 @@ export default {
 };
 
 export const Default = {};
+
+const OVERVIEW_VARIANTS = [
+  { title: "Basic multiselect", searchable: false },
+  { title: "Searchable multiselect", searchable: true },
+] as const;
+
+const OVERVIEW_SIZES = ["md", "xs"] as const;
+
+type OverviewRow = {
+  id: string;
+  label: string;
+  props: Partial<MultiSelectProps>;
+  focus?: boolean;
+};
+
+const OVERVIEW_STATES = [
+  { id: "default-empty", label: "Default, empty", props: {} },
+  {
+    id: "default-filled",
+    label: "Default, filled",
+    props: { defaultValue: sampleArgs.value },
+  },
+  { id: "focused-empty", label: "Focused, empty", props: {}, focus: true },
+  {
+    id: "focused-filled",
+    label: "Focused, filled",
+    props: { defaultValue: sampleArgs.value },
+    focus: true,
+  },
+  {
+    id: "error-empty",
+    label: "Error, empty",
+    props: { error: sampleArgs.error },
+  },
+  {
+    id: "error-filled",
+    label: "Error, filled",
+    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+  },
+  {
+    id: "error-focused-empty",
+    label: "Error + Focused, empty",
+    props: { error: sampleArgs.error },
+    focus: true,
+  },
+  {
+    id: "error-focused-filled",
+    label: "Error + Focused, filled",
+    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+    focus: true,
+  },
+  {
+    id: "disabled-empty",
+    label: "Disabled, empty",
+    props: { disabled: true },
+  },
+  {
+    id: "disabled-filled",
+    label: "Disabled, filled",
+    props: { disabled: true, defaultValue: sampleArgs.value },
+  },
+] satisfies OverviewRow[];
+
+const OVERVIEW_CONTENT = [
+  { id: "label-only", label: "Label only", props: {} },
+  {
+    id: "description",
+    label: "With description",
+    props: { description: "Input description" },
+  },
+  {
+    id: "left-icon",
+    label: "With left icon",
+    props: {
+      description: "Input description",
+      leftSection: <Icon name="label" />,
+    },
+  },
+] satisfies OverviewRow[];
+
+const OverviewGrid = ({
+  searchable,
+  rows,
+}: {
+  searchable: boolean;
+  rows: readonly OverviewRow[];
+}) => (
+  <Box
+    style={{
+      display: "grid",
+      gridTemplateColumns: `14rem repeat(${OVERVIEW_SIZES.length}, max-content)`,
+      columnGap: "2rem",
+      rowGap: "1rem",
+      alignItems: "center",
+    }}
+  >
+    <div />
+    {OVERVIEW_SIZES.map((size) => (
+      <StoryJsx key={size}>
+        {`<MultiSelect${searchable ? " searchable" : ""} size="${size}" />`}
+      </StoryJsx>
+    ))}
+    {rows.map((state) => (
+      <Fragment key={state.id}>
+        <Text size="sm" c="text-secondary">
+          {state.label}
+        </Text>
+        {OVERVIEW_SIZES.map((size) => (
+          <Box key={size} w={256}>
+            <MultiSelect
+              wrapperProps={{ "data-state-row": state.id }}
+              data={dataWithLabels}
+              label="Label"
+              placeholder="Placeholder"
+              searchable={searchable}
+              size={size}
+              {...state.props}
+            />
+          </Box>
+        ))}
+      </Fragment>
+    ))}
+  </Box>
+);
+
+const OverviewTemplate: StoryFn<MultiSelectProps> = () => (
+  <StoryShowcase title="MultiSelect">
+    {OVERVIEW_VARIANTS.map(({ title, searchable }) => (
+      <StorySection key={title} title={title}>
+        <OverviewGrid searchable={searchable} rows={OVERVIEW_STATES} />
+      </StorySection>
+    ))}
+    <StorySection title="Content">
+      <OverviewGrid searchable={false} rows={OVERVIEW_CONTENT} />
+    </StorySection>
+  </StoryShowcase>
+);
+
+const focusSelector = (id: string) =>
+  `[data-state-row="${id}"] .${S.MultiSelectInput}`;
+
+export const Overview = {
+  render: OverviewTemplate,
+  parameters: {
+    pseudo: {
+      focusWithin: OVERVIEW_STATES.filter((state) => state.focus).map((state) =>
+        focusSelector(state.id),
+      ),
+    },
+    controls: { include: ["theme"] },
+  },
+};
 
 export const EmptyMd = {
   render: VariantTemplate,
