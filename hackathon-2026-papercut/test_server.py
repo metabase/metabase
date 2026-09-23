@@ -981,6 +981,21 @@ class HttpTest(HttpCase):
         titles = [p["title"] for p in self.call("GET", "/api/papercuts?sort=oldest-claim-first")[1]["papercuts"]]
         self.assertEqual(titles, ["Third", "Other", "Search fails quietly"])
 
+    def test_claim_without_sign_in_names_whoever_runs_the_server(self):
+        for report_id in ("r1", "r2", "r3"):
+            self.report(report_id, report_id)
+        local = f"{server.getpass.getuser()}@{server.socket.gethostname()}"
+        self.assertEqual(self.call("POST", "/api/papercuts/1/claim")[1]["actor"], local)
+        self.assertEqual(self.call("POST", "/api/papercuts/2/claim", {"claimant": "tyler@metabase.com"})[1]["actor"],
+                         "tyler@metabase.com")
+        server.os.environ["PAPERCUTS_LOCAL_CLAIMANT"] = "chris@laptop"
+        try:
+            claim = self.call("POST", "/api/papercuts/3/claim")[1]
+        finally:
+            del server.os.environ["PAPERCUTS_LOCAL_CLAIMANT"]
+        self.assertEqual((claim["actor"], claim["state"]), ("chris@laptop", "running"))
+        self.assertIn("<span class='claimant'>Chris is working on this</span>", self.call("GET", "/")[1])
+
     def test_cancelling_a_queued_dispatch_reopens_the_papercut_for_another(self):
         self.report("r1", "Trap")
         dispatch = self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"})[1]

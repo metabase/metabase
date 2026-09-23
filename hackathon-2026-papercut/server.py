@@ -2,12 +2,14 @@
 """Small SQLite-backed inbox for papercut reports."""
 
 import argparse
+import getpass
 import hashlib
 import hmac
 import html
 import json
 import os
 import re
+import socket
 import sqlite3
 import sys
 import threading
@@ -1792,15 +1794,6 @@ DISPATCH_SCRIPT = """<script>
       throw new Error(response.status === 401 ? 'sign in first' : error || 'HTTP ' + response.status);
     }
   }
-  const claimant = () => {
-    if (document.body.dataset.user) return {};
-    let name = '';
-    try { name = localStorage.getItem('papercuts-claimant') || ''; } catch (_) {}
-    name = name || (window.prompt('Your name or email, for the claim') || '').trim();
-    if (!name) throw new Error('no name given');
-    try { localStorage.setItem('papercuts-claimant', name); } catch (_) {}
-    return {claimant: name};
-  };
   document.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-claim], button[data-release], button[data-copy-prompt]');
     if (!button) return;
@@ -1819,7 +1812,7 @@ DISPATCH_SCRIPT = """<script>
         setTimeout(() => { button.textContent = label; button.disabled = false; }, 1500);
         return;
       }
-      if (button.dataset.claim) await write('POST', `/api/papercuts/${button.dataset.claim}/dispatch`, claimant());
+      if (button.dataset.claim) await write('POST', `/api/papercuts/${button.dataset.claim}/claim`, {});
       else await write('DELETE', `/api/dispatches/${button.dataset.release}`, {});
       refreshPage();
     } catch (error) {
@@ -1867,7 +1860,7 @@ def account_link():
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
             f"<meta name='viewport' content='width=device-width, initial-scale=1'><link rel='icon' href='{FAVICON}'>"
-            f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}' data-user='{html.escape(signed_in_email() or '')}'>"
+            f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
             f"{account_link()}<span id='live-status' class='led' role='status' title='Connected' aria-label='Connected'></span>"
@@ -2395,6 +2388,13 @@ class Handler(BaseHTTPRequestHandler):
         given = self.headers.get("Authorization", "")
         return hmac.compare_digest(given.encode(), f"Bearer {self.token}".encode())
 
+    def claim(self, papercut_id):
+        """Claim for the signed-in user, else the body's `claimant`, else whoever runs this server's machine."""
+        payload = self.input_json(optional=True)
+        claimant = (signed_in_email() or (payload.get("claimant") if isinstance(payload, dict) else None)
+                    or os.environ.get("PAPERCUTS_LOCAL_CLAIMANT") or f"{getpass.getuser()}@{socket.gethostname()}")
+        return self.store.claim(papercut_id, payload, claimant)
+
     def redirect_if_merged(self, papercut_id, prefix, query):
         """Follow merges on GET, so old links keep working. Returns True when a response was sent."""
         live = self.store.resolve(papercut_id)
@@ -2415,7 +2415,7 @@ class Handler(BaseHTTPRequestHandler):
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
         papercut = re.fullmatch(
-            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|prompt)(?:/(\d+))?)?", path)
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt)(?:/(\d+))?)?", path)
         dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
         command = self.command
@@ -2457,6 +2457,7 @@ class Handler(BaseHTTPRequestHandler):
                 "comments": lambda: self.store.comment(papercut_id, self.input_json()),
                 "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
                 "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
+                "claim": lambda: self.claim(papercut_id),
             }
             if command == "POST" and action in created and not other:
                 return self.respond(201, created[action]())
