@@ -366,7 +366,7 @@
 (defn- line->definition
   "A statement line as a standalone clause: indentation and the list separator dropped."
   [line]
-  (str/replace (str/trim line) #",$" ""))
+  (str/replace line #"^\s+|,?\s*$" ""))
 
 (def ^:private index-defaults
   "The `::driver/table-index` fields a MergeTree index never varies: not unique, not primary, no covering columns, no
@@ -380,7 +380,7 @@
     (assoc index-defaults
            :name          (driver.common/unquote-ident index-name \`)
            :kind          :skip-index
-           :access-method (first (str/split index-type #"\("))
+           :access-method (first (str/split index-type #"\(" 2))
            :key-columns   (expr->columns expr)
            :definition    (line->definition line))))
 
