@@ -709,7 +709,7 @@ class MigrationTest(unittest.TestCase):
         # Ingestion trimmed the column but stored the request body as sent.
         db.execute("""INSERT INTO reports (id, papercut_id, repository, reporter, report_id, fingerprint, title,
                       description, path, payload, received_at, repository_url) VALUES (1, 1, 'metabase', 'r', 'r1', 'f',
-                      'T', '', '', ?, '2026-09-01', ?)""", (json.dumps({"repository_url": f" {leaked} ", "title": "T"}),
+                      'T', '', '', ?, '2026-09-01', ?)""", (json.dumps({"repository_url": f"\t{leaked}\n", "title": "T"}),
                                                             leaked))
         db.close()
         report = server.Store(self.path).get_papercut(1)["reports"][0]
