@@ -256,6 +256,7 @@ def main():
             print(f"Skipped {path.name}: {error}")
             continue
         recorded = recorded_occurrences(args.server, args.repository, writeup["aliases"]) if writeup["aliases"] else {}
+        results = []
         # Every papercut keeps at least one report, even when the writeup lists no transcript.
         for occurrence in writeup["occurrences"] or [{"transcript": None, "lines": None, "observed_at": None}]:
             session = Path(occurrence["transcript"]).stem if occurrence["transcript"] else None
@@ -285,14 +286,19 @@ def main():
             if occurrence["observed_at"]:
                 report["observed_at"] = occurrence["observed_at"]
             try:
-                result = request(args.server, "POST", "/api/reports", report)
+                results.append((report["fingerprint"], request(args.server, "POST", "/api/reports", report)))
             except HTTPError as error:
                 print(f"Failed {path.name}: {error.read().decode()}")
                 break
         else:
-            papercut_id = result["papercut"]["id"]
-            # Aliases first: merging an open papercut in would reset the status set below.
-            register_aliases(args.server, args.repository, papercut_id, writeup["aliases"])
+            # The writeup's papercut is the one its own fingerprint routes to. When every occurrence replayed a merged
+            # writeup's report, it is the first of those, and the writeup's own slug is attached to it below.
+            own = f"local-papercuts:{slug}"
+            papercut_id = next((r["papercut"]["id"] for fingerprint, r in results if fingerprint == own),
+                               results[0][1]["papercut"]["id"])
+            # Aliases first: merging an open papercut in would reset the status set below. The writeup's own slug goes
+            # through the same routing, so a papercut it created apart from the target is merged in too.
+            register_aliases(args.server, args.repository, papercut_id, [slug, *writeup["aliases"]])
             if status := STATUS_BY_SOURCE.get(writeup["status"]):
                 papercut = request(args.server, "PATCH", f"/api/papercuts/{papercut_id}",
                                    {"status": status, "actor": ACTOR, "reason": f"Source writeup is {writeup['status']}"})
