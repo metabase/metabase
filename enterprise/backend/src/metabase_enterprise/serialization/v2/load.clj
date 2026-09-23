@@ -20,6 +20,17 @@
 
 (declare load-one!)
 
+(defn- remember-local
+  "Records in `ctx` that `path` is not in the files being loaded but exists locally, so later entities that depend on
+  it skip the lookup. Kept apart from `:seen`, which lists the entities this load loaded: callers use `:seen` as the
+  set of imported entities (e.g. remote sync records exactly those as synced)."
+  [ctx path]
+  (update ctx :local (fnil conj #{}) path))
+
+(defn- done? [{:keys [seen local]} path]
+  (or (contains? seen path)
+      (contains? local path)))
+
 (defn- with-retries
   "Retries `f` up to `max-retries` times when it throws a transient DB error (deadlock, lock timeout, etc.).
   Uses exponential backoff starting at `base-delay-ms`. Error classification is appdb-type-aware
@@ -67,10 +78,10 @@
                 (load-one! ctx dep)
                 (catch Exception e
                   (cond
-                    ;; It was missing, but we found it locally, so just return the context.
+                    ;; It was missing, but we found it locally: remember that, so later entities skip the lookup.
                     (and (= (:error (ex-data e)) ::not-found)
                          (serdes/load-find-local dep))
-                    ctx
+                    (remember-local ctx dep)
 
                     :else
                     (throw e)))))]
@@ -150,7 +161,7 @@
 
   The only tangling stuff is handling circular dependencies: parts of this is handled by the `serdes/load-one!`
   function, just outright skipping processing for parts of ingested data."
-  [{:keys [expanding seen circular ingestion] :as ctx} path]
+  [{:keys [expanding circular ingestion] :as ctx} path]
   (log/debug "Requested" (cond-> {:path (serdes/log-path-str path)}
                            (circular path) (assoc :stripped true)))
   (cond
@@ -163,7 +174,7 @@
                                            (update :expanding disj path)
                                            (update :circular conj path))
                                        path))
-    (seen path)           ctx           ; Already been done, can skip it.
+    (done? ctx path)      ctx           ; Already loaded, or known to exist locally: skip it.
     :else
     (let [ingested (serdes.ingest/ingest-one ingestion path)]
       (if-not ingested
@@ -178,7 +189,7 @@
                                :id    id
                                :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
-          ctx)
+          (remember-local ctx path))
         (let [_                  (log/trace "Loading" (cond-> {:path (serdes/log-path-str path)}
                                                         (circular path) (assoc :stripped true)))
               ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
@@ -197,7 +208,7 @@
                                    (circular path)    (assoc ::serdes/strip (keys-to-strip ingested)))
               ;; we need less deps when trying to load "stripped" data
               deps               (->> (serdes/deserialization-dependencies (apply dissoc ingested (::serdes/strip ingested)))
-                                      (remove seen))
+                                      (remove (partial done? ctx)))
               _                  (when (seq deps)
                                    (log/debug "Loading dependencies"
                                               {:entity_id (:entity_id ingested)
@@ -237,6 +248,18 @@
                                     (cond-> stripped? (assoc :stripped-keys (keys-to-strip ingested))))
                                 e))))))))))
 
+(defn- discard-uncommitted!
+  "Rolls back anything a failed entity left uncommitted on the connection held by [[load-metabase!]], before the
+  load carries on with the next entity. A failed transaction normally rolls itself back and restores autocommit; if
+  its rollback failed, it leaves autocommit off so the writes are not committed, and relies on the pool to discard
+  them at check-in. The load keeps the connection, so it has to discard them itself, or the next entity's commit
+  would commit them too. Inside a caller's transaction the connection is the caller's and is left alone."
+  [^java.sql.Connection conn]
+  (when (and (not (mdb/in-transaction?))
+             (not (.getAutoCommit conn)))
+    (.rollback conn)
+    (.setAutoCommit conn true)))
+
 (defn new-context
   "Given an ingestion create a new context for serialization.
 
@@ -249,6 +272,7 @@
   [ingestion]
   {:expanding #{}
    :seen      #{}
+   :local     #{}
    :circular  #{}
    :ingestion ingestion
    :errors    []})
@@ -277,17 +301,22 @@
                              :files         file-names}
                             (first ingest-errors)))))
         (log/infof "Starting deserialization, total %s documents" (count contents))
-        (reduce (fn [ctx item]
-                  (try
-                    (load-one! ctx item)
-                    (catch Exception e
-                      (when-not continue-on-error
-                        (throw e))
-                      ;; eschew big and scary stacktrace
-                      (log/warnf (u/strip-error e "Skipping deserialization error"))
-                      (update ctx :errors conj e))))
-                ctx
-                contents))
+        ;; Hold one connection for the whole load. Otherwise every lookup outside a transaction and every entity's
+        ;; transaction checks a connection out of the pool and back in, and each check-in costs a round trip (a
+        ;; `DISCARD ALL` on Postgres). Each entity still commits in its own transaction on this connection.
+        (t2/with-connection [^java.sql.Connection conn]
+          (reduce (fn [ctx item]
+                    (try
+                      (load-one! ctx item)
+                      (catch Exception e
+                        (when-not continue-on-error
+                          (throw e))
+                        (discard-uncommitted! conn)
+                        ;; eschew big and scary stacktrace
+                        (log/warnf (u/strip-error e "Skipping deserialization error"))
+                        (update ctx :errors conj e))))
+                  ctx
+                  contents)))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.
