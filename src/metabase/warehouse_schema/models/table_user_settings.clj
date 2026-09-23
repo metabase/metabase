@@ -156,7 +156,6 @@
 
 (defmethod serdes/entity-id "TableUserSettings" [_ _] nil)
 
-;; a settings row's own id is a surrogate; serialization and remote sync name it by the Table it describes
 (defmethod serdes/primary-key "TableUserSettings" [_model-name] :table_id)
 
 (defmethod serdes/generate-path "TableUserSettings" [_ {:keys [table_id]}]

@@ -621,7 +621,6 @@
                       (namespace-clause :namespace (u/qualified-name collection-namespace))
                       [:not :archived]
                       [:= :personal_owner_id nil]
-                      ;; a hand-written query, so it restricts itself to the world being worked in
                       (worktree/world-clause :collection)
                       (when (seq ids-without-root)
                         [:in :id ids-without-root])
