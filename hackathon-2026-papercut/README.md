@@ -187,7 +187,8 @@ Prerequisites on the machine that runs `watch`:
   `bun install --frozen-lockfile` in its worktree.
 
 `--server` must be the server whose page has the Dispatch button you pressed. The
-default is `$PAPERCUTS_SERVER`, or `http://127.0.0.1:8765`.
+default is `$PAPERCUTS_SERVER`, or else the shared server over Tailscale
+(`http://10.193.193.227:8765`).
 
 For each queued dispatch, `watch` does four things:
 
@@ -338,12 +339,16 @@ and agents on the tailnet call port 8765 directly, without a token.
 
 Run tests with `python3 -m unittest discover -s . -p 'test_*.py'`.
 
-For a populated demo, start the server and run `python3 seed_demo.py`. It records
+The scripts below default to the shared server, like the dispatcher, so the local examples
+name `--server` explicitly; without it, demo data would go to the shared server.
+
+For a populated demo, start the server and run
+`python3 seed_demo.py --server http://127.0.0.1:8765`. It records
 four papercuts under `demo/metabase`, including a duplicate report and related
 papercuts. The seed is safe to run again: stable report IDs prevent double counting.
 
 To view real, source-backed papercuts, point the importer at the local archive:
-`python3 import_local.py slop/chris/papercuts/claude slop/chris/papercuts/codex`. It
+`python3 import_local.py --server http://127.0.0.1:8765 slop/chris/papercuts/claude slop/chris/papercuts/codex`. It
 accepts files or directories. Each transcript occurrence a writeup records becomes
 one report under a per-writeup fingerprint, so report counts show how often a
 papercut was hit. The report's `reporter` and `agent` come from the file's
