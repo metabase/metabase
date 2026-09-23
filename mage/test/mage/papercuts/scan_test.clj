@@ -255,6 +255,14 @@
           (spit gone (pr-str {:version 1 :sessions {"s5" {:line 3}}}))
           (with-redefs [fs/move (fn [source _ _] (fs/delete source) (throw (java.nio.file.NoSuchFileException. (str source))))]
             (is (= {} (:sessions (scan/starting-state persist server-c [gone])))))))
+      (testing "a server that already has its own file retires the shared one, so a new server can't start from it"
+        (let [server-d (str (fs/path dir "scan-state.claude.http-d-80.edn"))
+              server-e (str (fs/path dir "scan-state.claude.http-e-80.edn"))]
+          (spit server-d (pr-str {:version 1 :sessions {"s7" {:line 2}}}))
+          (spit legacy (pr-str {:version 1 :sessions {"stale" {:line 99}}}))
+          (is (= {"s7" {:line 2}} (:sessions (scan/starting-state persist server-d [legacy]))))
+          (is (not (fs/exists? legacy)))
+          (is (= {} (:sessions (scan/starting-state persist server-e [legacy]))))))
       (testing "once a server's own file exists, it wins"
         (spit legacy (pr-str {:version 1 :sessions {"s9" {:line 1}}}))
         (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy])))))

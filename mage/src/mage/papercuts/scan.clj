@@ -145,22 +145,28 @@
 
 (defn starting-state
   "Saved progress to start from. A default state file that doesn't exist yet takes over the first of `earlier` that
-  does, instead of rescanning everything. Taking over moves the file, so the single pre-server file is used once, not
-  by every server that comes along."
+  does, instead of rescanning everything. Taking over moves the file. The last of `earlier`, the single file from
+  before there was one per server, is also retired as soon as any server has its own file, so no later server can
+  start from progress that isn't its own."
   [{:keys [explicit? persist?]} state-file earlier]
   (let [previous (when-not (or explicit? (fs/exists? state-file))
-                   (first (filter fs/exists? earlier)))]
+                   (first (filter fs/exists? earlier)))
+        shared   (last earlier)]
     (cond
-      (nil? previous) (load-state state-file)
+      (nil? previous) nil
       ;; A dry run changes nothing, so it reads the earlier file where it is.
-      (not persist?)  (load-state previous)
+      (not persist?)  nil
       :else           (do (fs/create-dirs (fs/parent state-file))
                           ;; A first scan for another server may take the same file first; it keeps it, and this one
                           ;; starts from whatever is at its own path.
                           (try
                             (fs/move previous state-file {:atomic-move true})
-                            (catch java.nio.file.NoSuchFileException _))
-                          (load-state state-file)))))
+                            (catch java.nio.file.NoSuchFileException _))))
+    (when (and persist? (not explicit?) shared (fs/exists? state-file) (fs/exists? shared))
+      (try
+        (fs/move shared (str shared ".retired") {:atomic-move true :replace-existing true})
+        (catch java.nio.file.NoSuchFileException _)))
+    (load-state (if (and previous (not persist?)) previous state-file))))
 
 (defn- save-state! [file state]
   (fs/create-dirs (fs/parent file))
