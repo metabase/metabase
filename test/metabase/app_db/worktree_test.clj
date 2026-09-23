@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.worktree :as mdb.worktree]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -73,3 +75,13 @@
         (mdb.worktree/with-worktree Integer/MAX_VALUE
           (is (empty? (union-ids)))
           (is (empty? (subselect-ids))))))))
+
+(deftest a-personal-collection-belongs-to-the-main-app-test
+  (testing "a user working in a worktree keeps the one Personal Collection they have in the main app"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (let [collection-id (u/the-id (collection/user->personal-collection user-id))]
+        (mdb.worktree/with-worktree Integer/MAX_VALUE
+          (is (= collection-id (u/the-id (collection/user->personal-collection user-id)))
+              "a second one is neither looked for nor created"))
+        (is (= 1 (mdb.worktree/without-worktree-scoping
+                  (t2/count :model/Collection :personal_owner_id user-id))))))))

@@ -741,7 +741,11 @@
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
   create it if needed."
   [user-or-id :- UserOrId]
-  (collections.db/personal-collection-of-user (u/the-id user-or-id)))
+  ;; A Personal Collection is the user's own rather than a branch's content, so there is one, in the main app,
+  ;; whichever worktree the caller is working in -- and only one, which the unique key on `personal_owner_id` holds
+  ;; the caller to.
+  (mdb.worktree/with-worktree nil
+    (collections.db/personal-collection-of-user (u/the-id user-or-id))))
 
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it.
@@ -751,8 +755,9 @@
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
         (try
-          (collections.db/insert-collection! {:name              (user->personal-collection-name user-or-id :site)
-                                              :personal_owner_id (u/the-id user-or-id)})
+          (mdb.worktree/with-worktree nil
+            (collections.db/insert-collection! {:name              (user->personal-collection-name user-or-id :site)
+                                                :personal_owner_id (u/the-id user-or-id)}))
           ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
           ;; condition where some other thread created it in the meantime; try one last time to fetch it
           (catch Throwable e
