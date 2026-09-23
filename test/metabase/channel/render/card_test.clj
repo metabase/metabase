@@ -623,6 +623,24 @@
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
 
+(deftest ^:parallel render-resolves-dynamic-scalar-segments-test
+  (testing "scalar segment entity refs are substituted in the query result's viz settings, which the scalar renderer reads"
+    (let [card      {:id                     1
+                     :name                   "scalar with dynamic segment"
+                     :display                :scalar
+                     :visualization_settings {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
+          data      (fn [value]
+                      {:cols                [{:name "count" :base_type :type/Integer}]
+                       :rows                [[value]]
+                       :viz-settings        {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}
+                       :referenced_entities goal-referenced-entities})
+          rendered  (fn [value]
+                      (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data (data value)})))]
+      (testing "value inside the resolved range takes the segment color"
+        (is (str/includes? (rendered 42) "#84BB4C")))
+      (testing "value outside it doesn't"
+        (is (not (str/includes? (rendered 100) "#84BB4C")))))))
+
 (deftest ^:parallel render-keeps-self-column-gauge-bounds-test
   (testing "a gauge bound naming a column of the same query is left for the JS renderer to resolve"
     (let [captured (atom nil)

@@ -7,6 +7,7 @@ import {
   fieldSetting,
   getDefaultSize,
   getMinSize,
+  validateGoalReferences,
 } from "metabase/viz-core";
 import type { DatasetData } from "metabase-types/api/dataset";
 
@@ -25,8 +26,11 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     return rows.length === 1 && cols.length === 1;
   },
 
-  checkRenderable() {
-    // scalar can always be rendered, nothing needed here
+  checkRenderable(series, settings) {
+    // extra series turn the number into a bar chart, which ignores the color ranges
+    if (series.length === 1) {
+      validateGoalReferences(series, settings);
+    }
   },
 
   settings: {
@@ -53,12 +57,10 @@ export const SCALAR_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
-      getProps: () => ({
+      getProps: ([{ card, data }]) => ({
         canRemoveAll: true,
+        data,
+        datasetQuery: card.dataset_query,
       }),
     },
     ...columnSettings({

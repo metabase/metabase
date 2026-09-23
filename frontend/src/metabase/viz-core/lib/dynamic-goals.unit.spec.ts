@@ -25,6 +25,7 @@ import {
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
+  resolveOpenEndedGoalSegments,
 } from "./dynamic-goals";
 
 const cols = [
@@ -47,6 +48,19 @@ describe("resolveGoalValue", () => {
     const goalValue = resolveGoalValue(data, "goal");
 
     expect(goalValue).toEqual({ value: 42 });
+  });
+
+  it.each([
+    ["there are no rows", []],
+    ["the cell is null", [[10, null]]],
+    ["the cell is not a number", [[10, "x"]]],
+  ])("errors for a self-column reference when %s", (_name, rows) => {
+    const data = createMockDatasetData({ cols, rows });
+
+    expect(resolveGoalValue(data, "goal")).toEqual({
+      value: null,
+      error: { column: "goal", reason: "not-a-number" },
+    });
   });
 
   it("errors for a self-column reference that does not exist", () => {
@@ -376,6 +390,116 @@ describe("resolveGoalSegments", () => {
   });
 });
 
+describe("resolveOpenEndedGoalSegments", () => {
+  const DATA = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("keeps a bound left empty open", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: null, max: 10, color: "red", label: "low" },
+      { min: 10, max: 100, color: "yellow", label: "mid" },
+      { min: 100, max: null, color: "green", label: "high" },
+    ]);
+
+    expect(segments).toEqual([
+      { min: null, max: 10, color: "red", label: "low" },
+      { min: 10, max: 100, color: "yellow", label: "mid" },
+      { min: 100, max: null, color: "green", label: "high" },
+    ]);
+  });
+
+  it("drops a segment with both bounds empty", () => {
+    expect(
+      resolveOpenEndedGoalSegments(DATA, [
+        { min: null, max: null, color: "red" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("resolves a self-column bound against the first row", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: "value", max: null, color: "green" },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 50, max: null, color: "green", label: undefined },
+    ]);
+  });
+
+  it("resolves a foreign reference next to an open bound", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        measure: {
+          4: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "measure", id: 4, column: "goal" },
+        max: null,
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 250, max: null, color: "green", label: undefined },
+    ]);
+  });
+
+  it("drops a segment whose set bound failed to resolve instead of treating it as open", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "card", id: 9, column: "goal" },
+        max: null,
+        color: "green",
+      },
+      { min: "missing", max: 100, color: "red" },
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "blue",
+      },
+    ]);
+
+    expect(segments).toEqual([]);
+  });
+
+  it("drops a segment whose set bound is still unanswered", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([]);
+  });
+
+  it("gives a segment without a color the default fill", () => {
+    const getColor = jest.fn(() => "#123456");
+
+    expect(
+      resolveOpenEndedGoalSegments(DATA, [{ min: 0, max: null }], getColor),
+    ).toEqual([{ min: 0, max: null, color: "#123456", label: undefined }]);
+  });
+});
+
 describe("hasFailedGoalValues", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
@@ -516,6 +640,32 @@ describe("getReferencedEntities", () => {
     );
 
     expect(referencedEntities).toEqual([]);
+  });
+
+  it("collects the references of a number chart's color ranges", () => {
+    const referencedEntities = getReferencedEntities({
+      display: "scalar",
+      visualization_settings: {
+        "scalar.segments": [
+          { min: null, max: "count", color: "red" },
+          {
+            min: { type: "card", id: 1, column: "sum" },
+            max: { type: "measure", id: 2, column: "avg" },
+            color: "yellow",
+          },
+          {
+            min: { type: "card", id: 1, column: "total" },
+            max: null,
+            color: "green",
+          },
+        ],
+      },
+    });
+
+    expect(referencedEntities).toEqual([
+      { type: "card", id: 1, columns: ["sum", "total"] },
+      { type: "measure", id: 2, columns: ["avg"] },
+    ]);
   });
 });
 
@@ -812,6 +962,8 @@ describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
+    expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
+    expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
   });
 
