@@ -87,26 +87,34 @@ vec1 0.7 (NEON, multi-threaded), sqlite-jdbc 3.50.3.0, macOS aarch64, JDK 25.
 Tests: platform format, blob round trip, missing extension throws, open/close/idempotent reopen,
 switching paths, delete removes files, 200 concurrent `with-conn` writers all land, vec1 KNN smoke test.
 
-## Phase C — schema = the "migration" (1–2 h)
+## Phase C — schema = the "migration" ✅ done 2026-09-23
 
-Not Liquibase — the file is not the app DB. Idempotent DDL on open, plus a version/model check that
-recreates the file on mismatch. The index is a cache; re-indexing refills it.
+Not Liquibase — the file is not the app DB. Checked on every `open!`; the index is a cache, so a mismatch
+deletes and recreates the file and re-indexing refills it. 13 tests / 37 assertions green.
 
-- [ ] `schema-version` constant = 1. Bump it whenever DDL changes (PLAN_002 will, for FTS5).
-- [ ] `meta(k text primary key, v text)` holding `schema_version`, `provider`, `model_name`, `vector_dimensions`
-      (from `semantic.embedding/resolve-model` of `get-configured-model`).
-- [ ] `ensure-schema!`:
-  - no `meta` table → create everything, write meta;
-  - meta matches → nothing;
-  - mismatch → log, `delete-store!`, reopen, create. Return `:created` / `:existing` / `:recreated` (useful in REPL + tests).
-- [ ] `search_doc` — same column names as pgvector's `index.clj` `index-table-schema`, minus `embedding` and the
-      two tsvector columns (see PLAN.md 1.2 for the DDL). `id integer primary key` = vec1 rowid.
-      `unique (model, model_id)`. Timestamps as ISO-8601 text, booleans as 0/1.
-- [ ] `search_vec` — `create virtual table search_vec using vec1(vector, model, archived, verified, database_id, creator_id, collection_id)`
-      (meta set per Phase A consequences), then
-      `insert into search_vec(cmd, arg) values ('rebuild', '{index:"flat", distance:"cos"}')`.
-      Meta columns duplicate `search_doc` columns so those filters run inside the KNN (pre-filter).
-- [ ] Everything in one transaction on create.
+- [x] `schema-version` = 1. Bump it whenever DDL changes (PLAN_002 will, for FTS5).
+- [x] `meta(k, v)` holds `schema_version`, `provider`, `model_name`, `vector_dimensions`,
+      **`embedding_space_id`** — the same identity pgvector's `index-metadata/find-compatible-index!` matches on.
+      The model is resolved with `semantic.embedding/resolve-model` only when it lacks `:embedding-space-id`
+      (lets tests pass a fake model without a provider).
+- [x] Check lives in `open!` (private `open-store`), not a separate `ensure-schema!`, because recreating needs
+      to close/delete/reopen the connection:
+  - new empty file → create → `:created`;
+  - `meta` equal → `:existing` (data kept);
+  - `meta` differs, or the file has tables but no `meta` → warn, delete files, reopen, create → `:recreated`.
+- [x] `open!` takes `{:embedding-model m}` (default: configured model); reopening the same path for a different
+      model switches the store. State keeps the resolved model: `(sqlite/embedding-model)` for Phases D/E.
+- [x] `store-info` → `{:path :schema :embedding-model :meta}`.
+- [x] `search_doc` — pgvector column names minus embedding/tsvectors, `id INTEGER PRIMARY KEY` = vec1 rowid,
+      `UNIQUE (model, model_id)`, timestamps as TEXT.
+- [x] `search_vec` — `vec1(vector, model, archived, verified, database_id, creator_id, collection_id)`
+      (`sqlite/vec-meta-columns`) + `rebuild` to flat/cos. Filtered KNN on meta columns verified in a test.
+- [x] Whole create in one transaction (virtual table DDL inside a transaction works).
+- [x] Verified in the dev REPL with the configured ai-service model
+      (`Snowflake/snowflake-arctic-embed-l-v2.0`, 1024 dims).
+
+Tests added: created → existing with data kept; recreated on each of dims / space id / model name / provider;
+recreated on `schema-version` bump; recreated for a foreign file; meta-column pre-filter with k = 1.
 
 ## Phase D — write path (3–4 h)
 
@@ -179,11 +187,11 @@ Raw store queries, not the search engine (that's PLAN_002).
 |---|---|
 | A spike | ✅ done |
 | B connection | ✅ done |
-| C schema | 1–2 h |
+| C schema | ✅ done |
 | D writes | 3–4 h |
 | E queries | 1–2 h |
 | F REPL + tests | 2–3 h |
-| **Remaining** | **~1 day** |
+| **Remaining** | **~6–9 h** (D, E, F) |
 
 ## Decisions taken (change here if needed)
 

@@ -11,6 +11,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -76,12 +77,96 @@
                       {:platform platform :resource resource :override override})))
     (.getAbsolutePath ^java.io.File file)))
 
+;;; ---------------------------------------------------- Schema ----------------------------------------------------
+
+(def schema-version
+  "Version of the store's DDL. Bump it on any schema change: a store written by another version is deleted and
+  recreated on open (the store is a cache; re-indexing refills it)."
+  1)
+
+(def vec-meta-columns
+  "`search_doc` columns duplicated onto the vec1 table. vec1 applies filters on these inside the KNN scan, so they
+  don't shrink the top k; filters on any other column do."
+  ["model" "archived" "verified" "database_id" "creator_id" "collection_id"])
+
+(def ^:private search-doc-ddl
+  ;; Same column names as the pgvector index table (`semantic.index/index-table-schema`), minus the embedding and the
+  ;; tsvectors, so the pgvector query code can later run against it. `id` is the vec1 rowid.
+  "CREATE TABLE search_doc (
+     id                   INTEGER PRIMARY KEY,
+     model                TEXT NOT NULL,
+     model_id             TEXT NOT NULL,
+     collection_id        INTEGER,
+     personal_owner_id    INTEGER,
+     creator_id           INTEGER,
+     database_id          INTEGER,
+     last_editor_id       INTEGER,
+     name                 TEXT NOT NULL,
+     content              TEXT NOT NULL,
+     display_type         TEXT,
+     archived             BOOLEAN DEFAULT FALSE,
+     official_collection  BOOLEAN,
+     pinned               BOOLEAN,
+     verified             BOOLEAN,
+     collection_type      TEXT,
+     root_collection_type TEXT,
+     data_layer           TEXT,
+     data_authority       TEXT,
+     curated              BOOLEAN,
+     dashboardcard_count  INTEGER,
+     view_count           INTEGER,
+     created_at           TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+     model_created_at     TEXT,
+     model_updated_at     TEXT,
+     last_viewed_at       TEXT,
+     legacy_input         TEXT,
+     metadata             TEXT,
+     UNIQUE (model, model_id))")
+
+(defn- resolve-model
+  "`embedding-model` with its `:embedding-space-id`, resolving it through the provider only when missing."
+  [embedding-model]
+  (if (:embedding-space-id embedding-model)
+    embedding-model
+    (semantic.embedding/resolve-model embedding-model)))
+
+(defn- expected-meta
+  "The `meta` table contents for a store holding embeddings of the (resolved) `embedding-model`. A store is reusable
+  only when every entry matches -- the same identity pgvector uses to find a compatible index."
+  [{:keys [provider model-name vector-dimensions embedding-space-id]}]
+  {"schema_version"     (str schema-version)
+   "provider"           (str provider)
+   "model_name"         (str model-name)
+   "vector_dimensions"  (str vector-dimensions)
+   "embedding_space_id" (str embedding-space-id)})
+
+(defn- table-names [conn]
+  (into #{} (map :name) (jdbc/execute! conn ["SELECT name FROM sqlite_master WHERE type = 'table'"]
+                                       {:builder-fn jdbc.rs/as-unqualified-maps})))
+
+(defn- read-meta
+  "The `meta` table as a map, or nil when the file has no `meta` table."
+  [conn]
+  (when (contains? (table-names conn) "meta")
+    (into {} (map (juxt :k :v)) (jdbc/execute! conn ["SELECT k, v FROM meta"] {:builder-fn jdbc.rs/as-unqualified-maps}))))
+
+(defn- create-schema! [conn meta]
+  (jdbc/with-transaction [tx conn]
+    (jdbc/execute! tx ["CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)"])
+    (jdbc/execute! tx [search-doc-ddl])
+    (jdbc/execute! tx [(str "CREATE VIRTUAL TABLE search_vec USING vec1(vector, " (str/join ", " vec-meta-columns) ")")])
+    ;; Flat nearest-neighbour index with cosine distance: exhaustive, needs no training.
+    (jdbc/execute! tx ["INSERT INTO search_vec(cmd, arg) VALUES ('rebuild', '{index:\"flat\", distance:\"cos\"}')"])
+    (doseq [[k v] (sort meta)]
+      (jdbc/execute! tx ["INSERT INTO meta (k, v) VALUES (?, ?)" k v]))))
+
 ;;; -------------------------------------------------- Connection --------------------------------------------------
 
 (defonce ^:private lock (Object.))
 
 (defonce ^:private state
-  ;; {:conn Connection, :path String} while open, nil otherwise. Written only while holding `lock`.
+  ;; {:conn Connection, :path String, :embedding-model resolved-model, :schema status} while open, nil otherwise.
+  ;; Written only while holding `lock`.
   (atom nil))
 
 (defn- open-connection ^Connection [path]
@@ -97,22 +182,65 @@
         (.close conn)
         (throw t)))))
 
+(defn- delete-files! [path]
+  (doseq [suffix ["" "-wal" "-shm" "-journal"]]
+    (io/delete-file (str path suffix) true)))
+
+(defn- open-store
+  "Open `path` with a schema for `embedding-model`: reuse a matching store, create one in a new file, and delete and
+  recreate a store written for another model or schema version (or a file that isn't a store)."
+  [path embedding-model]
+  (let [expected (expected-meta embedding-model)
+        conn     (open-connection path)]
+    (try
+      (let [stored (read-meta conn)]
+        (cond
+          (= expected stored)
+          {:conn conn :schema :existing}
+
+          (and (nil? stored) (empty? (table-names conn)))
+          (do (create-schema! conn expected)
+              {:conn conn :schema :created})
+
+          :else
+          (do (log/warnf "SQLite semantic search store at %s does not match %s (found %s); recreating it"
+                         path (pr-str expected) (pr-str stored))
+              (.close conn)
+              (delete-files! path)
+              (let [conn (open-connection path)]
+                (try
+                  (create-schema! conn expected)
+                  {:conn conn :schema :recreated}
+                  (catch Throwable t
+                    (.close conn)
+                    (throw t)))))))
+      (catch Throwable t
+        (when-not (.isClosed conn)
+          (.close conn))
+        (throw t)))))
+
 (defn open!
-  "Open the store at `path` (default [[db-path]]), closing a store open at another path. No-op when already open
-  at `path`. Returns `path`."
+  "Open the store at `path` (default [[db-path]]) for `:embedding-model` (default: the configured model), creating
+  or recreating its schema as needed (see [[store-info]] for which). Closes a store open at another path or for
+  another model; no-op when already open at `path` for the same model. Returns `path`."
   ([]
    (open! (or (db-path)
               (throw (ex-info "MB_SEMANTIC_SEARCH_SQLITE_PATH is not set" {})))))
   ([path]
-   (locking lock
-     (when-not (= path (:path @state))
-       (when-let [{:keys [^Connection conn]} @state]
-         (.close conn))
-       (reset! state nil)
-       (io/make-parents (io/file path))
-       (reset! state {:conn (open-connection path) :path path})
-       (log/infof "Opened SQLite semantic search store at %s" path))
-     path)))
+   (open! path {}))
+  ([path {:keys [embedding-model]}]
+   (let [embedding-model (resolve-model (or embedding-model (semantic.embedding/get-configured-model)))]
+     (locking lock
+       (when-not (and (= path (:path @state))
+                      (= (expected-meta embedding-model) (expected-meta (:embedding-model @state))))
+         (when-let [{:keys [^Connection conn]} @state]
+           (.close conn))
+         (reset! state nil)
+         (io/make-parents (io/file path))
+         (let [{:keys [conn schema]} (open-store path embedding-model)]
+           (reset! state {:conn conn :path path :embedding-model embedding-model :schema schema})
+           (log/infof "Opened SQLite semantic search store at %s (%s)" path (name schema))))
+       path))))
 
 (defn close!
   "Close the store if it is open."
@@ -132,8 +260,7 @@
    (locking lock
      (when (= path (:path @state))
        (close!))
-     (doseq [suffix ["" "-wal" "-shm" "-journal"]]
-       (io/delete-file (str path suffix) true))
+     (delete-files! path)
      nil)))
 
 (defn do-with-conn
@@ -156,6 +283,23 @@
   []
   (with-conn [conn]
     (:info (jdbc/execute-one! conn ["SELECT vec1_info() AS info"] {:builder-fn jdbc.rs/as-unqualified-maps}))))
+
+;; with-conn opens the store if needed, so these report the store the next call would use.
+
+(defn embedding-model
+  "The resolved embedding model the open store holds vectors for."
+  []
+  (with-conn [_conn]
+    (:embedding-model @state)))
+
+(defn store-info
+  "`{:path :schema :embedding-model :meta}` for the store; `:schema` is how the last open found it: `:created`,
+  `:existing` or `:recreated`."
+  []
+  (with-conn [conn]
+    (-> @state
+        (select-keys [:path :schema :embedding-model])
+        (assoc :meta (read-meta conn)))))
 
 ;;; ---------------------------------------------------- Blobs -----------------------------------------------------
 
