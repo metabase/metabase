@@ -47,7 +47,7 @@ EOF
   echo "Starting in 5 seconds. Press Ctrl-C to stop."
   sleep 5
 
-  echo "Fetching the scanner into $REPO (about 30 seconds)"
+  echo "Fetching the scanner into $REPO (a minute or two the first time)"
   mkdir -p "$DIR"
   if [ -d "$REPO/.git" ]; then
     git -C "$REPO" fetch -q --depth 1 origin hackathon-2026-papercut-tracker
