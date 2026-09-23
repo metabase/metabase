@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -491,6 +493,13 @@
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
+
+(deftest search-failure-throws-test
+  (testing "a failing search reaches the tool executor as an exception, not as a successful output"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (with-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                              (#'search/search-tool {:keyword_queries ["x"]})))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
