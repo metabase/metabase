@@ -139,17 +139,19 @@ The standalone query from PLAN.md 1.4, on top of `sqlite/search-text`.
       engine `:search.engine/semantic`; "income across american regions" → Revenue by state first (6 hits within
       0.8); `:models #{"dashboard"}` → dashboards only; "weather forecast for tomorrow" → 0 hits.
 
-## Phase D — tests (2–3 h)
+## Phase D — tests ✅ done 2026-09-23
 
-- [ ] `sqlite_test.clj` (or `sqlite_engine_test.clj`): `query` with stub embeddings — filter mapping, cutoff,
-      blank string, permission filter drops unreadable docs (needs `mt/with-temp` cards + a test user →
-      initialise the test app DB for this ns).
-- [ ] Engine-level: with `sqlite/db-path` redef'd to a temp file and the `:semantic-search` feature
-      (`mt/with-premium-features #{:semantic-search}`), `(search.engine/supported-engine? :search.engine/semantic)`
-      is true, `semantic-search-configured?` false; `update-index!` / `delete-from-index!` round trip returns
-      `{model n}`; `init!` + prune.
-- [ ] API-level smoke: `mt/user-http-request :crowberto :get 200 "search" :q "…" :search_engine "semantic"`
-      returns the stubbed-nearest card first.
+`sqlite_engine_test.clj` (test app DB + test users) and `sqlite_test.clj`: 27 tests / 139 assertions green.
+
+- [x] `gating-test` — SQLite mode supported without pgvector, pgvector gates off (Phase A).
+- [x] `write-hooks-test` — init / update / delete / diagnose / prune / repair / force-reset (Phase B).
+- [x] `query-test` — blank string; nearest first within the cutoff; archived excluded by default; `:rrf` +
+      `:semantic-distance` scores; cutoff override; `:models`, `:archived`, `:ids`, `:display-type` filters;
+      `:raw-count`. The docs aren't real app-DB rows, so the permission filter is stubbed here.
+- [x] `search-api-test` — real temp cards indexed via `search.ingestion/searchable-documents`, stubbed embedder
+      (zebra texts near the query): `GET /api/search?q=striped horses&search_engine=semantic` as crowberto returns
+      `engine: search.engine/semantic` and exactly the two zebra cards; as rasta the card in a collection rasta
+      can't read is dropped.
 
 ## Phase E — run it end to end (1–2 h)
 
