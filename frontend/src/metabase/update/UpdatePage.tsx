@@ -3,10 +3,15 @@ import "@fontsource/press-start-2p/400.css";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { useUpgradeStatus } from "metabase/status/hooks/self-upgrade";
+
 import { KonamiArrowSprite } from "./GameSprites";
 import { ShinyInvadersPage } from "./ShinyInvadersPage";
 import { UpdateMusic } from "./UpdateMusic";
 import S from "./UpdatePage.module.css";
+import { UpgradeCompletion } from "./UpgradeCompletion";
+import { UpgradeProgress, getUpdateHeading } from "./UpgradeProgress";
 
 const KONAMI_CODE = [
   { code: "ArrowUp", symbol: "↑", direction: "up" },
@@ -23,6 +28,7 @@ const KONAMI_CODE = [
 const GAME_REVEAL_DELAY_MS = 350;
 
 export function UpdatePage() {
+  const status = useUpgradeStatus();
   const [sequence, setSequence] = useState({ progress: 0, attempt: 0 });
   const [screen, setScreen] = useState<"code" | "ready" | "playing">("code");
   const isGameRevealed = screen !== "code";
@@ -106,9 +112,13 @@ export function UpdatePage() {
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
       {screen !== "playing" && <UpdateMusic />}
+      {isGameRevealed && <UpgradeCompletion status={status} overlay />}
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
-          <h1>{t`Update in progress…`}</h1>
+          <LogoIcon height={56} />
+          <h1>{getUpdateHeading(status.phase)}</h1>
+          <UpgradeProgress status={status} />
+          {!isGameRevealed && <UpgradeCompletion status={status} />}
           <p>{t`Enter KONAMI code if you're bored`}</p>
         </header>
         <div className={S.symbols} role="status" aria-label={t`Konami code`}>

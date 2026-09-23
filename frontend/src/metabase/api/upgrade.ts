@@ -2,7 +2,7 @@ import type { UpgradeHealth, UpgradeResponse } from "metabase-types/api";
 
 import { Api } from "./api";
 
-// Passed as fixedCacheKey so the trigger and the status panel share one mutation result.
+// Passed as fixedCacheKey so the trigger and the status pages share one mutation result.
 export const SELF_UPGRADE_CACHE_KEY = "self-upgrade";
 
 export const upgradeApi = Api.injectEndpoints({
