@@ -29,6 +29,9 @@ jev/
     create.clj        "New with Jev" (Cmd/Ctrl+J): question, dashboard or document; tables; then the plan
     usage.clj         collective "what people do on this table" shape model (endpoints)
     viz.clj           rank chart types for a query result (deterministic roles + Jev scoring)
+    dashboard_focus.clj  score a dashboard's cards + filters against a question (relevance + focus set)
+    tab_split.clj     split a dashboard into tabs you name (choice per card; text cards by proximity)
+    table_facts.clj   Metabase-native table ontology: deterministic facts -> role classification
     intent.clj        per-user + per-table intent model (event-bus taps + prediction)
     intent/
       store.clj         the trail + faceted preference counters (swappable backing)
@@ -101,6 +104,9 @@ token to the browser, so it goes through these.
 | `POST /api/jev/saving/check` | For a draft question: an existing card that already answers it, and the collection it belongs in. |
 | `POST /api/jev/usage/observe` | Feed the usage shape-model an MBQL query the caller ran/built (value-free facets only). |
 | `POST /api/jev/viz/suggest` | Rank chart types for a query result (body: its `:cols` metadata). Roles derived deterministically; Jev scores each chart type against the structure. |
+| `POST /api/jev/dashboard/:id/focus` | Score every card + filter on a dashboard against a stated question. Cards get a graded relevance `score`, filters a helps-narrow `noul`; returns the ranked view + a top-fraction focused set for the FE to re-flow and dim. |
+| `POST /api/jev/dashboard/:id/split-into-tabs` | Assign every card to one of the tabs you name (`{tabs: [{name, description?}]}`). One `choice` per query card (descriptions are the criteria) with confidence; text/heading cards placed by grid proximity. Returns a plan the FE previews and Saves. |
+| `GET  /api/jev/database/:id/table-ontology` | Classify a database's tables by how they sit *in Metabase*: deterministic facts (row count, usage, FK join graph) → a role `choice` (fact/dimension/aggregate/raw/junk) + a canonical `noul`. |
 
 ## What's implemented so far
 
@@ -124,6 +130,26 @@ token to the browser, so it goes through these.
   (`new-column`, `fill-empty` or `overwrite`). Such a transform dispatches as `:jev`
   (`transforms-base.interface/transform->transform-type`) and reuses the `:query` methods for
   everything but writing the target. Plain `table` targets only, capped at 5,000 rows.
+- **Dashboard focus** (`apps/dashboard_focus`, FE `DashboardFocus`) — point a dashboard at a question:
+  each card gets a graded relevance `score`, each filter a helps-narrow `noul`, in one parallel call.
+  The FE re-flows the grid through a **layout engine** (`DashboardFocus/layout-engine.ts`) that packs
+  cards in uniform-height bands by *kind* (callout/trend/comparison/table/text, classified
+  deterministically from display + row count) and boots the not-relevant cards to a shrunk bottom zone
+  — so the relevant/irrelevant split stays visible even when scores cluster on a weak-fit question.
+  Read-only; nothing about the saved dashboard changes.
+- **Tab split** (`apps/tab_split`, FE `DashboardTabSplit`) — you name the tabs and describe what belongs
+  on each; Jev assigns every card with a `choice` over your fixed tab set (the descriptions are the
+  criteria — the version that plays *to* Jev's strength, since you supply the labels and Jev only does
+  membership). Text/heading cards, which have no query to judge, travel with their section by grid
+  proximity. The FE applies the plan to transient dashboard edit state as an unsaved preview; the normal
+  Save commits. Validated against a real dashboard's human tabs: name-only ~33% agreement, name +
+  description ~77% (residual misses defensible) — descriptions roughly double accuracy.
+- **Table ontology** (`apps/table_facts`) — a Metabase-native classification of a database's tables:
+  *how they sit in Metabase*, not the customer's domain. Deterministic Layer-1 facts (estimated/
+  fingerprint-derived row count, `view_count` usage, field-role counts, the FK join graph) become the
+  state Jev reads; Jev then picks a role from a fixed taxonomy (fact/dimension/aggregate/raw/junk) and
+  scores `canonical?`. Shape-based so it works on warehouses with no foreign keys (dbt marts read as
+  `aggregate`, staging as `raw`).
 
 All of it is prototype scaffolding: no caching, no cost limits, uncalibrated confidence shown but not
 gated on. When a judgment settles into a real feature, promote it to a typed endpoint that assembles
@@ -148,6 +174,13 @@ Frontend:
   plain-English filter palette (`querying/jev-filters`) for dashboards and questions. On a dashboard the same
   phrase also asks `/api/jev/dashboard/:id/focus`, offered as a "Focus cards" row; applying it re-flows the grid
   and shows a `<DashboardFocus>` chip (question, helpful filters, clear).
+- `dashboard/components/DashboardFocus/` — the focus store + layout engine that drive the re-flow.
+  `focus-store.ts` holds the scored/focused state (a standalone observable, not Redux); `DashboardGrid`
+  subscribes and repacks via `layout-engine.ts` (`packLayout`) and `classify-kind.ts`. Cards animate to
+  their new positions through react-grid-layout.
+- `dashboard/components/DashboardTabSplit/` — the edit-mode "Split into tabs" panel. `apply-split.ts`
+  drives the preview through transient dashboard actions (`createNewTab` / `renameTab` /
+  `moveDashCardToTab`); the normal Save button commits.
 - `palette/hooks/useCommandPalette` — `useJevRerankedResults` reorders search results, `JevBestMatchBadge`.
 - `common/components/SaveQuestionForm` — renders `<JevSaveHints>` (duplicate callout + collection chip).
 - `api/jev.ts` (+ `api/jev-*.ts`) — the RTK Query slices all of the above call through.
@@ -168,6 +201,8 @@ We are contractually obligated to the bit:
 - Getting the classification right is good **jev-dgment**.
 - A wrong notification routed to a public channel would be **jev-astating**.
 - The intent model gradually learning your habits is **jev-olution**.
+- Sorting a messy dashboard into clean tabs is a tidy bit of **jev-uvenation**.
+- Knowing a table is the canonical one and not a stale backup: **jev-er the twain shall meet**.
 - When it correctly declines a bad suggestion, that's **jev-nuine restraint**.
 - Shipping without the confidence gate? A little **jev-il-may-care**.
 - The whole endeavor: **je ne sais jev**.
