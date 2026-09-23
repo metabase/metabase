@@ -11,6 +11,25 @@
 
 (def ^:private agents ["claude" "codex"])
 (def ^:private events ["Stop" "SessionEnd"])
+(def default-server "https://metaouch.dev")
+
+(defn normalize-server
+  "Accept an HTTP(S) origin, optionally with a port. The scanner appends /api routes to it."
+  [server]
+  (let [server (str/trim (str server))
+        uri    (try (java.net.URI. server)
+                    (catch Exception _ nil))]
+    (when-not (and uri
+                   (#{"http" "https"} (some-> (.getScheme uri) str/lower-case))
+                   (.getHost uri)
+                   (nil? (.getUserInfo uri))
+                   (or (= -1 (.getPort uri)) (<= 1 (.getPort uri) 65535))
+                   (#{"" "/"} (.getPath uri))
+                   (nil? (.getQuery uri))
+                   (nil? (.getFragment uri)))
+      (throw (ex-info (str "--server must be an HTTP(S) origin, optionally with a port: " server)
+                      {:server server})))
+    (str/replace server #"/+$" "")))
 
 (defn selected-agents
   "Choose the requested agent, or every available agent when no option was given."
@@ -29,31 +48,33 @@
 (defn- shell-quote [s]
   (str "'" (str/replace s "'" "'\\''") "'"))
 
-(defn- hook-command [source]
+(defn- hook-command [source server]
   (str "python3 "
        (shell-quote (str (fs/path u/project-root-directory "hackathon-2026-papercut" "session_scan_hook.py")))
-       " " source))
+       " " source " --server " (shell-quote server)))
 
 (defn- ours? [handler]
   (str/includes? (str (get handler "command")) "hackathon-2026-papercut/session_scan_hook.py"))
 
 (defn updated-config
   "Preserve other hooks and replace only this installer's handlers. Repeated installation is idempotent."
-  [config source]
-  (reduce
-   (fn [config event]
-     (let [groups    (get-in config ["hooks" event] [])
-           preserved (into []
-                           (keep (fn [group]
-                                   (let [handlers (filterv (complement ours?) (get group "hooks" []))]
-                                     (when (seq handlers) (assoc group "hooks" handlers)))))
-                           groups)
-           handler   {"type"    "command"
-                      "command" (hook-command source)
-                      "timeout" (if (and (= source "codex") (= event "SessionEnd")) 3 5)}]
-       (assoc-in config ["hooks" event] (conj preserved {"hooks" [handler]}))))
-   config
-   events))
+  ([config source] (updated-config config source default-server))
+  ([config source server]
+   (let [server (normalize-server server)]
+     (reduce
+      (fn [config event]
+        (let [groups    (get-in config ["hooks" event] [])
+              preserved (into []
+                              (keep (fn [group]
+                                      (let [handlers (filterv (complement ours?) (get group "hooks" []))]
+                                        (when (seq handlers) (assoc group "hooks" handlers)))))
+                              groups)
+              handler   {"type"    "command"
+                         "command" (hook-command source server)
+                         "timeout" (if (and (= source "codex") (= event "SessionEnd")) 3 5)}]
+          (assoc-in config ["hooks" event] (conj preserved {"hooks" [handler]}))))
+      config
+      events))))
 
 (defn- config-path [env home source]
   (str (fs/path (transcript/agent-dir env home source) (if (= source "codex") "hooks.json" "settings.json"))))
@@ -108,26 +129,30 @@
   "Install selected agents' global hooks under `home`, or where `env` points their config directories. Public so tests
   can use a temporary home."
   ([home selected] (install-at! {} home selected))
-  ([env home selected]
-   (doseq [source selected]
-     (let [path   (config-path env home source)
-           before (read-config path)
-           after  (updated-config before source)]
-       (if (= before after)
-         (println "Already installed:" path)
-         (do (write-config! path after)
-             (println "Installed" source "hooks in" path)))))
-   selected))
+  ([env home selected] (install-at! env home selected default-server))
+  ([env home selected server]
+   (let [server (normalize-server server)]
+     (doseq [source selected]
+       (let [path   (config-path env home source)
+             before (read-config path)
+             after  (updated-config before source server)]
+         (if (= before after)
+           (println "Already installed:" path)
+           (do (write-config! path after)
+               (println "Installed" source "hooks in" path)))))
+     selected)))
 
 (defn install!
   "Mage entry point. Merely running this task opts the user into automatic transcript scanning."
   [{:keys [options]}]
   (let [available (filterv fs/which agents)
-        selected  (selected-agents (:agent options) available)]
+        selected  (selected-agents (:agent options) available)
+        server    (normalize-server (or (:server options) default-server))]
     (println "Installing Stop and SessionEnd hooks for" (str/join ", " selected))
+    (println "Papercuts server:" server)
     (println "Future transcript chunks will be sent to TypeSafe Jev; flagged chunks go to the drill-down agent.")
     (println "Findings are submitted to the configured papercuts server. Scans run in the background.")
-    (install-at! (into {} (System/getenv)) (fs/home) selected)
+    (install-at! (into {} (System/getenv)) (fs/home) selected server)
     (when (some #{"codex"} selected)
       (println "Codex may require trusting the new hooks with /hooks before they run."))
     (println "Hook scan log:" (fs/path u/project-root-directory "local" "papercuts" "hook-scan.log"))))
