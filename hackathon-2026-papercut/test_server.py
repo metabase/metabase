@@ -206,6 +206,34 @@ class IngestTest(StoreCase):
                                   "reporter": "christruter.claude", "agent": "claude"})
         self.assertEqual((replay["replay"], replay["report"]["id"]), (True, report_id))
 
+    def test_v11_databases_are_normalized_again(self):
+        mb = self.report(title="On mb")
+        pc = self.report(title="On pc", fingerprint="pc-trap", reporter="chris", agent="claude")
+        bodyless = self.report(title="Bodyless", fingerprint="old-trap")
+        with sqlite3.connect(self.store.path) as db:
+            for table in ("papercuts", "papercut_fingerprints"):
+                db.execute(f"UPDATE {table} SET repository = 'mb' WHERE {'id' if table == 'papercuts' else 'papercut_id'} = ?",
+                           (mb["papercut"]["id"],))
+                db.execute(f"UPDATE {table} SET repository = 'pc' WHERE {'id' if table == 'papercuts' else 'papercut_id'} = ?",
+                           (pc["papercut"]["id"],))
+            db.execute("UPDATE reports SET repository = 'mb' WHERE id = ?", (mb["report"]["id"],))
+            # The reporter column is already canonical, as version 3 left it, but the body still has the alias.
+            db.execute("""UPDATE reports SET repository = 'pc',
+                          payload = json_set(payload, '$.repository', 'pc', '$.reporter', 'chris.claude') WHERE id = ?""",
+                       (pc["report"]["id"],))
+            # A version 1 report has no stored body.
+            db.execute("UPDATE reports SET reporter = 'christruter', payload = NULL WHERE id = ?",
+                       (bodyless["report"]["id"],))
+            db.execute("PRAGMA user_version = 11")
+        migrated = server.Store(self.store.path)
+        self.assertEqual(migrated.repositories(), ["metabase"])
+        stored = {r["id"]: r for p in (mb, pc, bodyless)
+                  for r in migrated.get_papercut(p["papercut"]["id"])["reports"]}
+        self.assertEqual((stored[pc["report"]["id"]]["payload"]["repository"],
+                          stored[pc["report"]["id"]]["payload"]["reporter"]), ("metabase", "chris"))
+        self.assertEqual((stored[bodyless["report"]["id"]]["reporter"], stored[bodyless["report"]["id"]]["payload"]),
+                         ("chris", None))
+
     def test_new_mb_report_uses_metabase_repository(self):
         result = self.report(repository="mb", reporter="christruter.codex", agent="codex")
         stored = self.store.get_papercut(result["papercut"]["id"])["reports"][0]

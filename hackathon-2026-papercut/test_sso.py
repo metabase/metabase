@@ -166,6 +166,12 @@ class SignInTest(HttpCase):
         events = self.handler.store.get_papercut(1)["events"]
         self.assertEqual({e["actor"] for e in events}, {"ada@metabase.com"})
 
+    def test_assessments_that_leave_out_the_actor_are_still_attributed(self):
+        self.report("r1")
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        self.call("POST", "/api/papercuts/1/assessments", {"verdict": "ready", "reason": "Clear fix"}, headers)
+        self.assertEqual(self.handler.store.get_papercut(1)["assessment"]["actor"], "ada@metabase.com")
+
     def test_signed_in_writes_need_no_token(self):
         self.report("r1")
         self.handler.token = "secret"
