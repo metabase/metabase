@@ -83,6 +83,10 @@ class NotFound(LookupError):
     """The papercut does not exist."""
 
 
+class UnsupportedMediaType(ValueError):
+    """The request body is not JSON."""
+
+
 def now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -934,6 +938,8 @@ class Store:
                 raise ValueError(f"{key} must be null or one of: {', '.join(values)}")
         for key in ("title", "description", "path", "area"):
             if key in changes:
+                if changes[key] is None:
+                    raise ValueError(f"{key} must be a string; send an empty string to clear it")
                 text_field(changes, key, required=key == "title")
         actor, reason = actor_of(changes), text_field(changes, "reason")
         with self.connect(write=True) as db:
@@ -1879,6 +1885,10 @@ class Handler(BaseHTTPRequestHandler):
             return {}
         if not 0 < length <= MAX_BODY:
             raise ValueError(f"Body must be between 1 and {MAX_BODY} bytes")
+        # Another site's page can send text/plain or form bodies without a CORS preflight, but not JSON.
+        # The server never answers a preflight, so this keeps web pages from writing to it.
+        if self.headers.get_content_type() != "application/json":
+            raise UnsupportedMediaType("Send the body as Content-Type: application/json")
         try:
             return json.loads(self.rfile.read(length))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -1987,6 +1997,8 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(404, {"error": str(error)})
         except ConflictError as error:
             self.respond(409, {"error": str(error)})
+        except UnsupportedMediaType as error:
+            self.respond(415, {"error": str(error)})
         except ValueError as error:
             self.respond(400, {"error": str(error)})
         except sqlite3.OperationalError as error:

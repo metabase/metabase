@@ -814,6 +814,20 @@ class HttpTest(unittest.TestCase):
         status, body, _ = self.call("DELETE", f"/api/papercuts/{b}/related/{a}")
         self.assertEqual((status, body["related"]), (200, []))
 
+    def test_writes_need_a_json_content_type(self):
+        body = {"repository": "metabase", "reporter": "laptop", "report_id": "r1", "title": "Trap"}
+        for content_type in ("text/plain", "application/x-www-form-urlencoded"):
+            with self.subTest(content_type):
+                self.assertEqual(self.call("POST", "/api/reports", body, {"Content-Type": content_type})[0], 415)
+        self.assertEqual(self.call("POST", "/api/reports", body,
+                                   {"Content-Type": "application/json; charset=utf-8"})[0], 201)
+
+    def test_patch_rejects_null_text(self):
+        papercut_id = self.report("r1")[1]["papercut"]["id"]
+        for key in ("description", "path", "area"):
+            with self.subTest(key):
+                self.assertEqual(self.call("PATCH", f"/api/papercuts/{papercut_id}", {key: None})[0], 400)
+
     def test_token_guards_writes(self):
         self.handler.token = "secret"
         self.assertEqual(self.report("r1")[0], 401)
