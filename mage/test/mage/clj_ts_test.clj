@@ -1,15 +1,15 @@
-(ns mage.cljts-test
-  "Golden tests for `mage cljts`: Clojure in, TypeScript-ish text out."
+(ns mage.clj-ts-test
+  "Golden tests for `mage clj-ts`: Clojure in, TypeScript-ish text out."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as process]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
-   [mage.cljts.core :as cljts]
-   [mage.cljts.diff :as diff]
-   [mage.cljts.git :as git]
-   [mage.cljts.names :as names]
-   [mage.cljts.server :as server]))
+   [mage.clj-ts.core :as clj-ts]
+   [mage.clj-ts.diff :as diff]
+   [mage.clj-ts.git :as git]
+   [mage.clj-ts.names :as names]
+   [mage.clj-ts.server :as server]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +28,7 @@
 (defn- translate
   "Translate `source` (with a standard ns form prepended) and return the output after the imports."
   [source]
-  (let [out (cljts/translate-string (str ns-form "\n" source))]
+  (let [out (clj-ts/translate-string (str ns-form "\n" source))]
     (->> (str/split-lines out)
          (drop-while #(not (str/blank? %)))
          (drop-while str/blank?)
@@ -179,8 +179,8 @@
   (testing "unknown macros using syntax-quote are shown as raw Clojure"
     (is (str/includes? (translate "(defmacro m [x] `(do ~x))") "clj`")))
   (testing "translation is deterministic"
-    (let [src (slurp "mage/src/mage/cljts/translate.clj")]
-      (is (= (cljts/translate-string src) (cljts/translate-string src))))))
+    (let [src (slurp "mage/src/mage/clj_ts/translate.clj")]
+      (is (= (clj-ts/translate-string src) (clj-ts/translate-string src))))))
 
 (deftest ^:parallel diff-rows-test
   (is (= [{:type :ctx :old 1 :new 1 :text "a"}
@@ -297,7 +297,7 @@
   (git! dir "commit" "-q" "-m" (str "change " file)))
 
 (deftest branch-parent-test
-  (fs/with-temp-dir [dir {:prefix "cljts-git"}]
+  (fs/with-temp-dir [dir {:prefix "clj-ts-git"}]
     ;; master: a1 -> a2 -> a3 ; `old` from a1 ; `feature` from a2 ; `sub` from feature
     (git! dir "init" "-q" "-b" "master")
     (commit! dir "a.clj" "(ns a)\n")
@@ -328,7 +328,7 @@
   (testing "every output line maps back to the Clojure line it came from (including past 8 forms)"
     (let [src (str "(ns a)\n\n"
                    (str/join "\n\n" (for [i (range 12)] (str "(defn f" i " [x]\n  ;; note " i "\n  (g x " i "))"))))
-          {:keys [text rows]} (cljts/translate-with-source-map src)
+          {:keys [text rows]} (clj-ts/translate-with-source-map src)
           src-lines (str/split-lines src)
           out-lines (str/split-lines text)]
       (is (= (count out-lines) (count rows)))

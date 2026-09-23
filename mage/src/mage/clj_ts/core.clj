@@ -1,13 +1,13 @@
-(ns mage.cljts.core
+(ns mage.clj-ts.core
   "Entry point for translating Clojure source into TypeScript-ish text."
   (:require
-   [mage.cljts.parse :as p]
-   [mage.cljts.rules.core]
-   [mage.cljts.rules.malli]
-   [mage.cljts.rules.metabase]
-   [mage.cljts.rules.sql]
-   [mage.cljts.rules.test]
-   [mage.cljts.translate :as t]))
+   [mage.clj-ts.parse :as p]
+   [mage.clj-ts.rules.core]
+   [mage.clj-ts.rules.malli]
+   [mage.clj-ts.rules.metabase]
+   [mage.clj-ts.rules.sql]
+   [mage.clj-ts.rules.test]
+   [mage.clj-ts.translate :as t]))
 
 (set! *warn-on-reflection* true)
 

@@ -1,4 +1,4 @@
-(ns mage.cljts.git
+(ns mage.clj-ts.git
   "Finding the before/after versions of files: a GitHub PR, local changes against a base branch, or a single file."
   (:require
    [babashka.fs :as fs]

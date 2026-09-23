@@ -1,4 +1,4 @@
-(ns mage.cljts.models
+(ns mage.clj-ts.models
   "Which application-database table each Toucan model (`:model/Card`) lives in, found by scanning the source for
   `(methodical/defmethod t2/table-name :model/X [_model] :table_name)`."
   (:require

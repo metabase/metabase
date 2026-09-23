@@ -1,4 +1,4 @@
-(ns mage.cljts.highlight
+(ns mage.clj-ts.highlight
   "Tiny syntax highlighters for the TypeScript view's output and for Clojure. They run over a whole file (so
   multi-line comments and SQL templates are colored correctly) and return one HTML string per line."
   (:require

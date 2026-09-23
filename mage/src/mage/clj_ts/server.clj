@@ -1,4 +1,4 @@
-(ns mage.cljts.server
+(ns mage.clj-ts.server
   "A small local web server showing PRs, local changes or single files as TypeScript-ish diffs, with a
   toggle back to the raw Clojure diff."
   (:require
@@ -6,10 +6,10 @@
    [clojure.string :as str]
    [hiccup.util :as hiccup.util]
    [hiccup2.core :as h]
-   [mage.cljts.core :as cljts]
-   [mage.cljts.diff :as diff]
-   [mage.cljts.git :as git]
-   [mage.cljts.highlight :as hl]
+   [mage.clj-ts.core :as clj-ts]
+   [mage.clj-ts.diff :as diff]
+   [mage.clj-ts.git :as git]
+   [mage.clj-ts.highlight :as hl]
    [org.httpkit.server :as http])
   (:import
    (java.net URLDecoder URLEncoder)))
@@ -48,7 +48,7 @@
   translated."
   [source]
   (when source
-    (cached [:translate source] #(try (cljts/translate-with-source-map source) (catch Throwable _ nil)))))
+    (cached [:translate source] #(try (clj-ts/translate-with-source-map source) (catch Throwable _ nil)))))
 
 (defn- plain-lines
   "HTML-escaped lines for files we don't highlight."
@@ -75,7 +75,7 @@
                                                          (deliver result [:ok (f item)])
                                                          (catch Throwable e (deliver result [:error e]))
                                                          (finally (.release sem))))
-                                           "mage-cljts"
+                                           "mage-clj-ts"
                                            big-stack-bytes))
                           result))
                       coll)]
@@ -322,12 +322,12 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
      [:head
       [:meta {:charset "utf-8"}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-      [:title (str title " · cljts")]
+      [:title (str title " · clj-ts")]
       [:link {:rel "icon" :href "data:,"}]
       [:style (hiccup.util/raw-string css)]]
      [:body
       [:header
-       [:a.brand {:href "/"} "cljts"]
+       [:a.brand {:href "/"} "clj-ts"]
        [:form {:action "/open" :method "get"}
         [:input {:name "q" :placeholder "PR number, PR URL, or branch"}]
         [:button {:type "submit"} "Open"]]
@@ -443,7 +443,7 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
   ;; localhost only: the server can show any file in the repo
   (http/run-server (handler start-path) {:ip "127.0.0.1" :port port})
   (let [url (str "http://localhost:" port start-path)]
-    (println (str "cljts viewer running at " url "  (Ctrl-C to stop)"))
+    (println (str "clj-ts viewer running at " url "  (Ctrl-C to stop)"))
     (when-not no-open?
       (try (process/shell {:continue true} (if (str/includes? (System/getProperty "os.name") "Mac") "open" "xdg-open") url)
            (catch Exception _ nil))))

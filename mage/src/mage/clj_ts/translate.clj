@@ -1,5 +1,5 @@
-(ns mage.cljts.translate
-  "The translation engine: turns rewrite-clj nodes into layout docs (see [[mage.cljts.doc]]).
+(ns mage.clj-ts.translate
+  "The translation engine: turns rewrite-clj nodes into layout docs (see [[mage.clj-ts.doc]]).
 
   Clojure is expression-oriented and TypeScript isn't, so every translation happens in a *position*, `(:pos ctx)`:
 
@@ -14,9 +14,9 @@
   is shown as raw Clojure in a ``clj`...` `` template."
   (:require
    [clojure.string :as str]
-   [mage.cljts.doc :as d]
-   [mage.cljts.names :as names]
-   [mage.cljts.parse :as p]
+   [mage.clj-ts.doc :as d]
+   [mage.clj-ts.names :as names]
+   [mage.clj-ts.parse :as p]
    [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)
@@ -270,7 +270,7 @@
     (update stmts (dec (count stmts)) (fn [s] [s " " text]))))
 
 (defn entry-items
-  "Turn entries (see [[mage.cljts.parse/entries]]) into bracket items, grouping every `group-size` forms and
+  "Turn entries (see [[mage.clj-ts.parse/entries]]) into bracket items, grouping every `group-size` forms and
   translating each group with `f` (which receives a vector of nodes). Comments become leading/trailing comments."
   [ents group-size f]
   (loop [ents ents, pending-lead [], group [], items []]

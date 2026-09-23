@@ -1,4 +1,4 @@
-(ns mage.cljts.doc
+(ns mage.clj-ts.doc
   "A tiny Wadler/prettier-style layout engine. Translation rules build *docs* instead of strings so that line
   breaking and indentation are decided in one place, deterministically.
 

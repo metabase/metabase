@@ -1,4 +1,4 @@
-(ns mage.cljts.rules.test
+(ns mage.clj-ts.rules.test
   "clojure.test and metabase.test, shown Jest-style:
 
       (deftest foo-test (testing \"x\" (is (= 1 (f)))))
@@ -8,11 +8,11 @@
   are undone when the enclosing block ends."
   (:require
    [clojure.string :as str]
-   [mage.cljts.doc :as d]
-   [mage.cljts.names :as names]
-   [mage.cljts.parse :as p]
-   [mage.cljts.rules.core :as rc]
-   [mage.cljts.translate :as t]))
+   [mage.clj-ts.doc :as d]
+   [mage.clj-ts.names :as names]
+   [mage.clj-ts.parse :as p]
+   [mage.clj-ts.rules.core :as rc]
+   [mage.clj-ts.translate :as t]))
 
 (set! *warn-on-reflection* true)
 
@@ -177,7 +177,7 @@
                [["using _ = " (t/call-docs fname (mapv #(x ctx %) (take n-args args))) ";"]]
                (p/entries node (inc n-args)))))
 
-;; Registered as a fallback in [[mage.cljts.translate]] via the generic-head hook below.
+;; Registered as a fallback in [[mage.clj-ts.translate]] via the generic-head hook below.
 (defn with-fallback
   "Statement translation for unknown `with-*` macros from test namespaces, or nil."
   [ctx node]

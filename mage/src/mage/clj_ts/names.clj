@@ -1,4 +1,4 @@
-(ns mage.cljts.names
+(ns mage.clj-ts.names
   "Turning Clojure names into TypeScript-looking names."
   (:require
    [clojure.string :as str]))

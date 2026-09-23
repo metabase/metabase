@@ -1,11 +1,11 @@
-(ns mage.cljts.rules.core
+(ns mage.clj-ts.rules.core
   "Rules for clojure.core: definitions, local bindings, control flow, threading macros, collections and interop."
   (:require
    [clojure.string :as str]
-   [mage.cljts.doc :as d]
-   [mage.cljts.names :as names]
-   [mage.cljts.parse :as p]
-   [mage.cljts.translate :as t]
+   [mage.clj-ts.doc :as d]
+   [mage.clj-ts.names :as names]
+   [mage.clj-ts.parse :as p]
+   [mage.clj-ts.translate :as t]
    [rewrite-clj.node :as n]))
 
 (set! *warn-on-reflection* true)
