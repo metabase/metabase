@@ -9,8 +9,10 @@
    [metabase-enterprise.remote-sync.db-activity :as db-activity]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +33,8 @@
 
 (defn- do-with-content!
   "A remote-synced collection with two child collections (one nested in the other), `n` cards spread over the three,
-  one card built on another card, and `(quot n 5)` dashboards of three dashcards each. Calls `f`."
+  one card built on another card, and `(quot n 5)` dashboards of three dashcards each; the first dashboard's first
+  dashcard has a series card and its filter takes values from a card. Calls `f` with the root collection's id."
   [n f]
   (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
     (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Collection]
@@ -44,23 +47,61 @@
             cards  (vec (for [i (range n)] (insert-card! (colls (mod i 3)) i)))]
         (insert-card! nested n :dataset_query (mt/mbql-query nil {:source-table (str "card__" (first cards))}))
         (dotimes [d (quot n 5)]
-          (let [dash (t2/insert-returning-pk! :model/Dashboard {:name (format "Walk dash %03d" d)
-                                                                :collection_id (colls (mod d 3))
-                                                                :creator_id (mt/user->id :rasta) :parameters []})]
-            (t2/insert! :model/DashboardCard
-                        (for [k (range 3)]
-                          {:dashboard_id dash :card_id (cards (mod (+ d k) n))
-                           :row (* 4 k) :col 0 :size_x 12 :size_y 4
-                           :parameter_mappings [] :visualization_settings {}}))))
-        (f)))))
+          (let [dash (t2/insert-returning-pk!
+                      :model/Dashboard
+                      {:name (format "Walk dash %03d" d) :collection_id (colls (mod d 3))
+                       :creator_id (mt/user->id :rasta)
+                       :parameters (if (zero? d)
+                                     [{:id "p1" :name "P" :slug "p" :type :category
+                                       :values_source_type "card"
+                                       :values_source_config {:card_id (peek cards) :value_field [:field 1 nil]}}]
+                                     [])})
+                dcs  (vec (for [k (range 3)]
+                            (t2/insert-returning-pk!
+                             :model/DashboardCard
+                             {:dashboard_id dash :card_id (cards (mod (+ d k) n))
+                              :row (* 4 k) :col 0 :size_x 12 :size_y 4
+                              :parameter_mappings [] :visualization_settings {}})))]
+            (when (zero? d)
+              (t2/insert! :model/DashboardCardSeries {:dashboardcard_id (first dcs) :card_id (cards 5) :position 0}))))
+        (f root)))))
 
-(defn- walk-statements [n]
-  (do-with-content! n #(:statements (db-activity/count-db-activity spec/exportable-entities))))
+(defn- walk-statements! [n]
+  (do-with-content! n (fn [_] (:statements (db-activity/count-db-activity spec/exportable-entities)))))
 
 (deftest exportable-walk-statements-do-not-grow-with-content-test
   (testing "the walk's statement count is the same for 20 cards and 4 dashboards as for 40 cards and 8 dashboards"
-    (let [small (walk-statements 20)
-          large (walk-statements 40)]
+    (let [small (walk-statements! 20)
+          large (walk-statements! 40)]
       (testing (format "statements: %d at 20 cards, %d at 40 cards" small large)
         (is (pos? small))
         (is (= small large))))))
+
+(deftest exportable-walk-finds-what-the-per-entity-walk-finds-test
+  (testing "the batched walk finds exactly the targets that calling serdes/descendants once per entity finds"
+    (do-with-content!
+     10
+     (fn [root]
+       (let [batched    (spec/exportable-entities)
+             ;; the walk as it was: serdes/descendants once per entity from the one root (which has no parent, so
+             ;; the `required` walk adds nothing), minus the models git sync walks through but never writes
+             per-entity (-> (u/group-by first second
+                                        (keys (u/traverse [["Collection" root]]
+                                                          #(serdes/descendants (first %) (second %)
+                                                                               spec/git-sync-extract-opts))))
+                            (dissoc "Table" "Field"))]
+         (is (= 11 (count (get batched "Card"))))
+         (is (= 2 (count (get batched "Dashboard"))))
+         (is (= (update-vals per-entity set) (update-vals batched set))))))))
+
+(deftest descendants-batch-matches-descendants-test
+  (testing "each batched override finds the union of what serdes/descendants finds entity by entity"
+    (do-with-content!
+     10
+     (fn [_]
+       (doseq [model ["Card" "Dashboard"]
+               :let  [ids (get (spec/exportable-entities) model)]]
+         (testing model
+           (is (seq ids))
+           (is (= (into #{} (mapcat #(keys (serdes/descendants model % spec/git-sync-extract-opts))) ids)
+                  (set (keys (serdes/descendants-batch model ids spec/git-sync-extract-opts)))))))))))

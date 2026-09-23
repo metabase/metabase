@@ -450,10 +450,11 @@
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))
 
-(defmethod serdes/descendants "Dashboard" [_model-name id _opts]
-  (let [dashcards (dashboards.db/dashcard-serdes-columns id)
-        dashboard (dashboards.db/dashboard id)
-        dash-id   id]
+(defn- dashboard-descendants
+  "[[serdes/descendants]] of the Dashboard with `id`, given its row `dashboard`, its DashboardCards `dashcards` (as
+  [[dashboards.db/dashcard-serdes-columns]] selects them) and the DashboardCardSeries `series` of those dashcards."
+  [id dashboard dashcards series]
+  (let [dash-id id]
     (merge-with
      merge
      ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
@@ -465,7 +466,7 @@
                               card_id (conj card_id))]
                 {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (into {} (for [{:keys [id card_id dashboardcard_id]} (dashboards.db/dashcard-series-columns (map :id dashcards))]
+       (into {} (for [{:keys [id card_id dashboardcard_id]} series]
                   {["Card" card_id] {"DashboardCardSeries" id
                                      "DashboardCard"       dashboardcard_id
                                      "Dashboard"           dash-id}})))
@@ -479,6 +480,27 @@
      ;; parameter with values_source_type = "card" will depend on a card
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
+
+(defmethod serdes/descendants "Dashboard" [_model-name id _opts]
+  (let [dashcards (dashboards.db/dashcard-serdes-columns id)]
+    (dashboard-descendants id
+                           (dashboards.db/dashboard id)
+                           dashcards
+                           (when (not-empty dashcards)
+                             (dashboards.db/dashcard-series-columns (map :id dashcards))))))
+
+(defmethod serdes/descendants-batch "Dashboard" [_model-name ids _opts]
+  (let [dashboards (u/index-by :id (dashboards.db/dashboards ids))
+        dashcards  (dashboards.db/dashcard-serdes-columns-for-dashboards ids)
+        series     (when (seq dashcards)
+                     (group-by :dashboardcard_id (dashboards.db/dashcard-series-columns (mapv :id dashcards))))
+        dashcards  (group-by :dashboard_id dashcards)]
+    (transduce (map (fn [id]
+                      (let [dcs (get dashcards id)]
+                        (dashboard-descendants id (get dashboards id) dcs (mapcat #(get series (:id %)) dcs)))))
+               (partial merge-with merge)
+               {}
+               ids)))
 
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
