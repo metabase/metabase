@@ -138,8 +138,16 @@
 (defn delete-other-spaces!
   "Delete the rows of every embedding space but `space`, returning the number deleted.
 
-  Switching embedding model abandons a whole space; nothing else reclaims it under this backend."
+  Switching embedding model abandons a whole space, and nothing else reclaims it under this backend: the pgvector
+  index-cleanup job does not run here."
   [space]
+  ;; This assumes one configured embedding model per deployment. Mid-rollout, nodes on the old and the new model
+  ;; each see the other's rows as abandoned and delete them, so the corpus is re-embedded once per flip until they
+  ;; converge -- costly but self-correcting, since embeddings are derived data. Scoping the delete by age or by
+  ;; node would trade that for rows that are never reclaimed at all.
+  ;;
+  ;; The per-node index directory of an abandoned space is left on disk; evicting sibling directories is a
+  ;; deliberate follow-up (PLAN cut list item 1), and a restart is the workaround.
   (semantic-search.db/delete-embeddings-outside-space! space))
 
 (defn stored-model-ids

@@ -127,8 +127,11 @@
                   fallback-results (try
                                      ;; The Lucene arm already ran the appdb query to fuse with; running it again
                                      ;; here would double every search's keyword cost to rediscover the same rows.
-                                     (cond->> (or keyword-results
-                                                  (search.engine/results (assoc search-ctx :search-engine fallback)))
+                                     ;; `some?`, not `or`: an empty vector means that arm ran and matched nothing,
+                                     ;; while nil means it never ran and this fallback is the only keyword search.
+                                     (cond->> (if (some? keyword-results)
+                                                keyword-results
+                                                (search.engine/results (assoc search-ctx :search-engine fallback)))
                                        ;; The in-place engine returns a reducible (but not seqable) result that needs to
                                        ;; be realized before we concat and dedup with the semantic engine results.
                                        (= :search.engine/in-place fallback)

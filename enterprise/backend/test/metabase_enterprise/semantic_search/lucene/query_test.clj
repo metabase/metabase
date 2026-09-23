@@ -5,6 +5,8 @@
    [metabase-enterprise.semantic-search.lucene.index :as lucene.index]
    [metabase-enterprise.semantic-search.lucene.query :as lucene.query]
    [metabase-enterprise.semantic-search.lucene.test-util :as lucene.tu]
+   [metabase.search.config :as search.config]
+   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
@@ -106,6 +108,21 @@
     "#personal_owner_id:__null__"                           "exclude"
     "#((personal_owner_id:__null__ personal_owner_id:5)~1)" "exclude-others"))
 
+;;;; The keyword arm
+
+(deftest keyword-arm-distinguishes-empty-from-not-run-test
+  (testing "an arm that ran and matched nothing is empty, so the caller need not search again"
+    (with-redefs [search.engine/supported-engine? (constantly true)
+                  search.engine/results           (constantly [])]
+      (is (= [] (#'lucene.query/keyword-hits {:search-string "puppy"} 10)))))
+  (testing "an app DB the appdb engine cannot serve leaves the arm nil, so the caller still falls back"
+    (with-redefs [search.engine/supported-engine? (constantly false)]
+      (is (nil? (#'lucene.query/keyword-hits {:search-string "puppy"} 10)))))
+  (testing "an arm that threw is nil for the same reason"
+    (with-redefs [search.engine/supported-engine? (constantly true)
+                  search.engine/results           (fn [_] (throw (ex-info "no index" {})))]
+      (is (nil? (#'lucene.query/keyword-hits {:search-string "puppy"} 10))))))
+
 ;;;; End to end, through the search API
 
 (def ^:private dog-card "Dog Training Guide")
@@ -162,6 +179,30 @@
         (is (= #{:rrf :semantic-distance :bookmarked :user-recency}
                (set (map :name (:all-scores result))))
             "the two fusion scorers rank the result, and the appdb scorers are layered on afterwards")))))
+
+(defn- search-context
+  "A full search context for `search-string`, as the API builds one for `:crowberto`."
+  [search-string]
+  (search/search-context {:current-user-id    (mt/user->id :crowberto)
+                          :current-user-perms #{"/"}
+                          :is-superuser?      true
+                          :archived           false
+                          :context            :default
+                          :search-string      search-string
+                          :models             search.config/all-models
+                          :model-ancestors?   false}))
+
+(deftest query-passes-a-missing-keyword-arm-through-test
+  (with-semantic-search
+    (mt/with-temp [:model/Card _ {:name dog-card}]
+      (mt/with-test-user :crowberto
+        (testing "an app DB without an appdb index reports no keyword results at all, not an empty set"
+          ;; Built outside the redef: search-context resolves engines, which reads the multimethod's methods.
+          (let [ctx (search-context "puppy")]
+            (with-redefs [search.engine/supported-engine? (constantly false)]
+              (is (nil? (:keyword-results (lucene.query/query ctx)))))))
+        (testing "otherwise the rows it already fetched come back for the caller to reuse"
+          (is (some? (:keyword-results (lucene.query/query (search-context "Dog"))))))))))
 
 (deftest blank-search-string-falls-back-to-the-keyword-arm-test
   (with-semantic-search

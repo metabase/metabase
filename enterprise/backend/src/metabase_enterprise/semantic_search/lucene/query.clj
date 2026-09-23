@@ -141,19 +141,19 @@
       (vec (map-indexed (partial hit->row stored) matching)))))
 
 (defn- keyword-hits
-  "The appdb keyword engine's results for `search-context`, best first.
+  "The appdb keyword engine's results for `search-context`, best first, or nil when that arm did not run.
 
-  Degrades to no keyword arm rather than failing the search: the vector arm can still answer."
+  Degrades rather than failing the search: the vector arm can still answer. The nil is load-bearing -- an empty
+  vector means the arm ran and matched nothing, while nil means the caller still owes the user a keyword search
+  and should fall back to another engine."
   [search-context limit]
   (if-not (search.engine/supported-engine? :search.engine/appdb)
-    (do
-      (log/debug "Skipping the keyword arm of semantic search: this app DB cannot hold a search index")
-      [])
+    (log/debug "Skipping the keyword arm of semantic search: this app DB cannot hold a search index")
     (try
       (into [] (take limit) (search.engine/results (assoc search-context :search-engine :search.engine/appdb)))
       (catch Throwable t
         (log/warnf "Keyword arm of semantic search failed, continuing with vector results only: %s" (ex-message t))
-        []))))
+        nil))))
 
 ;;;; Fusion
 
@@ -241,7 +241,8 @@
   Returns `{:results … :raw-count … :keyword-results …}`. `:raw-count` counts the fused set before permission
   filtering -- the signal [[metabase-enterprise.semantic-search.core/results]] uses to decide whether to
   supplement -- and `:keyword-results` are the appdb rows this query already paid for, so that supplement does not
-  run the same query a second time.
+  run the same query a second time. `:keyword-results` is nil when the keyword arm did not run at all, which
+  leaves that caller to fall back to another engine as it would have without this backend.
   Throws when the query cannot be embedded, which that caller turns into a keyword-only fallback."
   [search-context]
   (let [search-string (:search-string search-context)]
