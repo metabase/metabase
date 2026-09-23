@@ -470,7 +470,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.log("metabot chat should be interactive");
         cy.findByText("Ask questions to AI.").should("be.visible");
         cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
-        cy.findByText(/Something went wrong/).should("be.visible");
+        // No LLM is configured here, so the turn fails and the alert names the reason: the e2e
+        // localhost guard refusing to call the real provider.
+        cy.findByText(/Refusing to send an LLM request/).should("be.visible");
 
         cy.log(
           "uses sidebar layout by default when no layout attribute is provided",
