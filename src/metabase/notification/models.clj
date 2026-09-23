@@ -501,11 +501,23 @@
   "Schema for :model/NotificationCard on a create request."
   (notification-card-schema {:with-id? false}))
 
+(defn- check-card-not-in-worktree
+  [card-id]
+  (when (and card-id (notification.db/card-worktree-id card-id))
+    (throw (ex-info "A notification cannot be attached to a worktree's card"
+                    {:status-code 400 :card-id card-id}))))
+
 (t2/define-before-insert :model/NotificationCard
   [instance]
+  (check-card-not-in-worktree (:card_id instance))
   (merge {:send_condition :has_result
           :send_once      false}
          instance))
+
+(t2/define-before-update :model/NotificationCard
+  [instance]
+  (check-card-not-in-worktree (:card_id (t2/changes instance)))
+  instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                          Update Spec                                            ;;

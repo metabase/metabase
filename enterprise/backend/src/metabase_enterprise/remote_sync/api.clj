@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -43,16 +44,18 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (or branch (impl/sync-branch))
-        user-id     api/*current-user-id*
-        {task-id :id}
-        (impl/async-import!
-         branch-name force {}
-         :merge?     (or merge false)
-         :on-success (fn [task-id _result]
-                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
-    {:status :success
-     :task_id task-id
-     :message (when-not task-id "No changes since last import")}))
+        user-id     api/*current-user-id*]
+    (api/check-400 (or (nil? (mdb.worktree/worktree-id))
+                       (= branch-name (impl/sync-branch)))
+                   "A worktree imports the branch it was checked out on")
+    (let [{task-id :id} (impl/async-import!
+                         branch-name force {}
+                         :merge?     (or merge false)
+                         :on-success (fn [task-id _result]
+                                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
+      {:status :success
+       :task_id task-id
+       :message (when-not task-id "No changes since last import")})))
 
 (api.macros/defendpoint :get "/is-dirty" :- remote-sync.schema/IsDirtyResponse
   "Check if any remote-synced collection or collection item has local changes that have not been pushed

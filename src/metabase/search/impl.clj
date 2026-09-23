@@ -80,7 +80,9 @@
   [search-ctx instance]
   (let [user-id (:current-user-id search-ctx)
         db-id   (:database_id instance)]
+    ;; an index row whose model the indexing run could not see names no database, and belongs to nobody
     (and
+     (some? db-id)
      (= :query-builder-and-native (perms/full-database-permission-for-user user-id :perms/create-queries db-id))
      (= :unrestricted (perms/full-database-permission-for-user user-id :perms/view-data db-id)))))
 

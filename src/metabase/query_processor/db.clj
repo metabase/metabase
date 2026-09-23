@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as app-db]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
@@ -74,15 +75,17 @@
                                    :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
-  "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
+  "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`.
+  Moves every world's Cards: the ids are the caller's own and the flushing thread holds no worktree."
   [card-id->timestamp :- [:map-of ::lib.schema.id/card Temporal]]
-  (t2/query {:update [(t2/table-name :model/Card)]
-             :where  [:in :id (keys card-id->timestamp)]
-             :set    {:last_used_at (into [:case]
-                                          (mapcat (fn [[id timestamp]]
-                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                  card-id->timestamp))
-                      :updated_at :updated_at}}))
+  (mdb.worktree/without-worktree-scoping
+   (t2/query {:update [(t2/table-name :model/Card)]
+              :where  [:in :id (keys card-id->timestamp)]
+              :set    {:last_used_at (into [:case]
+                                           (mapcat (fn [[id timestamp]]
+                                                     [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                   card-id->timestamp))
+                       :updated_at :updated_at}})))
 
 (mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."

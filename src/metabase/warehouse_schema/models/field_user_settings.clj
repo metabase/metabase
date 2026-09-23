@@ -118,7 +118,7 @@
       ;; It's too short, so no schema. Shift them over and add a nil schema.
       [db nil schema table])))
 
-(defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
+(defmethod serdes/make-spec "FieldUserSettings" [_model-name opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
@@ -129,6 +129,10 @@
                :fk_target_field_id_set false}
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
+               :dimensions   (serdes/nested :model/Dimension :field_id
+                                            (merge {:sort-by          (juxt :name :created_at)
+                                                    :delete-children! warehouse-schema.db/delete-dimensions-for-field!}
+                                                   opts))
                :field_id     {::serdes/fk true
                               :export     (constantly ::serdes/skip)
                               :import-with-context (fn [current _ _]

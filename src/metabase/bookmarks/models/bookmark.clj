@@ -79,7 +79,7 @@
   [user-id :- ::lib.schema.id/user]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}]
-    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope (mdb.worktree/worktree-id))
+    (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
          (map normalize-bookmark-result))))
 
 (defn save-ordering!
@@ -91,10 +91,30 @@
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
+(defn- check-same-world
+  [model id]
+  (when (and id (not= (bookmarks.db/item-worktree-id model id) (mdb.worktree/worktree-id)))
+    (throw (ex-info "A bookmark cannot point at another world's content"
+                    {:status-code 400 :model model :id id}))))
+
+(t2/define-before-insert :model/CardBookmark [bookmark]
+  (check-same-world :model/Card (:card_id bookmark))
+  bookmark)
+
+(t2/define-before-insert :model/DashboardBookmark [bookmark]
+  (check-same-world :model/Dashboard (:dashboard_id bookmark))
+  bookmark)
+
+(t2/define-before-insert :model/DocumentBookmark [bookmark]
+  (check-same-world :model/Document (:document_id bookmark))
+  bookmark)
+
 (t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (check-same-world :model/Collection (:collection_id bookmark))
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
   bookmark)
 
 (t2/define-before-update :model/CollectionBookmark [model]
+  (check-same-world :model/Collection (:collection_id (t2/changes model)))
   (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
   model)

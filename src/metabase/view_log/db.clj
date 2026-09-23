@@ -3,6 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -11,14 +12,16 @@
 
 (defn- increment-view-counts-of-model!
   "Increments `model`'s `view_count` per `count->ids`, via a raw update that bypasses Toucan 2 model hooks
-  (specifically the search-index enqueue on after-update)."
+  (specifically the search-index enqueue on after-update). Counts every world's rows: the ids are the caller's own
+  and the flushing thread holds no worktree."
   [model count->ids]
-  (t2/query {:update (t2/table-name model)
-             :set    {:view_count [:+ :view_count (into [:case]
-                                                        (mapcat (fn [[cnt ids]]
-                                                                  [[:in :id ids] cnt])
-                                                                count->ids))]}
-             :where  [:in :id (apply concat (vals count->ids))]}))
+  (mdb.worktree/without-worktree-scoping
+   (t2/query {:update (t2/table-name model)
+              :set    {:view_count [:+ :view_count (into [:case]
+                                                         (mapcat (fn [[cnt ids]]
+                                                                   [[:in :id ids] cnt])
+                                                                 count->ids))]}
+              :where  [:in :id (apply concat (vals count->ids))]})))
 
 (def ^:private count->ids-schema
   [:map-of ms/PositiveInt [:sequential ms/PositiveInt]])

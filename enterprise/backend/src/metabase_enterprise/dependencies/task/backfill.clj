@@ -18,6 +18,7 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -122,19 +123,21 @@
 
 (defn- backfill-dependencies!
   "Job to backfill dependencies for all entities.
-  Returns true if a full batch has been selected, nil or false otherwise."
+  Returns true if a full batch has been selected, nil or false otherwise. Runs across every world: a card of a
+  worktree has dependencies of its own, and the job holds no worktree of its own to read them in."
   []
   (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size entity-type]
-                  (if (< batch-size 1)
-                    (reduced 0)
-                    (let [processed (backfill-entity-batch! entity-type batch-size)]
-                      (when (pos? processed)
-                        (log/info "Updated" processed "entities."))
-                      (- batch-size processed))))
-                (deps.settings/dependency-backfill-batch-size)
-                entity-types)
-        (< 1))))
+    (mdb.worktree/without-worktree-scoping
+     (-> (reduce (fn [batch-size entity-type]
+                   (if (< batch-size 1)
+                     (reduced 0)
+                     (let [processed (backfill-entity-batch! entity-type batch-size)]
+                       (when (pos? processed)
+                         (log/info "Updated" processed "entities."))
+                       (- batch-size processed))))
+                 (deps.settings/dependency-backfill-batch-size)
+                 entity-types)
+         (< 1)))))
 
 (defn- has-pending-retries?
   "Whether any entity is in retry backoff that this instance can actually act on.

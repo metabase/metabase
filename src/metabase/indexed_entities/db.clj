@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -38,6 +39,13 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn card-worktree-id
+  "The `:worktree_id` of the Card with `card-id`, read across every world: a Card of a worktree is invisible to the
+  main app, and an index has to know about it either way."
+  [card-id :- ::lib.schema.id/card]
+  (mdb.worktree/without-worktree-scoping
+   (t2/select-one-fn :worktree_id :model/Card card-id)))
 
 (mu/defn model-index-values
   "The ModelIndexValues of the ModelIndex with `model-index-id`."

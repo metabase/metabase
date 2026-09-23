@@ -1528,18 +1528,20 @@
 ;;; ------------------------------------------- Remote Changes Check -------------------------------------------
 
 (def ^:private remote-changes-cache
-  "Cache for remote changes check to avoid frequent git operations.
-   Structure: {:last-checked <instant>
-               :branch <branch-name>
-               :remote-version <git-sha>
-               :local-version <git-sha or nil>
-               :has-changes? <boolean>}"
-  (atom nil))
+  "Cache for remote changes check to avoid frequent git operations, by the world the answer is for -- the id of the
+   worktree it was computed in, or nil for the main app. Two worlds on the same branch have imported it up to
+   versions of their own, so neither can read the other's answer.
+   Structure: {<worktree-id or nil> {:last-checked <instant>
+                                     :branch <branch-name>
+                                     :remote-version <git-sha>
+                                     :local-version <git-sha or nil>
+                                     :has-changes? <boolean>}}"
+  (atom {}))
 
 (defn invalidate-remote-changes-cache!
   "Invalidate the remote changes cache. Call this after import/export."
   []
-  (reset! remote-changes-cache nil))
+  (reset! remote-changes-cache {}))
 
 (defn- cache-expired?
   "Check if the cache has expired based on TTL setting."
@@ -1590,7 +1592,7 @@
                 ;; remote moved past local.
                 :has-changes? (or (nil? last-imported)
                                   (not= last-imported current-remote))}]
-    (reset! remote-changes-cache result)
+    (swap! remote-changes-cache assoc (mdb.worktree/worktree-id) result)
     (assoc result :cached? false)))
 
 (defn has-remote-changes?
@@ -1611,7 +1613,7 @@
   ([]
    (has-remote-changes? nil))
   ([{:keys [force-refresh?]}]
-   (let [cache-state @remote-changes-cache
+   (let [cache-state (get @remote-changes-cache (mdb.worktree/worktree-id))
          current-branch (sync-branch)]
      (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
@@ -1628,8 +1630,9 @@
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
   Takes a result map with a :status key (either :success, :conflict, or :error) and optional :message key, a
-  RemoteSyncTask ID, and an optional branch name. On success, updates the remote-sync-branch setting (if branch
-  provided), marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
+  RemoteSyncTask ID, and an optional branch name. On success, points the caller at the branch (if one was
+  provided) -- their worktree when the task was started from one, the setting otherwise, see [[set-sync-branch!]]
+  -- marks the task complete, and invalidates the remote changes cache. On conflict, sets the version and
   stores the conflicts. On error, marks the task as failed with the error message. For any other status, marks the
   task as failed with 'Unexpected Error'.
 
@@ -1658,7 +1661,7 @@
               (do
                 (case (:status result)
                   :success (do
-                             (when (and branch (nil? (mdb.worktree/worktree-id)))
+                             (when branch
                                (set-sync-branch! branch))
                              (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do

@@ -140,3 +140,41 @@
                                     10000 {:message ::timed-out})))))
           (finally
             (remote-sync.db/delete-worktree! worktree-id)))))))
+
+(deftest a-worktree-leaves-transform-jobs-alone-test
+  (testing "transform jobs live only in the main app: a worktree reads them but changes none"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/TransformJob {job-id :id} {:name "Main job" :schedule "0 0 0 * * ?"}]
+        (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "jobs-" (random-uuid))})
+              header            (worktree-header worktree-id)
+              url               (str "transform-job/" job-id)]
+          (try
+            (is (false? (:can_execute (mt/user-http-request :crowberto :get 200 url header))))
+            (mt/user-http-request :crowberto :post 403 "transform-job" header {:name "Branch job" :schedule "0 0 0 * * ?"})
+            (mt/user-http-request :crowberto :put 403 url header {:name "Renamed" :schedule "0 0 1 * * ?"})
+            (mt/user-http-request :crowberto :put 400 "transform-job/active" header {:active false})
+            (mt/user-http-request :crowberto :delete 403 url header)
+            (is (= {:name "Main job" :schedule "0 0 0 * * ?" :active true}
+                   (t2/select-one [:model/TransformJob :name :schedule :active] :id job-id)))
+            (finally
+              (remote-sync.db/delete-worktree! worktree-id))))))))
+
+(deftest a-remapping-stays-in-its-worktree-test
+  (testing "a Field is shared by every world, but the remapping of one belongs to the world that made it"
+    (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "remap-" (random-uuid))})
+          field-id          (mt/id :venues :name)
+          dimension-names   #(->> (apply mt/user-http-request :crowberto :get 200 (str "field/" field-id) %&)
+                                  :dimensions
+                                  (map :name)
+                                  set)]
+      (try
+        (mt/user-http-request :crowberto :post 200 (str "field/" field-id "/dimension")
+                              (worktree-header worktree-id)
+                              {:type "internal" :name "Branch remapping"})
+        (is (= #{"Branch remapping"} (dimension-names (worktree-header worktree-id))))
+        (is (= #{} (dimension-names)))
+        (finally
+          (remote-sync.db/delete-worktree! worktree-id)))
+      (testing "and it goes when the worktree does"
+        (mdb.worktree/without-worktree-scoping
+         (is (zero? (t2/count :model/Dimension :field_id field-id))))))))

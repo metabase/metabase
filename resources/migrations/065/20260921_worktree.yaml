@@ -2673,3 +2673,34 @@ databaseChangeLog:
                   remarks: Worktree the user is working in; null for the main app
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v65.2026-09-23T19:00:00
+      author: ranquild
+      comment: Update v_query_log to leave out a worktree's executions - their query text belongs to a branch rather than to this instance's analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v7/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v7/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v7/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v6/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v6/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v6/h2-query_log.sql
+            relativeToChangelogFile: true

@@ -33,6 +33,22 @@
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
 #_(derive :model/ModelIndex :hook/search-index)
 
+(defn- check-model-not-in-worktree
+  [model-id]
+  (when (and model-id (indexed-entities.db/card-worktree-id model-id))
+    (throw (ex-info "An index cannot be built on a worktree's model"
+                    {:status-code 400 :model-id model-id}))))
+
+(t2/define-before-insert :model/ModelIndex
+  [instance]
+  (check-model-not-in-worktree (:model_id instance))
+  instance)
+
+(t2/define-before-update :model/ModelIndex
+  [instance]
+  (check-model-not-in-worktree (:model_id (t2/changes instance)))
+  instance)
+
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
   ;; first place!) on the way out
@@ -213,6 +229,7 @@
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
                   :archived      false
                   :database-id   :model.database_id
+                  :worktree-id   [:coalesce :model.worktree_id [:inline 0]]
                   :created-at    false
                   :updated-at    false}
    :search-terms [:name]
