@@ -29,6 +29,7 @@ import { initializePlugin as initializeEmbedding } from "./embedding";
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_iframe_sdk";
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
+import { initializePlugin as initializeEmbeddingMap } from "./embedding_map";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
@@ -83,6 +84,7 @@ export function initializePlugins() {
   initializeEmbedding();
   initializeEmbeddingIframeSdk();
   initializeEmbeddingIframeSdkSetup();
+  initializeEmbeddingMap();
   initializeEmbeddingSdk();
   initializeFeatureLevelPermissions();
   initializeGroupManagers();

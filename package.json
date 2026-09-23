@@ -162,6 +162,7 @@
     "ttag": "1.7.21",
     "typescript": "6.0.3",
     "typescript7": "npm:typescript@7.0.2",
+    "umap-js": "^1.4.0",
     "underscore": "^1.13.8",
     "url": "^0.11.4",
     "yup": "^0.32.11"

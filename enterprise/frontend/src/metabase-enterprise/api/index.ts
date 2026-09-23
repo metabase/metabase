@@ -10,6 +10,7 @@ export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./data-app";
 export * from "./db-routing";
+export * from "./embedding-projection";
 export * from "./dependencies";
 export * from "./erd";
 export * from "./gdrive";

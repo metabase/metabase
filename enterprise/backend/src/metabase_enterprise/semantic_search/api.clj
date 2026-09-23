@@ -2,6 +2,7 @@
   "/api/ee/semantic-search endpoints"
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.duplicates :as semantic.duplicates]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
@@ -16,6 +17,8 @@
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.search.ingestion :as search.ingestion]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [ring.util.response :as response]))
 
 (def ^:private duplicate-question
@@ -122,6 +125,53 @@
   (duplicates-backfill/trigger-backfill!)
   (-> (response/response {:state "queued"})
       (assoc :status 202)))
+
+(def ^:private projection-response
+  [:map {:closed true}
+   [:points [:sequential
+             [:map {:closed true}
+              [:model string?]
+              [:model_id string?]
+              [:name string?]
+              [:embedding [:sequential number?]]]]]])
+
+(defn- parse-embedding
+  "Parse a pgvector embedding value (a PGobject or string like \"[0.1,-0.2,...]\") into a vector of doubles."
+  [embedding]
+  (let [s (str/replace (str embedding) #"[\[\]]" "")]
+    (if (str/blank? s)
+      []
+      (mapv parse-double (str/split s #",")))))
+
+(api.macros/defendpoint :get "/projection" :- projection-response
+  "Return every non-archived document in the active semantic search index with its raw embedding vector, capped at
+  5000 rows. Administrators only.
+
+  Returns {:points []} when no pgvector database is configured or no index is active."
+  []
+  (api/check-superuser)
+  (if-not (semantic.db.datasource/pgvector-configured?)
+    {:points []}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)
+          active-index   (when (and pgvector index-metadata)
+                           (semantic.index-metadata/get-active-index-state pgvector index-metadata))
+          table-name     (-> active-index :index :table-name)]
+      (if-not table-name
+        {:points []}
+        (let [rows (jdbc/execute! pgvector
+                                  (semantic.index/sql-format-quoted
+                                   {:select [:model :model_id :name :embedding]
+                                    :from   [(keyword table-name)]
+                                    :where  [:= :archived false]
+                                    :limit  5000})
+                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+          {:points (mapv (fn [row]
+                           {:model     (:model row)
+                            :model_id  (:model_id row)
+                            :name      (:name row)
+                            :embedding (parse-embedding (:embedding row))})
+                         rows)})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-search` routes."

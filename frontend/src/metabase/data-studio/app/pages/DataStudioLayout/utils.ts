@@ -7,6 +7,7 @@ type TabName =
   | "transforms"
   | "dependencies"
   | "schema-viewer"
+  | "embedding-map"
   | "glossary"
   | "git-sync"
   | "settings";
@@ -23,6 +24,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "dependencies";
     case pathname.startsWith(Urls.dataStudioSchemaViewer()):
       return "schema-viewer";
+    case pathname.startsWith(Urls.dataStudioEmbeddingMap()):
+      return "embedding-map";
     case pathname.startsWith(Urls.dataStudioLibrary()):
       return "library";
     case pathname.startsWith(Urls.transformList()):

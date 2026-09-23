@@ -13,7 +13,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_EMBEDDING_MAP, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -141,6 +141,15 @@ export function DataStudioLayout() {
           showLabel={isNavbarOpened}
           isGated={!hasDependenciesFeature}
         />
+        {PLUGIN_EMBEDDING_MAP.isEnabled && (
+          <AreaTab
+            label={t`Embedding map`}
+            icon="bubble"
+            to={Urls.dataStudioEmbeddingMap()}
+            isSelected={currentTab === "embedding-map"}
+            showLabel={isNavbarOpened}
+          />
+        )}
       </AreaTabGroup>
     </>
   );

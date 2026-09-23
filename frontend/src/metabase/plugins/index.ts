@@ -75,6 +75,7 @@ export {
 export { PLUGIN_DATA_APPS } from "./oss/data-apps";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
+export { PLUGIN_EMBEDDING_MAP } from "./oss/embedding-map";
 export {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalProps,

@@ -1,4 +1,4 @@
-import { render, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 
 import { SemanticDuplicatesTable } from "./SemanticDuplicatesTable";
@@ -11,9 +11,10 @@ describe("SemanticDuplicatesTable", () => {
       { id: 3, name: "Orders over time" },
     ];
 
-    render(<SemanticDuplicatesTable rows={[{ question, duplicates }]} />, {
-      withRouter: true,
-    });
+    renderWithProviders(
+      <SemanticDuplicatesTable rows={[{ question, duplicates }]} />,
+      { withRouter: true },
+    );
 
     expect(
       screen.getAllByRole("columnheader").map((cell) => cell.textContent),
