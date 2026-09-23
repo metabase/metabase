@@ -39,6 +39,7 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
+import { WorkspacesSection } from "./WorkspacesSection";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -113,6 +114,8 @@ export const RemoteSyncSettingsForm = ({
                     <TopLevelCollectionsList skipCollections />
                   </RemoteSyncSettingsSection>
                 )}
+                {/* An instance-wide setting, so it stays on the admin page rather than the per-user modal. */}
+                {!isModalVariant && <WorkspacesSection />}
 
                 <Flex justify="space-between" align="center">
                   <Box>
