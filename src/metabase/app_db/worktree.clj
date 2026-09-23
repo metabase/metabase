@@ -52,6 +52,20 @@
   [_query-type model _parsed-args query]
   (scope model query))
 
+(def ^:private exists-subquery-path
+  "Where an `exists` query holds the select it asks about."
+  [:select 0 0 1])
+
+(methodical/defmethod t2.pipeline/build [#_query-type :toucan.query-type/select.exists
+                                         #_model      :hook/worktree-id
+                                         #_query      clojure.lang.IPersistentMap]
+  "Read the world being worked in. An `exists` query ends up as `[:exists <select>]` with nothing left to
+  restrict at the top level, so the select it wraps is restricted instead."
+  [query-type model parsed-args query]
+  (let [built (next-method query-type model parsed-args query)]
+    (cond-> built
+      (map? (get-in built exists-subquery-path)) (update-in exists-subquery-path #(scope model %)))))
+
 (methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/update.*
                                                 #_model      :hook/worktree-id
                                                 #_query      clojure.lang.IPersistentMap]
