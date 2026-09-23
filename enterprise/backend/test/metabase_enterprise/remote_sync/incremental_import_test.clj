@@ -394,6 +394,59 @@
                    (is (not (action?)) "the cascaded action is gone from the search index")
                    (is (not (value?)) "the cascaded model-index value is gone from the search index")))))))))))
 
+(defn- do-with-parent-and-child-card!
+  "Inside [[do-with-bench!]], inserts a `parent-model` (Dashboard or Document) named Parent Thing into Bench and a
+  Card named Kid Question that belongs to it (dashboard_id / document_id), then calls `f` with the synced tree and
+  the tree's path for the parent's own file. The Card's FK to its parent cascades on delete."
+  [parent-model f]
+  (do-with-bench!
+   (fn [_f0]
+     (mt/with-model-cleanup [:model/Dashboard :model/Document]
+       (let [bench     (bench-collection)
+             parent-id (t2/insert-returning-pk!
+                        parent-model
+                        (cond-> {:name "Parent Thing" :collection_id (:id bench) :creator_id (mt/user->id :rasta)}
+                          (= :model/Dashboard parent-model) (assoc :parameters [])
+                          (= :model/Document parent-model)  (assoc :document {:type "doc" :content []}
+                                                                   :content_type "application/json+vnd.prose-mirror")))]
+         (t2/insert! :model/Card (cond-> {:name "Kid Question" :collection_id (:id bench)
+                                          :creator_id (mt/user->id :rasta) :display :table
+                                          :visualization_settings {} :dataset_query (mt/mbql-query venues)}
+                                   (= :model/Dashboard parent-model) (assoc :dashboard_id parent-id)
+                                   (= :model/Document parent-model)  (assoc :document_id parent-id)))
+         (let [g0 (synced-tree)]
+           (f g0 (some #(when (str/ends-with? % "/parent_thing.yaml") %) (keys g0)))))))))
+
+(deftest parent-delete-cascading-to-a-kept-child-card-equivalence-test
+  (testing "HACKRDE-42: a pull that deletes a Dashboard's or Document's file but not the file of a Card that belongs
+            to it (dashboard_id / document_id) deletes that Card by FK cascade. Like the full import, the Card's
+            ledger row must go too"
+    (doseq [parent-model [:model/Dashboard :model/Document]]
+      (testing parent-model
+        (do-with-parent-and-child-card!
+         parent-model
+         (fn [g0 parent-path]
+           (is (some? parent-path) "precondition: the parent is in the synced tree")
+           (is (= :incremental (run-differential! g0 (dissoc g0 parent-path))))))))))
+
+(deftest dashboard-delete-removes-cascaded-dashboard-questions-from-search-test
+  (testing "HACKRDE-42: a Card deleted by FK cascade from its deleted Dashboard must leave search, as in the full
+            import"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-parent-and-child-card!
+       :model/Dashboard
+       (fn [g0 parent-path]
+         (let [src       (rs.test/versioned-source :trees {"v0" g0 "v1" (dissoc g0 parent-path)} :current "v0")
+               _         (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+               kid-id    (t2/select-one-pk :model/Card :name "Kid Question")
+               indexed?  #(t2/exists? (search.index/active-table) :model "card" :model_id (str kid-id))]
+           (is (indexed?) "precondition: the dashboard question is in the search index")
+           (let [[result path] (import-v1-under-test! src)]
+             (is (= :success (:status result)) "the pull deleting the dashboard succeeds")
+             (is (= :incremental path) "a dashboard delete stays on the incremental path")
+             (is (not (t2/exists? :model/Card kid-id)) "deleting the dashboard cascaded to its question")
+             (is (not (indexed?)) "the cascaded dashboard question is gone from the search index"))))))))
+
 (deftest namespaced-collection-change-falls-back-test
   (testing "HACKRDE-21: adding a transforms-namespace collection still takes the full import (the collection's
             presence drives the remote-sync-transforms setting), and reconciles to the full oracle"
