@@ -19,14 +19,20 @@
                           (->> (t2/select-one-fn :result_metadata :model/Card :id card-id)
                                (take 2)
                                (mapv #(cond-> % (= "NAME" (:name %)) (assoc :display_name "Venue")))))]
-          (t2/update! :model/Card model-id {:result_metadata (stale model-id)})
+          (t2/update! :model/Card model-id {:result_metadata (stale model-id)
+                                            ;; a fixed past time, because now() can return the same value for two
+                                            ;; updates in one transaction
+                                            :updated_at      #t "2020-01-01T00:00:00Z"})
           (t2/update! :model/Card question-id {:result_metadata (stale question-id)})
-          (events/publish-event! :event/table-fields-added {:table-id (mt/id :venues)})
-          (testing "the model gains the columns it was missing"
-            (let [metadata (t2/select-one-fn :result_metadata :model/Card :id model-id)]
-              (is (= all-names (map :name metadata)))
-              (testing "and keeps its edited display name"
-                (is (= "Venue" (:display_name (second metadata)))))))
+          (let [updated-at (t2/select-one-fn :updated_at :model/Card :id model-id)]
+            (events/publish-event! :event/table-fields-added {:table-id (mt/id :venues)})
+            (testing "the model gains the columns it was missing"
+              (let [metadata (t2/select-one-fn :result_metadata :model/Card :id model-id)]
+                (is (= all-names (map :name metadata)))
+                (testing "and keeps its edited display name"
+                  (is (= "Venue" (:display_name (second metadata)))))))
+            (testing "the model's updated_at does not change, because a sync is not a user edit"
+              (is (= updated-at (t2/select-one-fn :updated_at :model/Card :id model-id)))))
           (testing "a question is left alone"
             (is (= ["ID" "NAME"]
                    (map :name (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))))
