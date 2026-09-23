@@ -247,12 +247,13 @@
                          :modeling_status :missing
                          :dismissed? false}]}
                 (candidate-repository/candidate-page
-                 (:id run) {} {:limit 1, :offset 1})))
+                 (:id run) {} nil {:limit 1, :offset 1})))
         (is (=? {:total 1
                  :rows [{:id (:id first-candidate), :dismissed? true}]}
                 (candidate-repository/candidate-page
                  (:id run)
-                 {:queue :discarded, :search "alpha"}
+                 {:reviews #{:discarded}, :search "alpha"}
+                 nil
                  {:limit 10, :offset 0}))))
       (testing "table aggregation and response dependencies"
         (is (=? {:total 1
@@ -260,7 +261,7 @@
                          :table {:id (mt/id :orders)
                                  :database {:id (mt/id)}}}]}
                 (candidate-repository/table-page
-                 (:id run) {} {:limit 10, :offset 0}))))
+                 (:id run) {} nil {:limit 10, :offset 0}))))
       (finally
         (candidate-repository/restore! first-candidate)))))
 
@@ -277,7 +278,7 @@
                                               (dissoc (original-candidates-by-id columns ids) (:id candidate)))]
         (testing "a row that disappears between the id query and the row query is dropped, not returned as a null id"
           (is (=? {:total 1, :rows []}
-                  (candidate-repository/candidate-page (:id run) {} {:limit 10, :offset 0}))))))))
+                  (candidate-repository/candidate-page (:id run) {} nil {:limit 10, :offset 0}))))))))
 
 (deftest candidate-repository-detail-hydrates-related-records-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded

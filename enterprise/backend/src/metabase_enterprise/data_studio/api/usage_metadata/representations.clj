@@ -5,8 +5,9 @@
   "Represent a successful snapshot for API responses."
   [run]
   (when run
-    {:id          (:id run)
-     :finished_at (:finished_at run)
+    {:id                (:id run)
+     :finished_at       (:finished_at run)
+     :usage_window_days (get-in run [:source_config :usage-window-days])
      :summary     (when-let [summary (:summary run)]
                     {:table_count (:table-count summary)})}))
 
@@ -60,6 +61,7 @@
    :modeling_status (:modeling_status candidate)
    :dismissed       dismissed?
    :last_used_at    (:last_used_at candidate)
+   :table           (some-> (:table candidate) table)
    :evidence        {:verified_source_count (:verified_source_count candidate)
                      :official_source_count (:official_source_count candidate)
                      :popular_source_count  (:popular_source_count candidate)

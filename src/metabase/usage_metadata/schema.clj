@@ -505,10 +505,31 @@
     [:dismissed_at ::app-db-timestamp]]])
 
 (mr/def ::candidate-list-filters
-  "The filters of a candidate or candidate-Table list."
+  "The filters of a candidate or candidate-Table list. Every filter narrows the list; a missing or empty one does not."
   [:map {:closed true}
-   [:table-id       {:optional true} [:maybe ::lib.schema.id/table]]
-   [:database-id    {:optional true} [:maybe ::lib.schema.id/database]]
-   [:candidate-type {:optional true} [:maybe ::candidate-type]]
-   [:queue          {:optional true} [:maybe [:enum :suggested :used-raw :discarded]]]
-   [:search         {:optional true} [:maybe :string]]])
+   [:table-id          {:optional true} [:maybe ::lib.schema.id/table]]
+   [:database-id       {:optional true} [:maybe ::lib.schema.id/database]]
+   [:schema            {:optional true} [:maybe :string]]
+   [:table-published?  {:optional true} [:maybe :boolean]]
+   [:candidate-types   {:optional true} [:maybe [:set ::candidate-type]]]
+   [:reviews           {:optional true, :description "Whether to include candidates still to review, dismissed ones, or both."}
+    [:maybe [:set [:enum :to-review :discarded]]]]
+   [:modeling-statuses {:optional true} [:maybe [:set [:enum :missing :partially-modeled :modeled]]]]
+   [:last-used-from    {:optional true, :description "Inclusive lower bound on when a candidate's sources were last used."}
+    [:maybe ms/TemporalInstant]]
+   [:last-used-to      {:optional true, :description "Exclusive upper bound on when a candidate's sources were last used."}
+    [:maybe ms/TemporalInstant]]
+   [:search            {:optional true} [:maybe :string]]])
+
+(mr/def ::sort-direction
+  [:enum :asc :desc])
+
+(mr/def ::candidate-list-sort
+  [:map {:closed true}
+   [:column    [:enum :name :views :sources :last-used]]
+   [:direction ::sort-direction]])
+
+(mr/def ::candidate-table-list-sort
+  [:map {:closed true}
+   [:column    [:enum :name :views :candidates]]
+   [:direction ::sort-direction]])

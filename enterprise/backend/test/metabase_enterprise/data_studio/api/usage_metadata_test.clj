@@ -129,7 +129,7 @@
                            :dismissed false}]}
                   list-response))
           (is (= #{:id :candidate_type :display_name :presentation
-                   :modeling_status :dismissed :last_used_at :evidence}
+                   :modeling_status :dismissed :last_used_at :table :evidence}
                  (set (keys (first (:data list-response))))))
           (is (=? {:id (:id candidate)
                    :definition {:lib/type "mbql/query"}
@@ -144,7 +144,7 @@
                    :data [{:table {:id (mt/id :orders)}
                            :candidate_count 1}]}
                   response))
-          (is (= #{:table :candidate_count}
+          (is (= #{:table :candidate_count :recent_view_count}
                  (set (keys (first (:data response))))))))
       (testing "dismiss and restore are global and immediately visible"
         (is (nil? (mt/user-http-request :crowberto :post 204
@@ -398,7 +398,7 @@
       (let [response (mt/user-http-request :crowberto :get 200
                                            "ee/data-studio/usage-metadata/refresh")]
         (is (= #{:snapshot :active :failure} (set (keys response))))
-        (is (= #{:id :finished_at :summary} (set (keys (:snapshot response)))))
+        (is (= #{:id :finished_at :usage_window_days :summary} (set (keys (:snapshot response)))))
         (is (= {:table_count 3} (:summary (:snapshot response))))))))
 
 (deftest candidate-priority-order-keeps-recommendation-families-together-test
@@ -499,6 +499,135 @@
                  :data [{:id (:id missing-candidate), :dismissed true}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?queue=discarded")))))))
+
+(defn- list-ids
+  [path & query]
+  (mapv :id (:data (apply mt/user-http-request :crowberto :get 200 path query))))
+
+(deftest candidate-review-match-and-type-filters-are-independent-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate missing-segment
+                   (candidate-row (:id run) {:signature_hash (apply str (repeat 64 "1"))
+                                             :sort_position  0})
+                   :model/UsageMetadataCandidate modeled-measure
+                   (candidate-row (:id run) {:candidate_type  :measure
+                                             :modeling_status :modeled
+                                             :signature_hash  (apply str (repeat 64 "2"))
+                                             :sort_position   1})
+                   :model/UsageMetadataCandidate discarded-segment
+                   (candidate-row (:id run) {:modeling_status :partially-modeled
+                                             :signature_hash  (apply str (repeat 64 "3"))
+                                             :sort_position   2})]
+      (mt/user-http-request :crowberto :post 204
+                            (str "ee/data-studio/usage-metadata/candidates/" (:id discarded-segment) "/dismiss") {})
+      (let [candidates "ee/data-studio/usage-metadata/candidates"]
+        (testing "by default the list is everything still to review, matched or not"
+          (is (= [(:id missing-segment) (:id modeled-measure)] (list-ids candidates))))
+        (testing "both review states together show discarded candidates alongside the rest"
+          (is (= [(:id missing-segment) (:id modeled-measure) (:id discarded-segment)]
+                 (list-ids candidates :review "to-review" :review "discarded")))
+          (is (=? {:data [{} {} {:id (:id discarded-segment), :dismissed true}]}
+                  (mt/user-http-request :crowberto :get 200 candidates :review "to-review" :review "discarded"))))
+        (testing "Library match narrows independently of review state"
+          (is (= [(:id modeled-measure) (:id discarded-segment)]
+                 (list-ids candidates :review "to-review" :review "discarded"
+                           :modeling-status "modeled" :modeling-status "partially-modeled")))
+          (is (= [(:id missing-segment)] (list-ids candidates :modeling-status "missing"))))
+        (testing "several candidate types at once"
+          (is (= [(:id missing-segment) (:id modeled-measure)]
+                 (list-ids candidates :candidate-type "segment" :candidate-type "measure")))
+          (is (= [(:id modeled-measure)] (list-ids candidates :candidate-type "measure"))))
+        (testing "the deprecated queue still means what it did when no new filter is given"
+          (is (= [(:id missing-segment)] (list-ids candidates :queue "suggested")))
+          (is (= [(:id discarded-segment)] (list-ids candidates :queue "discarded"))))))))
+
+(deftest candidate-table-and-recency-filters-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true}
+      (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                           :trigger           :manual
+                                                           :algorithm_version 1
+                                                           :source_config     {}
+                                                           :finished_at       (mi/now)}
+                     :model/UsageMetadataCandidate orders-candidate
+                     (candidate-row (:id run) {:signature_hash (apply str (repeat 64 "1"))
+                                               :last_used_at   #t "2026-09-10T12:00:00Z"})
+                     :model/UsageMetadataCandidate people-candidate
+                     (candidate-row (:id run) {:table_id       (mt/id :people)
+                                               :signature_hash (apply str (repeat 64 "2"))
+                                               :last_used_at   #t "2026-08-01T12:00:00Z"})
+                     :model/UsageMetadataCandidate unused-candidate
+                     (candidate-row (:id run) {:table_id       (mt/id :venues)
+                                               :signature_hash (apply str (repeat 64 "3"))})]
+        (let [candidates "ee/data-studio/usage-metadata/candidates"]
+          (testing "Table library status"
+            (is (= [(:id orders-candidate)] (list-ids candidates :table-published "true")))
+            (is (= #{(:id people-candidate) (:id unused-candidate)}
+                   (set (list-ids candidates :table-published "false")))))
+          (testing "schema, as the Table is shown to users"
+            (is (= 3 (count (list-ids candidates :database-id (mt/id) :schema "PUBLIC"))))
+            (is (empty? (list-ids candidates :database-id (mt/id) :schema "NOPE"))))
+          (testing "last used, with an inclusive start and an exclusive end; never-used candidates fall outside any range"
+            (is (= [(:id orders-candidate)] (list-ids candidates :last-used-from "2026-09-01")))
+            (is (= [(:id people-candidate)]
+                   (list-ids candidates :last-used-from "2026-08-01T12:00:00Z" :last-used-to "2026-09-10T12:00:00Z")))))))))
+
+(deftest candidate-and-table-lists-sort-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {:usage-window-days 90}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate quiet
+                   (candidate-row (:id run) {:display_name      "Alpha"
+                                             :recent_view_count 5
+                                             :signature_hash    (apply str (repeat 64 "1"))
+                                             :sort_position     0})
+                   :model/UsageMetadataCandidate busy
+                   (candidate-row (:id run) {:display_name      "Beta"
+                                             :recent_view_count 50
+                                             :signature_hash    (apply str (repeat 64 "2"))
+                                             :sort_position     1})
+                   :model/UsageMetadataCandidate people
+                   (candidate-row (:id run) {:table_id          (mt/id :people)
+                                             :display_name      "Gamma"
+                                             :recent_view_count 30
+                                             :signature_hash    (apply str (repeat 64 "3"))
+                                             :sort_position     2})]
+      (let [source (fn [candidate card-id views]
+                     {:candidate_id (:id candidate), :card_id card-id, :card_name "Card", :card_type :question
+                      :verified false, :official false, :popular true, :recent_view_count views, :joined false
+                      :stage_numbers [0]})]
+        ;; Card 1 feeds both Orders candidates, so it counts once towards the Orders Table.
+        (t2/insert! :model/UsageMetadataCandidateSource
+                    [(source quiet 1 5) (source busy 1 5) (source busy 2 45) (source people 3 30)]))
+      (let [candidates "ee/data-studio/usage-metadata/candidates"
+            tables     "ee/data-studio/usage-metadata/tables"]
+        (testing "candidates keep family order unless asked to sort"
+          (is (= [(:id quiet) (:id busy) (:id people)] (list-ids candidates)))
+          (is (= [(:id busy) (:id people) (:id quiet)]
+                 (list-ids candidates :sort-column "views" :sort-direction "desc")))
+          (is (= [(:id quiet) (:id busy) (:id people)] (list-ids candidates :sort-column "name"))))
+        (testing "list rows carry their Table"
+          (is (=? {:data [{:table {:id (mt/id :orders), :database {:id (mt/id)}}}]}
+                  (mt/user-http-request :crowberto :get 200 candidates :limit 1))))
+        (testing "Table views count each source Card once, and Tables sort by them"
+          (is (=? {:data [{:table {:id (mt/id :orders)}, :candidate_count 2, :recent_view_count 50}
+                          {:table {:id (mt/id :people)}, :candidate_count 1, :recent_view_count 30}]}
+                  (mt/user-http-request :crowberto :get 200 tables :sort-column "views" :sort-direction "desc")))
+          (is (= [(mt/id :people) (mt/id :orders)]
+                 (mapv (comp :id :table)
+                       (:data (mt/user-http-request :crowberto :get 200 tables
+                                                    :sort-column "views" :sort-direction "asc"))))))
+        (testing "the snapshot says how many days its view counts cover"
+          (is (=? {:snapshot {:usage_window_days 90}}
+                  (mt/user-http-request :crowberto :get 200 candidates))))))))
 
 (deftest create-candidate-is-idempotent-test
   (mt/with-premium-features #{:library}

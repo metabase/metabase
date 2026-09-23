@@ -35,6 +35,8 @@ export type UsageMetadataSnapshotSummary = {
 export type UsageMetadataSnapshot = {
   id: number;
   finished_at: string;
+  /** How many days of Card views the snapshot's view counts cover. */
+  usage_window_days: number | null;
   summary: UsageMetadataSnapshotSummary | null;
 };
 
@@ -54,6 +56,8 @@ export type UsageMetadataTable = {
 export type UsageMetadataTableSummary = {
   table: UsageMetadataTable;
   candidate_count: number;
+  /** Views of the distinct source Cards behind the Table's matching candidates. */
+  recent_view_count: number;
 };
 
 export type UsageMetadataEvidence = {
@@ -94,6 +98,7 @@ export type UsageMetadataCandidateSummary = {
   modeling_status: UsageMetadataModelingStatus;
   dismissed: boolean;
   last_used_at: string | null;
+  table: UsageMetadataTable;
   evidence: UsageMetadataEvidence;
 };
 
@@ -142,7 +147,6 @@ export type UsageMetadataCandidateMatch =
     };
 
 export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
-  table: UsageMetadataTable;
   suggested_name: string;
   suggested_description: string | null;
   required_tables: UsageMetadataTable[];
@@ -157,12 +161,35 @@ export type UsageMetadataPage<T> = PaginationResponse & {
   snapshot: UsageMetadataSnapshot | null;
 };
 
+export type UsageMetadataReviewState = "to-review" | "discarded";
+
 export type ListUsageMetadataRequest = PaginationRequest & {
   "table-id"?: TableId;
   "database-id"?: DatabaseId;
-  "candidate-type"?: UsageMetadataCandidateType;
+  schema?: string;
+  "table-published"?: boolean;
+  "candidate-type"?: UsageMetadataCandidateType | UsageMetadataCandidateType[];
+  /** Defaults to `to-review`. Pass both to include discarded candidates alongside the rest. */
+  review?: UsageMetadataReviewState[];
+  "modeling-status"?: UsageMetadataModelingStatus[];
+  /** @deprecated Shorthand for `review` and `modeling-status`, used only when neither is given. */
   queue?: UsageMetadataCleanupQueue;
+  /** ISO-8601 date or date-time; inclusive. */
+  "last-used-from"?: string;
+  /** ISO-8601 date or date-time; exclusive. */
+  "last-used-to"?: string;
   search?: string;
+  "sort-direction"?: "asc" | "desc";
+};
+
+export type ListUsageMetadataCandidatesRequest = ListUsageMetadataRequest & {
+  /** Omit for deterministic recommendation-family order. */
+  "sort-column"?: "name" | "views" | "sources" | "last-used";
+};
+
+export type ListUsageMetadataTablesRequest = ListUsageMetadataRequest & {
+  /** Omit for the Tables with the most candidates first. */
+  "sort-column"?: "name" | "views" | "candidates";
 };
 
 export type CreateUsageMetadataCandidateRequest = {

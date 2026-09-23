@@ -73,10 +73,10 @@
     {}))
 
 (defn candidate-page
-  "Return one stable page of candidates from `run-id`, including durable dismissal state."
-  [run-id filters {:keys [limit offset]}]
+  "Return one stable page of candidates from `run-id`, with their tables and durable dismissal state."
+  [run-id filters sort {:keys [limit offset]}]
   (let [total      (usage-metadata.db/candidate-list-count run-id filters)
-        ids        (usage-metadata.db/candidate-list-ids run-id filters limit offset)
+        ids        (usage-metadata.db/candidate-list-ids run-id filters sort limit offset)
         candidates (if (seq ids)
                      (usage-metadata.db/candidates-by-id
                       [:candidate_type :table_id :signature_version :signature_hash
@@ -86,18 +86,24 @@
                       ids)
                      {})
         rows        (keep candidates ids)
-        dismissals  (dismissal-index rows)]
-    {:rows  (mapv #(assoc % :dismissed? (dismissed? dismissals %)) rows)
+        dismissals  (dismissal-index rows)
+        tables      (table-index (into #{} (map :table_id) rows))]
+    {:rows  (mapv #(assoc %
+                          :dismissed? (dismissed? dismissals %)
+                          :table      (tables (:table_id %)))
+                  rows)
      :total total}))
 
 (defn table-page
   "Return one stable page of table summaries for candidates in `run-id`."
-  [run-id filters {:keys [limit offset]}]
+  [run-id filters sort {:keys [limit offset]}]
   (let [total  (usage-metadata.db/candidate-table-list-count run-id filters)
-        counts (usage-metadata.db/candidate-table-list-counts run-id filters limit offset)
+        counts (usage-metadata.db/candidate-table-list-counts run-id filters sort limit offset)
         tables (table-index (into #{} (map :table_id) counts))]
-    {:rows  (mapv (fn [{:keys [table_id candidate_count]}]
-                    {:table (tables table_id), :candidate-count candidate_count})
+    {:rows  (mapv (fn [{:keys [table_id candidate_count recent_view_count]}]
+                    {:table             (tables table_id)
+                     :candidate-count   candidate_count
+                     :recent-view-count (long (or recent_view_count 0))})
                   counts)
      :total total}))
 

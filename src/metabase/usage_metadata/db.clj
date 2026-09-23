@@ -489,7 +489,8 @@
 ;;; ------------------------------------------------ Candidate lists ------------------------------------------------
 
 (defn- candidate-list-query
-  [run-id {:keys [table-id database-id candidate-type queue search]}]
+  [run-id {:keys [table-id database-id schema table-published? candidate-types reviews modeling-statuses
+                  last-used-from last-used-to search]}]
   {:from       [[(t2/table-name :model/UsageMetadataCandidate) :candidate]]
    :inner-join [(warehouse-schema-overlay/table-query {:alias :table})
                 [:= :candidate.table_id :table.id]
@@ -502,20 +503,18 @@
                  [:= :candidate.signature_version :dismissal.signature_version]
                  [:= :candidate.signature_hash :dismissal.signature_hash]]]
    :where      (cond-> [:and [:= :candidate.run_id run-id]]
-                 table-id       (conj [:= :candidate.table_id table-id])
-                 database-id    (conj [:= :table.db_id database-id])
-                 candidate-type (conj [:= :candidate.candidate_type (name candidate-type)])
+                 table-id                 (conj [:= :candidate.table_id table-id])
+                 database-id              (conj [:= :table.db_id database-id])
+                 schema                   (conj [:= :table.schema schema])
+                 (some? table-published?) (conj [:= :table.is_published table-published?])
+                 (seq candidate-types)    (conj [:in :candidate.candidate_type (mapv name candidate-types)])
+                 (seq modeling-statuses)  (conj [:in :candidate.modeling_status (mapv name modeling-statuses)])
+                 last-used-from           (conj [:>= :candidate.last_used_at last-used-from])
+                 last-used-to             (conj [:< :candidate.last_used_at last-used-to])
 
-                 (= queue :suggested)
-                 (conj [:= :dismissal.id nil]
-                       [:!= :candidate.modeling_status (name :modeled)])
-
-                 (= queue :used-raw)
-                 (conj [:= :candidate.modeling_status (name :modeled)])
-
-                 (= queue :discarded)
-                 (conj [:!= :dismissal.id nil]
-                       [:!= :candidate.modeling_status (name :modeled)])
+                 ;; Both review states together, or neither, is every candidate.
+                 (= reviews #{:to-review}) (conj [:= :dismissal.id nil])
+                 (= reviews #{:discarded}) (conj [:!= :dismissal.id nil])
 
                  (not (str/blank? search))
                  (conj (let [pattern (str "%" (u/lower-case-en search) "%")]
@@ -528,6 +527,18 @@
                           [:like [:lower :table.schema] pattern]
                           [:like [:lower :database.name] pattern]])))})
 
+(defn- order-by-with-direction
+  "Order-by clauses sorting on `expression` in `direction`, with NULLs last either way. (MySQL has no `NULLS LAST`.)"
+  [expression direction]
+  [[[:case [:= expression nil] 1 :else 0] :asc]
+   [expression direction]])
+
+(def ^:private candidate-sort-expressions
+  {:name      [:lower :candidate.display_name]
+   :views     :candidate.recent_view_count
+   :sources   :candidate.distinct_source_count
+   :last-used :candidate.last_used_at})
+
 (mu/defn candidate-list-count
   "The number of candidates in `run-id` that match `filters`."
   [run-id  :- ms/PositiveInt
@@ -536,14 +547,20 @@
                                :select [[[:count :candidate.id] :total]]))))
 
 (mu/defn candidate-list-ids
-  "One page of the ids of the candidates in `run-id` that match `filters`, in sort order."
+  "One page of the ids of the candidates in `run-id` that match `filters`, in `sort` order, or in their deterministic
+  family order when there is no `sort`."
   [run-id  :- ms/PositiveInt
    filters :- ::usage-metadata.schema/candidate-list-filters
+   sort    :- [:maybe ::usage-metadata.schema/candidate-list-sort]
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
   (mapv :id (t2/query (assoc (candidate-list-query run-id filters)
                              :select   [[:candidate.id :id]]
-                             :order-by [[:candidate.sort_position :asc]]
+                             :order-by (cond-> []
+                                         sort (into (order-by-with-direction
+                                                     (candidate-sort-expressions (:column sort))
+                                                     (:direction sort)))
+                                         true (conj [:candidate.sort_position :asc] [:candidate.id :asc]))
                              :limit    limit
                              :offset   offset))))
 
@@ -554,22 +571,48 @@
   (:total (t2/query-one (assoc (candidate-list-query run-id filters)
                                :select [[[:count [:distinct :candidate.table_id]] :total]]))))
 
+(defn- table-view-counts-query
+  "Views of each Table's matching candidates, counting every source Card once however many candidates it feeds."
+  [run-id filters]
+  ^:allow-subquery
+  {:select   [:table_id [[:sum :recent_view_count] :recent_view_count]]
+   :from     [[(-> (candidate-list-query run-id filters)
+                   (update :inner-join into [[(t2/table-name :model/UsageMetadataCandidateSource) :source]
+                                             [:= :source.candidate_id :candidate.id]])
+                   (assoc :select-distinct [[:candidate.table_id :table_id]
+                                            [:source.card_id :card_id]
+                                            [:source.recent_view_count :recent_view_count]])
+                   (vary-meta assoc :allow-subquery true))
+               :table_source]]
+   :group-by [:table_id]})
+
+(def ^:private table-sort-expressions
+  {:name       [:lower [:coalesce :table.display_name :table.name]]
+   :views      [:coalesce :table_views.recent_view_count 0]
+   :candidates [:count :candidate.id]})
+
 (mu/defn candidate-table-list-counts
-  "One page of the Tables with candidates in `run-id` that match `filters`, with their candidate counts, busiest
-  first."
+  "One page of the Tables with candidates in `run-id` that match `filters`, with their candidate counts and the views
+  of their distinct source Cards, in `sort` order (most candidates first when there is no `sort`)."
   [run-id  :- ms/PositiveInt
    filters :- ::usage-metadata.schema/candidate-list-filters
+   sort    :- [:maybe ::usage-metadata.schema/candidate-table-list-sort]
    limit   :- ms/PositiveInt
    offset  :- ms/IntGreaterThanOrEqualToZero]
-  (t2/query (assoc (candidate-list-query run-id filters)
-                   :select   [[:candidate.table_id :table_id]
-                              [[:count :candidate.id] :candidate_count]]
-                   :group-by [:candidate.table_id :table.display_name :table.name]
-                   :order-by [[:candidate_count :desc]
-                              [[:lower [:coalesce :table.display_name :table.name]] :asc]
-                              [:candidate.table_id :asc]]
-                   :limit    limit
-                   :offset   offset)))
+  (let [{:keys [column direction] :or {column :candidates, direction :desc}} sort]
+    (t2/query (-> (candidate-list-query run-id filters)
+                  (update :left-join into [[(table-view-counts-query run-id filters) :table_views]
+                                           [:= :table_views.table_id :candidate.table_id]])
+                  (assoc :select   [[:candidate.table_id :table_id]
+                                    [[:count :candidate.id] :candidate_count]
+                                    [[:coalesce :table_views.recent_view_count 0] :recent_view_count]]
+                         :group-by [:candidate.table_id :table.display_name :table.name
+                                    :table_views.recent_view_count]
+                         :order-by (into (order-by-with-direction (table-sort-expressions column) direction)
+                                         [[[:lower [:coalesce :table.display_name :table.name]] :asc]
+                                          [:candidate.table_id :asc]])
+                         :limit    limit
+                         :offset   offset)))))
 
 ;;; ------------------------------------------- Candidate sources and matches -------------------------------------
 

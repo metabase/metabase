@@ -22,6 +22,7 @@ function page(
     snapshot: {
       id: snapshotId,
       finished_at: "2026-08-06T12:00:00Z",
+      usage_window_days: 90,
       summary: null,
     },
   };

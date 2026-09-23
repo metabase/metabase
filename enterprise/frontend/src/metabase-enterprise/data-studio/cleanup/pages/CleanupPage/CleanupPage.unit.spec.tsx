@@ -28,6 +28,7 @@ import { CleanupPage } from "./CleanupPage";
 const snapshot: UsageMetadataSnapshot = {
   id: 7,
   finished_at: "2026-07-24T10:00:00Z",
+  usage_window_days: 90,
   summary: {
     table_count: 1,
   },
@@ -53,6 +54,7 @@ const tableSummary: UsageMetadataTableSummary = {
     database: { id: 1, name: "Sample Database" },
   },
   candidate_count: 6,
+  recent_view_count: 0,
 };
 
 function setup({

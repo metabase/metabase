@@ -42,6 +42,7 @@ jest.mock("../../components/CandidateDefinition", () => ({
 const snapshot: UsageMetadataSnapshot = {
   id: 7,
   finished_at: "2026-07-24T10:00:00Z",
+  usage_window_days: 90,
   summary: {
     table_count: 1,
   },

@@ -1,7 +1,8 @@
 import type {
   CreateUsageMetadataCandidateRequest,
   CreateUsageMetadataCandidateResponse,
-  ListUsageMetadataRequest,
+  ListUsageMetadataCandidatesRequest,
+  ListUsageMetadataTablesRequest,
   StartUsageMetadataRefreshResponse,
   UsageMetadataCandidateDetail,
   UsageMetadataCandidateSummary,
@@ -19,7 +20,7 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listUsageMetadataTables: builder.query<
       UsageMetadataPage<UsageMetadataTableSummary>,
-      ListUsageMetadataRequest
+      ListUsageMetadataTablesRequest
     >({
       query: (params) => ({
         method: "GET",
@@ -30,7 +31,7 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
     }),
     listUsageMetadataCandidates: builder.query<
       UsageMetadataPage<UsageMetadataCandidateSummary>,
-      ListUsageMetadataRequest
+      ListUsageMetadataCandidatesRequest
     >({
       query: (params) => ({
         method: "GET",

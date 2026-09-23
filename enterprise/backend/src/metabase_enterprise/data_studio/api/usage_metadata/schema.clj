@@ -16,6 +16,8 @@
   [:map
    [:id ms/PositiveInt]
    [:finished_at :any]
+   [:usage_window_days {:description "How many days of Card views the snapshot's view counts cover."}
+    [:maybe ms/PositiveInt]]
    [:summary [:maybe ::snapshot-summary]]])
 
 (mr/def ::database
@@ -35,7 +37,9 @@
 (mr/def ::table-summary
   [:map
    [:table ::table]
-   [:candidate_count ms/IntGreaterThanOrEqualToZero]])
+   [:candidate_count ms/IntGreaterThanOrEqualToZero]
+   [:recent_view_count {:description "Views of the distinct source Cards behind the Table's matching candidates."}
+    ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::candidate-type [:enum :table :metric :measure :segment])
 (mr/def ::modeling-status [:enum :missing :partially-modeled :modeled])
@@ -72,6 +76,7 @@
    [:modeling_status ::modeling-status]
    [:dismissed :boolean]
    [:last_used_at [:maybe ms/TemporalInstant]]
+   [:table ::table]
    [:evidence ::candidate-evidence]])
 
 (mr/def ::model-lineage-item
@@ -116,7 +121,6 @@
   [:merge
    ::candidate-summary
    [:map
-    [:table ::table]
     [:suggested_name :string]
     [:suggested_description [:maybe :string]]
     [:required_tables [:sequential ::table]]
@@ -158,13 +162,39 @@
    [:status [:= 202]]
    [:body [:map [:run_id ms/PositiveInt]]]])
 
-(def ^{:doc "Validated query parameters shared by candidate and table lists."} list-query
-  [:map {:closed true}
-   [:table-id {:optional true} [:maybe ms/PositiveInt]]
+(def ^:private list-filter-entries
+  [[:table-id {:optional true} [:maybe ms/PositiveInt]]
    [:database-id {:optional true} [:maybe ms/PositiveInt]]
-   [:candidate-type {:optional true} [:maybe ::candidate-type]]
-   [:queue {:default :suggested} [:enum :suggested :used-raw :discarded]]
-   [:search {:optional true} [:maybe [:string {:max max-search-length}]]]])
+   [:schema {:optional true, :description "Only candidates on Tables in this schema."}
+    [:maybe :string]]
+   [:table-published {:optional true, :description "Only candidates on published (or, when false, unpublished) Tables."}
+    [:maybe ms/MaybeBooleanValue]]
+   [:candidate-type {:optional true, :description "Only candidates of these types."}
+    [:maybe (ms/QueryVectorOf ::candidate-type)]]
+   [:review {:optional true, :description "Candidates still to review, dismissed ones, or both. Defaults to to-review."}
+    [:maybe (ms/QueryVectorOf [:enum :to-review :discarded])]]
+   [:modeling-status {:optional true, :description "Only candidates with these Library matches: `missing` has none."}
+    [:maybe (ms/QueryVectorOf ::modeling-status)]]
+   [:queue {:optional true, :description "Deprecated shorthand for `review` and `modeling-status`, used when neither is given."}
+    [:maybe [:enum :suggested :used-raw :discarded]]]
+   [:last-used-from {:optional true, :description "ISO-8601 date or date-time (a date is UTC midnight). Inclusive."}
+    [:maybe ms/TemporalString]]
+   [:last-used-to {:optional true, :description "ISO-8601 date or date-time (a date is UTC midnight). Exclusive."}
+    [:maybe ms/TemporalString]]
+   [:search {:optional true} [:maybe [:string {:max max-search-length}]]]
+   [:sort-direction {:optional true} [:maybe [:enum :asc :desc]]]])
+
+(def ^{:doc "Validated query parameters of the candidate list."} candidate-list-query
+  (into [:map {:closed true}]
+        (conj list-filter-entries
+              [:sort-column {:optional true, :description "Omit for deterministic recommendation-family order."}
+               [:maybe [:enum :name :views :sources :last-used]]])))
+
+(def ^{:doc "Validated query parameters of the candidate-Table list."} table-list-query
+  (into [:map {:closed true}]
+        (conj list-filter-entries
+              [:sort-column {:optional true, :description "Omit for the Tables with the most candidates first."}
+               [:maybe [:enum :name :views :candidates]]])))
 
 (def ^{:doc "Candidate identifier route schema."} candidate-id
   [:map {:closed true} [:id ms/PositiveInt]])
