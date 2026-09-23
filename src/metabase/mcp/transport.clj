@@ -75,8 +75,9 @@
             :serverInfo      server-info}
      instructions (assoc :instructions instructions))))
 
-(def ^:private mcp-access-disabled-message
-  "The `initialize` refusal for a user whose groups grant no MCP access."
+(def mcp-access-disabled-message
+  "The refusal for a user whose groups grant no MCP access, at `initialize` and on requests of a session opened
+  before an admin turned MCP off."
   (message/msg [(str "MCP access is not enabled for your account. "
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
