@@ -2454,11 +2454,11 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T10:48:00
       author: ranquild
-      comment: Unique constraint on metabase_table_user_settings(table_id, worktree_id_helper) - each world holds its own table_id
+      comment: Unique constraint on metabase_table_user_settings(worktree_id_helper, table_id) - each world holds its own table_id. The worktree column comes first so MySQL keeps the index it built for the plain table_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - addUniqueConstraint:
             tableName: metabase_table_user_settings
-            columnNames: table_id, worktree_id_helper
+            columnNames: worktree_id_helper, table_id
             constraintName: uq_mb_table_user_settings_worktree
 
   - changeSet:
@@ -2481,11 +2481,11 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T10:50:00
       author: ranquild
-      comment: Unique constraint on metabase_field_user_settings(field_id, worktree_id_helper) - each world holds its own field_id
+      comment: Unique constraint on metabase_field_user_settings(worktree_id_helper, field_id) - each world holds its own field_id. The worktree column comes first so MySQL keeps the index it built for the plain field_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - addUniqueConstraint:
             tableName: metabase_field_user_settings
-            columnNames: field_id, worktree_id_helper
+            columnNames: worktree_id_helper, field_id
             constraintName: uq_mb_field_user_settings_worktree
 
   - changeSet:
@@ -2508,361 +2508,361 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T10:52:00
       author: ranquild
-      comment: Unique constraint on collection(id, worktree_id_helper) - the world foreign keys below reference it
+      comment: Unique constraint on collection(worktree_id_helper, id) - the world foreign keys below reference it
       changes:
         - addUniqueConstraint:
             tableName: collection
-            columnNames: id, worktree_id_helper
-            constraintName: uq_collection_id_worktree
+            columnNames: worktree_id_helper, id
+            constraintName: uq_collection_worktree_id
 
   - changeSet:
       id: v65.2026-09-22T10:53:00
       author: ranquild
-      comment: Unique constraint on report_dashboard(id, worktree_id_helper) - the world foreign keys below reference it
+      comment: Unique constraint on report_dashboard(worktree_id_helper, id) - the world foreign keys below reference it
       changes:
         - addUniqueConstraint:
             tableName: report_dashboard
-            columnNames: id, worktree_id_helper
-            constraintName: uq_report_dashboard_id_worktree
+            columnNames: worktree_id_helper, id
+            constraintName: uq_report_dashboard_worktree_id
 
   - changeSet:
       id: v65.2026-09-22T10:54:00
       author: ranquild
-      comment: Unique constraint on report_dashboardcard(id, worktree_id_helper) - the world foreign keys below reference it
+      comment: Unique constraint on report_dashboardcard(worktree_id_helper, id) - the world foreign keys below reference it
       changes:
         - addUniqueConstraint:
             tableName: report_dashboardcard
-            columnNames: id, worktree_id_helper
-            constraintName: uq_report_dashboardcard_id_worktree
+            columnNames: worktree_id_helper, id
+            constraintName: uq_report_dashboardcard_worktree_id
 
   - changeSet:
       id: v65.2026-09-22T10:55:00
       author: ranquild
-      comment: Unique constraint on timeline(id, worktree_id_helper) - the world foreign keys below reference it
+      comment: Unique constraint on timeline(worktree_id_helper, id) - the world foreign keys below reference it
       changes:
         - addUniqueConstraint:
             tableName: timeline
-            columnNames: id, worktree_id_helper
-            constraintName: uq_timeline_id_worktree
+            columnNames: worktree_id_helper, id
+            constraintName: uq_timeline_worktree_id
 
   - changeSet:
       id: v65.2026-09-22T10:56:00
       author: ranquild
-      comment: Unique constraint on transform(id, worktree_id_helper) - the world foreign keys below reference it
+      comment: Unique constraint on transform(worktree_id_helper, id) - the world foreign keys below reference it
       changes:
         - addUniqueConstraint:
             tableName: transform
-            columnNames: id, worktree_id_helper
-            constraintName: uq_transform_id_worktree
+            columnNames: worktree_id_helper, id
+            constraintName: uq_transform_worktree_id
 
   - changeSet:
       id: v65.2026-09-22T10:57:00
       author: ranquild
-      comment: Index on report_card(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on report_card(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: report_card
-            indexName: idx_report_card_collection_id_worktree
+            indexName: idx_report_card_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T10:58:00
       author: ranquild
-      comment: FK report_card(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK report_card(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_card_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T10:59:00
       author: ranquild
-      comment: Index on report_dashboard(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on report_dashboard(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: report_dashboard
-            indexName: idx_report_dashboard_collection_id_worktree
+            indexName: idx_report_dashboard_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T11:00:00
       author: ranquild
-      comment: FK report_dashboard(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK report_dashboard(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboard
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_dashboard_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:01:00
       author: ranquild
-      comment: Index on document(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on document(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: document
-            indexName: idx_document_collection_id_worktree
+            indexName: idx_document_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T11:02:00
       author: ranquild
-      comment: FK document(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK document(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: document
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_document_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:03:00
       author: ranquild
-      comment: Index on timeline(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on timeline(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: timeline
-            indexName: idx_timeline_collection_id_worktree
+            indexName: idx_timeline_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T11:04:00
       author: ranquild
-      comment: FK timeline(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK timeline(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_timeline_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:05:00
       author: ranquild
-      comment: Index on transform(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on transform(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: transform
-            indexName: idx_transform_collection_id_worktree
+            indexName: idx_transform_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T11:06:00
       author: ranquild
-      comment: FK transform(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK transform(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_transform_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:07:00
       author: ranquild
-      comment: Index on native_query_snippet(collection_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on native_query_snippet(worktree_id_helper, collection_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain collection_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: native_query_snippet
-            indexName: idx_native_query_snippet_collection_id_worktree
+            indexName: idx_native_query_snippet_worktree_collection_id
             columns:
               - column:
-                  name: collection_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: collection_id
 
   - changeSet:
       id: v65.2026-09-22T11:08:00
       author: ranquild
-      comment: FK native_query_snippet(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      comment: FK native_query_snippet(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: native_query_snippet
-            baseColumnNames: collection_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, collection_id
             referencedTableName: collection
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_snippet_collection_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:09:00
       author: ranquild
-      comment: Index on report_dashboardcard(dashboard_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on report_dashboardcard(worktree_id_helper, dashboard_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain dashboard_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: report_dashboardcard
-            indexName: idx_report_dashboardcard_dashboard_id_worktree
+            indexName: idx_report_dashboardcard_worktree_dashboard_id
             columns:
               - column:
-                  name: dashboard_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: dashboard_id
 
   - changeSet:
       id: v65.2026-09-22T11:10:00
       author: ranquild
-      comment: FK report_dashboardcard(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
+      comment: FK report_dashboardcard(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
-            baseColumnNames: dashboard_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, dashboard_id
             referencedTableName: report_dashboard
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_dashcard_dashboard_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:11:00
       author: ranquild
-      comment: Index on dashboard_tab(dashboard_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on dashboard_tab(worktree_id_helper, dashboard_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain dashboard_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: dashboard_tab
-            indexName: idx_dashboard_tab_dashboard_id_worktree
+            indexName: idx_dashboard_tab_worktree_dashboard_id
             columns:
               - column:
-                  name: dashboard_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: dashboard_id
 
   - changeSet:
       id: v65.2026-09-22T11:12:00
       author: ranquild
-      comment: FK dashboard_tab(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
+      comment: FK dashboard_tab(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboard_tab
-            baseColumnNames: dashboard_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, dashboard_id
             referencedTableName: report_dashboard
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_dashtab_dashboard_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:13:00
       author: ranquild
-      comment: Index on dashboardcard_series(dashboardcard_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on dashboardcard_series(worktree_id_helper, dashboardcard_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain dashboardcard_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: dashboardcard_series
-            indexName: idx_dashboardcard_series_dashboardcard_id_worktree
+            indexName: idx_dashboardcard_series_worktree_dashboardcard_id
             columns:
               - column:
-                  name: dashboardcard_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: dashboardcard_id
 
   - changeSet:
       id: v65.2026-09-22T11:14:00
       author: ranquild
-      comment: FK dashboardcard_series(dashboardcard_id, worktree_id_helper) -> report_dashboardcard(id, worktree_id_helper) - content and the report_dashboardcard it hangs off always belong to the same world
+      comment: FK dashboardcard_series(worktree_id_helper, dashboardcard_id) -> report_dashboardcard(worktree_id_helper, id) - content and the report_dashboardcard it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboardcard_series
-            baseColumnNames: dashboardcard_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, dashboardcard_id
             referencedTableName: report_dashboardcard
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_series_dashcard_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:15:00
       author: ranquild
-      comment: Index on timeline_event(timeline_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on timeline_event(worktree_id_helper, timeline_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain timeline_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: timeline_event
-            indexName: idx_timeline_event_timeline_id_worktree
+            indexName: idx_timeline_event_worktree_timeline_id
             columns:
               - column:
-                  name: timeline_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: timeline_id
 
   - changeSet:
       id: v65.2026-09-22T11:16:00
       author: ranquild
-      comment: FK timeline_event(timeline_id, worktree_id_helper) -> timeline(id, worktree_id_helper) - content and the timeline it hangs off always belong to the same world
+      comment: FK timeline_event(worktree_id_helper, timeline_id) -> timeline(worktree_id_helper, id) - content and the timeline it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline_event
-            baseColumnNames: timeline_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, timeline_id
             referencedTableName: timeline
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_event_timeline_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:17:00
       author: ranquild
-      comment: Index on transform_transform_tag(transform_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on transform_transform_tag(worktree_id_helper, transform_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain transform_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: transform_transform_tag
-            indexName: idx_transform_transform_tag_transform_id_worktree
+            indexName: idx_transform_transform_tag_worktree_transform_id
             columns:
               - column:
-                  name: transform_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: transform_id
 
   - changeSet:
       id: v65.2026-09-22T11:18:00
       author: ranquild
-      comment: FK transform_transform_tag(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
+      comment: FK transform_transform_tag(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_transform_tag
-            baseColumnNames: transform_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, transform_id
             referencedTableName: transform
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_transform_tag_transform_worktree
 
   - changeSet:
       id: v65.2026-09-22T11:19:00
       author: ranquild
-      comment: Index on transform_test(transform_id, worktree_id_helper) - it backs the world foreign key below
+      comment: Index on transform_test(worktree_id_helper, transform_id) - it backs the world foreign key below. The worktree column comes first so MySQL keeps the index it built for the plain transform_id foreign key, which it drops as redundant when a new index starts with that column
       changes:
         - createIndex:
             tableName: transform_test
-            indexName: idx_transform_test_transform_id_worktree
+            indexName: idx_transform_test_worktree_transform_id
             columns:
               - column:
-                  name: transform_id
-              - column:
                   name: worktree_id_helper
+              - column:
+                  name: transform_id
 
   - changeSet:
       id: v65.2026-09-22T11:20:00
       author: ranquild
-      comment: FK transform_test(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
+      comment: FK transform_test(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_test
-            baseColumnNames: transform_id, worktree_id_helper
+            baseColumnNames: worktree_id_helper, transform_id
             referencedTableName: transform
-            referencedColumnNames: id, worktree_id_helper
+            referencedColumnNames: worktree_id_helper, id
             constraintName: fk_transform_test_transform_worktree
