@@ -165,7 +165,7 @@
   :default 60)
 
 (defn check-git-settings!
-  "Validates git repository settings by attempting to connect and retrieve the default branch.
+  "Validates git repository settings by listing the repository's branches from the remote (without cloning it).
 
   If no args are passed, it validates the current settings.
 
@@ -182,8 +182,12 @@
                  (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
-   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
-     (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
+   ;; List branches straight from the remote rather than through `git/git-source`, which would clone the whole
+   ;; repository first when no clone exists yet for this url and token (HACKRDE-24).
+   (let [branches (git/remote-branches remote-sync-url remote-sync-token)]
+     (when (empty? branches)
+       (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-sync-url})))
+     (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} branches)))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
 (defsetting remote-sync-allow

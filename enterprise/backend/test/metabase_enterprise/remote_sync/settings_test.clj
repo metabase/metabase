@@ -110,8 +110,7 @@
                                                          :remote-sync-branch "main"
                                                          :remote-sync-type  :read-only}))))
   (testing "Non-GitHub HTTPS URLs are accepted"
-    (mt/with-dynamic-fn-redefs [git/git-source (fn [& _] nil)
-                                git/branches   (fn [_] ["main"])]
+    (mt/with-dynamic-fn-redefs [git/remote-branches (fn [_ _] ["main"])]
       (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
                                                :remote-sync-token nil
                                                :remote-sync-branch "main"

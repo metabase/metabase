@@ -10,7 +10,6 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
-   [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -235,13 +234,11 @@
         effective-url   (or remote-sync-url (settings/remote-sync-url))]
     (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
     (try
-      ;; Runs the URL protocol check; branch/type omitted so the branch-existence path is skipped.
+      ;; Checks the URL protocol and lists the remote's branches afresh (no local clone and no cached JGit
+      ;; instance), so a rotated token is detected on every click. Branch/type are omitted so the
+      ;; branch-existence check is skipped.
       (settings/check-git-settings! {:remote-sync-url   effective-url
                                      :remote-sync-token effective-token})
-      ;; Force a fresh lsRemote so a rotated token is detected on every click, even when the
-      ;; cached JGit instance would otherwise short-circuit.
-      (-> (source.git/git-source effective-url "HEAD" effective-token nil)
-          source.git/branches)
       {:status :success}
       (catch Exception e
         (throw (ex-info (impl/source-error-message e)

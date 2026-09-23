@@ -15,6 +15,8 @@
    (org.eclipse.jgit.api Git)
    (org.eclipse.jgit.lib PersonIdent)))
 
+(set! *warn-on-reflection* true)
+
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
   Optionally accepts `:parent-id` for nested collections, `:namespace` for namespace collections (e.g.,
