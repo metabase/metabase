@@ -2,9 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.storage :as v2.storage]
-   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase.jekyll-mode.files :as files]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
@@ -75,12 +73,12 @@
       ;; side-channel; the app-db write is what matters, so a broken export is logged and dropped.
       (try
         (serdes/with-cache
-          (let [entity-stream (v2.extract/extract {:targets [[(name model) id]]
-                                                   :no-data-model true
-                                                   :no-settings true
-                                                   :no-transforms true})
-                writer        (v2.storage.files/file-writer root-dir)]
-            (v2.storage/store! entity-stream writer)))
+          (let [entity-stream (serialization/extract {:targets [[(name model) id]]
+                                                      :no-data-model true
+                                                      :no-settings true
+                                                      :no-transforms true})
+                writer        (serialization/file-writer root-dir)]
+            (serialization/store! entity-stream writer)))
         (when entity-id
           (prune-stale-exports! root-dir entity-id))
         (printf "Wrote %s %d to %s.\n" (t2/model instance) id root-dir)
