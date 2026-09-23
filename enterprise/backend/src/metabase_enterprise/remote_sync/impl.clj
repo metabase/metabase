@@ -399,10 +399,10 @@
   "Models whose change forces a full import on the incremental fast-path: the feature models (their presence
   drives the remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly).
 
-  Collection is not here: an ordinary collection's change is incremental (see [[plain-collection-changes?]]).
-  A rename or move changes every descendant's path, which the diff reports as delete + add, so the whole subtree
-  is re-loaded and the old paths are recognized as renames by entity_id; a delete removes the descendants' files
-  too, so they are deleted along with it, contents first (see [[incremental-load-snapshot!]])."
+  Collection is not here: an ordinary collection's add, edit, rename or move is incremental (see
+  [[incremental-collection-changes?]]). A rename or move changes every descendant's path, which the diff reports as
+  delete + add, so the whole subtree is re-loaded and the old paths are recognized as renames by entity_id. A
+  collection delete still takes the full import: see [[incremental-collection-changes?]]."
   #{"Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
 
 (defn- plain-collection?
@@ -412,21 +412,26 @@
   (and (nil? (:namespace collection))
        (nil? (:type collection))))
 
-(defn- plain-collection-changes?
-  "True when every Collection the change touches is a [[plain-collection?]], both as it arrives in `ingestable`
-  and as it is stored locally (incoming paths), and as stored locally for the `deleted-rsos`."
+(defn- incremental-collection-changes?
+  "True when the incremental path can apply the change's Collections:
+   - every Collection it touches is a [[plain-collection?]], both as it arrives in `ingestable` and as it is stored
+     locally (incoming paths), and as stored locally for the `deleted-rsos`; and
+   - no Collection is genuinely deleted, i.e. every Collection among `deleted-rsos` reappears (same entity_id) in
+     `ingestable` as a rename or move. A delete cascades to contents the ledger doesn't track (pulses, timelines,
+     a model's actions, ...); only the full import's reindex drops those from search."
   [ingestable deleted-rsos]
-  (let [incoming   (when ingestable
-                     (into []
-                           (comp (filter #(= "Collection" (:model (last %))))
-                                 (map #(serialization/ingest-one ingestable %)))
-                           (serialization/ingest-list ingestable)))
-        local-eids (into #{} (keep :entity_id) incoming)
-        local      (when (seq local-eids)
-                     (remote-sync.db/instances-with-columns-by-entity-ids :model/Collection [:namespace :type] local-eids))
-        deleted    (when-let [ids (seq (keep #(when (= "Collection" (:model_type %)) (:model_id %)) deleted-rsos))]
-                     (remote-sync.db/collections (vec ids)))]
-    (every? plain-collection? (concat incoming local deleted))))
+  (let [incoming      (when ingestable
+                        (into []
+                              (comp (filter #(= "Collection" (:model (last %))))
+                                    (map #(serialization/ingest-one ingestable %)))
+                              (serialization/ingest-list ingestable)))
+        incoming-eids (into #{} (keep :entity_id) incoming)
+        local         (when (seq incoming-eids)
+                        (remote-sync.db/instances-with-columns-by-entity-ids :model/Collection [:namespace :type] incoming-eids))
+        deleted       (when-let [ids (seq (keep #(when (= "Collection" (:model_type %)) (:model_id %)) deleted-rsos))]
+                        (remote-sync.db/collections (vec ids)))]
+    (and (every? plain-collection? (concat incoming local deleted))
+         (every? #(contains? incoming-eids (:entity_id %)) deleted))))
 
 (defn- legal-yaml-path?
   "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
@@ -487,8 +492,8 @@
       (some #(not= :entity-id (:identity (spec/spec-for-model-type %))) all-models) ;; anything not entity-id model?
       :remote-sync/incremental-not-possible
 
-      (and (contains? all-models "Collection")                  ;; a namespaced or special collection?
-           (not (plain-collection-changes? ingestable deleted-rsos)))
+      (and (contains? all-models "Collection")                  ;; a special collection, or a collection delete?
+           (not (incremental-collection-changes? ingestable deleted-rsos)))
       :remote-sync/incremental-not-possible
 
       :else
