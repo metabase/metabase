@@ -703,3 +703,13 @@
                 decides"
         (is (= {"Card" [exported 999999]}
                (spec/targets-for-paths targets [(path "Card" "abcd1234") (path "Card" exported-eid)])))))))
+
+(deftest ^:parallel entity-id-conflict-check-is-gone-test
+  (testing "The entity-id conflict check was never called by anything, so it and the helpers only it used are removed
+            rather than kept compiling (and reading full rows) for no caller."
+    (doseq [[ns-sym var-sym] [['metabase-enterprise.remote-sync.spec 'check-entity-id-conflicts]
+                              ['metabase-enterprise.remote-sync.db 'existing-entity-ids]
+                              ['metabase-enterprise.remote-sync.db 'ids-by-entity-ids]
+                              ['metabase-enterprise.remote-sync.db 'rsos-of-models]]]
+      (is (nil? (ns-resolve (the-ns ns-sym) var-sym))
+          (str ns-sym "/" var-sym " still exists")))))
