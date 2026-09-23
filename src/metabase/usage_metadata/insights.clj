@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]

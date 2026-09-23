@@ -1,16 +1,13 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { msgid, ngettext, t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { dayjs } from "metabase/dayjs";
 import { Alert, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type {
   UsageMetadataRefreshStatus,
   UsageMetadataSnapshot,
 } from "metabase-types/api";
-
-dayjs.extend(relativeTime);
 
 type CleanupHeaderProps = {
   snapshot?: UsageMetadataSnapshot | null;

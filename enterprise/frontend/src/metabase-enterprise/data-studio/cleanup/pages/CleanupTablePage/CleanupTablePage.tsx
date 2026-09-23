@@ -11,10 +11,10 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { dayjs } from "metabase/dayjs";
 import { isCypressActive } from "metabase/env";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useNavigate, useParams, useSearchParams } from "metabase/router";
 import {

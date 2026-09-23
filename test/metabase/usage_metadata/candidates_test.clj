@@ -599,6 +599,7 @@
         run-id                (atom nil)]
     (mq.tu/with-test-mq [ctx {:duplicate-delivery? true}]
       ;; MQ workers do not inherit the test thread's dynamic bindings.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [candidate-snapshot/materialize!
                     (fn [{:keys [id] :as run}]
                       (swap! materialization-count inc)

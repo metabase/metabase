@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { trackDataStudioCleanupRefreshStarted } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
   usageMetadataApi,

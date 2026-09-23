@@ -151,7 +151,7 @@
    [:body [:map [:run_id ms/PositiveInt]]]])
 
 (def ^{:doc "Validated query parameters shared by candidate and table lists."} list-query
-  [:map
+  [:map {:closed true}
    [:table-id {:optional true} [:maybe ms/PositiveInt]]
    [:database-id {:optional true} [:maybe ms/PositiveInt]]
    [:candidate-type {:optional true} [:maybe ::candidate-type]]
@@ -159,10 +159,10 @@
    [:search {:optional true} [:maybe [:string {:max max-search-length}]]]])
 
 (def ^{:doc "Candidate identifier route schema."} candidate-id
-  [:map [:id ms/PositiveInt]])
+  [:map {:closed true} [:id ms/PositiveInt]])
 
 (def ^{:doc "Candidate creation override request body schema."} create-body
-  [:map
+  [:map {:closed true}
    [:name {:optional true}
     [:maybe [:and ms/NonBlankString [:string {:max max-name-length}]]]]
    [:description {:optional true}

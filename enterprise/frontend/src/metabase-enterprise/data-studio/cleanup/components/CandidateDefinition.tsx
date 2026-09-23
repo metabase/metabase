@@ -1,15 +1,14 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { ReadOnlyFilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { ReadOnlyMeasureAggregationPicker } from "metabase/querying/measures";
 import { ReadOnlyClauseStep } from "metabase/querying/notebook/components/ClauseStep";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Badge, Card, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
@@ -152,24 +151,18 @@ function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
 }
 
 export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
-  const metadata = useSelector(getMetadata);
+  const databaseId =
+    candidate.candidate_type !== "table" && "database" in candidate.definition
+      ? candidate.definition.database
+      : null;
+  const metadataProvider = useMetadataProvider(databaseId ?? null);
   const query = useMemo(() => {
-    if (
-      candidate.candidate_type === "table" ||
-      !("database" in candidate.definition)
-    ) {
-      return undefined;
-    }
-    const databaseId = candidate.definition.database;
-    if (!databaseId) {
+    if (!databaseId || !("database" in candidate.definition)) {
       return undefined;
     }
 
-    return Lib.fromJsQuery(
-      Lib.metadataProvider(databaseId, metadata),
-      candidate.definition,
-    );
-  }, [candidate.candidate_type, candidate.definition, metadata]);
+    return Lib.fromJsQuery(metadataProvider, candidate.definition);
+  }, [candidate.definition, databaseId, metadataProvider]);
 
   if (!query) {
     return null;

@@ -4,8 +4,8 @@ import {
   setupStartUsageMetadataRefreshEndpoint,
   setupUsageMetadataRefreshEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { UsageMetadataRunState } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 

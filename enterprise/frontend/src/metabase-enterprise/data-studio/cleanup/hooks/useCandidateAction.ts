@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { trackDataStudioCleanupCandidateAction } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
 import { isStaleCandidateError } from "../utils";

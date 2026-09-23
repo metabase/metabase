@@ -1,11 +1,12 @@
 import { renderHook } from "@testing-library/react";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
 import { useCandidateAction } from "./useCandidateAction";
 
-jest.mock("metabase/metadata/hooks", () => ({
+jest.mock("metabase/common/hooks", () => ({
+  ...jest.requireActual("metabase/common/hooks"),
   useMetadataToasts: jest.fn(),
 }));
 

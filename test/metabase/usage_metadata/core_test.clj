@@ -1,7 +1,6 @@
 (ns metabase.usage-metadata.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.usage-metadata.insights :as insights]))

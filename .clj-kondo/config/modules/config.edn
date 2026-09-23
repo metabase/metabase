@@ -1397,7 +1397,7 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api metabase.measures.schema}
+   :api  #{metabase.measures.api metabase.measures.create metabase.measures.schema}
    :uses #{api
            app-db
            events
@@ -2454,8 +2454,7 @@
 
   segments
   {:team "Graphy"
-   :api  #{metabase.segments.api
-           metabase.segments.schema}
+   :api  #{metabase.segments.api metabase.segments.create metabase.segments.schema}
    :uses #{api
            app-db
            events
@@ -3045,7 +3044,7 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.candidate-refresh metabase.usage-metadata.candidate-repository metabase.usage-metadata.init}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3061,8 +3060,11 @@
            collections
            lib
            lib.be
+           lib.metadata
            lib.schema
            models
+           mq
+           premium-features
            settings
            task
            util
@@ -3682,15 +3684,21 @@
            collections
            events
            lib.schema
+           measures
            models
            permissions
            premium-features
+           request
+           segments
+           usage-metadata
            util
            warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/AuditLog
                     :model/Collection
                     :model/Dimension
+                    :model/Measure
+                    :model/Segment
                     :model/Table
                     :model/User}}
 

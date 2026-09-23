@@ -1,12 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   PRODUCTS_ID,
   PRODUCT_CATEGORY_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { CandidateFilterDefinition } from "./CandidateDefinition";
@@ -35,6 +39,7 @@ function createQueryWithCategoryFilter() {
 describe("CandidateFilterDefinition", () => {
   it("shows the standard filter label and exposes its values", async () => {
     const user = userEvent.setup();
+    setupDatabaseEndpoints(createSampleDatabase());
     setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
 
     renderWithProviders(
