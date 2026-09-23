@@ -502,6 +502,13 @@
 (defmethod descendants :default [_ _ _]
   nil)
 
+(def ^:dynamic *descendants-batch-size*
+  "The most ids one [[descendants-batch]] call receives, and the most ids its implementations put into one query. A
+  walk over a large instance can hold every Card at one level, far more than a database accepts as bind parameters in
+  one statement (65,535 on Postgres), so callers split the ids into chunks of this size. Dynamic so tests can shrink
+  it."
+  1000)
+
 (defmulti descendants-batch
   "[[descendants]] of the entities of `model-name` with `db-ids`, all at once: the union of their descendants, as a map
   of `{[model-name database-id] sources}`. When two of the entities share a descendant, its sources are merged,

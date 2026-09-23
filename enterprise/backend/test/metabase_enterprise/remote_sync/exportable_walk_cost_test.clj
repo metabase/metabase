@@ -9,7 +9,9 @@
    [metabase-enterprise.remote-sync.db-activity :as db-activity]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -105,3 +107,45 @@
            (is (seq ids))
            (is (= (into #{} (mapcat #(keys (serdes/descendants model % spec/git-sync-extract-opts))) ids)
                   (set (keys (serdes/descendants-batch model ids spec/git-sync-extract-opts)))))))))))
+
+(deftest exportable-walk-bounds-ids-per-query-test
+  (testing "with the batch size bound to 3, no descendants-batch call and no id query of the walk gets more than 3 ids,
+           and the walk finds exactly what it finds unbounded (a level holds far more ids than a database accepts as
+           bind parameters on a large instance)"
+    ;; 20 cards: the root collection holds two dashboards, so one level has 6 dashcards
+    (do-with-content!
+     20
+     (fn [_]
+       (let [unbounded (spec/exportable-entities)
+             sizes     (atom [])
+             batch     serdes/descendants-batch
+             bounded   (binding [serdes/*descendants-batch-size* 3]
+                         (with-redefs [serdes/descendants-batch
+                                       (fn [model ids opts]
+                                         (swap! sizes conj [[:descendants-batch model] (count ids)])
+                                         (batch model ids opts))
+
+                                       queries.db/cards
+                                       (let [f queries.db/cards]
+                                         (fn [ids] (swap! sizes conj [:cards (count ids)]) (f ids)))
+
+                                       dashboards.db/dashboards
+                                       (let [f dashboards.db/dashboards]
+                                         (fn [ids] (swap! sizes conj [:dashboards (count ids)]) (f ids)))
+
+                                       dashboards.db/dashcard-serdes-columns-for-dashboards
+                                       (let [f dashboards.db/dashcard-serdes-columns-for-dashboards]
+                                         (fn [ids] (swap! sizes conj [:dashcards (count ids)]) (f ids)))
+
+                                       dashboards.db/dashcard-series-columns
+                                       (let [f dashboards.db/dashcard-series-columns]
+                                         (fn [ids] (swap! sizes conj [:series (count ids)]) (f ids)))]
+                           (spec/exportable-entities)))]
+         (is (= (update-vals unbounded set) (update-vals bounded set)))
+         (testing "the walk did batch: some model had more than 3 ids at a level"
+           (is (< 3 (count (get unbounded "Card")))))
+         (doseq [label [[:descendants-batch "Card"] [:descendants-batch "Dashboard"] :cards :dashboards :dashcards :series]]
+           (testing label
+             (is (seq (filter #(= label (first %)) @sizes)) "was called")))
+         (testing "no call got more than 3 ids"
+           (is (= [] (filterv #(< 3 (second %)) @sizes)))))))))
