@@ -100,7 +100,14 @@ export const isTimelineEventInRange = (
   interval: TimeSeriesInterval | null,
 ) => {
   const unit: SupportedUnit | undefined = interval?.unit;
-  return parseTimestamp(event.timestamp).isBetween(min, max, unit, "[]");
+  // `max` is the start of the final bucket, so a multi-unit interval — a two-month bucket, say — runs past it;
+  // comparing at unit granularity alone would drop an event in the rest of that bucket
+  const end =
+    unit && interval
+      ? // SupportedUnit is the dayjs unit set this axis uses, so it is always a valid OpUnitType here
+        max.add(interval.count - 1, unit as OpUnitType)
+      : max;
+  return parseTimestamp(event.timestamp).isBetween(min, end, unit, "[]");
 };
 
 const getTimelineEventsInsideRange = (

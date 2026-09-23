@@ -174,6 +174,7 @@ describe("filterTimelinesByXAxes", () => {
         createMockTimelineEvent({ id: 1, timestamp: "2024-01-15T00:00:00Z" }),
         createMockTimelineEvent({ id: 2, timestamp: "2024-03-20T00:00:00Z" }),
         createMockTimelineEvent({ id: 3, timestamp: "2024-06-01T00:00:00Z" }),
+        createMockTimelineEvent({ id: 5, timestamp: "2024-04-10T00:00:00Z" }),
       ],
     }),
     createMockTimeline({
@@ -197,6 +198,13 @@ describe("filterTimelinesByXAxes", () => {
     expect(
       filterIds([{ domain, interval: { count: 1, unit: "month" } }]),
     ).toEqual([1, 2]);
+  });
+
+  it("keeps events in the rest of a multi-unit final bucket", () => {
+    // the last bucket starts 2024-03-01 and spans two months, so an April event belongs to it
+    expect(
+      filterIds([{ domain, interval: { count: 2, unit: "month" } }]),
+    ).toEqual([1, 2, 5]);
   });
 
   it("extends by whole intervals for sub-day units", () => {

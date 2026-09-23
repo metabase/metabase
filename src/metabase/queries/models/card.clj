@@ -828,8 +828,9 @@
                             (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
             (api/read-check timeline)))))))
 
-(defn- dashboard-exposed-timeline-ids
-  "The ids of the timelines whose events `card` shows when it is on a dashboard."
+(defn card-exposed-timeline-ids
+  "The ids of the timelines whose events `card` shows on a dashboard. The public payload and the checks guarding it
+  both read this, so they cannot drift apart."
   [{:keys [display] settings :visualization_settings}]
   ;; Archived cards count too: archiving is undone by a plain `archived: false`, which runs no timeline check.
   (let [timeline-ids (:timeline.selected_timeline_ids settings)]
@@ -854,7 +855,7 @@
   [dashboard cards]
   (when (and api/*current-user-id*
              (or (:public_uuid dashboard) (:enable_embedding dashboard)))
-    (let [timeline-ids (into #{} (mapcat dashboard-exposed-timeline-ids) cards)]
+    (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
       (doseq [timeline (queries.db/timelines timeline-ids)]
         (api/read-check timeline)))))
 

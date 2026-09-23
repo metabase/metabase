@@ -387,6 +387,21 @@ describe("useTimelineEvents", () => {
         expect(onTimelineEventsShown).not.toHaveBeenCalled();
       },
     );
+
+    it("shows the events the dashboard payload carries, without requesting any", async () => {
+      await mockSurface();
+      const { result } = setup({
+        timelineEvents: [SHOWN_EVENT],
+        isDashboard: true,
+      });
+
+      await act(async () => {
+        await fetchMock.callHistory.flush();
+      });
+
+      expect(result.current.timelineEvents).toEqual([SHOWN_EVENT]);
+      expect(getTimelineRequests()).toHaveLength(0);
+    });
   });
 
   it("only shows saved events on an authenticated SDK dashboard", async () => {

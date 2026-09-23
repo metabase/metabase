@@ -20,7 +20,6 @@ import type {
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
-  cardId?: number;
   collectionId?: CollectionId | null;
   source?: TimelineEventSource;
   onEventCreated?: (event: TimelineEvent) => void;

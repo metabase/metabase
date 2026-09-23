@@ -748,6 +748,15 @@
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card) {}))))))
 
+(deftest ^:parallel excluded-only-timeline-events-deps-test
+  (testing "a card that only excludes events still depends on their Timeline, so it imports in the right order"
+    (mt/with-temp [:model/Timeline {timeline-id :id} {}
+                   :model/TimelineEvent {event-id :id} {:timeline_id timeline-id}]
+      (is (= #{[{:model "Timeline" :id timeline-id}]}
+             (serdes/visualization-settings-deps
+              true
+              {:timeline.excluded_timeline_event_ids [event-id]}))))))
+
 (deftest ^:parallel descendants-test-4
   (testing "cards which have parameter's source is another card"
     (mt/with-temp [:model/Card card1 {:name "base card"}
