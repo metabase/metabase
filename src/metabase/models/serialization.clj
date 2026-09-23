@@ -1981,3 +1981,13 @@
   `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
              resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))
+
+(defn forget-cached-imports!
+  "Discards everything the memoized import resolver bound by [[with-cache]] on this thread has cached, by binding a
+  fresh one in its place; a no-op when none is bound. Call after rolling back writes made under it: it may have
+  memoized the ids of rows the rollback removed (entities it resolved, and users, tables and fields it created), and
+  handing those out afterwards would point new rows at ids that no longer exist."
+  []
+  (when (and (thread-bound? #'resolve/*import-resolver*)
+             (::resolve.default/cached (meta resolve/*import-resolver*)))
+    (set! resolve/*import-resolver* (resolve.default/cached-import-resolver))))

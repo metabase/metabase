@@ -181,16 +181,19 @@
       (resolve/export-field-fk [this field-id]    (export-field-fk* this field-id)))))
 
 (defn cached-import-resolver
-  "Returns a database-backed import resolver with memoized lookups."
+  "Returns a database-backed import resolver with memoized lookups. Its metadata has `::cached` true, so code that
+  rolls back writes made under it can tell it holds memos that may name rows the rollback removed."
   []
   (let [import-fk*       (memoize import-fk)
         import-fk-keyed* (memoize import-fk-keyed)
         import-user*     (memoize import-user)
         import-table-fk* (memoize import-table-fk)
         import-field-fk* (memoize import-field-fk)]
-    (reify resolve/SerdesImportResolver
-      (resolve/import-fk       [_ eid model]            (import-fk* eid model))
-      (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
-      (resolve/import-user     [this email]             (import-user* this email))
-      (resolve/import-table-fk [_ path]                 (import-table-fk* path))
-      (resolve/import-field-fk [this path]              (import-field-fk* this path)))))
+    (with-meta
+      (reify resolve/SerdesImportResolver
+        (resolve/import-fk       [_ eid model]            (import-fk* eid model))
+        (resolve/import-fk-keyed [_ portable model field] (import-fk-keyed* portable model field))
+        (resolve/import-user     [this email]             (import-user* this email))
+        (resolve/import-table-fk [_ path]                 (import-table-fk* path))
+        (resolve/import-field-fk [this path]              (import-field-fk* this path)))
+      {::cached true})))
