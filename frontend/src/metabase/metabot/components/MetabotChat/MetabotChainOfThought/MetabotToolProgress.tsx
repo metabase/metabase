@@ -3,7 +3,9 @@ import { match } from "ts-pattern";
 
 import Animation from "metabase/css/core/animation.module.css";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { Loader, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
+
+import { MetabotResponseLoader } from "../MetabotResponseLoader";
 
 import S from "./MetabotChainOfThought.module.css";
 import { ResourceGroupStep, ToolStep } from "./ToolStep";
@@ -22,6 +24,7 @@ export const MetabotToolProgress = ({
 
   return (
     <Stack gap="0.5rem" data-testid="metabot-tool-progress">
+      <MetabotResponseLoader />
       {buildDisplayItems(part.steps).map((item) =>
         match(item)
           .with({ kind: "resourceGroup" }, ({ steps, index }) => (
@@ -45,12 +48,6 @@ export const MetabotToolProgress = ({
           .with({ kind: "reasoning" }, () => null)
           .exhaustive(),
       )}
-      <Loader
-        type="dots"
-        size="lg"
-        color="core-brand"
-        data-testid="metabot-response-loader"
-      />
     </Stack>
   );
 };

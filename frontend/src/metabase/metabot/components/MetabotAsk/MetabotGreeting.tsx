@@ -106,7 +106,6 @@ export const MetabotGreeting = ({
                 value={metabot.prompt}
                 autoFocus
                 disabled={metabot.isDoingScience}
-                placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={metabot.setPrompt}
                 onSubmit={handleSubmit}
                 onStop={metabot.cancelRequest}
@@ -131,23 +130,36 @@ export const MetabotGreeting = ({
           </Box>
         </Paper>
 
-        <Box
-          className={S.promptSuggestionsContainer}
-          data-testid="metabot-prompt-suggestions"
-        >
-          {canUseNlq
-            ? suggestedPrompts?.map(({ prompt }, index) => (
-                <UnstyledButton
-                  key={index}
-                  className={S.promptSuggestion}
-                  style={{ animationDelay: `${index * 75}ms` }}
-                  onClick={() => metabot.submitInput(prompt)}
-                >
-                  <Text>{prompt}</Text>
-                </UnstyledButton>
-              ))
-            : null}
-        </Box>
+        <Stack gap="md">
+          <Text fz="xs" c="text-secondary" mt="1.5rem">
+            {t`Suggestions`}
+          </Text>
+          <Box
+            className={S.promptSuggestionsContainer}
+            data-testid="metabot-prompt-suggestions"
+          >
+            {canUseNlq
+              ? suggestedPrompts?.map(({ prompt }, index) => (
+                  <UnstyledButton
+                    key={index}
+                    className={S.promptSuggestion}
+                    style={{ animationDelay: `${index * 75}ms` }}
+                    onClick={() => metabot.submitInput(prompt)}
+                  >
+                    <Flex align="flex-start" gap="sm">
+                      <Icon
+                        name="bolt"
+                        size={16}
+                        c="icon-brand"
+                        style={{ marginTop: "4px" }}
+                      />
+                      <Text>{prompt}</Text>
+                    </Flex>
+                  </UnstyledButton>
+                ))
+              : null}
+          </Box>
+        </Stack>
       </Stack>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}

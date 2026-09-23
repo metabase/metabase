@@ -2,24 +2,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   width: 100%;
   background: var(--mb-color-background-primary);
+  background-image: url("./metabot-ask-background.svg");
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: auto 17.875rem;
   position: relative;
   padding: 2rem;
   gap: 1.5rem;
+
+  &::before {
+    position: absolute;
+    right: 90rem;
+    bottom: 0;
+    width: 90rem;
+    height: 17.875rem;
+    background: url("./metabot-ask-background.svg") right bottom / auto
+      17.875rem no-repeat;
+    content: "";
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
 }
 
 .inputWrapper {
   width: 100%;
   max-width: 42rem;
+  padding-bottom: 4rem;
 }
 
 .inputContainer {
   display: flex;
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   box-shadow:
     0 0 0 1px var(--mb-color-border-neutral),
     0 4px 24px rgba(0, 0, 0, 0.08);
@@ -47,6 +66,7 @@
 
 .sendButton {
   color: var(--mb-color-background_page-primary);
+  border-radius: 0.625rem;
 
   &:disabled,
   &:disabled:hover {
@@ -60,27 +80,55 @@
 .promptSuggestionsContainer {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
+  align-items: stretch;
+  gap: 0;
   width: 100%;
   min-height: 10.75rem;
+  background: var(--mb-color-background-primary);
+  border-radius: 1rem;
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .promptSuggestion {
-  padding: 0.5rem 0.75rem;
+  width: 100%;
+  padding: 1rem;
   font-size: 0.875rem;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
-  border-radius: 0.5rem;
+  border: 1px solid var(--mb-color-border-neutral-subtle);
+  border-bottom-color: transparent;
+  border-radius: 0;
   opacity: 0;
   animation: fade-in 300ms ease forwards;
   transition:
     background 150ms ease,
     color 150ms ease;
 
+  &:first-child {
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  &:not(:first-child) {
+    margin-top: -1px;
+  }
+
+  &:last-child {
+    border-radius: 0 0 1rem 1rem;
+    border-bottom-color: var(--mb-color-border-neutral-subtle);
+  }
+
+  &:only-child {
+    border-radius: 1rem;
+  }
+
   &:hover {
-    background: var(--mb-color-background_page-secondary);
+    background: var(--mb-color-background_surface-primary-hover);
     color: var(--mb-color-text-primary);
+    border-bottom-color: var(--mb-color-border-neutral-subtle);
+  }
+
+  &:hover + & {
+    border-top-color: transparent;
   }
 }
 

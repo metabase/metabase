@@ -210,9 +210,7 @@ describe("MetabotConversationPage", () => {
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(await screen.findByText("Thinking")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-response-loader"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metabot-response-loader")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),

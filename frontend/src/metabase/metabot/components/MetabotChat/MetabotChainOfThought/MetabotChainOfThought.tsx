@@ -7,6 +7,8 @@ import { AIMarkdown } from "metabase/metabot/components/AIMarkdown";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
 import { Collapse, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 
+import { MetabotResponseLoader } from "../MetabotResponseLoader";
+
 import S from "./MetabotChainOfThought.module.css";
 import { MetabotToolProgress } from "./MetabotToolProgress";
 import { ReasoningStep } from "./ReasoningStep";
@@ -34,7 +36,12 @@ export const MetabotChainOfThought = ({
   if (!supportsReasoning) {
     return <MetabotToolProgress part={part} />;
   }
-  return <ChainOfThought part={part} />;
+  return (
+    <>
+      {!part.finished && <MetabotResponseLoader />}
+      <ChainOfThought part={part} />
+    </>
+  );
 };
 
 const ChainOfThought = ({

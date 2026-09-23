@@ -14,6 +14,7 @@ export const Link = ({
   tooltip,
   variant,
   className,
+  tabIndex,
   ...props
 }: LinkProps): JSX.Element => {
   const styleClassName = cx(S.link, {
@@ -35,7 +36,7 @@ export const Link = ({
       className={linkClassName}
       to={to}
       disabled={disabled}
-      tabIndex={disabled ? -1 : undefined}
+      tabIndex={disabled ? -1 : tabIndex}
       aria-disabled={disabled}
     >
       {children}
