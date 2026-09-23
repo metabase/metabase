@@ -1002,26 +1002,36 @@
   (unreduced (merge-incremental-export-plans-reducer a b)))
 
 (defn- export-closure
-  "All `{:model_type :model_id}` entities a full export would pull for the entity `[model-type model-id]`
-  (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
-  [model-type model-id]
-  ;; serdes works in [model-type id] tuples; map the closure keys to {:model_type :model_id} on the way out
+  "All `[model-type id]` entities a full export would pull for the entities `roots` (`[model-type id]`s): their
+  transitive `serdes/descendants` + `serdes/required`, `roots` included. One walk covers every root, so an entity
+  several roots reach is expanded once, and descendants are looked up in batches per model."
+  [roots]
   (-> #{}
-      (into (keys (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))))
-      (into (keys (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))
-      (->> (map (fn [[mt id]] {:model_type mt :model_id id})))))
+      (into (spec/descendant-closure roots closure-opts))
+      (into (keys (u/traverse roots #(serdes/required (first %) (second %)))))))
 
 (defn- untracked-content-deps
-  "The `{:model_type :model_id}` entities in `[model-type model-id]`'s export closure that are remote-sync
+  "The `{:model_type :model_id}` entities in the export closure of `roots` (`[model-type id]`s) that are remote-sync
   content but have no RemoteSyncObject row — untracked deps an incremental export must write to match a full
-  export. Excludes the entity itself and non-content deps (e.g. databases)."
-  [model-type model-id]
-  (into #{}
-        (filter (fn [{:keys [model_type model_id]}]
-                  (and (not (and (= model_type model-type) (= model_id model-id)))
-                       (spec/spec-for-model-type model_type)
-                       (not (remote-sync.db/rso-exists? model_type model_id)))))
-        (export-closure model-type model-id)))
+  export. Excludes the roots themselves and non-content deps (e.g. databases). Its app-DB queries grow with the
+  depth of the content and the number of distinct deps, not with the number of roots."
+  [roots]
+  (let [roots      (set roots)
+        candidates (into []
+                         (filter (fn [[model-type :as k]]
+                                   (and (not (roots k))
+                                        (spec/spec-for-model-type model-type))))
+                         (export-closure roots))]
+    (into #{}
+          (mapcat (fn [[model-type ks]]
+                    (let [ids     (map second ks)
+                          tracked (into #{}
+                                        (mapcat #(remote-sync.db/tracked-ids-among model-type (vec %)))
+                                        (partition-all app-db-batch-size ids))]
+                      (for [id ids
+                            :when (not (tracked id))]
+                        {:model_type model-type :model_id id}))))
+          (group-by first candidates))))
 
 (defn- ->sized-chunks
   "Builds chunks of maximum size based on model type."
@@ -1121,7 +1131,8 @@
 
   Return:
     - `:remote-sync/incremental-not-possible` OR
-    - {:writes :delete-paths :removed-ids :pull}"
+    - {:writes :delete-paths :removed-ids :pull}, where `:pull` is `#{[model-type id]}` of the entity written,
+      whose export closure the plan later searches for untracked content to write too"
   [{:keys [id model_type model_id status file_path]} file-info]
   (try
     (cond
@@ -1148,7 +1159,7 @@
       ;; Target must be free or same entity id
       (and (= "create" status)
            (path-free? file-info))
-      {:pull (untracked-content-deps model_type model_id)
+      {:pull #{[model_type model_id]}
        :writes [{:id         id
                  :model_type model_type
                  :model_id   model_id
@@ -1160,7 +1171,7 @@
            (or (= file_path (:new-path file-info))
                (and (str/blank? file_path)
                     (= (:eid file-info) (:file-eid file-info)))))
-      {:pull (untracked-content-deps model_type model_id)
+      {:pull #{[model_type model_id]}
        :writes [{:id         id
                  :model_type model_type
                  :model_id   model_id
@@ -1180,7 +1191,7 @@
            (not (str/blank? file_path))
            (not= file_path (:new-path file-info))
            (path-free? file-info))
-      {:pull (untracked-content-deps model_type model_id)
+      {:pull #{[model_type model_id]}
        :writes [{:id         id
                  :model_type model_type
                  :model_id   model_id
@@ -1246,9 +1257,13 @@
                                         (when on-chunk (on-chunk @staged))
                                         fragment)))
                                (reduce merge-incremental-export-plans-reducer plan)))
-          plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
-                             (dependencies->incremental-export-plan commit snapshot opts)
-                             (merge-incremental-export-plans plan))]
+          ;; `:pull` holds the entities being written; the untracked content their export closures reach is
+          ;; found in one walk over all of them, then written too
+          plan          (if (= plan :remote-sync/incremental-not-possible)
+                          plan
+                          (->> (untracked-content-deps (:pull plan))
+                               (dependencies->incremental-export-plan commit snapshot opts)
+                               (merge-incremental-export-plans plan)))]
       (if (= plan :remote-sync/incremental-not-possible)
         :remote-sync/incremental-not-possible
         (dissoc plan :pull)))))

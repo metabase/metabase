@@ -1198,7 +1198,7 @@
   "Models git sync walks through but never writes."
   #{"Table" "Field"})
 
-(defn- descendant-closure
+(defn descendant-closure
   "Every `[model-name id]` reachable from `roots` through `serdes/descendants`, `roots` included: the keys of
   `(u/traverse roots #(serdes/descendants ...))`, found a level at a time with one `serdes/descendants-batch` call per
   model per level (per chunk of `serdes/*descendants-batch-size*` ids), so its queries grow with the depth of the
