@@ -80,10 +80,27 @@
       (let [ids (set (map :id (skills/skills-for-profile profile ["construct_notebook_query"])))]
         (is (contains? ids :construct-notebook-query-core))
         (is (not (contains? ids :read-resource)))))
-    (testing "no skills for tools the profile is not using"
-      (is (empty? (skills/skills-for-profile profile []))))
+    (testing "no tool-bound skills for tools the profile is not using"
+      (is (empty? (remove #(empty? (:tools %)) (skills/skills-for-profile profile [])))))
     (testing "dialect skills are excluded even though they have no tools"
       (is (empty? (filter :dialect (skills/skills-for-profile profile ["construct_notebook_query"])))))))
+
+(deftest ^:parallel cross-cutting-skill-follows-profiles-test
+  (testing "about-metabot has no tools and names its profiles, so it reaches them without any tool active"
+    (let [s (skills/get-skill :about-metabot)]
+      (is (= [] (:tools s)))
+      (is (= [:internal :megabot] (:profiles s))))
+    (doseq [profile-name [:internal :megabot]]
+      (testing profile-name
+        (is (some #{:about-metabot} (map :id (skills/skills-for-profile {:name profile-name} [])))))))
+  (testing "a profile it does not name never sees it"
+    (is (not-any? #{:about-metabot}
+                  (map :id (skills/skills-for-profile {:name :sql} ["read_resource"])))))
+  (testing "it is on demand: in the catalog, never always-on, and sorted after the tool skills"
+    (let [manifest (skills/build-skill-manifest {:name :internal} ["construct_notebook_query"] [])
+          ids      (map :id (:catalog manifest))]
+      (is (= "about-metabot" (last ids)))
+      (is (empty? (:always-on manifest))))))
 
 (deftest ^:parallel build-skill-manifest-test
   ;; :internal declares no :always-on-skills, so every relevant skill is on-demand (catalog).

@@ -97,6 +97,8 @@ You can create X-ray auto-generated dashboards from a single source — a table,
 
 {% include "metabot/prompts/shared/prompt_snippets/personality.selmer" %}
 
+{% include "metabot/prompts/shared/prompt_snippets/self-description.selmer" %}
+
 # Scope
 
 You answer analytical questions and help users find existing content.{% if not has_api_calls %} When a request needs a custom dashboard with specific cards, direct the user to the dashboard builder.{% endif %} For finding saved content, search and present what's there.

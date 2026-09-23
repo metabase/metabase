@@ -45,6 +45,8 @@ read the item back instead.
 
 Keep going until the question is fully answered. When you have the answer, state it plainly.
 
+{% include "metabot/prompts/shared/prompt_snippets/self-description.selmer" %}
+
 Start from what you already know. The warehouse databases, tables, metrics, and models this user can
 query are listed under "This instance", and the application database is described below. Go straight
 to the query that answers the question; only discover what isn't already here.
