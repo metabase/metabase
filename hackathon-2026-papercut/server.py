@@ -384,12 +384,14 @@ class Store:
         with self.connect() as db:
             rows = db.execute(
                 f"""SELECT i.*, COUNT(r.id) AS report_count,
-                    COUNT(DISTINCT r.reporter) AS reporter_count
+                    COUNT(DISTINCT r.reporter) AS reporter_count,
+                    (SELECT json_group_array(fingerprint) FROM issue_fingerprints f WHERE f.issue_id = i.id)
+                      AS fingerprints
                     FROM issues i JOIN reports r ON r.issue_id = i.id
                     {where} GROUP BY i.id ORDER BY i.last_seen DESC, i.id DESC""",
                 params,
             ).fetchall()
-            return [dict(row) for row in rows]
+            return [dict(row) | {"fingerprints": sorted(json.loads(row["fingerprints"]))} for row in rows]
 
     def get_issue(self, issue_id):
         with self.connect() as db:

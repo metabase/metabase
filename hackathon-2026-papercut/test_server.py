@@ -144,6 +144,8 @@ class StoreTest(unittest.TestCase):
         self.assertFalse(created)
         self.assertEqual(merged["id"], issue["id"])
         self.assertEqual(merged["report_count"], 2)
+        self.assertEqual(self.store.list_issues()[0]["fingerprints"],
+                         sorted(["old-key", issue["reports"][0]["fingerprint"]]))
 
     def test_database_enforces_values_and_repository(self):
         issue, _, _ = self.store.ingest(self.sample)
