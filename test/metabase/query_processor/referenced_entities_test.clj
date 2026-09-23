@@ -249,6 +249,57 @@
         (is (= "completed" (:status goal)))
         (is (= [[1000]] (get-in goal [:data :rows])))))))
 
+(defn- visualizer-viz-settings
+  "Viz settings of a visualizer dashcard charting `card-id`'s `count`, with `settings` for the chart."
+  [card-id settings]
+  {:visualization {:display             "line"
+                   :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" card-id)
+                                                     :originalName "count"
+                                                     :name         "COLUMN_1"}]}
+                   :settings            settings}})
+
+(deftest visualizer-dashcard-endpoint-referenced-entities-test
+  (testing "a visualizer dashcard's goal lives in its nested chart settings, and only its primary card's query runs it"
+    (mt/with-temp [:model/Card      {goal-id :id}   {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card      {chart-id :id}  {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card      {series-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})}
+                   :model/Dashboard {dash-id :id}   {}
+                   :model/DashboardCard {dashcard-id :id}
+                   {:dashboard_id           dash-id
+                    :card_id                chart-id
+                    :visualization_settings (visualizer-viz-settings chart-id
+                                                                     {:graph.show_goal  true
+                                                                      :graph.goal_value {:id     goal-id
+                                                                                         :type   "card"
+                                                                                         :column "count"}})}
+                   :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id :card_id series-id}]
+      (let [query (fn [card-id]
+                    (mt/user-http-request :crowberto :post 202
+                                          (format "dashboard/%d/dashcard/%d/card/%d/query" dash-id dashcard-id card-id)))]
+        (testing "the primary card answers the goal"
+          (let [goal (ref-entity (query chart-id) :card goal-id)]
+            (is (= "completed" (:status goal)))
+            (is (= [[1000]] (get-in goal [:data :rows])))))
+        (testing "the other combined cards don't run it again"
+          (let [response (query series-id)]
+            (is (= "completed" (:status response)))
+            (is (nil? (get-in response [:data :referenced_entities]))))))))
+  (testing "the nested settings toggle their own goal"
+    (mt/with-temp [:model/Card      {goal-id :id}  {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card      {chart-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Dashboard {dash-id :id}  {}
+                   :model/DashboardCard {dashcard-id :id}
+                   {:dashboard_id           dash-id
+                    :card_id                chart-id
+                    :visualization_settings (visualizer-viz-settings chart-id
+                                                                     {:graph.show_goal  false
+                                                                      :graph.goal_value {:id     goal-id
+                                                                                         :type   "card"
+                                                                                         :column "count"}})}]
+      (let [response (mt/user-http-request :crowberto :post 202
+                                           (format "dashboard/%d/dashcard/%d/card/%d/query" dash-id dashcard-id chart-id))]
+        (is (nil? (get-in response [:data :referenced_entities])))))))
+
 (deftest public-card-endpoint-referenced-entities-test
   (testing "GET /api/public/card/:uuid/query injects referenced_entities (survives the public result whitelist)"
     (mt/with-temporary-setting-values [enable-public-sharing true]

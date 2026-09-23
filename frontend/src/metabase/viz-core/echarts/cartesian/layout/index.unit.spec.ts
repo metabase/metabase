@@ -100,9 +100,9 @@ describe("getChartLayout", () => {
     );
   });
 
-  it("does not widen the y-axis gutter for a goal on a normalized stack (metabase#82424)", () => {
+  describe("goal line", () => {
     const formatPercent = (value: unknown) =>
-      `${Math.round(Number(value) * 100)}%`;
+      `${Number((Number(value) * 100).toFixed(2))}%`;
     const normalizedInput: ChartLayoutInput = {
       ...input,
       leftAxisModel: {
@@ -113,26 +113,37 @@ describe("getChartLayout", () => {
         formatGoal: formatPercent,
       },
     };
-    const getLeftTicksWidth = (goalSettings: VisualizationSettings) =>
+    const getLeftTicksWidth = (
+      layoutInput: ChartLayoutInput,
+      goalSettings: VisualizationSettings,
+    ) =>
       getChartLayout(
-        normalizedInput,
+        layoutInput,
         createMockVisualizationSettings({ ...settings, ...goalSettings }),
         false,
         480,
         274,
         createMockChartContext({ measureText: (text) => text.length * 8 }),
       ).ticksDimensions.yTicksWidthLeft;
-
-    const withoutGoal = getLeftTicksWidth({ "graph.show_goal": false });
-    const withGoal = (goalValue: number) =>
-      getLeftTicksWidth({
+    const withoutGoal = (layoutInput: ChartLayoutInput) =>
+      getLeftTicksWidth(layoutInput, { "graph.show_goal": false });
+    const withGoal = (layoutInput: ChartLayoutInput, goalValue: number) =>
+      getLeftTicksWidth(layoutInput, {
         "graph.show_goal": true,
         "graph.goal_value": goalValue,
       });
 
-    // the user enters 100 for 100%, which is no wider than the widest tick
-    expect(withGoal(100)).toBe(withoutGoal);
-    // while 1000% is one character wider than 100%
-    expect(withGoal(1000)).toBe(withoutGoal + 8);
+    it("widens the y-axis gutter for a goal wider than the ticks", () => {
+      expect(withGoal(input, 1_000_000)).toBeGreaterThan(withoutGoal(input));
+    });
+
+    it.each([12.5, 33.33, 100, 1000])(
+      "does not widen the y-axis gutter for a %s goal on a normalized stack (metabase#82424)",
+      (goalValue) => {
+        expect(withGoal(normalizedInput, goalValue)).toBe(
+          withoutGoal(normalizedInput),
+        );
+      },
+    );
   });
 });

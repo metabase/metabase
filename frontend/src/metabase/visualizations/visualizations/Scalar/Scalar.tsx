@@ -123,7 +123,7 @@ function ScalarComponent(
 
   const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
   const color = getColor(value, segments);
-  const tooltipContent = getTooltipContent(segments);
+  const tooltipContent = getTooltipContent(segments, formatOptions);
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
