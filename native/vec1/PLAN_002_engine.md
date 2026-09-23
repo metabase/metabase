@@ -1,4 +1,4 @@
-# PLAN 002 — SQLite store as the semantic search engine, end to end
+# PLAN 002 — SQLite store as the semantic search engine, end to end ✅ complete 2026-09-23
 
 Part of [PLAN.md](PLAN.md) (the wiring half of iteration 1). Builds on the store from
 [PLAN_001_store.md](PLAN_001_store.md) (`metabase-enterprise.semantic-search.sqlite`).
@@ -153,44 +153,50 @@ The standalone query from PLAN.md 1.4, on top of `sqlite/search-text`.
       `engine: search.engine/semantic` and exactly the two zebra cards; as rasta the card in a collection rasta
       can't read is dropped.
 
-## Phase E — run it end to end (1–2 h)
+## Phase E — run it end to end ✅ done 2026-09-23
 
-### Setup
+Kit in `native/vec1/e2e/` (all re-run from scratch at the end):
 
 ```bash
-# fresh, throwaway app DB (H2); delete the files to start over
-export MB_DB_TYPE=h2
-export MB_DB_FILE=/tmp/mb-sqlite-e2e/metabase          # H2 appends .mv.db
-export MB_SEMANTIC_SEARCH_SQLITE_PATH=/tmp/mb-sqlite-e2e/semantic.db
-# unchanged from today's dev setup:
-#   MB_PREMIUM_EMBEDDING_TOKEN   token with the semantic-search feature
-#   MB_EE_EMBEDDING_SERVICE_BASE_URL (+ MB_EE_EMBEDDING_SERVICE_API_KEY)   or  MB_EE_EMBEDDING_PROVIDER=openai + key
-# must NOT be set: MB_PGVECTOR_DB_URL, MB_SEARCH_ENGINE
-# optional: MB_VEC1_EXTENSION_PATH (default: resources/vec1/<platform>/ on the classpath)
-clojure -M:run:ee:dev      # or start the dev REPL with these env vars and (dev/start!)
+native/vec1/e2e/run.sh                      # fresh H2 app DB + SQLite store in /tmp/mb-sqlite-e2e, port 3055
+KEEP=1 native/vec1/e2e/run.sh               # restart on the same app DB + store
+SQLITE=0 KEEP=1 native/vec1/e2e/run.sh      # kill switch
+python3 native/vec1/e2e/search.py ["query" ...]   # runs the setup wizard on a fresh instance, then searches
+python3 native/vec1/e2e/lifecycle.py        # create / rename / archive / delete a card, check search follows
 ```
 
-Env vars are read at JVM start (`environ`): set them before starting the REPL. H2 keeps the app DB free of
-pgvector by construction; a fresh Postgres app DB also works once Phase A is in (nothing probes it).
+`run.sh` needs `MB_PREMIUM_EMBEDDING_TOKEN` and an embedder in the environment, and unsets `MB_DB_*`,
+`MB_PGVECTOR_DB_URL`, `MB_SEARCH_ENGINE` so a dev shell can't leak its app DB / pgvector / engine choice in.
 
-### Checklist
+### Results (ai-service `Snowflake/snowflake-arctic-embed-l-v2.0`, 1024 dims, cutoff 0.8)
 
-- [ ] Log shows `Opened SQLite semantic search store at … (created)` and `SQLite semantic index: {…}` counts;
-      no log line mentions pgvector / `semantic_search` schema / HNSW.
-- [ ] Setup wizard → Sample Database synced → `sqlite/stats` doc count matches `search.ingestion/search-items-count`.
-- [ ] REPL: `(search.engine/default-engine)` = `:search.engine/semantic`.
-- [ ] UI search for a paraphrase (e.g. "income across american regions") → "Revenue by state" at the top;
-      `/api/search?q=…` result carries `:all-scores` with `:semantic-distance`.
-- [ ] Create a card "Customer churn by cohort" → searchable by "clients leaving over time" within seconds;
-      rename → new name found; archive → gone from normal search, present with archived filter; delete → gone.
-- [ ] Unrelated query ("weather forecast") → few or no semantic hits (cutoff works); app-DB fallback may add
-      keyword hits.
-- [ ] Restart → `(existing)` in the log, indexing reuses vectors (fast), prune removes nothing.
-- [ ] Kill switch: unset `MB_SEMANTIC_SEARCH_SQLITE_PATH`, restart → semantic unsupported without pgvector,
-      search uses appdb as before.
-- [ ] Record: doc count, initial index time, search latency (embedding vs knn), cutoff chosen.
+- [x] Fresh start: healthy in ~60–70 s. Log: `Opened SQLite semantic search store … (created)`, `Search will be
+      served by the :search.engine/semantic engine`, `SQLite semantic index: {:upserted 64, :embedded 41, :reused 23 …}`
+      ~26 s after opening (sample content being created meanwhile; the 23 reused rows were already written by the
+      update hooks). No non-Liquibase log line mentions pgvector/HNSW; `semantic-search-configured?` is false so no
+      pgvector job is scheduled (`Initializing task SemanticSearchIndexer` is logged by `task.impl` before the gated
+      `init!`, which then schedules nothing).
+- [x] `/api/session/properties`: `search-engine` = `semantic`, token feature `semantic_search` = true.
+- [x] `/api/search` paraphrases (no shared words): "income across american regions" → Revenue by state #1;
+      "how happy are shoppers with each kind of merchandise" → Customer satisfaction per category #1;
+      "price reductions granted every three months" → Discounts given per quarter #1; `models=dashboard` →
+      dashboards only; "weather forecast for tomorrow" → **0** results (cutoff works). Scores show `rrf` + `semantic-distance`.
+- [x] Card lifecycle through the API: created card found by a paraphrase **~1 s** after saving; rename searchable
+      ~1 s; archive hides it from normal search and `archived=true` finds it; delete removes it from results.
+- [x] Restart (`KEEP=1`): healthy ~42 s, store `(existing)`, `{:upserted 65, :embedded 0, :reused 65}` in ~0.1 s,
+      and the deleted card's row was pruned (65 docs = 65 vectors).
+- [x] Kill switch (`SQLITE=0`): `Search will be served by the :search.engine/appdb engine`; the paraphrase finds
+      nothing, "revenue" finds the revenue cards by keyword; the store file is not touched.
 
----
+### Findings
+
+- **Deletes reach the store only on the next full index.** Metabase has no search delete hook
+  (`search/models.clj`, commented out); `ingestion/bulk-ingest!` turns vanished ids into deletes only when those ids
+  are re-ingested. pgvector catches such lost deletes with its hourly repair job, which is pgvector-gated (off in
+  SQLite mode). The row is harmless meanwhile — the permission filter can't load the deleted card, so it never shows
+  — and the next startup prunes it. Follow-up if it matters: schedule the repair task in SQLite mode too
+  (`repair-index!` already does index-all + prune, cheap because vectors are reused).
+- The API's search results don't carry the engine's `:score`, only the per-scorer `scores` breakdown.
 
 ## Risks / open questions
 
@@ -212,9 +218,8 @@ pgvector by construction; a fresh Postgres app DB also works once Phase A is in 
 
 | Phase | |
 |---|---|
-| A gating | 1 h |
-| B write hooks | 1–2 h |
-| C query | 3–4 h |
-| D tests | 2–3 h |
-| E end to end | 1–2 h |
-| **Total** | **~1–1.5 days** |
+| A gating | ✅ |
+| B write hooks | ✅ |
+| C query | ✅ |
+| D tests | ✅ |
+| E end to end | ✅ |
