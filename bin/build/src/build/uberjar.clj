@@ -128,22 +128,24 @@
 
 (def ^:private resource-ignore-patterns
   "Files to ignore when copying resources from source directories (`src` and `enterprise/backend/src`) and resource
-  directories (`resources`)."
-  [#"\.clj[c|s]?$"
-   #""
-   ;; ignore .~undo-tree~ or other nonsense files created by editors. I was considering using
-   ;;
-   ;;    git ls-files --ignored --exclude-from=.gitignore --others
-   ;;
-   ;; to find ALL the files to ignore here but then we run into problems accidentally ignoring build artifacts like
-   ;; translation files. This should be good enough for now -- we don't really NEED to do this stuff since we build in a
-   ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
-   #"\~$"
-   #"^\.?#"
-   #"\.rej$"
-   ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
-   ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
-   #"^modules/"])
+  directories (`resources`).
+
+  `b/copy-dir` matches each pattern with `re-matches` against the bare file NAME (not the relative path), so every
+  pattern must fully match a filename — path prefixes like `modules/` can never match, and unanchored fragments like
+  `\\.rej$` silently match nothing. None of this matters for CI/Docker builds from a clean checkout; it keeps dev
+  leftovers out of locally-built jars.
+
+  Deliberately NOT ignored: `.clj[cs]` sources. `b/uber`'s `:exclude` already strips Metabase sources from the jar by
+  path, and some .clj resources (data_readers.clj, locales.clj) must ship."
+  [;; nonsense files created by editors: foo~, #foo#, .#foo, *.rej
+   #".*~$"
+   #"^\.?#.*"
+   #".*\.rej$"
+   ;; webpack/rspack dev-server HMR output left under resources/frontend_client by a local dev server
+   #".*\.hot-update\..*"
+   ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — nested driver JARs built
+   ;; into resources/modules/ by bin/build-drivers must not be included or we'd ship every driver twice.
+   #".*\.metabase-driver\.jar$"])
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
