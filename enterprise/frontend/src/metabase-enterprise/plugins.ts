@@ -35,6 +35,7 @@ import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
+import { initializePlugin as initializeMonitorSemanticDuplicates } from "./monitor/semantic-duplicates";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
@@ -90,6 +91,7 @@ export function initializePlugins() {
   initializeModelPersistence();
   initializeModeration();
   initializeMonitorDependencyDiagnostics();
+  initializeMonitorSemanticDuplicates();
   initializeMultiFactorAuth();
   initializeRemoteSync();
   initializeReplacement();

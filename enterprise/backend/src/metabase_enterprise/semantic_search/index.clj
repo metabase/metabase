@@ -215,6 +215,66 @@
                               sql-format-quoted))
        :count))
 
+(defn indexed-model-count
+  "Fetches the number of non-archived documents for `model` in an index table."
+  [connectable table-name model]
+  (->> (jdbc/execute-one! connectable
+                          (-> {:select [[:%count.* :count]]
+                               :from   [(keyword table-name)]
+                               :where  [:and
+                                        [:= :model model]
+                                        [:= :archived false]]}
+                              sql-format-quoted))
+       :count))
+
+(defn- embedding-parameter
+  "Format an embedding as a pgvector input value, rather than as SQL.
+
+  The caller binds this value to a CAST(? AS vector) placeholder. Keeping the vector out of the SQL string is
+  important here because duplicate scans are background work over arbitrary provider output."
+  [embedding]
+  (doseq [value embedding]
+    (when-not (and (number? value) (Double/isFinite (double value)))
+      (throw (ex-info "Embedding contains invalid value" {:invalid-value value}))))
+  (str "[" (str/join "," embedding) "]"))
+
+(defn model-ids-within-cosine-distance
+  "Return every non-archived `model` document whose exact cosine distance from `embedding` is at most
+  `max-distance`. Results are keyset paged by the indexed string model ID and therefore have no result-count cap.
+
+  This intentionally uses an exact scan, even when the index table also has an approximate HNSW index. The duplicate
+  backfill must not silently omit a qualifying pair because an ANN candidate page was incomplete."
+  [connectable {:keys [table-name]} {:keys [model excluded-model-id embedding max-distance]
+                                     :or   {max-distance 0.36}}]
+  (let [page-size 500
+        query-page (fn [last-model-id]
+                     (let [distance-expr [:raw "embedding <=> CAST(? AS vector)"]
+                           candidates   (cond-> {:select [:model_id [distance-expr :distance]]
+                                                 :from   [(keyword table-name)]
+                                                 :where  [:and
+                                                          [:= :model model]
+                                                          [:= :archived false]
+                                                          [:!= :model_id (str excluded-model-id)]]}
+                                          last-model-id (update :where conj [:> :model_id last-model-id]))
+                           query        {:with     [[:vector_candidates candidates :materialized]]
+                                         :select   [:model_id]
+                                         :from     [:vector_candidates]
+                                         :where    [:<= :distance max-distance]
+                                         :order-by [[:model_id :asc]]
+                                         :limit    page-size}
+                           [sql & params] (sql/format query {:quoted true})]
+                       (jdbc/execute!
+                        connectable
+                        (into [sql (embedding-parameter embedding)] params)
+                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})))]
+    (loop [last-model-id nil
+           ids            []]
+      (let [rows (query-page last-model-id)
+            ids  (into ids (map :model_id) rows)]
+        (if (< (count rows) page-size)
+          ids
+          (recur (some-> rows last :model_id) ids))))))
+
 (defn- analytics-set-index-size!
   "Set the semantic-index-size metric to the number of rows in the index table."
   [connectable table-name]

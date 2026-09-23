@@ -1,0 +1,102 @@
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:00
+      author: metabase
+      comment: Create the semantic_duplicates snapshot table
+      changes:
+        - createTable:
+            tableName: semantic_duplicates
+            remarks: Canonical pairs of potentially duplicate saved questions
+            columns:
+              - column:
+                  name: question_id_1
+                  type: int
+                  remarks: First question ID in the canonical pair
+                  constraints:
+                    nullable: false
+              - column:
+                  name: question_id_2
+                  type: int
+                  remarks: Second question ID in the canonical pair
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: semantic_duplicates
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:01
+      author: metabase
+      comment: Add the semantic_duplicates composite primary key
+      changes:
+        - addPrimaryKey:
+            tableName: semantic_duplicates
+            columnNames: question_id_1, question_id_2
+            constraintName: pk_semantic_duplicates
+      rollback:
+        - dropPrimaryKey:
+            tableName: semantic_duplicates
+            constraintName: pk_semantic_duplicates
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:02
+      author: metabase
+      comment: Add the first semantic_duplicates report card foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: semantic_duplicates
+            baseColumnNames: question_id_1
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_semantic_duplicates_question_1
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: semantic_duplicates
+            constraintName: fk_semantic_duplicates_question_1
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:03
+      author: metabase
+      comment: Add the second semantic_duplicates report card foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: semantic_duplicates
+            baseColumnNames: question_id_2
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_semantic_duplicates_question_2
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: semantic_duplicates
+            constraintName: fk_semantic_duplicates_question_2
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:04
+      author: metabase
+      comment: Enforce canonical ordering for semantic duplicate pairs
+      changes:
+        - sql:
+            dbms: postgresql,h2,mysql,mariadb
+            sql: ALTER TABLE semantic_duplicates ADD CONSTRAINT chk_semantic_duplicates_order CHECK (question_id_1 < question_id_2)
+      rollback:
+        - sql:
+            dbms: postgresql,h2,mysql,mariadb
+            sql: ALTER TABLE semantic_duplicates DROP CONSTRAINT chk_semantic_duplicates_order
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:05
+      author: metabase
+      comment: Index the second question ID in semantic duplicate pairs
+      changes:
+        - createIndex:
+            tableName: semantic_duplicates
+            indexName: idx_semantic_duplicates_question_2
+            columns:
+              - column:
+                  name: question_id_2
+      rollback:
+        - dropIndex:
+            tableName: semantic_duplicates
+            indexName: idx_semantic_duplicates_question_2

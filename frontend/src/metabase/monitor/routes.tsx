@@ -104,6 +104,11 @@ export function getMonitorRoutes() {
       <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
         <Route element={<CanAccessMonitorDiagnostics />}>
+          {PLUGIN_MONITOR.isSemanticDuplicatesEnabled && (
+            <Route path="semantic-duplicates">
+              {PLUGIN_MONITOR.getSemanticDuplicatesRoutes()}
+            </Route>
+          )}
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
