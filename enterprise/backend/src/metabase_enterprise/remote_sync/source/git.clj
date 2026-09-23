@@ -610,10 +610,10 @@
   retired-clones
   (atom #{}))
 
-(defonce ^:private ^{:doc "Deletes the [[retired-clones]] when the process exits."}
+(defonce ^:private ^{:doc "Deref to install, once, a shutdown hook deleting the [[retired-clones]]."}
   retired-clones-reaper
-  (doto (Thread. ^Runnable (fn [] (run! #(FileUtils/deleteQuietly ^File %) @retired-clones)))
-    (->> (.addShutdownHook (Runtime/getRuntime)))))
+  (delay (.addShutdownHook (Runtime/getRuntime)
+                           (Thread. ^Runnable (fn [] (run! #(FileUtils/deleteQuietly ^File %) @retired-clones))))))
 
 (defn- stale-cache-error?
   "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
@@ -652,6 +652,7 @@
         fresh (io/file (.getParentFile path) (str (.getName path) "-" (random-uuid)))
         _     (log/info "Re-cloning stale git cache" {:stale-path (str (git-dir git)) :fresh-path (str fresh)})
         fresh-git (open-checked! fresh {:remote-url remote-url :token token})]
+    @retired-clones-reaper
     (swap! retired-clones conj (git-dir git) fresh)
     (swap! jgit assoc (.getPath path) fresh-git)
     fresh-git))
