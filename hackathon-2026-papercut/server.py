@@ -1083,6 +1083,23 @@ def git_label(report):
     return label
 
 
+PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
+
+
+def pr_control(papercut):
+    """On a Metabot papercut, the PR link from its comments, or a button that asks the fixer for a PR."""
+    if not any(fingerprint.startswith("metabot:") for fingerprint in papercut["fingerprints"]):
+        return ""
+    urls = [url for e in papercut["events"] if e["kind"] == "comment" for url in PR_URL.findall(e["body"] or "")]
+    if urls:
+        return f"<p>PR: <a href='{html.escape(urls[-1])}'>{html.escape(urls[-1])}</a></p>"
+    return ("<p><button type='button' onclick=\"this.disabled = true; "
+            f"fetch('/api/papercuts/{papercut['id']}/comments', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, "
+            "body: JSON.stringify({author: 'andrei', body: '/pr'})}).then((r) => r.ok ? location.reload() "
+            ": this.textContent = 'Failed: HTTP ' + r.status, (e) => this.textContent = 'Failed: ' + e.message)\">"
+            "Open PR</button></p>")
+
+
 def papercut_html(papercut):
     esc = html.escape
     reports = "".join(
@@ -1115,6 +1132,7 @@ def papercut_html(papercut):
             f"<p>{pill(papercut['category'] or 'unclassified')}{pill(papercut['status'])} "
             f"{papercut['report_count']} reports from {papercut['reporter_count']} reporters"
             f"{cost(papercut['cost_minutes'])}</p>"
+            f"{pr_control(papercut)}"
             f"<p class='muted'>{esc(papercut['repository'])} · {esc(papercut['path'] or 'no path')}"
             f"{' · ' + esc(papercut['area']) if papercut['area'] else ''}<br>"
             f"First seen {esc(papercut['first_seen'])}; last seen {esc(papercut['last_seen'])}"

@@ -547,6 +547,20 @@ class HttpTest(unittest.TestCase):
                 self.assertEqual(status, expected)
                 self.assertIn("error", body)
 
+    def test_metabot_papercut_offers_a_pr_until_a_pr_link_is_commented(self):
+        for report_id, fingerprint in (("r1", "metabot:abc"), ("r2", "other")):
+            self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": report_id,
+                                               "title": report_id, "fingerprint": fingerprint})
+        self.assertIn("fetch('/api/papercuts/1/comments'", self.call("GET", "/papercuts/1")[1])
+        self.assertIn("JSON.stringify({author: 'andrei', body: '/pr'})", self.call("GET", "/papercuts/1")[1])
+        self.assertNotIn("Open PR", self.call("GET", "/papercuts/2")[1])
+        self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"author": "andrei", "body": "/pr"})[0], 201)
+        self.call("POST", "/api/papercuts/1/comments",
+                  {"author": "papercut-fixer", "body": "Draft PR: https://github.com/metabase/metabase/pull/123"})
+        page = self.call("GET", "/papercuts/1")[1]
+        self.assertIn("PR: <a href='https://github.com/metabase/metabase/pull/123'>", page)
+        self.assertNotIn("Open PR", page)
+
     def test_html_escapes_titles(self):
         papercut_id = self.report("r1", "<script>alert(1)</script>")[1]["papercut"]["id"]
         _, page, _ = self.call("GET", f"/papercuts/{papercut_id}")
