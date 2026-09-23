@@ -11,7 +11,7 @@ Sub-plans (concrete checklists):
 
 - [PLAN_001_store.md](PLAN_001_store.md) — store init, indexing, raw queryability (iteration 0 + store half of iteration 1) ✅ complete
 - [LIMITATION_001_update_crash.md](LIMITATION_001_update_crash.md) — vec1 `UPDATE` / non-query `distance` segfault
-- PLAN_002 (todo) — engine wiring in `core.clj` + search results
+- [PLAN_002_engine.md](PLAN_002_engine.md) — wire the store in as the semantic engine, end to end from an empty app DB
 
 Two iterations:
 
