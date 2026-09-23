@@ -176,12 +176,17 @@
         (do (write-config! path after)
             (println "Removed" source "hooks from" path))))))
 
+(defn hook-server
+  "The server to save in the hooks: `--server`, else `PAPERCUTS_SERVER` as `resolve-env` finds it, else the shared one.
+  The same fallback the scanner uses, so the hooks report where a scan run by hand would."
+  [options resolve-env]
+  (normalize-server (or (:server options) (resolve-env "PAPERCUTS_SERVER") default-server)))
+
 (defn- install-papercut-hooks!
   [options]
   (let [available (filterv fs/which agents)
         selected  (selected-agents (:agent options) available)
-        ;; The same fallback the scanner uses, so the hooks report where a scan run by hand would.
-        server    (normalize-server (or (:server options) (bot-env/resolve-env "PAPERCUTS_SERVER") default-server))]
+        server    (hook-server options bot-env/resolve-env)]
     (println "Installing Stop and SessionEnd hooks for" (str/join ", " selected))
     (println "Papercuts server:" server)
     (println "Future transcript chunks will be sent to TypeSafe Jev; flagged chunks go to the drill-down agent.")

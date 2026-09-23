@@ -96,10 +96,13 @@
 ;;; State
 
 (defn- server-key
-  "`server` as part of a file name: its host, and its port when it has one, such as `10.193.193.227-8765`."
+  "`server` as part of a file name: its host and effective port, such as `10.193.193.227-8765`, with an `https-`
+  prefix for HTTPS. `http://host` and `https://host` are different servers; `https://host:443` is `https://host`."
   [server]
-  (let [uri (java.net.URI. server)]
-    (str (.getHost uri) (when (pos? (.getPort uri)) (str "-" (.getPort uri))))))
+  (let [uri    (java.net.URI. server)
+        https? (= "https" (some-> (.getScheme uri) str/lower-case))
+        port   (if (pos? (.getPort uri)) (.getPort uri) (if https? 443 80))]
+    (str (when https? "https-") (.getHost uri) "-" port)))
 
 (defn default-state-file
   "Progress file for `source` and `server` in the gitignored `local/` directory of this checkout."
@@ -108,12 +111,19 @@
   (str (fs/path u/project-root-directory "local" "papercuts"
                 (str "scan-state." (name source) "." (server-key server) ".edn"))))
 
+(defn- legacy-state-file
+  "The single progress file used before there was one per server."
+  [source]
+  (str (fs/path u/project-root-directory "local" "papercuts" (str "scan-state." (name source) ".edn"))))
+
 (defn- log-file [state-file]
-  (let [path (str state-file)]
-    ;; A state file named some other way gets its log beside it, rather than the log overwriting it.
-    (if (re-find #"scan-state\.(.+)\.edn$" path)
-      (str/replace path #"scan-state\.(.+)\.edn$" "scan-log.$1.jsonl")
-      (str path ".log.jsonl"))))
+  ;; Only the file name is rewritten, so the log sits beside its state file. A state file named some other way gets
+  ;; its log beside it too, rather than the log overwriting it.
+  (let [file-name (str (fs/file-name state-file))
+        log-name  (if-let [[_ key] (re-matches #"scan-state\.(.+)\.edn" file-name)]
+                    (str "scan-log." key ".jsonl")
+                    (str file-name ".log.jsonl"))]
+    (str (if-let [parent (fs/parent state-file)] (fs/path parent log-name) log-name))))
 
 (defn load-state
   "Saved progress: `{:sessions {session-id {:line :until :modified :path :reported [...]}}}`."
@@ -121,6 +131,12 @@
   (if (fs/exists? file)
     (edn/read-string (slurp file))
     {:version 1 :sessions {}}))
+
+(defn starting-state
+  "Saved progress to start from. Progress from before there was a file per server was made against the server then in
+  use, so a default state file that doesn't exist yet starts from `legacy` instead of rescanning everything."
+  [explicit? state-file legacy]
+  (load-state (if (and (not explicit?) (not (fs/exists? state-file)) (fs/exists? legacy)) legacy state-file)))
 
 (defn- save-state! [file state]
   (fs/create-dirs (fs/parent file))
@@ -493,7 +509,8 @@
                            ;; mise.local.toml as well, like the Jev key.
                            :server     (or (:server options) (bot-env/resolve-env "PAPERCUTS_SERVER") hooks/default-server)
                            :token      (or (:token options) (bot-env/resolve-env "PAPERCUTS_TOKEN"))})
-        state      (atom (cond-> (load-state state-file)
+        state      (atom (cond-> (starting-state (boolean (:state-file options)) state-file
+                                                 (legacy-state-file source))
                            ;; A rescan forgets how far each session was read, but not what it already reported.
                            (:rescan options) (update :sessions update-vals #(select-keys % [:reported]))))
         opts       (assoc opts :known-cache (atom {}))

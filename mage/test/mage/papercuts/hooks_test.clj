@@ -161,3 +161,10 @@
 
 (deftest removed-config-test
   (is (= {"model" "opus"} (hooks/removed-config (hooks/updated-config {"model" "opus"} "claude")))))
+
+(deftest hook-server-test
+  (let [env {"PAPERCUTS_SERVER" "http://127.0.0.1:8766/"}]
+    (testing "--server wins, then PAPERCUTS_SERVER, then the shared server"
+      (is (= "http://127.0.0.1:9000" (hooks/hook-server {:server "http://127.0.0.1:9000"} env)))
+      (is (= "http://127.0.0.1:8766" (hooks/hook-server {} env)))
+      (is (= hooks/default-server (hooks/hook-server {} {}))))))
