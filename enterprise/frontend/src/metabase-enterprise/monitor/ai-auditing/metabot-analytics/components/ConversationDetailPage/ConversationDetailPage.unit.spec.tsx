@@ -14,6 +14,7 @@ import * as Urls from "metabase/urls";
 import type {
   ConversationDetail,
   ConversationFeedback,
+  ConversationReview,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import type {
   GroupListQuery,
@@ -84,6 +85,7 @@ function toolCallPart(id: string): AgentMessagePart {
 function createConversation(
   messages: ConversationMessage[],
   feedback: ConversationFeedback[] = [],
+  review: ConversationReview | null = null,
 ): ConversationDetail {
   return {
     conversation_id: "convo-1",
@@ -106,6 +108,7 @@ function createConversation(
     forked_from_conversation_id: null,
     fork_boundary_message_id: null,
     feedback,
+    review,
   };
 }
 
@@ -133,6 +136,64 @@ function setup(
 }
 
 describe("ConversationDetailPage", () => {
+  it("shows the automatic quality review", async () => {
+    setup(
+      createConversation(
+        [userMessage("u1", null, "hi"), agentMessage("a1", "u1", "an answer")],
+        [],
+        {
+          label: "failed",
+          issues: ["unfulfilled"],
+          review: false,
+          version: "v1",
+          updated_at: "2026-01-01T00:00:00Z",
+          answers: {
+            conversation: {
+              outcome: { choice: "unfulfilled", confidence: 0.9 },
+              frustration: { score: 2, confidence: 0.8 },
+            },
+            turns: [
+              {
+                index: 2,
+                reaction: { choice: "correction", confidence: 0.9 },
+                tone: { score: 1, confidence: 0.7 },
+              },
+            ],
+          },
+        },
+      ),
+    );
+
+    const review = await screen.findByTestId("conversation-review");
+    expect(within(review).getByText("Failed")).toBeInTheDocument();
+    expect(
+      within(review).getByText("Request not fulfilled"),
+    ).toBeInTheDocument();
+    expect(
+      within(review).getByText(/Outcome: unfulfilled · Frustration: 2.0 \/ 3/),
+    ).toBeInTheDocument();
+    expect(
+      within(review).getByText("Message 3 · correction · terse"),
+    ).toBeInTheDocument();
+  });
+
+  it("offers to score an unreviewed conversation", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "hi"),
+        agentMessage("a1", "u1", "an answer"),
+      ]),
+    );
+
+    const review = await screen.findByTestId("conversation-review");
+    expect(
+      within(review).getByText("This conversation hasn't been reviewed yet."),
+    ).toBeInTheDocument();
+    expect(
+      within(review).getByRole("button", { name: "Score now" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the conversation title in the header", async () => {
     setup(
       createConversation([

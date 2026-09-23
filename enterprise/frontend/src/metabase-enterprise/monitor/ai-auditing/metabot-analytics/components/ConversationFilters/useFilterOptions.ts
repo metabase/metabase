@@ -67,7 +67,7 @@ export function useFilterOptions({
   user,
   group,
   tenant,
-}: FilterUrlState) {
+}: Pick<FilterUrlState, "date" | "user" | "group" | "tenant">) {
   const useTenantsSetting = useSetting("use-tenants");
   const tenantsFeatureEnabled =
     !!hasPremiumFeature("tenants") && !!useTenantsSetting;

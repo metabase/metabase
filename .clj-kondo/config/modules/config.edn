@@ -1138,8 +1138,10 @@
    :api #{metabase.jev.api
           metabase.jev.apps.intent
           metabase.jev.client
-          metabase.jev.diagnostics}
+          metabase.jev.diagnostics
+          metabase.jev.init}
    :uses #{api
+           app-db
            collections
            driver
            events
@@ -1152,6 +1154,7 @@
            premium-features
            query-processor
            settings
+           task
            util}
    :model-imports #{:model/Card
                     :model/Collection

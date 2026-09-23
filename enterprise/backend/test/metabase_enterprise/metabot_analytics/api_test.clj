@@ -444,7 +444,21 @@
           (is (= #{convo-1} (request-ids (format "group_id=%d&user_id=%d&date=2026-01-01~2026-01-01"
                                                  group-id user-a-id)))))
         (testing "malformed date returns 400"
-          (mt/user-http-request :crowberto :get 400 (str base-path "?date=not-a-real-range")))))))
+          (mt/user-http-request :crowberto :get 400 (str base-path "?date=not-a-real-range")))
+        (testing "has_issues narrows to conversations whose review found a problem"
+          (t2/insert! :model/MetabotConversationReview
+                      [{:conversation_id convo-1 :label "failed" :issues ["system-failure"] :version "v"}
+                       {:conversation_id convo-2 :label "ok" :issues [] :version "v"}])
+          (is (= #{convo-1} (request-ids "has_issues=true")))
+          (is (= #{convo-1 convo-2 convo-3} (request-ids "has_issues=false")))
+          (let [summaries (->> (mt/user-http-request :crowberto :get 200 base-path)
+                               :data
+                               (into {} (map (juxt :conversation_id identity))))]
+            (is (=? {:review_label "failed" :review_issues ["system-failure"] :review_pending false}
+                    (summaries convo-1)))
+            (is (=? {:review_label nil :review_issues []} (summaries convo-3))))
+          (is (=? {:review {:label "failed" :issues ["system-failure"] :review false}}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/metabot-analytics/conversations/" convo-1)))))))))
 
 (deftest get-conversation-detail-requires-audit-app-feature-test
   (testing "GET /api/ee/metabot-analytics/conversations/:id is gated by :audit-app and 402s without it"

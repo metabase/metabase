@@ -52,6 +52,7 @@ import type {
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
+import { ConversationReviewCard } from "./ConversationReviewCard";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
@@ -131,6 +132,7 @@ export function ConversationDetailPage() {
     query_count,
     queries,
     feedback,
+    review,
     fork_boundary_message_id,
     forked_from_conversation_id,
   } = conversation;
@@ -170,6 +172,8 @@ export function ConversationDetailPage() {
                 value={formatNumber(search_count)}
               />
             </SimpleGrid>
+
+            <ConversationReviewCard conversationId={convoId} review={review} />
 
             {feedback.length > 0 && (
               <Stack gap="lg">

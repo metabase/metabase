@@ -65,6 +65,9 @@ function createSummary(
     sanitized_user_agent: null,
     forked_from_conversation_id: null,
     user: null,
+    review_label: null,
+    review_issues: [],
+    review_pending: false,
     ...opts,
   };
 }
@@ -170,6 +173,7 @@ describe("ConversationsPage", () => {
         "Title",
         "User",
         "Profile",
+        "Issues",
         "Date",
         "Messages",
         "Tokens",
@@ -262,6 +266,45 @@ describe("ConversationsPage", () => {
       );
 
       await assertRequestedWithParams({ sort_by: sortBy, sort_dir: "asc" });
+    });
+  });
+
+  describe("issues", () => {
+    it("shows the detected issues of reviewed conversations", async () => {
+      setup({
+        conversations: [
+          createSummary({
+            conversation_id: "c3",
+            title: "Broken cohort",
+            review_label: "friction",
+            review_issues: ["did-not-follow-request", "high-frustration"],
+            review_pending: true,
+          }),
+        ],
+      });
+
+      const table = await findTable();
+      expect(
+        within(table).getByText("Did not follow request"),
+      ).toBeInTheDocument();
+      expect(within(table).getByText("High frustration")).toBeInTheDocument();
+      expect(within(table).getByText("Needs review")).toBeInTheDocument();
+    });
+
+    it("requests only conversations with issues when the switch is on", async () => {
+      const { router } = setup();
+
+      await findTable();
+      await userEvent.click(
+        screen.getByTestId("conversation-filters-issues-switch"),
+      );
+
+      await assertRequestedWithParams({ has_issues: "true" });
+      await waitFor(() =>
+        expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject({
+          issues: "1",
+        }),
+      );
     });
   });
 

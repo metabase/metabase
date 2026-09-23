@@ -14,6 +14,7 @@
   (:require
    [compojure.core :as compojure]
    [metabase.api.macros :as api.macros]
+   [metabase.jev.apps.conversations.api :as jev.conversations.api]
    [metabase.jev.apps.dashboard-focus :as jev.dashboard-focus]
    [metabase.jev.apps.explorations :as jev.explorations]
    [metabase.jev.apps.filters :as jev.filters]
@@ -50,6 +51,7 @@
   "`/api/jev/` routes: the dumb pass-through (this ns) plus the typed table-suggestions routes
   ([[metabase.jev.apps.tables]]). All Jev prototype scaffolding lives under `/api/jev`."
   (compojure/routes jev.tables/routes
+                    jev.conversations.api/routes
                     jev.explorations/routes
                     jev.joins/routes
                     jev.usage/routes
