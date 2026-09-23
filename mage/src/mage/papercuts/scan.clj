@@ -274,13 +274,14 @@
 
 (defn reportable
   "Positive papercuts from a drill-down that have an anchor in the new stretch and whose slug this session has not
-  reported before. Anchors outside the chunk are dropped, since the agent may have misnumbered them."
+  reported before. Only anchors in the new stretch are kept: the report is dated, identified and looked up in git
+  at its first anchor, and earlier lines were already scanned. Later ones were misnumbered."
   [papercuts {:keys [first-new-line last-line]} already-reported]
   (let [seen (into #{} (map :slug) already-reported)]
     (for [papercut papercuts
-          :let [anchors (filter #(<= (:line %) last-line) (:anchors papercut))]
+          :let [anchors (filter #(<= first-new-line (:line %) last-line) (:anchors papercut))]
           :when (and (= "positive" (:label papercut))
-                     (some #(>= (:line %) first-new-line) anchors)
+                     (seq anchors)
                      (not (seen (:slug papercut))))]
       (assoc papercut :anchors (vec anchors)))))
 

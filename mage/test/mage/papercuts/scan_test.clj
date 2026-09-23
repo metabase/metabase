@@ -56,8 +56,9 @@
       (is (empty? (scan/reportable [(assoc papercut :label "negative")] chunk []))))
     (testing "a papercut needs an anchor in the new stretch"
       (is (empty? (scan/reportable [(assoc papercut :anchors [{:line 9}])] chunk []))))
-    (testing "anchors past the chunk are dropped"
-      (is (= [{:line 12}] (:anchors (first (scan/reportable [(assoc papercut :anchors [{:line 12} {:line 99}])] chunk []))))))
+    (testing "anchors outside the new stretch are dropped, so the report is keyed on a new line"
+      (is (= [{:line 12}] (:anchors (first (scan/reportable [(assoc papercut :anchors [{:line 5} {:line 12} {:line 99}])]
+                                                            chunk []))))))
     (testing "a slug the session already reported is skipped"
       (is (empty? (scan/reportable [papercut] chunk [{:slug "console-hides-warnings"}]))))))
 
