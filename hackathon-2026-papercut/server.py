@@ -1837,12 +1837,15 @@ UI_STYLE = """<style>
 .theme-switch:not(:hover, :focus-within) button:not([aria-pressed=true]) {width: 0; opacity: 0}
 .header-actions .theme-switch button:hover {color: var(--text); background: var(--hover)}
 .theme-switch:is(:hover, :focus-within) button[aria-pressed=true] {color: var(--text); background: var(--pill)}
-@media (min-width: 931px) {
-  .toolbar {grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto}
-  .toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(120px, 1fr)) minmax(190px, 1.4fr) auto}
-}
+.toolbar {display: flex; flex-wrap: wrap; align-items: flex-end}
+.toolbar .filter-field {flex: none; min-width: 7rem; max-width: 16rem}
+.toolbar .filter-field:first-child {flex: 1 1 12rem; min-width: 10rem; max-width: none}
+.toolbar .filter-field label, .toolbar .filter-actions {white-space: nowrap}
+.toolbar .filter-actions {flex: none}
 .dropdown {position: relative}
-.dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left}
+.dropdown-button {display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; text-align: left;
+                   white-space: nowrap}
+.dropdown-button span {overflow: hidden; text-overflow: ellipsis}
 .dropdown-button .icon {color: var(--muted)}
 .dropdown-menu {display: none; position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; min-width: 100%; padding: 6px;
                 background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(16, 24, 32, .18)}
@@ -2148,7 +2151,7 @@ def source_select(sources, counts, chosen):
                        f"{html.escape(source_label(key))} ({counts.get(key, 0)})</option>" for key in sorted(keys))
     instances = [key for key in sources if key.startswith("instance:")]
     people = [key for key in sources if not key.startswith("instance:")]
-    return ("<select id='source' name='source'><option value=''>All sources</option>"
+    return ("<select id='source' name='source'><option value=''>All</option>"
             + (f"<optgroup label='Metabase instances'>{options(instances)}</optgroup>" if instances else "")
             + (f"<optgroup label='People'>{options(people)}</optgroup>" if people else "") + "</select>")
 
@@ -2471,9 +2474,9 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None, s
         available_repositories.append(filters["repository"])
     show_repository = len(available_repositories) > 1
     repository = (filter_field("repository", "Repository",
-                               select("repository", available_repositories, filters.get("repository"), "All repositories"))
+                               select("repository", available_repositories, filters.get("repository"), "All"))
                   if show_repository else "")
-    status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All statuses"))
+    status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All"))
     category = f"<input type='hidden' name='category' value='{esc(filters.get('category', ''), quote=True)}'>"
     source = filter_field("source", "Source", source_select(sources, source_counts or {}, filters.get("source", "")))
     counts = category_counts or Counter(p["category"] or "unclassified" for p in result["papercuts"])
