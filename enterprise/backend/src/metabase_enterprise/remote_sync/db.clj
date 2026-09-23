@@ -251,7 +251,8 @@
   "A map of ID to entity ID for the instances of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :entity_id model :id [:in ids]))
+  ;; select only the two columns: a full row runs the model's whole after-select (a Card normalizes its query)
+  (t2/select-pk->fn :entity_id [model :id :entity_id] :id [:in ids]))
 
 (mu/defn existing-entity-ids
   "The subset of `entity-ids` that instances of `model` have."
