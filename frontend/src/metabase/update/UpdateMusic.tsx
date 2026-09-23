@@ -5,7 +5,20 @@ import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 import S from "./UpdateMusic.module.css";
 
-export function UpdateMusic() {
+const MUSIC_TRACKS = {
+  elevator: "app/assets/audio/local-forecast-elevator.mp3",
+  game: "app/assets/audio/space-invaders-march.wav",
+} as const;
+
+export function UpdateMusic({
+  track,
+  paused = false,
+  playbackRate = 1,
+}: {
+  track: keyof typeof MUSIC_TRACKS;
+  paused?: boolean;
+  playbackRate?: number;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(true);
@@ -15,7 +28,7 @@ export function UpdateMusic() {
 
   const tryPlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !audio.paused || audio.error) {
+    if (paused || !audio || !audio.paused || audio.error) {
       return;
     }
     void audio.play().catch((error: unknown) => {
@@ -31,7 +44,16 @@ export function UpdateMusic() {
       }
       setPlayback("unavailable");
     });
-  }, []);
+  }, [paused]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      // Some browsers mute audio above 4×; retain the original note pitches.
+      audio.playbackRate = Math.min(playbackRate, 4);
+      audio.preservesPitch = true;
+    }
+  }, [playbackRate, track]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -39,7 +61,7 @@ export function UpdateMusic() {
       return;
     }
     audio.volume = 0.2;
-    if (!enabled) {
+    if (!enabled || paused) {
       audio.pause();
       return;
     }
@@ -62,10 +84,11 @@ export function UpdateMusic() {
       window.removeEventListener("click", handleGesture);
       audio.pause();
     };
-  }, [enabled, tryPlay]);
+  }, [enabled, paused, track, tryPlay]);
 
+  const isMusicOn = enabled && (playback === "playing" || paused);
   const togglePlayback = () => {
-    if (playback === "playing") {
+    if (isMusicOn) {
       setEnabled(false);
     } else {
       setEnabled(true);
@@ -76,16 +99,17 @@ export function UpdateMusic() {
   const controlLabel =
     playback === "unavailable"
       ? t`Music unavailable`
-      : playback === "playing"
+      : isMusicOn
         ? t`Mute music`
         : t`Play music`;
 
   return (
     <div className={S.music} ref={controlsRef}>
       <audio
+        key={track}
         ref={audioRef}
-        src="app/assets/audio/local-forecast-elevator.mp3"
-        autoPlay={enabled}
+        src={MUSIC_TRACKS[track]}
+        autoPlay={enabled && !paused}
         loop
         preload="auto"
         onCanPlay={() => {
@@ -93,6 +117,7 @@ export function UpdateMusic() {
             tryPlay();
           }
         }}
+        onLoadStart={() => setPlayback("paused")}
         onPlaying={() => setPlayback("playing")}
         onPause={() =>
           setPlayback((current) =>
@@ -106,7 +131,7 @@ export function UpdateMusic() {
           type="button"
           size="lg"
           variant="subtle"
-          c="text-primary-inverse"
+          c="text-primary"
           aria-label={controlLabel}
           disabled={playback === "unavailable"}
           onClick={togglePlayback}
@@ -115,7 +140,7 @@ export function UpdateMusic() {
             name={
               playback === "unavailable"
                 ? "warning"
-                : playback === "playing"
+                : isMusicOn
                   ? "pause"
                   : "play"
             }

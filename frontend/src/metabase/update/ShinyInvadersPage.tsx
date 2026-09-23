@@ -51,8 +51,13 @@ const DEFAULT_HIGH_SCORES: readonly HighScore[] = [
   { name: "BRYAN", score: 6000 },
   { name: "DAN", score: 5000 },
   { name: "ARIK", score: 4000 },
-  { name: "VAMSI", score: 100 },
+  { name: "VAMSI", score: 0 },
 ];
+
+export interface GameAudioState {
+  playing: boolean;
+  playbackRate: number;
+}
 
 interface GameState {
   playerX: number;
@@ -83,6 +88,8 @@ const createGame = (stage = 1, score = 0): GameState => ({
   status: "playing",
 });
 
+const getStageSpeed = (stage: number) => 1.4 ** (stage - 1);
+
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
 
@@ -106,7 +113,7 @@ const advanceGame = (
     1,
     99 - bounds.playerWidth,
   );
-  const invaderStep = INVADER_STEP * 1.4 ** (state.stage - 1);
+  const invaderStep = INVADER_STEP * getStageSpeed(state.stage);
   const edgeReached = state.invaders.some(({ x }) => {
     const nextX = x + state.invaderDirection * invaderStep;
     return nextX < 2 || nextX + INVADER_WIDTH > 98;
@@ -173,7 +180,7 @@ const advanceGame = (
     invaders: remainingInvaders,
     shots,
     invaderDirection,
-    score: state.score + hitInvaderIds.size * 100,
+    score: state.score + hitInvaderIds.size * 50,
     status,
   };
 };
@@ -203,7 +210,13 @@ const fire = (state: GameState): GameState => {
   };
 };
 
-export function ShinyInvadersPage({ header }: { header: ReactNode }) {
+export function ShinyInvadersPage({
+  header,
+  onAudioChange,
+}: {
+  header: ReactNode;
+  onAudioChange: (state: GameAudioState) => void;
+}) {
   const [game, setGame] = useState(createGame);
   const [playerName, setPlayerName] = useState("");
   const pressedKeys = useRef(new Set<string>());
@@ -221,6 +234,13 @@ export function ShinyInvadersPage({ header }: { header: ReactNode }) {
     boardWidth > 0 && boardHeight > 0 && shipWidth > 0 && shipHeight > 0;
 
   useEffect(() => {
+    onAudioChange({
+      playing: game.status === "playing",
+      playbackRate: getStageSpeed(game.stage),
+    });
+  }, [game.status, game.stage, onAudioChange]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target;
       const isEnteringName =
@@ -228,6 +248,9 @@ export function ShinyInvadersPage({ header }: { header: ReactNode }) {
         (target.matches("input, textarea") || target.isContentEditable);
       if (
         isEnteringName ||
+        (target instanceof HTMLElement &&
+          target.closest("button, a") &&
+          ["Space", "Enter"].includes(event.code)) ||
         !["ArrowLeft", "ArrowRight", "KeyA", "KeyD", "Space", "Enter"].includes(
           event.code,
         )

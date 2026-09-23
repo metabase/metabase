@@ -1,0 +1,7 @@
+.hacker {
+  --hacker-clothing: var(--mb-color-background_page-secondary-inverse);
+}
+
+[data-mantine-color-scheme="dark"] .hacker {
+  --hacker-clothing: var(--mb-color-background_page-secondary);
+}

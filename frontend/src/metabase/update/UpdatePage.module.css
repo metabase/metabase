@@ -1,8 +1,8 @@
 .page {
-  --update-game-background: var(--mb-color-background_page-primary-inverse);
-  --update-game-surround: var(--mb-color-background_page-secondary-inverse);
-  --update-game-text: var(--mb-color-text-primary-inverse);
-  --update-game-text-secondary: var(--mb-color-text-secondary-inverse);
+  --update-game-background: var(--mb-color-background_page-primary);
+  --update-game-surround: var(--mb-color-background_page-primary);
+  --update-game-text: var(--mb-color-text-primary);
+  --update-game-text-secondary: var(--mb-color-text-secondary);
 
   position: relative;
   height: 100dvh;
@@ -64,6 +64,20 @@
     color: var(--mb-color-text-secondary);
     font-size: 0.875rem;
   }
+}
+
+.hint {
+  position: absolute;
+  right: 4rem;
+  bottom: 1.5rem;
+  left: 4rem;
+  margin: 0;
+  color: var(--mb-color-text-secondary);
+  font-size: 1.5rem;
+  font-weight: 300;
+  text-align: center;
+  opacity: 0;
+  animation: game-appear 600ms ease-out 5s forwards;
 }
 
 .symbols {
@@ -146,13 +160,10 @@
   .ready {
     animation: none;
   }
-}
 
-[data-mantine-color-scheme="dark"] .page {
-  --update-game-background: var(--mb-color-background_page-primary);
-  --update-game-surround: var(--mb-color-background_page-secondary);
-  --update-game-text: var(--mb-color-text-primary);
-  --update-game-text-secondary: var(--mb-color-text-secondary);
+  .hint {
+    animation-duration: 0.01ms;
+  }
 }
 
 .readyStatus {

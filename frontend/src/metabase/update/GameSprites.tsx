@@ -1,5 +1,7 @@
 import { Icon } from "metabase/ui";
 
+import S from "./GameSprites.module.css";
+
 const SPRITE_PROPS = {
   width: "100%",
   height: "100%",
@@ -147,8 +149,13 @@ export function HackerSprite({
   variant: keyof typeof HACKER_HEADS;
 }) {
   return (
-    <svg {...SPRITE_PROPS} viewBox="0 0 32 36" preserveAspectRatio="none">
-      <g fill="var(--mb-color-background_page-secondary-inverse)">
+    <svg
+      {...SPRITE_PROPS}
+      className={S.hacker}
+      viewBox="0 0 32 36"
+      preserveAspectRatio="none"
+    >
+      <g fill="var(--hacker-clothing)">
         {HACKER_HEADS[variant]}
         <path d="M4 16h24v7h2v3h1v8H1v-8h1v-3h2z" />
       </g>

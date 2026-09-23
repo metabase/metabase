@@ -33,7 +33,7 @@
   grid-template-columns: 1fr auto 1fr;
   grid-template-rows: 1fr auto;
   align-items: center;
-  border-bottom: 1px solid var(--mb-color-border-on_dark);
+  border-bottom: 1px solid var(--mb-color-border);
 
   h2 {
     grid-column: 1 / -1;
@@ -94,17 +94,17 @@
   background-image:
     radial-gradient(
       circle at 15% 20%,
-      var(--mb-color-core-white_constant) 0 1px,
+      var(--update-game-text) 0 1px,
       transparent 1px
     ),
     radial-gradient(
       circle at 70% 35%,
-      var(--mb-color-core-white_constant) 0 1px,
+      var(--update-game-text) 0 1px,
       transparent 1px
     ),
     radial-gradient(
       circle at 35% 70%,
-      var(--mb-color-core-white_constant) 0 1px,
+      var(--update-game-text) 0 1px,
       transparent 1px
     );
   background-size:
@@ -141,7 +141,7 @@
   flex: 0 0 auto;
   padding: 0.75rem 1rem;
   color: var(--update-game-text-secondary);
-  border-top: 1px solid var(--mb-color-border-on_dark);
+  border-top: 1px solid var(--mb-color-border);
   font-size: 0.625rem;
   text-align: center;
 }
@@ -165,7 +165,7 @@
   th,
   td {
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--mb-color-border-on_dark);
+    border-bottom: 1px solid var(--mb-color-border);
     text-align: start;
   }
 

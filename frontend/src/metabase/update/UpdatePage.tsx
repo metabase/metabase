@@ -8,7 +8,7 @@ import { useUpgradeStatus } from "metabase/status/hooks/self-upgrade";
 
 import { KonamiArrowSprite } from "./GameSprites";
 import { GameUpgradeStatus } from "./GameUpgradeStatus";
-import { ShinyInvadersPage } from "./ShinyInvadersPage";
+import { type GameAudioState, ShinyInvadersPage } from "./ShinyInvadersPage";
 import { UpdateMusic } from "./UpdateMusic";
 import S from "./UpdatePage.module.css";
 import { UpgradeCompletion } from "./UpgradeCompletion";
@@ -32,6 +32,10 @@ export function UpdatePage() {
   const status = useUpgradeStatus();
   const [sequence, setSequence] = useState({ progress: 0, attempt: 0 });
   const [screen, setScreen] = useState<"code" | "ready" | "playing">("code");
+  const [gameAudio, setGameAudio] = useState<GameAudioState>({
+    playing: true,
+    playbackRate: 1,
+  });
   const isGameRevealed = screen !== "code";
   const isCodeComplete = sequence.progress === KONAMI_CODE.length;
 
@@ -112,15 +116,19 @@ export function UpdatePage() {
 
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
-      {screen !== "playing" && <UpdateMusic />}
+      <UpdateMusic
+        track={screen === "playing" ? "game" : "elevator"}
+        paused={screen === "playing" && !gameAudio.playing}
+        playbackRate={screen === "playing" ? gameAudio.playbackRate : 1}
+      />
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <LogoIcon height={56} />
           <h1>{getUpdateHeading(status.phase)}</h1>
           <UpgradeProgress status={status} />
           {!isGameRevealed && <UpgradeCompletion status={status} />}
-          <p>{t`Enter KONAMI code if you're bored`}</p>
         </header>
+        <p className={S.hint}>{t`Enter KONAMI code if you're bored`}</p>
         <div className={S.symbols} role="status" aria-label={t`Konami code`}>
           {KONAMI_CODE.slice(0, sequence.progress).map((entry, index) => (
             <span
@@ -148,7 +156,10 @@ export function UpdatePage() {
       )}
       {screen === "playing" && (
         <div className={S.gameReveal}>
-          <ShinyInvadersPage header={<GameUpgradeStatus status={status} />} />
+          <ShinyInvadersPage
+            header={<GameUpgradeStatus status={status} />}
+            onAudioChange={setGameAudio}
+          />
         </div>
       )}
     </div>
