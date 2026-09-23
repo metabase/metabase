@@ -3,7 +3,7 @@
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
    ;; non-/api routes in this ns have no OpenAPI surface; plain compojure is fine
-   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
+   [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET POST OPTIONS]]
    [compojure.route :as route]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
@@ -16,6 +16,7 @@
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.server.routes.static :as static]
+   [metabase.server.upgrade :as upgrade]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -119,6 +120,8 @@
    (GET "/readyz" [] health-handler)
    ;; ^/livez -> Liveness probe (no DB access)
    (GET "/livez" [] livez-handler)
+   ;; ^/api/upgrade -> automatic upgrade
+   (POST "/api/upgrade" [] upgrade/handler)
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
