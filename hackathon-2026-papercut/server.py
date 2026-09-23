@@ -49,6 +49,7 @@ SORTS = {
     "oldest": "p.first_seen ASC, p.id ASC",
     "reports": "report_count DESC, p.last_seen DESC, p.id DESC",
     "reporters": "reporter_count DESC, report_count DESC, p.id DESC",
+    "agents": "agent_count DESC, report_count DESC, p.id DESC",
     "cost": "cost_minutes DESC, report_count DESC, p.id DESC",
     "updated": "p.updated_at DESC, p.id DESC",
 }
@@ -122,22 +123,24 @@ def reopens(observed, resolved_at):
 
 
 def parse_since(value):
-    """Normalize a change cursor so it compares as a string against stored updated_at values."""
+    """Normalize a change cursor to the UTC, microsecond form of stored updated_at values, so they compare as strings."""
     # Query-string decoding turns an unencoded "+00:00" into " 00:00"; put the plus back.
     cursor = re.sub(r" (\d{2}:\d{2})$", r"+\1", value.strip())
     cursor = re.sub(r"Z$", "+00:00", cursor)
     try:
-        datetime.fromisoformat(cursor)
-    except ValueError as error:
-        raise ValueError("since must be a cursor returned by a previous list") from error
-    return cursor
-
+        parsed = datetime.fromisoformat(cursor)
+    except ValueError:
+        parsed = None
+    if parsed is None or parsed.tzinfo is None or "T" not in cursor:
+        raise ValueError("since must be a cursor returned by a previous list")
+    return parsed.astimezone(timezone.utc).isoformat(timespec="microseconds")
 
 
 def public_url(url):
     """`url` without the user info and query an HTTPS remote can carry credentials in. Other forms pass through."""
     match = re.fullmatch(r"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@]*@)?([^?#]*).*", url)
     return match[1] + match[2] if match else url
+
 
 def words(text):
     found = set()
@@ -803,6 +806,9 @@ class Store:
             raise ValueError(f"sort must be one of: {', '.join(SORTS)}")
         limit = int_param(filters, "limit", 50, 1, max_limit)
         offset = int_param(filters, "offset", 0, 0)
+        # A change feed returns every change: its cursor is the newest change of all, so a partial page would skip rows.
+        if filters.get("since"):
+            limit, offset = -1, 0
         where = " AND ".join(clauses)
         with self.connect() as db:
             total = db.execute(f"SELECT COUNT(*) FROM papercuts p WHERE {where}", params).fetchone()[0]
@@ -818,8 +824,8 @@ class Store:
             cursor = db.execute("SELECT MAX(updated_at) FROM papercuts").fetchone()[0]
         # Clients that reuse an existing grouping, such as the transcript scanner, read fingerprints from the list.
         papercuts = [dict(row) | {"fingerprints": sorted(json.loads(row["fingerprints"]))} for row in rows]
-        return {"papercuts": papercuts, "total": total, "limit": limit, "offset": offset,
-                "next_offset": offset + limit if offset + limit < total else None, "cursor": cursor}
+        return {"papercuts": papercuts, "total": total, "limit": limit if limit > 0 else None, "offset": offset,
+                "next_offset": offset + limit if 0 < offset + limit < total else None, "cursor": cursor}
 
     def repositories(self):
         with self.connect() as db:
@@ -1021,6 +1027,8 @@ class Store:
             other = row["papercut_b"] if row["papercut_a"] == source_id else row["papercut_a"]
             if other == target_id:
                 continue
+            # Its relation now points at the target, or is gone; either way polling clients must refetch it.
+            db.execute("UPDATE papercuts SET updated_at = ? WHERE id = ?", (at, other))
             pair = (min(other, target_id), max(other, target_id))
             existing = db.execute("SELECT source FROM relations WHERE papercut_a = ? AND papercut_b = ?", pair).fetchone()
             # The target's own decision wins, unless it was only a suggestion and the source's was a person's.
@@ -1037,8 +1045,14 @@ class Store:
     def _suggest_relations(self, db, papercut_id, at):
         """Recompute suggested relations for one papercut. Manual and rejected relations are kept."""
         papercut = db.execute("SELECT * FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()
+        dropped = db.execute(
+            """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END FROM relations
+               WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)""",
+            (papercut_id, papercut_id, papercut_id)).fetchall()
         db.execute("DELETE FROM relations WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)",
                    (papercut_id, papercut_id))
+        # The other side lists this relation too, so polling clients must refetch it.
+        db.executemany("UPDATE papercuts SET updated_at = ? WHERE id = ?", [(at, row[0]) for row in dropped])
         decided = {r["other"] for r in db.execute(
             """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END AS other FROM relations
                WHERE papercut_a = ? OR papercut_b = ?""", (papercut_id, papercut_id, papercut_id))}
@@ -1944,6 +1958,8 @@ class Handler(BaseHTTPRequestHandler):
         if dispatch and command == "PATCH":
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
+            # The page lists live papercuts; a change feed is for API clients.
+            params.pop("since", None)
             return self.respond(200, papercut_list_html(self.store.list_papercuts(params), params,
                                                         self.store.repositories()), "text/html")
         if command == "GET" and html_match:

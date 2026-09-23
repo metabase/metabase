@@ -258,6 +258,17 @@ class ListTest(StoreCase):
         changed = self.store.list_papercuts({"since": cursor})
         self.assertEqual({p["id"] for p in changed["papercuts"]}, {first, second})
         self.assertGreater(changed["cursor"], cursor)
+        # The same instant in another offset reads the same changes; a feed ignores the page size.
+        shifted = server.datetime.fromisoformat(cursor).astimezone(server.timezone(server.timedelta(hours=-4)))
+        self.assertEqual(len(self.store.list_papercuts({"since": shifted.isoformat(), "limit": "1"})["papercuts"]), 2)
+        for bad in ("2026-09-01", "2026-09-01T00:00:00"):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                self.store.list_papercuts({"since": bad})
+
+    def test_agents_sort(self):
+        one, both = self.papercut("One agent", agent="claude"), self.papercut("Both agents", agent="claude")
+        self.report(title="Both agents", fingerprint="Both agents", agent="codex")
+        self.assertEqual([p["id"] for p in self.store.list_papercuts({"sort": "agents"})["papercuts"]], [both, one])
 
 
 class TriageTest(StoreCase):
@@ -341,6 +352,20 @@ class RelationTest(StoreCase):
         papercut = self.store.relate(second, {"papercut_id": unrelated, "actor": "chris"})
         self.assertEqual([(r["id"], r["source"]) for r in papercut["related"]], [(unrelated, "manual")])
         self.assertEqual([e["kind"] for e in papercut["events"]][-3:], ["unrelated", "description", "related"])
+
+    def test_relation_changes_mark_both_sides_changed(self):
+        first = self.papercut("Git replay leaves worktree index stale", description="Moving the branch ref")
+        second = self.papercut("Git replay leaves the worktree index stale", description="Moving a branch ref")
+        cursor = self.store.list_papercuts()["cursor"]
+        # Editing one side drops the suggestion; the other side lists it too.
+        self.store.update_papercut(second, {"title": "Kondo cache hides lint warnings", "description": "Cold cache"})
+        self.assertIn(first, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
+
+        target, neighbour = self.papercut("Target"), self.papercut("Neighbour")
+        self.store.relate(first, {"papercut_id": neighbour})
+        cursor = self.store.list_papercuts()["cursor"]
+        self.store.merge(first, {"into": target})
+        self.assertIn(neighbour, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
 
     def test_relations_stay_within_a_repository(self):
         first = self.papercut("Trap")
@@ -744,6 +769,7 @@ class HttpTest(unittest.TestCase):
                 status, body, _ = self.call("GET", f"/api/papercuts?since={since}")
                 self.assertEqual((status, [p["title"] for p in body["papercuts"]]), (200, ["Second"]))
         self.assertEqual(self.call("GET", "/api/papercuts?since=yesterday")[0], 400)
+        self.assertEqual(self.call("GET", f"/?since={cursor}")[0], 200)
 
     def test_assessment_and_dispatch_routes(self):
         papercut_id = self.report("r1")[1]["papercut"]["id"]
