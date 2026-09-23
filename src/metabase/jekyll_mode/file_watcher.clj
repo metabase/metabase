@@ -1,7 +1,8 @@
 (ns metabase.jekyll-mode.file-watcher
   (:require
    [metabase.jekyll-mode.files :as files]
-   [metabase.jekyll-mode.writeback.serialize :as serialize]
+   [metabase.jekyll-mode.load :as load]
+   [metabase.jekyll-mode.writeback :as writeback]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [nextjournal.beholder :as beholder])
@@ -29,8 +30,9 @@
       (case (:type ev)
         :create (log/warn "Heads up: we don't support create yet")
         :modify (try
-                  (log/infof "Output: %s"
-                             (pr-str (serialize/deserialize (.toFile (:path ev)))))
+                  ;; FIXME: Infer the paths from the file.
+                  (binding [writeback/*suppress-file-updates* true]
+                    (load/load-instance-from-file! :model/Card (.toFile (:path ev))))
                   (catch Exception e
                     (log/error e "IT BROKE")))
         :delete (log/warn "Heads up: we don't support delete yet")))))
@@ -48,5 +50,6 @@
 (comment
   (deref watcher)
 
-  (toucan2.core/update! :model/Card 23 {:name "Another name 8"})
+  (toucan2.core/update! :model/Card 23 {:name "Another name 10"})
+  (toucan2.core/select-one-fn :name :model/Card :id 23)
   (start!))
