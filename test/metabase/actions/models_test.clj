@@ -362,7 +362,14 @@
       (jdbc/execute! one-off-dbs/*conn* [statement]))
     (sync/sync-database! (mt/db))
     (mt/with-actions-enabled
-      (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
+      ;; explicit :fields, so the model's column set stays apart from the table's when sync adds a column
+      (mt/with-actions [{model-id :id} {:type          :model
+                                        :dataset_query (mt/mbql-query foo
+                                                         {:fields (for [field-name ["id" "name"]]
+                                                                    [:field (t2/select-one-pk :model/Field
+                                                                                              :table_id (mt/id :foo)
+                                                                                              :name field-name)
+                                                                     nil])})}]
         (let [action-data {:type     :implicit
                            :kind     :row/create
                            :name     "create foo"

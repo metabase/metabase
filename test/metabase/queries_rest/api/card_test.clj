@@ -5594,32 +5594,33 @@
   "Create a model on a one-column H2 table, run `ddl` against the table, sync, and return the names of the columns
   that `GET /api/card/:id/query_metadata` offers for the model."
   [ddl]
-  (mt/test-driver :h2
-    (mt/with-temp-test-data [["grid_view"
-                              [{:field-name "name", :base-type :type/Text}]
-                              [["a"]]]]
-      (mt/with-model-cleanup [:model/Card]
-        (let [db       (mt/db)
-              mp       (mt/metadata-provider)
-              model-id (:id (mt/user-http-request :crowberto :post 200 "card"
-                                                  (assoc (card-with-name-and-query (mt/random-name)
-                                                                                   (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
-                                                         :type :model)))]
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) [ddl])
-          (sync/sync-database! db)
-          (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" model-id))
-               :tables
-               (m/find-first #(= (str "card__" model-id) (:id %)))
-               :fields
-               (map :name)))))))
+  (mt/with-temp-test-data [["grid_view"
+                            [{:field-name "name", :base-type :type/Text}]
+                            [["a"]]]]
+    (mt/with-model-cleanup [:model/Card]
+      (let [db       (mt/db)
+            mp       (mt/metadata-provider)
+            model-id (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                (assoc (card-with-name-and-query (mt/random-name)
+                                                                                 (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
+                                                       :type :model)))]
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) [ddl])
+        (sync/sync-database! db)
+        (->> (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" model-id))
+             :tables
+             (m/find-first #(= (str "card__" model-id) (:id %)))
+             :fields
+             (map :name))))))
 
 (deftest model-shows-column-added-to-source-table-after-sync-test
   (testing "GHY-4638: after sync finds a new column in a model's source table, the model's columns include it"
-    (is (= ["ID" "NAME" "EXTRA"]
-           (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ADD COLUMN \"EXTRA\" VARCHAR;")))))
+    (mt/test-driver :h2
+      (is (= ["ID" "NAME" "EXTRA"]
+             (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ADD COLUMN \"EXTRA\" VARCHAR;"))))))
 
 (deftest model-drops-renamed-column-after-sync-test
   (testing "GHY-4638: when sync finds a column renamed in a model's source table, the model shows the new name and
            not the old one, which no longer exists"
-    (is (= ["ID" "TITLE"]
-           (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ALTER COLUMN \"NAME\" RENAME TO \"TITLE\";")))))
+    (mt/test-driver :h2
+      (is (= ["ID" "TITLE"]
+             (model-column-names-after-ddl! "ALTER TABLE \"GRID_VIEW\" ALTER COLUMN \"NAME\" RENAME TO \"TITLE\";"))))))
