@@ -11,14 +11,12 @@
    To add a new syncable model, add a spec entry to `remote-sync-specs` and
    optionally implement custom multimethods if the default behavior doesn't fit."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -517,32 +515,6 @@
   (->> ingest-list
        (map (fn [path] (:model (last path))))
        (into #{})))
-
-(defn check-entity-id-conflicts
-  "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
-   Returns map of {model-type #{conflicting-entity-ids}}.
-
-   Excludes the Library collection entity_id since that's handled by the library-conflict check."
-  [imported-entity-ids-by-model]
-  (into {}
-        (for [[model-type entity-ids] imported-entity-ids-by-model
-              :when (seq entity-ids)
-              :let [spec (spec-for-model-type model-type)
-                    model-key (:model-key spec)]
-              :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
-              :let [local-entity-ids (remote-sync.db/existing-entity-ids model-key entity-ids)
-                    tracked-entity-ids (when (seq local-entity-ids)
-                                         (let [pks (remote-sync.db/ids-by-entity-ids model-key local-entity-ids)]
-                                           (into #{}
-                                                 (map (fn [rso]
-                                                        (:entity_id (remote-sync.db/instance model-key (:model_id rso)))))
-                                                 (remote-sync.db/rsos-of-models model-type pks))))
-                    conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
-                    conflicting-entity-ids (if (= model-type "Collection")
-                                             (disj conflicting-entity-ids collection/library-entity-id)
-                                             conflicting-entity-ids)]
-              :when (seq conflicting-entity-ids)]
-          [model-type conflicting-entity-ids])))
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
