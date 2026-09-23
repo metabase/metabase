@@ -225,6 +225,16 @@ export const jevApi = Api.injectEndpoints({
         body,
       }),
     }),
+    focusDashboard: builder.mutation<
+      DashboardFocus,
+      { dashboardId: number; intent: string }
+    >({
+      query: ({ dashboardId, intent }) => ({
+        method: "POST",
+        url: `/api/jev/dashboard/${dashboardId}/focus`,
+        body: { intent },
+      }),
+    }),
   }),
 });
 
@@ -262,6 +272,34 @@ export interface VizSuggestion {
   ranked: { display: string; score: number }[];
 }
 
+/** A dashboard card scored against the user's intent, with its position for re-layout. */
+export interface DashboardFocusCard {
+  dashcard_id: number;
+  card_id: number;
+  tab_id: number | null;
+  title: string;
+  pos: { row: number; col: number; size_x: number; size_y: number };
+  score: number;
+  focused: boolean;
+}
+
+export interface DashboardFocusFilter {
+  name: string;
+  type: string;
+  slug: string;
+  score: number;
+  highlight: boolean;
+}
+
+export interface DashboardFocus {
+  dashboard_id: number;
+  intent: string;
+  available: boolean;
+  name?: string;
+  cards: DashboardFocusCard[];
+  filters: DashboardFocusFilter[];
+}
+
 export const {
   useSuggestEntityTypeMutation,
   useGetTableSuggestionsQuery,
@@ -271,4 +309,5 @@ export const {
   useRankQueryStepsMutation,
   useRankExplorationsMutation,
   useSuggestVizMutation,
+  useFocusDashboardMutation,
 } = jevApi;

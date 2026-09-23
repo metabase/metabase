@@ -61,6 +61,14 @@
   ([instructions] {:type "noul" :instructions instructions})
   ([instructions criteria] {:type "noul" :instructions instructions :criteria criteria}))
 
+(defn score
+  "A `score` question: a probability-weighted position on the ordered `levels` (a vector of concrete
+  level descriptions, low to high). Use for graded judgments (e.g. relevance) — the answer spreads
+  across the range far better than a `noul` yes/no, and carries its own confidence. Answer:
+  `{:score n :confidence c :probabilities {level p} :legend {…}}`."
+  [instructions levels]
+  {:type "score" :instructions instructions :criteria levels})
+
 ;;; ---- the call ----
 
 (defn ask

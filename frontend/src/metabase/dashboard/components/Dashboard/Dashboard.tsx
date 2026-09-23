@@ -20,6 +20,7 @@ import {
   ExportAsPdfButton,
   FullscreenToggle,
 } from "../DashboardHeader/buttons";
+import { DashboardFocus } from "../DashboardFocus/DashboardFocus";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 import { DashboardTabs } from "../DashboardTabs";
@@ -120,6 +121,11 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel />
+          {!isEditing && typeof dashboard?.id === "number" && (
+            <FullWidthContainer>
+              <DashboardFocus dashboardId={dashboard.id} />
+            </FullWidthContainer>
+          )}
           <FullWidthContainer
             className={S.CardsContainer}
             data-element-id="dashboard-cards-container"
