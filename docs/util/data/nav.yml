@@ -279,8 +279,6 @@ categories:
             url: "embedding/parameters"
           - name: "Appearance"
             url: "embedding/appearance"
-          - name: "Custom visualizations"
-            url: "embedding/custom-visualizations"
           - name: "Authentication"
             url: "embedding/authentication"
           - name: "Tenants"
