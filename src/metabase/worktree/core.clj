@@ -18,11 +18,26 @@
   []
   *worktree-id*)
 
-(defn in-current-world?
-  "Whether `instance` belongs to the world being worked in: the main app's content by default, and a branch's when
-  the request named one. Lists that span collections need it, since both worlds share the tables."
-  [instance]
-  (= (:worktree_id instance) *worktree-id*))
+(def ^:dynamic *scope-queries?*
+  "Whether the queries Toucan builds are restricted to the world being worked in. Bound only by [[across-worlds]]."
+  true)
+
+(defn scope-queries?
+  "Whether the queries Toucan builds are restricted to the world being worked in."
+  []
+  *scope-queries?*)
+
+(defn do-across-worlds
+  "Impl for [[across-worlds]]."
+  [thunk]
+  (binding [*scope-queries?* false]
+    (thunk)))
+
+(defmacro across-worlds
+  "Execute `body` without restricting what it reads to one world, so it sees the main app's content and every
+  branch's. For the code that works out which world something belongs to, and for deleting a worktree."
+  [& body]
+  `(do-across-worlds (^:once fn* [] ~@body)))
 
 (defn do-with-worktree
   "Impl for [[with-worktree]]."

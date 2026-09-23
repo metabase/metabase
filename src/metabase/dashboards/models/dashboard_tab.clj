@@ -23,9 +23,6 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/DashboardTab [_model]
-  {:fk :dashboard_id :model :model/Dashboard})
-
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
   :model/DashboardTab)
@@ -60,7 +57,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      [:worktree_id]
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

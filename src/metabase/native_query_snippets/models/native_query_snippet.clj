@@ -27,9 +27,6 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/NativeQuerySnippet [_model]
-  {:fk :collection_id :model :model/Collection})
-
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in

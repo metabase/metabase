@@ -229,7 +229,7 @@
         library-conflict (when-let [local-library (remote-sync.db/library-collection collection/library-collection-type)]
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
-                                                 (serdes/local-entity-id "Collection" collection/library-entity-id))
+                                                 collection/library-entity-id)
                                       (not (remote-sync.db/rso-exists? "Collection" (:id local-library))))
                              {:type :library-conflict
                               :category "Library"

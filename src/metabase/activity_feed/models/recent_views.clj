@@ -40,7 +40,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -267,7 +266,7 @@
   [card-ids]
   (if-not (seq card-ids)
     []
-    (activity-feed.db/cards-for-recent-views card-ids (worktree/worktree-id))))
+    (activity-feed.db/cards-for-recent-views card-ids)))
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
@@ -349,7 +348,7 @@
   [dashboard-ids]
   (if (empty? dashboard-ids)
     []
-    (activity-feed.db/dashboards-for-recent-views dashboard-ids (worktree/worktree-id))))
+    (activity-feed.db/dashboards-for-recent-views dashboard-ids)))
 
 (defmethod fill-recent-view-info :dashboard [{:keys [_model model_id timestamp model_object]}]
   (when-let [dashboard (and (mi/can-read? model_object)
@@ -372,7 +371,7 @@
   (if-not (seq collection-ids)
     []
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
-          collections (activity-feed.db/unarchived-collections-with-details collection-ids (worktree/worktree-id))]
+          collections (activity-feed.db/unarchived-collections-with-details collection-ids)]
       (->> (t2/hydrate collections :effective_parent)
            (map #(m/dissoc-in % [:effective_parent :type]))))))
 
@@ -462,7 +461,7 @@
   [document-ids]
   (if-not (seq document-ids)
     []
-    (let [documents (activity-feed.db/documents-for-recent-views document-ids (worktree/worktree-id))]
+    (let [documents (activity-feed.db/documents-for-recent-views document-ids)]
       documents)))
 
 (defn- get-entity->id->data [views]

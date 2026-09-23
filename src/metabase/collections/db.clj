@@ -35,12 +35,9 @@
   (t2/select-one [:model/Collection :id :namespace] :id collection-id))
 
 (mu/defn collection-of-type
-  "The ::collections.schema/collection of `type` in the world `worktree-id` names, or nil."
-  ([type :- :string]
-   (collection-of-type type nil))
-  ([type        :- :string
-    worktree-id :- [:maybe ms/PositiveInt]]
-   (t2/select-one :model/Collection :type type :worktree_id worktree-id)))
+  "The ::collections.schema/collection of `type` in the world being worked in, or nil."
+  [type :- :string]
+  (t2/select-one :model/Collection :type type))
 
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."

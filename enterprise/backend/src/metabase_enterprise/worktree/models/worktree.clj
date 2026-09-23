@@ -10,6 +10,7 @@
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.worktree.core :as worktree]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -23,7 +24,8 @@
 
 (t2/define-after-insert :model/Worktree
   [worktree]
-  (collections/create-trash-collection! (:id worktree))
+  (worktree/with-worktree (:id worktree)
+    (collections/create-trash-collection!))
   worktree)
 
 (defmethod mi/can-read? :model/Worktree

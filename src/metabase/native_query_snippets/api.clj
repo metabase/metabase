@@ -57,6 +57,7 @@
 ;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
+  {:worktree [:model/NativeQuerySnippet :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
@@ -72,13 +73,17 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `NativeQuerySnippet`."
+  {:worktree :worktree/body}
   [_route-params
    _query-params
    {:keys [content description name collection_id]} :- [:map {:closed true}
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
-                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                        ;; a snippet can live outside a collection, so the caller
+                                                        ;; names the world it belongs to
+                                                        [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -112,6 +117,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
+  {:worktree [:model/NativeQuerySnippet :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params

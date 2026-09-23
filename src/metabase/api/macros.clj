@@ -34,6 +34,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
@@ -584,18 +585,36 @@
 
 (defn- worktree-binding-form
   "Wraps `body-form` in the worktree the endpoint's `:worktree` metadata names, so everything it reads and writes is
-  that world's. The declaration is `:worktree/query` or `:worktree/body` to take the id from a `worktree-id`
-  parameter the endpoint itself declares, or a form evaluating to a function of the endpoint's parsed
-  `{:route :query :body}` params -- what an endpoint about one entity uses to take the id from the entity.
-  Endpoints that declare nothing work in the main app, as they did before worktrees existed."
+  that world's. The declaration says where the id comes from:
+
+    :worktree/query           a `worktree-id` query parameter the endpoint declares, for a request about no entity
+                              in particular, such as running an ad-hoc query
+    :worktree/body            a `worktree_id` body parameter, for creating content a collection does not hold
+    [model param]             the world of the `model` row whose id is the `param` route parameter
+    [model param :query]      ... a query parameter
+    [model param :body]       ... a body parameter
+    a form evaluating to a fn  of the endpoint's parsed `{:route :query :body}` params, for anything else
+
+  A parameter is a claim the caller makes, so those two forms check that the caller may work in that worktree at
+  all; an id read off an entity needs no check, since the entity itself is what the request is about. Endpoints
+  that declare nothing work in the main app, as they did before worktrees existed."
   [declaration route-params query-params body-params body-form]
   (if-not declaration
     body-form
     (let [worktree-id (gensym "worktree-id-")
-          parameter?  (contains? #{:worktree/query :worktree/body} declaration)]
-      `(let [~worktree-id ~(case declaration
-                             :worktree/query `(:worktree-id ~query-params)
-                             :worktree/body  `(:worktree_id ~body-params)
+          parameter?  (contains? #{:worktree/query :worktree/body} declaration)
+          params-form (fn [source param]
+                        (case source
+                          :route `(~param ~route-params)
+                          :query `(~param ~query-params)
+                          :body  `(~param ~body-params)))]
+      `(let [~worktree-id ~(cond
+                             (= declaration :worktree/query) `(:worktree-id ~query-params)
+                             (= declaration :worktree/body)  `(:worktree_id ~body-params)
+                             (vector? declaration)
+                             (let [[model param source] declaration]
+                               `(mi/worktree-id ~model ~(params-form (or source :route) param)))
+                             :else
                              `(~declaration {:route ~route-params, :query ~query-params, :body ~body-params}))]
          ~@(when parameter?
              [`(remote-sync/check-worktree-access! ~worktree-id)])
@@ -864,7 +883,10 @@
   "Metadata declared on a route via defendpoint, e.g. `{:scope \"agent:query\"}`."
   [:map {:closed true}
    [:scope       {:optional true} ::metadata-value-or-form]
-   [:worktree    {:optional true} [:or ::metadata-value-or-form fn?]]
+   [:worktree    {:optional true} [:or ::metadata-value-or-form fn?
+                                   ;; [model param] or [model param :query|:body], read off the named entity
+                                   [:tuple :keyword :keyword]
+                                   [:tuple :keyword :keyword :keyword]]]
    [:multipart   {:optional true} [:or :boolean [:map {:closed true}
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]

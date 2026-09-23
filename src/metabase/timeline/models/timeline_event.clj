@@ -16,9 +16,6 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/TimelineEvent [_model]
-  {:fk :timeline_id :model :model/Timeline})
-
 ;;;; schemas
 
 (def default-icon
@@ -106,7 +103,7 @@
 ;; nested in Timeline
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
   {:copy      [:archived :description :icon :name :time_matters :timezone]
-   :skip      [:worktree_id]
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at  (serdes/date)
                :creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)

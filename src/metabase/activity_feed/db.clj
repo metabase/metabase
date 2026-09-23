@@ -201,10 +201,8 @@
                 [:= :recent_views.model_id :d.id]]}))
 
 (mu/defn cards-for-recent-views
-  "The Cards with `card-ids` of the world `worktree-id` names, with their Dashboard, Collection, and moderation
-  status."
-  [card-ids   :- [:sequential ::lib.schema.id/card]
-   worktree-id :- [:maybe ms/PositiveInt]]
+  "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
              {:select [:card.name
                        :card.description
@@ -225,7 +223,7 @@
                        [:collection.name :collection_name]
                        [:collection.authority_level :collection_authority_level]]
               :from [[:report_card :card]]
-              :where [:and [:in :card.id card-ids] [:= :card.worktree_id worktree-id]]
+              :where [:in :card.id card-ids]
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :card.id]
@@ -239,10 +237,8 @@
                           [:= :dashboard.id :card.dashboard_id]]}))
 
 (mu/defn dashboards-for-recent-views
-  "The Dashboards with `dashboard-ids` of the world `worktree-id` names, with their Collection and moderation
-  status."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
-   worktree-id   :- [:maybe ms/PositiveInt]]
+  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard
              {:select [:dash.id
                        :dash.name
@@ -254,7 +250,7 @@
                        [:c.authority_level :collection_authority_level]
                        [:mr.status :moderated-status]]
               :from [[:report_dashboard :dash]]
-              :where [:and [:in :dash.id dashboard-ids] [:= :dash.worktree_id worktree-id]]
+              :where [:in :dash.id dashboard-ids]
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :dash.id]
@@ -266,17 +262,14 @@
                            [:= :c.archived false]]]}))
 
 (mu/defn unarchived-collections-with-details
-  "The unarchived Collections with `collection-ids` of the world `worktree-id` names, with their location, type, and
-  authority level."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   worktree-id    :- [:maybe ms/PositiveInt]]
+  "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection
              {:select [:id :name :description :authority_level
                        :archived :location :type]
               :where [:and
                       [:in :id collection-ids]
-                      [:= :archived false]
-                      [:= :worktree_id worktree-id]]}))
+                      [:= :archived false]]}))
 
 (mu/defn visible-tables-for-recent-views
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
@@ -349,9 +342,8 @@
               :order-by  [[:rv.timestamp :desc]]}))
 
 (mu/defn documents-for-recent-views
-  "The Documents with `document-ids` of the world `worktree-id` names, with their Collection."
-  [document-ids :- [:sequential ms/PositiveInt]
-   worktree-id  :- [:maybe ms/PositiveInt]]
+  "The Documents with `document-ids` with their Collection."
+  [document-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Document
              {:select [:d.id
                        :d.name
@@ -361,7 +353,7 @@
                        [:c.name :collection_name]
                        [:c.authority_level :collection_authority_level]]
               :from [[:document :d]]
-              :where [:and [:in :d.id document-ids] [:= :d.worktree_id worktree-id]]
+              :where [:in :d.id document-ids]
               :left-join [[:collection :c]
                           [:and
                            [:= :c.id :d.collection_id]

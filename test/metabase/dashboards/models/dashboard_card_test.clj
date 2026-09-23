@@ -250,10 +250,8 @@
                                                      :size_x 3
                                                      :size_y 4
                                                      :series []}])
-            ;; this is usually 15, but it can be 16 sometimes in CI for some reason. Five of the calls
-            ;; read the world a row belongs to: `:hook/worktree-id` looks up the worktree of the parent
-            ;; a dashcard or a series row hangs off, since either can live in a branch.
-            (is (contains? #{15 16} (call-count)))))))))
+            ;; this is usually 10, but it can be 11 sometimes in CI for some reason
+            (is (contains? #{10 11} (call-count)))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"

@@ -48,9 +48,6 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/Document [_model]
-  {:fk :collection_id :model :model/Collection})
-
 (defonce ^{:doc "Predicate gating a document's *content* (not merely its existence) below
                  collection-read, for documents whose rendered body embeds data the viewer may not
                  be entitled to see. Installed at init.
@@ -626,7 +623,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder :worktree_id]
+   :skip [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder :worktree_id :worktree_id_helper]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content

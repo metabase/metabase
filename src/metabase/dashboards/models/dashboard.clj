@@ -52,9 +52,6 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/Dashboard [_model]
-  {:fk :collection_id :model :model/Collection})
-
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
@@ -415,7 +412,7 @@
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
-               :public_uuid_prefix :worktree_id]
+               :public_uuid_prefix :worktree_id :worktree_id_helper]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

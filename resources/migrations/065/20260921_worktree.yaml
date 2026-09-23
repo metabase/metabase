@@ -99,89 +99,6 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v65.2026-09-21T10:04:00
-      author: ranquild
-      comment: Create worktree_entity_remapping table
-      changes:
-        - createTable:
-            tableName: worktree_entity_remapping
-            remarks: Maps the entity_id an entity has on the branch to the entity_id of the copy a worktree checked out for it, so a worktree can hold its own copy of an entity the main app already has
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  remarks: Unique ID
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: worktree_id
-                  type: int
-                  remarks: Worktree this remapping belongs to
-                  constraints:
-                    nullable: false
-              - column:
-                  name: type
-                  type: varchar(254)
-                  remarks: Serdes model name the remapped entity_ids belong to (e.g. Transform)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: source_entity_id
-                  type: char(21)
-                  remarks: entity_id as it appears on the branch, and in every serialized file
-                  constraints:
-                    nullable: false
-              - column:
-                  name: local_entity_id
-                  type: char(21)
-                  remarks: entity_id of the row this worktree checked the entity out into
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v65.2026-09-21T10:05:00
-      author: ranquild
-      comment: Unique index on (worktree_id, source_entity_id) - a branch entity is checked out at most once per worktree
-      changes:
-        - createIndex:
-            tableName: worktree_entity_remapping
-            indexName: idx_worktree_entity_remapping_source
-            unique: true
-            columns:
-              - column:
-                  name: worktree_id
-              - column:
-                  name: source_entity_id
-
-  - changeSet:
-      id: v65.2026-09-21T10:06:00
-      author: ranquild
-      comment: Unique index on local_entity_id - entity_id is globally unique, so a checked-out row backs exactly one remapping
-      changes:
-        - createIndex:
-            tableName: worktree_entity_remapping
-            indexName: idx_worktree_entity_remapping_target
-            unique: true
-            columns:
-              - column:
-                  name: local_entity_id
-
-  - changeSet:
-      id: v65.2026-09-21T10:07:00
-      author: ranquild
-      comment: FK worktree_entity_remapping.worktree_id -> worktree; CASCADE so deleting a worktree drops its remappings
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: worktree_entity_remapping
-            baseColumnNames: worktree_id
-            referencedTableName: worktree
-            referencedColumnNames: id
-            constraintName: fk_worktree_entity_remapping_worktree_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v65.2026-09-21T11:00:00
       author: ranquild
       comment: Add remote_sync_object.worktree_id
@@ -211,7 +128,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:02:00
       author: ranquild
-      comment: FK remote_sync_object.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK remote_sync_object.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_object
@@ -219,7 +136,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_remote_sync_object_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:01:00
+      author: ranquild
+      comment: Add remote_sync_object.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE remote_sync_object ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE remote_sync_object ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE remote_sync_object ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE remote_sync_object DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:03:00
@@ -251,7 +195,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:05:00
       author: ranquild
-      comment: FK remote_sync_task.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK remote_sync_task.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: remote_sync_task
@@ -259,7 +203,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_remote_sync_task_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:02:00
+      author: ranquild
+      comment: Add remote_sync_task.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE remote_sync_task ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE remote_sync_task ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE remote_sync_task ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE remote_sync_task DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:06:00
@@ -291,7 +262,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:08:00
       author: ranquild
-      comment: FK collection.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK collection.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
@@ -299,7 +270,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_collection_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:03:00
+      author: ranquild
+      comment: Add collection.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE collection ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE collection ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE collection ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE collection DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:09:00
@@ -331,7 +329,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:11:00
       author: ranquild
-      comment: FK report_card.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK report_card.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
@@ -339,7 +337,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_report_card_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:04:00
+      author: ranquild
+      comment: Add report_card.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE report_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE report_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE report_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE report_card DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:12:00
@@ -371,7 +396,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:14:00
       author: ranquild
-      comment: FK report_dashboard.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK report_dashboard.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboard
@@ -379,7 +404,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_report_dashboard_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:05:00
+      author: ranquild
+      comment: Add report_dashboard.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE report_dashboard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE report_dashboard DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:15:00
@@ -411,7 +463,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:17:00
       author: ranquild
-      comment: FK report_dashboardcard.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK report_dashboardcard.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
@@ -419,7 +471,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_report_dashboardcard_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:06:00
+      author: ranquild
+      comment: Add report_dashboardcard.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE report_dashboardcard ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE report_dashboardcard DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:18:00
@@ -451,7 +530,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:20:00
       author: ranquild
-      comment: FK dashboard_tab.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK dashboard_tab.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboard_tab
@@ -459,7 +538,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_dashboard_tab_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:07:00
+      author: ranquild
+      comment: Add dashboard_tab.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE dashboard_tab ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE dashboard_tab DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:21:00
@@ -491,7 +597,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:23:00
       author: ranquild
-      comment: FK dashboardcard_series.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK dashboardcard_series.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboardcard_series
@@ -499,7 +605,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_dashboardcard_series_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:08:00
+      author: ranquild
+      comment: Add dashboardcard_series.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE dashboardcard_series ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE dashboardcard_series ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE dashboardcard_series ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE dashboardcard_series DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:24:00
@@ -531,7 +664,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:26:00
       author: ranquild
-      comment: FK parameter_card.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK parameter_card.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: parameter_card
@@ -539,7 +672,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_parameter_card_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:09:00
+      author: ranquild
+      comment: Add parameter_card.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE parameter_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE parameter_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE parameter_card ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE parameter_card DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:27:00
@@ -571,7 +731,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:29:00
       author: ranquild
-      comment: FK document.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK document.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: document
@@ -579,7 +739,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_document_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:10:00
+      author: ranquild
+      comment: Add document.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE document ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE document ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE document ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE document DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:30:00
@@ -611,7 +798,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:32:00
       author: ranquild
-      comment: FK timeline.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK timeline.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline
@@ -619,7 +806,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_timeline_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:11:00
+      author: ranquild
+      comment: Add timeline.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE timeline ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE timeline ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE timeline ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE timeline DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:33:00
@@ -651,7 +865,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:35:00
       author: ranquild
-      comment: FK timeline_event.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK timeline_event.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline_event
@@ -659,7 +873,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_timeline_event_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:12:00
+      author: ranquild
+      comment: Add timeline_event.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE timeline_event ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE timeline_event ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE timeline_event ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE timeline_event DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:36:00
@@ -691,7 +932,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:38:00
       author: ranquild
-      comment: FK native_query_snippet.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK native_query_snippet.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: native_query_snippet
@@ -699,7 +940,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_native_query_snippet_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:13:00
+      author: ranquild
+      comment: Add native_query_snippet.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE native_query_snippet DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:39:00
@@ -731,7 +999,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:41:00
       author: ranquild
-      comment: FK measure.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK measure.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: measure
@@ -739,7 +1007,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_measure_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:14:00
+      author: ranquild
+      comment: Add measure.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE measure ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE measure ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE measure ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE measure DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:42:00
@@ -771,7 +1066,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:44:00
       author: ranquild
-      comment: FK segment.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK segment.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: segment
@@ -779,7 +1074,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_segment_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:15:00
+      author: ranquild
+      comment: Add segment.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE segment ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE segment ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE segment ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE segment DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:45:00
@@ -811,7 +1133,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:47:00
       author: ranquild
-      comment: FK dimension.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK dimension.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: dimension
@@ -819,7 +1141,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_dimension_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:16:00
+      author: ranquild
+      comment: Add dimension.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE dimension ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE dimension ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE dimension ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE dimension DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:48:00
@@ -851,7 +1200,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:50:00
       author: ranquild
-      comment: FK glossary.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK glossary.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: glossary
@@ -859,7 +1208,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_glossary_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:17:00
+      author: ranquild
+      comment: Add glossary.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE glossary ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE glossary ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE glossary ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE glossary DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:51:00
@@ -891,7 +1267,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:53:00
       author: ranquild
-      comment: FK transform.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
@@ -899,7 +1275,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:18:00
+      author: ranquild
+      comment: Add transform.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE transform ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE transform ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE transform ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE transform DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:54:00
@@ -931,7 +1334,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:56:00
       author: ranquild
-      comment: FK transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform_tag.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_tag
@@ -939,7 +1342,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_tag_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:19:00
+      author: ranquild
+      comment: Add transform_tag.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE transform_tag DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T11:57:00
@@ -971,7 +1401,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T11:59:00
       author: ranquild
-      comment: FK transform_transform_tag.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform_transform_tag.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_transform_tag
@@ -979,7 +1409,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_transform_tag_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:20:00
+      author: ranquild
+      comment: Add transform_transform_tag.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE transform_transform_tag ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE transform_transform_tag DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T12:00:00
@@ -1011,7 +1468,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T12:02:00
       author: ranquild
-      comment: FK transform_test.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK transform_test.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_test
@@ -1019,7 +1476,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_transform_test_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:21:00
+      author: ranquild
+      comment: Add transform_test.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE transform_test ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE transform_test ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE transform_test ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE transform_test DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T12:03:00
@@ -1051,7 +1535,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T12:05:00
       author: ranquild
-      comment: FK metabase_table_indexes.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK metabase_table_indexes.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_table_indexes
@@ -1059,7 +1543,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_mb_table_indexes_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:22:00
+      author: ranquild
+      comment: Add metabase_table_indexes.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE metabase_table_indexes ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE metabase_table_indexes DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T12:06:00
@@ -1091,7 +1602,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T12:08:00
       author: ranquild
-      comment: FK python_library.worktree_id -> worktree; CASCADE so deleting a worktree drops everything it checked out
+      comment: FK python_library.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes what it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: python_library
@@ -1099,7 +1610,34 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_python_library_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v65.2026-09-22T10:23:00
+      author: ranquild
+      comment: Add python_library.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE python_library ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE python_library ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              ) STORED;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE python_library ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(worktree_id, 0)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE python_library DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T13:00:00
@@ -1115,36 +1653,6 @@ databaseChangeLog:
             tableName: python_library
             columnNames: path
             constraintName: uk_python_library_path
-
-  - changeSet:
-      id: v65.2026-09-21T14:00:00
-      author: ranquild
-      comment: Add native_query_snippet.worktree_id_helper, a generated column restating worktree_id with 0 for the main app
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: >-
-              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
-                COALESCE(worktree_id, 0)
-              ) STORED;
-        # VIRTUAL rather than STORED: MySQL refuses a stored generated column whose base column carries an
-        # ON DELETE CASCADE foreign key, which worktree_id does. A unique index over a virtual column is
-        # supported on both MySQL and MariaDB.
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
-                COALESCE(worktree_id, 0)
-              ) VIRTUAL;
-        - sql:
-            dbms: h2
-            sql: >-
-              ALTER TABLE native_query_snippet ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
-                COALESCE(worktree_id, 0)
-              );
-      rollback:
-        - sql:
-            sql: ALTER TABLE native_query_snippet DROP COLUMN worktree_id_helper;
 
   - changeSet:
       id: v65.2026-09-21T14:01:00
@@ -1227,7 +1735,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T17:02:00
       author: ranquild
-      comment: FK metabase_table_user_settings.worktree_id -> worktree; CASCADE so deleting a worktree drops the overlay rows it checked out
+      comment: FK metabase_table_user_settings.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes the overlay rows it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_table_user_settings
@@ -1235,17 +1743,17 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_mb_table_user_settings_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
 
   - changeSet:
-      id: v65.2026-09-21T17:03:00
+      id: v65.2026-09-22T10:24:00
       author: ranquild
-      comment: Add metabase_table_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so it can carry a primary key
+      comment: Add metabase_table_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
       changes:
         - sql:
             dbms: postgresql
             sql: >-
-              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
               ) STORED;
         - sql:
@@ -1253,11 +1761,11 @@ databaseChangeLog:
             sql: >-
               ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
-              ) VIRTUAL NOT NULL;
+              ) STORED;
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+              ALTER TABLE metabase_table_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
               );
       rollback:
@@ -1292,20 +1800,6 @@ databaseChangeLog:
         - addPrimaryKey:
             tableName: metabase_table_user_settings
             columnNames: table_id
-
-  - changeSet:
-      id: v65.2026-09-21T17:05:30
-      author: ranquild
-      comment: Widen the primary key of metabase_table_user_settings to (table_id, worktree_id_helper) - a worktree holds its own overlay row for the same table_id
-      changes:
-        - addPrimaryKey:
-            tableName: metabase_table_user_settings
-            columnNames: table_id, worktree_id_helper
-            constraintName: pk_mb_table_user_settings
-      rollback:
-        - dropPrimaryKey:
-            tableName: metabase_table_user_settings
-            constraintName: pk_mb_table_user_settings
 
   - changeSet:
       id: v65.2026-09-21T17:06:00
@@ -1350,7 +1844,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-21T17:12:00
       author: ranquild
-      comment: FK metabase_field_user_settings.worktree_id -> worktree; CASCADE so deleting a worktree drops the overlay rows it checked out
+      comment: FK metabase_field_user_settings.worktree_id -> worktree; RESTRICT rather than CASCADE, since MySQL refuses a stored generated column over a cascading base column and worktree_id_helper below is one. Deleting a worktree deletes the overlay rows it checked out from the application
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_field_user_settings
@@ -1358,17 +1852,17 @@ databaseChangeLog:
             referencedTableName: worktree
             referencedColumnNames: id
             constraintName: fk_mb_field_user_settings_worktree_id
-            onDelete: CASCADE
+            onDelete: RESTRICT
 
   - changeSet:
-      id: v65.2026-09-21T17:13:00
+      id: v65.2026-09-22T10:25:00
       author: ranquild
-      comment: Add metabase_field_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so it can carry a primary key
+      comment: Add metabase_field_user_settings.worktree_id_helper, a generated column restating worktree_id with 0 for the main app so unique keys and the world foreign keys below can hold it
       changes:
         - sql:
             dbms: postgresql
             sql: >-
-              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
               ) STORED;
         - sql:
@@ -1376,11 +1870,11 @@ databaseChangeLog:
             sql: >-
               ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
-              ) VIRTUAL NOT NULL;
+              ) STORED;
         - sql:
             dbms: h2
             sql: >-
-              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER NOT NULL GENERATED ALWAYS AS (
+              ALTER TABLE metabase_field_user_settings ADD COLUMN worktree_id_helper INTEGER GENERATED ALWAYS AS (
                 COALESCE(worktree_id, 0)
               );
       rollback:
@@ -1417,20 +1911,6 @@ databaseChangeLog:
             columnNames: field_id
 
   - changeSet:
-      id: v65.2026-09-21T17:15:30
-      author: ranquild
-      comment: Widen the primary key of metabase_field_user_settings to (field_id, worktree_id_helper) - a worktree holds its own overlay row for the same field_id
-      changes:
-        - addPrimaryKey:
-            tableName: metabase_field_user_settings
-            columnNames: field_id, worktree_id_helper
-            constraintName: pk_mb_field_user_settings
-      rollback:
-        - dropPrimaryKey:
-            tableName: metabase_field_user_settings
-            constraintName: pk_mb_field_user_settings
-
-  - changeSet:
       id: v65.2026-09-21T17:16:00
       author: ranquild
       comment: Restore the FK on metabase_field_user_settings.field_id
@@ -1442,3 +1922,913 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_field_user_setting_field_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v65.2026-09-22T10:26:00
+      author: ranquild
+      comment: Drop the global unique constraint on entity_id everywhere a worktree checks content out - each is replaced by a per-worktree one below. The constraints were declared inline, so postgres and mysql named them after the table and the column while h2 picked a name of its own that has to be looked up
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              ALTER TABLE collection DROP CONSTRAINT collection_entity_id_key;
+              ALTER TABLE report_card DROP CONSTRAINT report_card_entity_id_key;
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_entity_id_key;
+              ALTER TABLE report_dashboardcard DROP CONSTRAINT report_dashboardcard_entity_id_key;
+              ALTER TABLE dashboard_tab DROP CONSTRAINT dashboard_tab_entity_id_key;
+              ALTER TABLE document DROP CONSTRAINT document_entity_id_key;
+              ALTER TABLE timeline DROP CONSTRAINT timeline_entity_id_key;
+              ALTER TABLE native_query_snippet DROP CONSTRAINT native_query_snippet_entity_id_key;
+              ALTER TABLE measure DROP CONSTRAINT measure_entity_id_key;
+              ALTER TABLE segment DROP CONSTRAINT segment_entity_id_key;
+              ALTER TABLE dimension DROP CONSTRAINT dimension_entity_id_key;
+              ALTER TABLE glossary DROP CONSTRAINT uq_glossary_entity_id;
+              ALTER TABLE transform DROP CONSTRAINT transform_entity_id_key;
+              ALTER TABLE transform_tag DROP CONSTRAINT transform_tag_entity_id_key;
+              ALTER TABLE transform_transform_tag DROP CONSTRAINT transform_transform_tag_entity_id_key;
+              ALTER TABLE transform_test DROP CONSTRAINT transform_test_entity_id_key;
+              ALTER TABLE python_library DROP CONSTRAINT unique_python_library_entity_id;
+        - sql:
+            dbms: mysql,mariadb
+            splitStatements: true
+            sql: |
+              ALTER TABLE collection DROP INDEX entity_id;
+              ALTER TABLE report_card DROP INDEX entity_id;
+              ALTER TABLE report_dashboard DROP INDEX entity_id;
+              ALTER TABLE report_dashboardcard DROP INDEX entity_id;
+              ALTER TABLE dashboard_tab DROP INDEX entity_id;
+              ALTER TABLE document DROP INDEX entity_id;
+              ALTER TABLE timeline DROP INDEX entity_id;
+              ALTER TABLE native_query_snippet DROP INDEX entity_id;
+              ALTER TABLE measure DROP INDEX entity_id;
+              ALTER TABLE segment DROP INDEX entity_id;
+              ALTER TABLE dimension DROP INDEX entity_id;
+              ALTER TABLE glossary DROP INDEX uq_glossary_entity_id;
+              ALTER TABLE transform DROP INDEX entity_id;
+              ALTER TABLE transform_tag DROP INDEX entity_id;
+              ALTER TABLE transform_transform_tag DROP INDEX entity_id;
+              ALTER TABLE transform_test DROP INDEX entity_id;
+              ALTER TABLE python_library DROP INDEX unique_python_library_entity_id;
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE COLLECTION DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'COLLECTION'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE REPORT_CARD DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'REPORT_CARD'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE REPORT_DASHBOARD DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'REPORT_DASHBOARD'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE REPORT_DASHBOARDCARD DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'REPORT_DASHBOARDCARD'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE DASHBOARD_TAB DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'DASHBOARD_TAB'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE DOCUMENT DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'DOCUMENT'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE TIMELINE DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'TIMELINE'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE NATIVE_QUERY_SNIPPET DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'NATIVE_QUERY_SNIPPET'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE MEASURE DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'MEASURE'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE SEGMENT DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'SEGMENT'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE DIMENSION DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'DIMENSION'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE GLOSSARY DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'GLOSSARY'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE TRANSFORM DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'TRANSFORM'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE TRANSFORM_TAG DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'TRANSFORM_TAG'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE TRANSFORM_TRANSFORM_TAG DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'TRANSFORM_TRANSFORM_TAG'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE TRANSFORM_TEST DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'TRANSFORM_TEST'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE PYTHON_LIBRARY DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'PYTHON_LIBRARY'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'ENTITY_ID'
+              );
+      rollback:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              ALTER TABLE collection ADD CONSTRAINT collection_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE report_card ADD CONSTRAINT report_card_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE report_dashboard ADD CONSTRAINT report_dashboard_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT report_dashboardcard_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE dashboard_tab ADD CONSTRAINT dashboard_tab_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE document ADD CONSTRAINT document_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE timeline ADD CONSTRAINT timeline_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT native_query_snippet_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE measure ADD CONSTRAINT measure_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE segment ADD CONSTRAINT segment_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE dimension ADD CONSTRAINT dimension_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE glossary ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform ADD CONSTRAINT transform_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_tag ADD CONSTRAINT transform_tag_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT transform_transform_tag_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE transform_test ADD CONSTRAINT transform_test_entity_id_key UNIQUE (entity_id);
+              ALTER TABLE python_library ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id);
+        - sql:
+            dbms: mysql,mariadb
+            splitStatements: true
+            sql: |
+              ALTER TABLE collection ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE report_card ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE report_dashboard ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE report_dashboardcard ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE dashboard_tab ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE document ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE timeline ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE native_query_snippet ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE measure ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE segment ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE dimension ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE glossary ADD UNIQUE KEY uq_glossary_entity_id (entity_id);
+              ALTER TABLE transform ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE transform_tag ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE transform_transform_tag ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE transform_test ADD UNIQUE KEY entity_id (entity_id);
+              ALTER TABLE python_library ADD UNIQUE KEY unique_python_library_entity_id (entity_id);
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              ALTER TABLE collection ADD CONSTRAINT uq_collection_entity_id UNIQUE (entity_id);
+              ALTER TABLE report_card ADD CONSTRAINT uq_report_card_entity_id UNIQUE (entity_id);
+              ALTER TABLE report_dashboard ADD CONSTRAINT uq_report_dashboard_entity_id UNIQUE (entity_id);
+              ALTER TABLE report_dashboardcard ADD CONSTRAINT uq_report_dashboardcard_entity_id UNIQUE (entity_id);
+              ALTER TABLE dashboard_tab ADD CONSTRAINT uq_dashboard_tab_entity_id UNIQUE (entity_id);
+              ALTER TABLE document ADD CONSTRAINT uq_document_entity_id UNIQUE (entity_id);
+              ALTER TABLE timeline ADD CONSTRAINT uq_timeline_entity_id UNIQUE (entity_id);
+              ALTER TABLE native_query_snippet ADD CONSTRAINT uq_native_query_snippet_entity_id UNIQUE (entity_id);
+              ALTER TABLE measure ADD CONSTRAINT uq_measure_entity_id UNIQUE (entity_id);
+              ALTER TABLE segment ADD CONSTRAINT uq_segment_entity_id UNIQUE (entity_id);
+              ALTER TABLE dimension ADD CONSTRAINT uq_dimension_entity_id UNIQUE (entity_id);
+              ALTER TABLE glossary ADD CONSTRAINT uq_glossary_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform ADD CONSTRAINT uq_transform_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform_tag ADD CONSTRAINT uq_transform_tag_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform_transform_tag ADD CONSTRAINT uq_transform_transform_tag_entity_id UNIQUE (entity_id);
+              ALTER TABLE transform_test ADD CONSTRAINT uq_transform_test_entity_id UNIQUE (entity_id);
+              ALTER TABLE python_library ADD CONSTRAINT uq_python_library_entity_id UNIQUE (entity_id);
+
+  - changeSet:
+      id: v65.2026-09-22T10:27:00
+      author: ranquild
+      comment: Unique constraint on collection(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_collection_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:28:00
+      author: ranquild
+      comment: Unique constraint on report_card(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_report_card_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:29:00
+      author: ranquild
+      comment: Unique constraint on report_dashboard(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_report_dashboard_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:30:00
+      author: ranquild
+      comment: Unique constraint on report_dashboardcard(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_report_dashboardcard_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:31:00
+      author: ranquild
+      comment: Unique constraint on dashboard_tab(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: dashboard_tab
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_dashboard_tab_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:32:00
+      author: ranquild
+      comment: Unique constraint on document(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: document
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_document_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:33:00
+      author: ranquild
+      comment: Unique constraint on timeline(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_timeline_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:34:00
+      author: ranquild
+      comment: Unique constraint on native_query_snippet(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: native_query_snippet
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_native_query_snippet_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:35:00
+      author: ranquild
+      comment: Unique constraint on measure(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: measure
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_measure_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:36:00
+      author: ranquild
+      comment: Unique constraint on segment(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: segment
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_segment_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:37:00
+      author: ranquild
+      comment: Unique constraint on dimension(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_dimension_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:38:00
+      author: ranquild
+      comment: Unique constraint on glossary(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: glossary
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_glossary_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:39:00
+      author: ranquild
+      comment: Unique constraint on transform(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_transform_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:40:00
+      author: ranquild
+      comment: Unique constraint on transform_tag(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_tag
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_transform_tag_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:41:00
+      author: ranquild
+      comment: Unique constraint on transform_transform_tag(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_transform_tag
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_transform_transform_tag_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:42:00
+      author: ranquild
+      comment: Unique constraint on transform_test(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_test
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_transform_test_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:43:00
+      author: ranquild
+      comment: Unique constraint on python_library(entity_id, worktree_id_helper) - each world holds its own entity_id
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: entity_id, worktree_id_helper
+            constraintName: uq_python_library_entity_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:44:00
+      author: ranquild
+      comment: Drop the global unique constraint on public_uuid everywhere a worktree checks content out - each is replaced by a per-worktree one below. The constraints were declared inline, so postgres and mysql named them after the table and the column while h2 picked a name of its own that has to be looked up
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              ALTER TABLE report_card DROP CONSTRAINT report_card_public_uuid_key;
+              ALTER TABLE report_dashboard DROP CONSTRAINT report_dashboard_public_uuid_key;
+        - sql:
+            dbms: mysql,mariadb
+            splitStatements: true
+            sql: |
+              ALTER TABLE report_card DROP INDEX public_uuid;
+              ALTER TABLE report_dashboard DROP INDEX public_uuid;
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE REPORT_CARD DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'REPORT_CARD'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'PUBLIC_UUID'
+              );
+              EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE REPORT_DASHBOARD DROP CONSTRAINT "' || tc.CONSTRAINT_NAME || '"'
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+                  ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_NAME = tc.TABLE_NAME
+                WHERE tc.TABLE_NAME = 'REPORT_DASHBOARD'
+                  AND tc.CONSTRAINT_TYPE = 'UNIQUE'
+                  AND kcu.COLUMN_NAME = 'PUBLIC_UUID'
+              );
+      rollback:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              ALTER TABLE report_card ADD CONSTRAINT report_card_public_uuid_key UNIQUE (public_uuid);
+              ALTER TABLE report_dashboard ADD CONSTRAINT report_dashboard_public_uuid_key UNIQUE (public_uuid);
+        - sql:
+            dbms: mysql,mariadb
+            splitStatements: true
+            sql: |
+              ALTER TABLE report_card ADD UNIQUE KEY public_uuid (public_uuid);
+              ALTER TABLE report_dashboard ADD UNIQUE KEY public_uuid (public_uuid);
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              ALTER TABLE report_card ADD CONSTRAINT uq_report_card_public_uuid UNIQUE (public_uuid);
+              ALTER TABLE report_dashboard ADD CONSTRAINT uq_report_dashboard_public_uuid UNIQUE (public_uuid);
+
+  - changeSet:
+      id: v65.2026-09-22T10:45:00
+      author: ranquild
+      comment: Unique constraint on report_card(public_uuid, worktree_id_helper) - each world holds its own public_uuid
+      changes:
+        - addUniqueConstraint:
+            tableName: report_card
+            columnNames: public_uuid, worktree_id_helper
+            constraintName: uq_report_card_public_uuid_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:46:00
+      author: ranquild
+      comment: Unique constraint on report_dashboard(public_uuid, worktree_id_helper) - each world holds its own public_uuid
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: public_uuid, worktree_id_helper
+            constraintName: uq_report_dashboard_public_uuid_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:47:00
+      author: ranquild
+      comment: Unique constraint on python_library(path, worktree_id_helper) - each world holds its own path
+      changes:
+        - addUniqueConstraint:
+            tableName: python_library
+            columnNames: path, worktree_id_helper
+            constraintName: uq_python_library_path_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:48:00
+      author: ranquild
+      comment: Unique constraint on metabase_table_user_settings(table_id, worktree_id_helper) - each world holds its own table_id
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_table_user_settings
+            columnNames: table_id, worktree_id_helper
+            constraintName: uq_mb_table_user_settings_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:49:00
+      author: ranquild
+      comment: Unique constraint on metabase_field_user_settings(field_id, worktree_id_helper) - each world holds its own field_id
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_field_user_settings
+            columnNames: field_id, worktree_id_helper
+            constraintName: uq_mb_field_user_settings_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:50:00
+      author: ranquild
+      comment: Unique constraint on collection(id, worktree_id_helper) - the world foreign keys below reference it
+      changes:
+        - addUniqueConstraint:
+            tableName: collection
+            columnNames: id, worktree_id_helper
+            constraintName: uq_collection_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:51:00
+      author: ranquild
+      comment: Unique constraint on report_dashboard(id, worktree_id_helper) - the world foreign keys below reference it
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboard
+            columnNames: id, worktree_id_helper
+            constraintName: uq_report_dashboard_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:52:00
+      author: ranquild
+      comment: Unique constraint on report_dashboardcard(id, worktree_id_helper) - the world foreign keys below reference it
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: id, worktree_id_helper
+            constraintName: uq_report_dashboardcard_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:53:00
+      author: ranquild
+      comment: Unique constraint on timeline(id, worktree_id_helper) - the world foreign keys below reference it
+      changes:
+        - addUniqueConstraint:
+            tableName: timeline
+            columnNames: id, worktree_id_helper
+            constraintName: uq_timeline_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:54:00
+      author: ranquild
+      comment: Unique constraint on transform(id, worktree_id_helper) - the world foreign keys below reference it
+      changes:
+        - addUniqueConstraint:
+            tableName: transform
+            columnNames: id, worktree_id_helper
+            constraintName: uq_transform_id_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:55:00
+      author: ranquild
+      comment: Index on report_card(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T10:56:00
+      author: ranquild
+      comment: FK report_card(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_card_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:57:00
+      author: ranquild
+      comment: Index on report_dashboard(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T10:58:00
+      author: ranquild
+      comment: FK report_dashboard(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_dashboard_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T10:59:00
+      author: ranquild
+      comment: Index on document(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:00:00
+      author: ranquild
+      comment: FK document(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_document_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:01:00
+      author: ranquild
+      comment: Index on timeline(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: timeline
+            indexName: idx_timeline_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:02:00
+      author: ranquild
+      comment: FK timeline(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: timeline
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_timeline_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:03:00
+      author: ranquild
+      comment: Index on transform(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:04:00
+      author: ranquild
+      comment: FK transform(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_transform_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:05:00
+      author: ranquild
+      comment: Index on native_query_snippet(collection_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_collection_id_worktree
+            columns:
+              - column:
+                  name: collection_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:06:00
+      author: ranquild
+      comment: FK native_query_snippet(collection_id, worktree_id_helper) -> collection(id, worktree_id_helper) - content and the collection it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id, worktree_id_helper
+            referencedTableName: collection
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_snippet_collection_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:07:00
+      author: ranquild
+      comment: Index on report_dashboardcard(dashboard_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: report_dashboardcard
+            indexName: idx_report_dashboardcard_dashboard_id_worktree
+            columns:
+              - column:
+                  name: dashboard_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:08:00
+      author: ranquild
+      comment: FK report_dashboardcard(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_id, worktree_id_helper
+            referencedTableName: report_dashboard
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_dashcard_dashboard_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:09:00
+      author: ranquild
+      comment: Index on dashboard_tab(dashboard_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: dashboard_tab
+            indexName: idx_dashboard_tab_dashboard_id_worktree
+            columns:
+              - column:
+                  name: dashboard_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:10:00
+      author: ranquild
+      comment: FK dashboard_tab(dashboard_id, worktree_id_helper) -> report_dashboard(id, worktree_id_helper) - content and the report_dashboard it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboard_tab
+            baseColumnNames: dashboard_id, worktree_id_helper
+            referencedTableName: report_dashboard
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_dashtab_dashboard_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:11:00
+      author: ranquild
+      comment: Index on dashboardcard_series(dashboardcard_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_dashboardcard_id_worktree
+            columns:
+              - column:
+                  name: dashboardcard_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:12:00
+      author: ranquild
+      comment: FK dashboardcard_series(dashboardcard_id, worktree_id_helper) -> report_dashboardcard(id, worktree_id_helper) - content and the report_dashboardcard it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: dashboardcard_series
+            baseColumnNames: dashboardcard_id, worktree_id_helper
+            referencedTableName: report_dashboardcard
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_series_dashcard_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:13:00
+      author: ranquild
+      comment: Index on timeline_event(timeline_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: timeline_event
+            indexName: idx_timeline_event_timeline_id_worktree
+            columns:
+              - column:
+                  name: timeline_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:14:00
+      author: ranquild
+      comment: FK timeline_event(timeline_id, worktree_id_helper) -> timeline(id, worktree_id_helper) - content and the timeline it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: timeline_event
+            baseColumnNames: timeline_id, worktree_id_helper
+            referencedTableName: timeline
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_event_timeline_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:15:00
+      author: ranquild
+      comment: Index on transform_transform_tag(transform_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: transform_transform_tag
+            indexName: idx_transform_transform_tag_transform_id_worktree
+            columns:
+              - column:
+                  name: transform_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:16:00
+      author: ranquild
+      comment: FK transform_transform_tag(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            baseColumnNames: transform_id, worktree_id_helper
+            referencedTableName: transform
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_transform_tag_transform_worktree
+
+  - changeSet:
+      id: v65.2026-09-22T11:17:00
+      author: ranquild
+      comment: Index on transform_test(transform_id, worktree_id_helper) - it backs the world foreign key below
+      changes:
+        - createIndex:
+            tableName: transform_test
+            indexName: idx_transform_test_transform_id_worktree
+            columns:
+              - column:
+                  name: transform_id
+              - column:
+                  name: worktree_id_helper
+
+  - changeSet:
+      id: v65.2026-09-22T11:18:00
+      author: ranquild
+      comment: FK transform_test(transform_id, worktree_id_helper) -> transform(id, worktree_id_helper) - content and the transform it hangs off always belong to the same world
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform_test
+            baseColumnNames: transform_id, worktree_id_helper
+            referencedTableName: transform
+            referencedColumnNames: id, worktree_id_helper
+            constraintName: fk_transform_test_transform_worktree

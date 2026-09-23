@@ -1,6 +1,5 @@
 (ns metabase.transforms.models.transform-transform-tag
   (:require
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transforms.schema]
    [methodical.core :as methodical]
@@ -15,12 +14,9 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/TransformTransformTag [_model]
-  {:fk :transform_id :model :model/Transform})
-
 (defmethod serdes/make-spec "TransformTransformTag"
   [_model-name _opts]
   {:copy [:entity_id :position]
-   :skip [:worktree_id]
+   :skip [:worktree_id :worktree_id_helper]
    :transform {:transform_id (serdes/parent-ref)
                :tag_id (serdes/fk :model/TransformTag)}})

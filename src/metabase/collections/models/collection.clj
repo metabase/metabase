@@ -104,47 +104,41 @@
   "Namespace for snippets"
   :snippets)
 
-(defn- trash-collection* [worktree-id]
-  (collections.db/collection-of-type trash-collection-type worktree-id))
-
 (let [get-trash (mdb/memoize-for-application-db
+                 ;; the world is the cache key rather than something the query reads, since each world has a
+                 ;; Trash of its own
                  (fn [worktree-id]
-                   (u/prog1 (trash-collection* worktree-id)
+                   (u/prog1 (collections.db/collection-of-type trash-collection-type)
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {:worktree-id worktree-id}))))))]
   (defn trash-collection
-    "Get the (memoized) Trash collection of a world: the main app's with no argument, and a worktree's when given
-    its id. A worktree has a Trash of its own -- archiving is a move into it, so a shared one would hold content
-    from every branch at once."
-    ([]
-     (trash-collection nil))
-    ([worktree-id]
-     (assoc (get-trash worktree-id) :name (deferred-tru "Trash")))))
+    "Get the (memoized) Trash collection of the world being worked in. A worktree has a Trash of its own --
+    archiving is a move into it, so a shared one would hold content from every branch at once."
+    []
+    (assoc (get-trash (worktree/worktree-id)) :name (deferred-tru "Trash"))))
 
 (defn create-trash-collection!
-  "Create the Trash collection of the world `worktree-id` names. A worktree gets one when it is created: archiving
+  "Create the Trash collection of the world being worked in. A worktree gets one when it is created: archiving
   moves content into the Trash, so sharing the main app's would put every branch's archived content in one place.
   Unlike the main app's Trash it is granted to no group -- only superusers work inside a worktree."
-  [worktree-id]
-  (collections.db/insert-collection! {:name        "Trash"
-                                      :slug        "trash"
-                                      :type        trash-collection-type
-                                      :worktree_id worktree-id}))
+  []
+  (collections.db/insert-collection! {:name "Trash"
+                                      :slug "trash"
+                                      :type trash-collection-type}))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
 (defn trash-collection-id
-  "The ID representing the Trash collection of a world: the main app's with no argument, a worktree's when given
-  its id."
-  ([] (trash-collection-id nil))
-  ([worktree-id] (u/the-id (trash-collection worktree-id))))
+  "The ID representing the Trash collection of the world being worked in."
+  []
+  (u/the-id (trash-collection)))
 
 (defn trash-path
-  "The fixed location path for the Trash collection of a world."
-  ([] (trash-path nil))
-  ([worktree-id] (format "/%s/" (trash-collection-id worktree-id))))
+  "The fixed location path for the Trash collection of the world being worked in."
+  []
+  (format "/%s/" (trash-collection-id)))
 
 (defn is-trash?
   "Is this the trash collection?"
@@ -207,10 +201,9 @@
   (pos-int? (collections.db/remote-synced-collection-count)))
 
 (defn library-collection
-  "Get the 'library' collection of a world, if it exists: the main app's with no argument, a worktree's when given
-  its id."
-  ([] (library-collection nil))
-  ([worktree-id] (collections.db/collection-of-type library-collection-type worktree-id)))
+  "Get the 'library' collection of the world being worked in, if it exists."
+  []
+  (collections.db/collection-of-type library-collection-type))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no
@@ -269,44 +262,31 @@
     library-data-entity-id
     library-metrics-entity-id})
 
-(defn- library-copy-entity-id
-  "The `entity_id` to create one of the Library's collections under in the world `worktree-id` names. A worktree
-  has a Library of its own, and an `entity_id` names one row instance-wide, so the copy gets a fresh id remapped
-  to the canonical one the branch knows it by."
-  [canonical worktree-id]
-  (if worktree-id
-    (u/prog1 (u/generate-nano-id)
-      (worktree/do-with-worktree worktree-id #(serdes/ensure-remapping! "Collection" <> canonical)))
-    canonical))
-
 (defn create-library-collection!
-  "Create the Library collection of the world `worktree-id` names, the main app's with no argument. Returns the
-  created collection. Throws if that world already has one."
-  ([] (create-library-collection! nil))
-  ([worktree-id]
-   (when-not (nil? (library-collection worktree-id))
-     (throw (ex-info "Library already exists" {:worktree-id worktree-id})))
-   (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                           :type      library-collection-type
-                                                           :location  "/"
-                                                           :worktree_id worktree-id
-                                                           :entity_id (library-copy-entity-id library-entity-id worktree-id)})
-         base-location (str "/" (:id library) "/")
-         data          (collections.db/insert-collection! {:name      "Data"
-                                                           :type      library-data-collection-type
-                                                           :location  base-location
-                                                           :worktree_id worktree-id
-                                                           :entity_id (library-copy-entity-id library-data-entity-id worktree-id)})
-         metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                           :type      library-metrics-collection-type
-                                                           :location  base-location
-                                                           :worktree_id worktree-id
-                                                           :entity_id (library-copy-entity-id library-metrics-entity-id worktree-id)})]
-     (doseq [col [library data metrics]]
-       (collections.db/delete-permissions-for-collection! (:id col))
-       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
-       (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
-     library)))
+  "Create the Library collection of the world being worked in. Returns the created collection. Throws if that
+  world already has one. A worktree's copy carries the same `entity_id`s as the main app's, which every world
+  knows the Library by."
+  []
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library already exists" {:worktree-id (worktree/worktree-id)})))
+  (let [library       (collections.db/insert-collection! {:name      "Library"
+                                                          :type      library-collection-type
+                                                          :location  "/"
+                                                          :entity_id library-entity-id})
+        base-location (str "/" (:id library) "/")
+        data          (collections.db/insert-collection! {:name      "Data"
+                                                          :type      library-data-collection-type
+                                                          :location  base-location
+                                                          :entity_id library-data-entity-id})
+        metrics       (collections.db/insert-collection! {:name      "Metrics"
+                                                          :type      library-metrics-collection-type
+                                                          :location  base-location
+                                                          :entity_id library-metrics-entity-id})]
+    (doseq [col [library data metrics]]
+      (collections.db/delete-permissions-for-collection! (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col)
+      (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
+    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -320,11 +300,9 @@
 
 (defn library-root-collection?
   "Is this one of the immutable system-created Library collections (root, data, or metrics)?
-  Returns false for user-created subcollections that inherit a library type. A worktree's copy is recognized by
-  the id the branch knows it by, which is what its own generated `entity_id` is remapped to."
+  Returns false for user-created subcollections that inherit a library type."
   [collection]
-  (library-entity-id? (worktree/do-with-worktree (:worktree_id collection)
-                                                 #(serdes/source-entity-id "Collection" (:entity_id collection)))))
+  (library-entity-id? (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
@@ -527,9 +505,6 @@
      (location-path->parent-id \"/10/20/\") ; -> 20"
   [location-path :- LocationPath]
   (last (location-path->ids location-path)))
-
-(defmethod mi/parent-entity :model/Collection [_model]
-  {:fk :location, :model :model/Collection, :id location-path->parent-id})
 
 (mu/defn all-ids-in-location-path-are-valid? :- :boolean
   "Do all the IDs in `location-path` belong to actual Collections? (This requires a DB call to check this, so this
@@ -2251,7 +2226,7 @@
           :namespace
           :slug
           :type]
-   :skip [:worktree_id]
+   :skip [:worktree_id :worktree_id_helper]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id

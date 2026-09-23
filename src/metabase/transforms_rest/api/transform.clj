@@ -196,12 +196,14 @@
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
@@ -297,6 +299,7 @@
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
@@ -315,12 +318,14 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
@@ -329,6 +334,7 @@
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
@@ -343,6 +349,7 @@
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
+  {:worktree [:model/Transform :id]}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (transforms-rest.db/reset-checkpoint! id)

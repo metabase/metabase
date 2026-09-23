@@ -2,7 +2,6 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -18,9 +17,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
-
-(defmethod mi/parent-entity :model/Timeline [_model]
-  {:fk :collection_id :model :model/Collection})
 
 ;;;; transforms
 
@@ -61,7 +57,7 @@
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      [:worktree_id]
+   :skip      [:worktree_id :worktree_id_helper]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

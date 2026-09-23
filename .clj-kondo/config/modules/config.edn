@@ -162,8 +162,7 @@
            permissions
            util
            util.config
-           warehouse-schema-overlay
-           worktree}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -367,7 +366,8 @@
            task
            util
            util.classloader
-           util.config}
+           util.config
+           worktree}
    :model-imports #{:model/Field}}
 
   appearance
@@ -661,7 +661,8 @@
            queries
            request
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           worktree}
    :model-imports #{:model/Card :model/Collection}}
 
   comments
@@ -827,7 +828,6 @@
            request
            revisions
            util
-           worktree
            xrays}
    :model-imports #{:model/Action
                     :model/Card
@@ -1733,8 +1733,7 @@
                     :model/TransformJobTransformTag
                     :model/TransformTag
                     :model/TransformTransformTag
-                    :model/User
-                    :model/WorktreeEntityRemapping}}
+                    :model/User}}
 
   mq
   {:team "UX West"
@@ -2145,13 +2144,13 @@
            revisions
            search
            util
-           warehouse-schema-overlay
-           worktree}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/CardBookmark
                     :model/Collection
                     :model/Dashboard
                     :model/Database
+                    :model/Document
                     :model/StoredResult
                     :model/StoredResultUse
                     :model/Table}}
@@ -4121,7 +4120,7 @@
            enterprise/serialization
            enterprise/transforms.python
            enterprise/worktree}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncObject :model/RemoteSyncTask}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -4500,8 +4499,33 @@
            lib.schema
            models
            util
+           worktree
            enterprise/remote-sync}
-   :model-exports #{:model/WorktreeEntityRemapping}}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Dimension
+                    :model/Document
+                    :model/FieldUserSettings
+                    :model/Glossary
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/ParameterCard
+                    :model/PythonLibrary
+                    :model/RemoteSyncObject
+                    :model/RemoteSyncTask
+                    :model/Segment
+                    :model/TableIndex
+                    :model/TableUserSettings
+                    :model/Timeline
+                    :model/TimelineEvent
+                    :model/Transform
+                    :model/TransformTag
+                    :model/TransformTest
+                    :model/TransformTransformTag}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

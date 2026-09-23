@@ -97,6 +97,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."
+  {:worktree [:model/Collection :collection_id :body]}
   [_route-params
    _query-params
    {:keys [collection_id] :as body} :- DocumentCreateOptions]
@@ -109,6 +110,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   ;; `m.document/get-document` already does the 404 and read check internally.
   (m.document/get-document document-id))
@@ -119,6 +121,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
@@ -139,6 +142,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
     (api/write-check document)
@@ -248,6 +252,7 @@
   Returns a map containing `:uuid` (the public UUID string).
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -279,6 +284,7 @@
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
   Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -339,6 +345,7 @@
   - parameters: Optional query parameters (array of maps or JSON string)
   - format_rows: Whether to apply formatting to results (boolean, default false)
   - pivot_results: Whether to pivot results (boolean, default false)"
+  {:worktree [:model/Document :document-id]}
   [{:keys [document-id card-id export-format]} :- [:map {:closed true}
                                                    [:document-id   ms/PositiveInt]
                                                    [:card-id       ms/PositiveInt]

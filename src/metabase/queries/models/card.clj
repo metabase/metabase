@@ -135,9 +135,6 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/parent-entity :model/Card [_model]
-  {:fk :collection_id :model :model/Collection})
-
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
   nor a primary key to resolve it from.
@@ -1380,7 +1377,7 @@
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
           :metabot_conversation_id :metabot_chart_id
           ;; always re-derived from public_uuid on import
-          :public_uuid_prefix :worktree_id]
+          :public_uuid_prefix :worktree_id :worktree_id_helper]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query

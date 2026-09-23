@@ -82,7 +82,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
-   [metabase.worktree.core :as worktree]
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -92,17 +91,12 @@
 
 (p/import-vars
  [metabase.models.serialization.path
-  ensure-remapping!
   entity-id
   field-hierarchy
   generate-path
   infer-self-path
-  local-entity-id
-  local-entity-ids
   lookup-by-id
-  maybe-labeled
-  source-entity-id
-  worktree-scoped?])
+  maybe-labeled])
 
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
@@ -169,8 +163,7 @@
   (let [model (keyword "model" model-name)
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
-                (str/starts-with? eid "eid:") (subs 4))
-        eid   (if (worktree-scoped? model-name) (local-entity-id model-name eid) eid)]
+                (str/starts-with? eid "eid:") (subs 4))]
     (models.db/pk-by-entity-id model pk eid)))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
@@ -361,10 +354,7 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec     (*make-spec* model-name opts)
-          instance (cond-> instance
-                     (worktree-scoped? model-name)
-                     (m/update-existing :entity_id #(ensure-remapping! model-name %)))]
+    (let [spec (*make-spec* model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -653,27 +643,10 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
-(def ^:private worktree-copy-skipped-keys
-  "Columns a worktree's copy of an entity must not take from the branch. Public sharing and embedding identify one
-  instance of a thing: `public_uuid` is unique, so a worktree copy of a publicly shared card would abort the load
-  (or, with two rows sharing a uuid, make the public route ambiguous), and a worktree checkout is a working copy
-  rather than the shared thing itself."
-  [:public_uuid :made_public_by_id :enable_embedding :embedding_params])
-
-(defn- worktree-copy
-  "`ingested` as a worktree's own copy of the branch's entity: the branch's `entity_id` is dropped (the local row
-  keeps the id of the copy this worktree checked out, and the remapping table pairs the two), as is everything in
-  [[worktree-copy-skipped-keys]]. Returns `ingested` untouched outside a worktree."
-  [model-name ingested]
-  (if (and (worktree/worktree-id) (worktree-scoped? model-name))
-    (apply dissoc ingested :entity_id worktree-copy-skipped-keys)
-    ingested))
-
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
-        id       (get local pk)
-        ingested (worktree-copy model-name ingested)]
+        id       (get local pk)]
     (log/tracef "Upserting %s %d" model-name id)
     (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
     (models.db/entity-by-pk model pk id)))
@@ -697,14 +670,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (let [model   (t2.model/resolve-model (symbol model-name))
-        scoped? (worktree-scoped? model-name)
-        source  (:entity_id ingested)
-        row     (cond-> (worktree-copy model-name ingested)
-                  scoped? (assoc :worktree_id (worktree/worktree-id)))]
-    (u/prog1 (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model model :row row}))
-      (when scoped?
-        (ensure-remapping! model-name (:entity_id <>) source)))))
+  (models.db/insert-entity! (lib/normalize :metabase.models.db/model-row {:model (t2.model/resolve-model (symbol model-name)) :row ingested})))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -822,17 +788,14 @@
                                      all-ids    (concat parent-ids [(str id)])
                                      path-maps  (mapv (fn [cid]
                                                         (let [c (id->coll cid)]
-                                                          {:label (:name c)
-                                                           :key   (source-entity-id "Collection" (:entity_id c))}))
+                                                          {:label (:name c) :key (:entity_id c)}))
                                                       all-ids)]]
-                           [(source-entity-id "Collection" entity_id) path-maps]))
+                           [entity_id path-maps]))
         dashboards (into {}
-                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)
-                               :let [entity_id (source-entity-id "Dashboard" entity_id)]]
+                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))
         documents  (into {}
-                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)
-                               :let [entity_id (source-entity-id "Document" entity_id)]]
+                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
                            [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
      :dashboards  dashboards
@@ -1901,15 +1864,11 @@
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (let [keep-eids (into [] (keep #(if (worktree-scoped? model-name)
-                                                                  (local-entity-id model-name (:entity_id %))
-                                                                  (:entity_id %)))
-                                                      lst)]
-                                  (models.db/delete-children-except! model backward-fk parent-id keep-eids)
-                                  (doseq [ingested lst
-                                          :let [ingested (enrich ingested)
-                                                local    (lookup-by-id model (entity-id model-name ingested))]]
-                                    (load-one! ingested local))))))}))
+                                (do (models.db/delete-children-except! model backward-fk parent-id (map :entity_id lst))
+                                    (doseq [ingested lst
+                                            :let [ingested (enrich ingested)
+                                                  local    (lookup-by-id model (entity-id model-name ingested))]]
+                                      (load-one! ingested local))))))}))
 
 (def parent-ref "Transformer for parent id for nested entities."
   (constantly

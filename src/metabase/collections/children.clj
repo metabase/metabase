@@ -89,23 +89,18 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded.
-
-  `worktree-id` picks the world to list: the main app with nil, and the collections a worktree checked out when
-  given its id. The two never mix -- a branch's tree is its own."
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
-           worktree-id]}]
+  By default, library-type collections are excluded."
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
-             [:= :worktree_id worktree-id]
              (case archived
                nil nil
                false [:and
-                      [:not= :id (collection/trash-collection-id worktree-id)]
+                      [:not= :id (collection/trash-collection-id)]
                       [:not :archived]]
                true [:or
-                     [:= :id (collection/trash-collection-id worktree-id)]
+                     [:= :id (collection/trash-collection-id)]
                      :archived])
              (when shallow
                (location-from-collection-id-clause collection-id))
@@ -729,7 +724,7 @@
             [:not [:in :type [collection/library-collection-type
                               collection/library-metrics-collection-type
                               collection/library-data-collection-type]]]])
-         (let [trash-id (collection/trash-collection-id (worktree/worktree-id))]
+         (let [trash-id (collection/trash-collection-id)]
            (if archived?
              [:or
               [:= :archived true]

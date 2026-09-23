@@ -13,9 +13,10 @@
    [toucan2.tools.identity-query :as t2.identity-query]))
 
 (defn worktree-id-of
-  "The `worktree_id` of the `model` row with `id`; nil for the main app's."
+  "The `worktree_id` of the `model` row `id` names, by primary key or, when `id` is a string, by `entity_id`; nil
+  for the main app's."
   [model id]
-  (t2/select-one-fn :worktree_id model :id id))
+  (t2/select-one-fn :worktree_id model (if (string? id) :entity_id :id) id))
 
 (mu/defn entity-by-pk
   "The `model` row whose `pk-column` is `id`, or nil."
@@ -358,77 +359,6 @@
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
-
-(mu/defn worktree-entity-remapping-source-entity-id
-  "The source entity id -- the one the branch knows the entity by -- that the remote-sync worktree with `worktree-id`
-  maps the `model-name` row with `local-entity-id` to, or nil."
-  [worktree-id     :- ms/PositiveInt
-   model-name      :- :string
-   local-entity-id :- :string]
-  (t2/select-one-fn :source_entity_id :model/WorktreeEntityRemapping
-                    :worktree_id     worktree-id
-                    :type            model-name
-                    :local_entity_id local-entity-id))
-
-(mu/defn worktree-entity-remapping-local-entity-id
-  "The entity id of the `model-name` row the remote-sync worktree with `worktree-id` checked out for the branch's
-  `source-entity-id`, or nil."
-  [worktree-id      :- ms/PositiveInt
-   model-name       :- :string
-   source-entity-id :- :string]
-  (t2/select-one-fn :local_entity_id :model/WorktreeEntityRemapping
-                    :worktree_id      worktree-id
-                    :type             model-name
-                    :source_entity_id source-entity-id))
-
-(mu/defn worktree-entity-remapping-source->local
-  "A map of source entity id to local entity id for the `model-name` rows the remote-sync worktree with `worktree-id`
-  checked out for `source-entity-ids`."
-  [worktree-id       :- ms/PositiveInt
-   model-name        :- :string
-   source-entity-ids :- [:sequential :string]]
-  (t2/select-fn->fn :source_entity_id :local_entity_id
-                    :model/WorktreeEntityRemapping
-                    :worktree_id      worktree-id
-                    :type             model-name
-                    :source_entity_id [:in source-entity-ids]))
-
-(mu/defn worktree-entity-remapping-source-exists?
-  "Whether `source-entity-id` is already a source entity id of a `model-name` remapping in the remote-sync worktree
-  with `worktree-id`."
-  [worktree-id      :- ms/PositiveInt
-   model-name       :- :string
-   source-entity-id :- :string]
-  (t2/exists? :model/WorktreeEntityRemapping
-              :worktree_id      worktree-id
-              :type             model-name
-              :source_entity_id source-entity-id))
-
-(mu/defn update-worktree-entity-remapping-local-entity-id!
-  "Point the remote-sync worktree's `model-name` remapping for `source-entity-id` at `local-entity-id`, returning the
-  number updated (0 when the worktree has no remapping for that source yet)."
-  [worktree-id      :- ms/PositiveInt
-   model-name       :- :string
-   source-entity-id :- :string
-   local-entity-id  :- :string]
-  (t2/update! :model/WorktreeEntityRemapping
-              :worktree_id      worktree-id
-              :type             model-name
-              :source_entity_id source-entity-id
-              {:local_entity_id local-entity-id}))
-
-(mu/defn insert-worktree-entity-remapping!
-  "Record that the remote-sync worktree with `worktree-id` holds the branch's `model-name` entity `source-entity-id`
-  as the local row with `local-entity-id`."
-  [worktree-id      :- ms/PositiveInt
-   model-name       :- :string
-   source-entity-id :- :string
-   local-entity-id  :- :string]
-  (t2/insert! :model/WorktreeEntityRemapping
-              {:worktree_id      worktree-id
-               :type             model-name
-               :source_entity_id source-entity-id
-               :local_entity_id  local-entity-id}))
 
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."
