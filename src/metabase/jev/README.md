@@ -22,6 +22,9 @@ jev/
     tables.clj        semantic-type + data-sensitivity suggestions for a table's fields
     joins.clj         inferred join-edge suggestions between tables
     explorations.clj  ranking x-ray exploration candidates
+    filters.clj       plain-English dashboard filters -> parameter values
+    search.clj        reranking command-palette search results by intent
+    saving.clj        save-time duplicate check + collection suggestion
     usage.clj         collective "what people do on this table" shape model (endpoints)
     viz.clj           rank chart types for a query result (deterministic roles + Jev scoring)
     intent.clj        per-user + per-table intent model (event-bus taps + prediction)
@@ -85,6 +88,11 @@ token to the browser, so it goes through these.
 | `POST /api/jev/joins/suggestions` | Inferred join edges among the given source tables. |
 | `POST /api/jev/explorations/rank` | Rank a set of x-ray exploration candidates against a context. |
 | `GET  /api/jev/usage/table/:id/shapes` | Collective, value-free "what people typically filter/aggregate/group here" starter chips. |
+| `POST /api/jev/filters/dashboard/:id` | Plain-English text → values for the dashboard's parameters (closed candidate sets per parameter). |
+| `POST /api/jev/filters/question/slots` | For a question's filterable columns: the few someone most likely filters by (the palette's rows). |
+| `POST /api/jev/filters/question` | Plain-English text → filter values for a question's slots, plus any column the text mentions. |
+| `POST /api/jev/search/rerank` | Rerank the caller's search results against the query's intent; pins a confident best match. |
+| `POST /api/jev/saving/check` | For a draft question: an existing card that already answers it, and the collection it belongs in. |
 | `POST /api/jev/usage/observe` | Feed the usage shape-model an MBQL query the caller ran/built (value-free facets only). |
 | `POST /api/jev/viz/suggest` | Rank chart types for a query result (body: its `:cols` metadata). Roles derived deterministically; Jev scores each chart type against the structure. |
 
@@ -125,7 +133,14 @@ Frontend:
   x-ray suggestions sidebar.
 - `query_builder/.../ChartTypeSidebar` — fetches viz suggestions on result-load
   (`use-jev-viz-suggestions`) and rings/dims the chart-type picker by fit.
-- `api/jev.ts` — the RTK Query slice all of the above call through.
+- `dashboard/components/JevDashboardFilterPalette` + `query_builder/.../JevFilterHeaderButton` — the Cmd/Ctrl+F
+  plain-English filter palette (`querying/jev-filters`) for dashboards and questions.
+- `palette/hooks/useCommandPalette` — `useJevRerankedResults` reorders search results, `JevBestMatchBadge`.
+- `common/components/SaveQuestionForm` — renders `<JevSaveHints>` (duplicate callout + collection chip).
+- `api/jev.ts` (+ `api/jev-*.ts`) — the RTK Query slices all of the above call through.
+
+Connections: [[metabase.jev.client]] keeps a keep-alive connection pool with a short connect timeout and one
+retry, so in-loop calls stay at Jev's ~150-250ms instead of paying a fresh TCP/TLS connect each time.
 
 Settings:
 - The `typesafe` provider type (`metabase.llm.provider`) — configured like any other AI provider in admin

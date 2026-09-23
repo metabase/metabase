@@ -50,7 +50,7 @@ function setup(unwrap: () => Promise<unknown>) {
   jest
     .mocked(useRankExplorationsMutation)
     // This component consumes only the trigger; RTK mutation state is unused.
-    .mockReturnValue([rank, {}] as ReturnType<
+    .mockReturnValue([rank, {}] as unknown as ReturnType<
       typeof useRankExplorationsMutation
     >);
   const view = renderWithProviders(<Harness />, { withRouter: true });

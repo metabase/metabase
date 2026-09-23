@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useRef } from "react";
 
+import { getUser } from "metabase/current-user";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
@@ -14,6 +15,7 @@ import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visuali
 import DashboardS from "../Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
 import { ParametersList } from "../Dashboard/components";
+import { JevDashboardFilterPalette } from "../JevDashboardFilterPalette";
 
 import S from "./DashboardParameterPanel.module.css";
 
@@ -21,6 +23,11 @@ export function DashboardParameterPanel() {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
   const { dashboard, hideParameters, isEditing } = useDashboardContext();
+  const currentUser = useSelector(getUser);
+  const jevDashboardId =
+    currentUser && !isEmbeddingSdk() && typeof dashboard?.id === "number"
+      ? dashboard.id
+      : null;
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -73,6 +80,14 @@ export function DashboardParameterPanel() {
         })}
         data-testid="dashboard-parameters-widget-container"
       >
+        {jevDashboardId != null && (
+          <FixedWidthContainer isFixedWidth={dashboard?.width === "fixed"}>
+            <JevDashboardFilterPalette
+              dashboardId={jevDashboardId}
+              parameters={visibleParameters}
+            />
+          </FixedWidthContainer>
+        )}
         <FixedWidthContainer
           className={DashboardS.ParametersFixedWidthContainer}
           id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}

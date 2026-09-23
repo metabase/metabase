@@ -24,7 +24,11 @@ function columnByName(
   );
 }
 
-const DATE_RANGE_SHAPES = new Set(["date-range", "date-threshold", "date-exact"]);
+const DATE_RANGE_SHAPES = new Set([
+  "date-range",
+  "date-threshold",
+  "date-exact",
+]);
 
 /** Turn a clicked chip into a real query change, or return the query unchanged if it can't apply. */
 function applyChip(
@@ -56,7 +60,11 @@ function applyChip(
     }
   }
 
-  if (chip.kind === "filter" && chip.field && DATE_RANGE_SHAPES.has(chip.shape)) {
+  if (
+    chip.kind === "filter" &&
+    chip.field &&
+    DATE_RANGE_SHAPES.has(chip.shape)
+  ) {
     const column = columnByName(
       Lib.filterableColumns(query, stageIndex),
       query,
@@ -112,7 +120,7 @@ export const TableUsageChips = ({
       {chips.map((chip, index) => (
         <Button
           key={`${chip.kind}-${chip.shape}-${index}`}
-          size="xs"
+          size="sm"
           variant="light"
           leftSection={<Icon name="add" size={12} />}
           onClick={() => handleChip(chip)}

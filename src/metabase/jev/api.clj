@@ -14,13 +14,16 @@
   (:require
    [compojure.core :as compojure]
    [metabase.api.macros :as api.macros]
-   [metabase.jev.client :as jev]
+   [metabase.jev.apps.dashboard-focus :as jev.dashboard-focus]
    [metabase.jev.apps.explorations :as jev.explorations]
+   [metabase.jev.apps.filters :as jev.filters]
    [metabase.jev.apps.joins :as jev.joins]
+   [metabase.jev.apps.saving :as jev.saving]
+   [metabase.jev.apps.search :as jev.search]
    [metabase.jev.apps.tables :as jev.tables]
    [metabase.jev.apps.usage :as jev.usage]
    [metabase.jev.apps.viz :as jev.viz]
-   [metabase.jev.apps.dashboard-focus :as jev.dashboard-focus]
+   [metabase.jev.client :as jev]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -52,4 +55,7 @@
                     jev.usage/routes
                     jev.viz/routes
                     jev.dashboard-focus/routes
+                    jev.filters/routes
+                    jev.search/routes
+                    jev.saving/routes
                     (api.macros/ns-handler *ns*)))

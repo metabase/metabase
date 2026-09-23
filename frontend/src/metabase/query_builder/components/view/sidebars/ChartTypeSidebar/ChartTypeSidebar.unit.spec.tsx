@@ -1,3 +1,4 @@
+import { setupJevVizSuggestEndpoint } from "__support__/server-mocks/jev";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dataset } from "metabase-types/api";
@@ -18,6 +19,7 @@ const createResult = (insights: any[] | undefined): Dataset =>
   });
 
 const setup = (result: Dataset) => {
+  setupJevVizSuggestEndpoint();
   return renderWithProviders(
     // Unjustified type cast. FIXME
     <ChartTypeSidebar question={null as any} result={result} />,

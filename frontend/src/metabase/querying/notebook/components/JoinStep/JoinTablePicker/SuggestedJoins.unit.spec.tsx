@@ -22,7 +22,7 @@ function setup(unwrap: () => Promise<unknown>) {
   jest
     .mocked(useSuggestJoinEdgesMutation)
     // Only the trigger is consumed; the RTK mutation state is unused.
-    .mockReturnValue([find, {}] as ReturnType<
+    .mockReturnValue([find, {}] as unknown as ReturnType<
       typeof useSuggestJoinEdgesMutation
     >);
   const onSelect = jest.fn().mockResolvedValue(undefined);

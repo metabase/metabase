@@ -128,7 +128,7 @@ function EntityTypeSuggestion({
     <Stack component="span" gap="xs" mt="xs" align="flex-start">
       {(!suggestion || hasError) && (
         <Button
-          size="compact-xs"
+          size="compact-sm"
           variant="subtle"
           leftSection={<Icon name="sparkles" size={12} aria-hidden />}
           loading={isLoading}
@@ -148,7 +148,7 @@ function EntityTypeSuggestion({
                 t`Jev agrees with the current entity type.`
               ) : (
                 <Button
-                  size="compact-xs"
+                  size="compact-sm"
                   variant="light"
                   disabled={disabled}
                   onClick={() => onChange(suggestion.value)}

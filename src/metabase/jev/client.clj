@@ -15,6 +15,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn-mgr]
    [clojure.string :as str]
    [metabase.jev.diagnostics :as diagnostics]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -112,6 +113,32 @@
 
 ;;; ---- the call ----
 
+(defonce ^:private conn-manager
+  ;; Keep-alive pool shared by every Jev call. Jev answers in ~100-400ms, but a fresh TCP+TLS connect can take
+  ;; seconds on a bad route; reusing warm connections keeps the in-loop judgments fast.
+  (delay (conn-mgr/make-reusable-conn-manager {:timeout 120 :threads 16 :default-per-route 16})))
+
+(def ^:private connect-timeout-ms
+  "Short connect timeout: a stalled connect is retried on a new socket rather than waited out."
+  1500)
+
+(defn- post!
+  "POST `body` to Jev over the pooled connection, retrying once when the connect itself stalls."
+  [body timeout-ms]
+  (let [req {:headers            {"Authorization" (str "Bearer " (require-api-key))
+                                  "Content-Type"  "application/json"}
+             :body               (json/generate-string body)
+             :connection-manager @conn-manager
+             :socket-timeout     timeout-ms
+             :connection-timeout (min timeout-ms connect-timeout-ms)
+             :throw-exceptions   false
+             :as                 :string}]
+    (try
+      (http/post (endpoint) req)
+      (catch java.net.SocketTimeoutException _ (http/post (endpoint) req))
+      (catch java.net.ConnectException _ (http/post (endpoint) req))
+      (catch org.apache.http.conn.ConnectTimeoutException _ (http/post (endpoint) req)))))
+
 (defn ask
   "POST `state` + `questions` to Jev and return a result map. A failure is data, never a thrown
   exception, so callers can branch on `:ok`.
@@ -123,14 +150,7 @@
    (try
      (let [body   {:model model :state state :questions questions}
            _      (diagnostics/capture-request! "jev" body)
-           resp   (http/post (endpoint)
-                             {:headers            {"Authorization" (str "Bearer " (require-api-key))
-                                                   "Content-Type"  "application/json"}
-                              :body               (json/generate-string body)
-                              :socket-timeout     timeout-ms
-                              :connection-timeout timeout-ms
-                              :throw-exceptions   false
-                              :as                 :string})
+           resp   (post! body timeout-ms)
            status (:status resp)]
        (if (= 200 status)
          (let [parsed (json/parse-string (:body resp) true)]
@@ -144,14 +164,7 @@
   the JSON body when possible. Never throws on an HTTP error — the caller decides. Used by the dumb
   `/api/jev` proxy."
   [body]
-  (let [resp (http/post (endpoint)
-                        {:headers            {"Authorization" (str "Bearer " (require-api-key))
-                                              "Content-Type"  "application/json"}
-                         :body               (json/generate-string (merge {:model *model*} body))
-                         :socket-timeout     30000
-                         :connection-timeout 30000
-                         :throw-exceptions   false
-                         :as                 :string})]
+  (let [resp (post! (merge {:model *model*} body) 30000)]
     {:status (:status resp)
      :body   (try (json/parse-string (:body resp) true)
                   (catch Exception _ (:body resp)))}))

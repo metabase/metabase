@@ -1133,6 +1133,34 @@
    :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
    :uses #{lib.be util}}
 
+  jev
+  {:team "Metabot"
+   :api #{metabase.jev.api
+          metabase.jev.apps.intent
+          metabase.jev.client
+          metabase.jev.diagnostics}
+   :uses #{api
+           collections
+           driver
+           events
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           models
+           parameters
+           premium-features
+           query-processor
+           settings
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Field
+                    :model/Table}}
+
   lib
   {:team "Querying Platform"
    :module-exports #{lib.agent-lib
@@ -1292,24 +1320,6 @@
    :ns-prefix "metabase.types"
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
-
-  jev
-  {:team "Metabot"
-   :api #{metabase.jev.api
-          metabase.jev.apps.intent
-          metabase.jev.client
-          metabase.jev.diagnostics}
-   :uses #{api
-           driver
-           events
-           lib.schema
-           models
-           settings
-           util}
-   :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/Field
-                    :model/Table}}
 
   logger
   {:team "DevEx"

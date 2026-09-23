@@ -271,7 +271,7 @@ export function QueryNextSteps({
               </Badge>
             </Tooltip>
             <Button
-              size="xs"
+              size="sm"
               variant="subtle"
               disabled={busy}
               onClick={() => previewStep(step)}

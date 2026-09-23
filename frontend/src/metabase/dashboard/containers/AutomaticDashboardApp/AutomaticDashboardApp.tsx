@@ -1,7 +1,7 @@
 import cx from "classnames";
-import { dissoc } from "icepick";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
@@ -55,7 +55,7 @@ const AutomaticDashboardAppInner = () => {
     if (dashboard) {
       // remove the transient id before trying to save
       const { data: newDashboard } = await saveDashboard(
-        dissoc(
+        _.omit(
           dashboard,
           "id",
           "exploration_candidates",

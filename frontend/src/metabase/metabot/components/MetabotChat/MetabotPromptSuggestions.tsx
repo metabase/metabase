@@ -38,7 +38,7 @@ export const MetabotPromptSuggestions = forwardRef<
               buttons.current[index] = button;
             }}
             fz="sm"
-            size="xs"
+            size="sm"
             onClick={() => onSubmit(prompt)}
             onKeyDown={(event) => {
               if (

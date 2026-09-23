@@ -107,7 +107,7 @@ export const JevSuggestions = ({ tableId }: JevSuggestionsProps) => {
   const [modalOpened, setModalOpened] = useState(false);
   const { data, isFetching, error } = useGetTableSuggestionsQuery(tableId);
 
-  const fields = data?.fields ?? [];
+  const fields = useMemo(() => data?.fields ?? [], [data?.fields]);
   const actionable = useMemo(() => fields.filter(isActionable), [fields]);
   const sensitiveCount = useMemo(
     () =>
@@ -287,7 +287,7 @@ const AcceptChip = ({
         className={S.acceptButton}
         // Confidence drives the fill opacity of the button's background layer.
         style={{ "--confidence": confidenceValue } as React.CSSProperties}
-        size="xs"
+        size="sm"
         variant="subtle"
         loading={isLoading}
         onClick={onAccept}
