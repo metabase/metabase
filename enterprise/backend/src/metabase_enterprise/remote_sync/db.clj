@@ -261,7 +261,8 @@
   "The entity ID of the instance of `model` with `id`."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one-fn :entity_id model :id id))
+  ;; select only the column: a full row runs the model's whole after-select (a Card normalizes its query)
+  (t2/select-one-fn :entity_id [model :entity_id] :id id))
 
 (mu/defn entity-ids-by-id
   "A map of ID to entity ID for the instances of `model` with `ids`."
