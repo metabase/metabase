@@ -4,9 +4,14 @@
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 (deftest check-and-update-remote-settings
   (let [full-token "full_token_value"
@@ -223,3 +228,26 @@
               "remote-sync-branch must remain unchanged when the guard fires")
           (is (zero? @check-git-call-count)
               "check-git-settings! must not be called when the guard fires"))))))
+
+(deftest check-git-settings-does-not-clone-test
+  (testing "HACKRDE-24: validating git settings lists the remote's branches without cloning it"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^File clone-dir    (#'git/repo-path {:remote-url url :token nil})
+            check!             (fn [branch]
+                                 (settings/check-git-settings! {:remote-sync-url    url
+                                                                :remote-sync-token  nil
+                                                                :remote-sync-branch branch
+                                                                :remote-sync-type   :read-only}))]
+        (is (not (.exists clone-dir)) "Precondition: no local clone yet")
+        (is (nil? (check! "develop")))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid branch name" (check! "nope")))
+        (is (not (.exists clone-dir)) "Checking settings must not clone the repository")))))
+
+(deftest check-git-settings-rejects-empty-repository-test
+  (testing "An uninitialized remote (no branches) is still rejected, as it was when the check cloned"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url (test-helpers/init-local-git-remote! remote-dir :empty? true)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot connect to uninitialized repository"
+                              (settings/check-git-settings! {:remote-sync-url   url
+                                                             :remote-sync-token nil})))))))

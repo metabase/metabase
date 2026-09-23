@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.test-helpers
   "Test helpers for remote sync functionality, including MockSource implementation."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase-enterprise.remote-sync.source :as source]
@@ -9,7 +10,10 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jgit.api Git)
+   (org.eclipse.jgit.lib PersonIdent)))
 
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
@@ -826,3 +830,21 @@ serdes/meta:
   model: TransformTag
 "
           entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn init-local-git-remote!
+  "Creates a git repo in `dir` whose `master` branch holds one commit, plus `branches` pointing at that commit.
+  With `empty?`, the repo has no commits and so no branches. Returns its file:// URL."
+  [^String dir & {:keys [branches empty?]}]
+  (let [^Git git (-> (Git/init) (.setDirectory (io/file dir)) (.setInitialBranch "master") (.call))
+        commit!  (fn [msg]
+                   (spit (io/file dir (str msg ".txt")) msg)
+                   (-> (.add git) (.addFilepattern (str msg ".txt")) (.call))
+                   (-> (.commit git) (.setMessage msg)
+                       (.setAuthor (PersonIdent. "Test" "test@metabase.com"))
+                       (.setCommitter (PersonIdent. "Test" "test@metabase.com"))
+                       (.call)))]
+    (when-not empty?
+      (commit! "initial")
+      (doseq [^String b branches]
+        (-> (.branchCreate git) (.setName b) (.call))))
+    (str "file://" (.getAbsolutePath (io/file dir)))))

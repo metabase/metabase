@@ -139,6 +139,19 @@
           (is (= full-token @captured)
               "Obfuscated tokens must be replaced with the stored token before testing"))))))
 
+(deftest test-connection-does-not-clone-test
+  (testing "HACKRDE-24: POST /api/ee/remote-sync/test-connection lists the remote's branches without cloning it"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [url                  (test-helpers/init-local-git-remote! remote-dir :branches ["develop"])
+            ^java.io.File clone  (#'source.git/repo-path {:remote-url url :token nil})]
+        (mt/with-temporary-setting-values [remote-sync-url    nil
+                                           remote-sync-token  nil
+                                           remote-sync-branch nil]
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
+                                       {:remote-sync-url url})))
+          (is (not (.exists clone)) "Test Connection must not clone the repository"))))))
+
 (deftest test-connection-requires-superuser-test
   (testing "POST /api/ee/remote-sync/test-connection requires superuser permissions"
     (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"]
