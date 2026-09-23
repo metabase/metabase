@@ -141,6 +141,11 @@ const setupPage = () =>
     /* webpackChunkName: "setup" */ "metabase/setup/components/Setup"
   ).then(({ Setup }) => ({ Component: Setup }));
 
+const updatePage = () =>
+  import(/* webpackChunkName: "update" */ "metabase/update/UpdatePage").then(
+    ({ UpdatePage }) => ({ Component: UpdatePage }),
+  );
+
 /**
  * The home page, in its own chunk. The route also covers the redirect to a
  * configured landing page, so an instance that sets one fetches this chunk once
@@ -234,6 +239,7 @@ registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
+  { path: "/update", lazy: updatePage },
   {
     element: <App />,
     children: [
