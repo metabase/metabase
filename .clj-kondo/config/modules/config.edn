@@ -2889,7 +2889,8 @@
            transforms.base
            transforms.indexes
            util
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
