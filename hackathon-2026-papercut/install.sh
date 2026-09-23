@@ -116,22 +116,48 @@ retry() {
   done
 }
 
+sparse() {
+  git -C "$REPO" config core.sparseCheckout true &&
+    git -C "$REPO" config core.sparseCheckoutCone false &&
+    printf '/bb.edn\n/bin/mage\n/bin/mage.bb\n/mage/\n' >"$REPO/.git/info/sparse-checkout"
+}
+
+complete() {
+  for file in bb.edn bin/mage bin/mage.bb mage/src/mage/cli.clj mage/src/mage/papercuts/scan.clj; do
+    [ -f "$REPO/$file" ] || return 1
+  done
+}
+
+update() {
+  [ -d "$REPO/.git" ] && sparse &&
+    retry git -C "$REPO" fetch --depth 1 origin "$BRANCH" &&
+    retry git -C "$REPO" reset --hard FETCH_HEAD &&
+    git -C "$REPO" sparse-checkout reapply &&
+    complete
+}
+
 clone() {
   rm -rf "$REPO"
   git clone --depth 1 --filter=blob:none --no-checkout --branch "$BRANCH" https://github.com/metabase/metabase.git "$REPO" &&
-    git -C "$REPO" config core.sparseCheckout true &&
-    git -C "$REPO" config core.sparseCheckoutCone false &&
-    printf '/bb.edn\n/bin/mage\n/bin/mage.bb\n/mage/\n' >"$REPO/.git/info/sparse-checkout"
+    sparse
 }
 
 fetch_scanner() {
   use_proxy
   # A stalled transfer fails after 20 seconds and is retried.
   export GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=20
-  [ -d "$REPO/.git" ] || retry clone
-  retry git -C "$REPO" fetch --depth 1 origin "$BRANCH"
+  # A broken checkout must not send git up to a repository that holds ~/.papercuts.
+  export GIT_CEILING_DIRECTORIES="$DIR"
+  update && return 0
+  echo "Starting over with a fresh checkout"
+  # Keep the scan progress, so a rerun still skips what was scanned.
+  rm -rf "$DIR/progress"
+  if [ -d "$REPO/local" ]; then mv "$REPO/local" "$DIR/progress"; fi
+  retry clone
   # Checking out fetches every file the scan needs in one go, so nothing is fetched later.
-  retry git -C "$REPO" reset --hard FETCH_HEAD
+  retry git -C "$REPO" reset --hard HEAD
+  if [ -d "$DIR/progress" ]; then mv "$DIR/progress" "$REPO/local"; fi
+  complete
 }
 
 prepare_tools() {
