@@ -128,11 +128,11 @@
         nr-idx-by-uuid    (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
         rows-idx          (mapv nr-idx-by-uuid (:rows pivot))
         cols-idx          (mapv nr-idx-by-uuid (:columns pivot))
-        combos            (qp.pivot/breakout-combinations (count non-remap-bos)
-                                                          rows-idx
-                                                          cols-idx
-                                                          (get pivot :show-row-totals    true)
-                                                          (get pivot :show-column-totals true))
+        combos            (pivot.common/breakout-combinations (count non-remap-bos)
+                                                              rows-idx
+                                                              cols-idx
+                                                              (get pivot :show-row-totals    true)
+                                                              (get pivot :show-column-totals true))
         sets-hsql         (mapv (fn [combo]
                                   (mapv #(nth breakout-hsql %)
                                         (pivot.common/expand-grouping-combo combo non-remap-poss orig->new)))
@@ -221,11 +221,11 @@
         nr-idx-by-uuid       (into {} (map-indexed (fn [i b] [(lib.options/uuid b) i])) non-remap-bos)
         rows-idx             (mapv nr-idx-by-uuid (:rows pivot))
         cols-idx             (mapv nr-idx-by-uuid (:columns pivot))
-        combos               (qp.pivot/breakout-combinations (count non-remap-bos)
-                                                             rows-idx
-                                                             cols-idx
-                                                             (get pivot :show-row-totals    true)
-                                                             (get pivot :show-column-totals true))
+        combos               (pivot.common/breakout-combinations (count non-remap-bos)
+                                                                 rows-idx
+                                                                 cols-idx
+                                                                 (get pivot :show-row-totals    true)
+                                                                 (get pivot :show-column-totals true))
         n-breakouts          (count breakout)
         orig-breakout-select (subvec (:select honeysql-form) 0 n-breakouts)
         orig-agg-select      (subvec (:select honeysql-form) n-breakouts)
@@ -254,7 +254,7 @@
         compile-branch         (fn [combo]
                                  (let [kept-full-idx (vec (pivot.common/expand-grouping-combo combo non-remap-poss orig->new))
                                        kept-breakout (mapv breakout kept-full-idx)
-                                       bitmask       (qp.pivot/group-bitmask (count non-remap-bos) combo)
+                                       bitmask       (pivot.common/group-bitmask (count non-remap-bos) combo)
                                        ;; Strip :pivot to avoid recursing into this method. Set :order-by to
                                        ;; the user's explicit order-bys followed by canonical breakouts
                                        ;; (finest-temporal last) — window-fn aggregations read this from
