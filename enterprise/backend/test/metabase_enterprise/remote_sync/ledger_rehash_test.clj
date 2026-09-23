@@ -44,7 +44,7 @@
 (defn- card-status [card-id]
   (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Card" :model_id card-id))
 
-(defn- noop-card-save-status
+(defn- noop-card-save-status!
   "Publishes a no-op update of the card named `card-name` and returns its ledger status afterwards."
   [card-name]
   (let [card (t2/select-one :model/Card :name card-name)]
@@ -75,7 +75,7 @@
          (testing "every stored hash is still the hash of a fresh serialization of the local entity"
            (is (= {} (ledger-hashes-match-fresh-serialization))))
          (testing "so a no-op save after the pull stays synced"
-           (is (= "synced" (noop-card-save-status "Cost card 003")))))))))
+           (is (= "synced" (noop-card-save-status! "Cost card 003")))))))))
 
 (deftest forced-pull-reserializes-only-files-that-differ-from-the-ledger-test
   (search.tu/with-index-disabled
@@ -105,6 +105,6 @@
            (is (= {} (ledger-hashes-match-fresh-serialization))))
          (testing "no-op saves of both the edited and an untouched card stay synced"
            (is (= :bar (t2/select-one-fn :display :model/Card :name "Cost card 004")))
-           (is (= "synced" (noop-card-save-status "Cost card 004")))
-           (is (= "synced" (noop-card-save-status "Cost card 005")))
-           (is (= "synced" (noop-card-save-status "Cost card 006")))))))))
+           (is (= "synced" (noop-card-save-status! "Cost card 004")))
+           (is (= "synced" (noop-card-save-status! "Cost card 005")))
+           (is (= "synced" (noop-card-save-status! "Cost card 006")))))))))
