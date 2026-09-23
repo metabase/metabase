@@ -475,3 +475,45 @@
                     files "TransformTag"
                     #(t2/select-one :model/TransformTag :entity_id tag-eid)
                     :event/transform-tag-update)))))))))
+
+(defn- noop-card-update-status-with-ledger-path!
+  "Seeds a synced RemoteSyncObject for `card` whose content_hash matches its current serialization but whose
+  file_path is `(ledger-path fresh-path)`, publishes a no-op card update, and returns the row's status."
+  [card ledger-path]
+  (t2/delete! :model/RemoteSyncObject)
+  (let [row                          {:model_type "Card" :model_id (:id card)}
+        {:keys [path content-hash]} (source/row->file-info row)]
+    (is (some? path))
+    (t2/insert! :model/RemoteSyncObject
+                (merge row {:model_name        (:name card)
+                            :status            "synced"
+                            :content_hash      content-hash
+                            :file_path         (ledger-path path)
+                            :status_changed_at (t/offset-date-time)}))
+    (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+    (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))))
+
+(deftest noop-update-of-card-whose-repo-file-name-differs-stays-synced-test
+  (testing "A no-op save of a card whose repo file name doesn't match its name (its `name:` was edited in the repo
+            without renaming the file) stays synced: an unchanged serialization can't have changed its own file name"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "New name" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (is (= "synced"
+               (noop-card-update-status-with-ledger-path!
+                card
+                (fn [path]
+                  (let [dir (subs path 0 (inc (.lastIndexOf ^String path "/")))]
+                    (str dir (:entity_id card) "_old_name.yaml"))))))))))
+
+(deftest noop-update-of-card-whose-repo-directory-differs-marks-dirty-test
+  (testing "A no-op save of a card whose repo directory differs from where it now serializes (e.g. a parent was
+            renamed) still marks it for update, so the push moves its file"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (is (= "update"
+               (noop-card-update-status-with-ledger-path!
+                card
+                (fn [path]
+                  (str "collections/main/old_parent/" (subs path (inc (.lastIndexOf ^String path "/"))))))))))))
