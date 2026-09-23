@@ -147,10 +147,11 @@
         (format "%s should be added to %s, or to %s" model `copy/entities `models-to-exclude)))
   (is (apply distinct? (map t2/table-name copy/entities))))
 
-(def ^:private foreign-key-coverage-exceptions
-  "Known exceptions to foreign-key coverage."
-  ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
-  #{{:child_table "core_user", :parent_table "tenant"}})
+(defn- foreign-key-coverage-exception?
+  "Whether `edge` points at a table only enterprise writes rows to, and only an enterprise copy carries."
+  [{:keys [child_table parent_table]}]
+  (or (= [child_table parent_table] ["core_user" "tenant"])
+      (= parent_table "worktree")))
 
 (def ^:private fk-graph-sql
   "Foreign keys from the test's H2 database."
@@ -173,7 +174,7 @@
               dangling (for [{:keys [child_table parent_table] :as edge} edges
                              :when (and (copied child_table)
                                         (not (copied parent_table))
-                                        (not (foreign-key-coverage-exceptions edge)))]
+                                        (not (foreign-key-coverage-exception? edge)))]
                          edge)]
           (testing "the metadata query includes app tables"
             (is (some #(= "metabase_table" (:child_table %)) edges)))
