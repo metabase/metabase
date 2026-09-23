@@ -91,6 +91,12 @@
     (is (= {:lines [12 14] :slug "console-hides-warnings" :kind "misleading-signal" :screen {:misleading_signal 0.9}}
            (select-keys (:details report) [:lines :slug :kind :screen])))))
 
+(deftest security-worktree-test
+  (is (scan/security-worktree? {:project "-Users-me-workspace-metabase-metabase-sec-1172-a-settings-manager"}))
+  (is (scan/security-worktree? {:cwd "/Users/me/workspace/metabase/metabase.sec-1218-slack-bot"}))
+  (is (not (scan/security-worktree? {:project "-Users-me-workspace-metabase-metabase-search-sweep"
+                                     :cwd     "/Users/me/workspace/metabase/metabase"}))))
+
 (deftest mentions-embargo-test
   (let [dir (fs/create-temp-dir {:prefix "papercut-embargo"})]
     (try
@@ -101,5 +107,31 @@
       (let [path (fs/path dir "clean.jsonl")]
         (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"run the tests\"}}\n")
         (is (not (scan/mentions-embargo? path))))
+      (testing "context the harness injects into every session doesn't count"
+        (doseq [[file line]
+                {"claude-memory.jsonl"
+                 "{\"type\":\"attachment\",\"attachment\":{\"type\":\"instructions\",\"content\":\"six embargoed PRs on metabase-private\"}}"
+                 "claude-reminder.jsonl"
+                 "{\"type\":\"user\",\"message\":{\"content\":\"<system-reminder>notes: embargoed PRs</system-reminder>run the tests\"}}"
+                 "codex-meta.jsonl"
+                 "{\"type\":\"session_meta\",\"payload\":{\"base_instructions\":\"never mention embargoed work\"}}"
+                 "codex-agents.jsonl"
+                 "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"# AGENTS.md instructions: embargoed PRs live on metabase-private\"}]}}"}]
+          (let [path (fs/path dir file)]
+            (spit (str path) (str line "\n"))
+            (is (not (scan/mentions-embargo? path)) file))))
+      (testing "naming the private remote is not work in it; its PRs and branches are"
+        (doseq [[file line expected]
+                [["remotes.jsonl" "{\"type\":\"user\",\"message\":{\"content\":\"metabase-private\\tgit@github.com:metabase/metabase-private.git (fetch)\"}}" false]
+                 ["pr.jsonl" "{\"type\":\"user\",\"message\":{\"content\":\"see https://github.com/metabase/metabase-private/pull/436\"}}" true]
+                 ["gh.jsonl" "{\"type\":\"user\",\"message\":{\"content\":\"gh pr edit 436 --repo metabase/metabase-private\"}}" true]
+                 ["branch.jsonl" "{\"type\":\"user\",\"message\":{\"content\":\"* sec-fix abc123 [metabase-private/sec-fix: ahead 3] Fix\"}}" true]]]
+          (let [path (fs/path dir file)]
+            (spit (str path) (str line "\n"))
+            (is (= expected (scan/mentions-embargo? path)) file))))
+      (testing "a real mention next to a reminder still counts"
+        (let [path (fs/path dir "mixed.jsonl")]
+          (spit (str path) "{\"type\":\"user\",\"message\":{\"content\":\"<system-reminder>x</system-reminder>this fix is embargoed\"}}\n")
+          (is (scan/mentions-embargo? path))))
       (finally
         (fs/delete-tree dir)))))

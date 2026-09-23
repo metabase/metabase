@@ -49,7 +49,9 @@
 
 (def ^:private embargo-pattern
   "Sessions that mention embargoed security work are skipped whole and never sent to Jev or a drill-down agent."
-  #"(?i)embargo|metabase-private|GHSA-|CVE-\d")
+  ;; The private repository is a configured remote, so `git remote -v` and repo listings name it in ordinary sessions.
+  ;; Only signs of work in it count: its PRs, `gh --repo`, branches ahead of it, and files in its checkout.
+  #"(?i)embargo|GHSA-|CVE-\d|metabase-private/pull/|--repo[= ]metabase/metabase-private|\[metabase-private/[^\]\s]+: ahead|/metabase-private/(?:src|test|enterprise|resources)/")
 
 (def ^:private category-by-kind
   {"codebase-trap"     "code-smell"
@@ -359,12 +361,25 @@
                                   :line        (first (get-in r [:details :lines]))
                                   :report_id   (:report_id r)})))))
 
+(defn security-worktree?
+  "Whether the session ran in a worktree for security work, named after a SEC issue (`metabase.sec-1172-...`).
+  Such a session can be under embargo without ever saying so."
+  [{:keys [project cwd path]}]
+  (boolean (some #(re-find #"(?i)(?:^|[-/.])sec-\d" (str %)) [project cwd path])))
+
 (defn mentions-embargo?
   "Whether the raw transcript at `path` mentions embargoed work. Rendered entries are truncated and redacted, which can
   cut or mask a marker, so the file itself is read."
   [path]
+  ;; Context the harness injects into every session is left out: the memory index names embargoed work, so counting
+  ;; it would skip every session.
   (with-open [reader (io/reader (str path))]
-    (boolean (some #(re-find embargo-pattern %) (line-seq reader)))))
+    (boolean
+     (some (fn [raw]
+             (and (re-find embargo-pattern raw)
+                  (not (transcript/injected-record? (try (json/read-str raw) (catch Exception _ nil))))
+                  (re-find embargo-pattern (transcript/strip-system-reminders raw))))
+           (line-seq reader)))))
 
 (defn- scan-session!
   "Scan the new stretch of one session. Returns the session's next state. When a chunk fails, the state stops
@@ -378,7 +393,7 @@
       (empty? fresh)
       state
 
-      (mentions-embargo? (:path session))
+      (or (security-worktree? session) (mentions-embargo? (:path session)))
       (do (say session (c/yellow "skipped: mentions embargoed work"))
           (assoc state :line (:line (peek fresh)) :until (:ts (peek fresh)) :skipped "embargo"))
 
