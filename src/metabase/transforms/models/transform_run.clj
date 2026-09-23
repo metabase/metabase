@@ -39,12 +39,14 @@
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
 
-;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
+;; a run is only readable in its transform's worktree, and if its transform is; orphaned runs (transform deleted) are
+;; superuser-only
 (defmethod mi/can-read? :model/TransformRun
   ([instance]
-   (or api/*is-superuser?*
-       (boolean (when-let [transform-id (:transform_id instance)]
-                  (mi/can-read? :model/Transform transform-id)))))
+   (and (transforms.db/run-in-this-worktree? (:transform_id instance))
+        (or api/*is-superuser?*
+            (boolean (when-let [transform-id (:transform_id instance)]
+                       (mi/can-read? :model/Transform transform-id))))))
   ([_model pk]
    (when-let [run (transforms.db/run pk)]
      (mi/can-read? run))))

@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -56,6 +57,17 @@
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
+
+(mu/defn existing-card-ids :- [:maybe [:set ::lib.schema.id/card]]
+  "Those of `card-ids` that name a Card of the worktree being worked in."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pks-set :model/Card :id [:in card-ids]))
+
+(mu/defn existing-card-ids-in-every-worktree :- [:maybe [:set ::lib.schema.id/card]]
+  "Those of `card-ids` that name a Card of any worktree, or of the main app."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (mdb.worktree/without-worktree-scoping
+   (t2/select-pks-set :model/Card :id [:in card-ids])))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."

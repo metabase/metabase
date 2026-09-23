@@ -603,17 +603,33 @@
    changes :- ::remote-sync.schema/remote-sync-object.update]
   (t2/update! :model/RemoteSyncObject rso-id changes))
 
+(defn- update-rsos-in-bulk!
+  "Apply `changes` to every RemoteSyncObject `conditions` match, in one UPDATE.
+
+  Updates the table rather than the model. Toucan runs a model's `before-update` over each matching row and keeps
+  only the columns whose value would change, so once the rows differ -- a row already `synced` drops an unchanged
+  `:status` -- it updates each row on its own, with the whole of `changes` (for [[mark-rsos-synced!]], a `CASE` over
+  the batch) every time. The model's only `before-update` is `:hook/worktree-id`'s refusal to move a row to another
+  worktree, which is enforced here on `changes` instead. Worktree scoping itself does not depend on the model:
+  [[metabase.app-db.worktree]] restricts every query Toucan builds by the table it names."
+  [conditions changes]
+  (when (contains? changes :worktree_id)
+    (throw (ex-info "The worktree a piece of content belongs to cannot be changed"
+                    {:status-code 400
+                     :worktree_id (:worktree_id changes)})))
+  (t2/update! (t2/table-name :model/RemoteSyncObject) conditions changes))
+
 (mu/defn set-rsos-status!
   "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
   [rso-ids   :- [:sequential ms/PositiveInt]
    status    :- :string
    timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject :id [:in rso-ids] {:status status :status_changed_at timestamp}))
+  (update-rsos-in-bulk! {:id [:in rso-ids]} {:status status :status_changed_at timestamp}))
 
 (mu/defn mark-all-rsos-synced!
   "Mark every RemoteSyncObject as synced as of `timestamp`."
   [timestamp :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject {} {:status "synced" :status_changed_at timestamp}))
+  (update-rsos-in-bulk! {} {:status "synced" :status_changed_at timestamp}))
 
 (mu/defn mark-rsos-synced!
   "Mark the RemoteSyncObjects with `rso-ids` as synced as of `timestamp`, writing the `:file_path` and
@@ -625,22 +641,21 @@
                        [:file_path    {:optional true} [:maybe :string]]
                        [:content_hash {:optional true} [:maybe :string]]]]
    timestamp      :- ms/TemporalInstant]
-  (t2/update! :model/RemoteSyncObject
-              {:id [:in (vec rso-ids)]}
-              (cond-> {:status "synced" :status_changed_at timestamp}
-                (seq metadata-by-id)
-                (assoc :file_path    (into [:case]
-                                           (concat
-                                            (mapcat (fn [[id {:keys [file_path]}]]
-                                                      [[:= :id id] file_path])
-                                                    metadata-by-id)
-                                            [:else :file_path]))
-                       :content_hash (into [:case]
-                                           (concat
-                                            (mapcat (fn [[id {:keys [content_hash]}]]
-                                                      [[:= :id id] content_hash])
-                                                    metadata-by-id)
-                                            [:else :content_hash]))))))
+  (update-rsos-in-bulk! {:id [:in (vec rso-ids)]}
+                       (cond-> {:status "synced" :status_changed_at timestamp}
+                         (seq metadata-by-id)
+                         (assoc :file_path    (into [:case]
+                                                    (concat
+                                                     (mapcat (fn [[id {:keys [file_path]}]]
+                                                               [[:= :id id] file_path])
+                                                             metadata-by-id)
+                                                     [:else :file_path]))
+                                :content_hash (into [:case]
+                                                    (concat
+                                                     (mapcat (fn [[id {:keys [content_hash]}]]
+                                                               [[:= :id id] content_hash])
+                                                             metadata-by-id)
+                                                     [:else :content_hash]))))))
 
 (mu/defn delete-rso!
   "Delete the RemoteSyncObject with `rso-id`."

@@ -355,6 +355,8 @@
    FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field  (api/write-check (warehouse-schema-rest.db/field id))
         ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -380,6 +382,8 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
   {:status :success})
 

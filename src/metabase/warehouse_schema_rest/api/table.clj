@@ -5,6 +5,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
@@ -399,6 +400,8 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (let [table (api/write-check (warehouse-schema-rest.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -423,6 +426,8 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Field values are shared by every worktree, so they can only be rescanned or discarded in the main app."])
   (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
     (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
