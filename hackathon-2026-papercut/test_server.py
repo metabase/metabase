@@ -910,20 +910,21 @@ class HttpTest(HttpCase):
         self.call("PATCH", "/api/papercuts/2", {"status": "wontfix"})
         self.store.assess(1, {"verdict": "ready"})
         _, page, _ = self.call("GET", "/")
-        self.assertIn("<button type='button' class='dispatch-button primary' data-dispatch='1'>Dispatch</button>", page)
-        self.assertNotIn("data-dispatch='2'", page)
-        self.assertIn("data-dispatch='1'", self.call("GET", "/papercuts/1")[1])
-        self.assertNotIn("data-dispatch=", self.call("GET", "/papercuts/2")[1])
+        self.assertIn("<button type='button' class='claim-button' data-claim='1'>Claim</button>", page)
+        self.assertNotIn("data-claim='2'", page)
+        self.assertIn("data-claim='1'>Claim this papercut</button>", self.call("GET", "/papercuts/1")[1])
+        self.assertNotIn("data-claim=", self.call("GET", "/papercuts/2")[1])
 
     def test_dispatch_from_the_page_queues_it_and_shows_its_links(self):
         self.report("r1", "Trap")
         status, dispatch, _ = self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web", "reason": "Dispatched from the web view"})
         self.assertEqual((status, dispatch["actor"], dispatch["state"]), (201, "web", "claimed"))
+        self.assertIn("<span class='claimant'>Web is working on this</span>", self.call("GET", "/")[1])
+        self.assertIn("claimed by Web", self.call("GET", "/papercuts/1")[1])
         for path in ("/", "/papercuts/1"):
             page = self.call("GET", path)[1]
-            self.assertIn("<span class='pill fix-claimed'>queued</span>", page)
-            self.assertIn(f"data-cancel-dispatch='{dispatch['id']}'>Cancel</button>", page)
-            self.assertNotIn("data-dispatch=", page)
+            self.assertIn(f"data-release='{dispatch['id']}'>Release</button>", page)
+            self.assertNotIn("data-claim=", page)
 
         for state, changes in (("linear_created", {"linear_issue_id": "BOT-12", "linear_url": "https://linear.app/metabase/issue/BOT-12"}),
                                ("running", {"branch": "bot-12-papercut-trap"}),
@@ -931,7 +932,7 @@ class HttpTest(HttpCase):
                                               "reason": "Copy configs first"})):
             self.assertEqual(self.call("PATCH", f"/api/dispatches/{dispatch['id']}", {"state": state, **changes})[0], 200)
         latest = self.call("GET", "/api/papercuts")[1]["papercuts"][0]["dispatch"]
-        self.assertEqual(latest, {"id": dispatch["id"], "state": "pr_opened", "linear_issue_id": "BOT-12",
+        self.assertEqual(latest, {"id": dispatch["id"], "state": "pr_opened", "actor": "web", "linear_issue_id": "BOT-12",
                                   "linear_url": "https://linear.app/metabase/issue/BOT-12",
                                   "pr_url": "https://github.com/metabase/metabase/pull/82950"})
         linear = "<a href='https://linear.app/metabase/issue/BOT-12' target='_blank' rel='noopener'>BOT-12 ↗</a>"
@@ -940,12 +941,60 @@ class HttpTest(HttpCase):
             page = self.call("GET", path)[1]
             self.assertIn(linear, page)
             self.assertIn(pr, page)
-            self.assertNotIn("data-dispatch=", page)
+            self.assertNotIn("data-claim=", page)
         detail = self.call("GET", "/papercuts/1")[1]
         self.assertIn("$2.50", detail)
         self.assertIn("Copy configs first", detail)
         self.assertEqual(self.call("GET", "/api/papercuts/1")[1]["dispatches"][0]["reason"],
                          "Copy configs first\npr_url: https://github.com/metabase/metabase/pull/82950; cost_usd: 2.5")
+
+    def test_a_person_claims_copies_the_prompt_and_releases(self):
+        self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": "r1",
+                                           "title": "Search fails quietly", "fingerprint": "metabot:abc"})
+        status, claim, _ = self.call("POST", "/api/papercuts/1/dispatch", {"claimant": "chris.truter@metabase.com"})
+        self.assertEqual((status, claim["state"], claim["actor"]), (201, "running", "chris.truter@metabase.com"))
+        page, detail = self.call("GET", "/")[1], self.call("GET", "/papercuts/1")[1]
+        self.assertIn("<span class='claimant'>Chris is working on this</span><span class=muted>claimed just now</span>", page)
+        self.assertIn("<span class='pill claim-tag'>claimed by Chris · just now</span>", detail)
+        for page in (page, detail):
+            self.assertIn("data-copy-prompt='1'>Copy prompt</button>", page)
+        status, prompt, response = self.call("GET", "/api/papercuts/1/prompt")
+        self.assertEqual((status, response.getheader("Content-Type")), (200, "text/plain; charset=utf-8"))
+        for line in ("curl -s http://10.193.193.227:8765/api/papercuts/1",
+                     "curl -s -X POST http://10.193.193.227:8765/api/papercuts/1/comments -H 'Content-Type: application/json'",
+                     f"curl -s -X PATCH http://10.193.193.227:8765/api/dispatches/{claim['id']}",
+                     "metabot-demo-break-search", "./bin/test-agent :only"):
+            self.assertIn(line, prompt)
+        self.assertEqual(self.call("PATCH", f"/api/dispatches/{claim['id']}", {"state": "pr_opened"})[0], 200)
+        self.assertEqual(self.call("DELETE", f"/api/dispatches/{claim['id']}")[0], 409)
+        second = self.call("POST", "/api/papercuts/2/dispatch", {"claimant": "Tyler"})
+        self.assertEqual(second[0], 404)
+        self.report("r2", "Other")
+        claim = self.call("POST", "/api/papercuts/2/dispatch", {"claimant": "Tyler"})[1]
+        self.assertEqual(self.call("DELETE", f"/api/dispatches/{claim['id']}")[1], {"released": claim["id"]})
+        self.assertEqual(self.call("GET", "/api/papercuts/2")[1]["status"], "open")
+        self.assertIn("data-claim='2'>Claim this papercut</button>", self.call("GET", "/papercuts/2")[1])
+        self.assertNotIn("metabot-demo-break-search", self.call("GET", "/api/papercuts/2/prompt")[1])
+        self.report("r3", "Third")
+        for papercut_id in (3, 2):
+            self.call("POST", f"/api/papercuts/{papercut_id}/dispatch", {"claimant": "Tyler"})
+        titles = [p["title"] for p in self.call("GET", "/api/papercuts?sort=oldest-claim-first")[1]["papercuts"]]
+        self.assertEqual(titles, ["Third", "Other", "Search fails quietly"])
+
+    def test_claim_without_sign_in_names_whoever_runs_the_server(self):
+        for report_id in ("r1", "r2", "r3"):
+            self.report(report_id, report_id)
+        local = f"{server.getpass.getuser()}@{server.socket.gethostname()}"
+        self.assertEqual(self.call("POST", "/api/papercuts/1/claim")[1]["actor"], local)
+        self.assertEqual(self.call("POST", "/api/papercuts/2/claim", {"claimant": "tyler@metabase.com"})[1]["actor"],
+                         "tyler@metabase.com")
+        server.os.environ["PAPERCUTS_LOCAL_CLAIMANT"] = "chris@laptop"
+        try:
+            claim = self.call("POST", "/api/papercuts/3/claim")[1]
+        finally:
+            del server.os.environ["PAPERCUTS_LOCAL_CLAIMANT"]
+        self.assertEqual((claim["actor"], claim["state"]), ("chris@laptop", "running"))
+        self.assertIn("<span class='claimant'>Chris is working on this</span>", self.call("GET", "/")[1])
 
     def test_cancelling_a_queued_dispatch_reopens_the_papercut_for_another(self):
         self.report("r1", "Trap")
@@ -955,7 +1004,7 @@ class HttpTest(HttpCase):
         self.assertEqual((status, cancelled["state"]), (200, "failed"))
         self.assertEqual(self.call("GET", "/api/papercuts/1")[1]["status"], "open")
         page = self.call("GET", "/papercuts/1")[1]
-        self.assertIn("data-dispatch='1'>Dispatch again</button>", page)
+        self.assertIn("data-claim='1'>Claim this papercut</button>", page)
         self.assertIn("Cancelled from the web view", page)
 
     def test_page_dispatch_needs_the_token_when_the_server_has_one(self):
@@ -964,7 +1013,7 @@ class HttpTest(HttpCase):
         self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"})[0], 401)
         self.assertEqual(self.call("POST", "/api/papercuts/1/dispatch", {"actor": "web"},
                                    headers={"Authorization": "Bearer secret"})[0], 201)
-        self.assertIn("<input id='api-token' type='password'", self.call("GET", "/")[1])
+        self.assertNotIn("id='api-token'", self.call("GET", "/")[1])
 
     def test_list_puts_important_papercuts_first_and_shows_fixes(self):
         for report_id in ("r1", "r2", "r3"):

@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -114,11 +113,23 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::json-value
+  "A JSON-shaped value inside tool call arguments: a scalar, a sequence of JSON values, or an object keyed by strings
+  off the wire or by keywords once parsed, at any depth."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::json-value]]
+   [:map-of {::mr/deliberately-open true} [:or :string :keyword] [:ref ::json-value]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::json-value])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -136,8 +147,10 @@
    [:result            {:optional true} [:maybe ToolResult]]
    [:duration-ms       {:optional true} [:maybe number?]]
    [:error             {:optional true} [:maybe [:map {:closed true}
-                                                 [:message {:optional true} [:maybe :string]]
-                                                 [:type    {:optional true} [:maybe :string]]]]]
+                                                 [:message      {:optional true} [:maybe :string]]
+                                                 [:type         {:optional true} [:maybe :string]]
+                                                 [:error-class  {:optional true} [:maybe :string]]
+                                                 [:agent-error? {:optional true} :boolean]]]]
    [:provider-metadata {:optional true} [:maybe ProviderMetadata]]])
 
 (def ^:private ApiKeyCredentials
@@ -838,6 +851,14 @@
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
 
+(defn- tool-error-class
+  "Name of a tool exception's ex-data `:type` keyword, or the exception's simple class name when it has none."
+  [^Exception e]
+  (let [error-type (:type (ex-data e))]
+    (if (keyword? error-type)
+      (u/qualified-name error-type)
+      (.getSimpleName (class e)))))
+
 (def ^:private stringified-scalar-transformer
   "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
   Restricted to the types models get wrong — strings, keywords and enums are left alone."
@@ -963,8 +984,10 @@
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
-                           :error        {:message (concise-tool-error e)
-                                          :type    (str (type e))}}]))]
+                           :error        {:message      (concise-tool-error e)
+                                          :type         (str (type e))
+                                          :error-class  (tool-error-class e)
+                                          :agent-error? (boolean (:agent-error? (ex-data e)))}}]))]
         (when (ait/capture-active?)
           (ait/record! {:ai/tool-output results}))
         (mapv (assoc-ms (u/since-ms start-ms))

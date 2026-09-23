@@ -2,24 +2,27 @@
 """Small SQLite-backed inbox for papercut reports."""
 
 import argparse
+import getpass
 import hashlib
 import hmac
 import html
 import json
 import os
 import re
+import socket
 import sqlite3
 import sys
 import threading
 import time
 import traceback
 from collections import Counter
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlencode, urlsplit
 
+import github_sync
 import sso
 
 SOURCE_VERSION = Path(__file__).stat().st_mtime_ns
@@ -39,21 +42,28 @@ OWNERS = ("repo-code", "repo-tooling", "personal-tooling", "third-party", "harne
 SEVERITIES = ("low", "medium", "high")
 VERDICTS = ("not_ready", "ready", "needs_human")
 ACTIVE_DISPATCH_STATES = ("claimed", "linear_created", "running")
-FINAL_DISPATCH_STATES = ("pr_opened", "already_fixed", "needs_human", "not_reproducible", "failed")
+FINAL_DISPATCH_STATES = ("pr_opened", "already_fixed", "needs_human", "not_reproducible", "failed", "merged")
 DISPATCH_STATES = (*ACTIVE_DISPATCH_STATES, *FINAL_DISPATCH_STATES)
 DISPATCH_TRANSITIONS = {
     "claimed": {"linear_created", "failed"},
     "linear_created": {"running", "failed"},
-    "running": set(FINAL_DISPATCH_STATES),
+    "running": set(FINAL_DISPATCH_STATES) - {"merged"},
+    "pr_opened": {"merged"},
 }
 # The papercut status a final dispatch state leaves behind, applied only while the papercut is still `investigating`.
-STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "needs_human": "open", "not_reproducible": "open", "failed": "open"}
+STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "merged": "resolved", "needs_human": "open",
+                         "not_reproducible": "open", "failed": "open"}
 DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log")
+PR_URL = re.compile(r"https://github\.com/metabase/metabase/pull/(\d+)")
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
+# When the papercut's claim in progress started, or NULL when nobody is working on it.
+CLAIMED_AT = f"""(SELECT MIN(d.created_at) FROM dispatches d WHERE d.papercut_id = p.id
+                  AND d.state IN ({', '.join(f"'{state}'" for state in ACTIVE_DISPATCH_STATES)}))"""
 SORTS = {
     "important": f"{IMPORTANT} DESC, p.last_seen DESC, p.id DESC",
+    "oldest-claim-first": f"{CLAIMED_AT} IS NULL, {CLAIMED_AT}, p.last_seen DESC, p.id DESC",
     "recent": "p.last_seen DESC, p.id DESC",
     "oldest": "p.first_seen ASC, p.id ASC",
     "reports": "report_count DESC, p.last_seen DESC, p.id DESC",
@@ -555,6 +565,27 @@ def migrate_to_v4(db):
                        (*git.values(), row["id"]))
 
 
+DISPATCHES_TABLE = f"""
+    CREATE TABLE dispatches (
+        id INTEGER PRIMARY KEY,
+        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+        assessment_id INTEGER REFERENCES assessments (id),
+        state TEXT NOT NULL CHECK (state IN ({one_of(DISPATCH_STATES)})),
+        actor TEXT NOT NULL,
+        linear_issue_id TEXT,
+        linear_url TEXT,
+        branch TEXT,
+        pr_url TEXT,
+        run_log TEXT,
+        cost_usd REAL CHECK (cost_usd >= 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX dispatches_active ON dispatches (papercut_id) WHERE state IN ({one_of(ACTIVE_DISPATCH_STATES)});
+    CREATE INDEX dispatches_state ON dispatches (state)
+"""
+
+
 SCHEMA_V5 = f"""
     ALTER TABLE papercuts ADD COLUMN owner TEXT CHECK (owner IN ({one_of(OWNERS)}));
     ALTER TABLE papercuts ADD COLUMN severity TEXT CHECK (severity IN ({one_of(SEVERITIES)}));
@@ -583,24 +614,7 @@ SCHEMA_V5 = f"""
         reason TEXT
     );
     CREATE INDEX assessments_papercut ON assessments (papercut_id);
-    CREATE TABLE dispatches (
-        id INTEGER PRIMARY KEY,
-        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
-        assessment_id INTEGER REFERENCES assessments (id),
-        state TEXT NOT NULL CHECK (state IN ({one_of(DISPATCH_STATES)})),
-        actor TEXT NOT NULL,
-        linear_issue_id TEXT,
-        linear_url TEXT,
-        branch TEXT,
-        pr_url TEXT,
-        run_log TEXT,
-        cost_usd REAL CHECK (cost_usd >= 0),
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-    );
-    CREATE UNIQUE INDEX dispatches_active ON dispatches (papercut_id) WHERE state IN ({one_of(ACTIVE_DISPATCH_STATES)});
-    CREATE INDEX dispatches_state ON dispatches (state)
-"""
+    {DISPATCHES_TABLE}"""
 
 
 def first_detail(field, values):
@@ -647,6 +661,28 @@ def migrate_to_v7(db):
 
 
 def migrate_to_v8(db):
+    """Add the `merged` dispatch state, and the pull requests linked to papercuts, backfilled from the pull request links
+    in comments and dispatches."""
+    for index in ("dispatches_active", "dispatches_state"):
+        db.execute(f"DROP INDEX {index}")
+    db.execute("ALTER TABLE dispatches RENAME TO v7_dispatches")
+    run_script(db, DISPATCHES_TABLE)
+    db.execute("INSERT INTO dispatches SELECT * FROM v7_dispatches")
+    db.execute("DROP TABLE v7_dispatches")
+    db.execute("""CREATE TABLE pull_requests (
+                      papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+                      url TEXT NOT NULL,
+                      state TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open', 'closed', 'merged')),
+                      etag TEXT,
+                      PRIMARY KEY (papercut_id, url)
+                  )""")
+    for row in db.execute("""SELECT papercut_id, pr_url AS text FROM dispatches
+                             UNION ALL SELECT papercut_id, body FROM events WHERE kind = 'comment'""").fetchall():
+        if match := PR_URL.search(row["text"] or ""):
+            db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (row["papercut_id"], match[0]))
+
+
+def migrate_to_v9(db):
     """Clean repository URLs once more, stripped the way ingestion strips them. SQLite's trim() in version 7 removes only
     spaces, so a URL wrapped in tabs, newlines or other whitespace kept its credentials."""
     db.create_function("public_url", 1, lambda url: public_url(url.strip()), deterministic=True)
@@ -658,7 +694,7 @@ def migrate_to_v8(db):
 
 # Each entry upgrades the database by one `user_version`.
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
-              migrate_to_v8)
+              migrate_to_v8, migrate_to_v9)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -864,13 +900,15 @@ class Store:
         with self.connect() as db:
             total = db.execute(f"SELECT COUNT(*) FROM papercuts p WHERE {where}", params).fetchone()[0]
             rows = db.execute(
-                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important,
+                f"""SELECT p.*, {COUNTS}, {IMPORTANT} AS important, {CLAIMED_AT} AS claimed_at,
                            (SELECT json_group_array(fingerprint) FROM papercut_fingerprints f
                             WHERE f.papercut_id = p.id) AS fingerprints,
                            COALESCE((SELECT d.state FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1),
-                                    (SELECT 'pr_opened' FROM events e WHERE e.papercut_id = p.id AND e.kind = 'comment'
-                                     AND e.body LIKE '%https://github.com/%/pull/%')) AS fix_state,
-                           (SELECT json_object('id', d.id, 'state', d.state, 'linear_issue_id', d.linear_issue_id,
+                                    (SELECT CASE pr.state WHEN 'open' THEN 'pr_opened' WHEN 'merged' THEN 'merged' END
+                                     FROM pull_requests pr WHERE pr.papercut_id = p.id ORDER BY pr.rowid DESC LIMIT 1)) AS fix_state,
+                           (SELECT pr.url FROM pull_requests pr WHERE pr.papercut_id = p.id
+                            ORDER BY pr.rowid DESC LIMIT 1) AS pr_url,
+                           (SELECT json_object('id', d.id, 'state', d.state, 'actor', d.actor, 'linear_issue_id', d.linear_issue_id,
                                                'linear_url', d.linear_url, 'pr_url', d.pr_url)
                             FROM dispatches d WHERE d.papercut_id = p.id ORDER BY d.id DESC LIMIT 1) AS dispatch,
                            (SELECT a.verdict FROM assessments a WHERE a.papercut_id = p.id
@@ -946,6 +984,8 @@ class Store:
             )]
             papercut["events"] = [dict(r) for r in db.execute(
                 "SELECT * FROM events WHERE papercut_id = ? ORDER BY id", (papercut_id,))]
+            papercut["pull_requests"] = [dict(r) for r in db.execute(
+                "SELECT url, state FROM pull_requests WHERE papercut_id = ? ORDER BY rowid DESC", (papercut_id,))]
             latest = db.execute("SELECT * FROM assessments WHERE papercut_id = ? ORDER BY id DESC LIMIT 1",
                                 (papercut_id,)).fetchone()
             papercut["assessment"] = assessment_json(latest) if latest else None
@@ -1022,12 +1062,43 @@ class Store:
     def comment(self, papercut_id, payload):
         if not isinstance(payload, dict) or set(payload) - {"author", "body"}:
             raise ValueError("Send body and optionally author")
-        body = text_field(payload, "body", required=True)
+        body, author = text_field(payload, "body", required=True), text_field(payload, "author") or "anonymous"
         with self.connect(write=True) as db:
             self._live(db, papercut_id)
-            self._event(db, papercut_id, "comment", text_field(payload, "author") or "anonymous", precise_now(),
-                        body=body)
+            self._event(db, papercut_id, "comment", author, precise_now(), body=body)
+            url, dispatch = self._link_pull_request(db, papercut_id, body), self._active_dispatch(db, papercut_id)
+            if url and dispatch and "pr_opened" in DISPATCH_TRANSITIONS[dispatch["state"]]:
+                self.update_dispatch(dispatch["id"], {"state": "pr_opened", "pr_url": url, "actor": author}, db)
         return self.get_papercut(papercut_id)
+
+    @staticmethod
+    def _link_pull_request(db, papercut_id, text):
+        """Link the first metabase pull request URL in `text` to the papercut, and return it."""
+        if match := PR_URL.search(text or ""):
+            db.execute("INSERT OR IGNORE INTO pull_requests (papercut_id, url) VALUES (?, ?)", (papercut_id, match[0]))
+            return match[0]
+        return None
+
+    def open_pull_requests(self):
+        with self.connect() as db:
+            return [dict(r) for r in db.execute("SELECT * FROM pull_requests WHERE state = 'open' ORDER BY rowid")]
+
+    def pull_request_checked(self, papercut_id, url, state, etag):
+        """Record a linked pull request's state on GitHub. A merge ends its dispatch as `merged` and resolves the
+        papercut; closing it unmerged only leaves a comment."""
+        with self.connect(write=True) as db:
+            db.execute("UPDATE pull_requests SET state = ?, etag = ? WHERE papercut_id = ? AND url = ?",
+                       (state, etag, papercut_id, url))
+            if state == "open":
+                return
+            papercut_id, number, at = self._resolve(db, papercut_id), PR_URL.fullmatch(url)[1], precise_now()
+            if state == "merged":
+                for dispatch in db.execute("SELECT id FROM dispatches WHERE pr_url = ? AND state = 'pr_opened'",
+                                           (url,)).fetchall():
+                    self.update_dispatch(dispatch["id"], {"state": "merged", "actor": "github"}, db)
+                self._set(db, papercut_id, "status", "resolved", "github", at, body=f"PR #{number} merged")
+            self._event(db, papercut_id, "comment", "github", at, body=f"PR #{number} merged, resolved automatically"
+                        if state == "merged" else f"PR #{number} closed without merging")
 
     def add_fingerprint(self, papercut_id, payload):
         if not isinstance(payload, dict) or set(payload) - {"fingerprint", "actor"}:
@@ -1212,15 +1283,17 @@ class Store:
         return db.execute(f"SELECT * FROM dispatches WHERE papercut_id = ? AND state IN ({one_of(ACTIVE_DISPATCH_STATES)})",
                           (papercut_id,)).fetchone()
 
-    def claim(self, papercut_id, payload):
+    def claim(self, papercut_id, payload, claimant=None):
         """Start a dispatch on an open papercut, which moves it to `investigating`. At most one dispatch per papercut
-        is in progress."""
-        if not isinstance(payload, dict) or set(payload) - {"actor", "reason", "assessment_id"}:
-            raise ValueError("Send optionally actor, reason and assessment_id")
+        is in progress. A person's claim (the signed-in user, or `claimant`) starts as `running`, since that person
+        does the work and reports the PR, so the dispatcher leaves it alone."""
+        if not isinstance(payload, dict) or set(payload) - {"actor", "reason", "assessment_id", "claimant"}:
+            raise ValueError("Send optionally actor, claimant, reason and assessment_id")
         assessment_id = payload.get("assessment_id")
         if assessment_id is not None and type(assessment_id) is not int:
             raise ValueError("assessment_id must be an integer")
-        actor, reason = actor_of(payload), text_field(payload, "reason")
+        claimant = claimant or text_field(payload, "claimant")
+        actor, reason = claimant or actor_of(payload), text_field(payload, "reason")
         with self.connect(write=True) as db:
             papercut = self._live(db, papercut_id)
             if active := self._active_dispatch(db, papercut_id):
@@ -1233,16 +1306,17 @@ class Store:
             at = precise_now()
             dispatch_id = db.execute(
                 """INSERT INTO dispatches (papercut_id, assessment_id, state, actor, created_at, updated_at)
-                   VALUES (?, ?, 'claimed', ?, ?, ?)""",
-                (papercut_id, assessment_id, actor, at, at),
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (papercut_id, assessment_id, "running" if claimant else "claimed", actor, at, at),
             ).lastrowid
             self._event(db, papercut_id, "dispatched", actor, at, new=dispatch_id, body=reason)
             self._set(db, papercut_id, "status", "investigating", actor, at, body=f"Dispatch {dispatch_id}")
             return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
 
-    def update_dispatch(self, dispatch_id, payload):
-        """Move a dispatch forward and record its links. A final state hands the papercut back: `already_fixed`
-        resolves it, and the other outcomes except `pr_opened` reopen it, unless someone has already changed its status."""
+    def update_dispatch(self, dispatch_id, payload, db=None):
+        """Move a dispatch forward and record its links, in `db`'s transaction when given. A final state hands the
+        papercut back: `already_fixed` and `merged` resolve it, and the other outcomes except `pr_opened` reopen it,
+        unless someone has already changed its status."""
         fields = {"state", *DISPATCH_FIELDS, "cost_usd", "actor", "reason"}
         if not isinstance(payload, dict) or not set(payload) & (fields - {"actor", "reason"}) or set(payload) - fields:
             raise ValueError(f"Send at least one of: {', '.join(sorted(fields - {'actor', 'reason'}))}; "
@@ -1250,7 +1324,7 @@ class Store:
         links = {key: text_field(payload, key) for key in DISPATCH_FIELDS if key in payload}
         cost_usd = number_field(payload, "cost_usd", 0)
         actor, reason, state = actor_of(payload), text_field(payload, "reason"), payload.get("state")
-        with self.connect(write=True) as db:
+        with (self.connect(write=True) if db is None else nullcontext(db)) as db:
             dispatch = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
             if dispatch is None:
                 raise NotFound(f"Dispatch {dispatch_id} not found")
@@ -1269,6 +1343,7 @@ class Store:
             assignments = ", ".join(f"{key} = ?" for key in ("state", *changed, "updated_at"))
             db.execute(f"UPDATE dispatches SET {assignments} WHERE id = ?", (state, *changed.values(), at, dispatch_id))
             papercut_id = dispatch["papercut_id"]
+            self._link_pull_request(db, papercut_id, changed.get("pr_url"))
             details = "; ".join(f"{key}: {value}" for key, value in changed.items())
             self._event(db, papercut_id, "dispatch_updated", actor, at, old=dispatch["state"], new=state,
                         body="\n".join(part for part in (reason, details) if part) or None)
@@ -1277,6 +1352,22 @@ class Store:
                 self._set(db, papercut_id, "status", STATUS_AFTER_DISPATCH[state], actor, at,
                           body=f"Dispatch {dispatch_id}: {state}")
             return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
+
+    def release(self, dispatch_id, payload):
+        """Drop a claim in progress, so the papercut is open to claim again."""
+        actor = actor_of(payload)
+        with self.connect(write=True) as db:
+            dispatch = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
+            if dispatch is None:
+                raise NotFound(f"Dispatch {dispatch_id} not found")
+            if dispatch["state"] not in ACTIVE_DISPATCH_STATES:
+                raise ConflictError(f"Dispatch {dispatch_id} is {dispatch['state']}; only claims in progress are released")
+            at, papercut_id = precise_now(), dispatch["papercut_id"]
+            db.execute("DELETE FROM dispatches WHERE id = ?", (dispatch_id,))
+            self._event(db, papercut_id, "dispatch_updated", actor, at, old=dispatch["state"], new="released")
+            if db.execute("SELECT status FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()["status"] == "investigating":
+                self._set(db, papercut_id, "status", "open", actor, at, body=f"Dispatch {dispatch_id} released")
+        return {"released": dispatch_id}
 
     def get_dispatch(self, dispatch_id):
         with self.connect() as db:
@@ -1486,6 +1577,29 @@ showTheme();
 
 LIVE_REFRESH = """<script>
 const liveStatus = document.getElementById('live-status');
+const accountButton = document.querySelector('.account-menu .account');
+if (accountButton) {
+  const accountMenu = accountButton.nextElementSibling;
+  const openAccount = (open) => {
+    accountMenu.hidden = !open;
+    accountButton.setAttribute('aria-expanded', String(open));
+    if (open) accountMenu.querySelector('a').focus();
+  };
+  accountButton.addEventListener('click', () => openAccount(accountMenu.hidden));
+  document.addEventListener('click', (event) => { if (!event.target.closest('.account-menu')) openAccount(false); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !accountMenu.hidden) {
+      openAccount(false);
+      accountButton.focus();
+    }
+  });
+}
+function showLive(connected) {
+  const label = connected ? 'Connected' : 'Reconnecting…';
+  liveStatus.classList.toggle('lost', !connected);
+  liveStatus.dataset.tip = label;
+  liveStatus.setAttribute('aria-label', label);
+}
 const filterForm = document.getElementById('filters');
 let refreshSerial = 0;
 let filterTimer;
@@ -1526,9 +1640,9 @@ async function refreshPage(url = window.location.href) {
     } else if (currentMain.innerHTML !== nextMain.innerHTML) {
       currentMain.replaceWith(nextMain);
     }
-    liveStatus.textContent = 'Live';
+    showLive(true);
   } catch (_) {
-    if (serial === refreshSerial) liveStatus.textContent = 'Connection lost · retrying';
+    if (serial === refreshSerial) showLive(false);
   }
 }
 if (filterForm) {
@@ -1563,11 +1677,11 @@ async function checkForChanges() {
   try {
     const feed = await (await fetch('/api/papercuts?' + new URLSearchParams(cursor ? {since: cursor} : {limit: 1}),
                                      {cache: 'no-store'})).json();
-    liveStatus.textContent = 'Live';
+    showLive(true);
     if (cursor !== undefined && feed.cursor !== cursor) refreshPage();
     cursor = feed.cursor;
   } catch (_) {
-    liveStatus.textContent = 'Connection lost · retrying';
+    showLive(false);
   }
 }
 checkForChanges();
@@ -1646,8 +1760,25 @@ UI_STYLE = """<style>
 .issue-card:hover h3 a {text-decoration: underline}
 .issue-card h3 a:focus-visible {outline: none}
 .issue-card:has(h3 a:focus-visible) {outline: 3px solid var(--accent); outline-offset: 2px}
-#live-status::before {content: ""; display: inline-block; width: 7px; height: 7px; margin-right: .4rem; border-radius: 50%;
-                      background: #22a06b; vertical-align: 1px}
+#live-status.led {display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22a06b;
+                  box-shadow: 0 0 0 3px rgba(34, 160, 107, .18)}
+#live-status.led.lost {background: #d9480f; box-shadow: 0 0 0 3px rgba(217, 72, 15, .2)}
+#live-status.led {position: relative; outline-offset: 3px}
+#live-status.led::after {content: attr(data-tip); position: absolute; top: calc(100% + 10px); right: -10px; z-index: 20; display: none;
+                         padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 7px; background: var(--surface);
+                         color: var(--text); font-size: .8rem; white-space: nowrap; box-shadow: 0 6px 18px rgba(16, 24, 32, .16)}
+#live-status.led:is(:hover, :focus-visible)::after {display: block}
+.account-menu {position: relative}
+.header-actions .account-menu .account {min-height: 32px; padding: 0 .6rem; border: 0; background: none; color: var(--muted);
+                                        font-size: .9rem}
+.header-actions .account-menu .account:hover, .account-menu .account[aria-expanded=true] {color: var(--text); background: var(--hover)}
+.account-menu .menu {position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 150px; padding: 6px;
+                     border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+                     box-shadow: 0 12px 32px rgba(16, 24, 32, .18)}
+.account-menu .menu a {display: block; padding: .45rem .6rem; border-radius: 8px; color: var(--text)}
+.account-menu .menu a:hover, .account-menu .menu a:focus-visible {background: var(--hover); text-decoration: none}
+.header-actions .account {color: var(--muted); font-size: .9rem}
+.header-actions .account:hover {color: var(--text)}
 .pill.important {display: inline-flex; align-items: center; gap: .3rem; color: var(--important); background: none; box-shadow: inset 0 0 0 1px currentColor}
 .pill.important .icon {width: 12px; height: 12px; fill: currentColor; stroke-width: 1.5}
 .severity-high, .fix-failed {background: var(--danger-bg); color: var(--danger-text)}
@@ -1657,17 +1788,42 @@ UI_STYLE = """<style>
                               transform: rotate(-45deg); transition: transform .15s}
 .report-card details[open] > summary::before {transform: rotate(45deg)}
 .severity-medium, .fix-needs_human {background: var(--warning-bg); color: var(--warning-text)}
-.fix-pr_opened, .fix-already_fixed {background: var(--success-bg); color: var(--success-text)}
+.fix-pr_opened, .fix-already_fixed, .fix-merged {background: var(--success-bg); color: var(--success-text)}
 .fix-claimed, .fix-linear_created, .fix-running {background: var(--info-bg); color: var(--info-text)}
 .dispatch-control {display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .75rem}
 .dispatch-control button {min-height: 30px; padding: 0 .75rem}
+.dispatch-control .claimant {font-weight: 650}
+.detail-title {display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem}
+.detail-actions {display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .9rem}
+.detail-actions:empty {display: none}
+.detail-actions .secondary {min-height: 36px; padding: 0 .9rem; border-color: var(--control-border); background: var(--surface);
+                            color: var(--text); font-weight: 600}
+.detail-actions .claim-button, .dispatch-control .claim-button {min-height: 38px; padding: 0 1.15rem; border: 0; border-radius: 10px;
+  color: #fff; font-weight: 700; letter-spacing: .01em; background: linear-gradient(135deg, #5b5cf6 0%, #3b82f6 55%, #0ea5e9 100%);
+  background-size: 160% 160%; box-shadow: 0 1px 2px rgba(15, 23, 42, .18), 0 4px 14px rgba(59, 130, 246, .28);
+  transition: transform .12s ease, box-shadow .12s ease, background-position .3s ease}
+.detail-actions .claim-button:hover {transform: translateY(-1px); background-position: 100% 50%;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .2), 0 8px 22px rgba(59, 130, 246, .38)}
+.detail-actions .claim-button:active {transform: translateY(0); box-shadow: 0 1px 2px rgba(15, 23, 42, .25)}
+.detail-actions .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
+.detail-meta .claim-tag {background: var(--info-bg); color: var(--info-text)}
+.detail-stats {margin: .6rem 0 0; font-size: .9rem}
+@media (max-width: 700px) {.detail-title {flex-direction: column; gap: 0} .detail-actions {margin-top: .2rem}}
+.detail-sidebar dd.path {overflow-wrap: normal}
+.dispatch-control .claimant::before {content: ""; display: inline-block; width: 8px; height: 8px; margin-right: .45rem; border-radius: 50%;
+                                     background: #22a06b; box-shadow: 0 0 0 3px rgba(34, 160, 107, .2); vertical-align: 1px}
+.dispatch-control .secondary {min-height: 32px; border-color: var(--control-border); background: var(--surface); color: var(--text);
+                              font-weight: 600}
+.dispatch-control .claim-button {min-height: 38px; padding: 0 1.15rem; border: 0; border-radius: 10px; color: #fff; font-weight: 700;
+  letter-spacing: .01em; background: linear-gradient(135deg, #5b5cf6 0%, #3b82f6 55%, #0ea5e9 100%); background-size: 160% 160%;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .18), 0 4px 14px rgba(59, 130, 246, .28);
+  transition: transform .12s ease, box-shadow .12s ease, background-position .3s ease}
+.dispatch-control .claim-button:hover {transform: translateY(-1px); background-position: 100% 50%;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .2), 0 8px 22px rgba(59, 130, 246, .38)}
+.dispatch-control .claim-button:active {transform: translateY(0); box-shadow: 0 1px 2px rgba(15, 23, 42, .25)}
+.dispatch-control .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
+.dispatch-control .claim-button:disabled {opacity: .7; transform: none}
 .dispatch-link a {font-weight: 600; white-space: nowrap}
-.token-control {position: relative}
-.token-control summary {cursor: pointer; list-style: none; color: var(--muted)}
-.token-control summary::-webkit-details-marker {display: none}
-.token-control[data-set=true] summary {color: var(--text)}
-.token-control input {position: absolute; right: 0; top: 2rem; z-index: 10; width: 18rem; padding: .4rem .6rem;
-                      border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text)}
 </style>"""
 
 UI_SCRIPT = """<script>
@@ -1739,43 +1895,34 @@ UI_SCRIPT = """<script>
 # actor `web`; naming the person who clicked is still to do.
 DISPATCH_SCRIPT = """<script>
 (() => {
-  const tokenInput = document.getElementById('api-token');
-  const tokenControl = tokenInput.closest('details');
-  const storedToken = () => { try { return localStorage.getItem('papercuts-token') || ''; } catch (_) { return ''; } };
-  const showToken = () => { tokenControl.dataset.set = Boolean(storedToken()); };
-  tokenInput.value = storedToken();
-  showToken();
-  tokenInput.addEventListener('change', () => {
-    try { localStorage.setItem('papercuts-token', tokenInput.value.trim()); } catch (_) {}
-    showToken();
-  });
   async function write(method, url, body) {
     const headers = {'Content-Type': 'application/json'};
-    if (storedToken()) headers.Authorization = 'Bearer ' + storedToken();
     const response = await fetch(url, {method, headers, body: JSON.stringify(body)});
     if (!response.ok) {
       const error = (await response.json().catch(() => ({}))).error;
-      throw new Error(response.status === 401 ? 'set the API token' : error || 'HTTP ' + response.status);
+      throw new Error(response.status === 401 ? 'sign in first' : error || 'HTTP ' + response.status);
     }
   }
   document.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-dispatch], button[data-cancel-dispatch]');
+    const button = event.target.closest('button[data-claim], button[data-release], button[data-copy-prompt]');
     if (!button) return;
     event.preventDefault();
-    if (button.dataset.dispatch && button.dataset.armed !== 'true') {
-      button.dataset.armed = 'true';
-      button.textContent = 'Confirm: file a Linear issue and run the fixer';
-      return;
-    }
+    const label = button.textContent;
     button.disabled = true;
     try {
-      if (button.dataset.dispatch) {
-        await write('POST', `/api/papercuts/${button.dataset.dispatch}/dispatch`,
-                    {actor: 'web', reason: 'Dispatched from the web view'});
-      } else {
-        await write('PATCH', `/api/dispatches/${button.dataset.cancelDispatch}`,
-                    {state: 'failed', actor: 'web', reason: 'Cancelled from the web view'});
+      if (button.dataset.copyPrompt) {
+        const url = `/api/papercuts/${button.dataset.copyPrompt}/prompt`;
+        try {
+          await navigator.clipboard.writeText(await (await fetch(url, {cache: 'no-store'})).text());
+          button.textContent = 'Copied';
+        } catch (_) {
+          window.open(url, '_blank');
+        }
+        setTimeout(() => { button.textContent = label; button.disabled = false; }, 1500);
+        return;
       }
+      if (button.dataset.claim) await write('POST', `/api/papercuts/${button.dataset.claim}/claim`, {});
+      else await write('DELETE', `/api/dispatches/${button.dataset.release}`, {});
       refreshPage();
     } catch (error) {
       button.textContent = 'Failed: ' + error.message;
@@ -1786,7 +1933,7 @@ DISPATCH_SCRIPT = """<script>
 
 FIX_LABELS = {"claimed": "queued", "linear_created": "ticket filed", "running": "fixing", "pr_opened": "PR opened",
               "already_fixed": "already fixed", "needs_human": "needs a human", "not_reproducible": "not reproducible",
-              "failed": "fix failed"}
+              "failed": "fix failed", "merged": "PR merged"}
 
 
 def fix_pill(state):
@@ -1814,16 +1961,21 @@ def category_chips(chosen, counts):
             "<button type='button' class='link' data-chips='none'>None</button></div>")
 
 
+def account_link():
+    email = signed_in_email()
+    return (f"<div class='account-menu'><button type='button' class='account' aria-haspopup='menu' aria-expanded='false'>"
+            f"{html.escape(email)}</button><div class='menu' role='menu' hidden>"
+            "<a role='menuitem' href='/auth/logout'>Sign out</a></div></div>") if email else ""
+
+
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
             f"<meta name='viewport' content='width=device-width, initial-scale=1'><link rel='icon' href='{FAVICON}'>"
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
-            "<span id='live-status' class='muted' role='status' aria-live='polite'>Live</span>"
-            "<details class='token-control'><summary>API token</summary>"
-            "<input id='api-token' type='password' autocomplete='off' placeholder='Bearer token for dispatching'></details>"
-            f"{sso.account_html()}{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
+            f"{account_link()}<span id='live-status' class='led' role='status' tabindex='0' data-tip='Connected' aria-label='Connected'></span>"
+            f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 
 def duration(minutes):
@@ -2073,11 +2225,12 @@ def list_card_html(p):
         f"<div title='{esc(facts[label], quote=True)}'><dt>{esc(label)}</dt><dd>{esc(excerpt(facts[label], 55))}</dd></div>"
         for label in visible_facts if facts.get(label)
     )
+    pr_link = "" if p["pr_url"] == (p["dispatch"] or {}).get("pr_url") else dispatch_links({"pr_url": p["pr_url"]})
     return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
             f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
-            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}</div>"
+            f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}{pr_link}</div>"
             f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
             f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
             f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
@@ -2146,18 +2299,83 @@ def dispatch_links(dispatch):
     return "".join(f"<span class='dispatch-link'>{link}</span>" for link in links)
 
 
-def dispatch_control(papercut, dispatch):
-    """The latest dispatch's state and links, and the button that starts or cancels one. Dispatching claims the
-    papercut; a separate `dispatcher.py watch` picks up the claim and does the work."""
-    active = dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES
-    parts = [fix_pill(dispatch["state"]) + dispatch_links(dispatch)] if dispatch else []
-    if active and dispatch["state"] == "claimed":
-        parts.append(f"<button type='button' data-cancel-dispatch='{dispatch['id']}'>Cancel</button>")
-    elif not active and papercut["status"] == "open" and papercut.get("merged_into") is None:
-        label = "Dispatch again" if dispatch else "Dispatch"
-        ready = " primary" if papercut.get("verdict") == "ready" else ""
-        parts.append(f"<button type='button' class='dispatch-button{ready}' data-dispatch='{papercut['id']}'>{label}</button>")
-    return f"<div class='dispatch-control'>{''.join(parts)}</div>" if parts else ""
+def signed_in_email():
+    return getattr(sso.signed_in, "email", None)
+
+
+def first_name(claimant):
+    """`Andrei` for andrei.simionescu@metabase.com, and the first word of a plain name."""
+    words = claimant.split("@")[0].replace(".", " ").replace("_", " ").split()
+    return words[0].capitalize() if words else claimant
+
+
+def ago(timestamp):
+    minutes = (datetime.now(timezone.utc) - datetime.fromisoformat(timestamp)).total_seconds() / 60
+    if minutes < 1:
+        return "just now"
+    if minutes < 60:
+        return f"{minutes:.0f} min ago"
+    return f"{minutes / 60:.0f}h ago" if minutes < 48 * 60 else f"{minutes / 1440:.0f}d ago"
+
+
+def claim_actions(papercut, dispatch, claim_label="Claim"):
+    """Copy prompt and Release while someone holds the claim, otherwise Claim on an open papercut."""
+    if dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES:
+        release = (f"<button type='button' class='secondary' data-release='{dispatch['id']}'>Release</button>"
+                   if signed_in_email() in (None, dispatch["actor"]) else "")
+        return f"<button type='button' class='secondary' data-copy-prompt='{papercut['id']}'>Copy prompt</button>{release}"
+    if papercut["status"] == "open" and papercut.get("merged_into") is None:
+        return f"<button type='button' class='claim-button' data-claim='{papercut['id']}'>{claim_label}</button>"
+    return ""
+
+
+def dispatch_control(papercut, dispatch, claim_label="Claim"):
+    """Who is working on a papercut and for how long, or how the last claim ended, with the claim buttons."""
+    if dispatch is not None and dispatch["state"] in ACTIVE_DISPATCH_STATES:
+        claimed_at = dispatch.get("created_at") or papercut.get("claimed_at")
+        state = (f"<span class='claimant'>{html.escape(first_name(dispatch['actor']))} is working on this</span>"
+                 f"{f'<span class=muted>claimed {ago(claimed_at)}</span>' if claimed_at else ''}{dispatch_links(dispatch)}")
+    else:
+        state = fix_pill(dispatch["state"]) + dispatch_links(dispatch) if dispatch else ""
+    parts = state + claim_actions(papercut, dispatch, claim_label)
+    return f"<div class='dispatch-control'>{parts}</div>" if parts else ""
+
+
+def claim_tag(dispatch):
+    """The claim as a tag, `claimed by Andrei · 2h ago`, or how the last one ended."""
+    if dispatch is None:
+        return ""
+    if dispatch["state"] in ACTIVE_DISPATCH_STATES:
+        return (f"<span class='pill claim-tag'>claimed by {html.escape(first_name(dispatch['actor']))} · "
+                f"{ago(dispatch['created_at'])}</span>{dispatch_links(dispatch)}")
+    return fix_pill(dispatch["state"]) + dispatch_links(dispatch)
+
+
+PROMPT_API = os.environ.get("PAPERCUTS_API_URL", "http://10.193.193.227:8765").rstrip("/")
+
+
+def fix_prompt(papercut):
+    """What the claimant pastes into their own agent: read the papercut, fix it, open a draft PR and report back."""
+    api, papercut_id = PROMPT_API, papercut["id"]
+    auth = "-H 'Content-Type: application/json' -H \"Authorization: Bearer $PAPERCUTS_TOKEN\""
+    lines = [f"Fix papercut #{papercut_id} in metabase/metabase: {papercut['title']}", "",
+             f"1. Read it, with its reports, evidence and links: curl -s {api}/api/papercuts/{papercut_id}",
+             "2. Confirm the problem still exists. If it doesn't, report that as in step 5 and stop.",
+             "3. Fix it with a test that fails without the fix, on a fresh branch from origin/master.",
+             "4. Open a draft PR.",
+             "5. Report the PR link back:",
+             f"   curl -s -X POST {api}/api/papercuts/{papercut_id}/comments {auth} "
+             f"-d '{json.dumps({'author': '<your name>', 'body': 'Draft PR: <PR URL>'})}'"]
+    if claim := next((d for d in papercut["dispatches"] if d["state"] in ACTIVE_DISPATCH_STATES), None):
+        lines.append(f"   curl -s -X PATCH {api}/api/dispatches/{claim['id']} {auth} "
+                     f"-d '{json.dumps({'state': 'pr_opened', 'pr_url': '<PR URL>'})}'")
+    if any(fingerprint.startswith("metabot:") for fingerprint in papercut["fingerprints"]):
+        lines += ["", "Metabot hit this. metabot-demo-break-search is a deliberate fault-injection switch: fix the product "
+                  "behaviour it exposes, not the switch.",
+                  "Run the test with ./bin/test-agent :only '[the.namespace-test/the-test]' > target/test.log 2>&1. A test "
+                  "that calls a Metabot tool through its var needs metabase.metabot.scope/*current-user-scope* bound, for "
+                  "example to metabase.api-scope.core/unrestricted."]
+    return "\n".join(lines) + "\n"
 
 
 def report_card_html(report, papercut_description, expanded=False):
@@ -2198,6 +2416,8 @@ def papercut_html(papercut):
         for e in papercut["events"]
     ) or "<li class='muted'>No triage yet</li>"
     votes = ", ".join(f"{esc(category)} ×{count}" for category, count in papercut["category_votes"].items())
+    pull_requests = "".join(f"{dispatch_links({'pr_url': pr['url']})} <span class='muted'>{pr['state']}</span>"
+                            for pr in papercut["pull_requests"])
     assessment = papercut["assessment"]
     readiness = ("<section class='card'><h2>Readiness</h2>"
                  f"<p>{pill(assessment['verdict'])}"
@@ -2215,14 +2435,16 @@ def papercut_html(papercut):
         f"{markdown_html(d['reason']) if d['reason'] else ''}</li>"
         for d in papercut["dispatches"]
     )
+    latest = papercut["dispatches"][0] if papercut["dispatches"] else None
     body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
-            f"<h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
-            f"<div class='detail-meta'>{important_pill(papercut)}{status_pill(papercut['status'])}"
+            f"<div class='detail-title'><h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
+            f"<div class='detail-actions'>{claim_actions(papercut, latest, 'Claim this papercut')}</div></div>"
+            f"<div class='detail-meta'>{status_pill(papercut['status'])}{claim_tag(latest)}{important_pill(papercut)}"
             f"{pill(papercut['category'] or 'unclassified')}"
-            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}"
-            f"<span class='muted'>{papercut['report_count']} reports · {papercut['reporter_count']} reporters · "
-            f"Time lost: {cost_label(papercut)}</span></div>"
-            f"{dispatch_control(papercut | {'verdict': (assessment or {}).get('verdict')}, papercut['dispatches'][0] if papercut['dispatches'] else None)}</div>"
+            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}{severity_pill(papercut['severity'])}</div>"
+            f"<p class='detail-stats muted'>{papercut['report_count']} report{'' if papercut['report_count'] == 1 else 's'} · "
+            f"{papercut['reporter_count']} reporter{'' if papercut['reporter_count'] == 1 else 's'} · "
+            f"Time lost: {cost_label(papercut)}</p></div>"
             "<div class='detail-layout'><div class='detail-content'>"
             f"<section class='card'><h2>Description</h2>{markdown_html(description) if description else '<p>No description recorded.</p>'}</section>"
             f"{'<section class=\"card suggested-fix\"><h2>Suggested fix</h2>' + markdown_html(suggested_fix) + '</section>' if suggested_fix else ''}"
@@ -2234,11 +2456,12 @@ def papercut_html(papercut):
             f"<section><h2>Reports</h2>{reports or '<p class=\"muted\">No reports yet.</p>'}</section></div>"
             "<aside class='detail-sidebar card'><h2>Details</h2><dl>"
             f"<div><dt>Repository</dt><dd>{esc(papercut['repository'])}</dd></div>"
-            f"<div><dt>Path</dt><dd>{esc(papercut['path'] or 'Not recorded')}</dd></div>"
+            f"<div><dt>Path</dt><dd class='path'>{esc(papercut['path'] or 'Not recorded').replace('/', '/<wbr>')}</dd></div>"
             f"<div><dt>Area</dt><dd>{esc(papercut['area'] or 'Not recorded')}</dd></div>"
             f"<div><dt>First seen</dt><dd><time datetime='{esc(papercut['first_seen'], quote=True)}'>{short_date(papercut['first_seen'])}</time></dd></div>"
             f"<div><dt>Last seen</dt><dd><time datetime='{esc(papercut['last_seen'], quote=True)}'>{short_date(papercut['last_seen'])}</time></dd></div>"
             f"{'<div><dt>Category votes</dt><dd>' + votes + '</dd></div>' if votes else ''}"
+            f"{'<div><dt>Pull requests</dt><dd>' + pull_requests + '</dd></div>' if pull_requests else ''}"
             "</dl></aside></div>")
     return page(papercut["title"], body)
 
@@ -2280,6 +2503,17 @@ class Handler(BaseHTTPRequestHandler):
         given = self.headers.get("Authorization", "")
         return hmac.compare_digest(given.encode(), f"Bearer {self.token}".encode())
 
+    def claim(self, papercut_id):
+        """Claim for the signed-in user, else the body's `claimant`. Only a server without sign-in, which runs on its
+        user's own machine, falls back to that machine's user."""
+        payload = self.input_json(optional=True)
+        claimant = signed_in_email() or (payload.get("claimant") if isinstance(payload, dict) else None)
+        if not claimant and self.sign_in:
+            raise ValueError("Send claimant, or sign in to claim as yourself")
+        claimant = (claimant or os.environ.get("PAPERCUTS_LOCAL_CLAIMANT")
+                    or f"{getpass.getuser()}@{socket.gethostname()}")
+        return self.store.claim(papercut_id, payload, claimant)
+
     def redirect_if_merged(self, papercut_id, prefix, query):
         """Follow merges on GET, so old links keep working. Returns True when a response was sent."""
         live = self.store.resolve(papercut_id)
@@ -2300,7 +2534,7 @@ class Handler(BaseHTTPRequestHandler):
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
         papercut = re.fullmatch(
-            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch)(?:/(\d+))?)?", path)
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt)(?:/(\d+))?)?", path)
         dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
         command = self.command
@@ -2334,10 +2568,15 @@ class Handler(BaseHTTPRequestHandler):
                                                                          self.input_json(optional=True)),
                 ("POST", "fingerprints", False): lambda: self.store.add_fingerprint(papercut_id, self.input_json()),
             }
+            if command == "GET" and action == "prompt" and not other:
+                if (papercut := self.store.get_papercut(papercut_id)) is None:
+                    raise NotFound(f"Papercut {papercut_id} not found")
+                return self.respond(200, fix_prompt(papercut), "text/plain")
             created = {
                 "comments": lambda: self.store.comment(papercut_id, self.input_json()),
                 "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
-                "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True)),
+                "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
+                "claim": lambda: self.claim(papercut_id),
             }
             if command == "POST" and action in created and not other:
                 return self.respond(201, created[action]())
@@ -2347,6 +2586,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, self.store.list_dispatches(params))
         if dispatch and command == "GET":
             return self.respond(200, self.store.get_dispatch(int(dispatch[1])))
+        if dispatch and command == "DELETE":
+            payload = {"actor": signed_in_email()} if signed_in_email() else self.input_json(optional=True)
+            return self.respond(200, self.store.release(int(dispatch[1]), payload))
         if dispatch and command == "PATCH":
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
@@ -2415,6 +2657,7 @@ def main():
     Handler.store = Store(args.db)
     Handler.token = args.token or None
     Handler.sign_in = sso.from_env(os.environ)
+    github_sync.start(Handler.store, os.environ)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Papercuts at http://{args.host}:{server.server_port}/ (database: {args.db}"
           f"{', writes need a token' if Handler.token else ''}{', reloading on change' if args.reload else ''})",

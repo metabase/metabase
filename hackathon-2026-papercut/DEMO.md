@@ -12,10 +12,14 @@ Run everything from `hackathon-2026-papercut/` unless a step says otherwise.
    `.lein-env`. The scanner and the dispatcher both look in all four.
 
 2. Start a server on a fresh database and load the archive. The import takes about a
-   minute and gives 137 papercuts from about 290 reports.
+   minute and gives 137 papercuts from about 290 reports. Stop any earlier demo server
+   first: removing its database under it doesn't make a fresh one.
 
    ```sh
+   rm -f demo.sqlite3 demo.sqlite3-wal demo.sqlite3-shm
    python3 server.py --db demo.sqlite3 --port 8770 &
+   # The server migrates the database before it listens.
+   until curl -sf http://127.0.0.1:8770/api/papercuts >/dev/null; do sleep 0.5; done
    python3 seed_demo.py --server http://127.0.0.1:8770
    python3 import_local.py --server http://127.0.0.1:8770 slop/chris/papercuts/claude slop/chris/papercuts/codex
    ```
@@ -38,16 +42,22 @@ importer, scanner and dispatcher all send it.
 2. **A session reports papercuts.** From the repository root:
 
    ```sh
-   ./bin/mage papercuts-scan-claude --dry-run --server http://127.0.0.1:8770 --session 31b066ea
+   ./bin/mage papercuts-scan-claude --dry-run --server http://127.0.0.1:8770 --session 31b066ea \
+     --state-file "$(mktemp -d)/scan-state.claude.edn"
    ```
+
+   The throwaway state file matters: with the default one, a session scanned before is
+   skipped, and the demo finds nothing.
 
    Jev screens the session, and Claude drills into the flagged part. Two of the three
    findings match papercuts the server already knows (`local-papercuts:...`), so they
    would join those papercuts instead of creating new ones. Drop `--dry-run` to submit.
-3. **What is ready to fix.** Show the ready list:
+3. **What is ready to fix.** Open <http://127.0.0.1:8770/papercuts/101>: its Readiness
+   panel shows the verdict and scores recorded before the demo. The same assessment
+   from the API:
 
    ```sh
-   python3 dispatcher.py assess --server http://127.0.0.1:8770 --dry-run --id 101
+   curl -s http://127.0.0.1:8770/api/papercuts/101 | python3 -c 'import json, sys; print(json.load(sys.stdin)["assessment"])'
    ```
 
    #101 (search-index DDL commits the test's rollback-only transaction) is a good

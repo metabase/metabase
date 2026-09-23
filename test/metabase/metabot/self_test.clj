@@ -478,6 +478,18 @@
                   {:type :reasoning-delta :id "r1" :delta "c"}
                   {:type :reasoning-end :id "r1" :providerMetadata {:anthropic {:signature "sig"}}}])))))
 
+(deftest ^:parallel aisdk-xf-nested-tool-arguments-test
+  (testing "a tool call with nested object arguments parses to keyword keys and can be replayed to a provider adapter"
+    (let [arguments {:query         {:lib/type "mbql/query"
+                                     :stages   [{:source-table 2 :aggregation [["count" {}]]}]}
+                     :visualization {:chart_type "scalar"}}
+          part      (last (into [] (self.core/aisdk-xf)
+                                (test-util/parts->aisdk-chunks
+                                 [{:type :tool-input :id "call-1" :function "construct_notebook_query"
+                                   :arguments arguments}])))]
+      (is (= arguments (:arguments part)))
+      (is (mr/validate self.core/LLMRequestOpts {:input [part]})))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -550,9 +562,13 @@
       (is (=? {:type       :tool-output-available
                :toolCallId "call-err"
                :toolName   "get-time"
-               :error      {:message string?
-                            :type    string?}}
-              (last result))))))
+               :error      {:message      string?
+                            :type         string?
+                            :error-class  "ZoneRulesException"
+                            :agent-error? false}}
+              (last result)))
+      (testing "the error part can be replayed to a provider adapter"
+        (is (mr/validate self.core/LLMRequestOpts {:input (into [] (self.core/aisdk-xf) [(last result)])}))))))
 
 (deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"

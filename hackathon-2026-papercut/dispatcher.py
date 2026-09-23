@@ -654,12 +654,21 @@ def resolve_env(name):
     Asking mage keeps the dispatcher and the transcript scanner agreeing on where keys live."""
     if value := os.environ.get(name):
         return value
+    # bin/bb is gitignored and installed by bin/mage, so a fresh checkout may only have Babashka on PATH.
+    bundled = REPO_ROOT / "bin" / "bb"
+    bb = str(bundled) if os.access(bundled, os.X_OK) else shutil.which("bb")
+    if not bb:
+        print(f"Can't look {name} up in {KEY_SOURCES}: Babashka isn't installed; run ./bin/mage once to install it",
+              file=sys.stderr)
+        return None
     try:
-        result = subprocess.run([str(REPO_ROOT / "bin" / "bb"), "-e", RESOLVE_ENV, name], cwd=REPO_ROOT,
-                                capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.TimeoutExpired):
+        result = subprocess.run([bb, "-e", RESOLVE_ENV, name], cwd=REPO_ROOT, capture_output=True, text=True,
+                                timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"Can't look {name} up in {KEY_SOURCES}: {error}", file=sys.stderr)
         return None
     if result.returncode != 0:
+        print(f"Can't look {name} up in {KEY_SOURCES}: {result.stderr.strip()[-300:]}", file=sys.stderr)
         return None
     return result.stdout.strip() or None
 

@@ -215,8 +215,10 @@
    [:result                        {:optional true} :string]
    [:event-details                 {:optional true}
     [:map {:closed true}
-     ["tool_name" {:optional true} [:maybe :string]]
-     ["step"      {:optional true} :int]]]])
+     ["tool_name"   {:optional true} [:maybe :string]]
+     ["step"        {:optional true} :int]
+     ["error_class" {:optional true} [:maybe :string]]
+     ["agent_error" {:optional true} :boolean]]]])
 
 (def SnowplowEventData
   "Closed shape of the `data` payload accepted by [[track-event!]], as a union of the shapes each `SnowplowSchema`

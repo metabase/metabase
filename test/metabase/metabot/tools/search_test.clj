@@ -492,6 +492,21 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
+(deftest demo-break-search-test
+  (mt/with-dynamic-fn-redefs [search/search (constantly [{:id 1 :type "table" :name "orders"}])]
+    (testing "throw lets the failure escape the tool"
+      (mt/with-temporary-setting-values [metabot-demo-break-search "throw"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                              (search/search-tool {:keyword_queries ["orders"]})))))
+    (testing "swallow turns the failure into ordinary tool output"
+      (mt/with-temporary-setting-values [metabot-demo-break-search "swallow"]
+        (is (= {:output "Search failed: Search index unavailable"}
+               (search/search-tool {:keyword_queries ["orders"]})))))
+    (testing "empty skips the search and returns no results"
+      (mt/with-temporary-setting-values [metabot-demo-break-search "empty"]
+        (is (=? {:structured-output {:total_count 0}}
+                (search/search-tool {:keyword_queries ["orders"]})))))))
+
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
     (doseq [[field value message]

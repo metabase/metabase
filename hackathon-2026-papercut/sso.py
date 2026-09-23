@@ -23,13 +23,8 @@ LOGIN_SECONDS = 10 * 60
 # Where to go after signing in: a path on this site, never `//host` or `/\host`.
 LOCAL_PATH = re.compile(r"/(?![/\\])[!-~]*")
 
-# The email signed in on the request this thread is answering, for the page header.
+# The email signed in on the request this thread is answering.
 signed_in = threading.local()
-
-
-def account_html():
-    email = getattr(signed_in, "email", None)
-    return f"<span class='muted'>{html.escape(email)} · <a href='/auth/logout'>Sign out</a></span>" if email else ""
 
 
 def from_env(environ):
@@ -65,9 +60,12 @@ class GoogleSignIn:
         if handler.command == "GET" and url.path in routes:
             routes[url.path](handler, {key: values[0] for key, values in parse_qs(url.query).items()})
             return True
-        # The reverse proxy sets X-Forwarded-Proto on every request; the rest come from the private network.
+        # Requests without X-Forwarded-Proto, which the reverse proxy always sets, come from the private network.
         if self.proxy_only and "X-Forwarded-Proto" not in handler.headers:
-            return False
+            if url.path.startswith(("/api/", "/auth/")):
+                return False
+            handler.respond(302, "", "text/plain", {"Location": self.origin + handler.path})
+            return True
         session = self.unsign(SESSION, self.cookie(handler, SESSION))
         if session is None:
             if url.path.startswith("/api/"):
@@ -103,7 +101,7 @@ class GoogleSignIn:
                                              "grant_type": "authorization_code"})
             claims = self.google(f"{TOKENINFO_URL}?{urlencode({'id_token': tokens['id_token']})}")
         except (OSError, ValueError, KeyError):
-            return self.refuse(handler, 502, "Google sign-in failed.")
+            return self.refuse(handler, 400, "Google sign-in failed.")
         email = str(claims.get("email", "")).lower()
         if not (claims.get("aud") == self.client_id and claims.get("iss") in ISSUERS
                 and int(claims.get("exp", 0)) > time.time() and claims.get("email_verified") in ("true", True)

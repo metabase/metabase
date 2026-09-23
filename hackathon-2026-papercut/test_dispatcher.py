@@ -344,11 +344,31 @@ class HelpersTest(unittest.TestCase):
                                     (subprocess.CompletedProcess([], 0, "", ""), None),
                                     (subprocess.CompletedProcess([], 1, "", "boom"), None)):
             with self.subTest(expected), unittest.mock.patch.dict(dispatcher.os.environ, clear=False), \
+                    unittest.mock.patch.object(dispatcher.os, "access", return_value=True), \
+                    unittest.mock.patch.object(dispatcher.sys, "stderr", io.StringIO()), \
                     unittest.mock.patch.object(dispatcher.subprocess, "run", return_value=completed) as run:
                 dispatcher.os.environ.pop("PAPERCUT_TEST_KEY", None)
                 self.assertEqual(dispatcher.resolve_env("PAPERCUT_TEST_KEY"), expected)
                 self.assertEqual((run.call_args.args[0][-1], run.call_args.kwargs["cwd"]),
                                  ("PAPERCUT_TEST_KEY", dispatcher.REPO_ROOT))
+
+    def test_resolve_env_falls_back_to_bb_on_path_and_says_when_it_cannot_look(self):
+        completed = subprocess.CompletedProcess([], 0, "from-dot-env\n", "")
+        with unittest.mock.patch.dict(dispatcher.os.environ, clear=False), \
+                unittest.mock.patch.object(dispatcher.os, "access", return_value=False), \
+                unittest.mock.patch.object(dispatcher.shutil, "which", return_value="/usr/local/bin/bb"), \
+                unittest.mock.patch.object(dispatcher.subprocess, "run", return_value=completed) as run:
+            dispatcher.os.environ.pop("PAPERCUT_TEST_KEY", None)
+            self.assertEqual(dispatcher.resolve_env("PAPERCUT_TEST_KEY"), "from-dot-env")
+            self.assertEqual(run.call_args.args[0][0], "/usr/local/bin/bb")
+        stderr = io.StringIO()
+        with unittest.mock.patch.dict(dispatcher.os.environ, clear=False), \
+                unittest.mock.patch.object(dispatcher.os, "access", return_value=False), \
+                unittest.mock.patch.object(dispatcher.shutil, "which", return_value=None), \
+                unittest.mock.patch.object(dispatcher.sys, "stderr", stderr):
+            dispatcher.os.environ.pop("PAPERCUT_TEST_KEY", None)
+            self.assertIsNone(dispatcher.resolve_env("PAPERCUT_TEST_KEY"))
+        self.assertIn("run ./bin/mage once", stderr.getvalue())
 
     def test_fixer_env_drops_session_credentials_and_settings(self):
         env = {"PATH": "/bin", "CLAUDECODE": "1", "ANTHROPIC_BASE_URL": "x", "LINEAR_API_KEY": "k",

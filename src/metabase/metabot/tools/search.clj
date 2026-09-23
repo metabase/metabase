@@ -9,6 +9,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -587,29 +588,39 @@
                     :moderated_status (:moderated_status r)
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
+(defn- search-index-unavailable []
+  (ex-info "Search index unavailable" {:type ::index-unavailable}))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
-  (if-let [invalid (invalid-entity-types entity_types allowed-types)]
-    {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " allowed-types) ".")}
-    (try
-      (let [results (search (merge {:semantic-queries semantic_queries
-                                    :term-queries    keyword_queries
-                                    :entity-types    (or (seq entity_types) (vec allowed-types))
-                                    :metabot-id      shared/*metabot-id*
-                                    :limit           (min max-search-limit
-                                                          (or limit default-search-limit))}
-                                   search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}
-         :data-parts [(streaming/search-results-part
-                       {:total_count (count results)
-                        :results (mapv search-result->item results)})]})
-      (catch Exception e
-        (log/error (str "Error in " label ": " (ex-message e)))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+  (let [demo-break (metabot.settings/metabot-demo-break-search)]
+    (when (= demo-break "throw")
+      (throw (search-index-unavailable)))
+    (if-let [invalid (invalid-entity-types entity_types allowed-types)]
+      {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
+                    ". Allowed types: " (str/join ", " allowed-types) ".")}
+      (try
+        (when (= demo-break "swallow")
+          (throw (search-index-unavailable)))
+        (let [results (if (= demo-break "empty")
+                        []
+                        (search (merge {:semantic-queries semantic_queries
+                                        :term-queries    keyword_queries
+                                        :entity-types    (or (seq entity_types) (vec allowed-types))
+                                        :metabot-id      shared/*metabot-id*
+                                        :limit           (min max-search-limit
+                                                              (or limit default-search-limit))}
+                                       search-opts)))]
+          {:output (format-search-output results)
+           :structured-output {:result-type :search
+                               :data results
+                               :total_count (count results)}
+           :data-parts [(streaming/search-results-part
+                         {:total_count (count results)
+                          :results (mapv search-result->item results)})]})
+        (catch Exception e
+          (log/error (str "Error in " label ": " (ex-message e)))
+          {:output (str "Search failed: " (or (ex-message e) "Unknown error"))})))))
 
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}

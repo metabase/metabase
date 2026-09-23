@@ -36,6 +36,22 @@ class SignInTest(HttpCase):
     def session(self):
         return self.sign_in_as()[2].getheader("Set-Cookie").split(";")[0]
 
+    def test_the_signed_in_user_claims_and_sees_the_release_button(self):
+        self.report("r1")
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        status, claim, _ = self.call("POST", "/api/papercuts/1/dispatch", {}, headers=headers)
+        self.assertEqual((status, claim["actor"], claim["state"]), (201, "ada@metabase.com", "running"))
+        page = self.call("GET", "/papercuts/1", headers=headers)[1]
+        self.assertIn("claimed by Ada", page)
+        self.assertIn(f"data-release='{claim['id']}'>Release</button>", page)
+
+    def test_a_claim_without_a_session_must_name_its_claimant(self):
+        self.report("r1")
+        status, body, _ = self.call("POST", "/api/papercuts/1/claim", {})
+        self.assertEqual((status, body["error"]), (400, "Send claimant, or sign in to claim as yourself"))
+        status, claim, _ = self.call("POST", "/api/papercuts/1/claim", {"claimant": "tyler@metabase.com"})
+        self.assertEqual((status, claim["actor"]), (201, "tyler@metabase.com"))
+
     def test_settings_come_from_the_environment(self):
         self.assertIsNone(sso.from_env({"PAPERCUTS_PUBLIC_URL": "https://metaouch.dev"}))
         with self.assertRaisesRegex(SystemExit, "needs GOOGLE_OAUTH_CLIENT_SECRET, PAPERCUTS_SESSION_SECRET$"):
@@ -52,9 +68,15 @@ class SignInTest(HttpCase):
         self.assertEqual(self.call("GET", "/papercuts/1", headers=PROXIED)[0], 200)
         self.assertEqual(self.call("GET", "/auth/login", headers=PROXIED)[0], 404)
 
-    def test_proxied_requests_need_a_session(self):
+    def test_direct_requests_keep_the_api_and_send_pages_to_the_public_url(self):
         self.assertEqual(self.report("r1")[0], 201)
         self.assertEqual(self.call("GET", "/api/papercuts/1")[0], 200)
+        for path in ("/", "/papercuts/1?reports_limit=1"):
+            with self.subTest(path):
+                status, _, response = self.call("GET", path)
+                self.assertEqual((status, response.getheader("Location")), (302, "https://metaouch.dev" + path))
+
+    def test_proxied_requests_need_a_session(self):
         status, _, response = self.call("GET", "/papercuts/1?reports_limit=1", headers=PROXIED)
         self.assertEqual((status, response.getheader("Location")),
                          (302, "/auth/login?next=%2Fpapercuts%2F1%3Freports_limit%3D1"))
@@ -78,7 +100,8 @@ class SignInTest(HttpCase):
                                  r"SameSite=Lax; Secure$")
         status, page, _ = self.call("GET", "/", headers={**PROXIED, "Cookie": cookie.split(";")[0]})
         self.assertEqual(status, 200)
-        self.assertIn("ada@metabase.com · <a href='/auth/logout'>Sign out</a>", page)
+        self.assertIn("aria-haspopup='menu' aria-expanded='false'>ada@metabase.com</button>", page)
+        self.assertIn("<a role='menuitem' href='/auth/logout'>Sign out</a>", page)
         _, _, response = self.call("GET", "/auth/logout", headers=PROXIED)
         self.assertTrue(response.getheader("Set-Cookie").startswith("papercuts_session=; Max-Age=0; Path=/;"))
 
@@ -88,7 +111,7 @@ class SignInTest(HttpCase):
             with self.subTest(target):
                 self.assertEqual(self.sign_in_as(target)[2].getheader("Location"), location)
 
-    def test_other_accounts_are_refused(self):
+    def test_other_accounts_and_broken_sign_ins_are_refused(self):
         for claims in ({"hd": None}, {"email": "ada@metabase.com.example.org"}, {"email_verified": "false"},
                        {"aud": "another-client"}, {"iss": "https://example.org"}, {"nonce": "another-sign-in"},
                        {"exp": str(int(time.time()) - 1)}):
@@ -96,6 +119,9 @@ class SignInTest(HttpCase):
                 status, _, response = self.sign_in_as(**claims)
                 self.assertEqual((status, response.getheader("Set-Cookie")), (403, None))
         self.assertEqual(self.sign_in_as(state="forged")[0], 400)
+        self.sign_in.google = lambda *_: {}
+        self.assertEqual(self.sign_in_as()[:2], (400, "<!doctype html><title>Papercuts</title><p>Google sign-in failed. "
+                                                     "<a href='/auth/login'>Sign in</a></p>"))
         self.assertEqual(self.call("GET", "/auth/callback?code=code&state=forged", headers=PROXIED)[0], 400)
 
     def test_changed_or_expired_sessions_are_refused(self):
