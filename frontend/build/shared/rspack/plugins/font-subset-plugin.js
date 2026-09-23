@@ -19,6 +19,17 @@ const PLUGIN = "FontSubsetPlugin";
 // renders nothing.
 const MIN_USEFUL_CHUNK_BYTES = 3000;
 
+const SUBSET_OPTIONS = { targetFormat: "woff2" };
+
+// Chunks are cached under the hash of their source, so everything else that
+// decides their contents belongs in that hash. Without this, editing a range
+// leaves every warm tree serving the chunks built from the old one.
+const RECIPE = JSON.stringify([
+  LATIN_UNICODE_RANGE,
+  REST_UNICODE_RANGE,
+  SUBSET_OPTIONS,
+]);
+
 /**
  * Splits each bundled face into a latin chunk and a chunk holding everything
  * else, then rewrites the stylesheet so both are declared with a
@@ -114,6 +125,7 @@ class FontSubsetPlugin {
       .createHash("sha1")
       .update(buf)
       .update(restBuf)
+      .update(RECIPE)
       .digest("hex")
       .slice(0, 12);
     const dir = path.dirname(rel);
@@ -129,9 +141,7 @@ class FontSubsetPlugin {
       const chunkPath = path.join(this.outputDir, chunkRel);
       if (!fs.existsSync(chunkPath)) {
         const from = name === "rest" ? restBuf : buf;
-        const subset = await subsetFont(from, characters, {
-          targetFormat: "woff2",
-        });
+        const subset = await subsetFont(from, characters, SUBSET_OPTIONS);
         if (name === "rest" && subset.length < MIN_USEFUL_CHUNK_BYTES) {
           made.rest = undefined;
           continue;

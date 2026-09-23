@@ -1,8 +1,19 @@
 // --- How each face is split -------------------------------------------------
 
 // Each bundled face is split in two so a page only downloads what it renders.
-// A latin page fetches the first chunk and nothing else; Cyrillic or Greek text
-// pulls the second in on demand, so coverage is unchanged.
+// A latin page fetches the first chunk and nothing else, and Cyrillic or Greek
+// text pulls the second in on demand, so coverage is unchanged.
+//
+// The two sets are disjoint and together cover everything above the control
+// characters. The second chunk holds only what the first leaves out, so a
+// codepoint claimed by both would render tofu whenever the browser picked the
+// face that lacks it.
+//
+// Latin-1 and the punctuation-through-currency span, rather than Google's latin
+// subset. That set scatters fifteen singletons across the plane, for the euro,
+// dotless i, the arrows and the rest, and its complement comes out just as
+// jagged. Rounding to two blocks costs 6,904 bytes on Noto Sans, the largest
+// family, and turns seventeen ranges a side into two.
 //
 // Two ranges rather than Google's seven: measured across Noto Sans, Inter,
 // Roboto and PT Sans, a third chunk cost 19-52 kB more in total for a latin
@@ -10,92 +21,38 @@
 // doubled it.
 const LATIN_RANGES = [
   [0x20, 0xff],
-  [0x131, 0x131],
-  [0x152, 0x153],
-  [0x2bb, 0x2bc],
-  [0x2c6, 0x2c6],
-  [0x2da, 0x2da],
-  [0x2dc, 0x2dc],
-  [0x2000, 0x206f],
-  [0x2074, 0x2074],
-  [0x20ac, 0x20ac],
-  [0x2122, 0x2122],
-  [0x2191, 0x2191],
-  [0x2193, 0x2193],
-  [0x2212, 0x2212],
-  [0x2215, 0x2215],
-  [0xfeff, 0xfeff],
-  [0xfffd, 0xfffd],
+  [0x2000, 0x20bf],
 ];
 
-const hex = (n) => "U+" + n.toString(16).toUpperCase();
+const REST_RANGES = [
+  [0x100, 0x1fff],
+  [0x20c0, 0x10ffff],
+];
 
-/** The `unicode-range` descriptor for the latin chunk. */
-const LATIN_UNICODE_RANGE = LATIN_RANGES.map(([a, b]) =>
-  a === b ? hex(a) : `${hex(a)}-${hex(b)}`,
-).join(", ");
+const hex = (codePoint) => "U+" + codePoint.toString(16).toUpperCase();
 
-/** Every codepoint in the latin chunk, as a string for the subsetter. */
-function latinCharacters() {
+const unicodeRange = (ranges) =>
+  ranges.map(([from, to]) => `${hex(from)}-${hex(to)}`).join(", ");
+
+/** Every codepoint in the given ranges, as a string for the subsetter. */
+const characters = (ranges) => {
   let out = "";
-  for (const [a, b] of LATIN_RANGES) {
-    for (let c = a; c <= b; c++) {
-      out += String.fromCodePoint(c);
+  for (const [from, to] of ranges) {
+    for (let codePoint = from; codePoint <= to; codePoint++) {
+      // Surrogates are not characters and throw when built into a string.
+      if (codePoint >= 0xd800 && codePoint <= 0xdfff) {
+        continue;
+      }
+      out += String.fromCodePoint(codePoint);
     }
   }
   return out;
-}
+};
 
-/**
- * Every codepoint in the Basic Multilingual Plane that the latin chunk does not
- * claim. The subsetter drops whatever the face does not have, so this needs no
- * per-font glyph inspection.
- */
-function restCharacters() {
-  const claimed = new Set();
-  for (const [a, b] of LATIN_RANGES) {
-    for (let c = a; c <= b; c++) {
-      claimed.add(c);
-    }
-  }
-  let out = "";
-  for (let c = 0x20; c <= 0xffff; c++) {
-    // Surrogates are not characters and throw when built into a string.
-    if (c >= 0xd800 && c <= 0xdfff) {
-      continue;
-    }
-    if (!claimed.has(c)) {
-      out += String.fromCodePoint(c);
-    }
-  }
-  return out;
-}
-
-/** The `unicode-range` descriptor for the second chunk: the complement of latin. */
-const REST_UNICODE_RANGE = (() => {
-  const claimed = new Set();
-  for (const [a, b] of LATIN_RANGES) {
-    for (let c = a; c <= b; c++) {
-      claimed.add(c);
-    }
-  }
-  const parts = [];
-  let start = null;
-  for (let c = 0x20; c <= 0x10ffff; c++) {
-    const want = !claimed.has(c);
-    if (want && start === null) {
-      start = c;
-    }
-    if (!want && start !== null) {
-      parts.push(start === c - 1 ? hex(start) : `${hex(start)}-${hex(c - 1)}`);
-      start = null;
-    }
-  }
-  if (start !== null) {
-    parts.push(`${hex(start)}-${hex(0x10ffff)}`);
-  }
-  return parts.join(", ");
-})();
+// The rest set spans a million codepoints and every face asks for it, so both
+// are built on first use and kept.
+let latin;
+let rest;
 
 // --- Where the emitted files land -------------------------------------------
 
@@ -127,10 +84,9 @@ const fontAssetName = (pathData, prefix) => {
 };
 
 module.exports = {
-  LATIN_RANGES,
-  LATIN_UNICODE_RANGE,
-  REST_UNICODE_RANGE,
-  latinCharacters,
-  restCharacters,
+  LATIN_UNICODE_RANGE: unicodeRange(LATIN_RANGES),
+  REST_UNICODE_RANGE: unicodeRange(REST_RANGES),
+  latinCharacters: () => (latin ??= characters(LATIN_RANGES)),
+  restCharacters: () => (rest ??= characters(REST_RANGES)),
   fontAssetName,
 };
