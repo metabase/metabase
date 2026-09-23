@@ -155,7 +155,11 @@
       ;; A dry run changes nothing, so it reads the earlier file where it is.
       (not persist?)  (load-state previous)
       :else           (do (fs/create-dirs (fs/parent state-file))
-                          (fs/move previous state-file {:atomic-move true})
+                          ;; A first scan for another server may take the same file first; it keeps it, and this one
+                          ;; starts from whatever is at its own path.
+                          (try
+                            (fs/move previous state-file {:atomic-move true})
+                            (catch java.nio.file.NoSuchFileException _))
                           (load-state state-file)))))
 
 (defn- save-state! [file state]
@@ -258,7 +262,8 @@
                                    (some-> (:cwd session) vector)))]
         ;; Each directory's own remote first: the URL recorded at session start names only where it began.
         (or (some #(repository-name (:repository_url (papercut-git/context {:cwd %}))) dirs)
-            (repository-name (get-in session [:git :repository-url]))
+            ;; Cleaned like a checkout's remote: a recorded URL can carry credentials in its user info or query.
+            (repository-name (some-> (get-in session [:git :repository-url]) papercut-git/public-url))
             (some-> (first dirs) fs/file-name str not-empty)
             "unknown"))))
 

@@ -222,7 +222,11 @@
         (let [started-in-metabase {:cwd scratch :git {:repository-url "git@github.com:metabase/metabase.git"}}]
           (is (= "evals" (#'scan/session-repository {} started-in-metabase [{:cwd repo} {:cwd repo}])))
           (testing "which is still used when no directory has a remote"
-            (is (= "metabase" (#'scan/session-repository {} started-in-metabase [{:cwd scratch}]))))))
+            (is (= "metabase" (#'scan/session-repository {} started-in-metabase [{:cwd scratch}]))))
+          (testing "cleaned of credentials first"
+            (is (= "metabase" (#'scan/session-repository
+                               {} {:cwd scratch :git {:repository-url "https://github.com/metabase/metabase.git?token=s3cret"}}
+                               [{:cwd scratch}]))))))
       (testing "--repository wins"
         (is (= "metabase" (#'scan/session-repository {:repository "metabase"} {:cwd scratch} []))))
       (finally
@@ -245,6 +249,12 @@
         (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy]))))
         (is (not (fs/exists? legacy)))
         (is (= {} (:sessions (scan/starting-state persist server-b [legacy])))))
+      (testing "when another server's first scan takes the earlier file first, this one starts empty"
+        (let [server-c (str (fs/path dir "scan-state.claude.http-c-80.edn"))
+              gone     (str (fs/path dir "scan-state.claude.gone.edn"))]
+          (spit gone (pr-str {:version 1 :sessions {"s5" {:line 3}}}))
+          (with-redefs [fs/move (fn [source _ _] (fs/delete source) (throw (java.nio.file.NoSuchFileException. (str source))))]
+            (is (= {} (:sessions (scan/starting-state persist server-c [gone])))))))
       (testing "once a server's own file exists, it wins"
         (spit legacy (pr-str {:version 1 :sessions {"s9" {:line 1}}}))
         (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy])))))
