@@ -901,6 +901,7 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
+           metabase.driver.common.table-rows-sample
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.impl
@@ -1292,6 +1293,23 @@
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
 
+  jev
+  {:team "Metabot"
+   :api #{metabase.jev.api
+          metabase.jev.apps.intent
+          metabase.jev.diagnostics}
+   :uses #{api
+           driver
+           events
+           lib.schema
+           models
+           settings
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Field
+                    :model/Table}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
@@ -1451,6 +1469,7 @@
               events
               explorations
               interestingness
+              jev
               lib
               lib.agent-lib
               lib.be
@@ -2216,6 +2235,7 @@
            driver
            events
            formatter
+           jev
            lib
            lib.be
            lib.legacy-mbql
