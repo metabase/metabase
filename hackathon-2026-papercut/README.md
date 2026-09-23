@@ -32,7 +32,7 @@ dispatches. Schema versions 6, 7 and 9 remove credentials from repository URLs s
 before the server cleaned them. Schema version 8 links pull requests to papercuts.
 Schema version 10 gives relations the AI's verdict,
 model and reason, and drops the old word-overlap suggestions. Schema version 11 unifies Chris's imported and live-scan
-reporter IDs. The server migrates an older database in place when
+reporter IDs and renames the old local `mb` repository to `metabase`. The server migrates an older database in place when
 it starts.
 
 ## Reporting

@@ -163,19 +163,31 @@ class WebViewTest(StoreCase):
 
 
 class IngestTest(StoreCase):
-    def test_v10_reporter_aliases_are_migrated_and_replay(self):
+    def test_v10_reporter_and_repository_aliases_are_migrated_and_replay(self):
         report = self.report(reporter="chris", agent="claude")
         report_id = report["report"]["id"]
         with sqlite3.connect(self.store.path) as db:
-            db.execute("""UPDATE reports SET reporter = 'christruter.claude',
-                          payload = json_set(payload, '$.reporter', 'christruter.claude') WHERE id = ?""", (report_id,))
+            db.execute("UPDATE papercuts SET repository = 'mb'")
+            db.execute("UPDATE papercut_fingerprints SET repository = 'mb'")
+            db.execute("""UPDATE reports SET repository = 'mb', reporter = 'christruter.claude',
+                          payload = json_set(payload, '$.repository', 'mb', '$.reporter', 'christruter.claude')
+                          WHERE id = ?""", (report_id,))
             db.execute("PRAGMA user_version = 10")
         migrated = server.Store(self.store.path)
         stored = migrated.get_papercut(report["papercut"]["id"])["reports"][0]
-        self.assertEqual((stored["reporter"], stored["payload"]["reporter"]), ("chris", "chris"))
-        replay = migrated.ingest({**self.sample, "report_id": stored["report_id"],
+        self.assertEqual((stored["repository"], stored["payload"]["repository"],
+                          stored["reporter"], stored["payload"]["reporter"]),
+                         ("metabase", "metabase", "chris", "chris"))
+        self.assertEqual(migrated.repositories(), ["metabase"])
+        replay = migrated.ingest({**self.sample, "repository": "mb", "report_id": stored["report_id"],
                                   "reporter": "christruter.claude", "agent": "claude"})
         self.assertEqual((replay["replay"], replay["report"]["id"]), (True, report_id))
+
+    def test_new_mb_report_uses_metabase_repository(self):
+        result = self.report(repository="mb", reporter="christruter.codex", agent="codex")
+        stored = self.store.get_papercut(result["papercut"]["id"])["reports"][0]
+        self.assertEqual((stored["repository"], stored["payload"]["repository"], stored["reporter"]),
+                         ("metabase", "metabase", "chris"))
 
     def test_replay_and_cross_reporter_counts(self):
         first = self.store.ingest(self.sample)

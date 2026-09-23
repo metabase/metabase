@@ -69,6 +69,11 @@ def canonical_reporter(reporter, agent):
     return "chris" if reporter.lower() in aliases else reporter
 
 
+def canonical_repository(repository):
+    """Old scanner reports used the local checkout name instead of the GitHub repository name."""
+    return "metabase" if repository == "mb" else repository
+
+
 # The dispatcher's evidence rule: 2+ reporters, 3+ reports, an hour lost, or high severity.
 IMPORTANT = """(COALESCE(s.reporter_count, 0) >= 2 OR COALESCE(s.report_count, 0) >= 3
                OR COALESCE(s.cost_minutes, 0) >= 60 OR p.severity IS 'high')"""
@@ -751,24 +756,35 @@ def migrate_to_v10(db):
 
 
 def migrate_to_v11(db):
-    """Unify Chris's imported and scanner reporter IDs without losing report replay identities."""
+    """Unify Chris's reporter IDs and the old `mb` repository name without losing report replay identities."""
     rows = db.execute("SELECT id, repository, reporter, agent, report_id, payload FROM reports").fetchall()
     keys = set()
     for row in rows:
-        key = (row["repository"], canonical_reporter(row["reporter"], row["agent"]), row["report_id"])
-        if key in keys:
+        key = (canonical_repository(row["repository"]), canonical_reporter(row["reporter"], row["agent"]),
+               row["report_id"])
+        if row["report_id"] is not None and key in keys:
             raise RuntimeError(f"Canonical reporter would duplicate report ID {row['report_id']}")
-        keys.add(key)
+        if row["report_id"] is not None:
+            keys.add(key)
+    fingerprints = [(canonical_repository(row["repository"]), row["fingerprint"]) for row in
+                    db.execute("SELECT repository, fingerprint FROM papercut_fingerprints")]
+    if len(fingerprints) != len(set(fingerprints)):
+        raise RuntimeError("Canonical repository would duplicate a papercut fingerprint")
+    for table in ("papercuts", "papercut_fingerprints", "relations"):
+        db.execute(f"UPDATE {table} SET repository = 'metabase' WHERE repository = 'mb'")
     for row in rows:
         reporter = canonical_reporter(row["reporter"], row["agent"])
-        if reporter == row["reporter"]:
+        repository = canonical_repository(row["repository"])
+        if reporter == row["reporter"] and repository == row["repository"]:
             continue
         payload = json.loads(row["payload"])
         for field in ("reporter", "machine_id"):
             if payload.get(field) == row["reporter"]:
                 payload[field] = reporter
-        db.execute("UPDATE reports SET reporter = ?, payload = ? WHERE id = ?",
-                   (reporter, json.dumps(payload, ensure_ascii=False), row["id"]))
+        if payload.get("repository") == row["repository"]:
+            payload["repository"] = repository
+        db.execute("UPDATE reports SET repository = ?, reporter = ?, payload = ? WHERE id = ?",
+                   (repository, reporter, json.dumps(payload, ensure_ascii=False), row["id"]))
 
 
 # Each entry upgrades the database by one `user_version`.
@@ -839,7 +855,8 @@ class Store:
         if not isinstance(payload, dict):
             raise ValueError("Expected a JSON object")
         extra_fields = sorted(set(payload) - REPORT_FIELDS)
-        repository = text_field(payload, "repository", required=True)
+        submitted_repository = text_field(payload, "repository", required=True)
+        repository = canonical_repository(submitted_repository)
         title = text_field(payload, "title", required=True)
         # `machine_id` is the version 1 name for the reporter. Clients that support both servers send both.
         if "reporter" in payload and "machine_id" in payload and payload["reporter"] != payload["machine_id"]:
@@ -852,9 +869,10 @@ class Store:
         machine, agent, session, source_type, source_ref = (
             text_field(payload, key) or None for key in ("machine", "agent", "session", "source_type", "source_ref"))
         canonical = canonical_reporter(reporter, agent)
-        if canonical != reporter:
-            payload = {**payload, **{key: canonical for key in ("reporter", "machine_id") if key in payload}}
-            reporter = canonical
+        if canonical != reporter or repository != submitted_repository:
+            payload = {**payload, "repository": repository,
+                       **{key: canonical for key in ("reporter", "machine_id") if key in payload}}
+        reporter = canonical
         submitted_fingerprint = text_field(payload, "fingerprint") or None
         submitted_category = text_field(payload, "category") or None
         if submitted_category and submitted_category not in CATEGORIES:
