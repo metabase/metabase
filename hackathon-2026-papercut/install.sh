@@ -11,6 +11,7 @@ main() {
   REPO=$DIR/metabase
   LOG=$DIR/install.log
   BRANCH=hackathon-2026-papercut-tracker
+  PROJECT=${PAPERCUTS_PROJECT:-metabase}
 
   case $TYPESAFE_API_KEY$SERVER in
     *@*) echo "Run this through the papercuts server, which fills in its key: curl -fsSL ts.metaouch.dev | sh" >&2
@@ -34,7 +35,8 @@ main() {
   printf '  %sThis will:%s\n' "$B" "$N"
   item() { printf '  %s•%s %s\n' "$C" "$N" "$1"; }
   item "fetch the scanner into ~/.papercuts (1 to 2 minutes the first time)"
-  item "read your Claude Code and Codex sessions from the metabase repo, last 7 days, 20 each at most"
+  item "read your Claude Code and Codex sessions whose project path contains \"$PROJECT\", last 7 days,"
+  printf '    10 each at most (PAPERCUTS_PROJECT changes the project)\n'
   item "skip whole any session that mentions embargoed security work"
   item "redact secrets on this machine before anything leaves it: keys, tokens, passwords, private"
   printf '    keys, JWTs, credentials in URLs, EDN secrets, and long hex or random-looking strings\n'
@@ -181,7 +183,7 @@ scan() {
   counts=$DIR/.counts
   rm -f "$counts"
   {
-    TYPESAFE_API_KEY=$TYPESAFE_API_KEY "$REPO/bin/mage" "papercuts-scan-$2" --project metabase --since 7d --limit 20 \
+    TYPESAFE_API_KEY=$TYPESAFE_API_KEY "$REPO/bin/mage" "papercuts-scan-$2" --project "$PROJECT" --since 7d --limit 10 \
       --verbose --server "$SERVER" 2>&1 && echo "papercuts-exit 0" || echo "papercuts-exit $?"
   } | awk -v step="$label" -v tty="$TTY" -v logf="$LOG" -v counts="$counts" \
       -v G="$G" -v R="$R" -v C="$C" -v D="$D" -v N="$N" '
