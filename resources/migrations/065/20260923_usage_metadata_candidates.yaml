@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: v64.um-candidate-run
+      id: v65.um-candidate-run
       author: retro
       comment: Create usage metadata candidate refresh runs
       changes:
@@ -22,7 +22,7 @@ databaseChangeLog:
               - column: {name: finished_at, type: "${timestamp_type}", remarks: Time processing completed}
 
   - changeSet:
-      id: v64.um-candidate
+      id: v65.um-candidate
       author: retro
       comment: Create materialized usage metadata candidates
       changes:
@@ -62,7 +62,7 @@ databaseChangeLog:
   # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
   # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
   - changeSet:
-      id: v64.um-candidate-run-index
+      id: v65.um-candidate-run-index
       author: retro
       comment: Index candidate refresh ownership and cascade deletes
       preConditions:
@@ -80,7 +80,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-table-index
+      id: v65.um-candidate-table-index
       author: retro
       comment: Index candidate table ownership and cascade deletes
       preConditions:
@@ -98,7 +98,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-unique
+      id: v65.um-candidate-unique
       author: retro
       comment: Enforce one semantic candidate per refresh and table
       changes:
@@ -108,7 +108,7 @@ databaseChangeLog:
             constraintName: uq_um_candidate_run_signature
 
   - changeSet:
-      id: v64.um-candidate-index
+      id: v65.um-candidate-index
       author: retro
       comment: Index candidate list filtering
       changes:
@@ -122,7 +122,7 @@ databaseChangeLog:
               - column: {name: modeling_status}
 
   - changeSet:
-      id: v64.um-candidate-families-index
+      id: v65.um-candidate-families-index
       author: retro
       comment: Index deterministic recommendation-family ordering
       changes:
@@ -134,7 +134,7 @@ databaseChangeLog:
               - column: {name: sort_position}
 
   - changeSet:
-      id: v64.um-candidate-source
+      id: v65.um-candidate-source
       author: retro
       comment: Create candidate source provenance
       changes:
@@ -165,7 +165,7 @@ databaseChangeLog:
               - column: {name: model_lineage, type: "${text.type}", remarks: JSON transparent model lineage}
 
   - changeSet:
-      id: v64.um-candidate-source-candidate-index
+      id: v65.um-candidate-source-candidate-index
       author: retro
       comment: Index candidate source ownership and cascade deletes
       preConditions:
@@ -183,7 +183,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-source-unique
+      id: v65.um-candidate-source-unique
       author: retro
       comment: Count each source Card once per semantic candidate
       changes:
@@ -193,7 +193,7 @@ databaseChangeLog:
             constraintName: uq_um_candidate_source_card
 
   - changeSet:
-      id: v64.um-candidate-match
+      id: v65.um-candidate-match
       author: retro
       comment: Create candidate Library reconciliation matches
       changes:
@@ -219,7 +219,7 @@ databaseChangeLog:
               - column: {name: entity_description, type: "${text.type}", remarks: Related entity description at refresh time}
 
   - changeSet:
-      id: v64.um-candidate-match-index
+      id: v65.um-candidate-match-index
       author: retro
       comment: Index candidate reconciliation lookup and cascade deletes
       preConditions:
@@ -237,7 +237,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-match-entity-unique
+      id: v65.um-candidate-match-entity-unique
       author: retro
       comment: Keep one entity relationship per usage metadata candidate
       changes:
@@ -247,7 +247,7 @@ databaseChangeLog:
             constraintName: uq_um_candidate_match_entity
 
   - changeSet:
-      id: v64.um-candidate-dismissal
+      id: v65.um-candidate-dismissal
       author: retro
       comment: Create durable global candidate dismissals
       changes:
@@ -269,7 +269,7 @@ databaseChangeLog:
               - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
 
   - changeSet:
-      id: v64.um-candidate-dismissal-table-index
+      id: v65.um-candidate-dismissal-table-index
       author: retro
       comment: Index candidate dismissal table ownership and cascade deletes
       preConditions:
@@ -287,7 +287,7 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-dismissal-unique
+      id: v65.um-candidate-dismissal-unique
       author: retro
       comment: Keep one global dismissal per semantic candidate
       changes:
