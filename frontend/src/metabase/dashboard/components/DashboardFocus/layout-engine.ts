@@ -84,31 +84,75 @@ function emphasizedSize(card: FocusCardInput): { w: number; h: number } {
   return { w, h };
 }
 
+/** The order kinds stack down the page. Callouts read as a KPI strip up top; text/notes sink. */
+const KIND_ORDER: CardKind[] = [
+  "callout",
+  "trend",
+  "comparison",
+  "table",
+  "other",
+  "text",
+];
+
 /**
- * Bin-pack sized cards into the 24-column grid, filling row by row. Cards arrive already sorted by
- * relevance (callers pass them in the order they want). Within a row we place left-to-right; when a card
- * doesn't fit the remaining width, we start a new row. A simple, gap-minimizing shelf packer — good
- * enough to look intentional and far better than the staircase.
+ * How many of a kind sit across one 24-col row. Callouts pack tight (a KPI strip); trends go one-up;
+ * comparisons/tables two-up. This fixes the "lonely centered callout" — callouts are packed WITH each
+ * other, never interleaved with a tall trend that leaves a hole beside them.
+ */
+function perRow(kind: CardKind): number {
+  switch (kind) {
+    case "callout":
+      return 4;
+    case "trend":
+      return 1;
+    case "comparison":
+    case "table":
+    case "other":
+      return 2;
+    case "text":
+      return 1;
+  }
+}
+
+/**
+ * Pack cards into the 24-col grid in uniform-height BANDS by kind. Within a band, every card is the same
+ * height and the row width is split evenly, so a shelf never mixes a short card next to a tall one (the
+ * source of the vertical holes). Bands stack in KIND_ORDER, and higher-relevance cards come first within
+ * their band. This is the key change from the naive shelf packer: same-kind rows ⇒ no gaps, and RGL's
+ * vertical compaction has nothing left to fight.
  */
 export function packLayout(cards: FocusCardInput[]): PlacedCard[] {
-  const placed: PlacedCard[] = [];
-  let cursorX = 0;
-  let rowY = 0;
-  let rowHeight = 0;
-
+  const byKind = new Map<CardKind, FocusCardInput[]>();
   for (const card of cards) {
-    const { w, h } = emphasizedSize(card);
+    const list = byKind.get(card.kind) ?? [];
+    list.push(card);
+    byKind.set(card.kind, list);
+  }
 
-    // Start a new row if this card doesn't fit in the remaining width.
-    if (cursorX + w > GRID_COLS) {
-      rowY += rowHeight;
-      cursorX = 0;
-      rowHeight = 0;
+  const placed: PlacedCard[] = [];
+  let y = 0;
+
+  for (const kind of KIND_ORDER) {
+    const band = byKind.get(kind);
+    if (!band || band.length === 0) {
+      continue;
     }
+    // Most relevant first within the band.
+    band.sort((a, b) => b.score - a.score);
 
-    placed.push({ id: card.id, x: cursorX, y: rowY, w, h });
-    cursorX += w;
-    rowHeight = Math.max(rowHeight, h);
+    const cols = perRow(kind);
+    const w = Math.floor(GRID_COLS / cols);
+
+    for (let i = 0; i < band.length; i += cols) {
+      const rowCards = band.slice(i, i + cols);
+      // Uniform row height = the tallest card's emphasized height, so the shelf is flush.
+      const rowH = Math.max(...rowCards.map((c) => emphasizedSize(c).h));
+      rowCards.forEach((card, col) => {
+        const cardW = kind === "text" ? GRID_COLS : w;
+        placed.push({ id: card.id, x: col * w, y, w: cardW, h: rowH });
+      });
+      y += rowH;
+    }
   }
 
   return placed;
