@@ -158,10 +158,10 @@
 
 (defn cached-file-paths
   "Given an `IngestableSnapshot` whose cache has been populated by a prior ingestion, returns a seq of
-  {:model_type :entity_id :path} — the actual repo file each entity was read from. Lets the importer
-  record `file_path` so later renames and deletes resolve the real file."
+  {:model_type :entity_id :path :content} — the actual repo file each entity was read from, and that file's text.
+  Lets the importer record `file_path` so later renames and deletes resolve the real file."
   [{:keys [cache]}]
-  (for [[hierarchy {:keys [path]}] @cache
+  (for [[hierarchy {:keys [path content]}] @cache
         :let [{:keys [model id]} (last hierarchy)]
         :when (and model id path)]
-    {:model_type model :entity_id id :path path}))
+    {:model_type model :entity_id id :path path :content content}))

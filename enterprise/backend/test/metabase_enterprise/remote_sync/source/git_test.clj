@@ -745,6 +745,44 @@
           (is (= ["branch-1" "master"] (source.p/branches fresh-source))
               "branches works again after the dir was deleted, without an instance restart"))))))
 
+(deftest stale-cache-recovery-keeps-in-flight-clone-usable-test
+  (testing "HACKRDE-38: recovering from a stale cache (a \"Missing commit\" error, e.g. after an upstream
+            force-push) re-clones without deleting the clone another operation is still using: a snapshot and
+            a source taken before the recovery keep reading and fetching"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            in-flight       (source.p/snapshot source)
+            real-snapshot*  @#'git/snapshot*
+            real-clone!     @#'git/clone-repository!
+            thrown?         (atom false)
+            ;; What another thread holding the pre-recovery source and snapshot sees while the recovery re-clones.
+            during-reclone  (atom nil)
+            attempt         (fn [thunk] (try (thunk) (catch Exception e (str "threw: " (ex-message e)))))]
+        (with-redefs [git/snapshot*         (fn [s]
+                                              (if (compare-and-set! thrown? false true)
+                                                (throw (ex-info "Missing commit 0123456789abcdef" {}))
+                                                (real-snapshot* s)))
+                      git/clone-repository! (fn [path args]
+                                              (reset! during-reclone
+                                                      {:read     (attempt #(source.p/read-file in-flight "master.txt"))
+                                                       :branches (attempt #(source.p/branches source))})
+                                              (real-clone! path args))]
+          (let [recovered (source.p/snapshot source)]
+            (is @thrown? "precondition: the stale-cache recovery ran")
+            (is (= "File in master" (source.p/read-file recovered "master.txt"))
+                "the recovered snapshot reads from its fresh clone")))
+        (is (= {:read "File in master" :branches ["master"]} @during-reclone)
+            "while the recovery re-clones, the clone in use by earlier operations is still there to read")
+        (is (= "File in master" (source.p/read-file in-flight "master.txt"))
+            "a snapshot taken before the recovery still reads")
+        (git-working-add! remote "after.txt" "Added after recovery")
+        (git-working-commit! remote "Add after.txt")
+        (is (= "Added after recovery" (source.p/read-file (source.p/snapshot source) "after.txt"))
+            "a source created before the recovery still fetches and reads new commits")
+        (is (= "Added after recovery"
+               (source.p/read-file (source.p/snapshot (->source! "master" remote)) "after.txt"))
+            "a source created after the recovery uses the fresh clone")))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
@@ -803,3 +841,12 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :missing-branch (:error-type (ex-data e))))
           (is (= "branch-1" (:branch (ex-data e)))))))))
+
+(deftest repo-path-ignores-token-test
+  (testing "HACKRDE-25: rotating the token reuses the existing clone instead of cloning into a new directory"
+    ;; Credentials are passed per remote command, so the clone does not depend on the token.
+    (is (= (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-a"})
+           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-b"})
+           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
+    (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
+              (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))

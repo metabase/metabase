@@ -185,6 +185,33 @@
    entity-ids :- [:set :string]]
   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
+(mu/defn card-cascaded-search-ids :- [:map-of :keyword [:sequential [:or ms/PositiveInt :string]]]
+  "The search-index ids of the searchable rows that deleting the Cards `card-ids` removes by foreign-key cascade: the
+  models' Actions, and their ModelIndexValues (indexed entities, keyed `<model_index_id>:<model_pk>` in the search
+  index). Keyed by search model; a model with no such rows is absent."
+  [card-ids :- [:sequential ms/PositiveInt]]
+  (let [action-ids (t2/select-pks-vec :model/Action :model_id [:in card-ids])
+        index-ids  (t2/select-pks-vec :model/ModelIndex :model_id [:in card-ids])
+        value-ids  (when (seq index-ids)
+                     (mapv (fn [{:keys [model_index_id model_pk]}] (str model_index_id ":" model_pk))
+                           (t2/select [:model/ModelIndexValue :model_index_id :model_pk]
+                                      :model_index_id [:in index-ids])))]
+    (cond-> {}
+      (seq action-ids) (assoc :model/Action action-ids)
+      (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
+
+(mu/defn child-card-ids :- [:sequential ms/PositiveInt]
+  "The ids of the Cards that belong to the Dashboards `dashboard-ids` or the Documents `document-ids` (dashboard
+  questions and document cards), which deleting those parents removes by foreign-key cascade."
+  [dashboard-ids :- [:sequential ms/PositiveInt]
+   document-ids  :- [:sequential ms/PositiveInt]]
+  (let [clauses (cond-> []
+                  (seq dashboard-ids) (conj [:in :dashboard_id dashboard-ids])
+                  (seq document-ids)  (conj [:in :document_id document-ids]))]
+    (if (seq clauses)
+      (t2/select-pks-vec :model/Card {:where (into [:or] clauses)})
+      [])))
+
 (mu/defn delete-instances!
   "Delete the instances of `model` with `ids`."
   [model :- :keyword
@@ -234,25 +261,15 @@
   "The entity ID of the instance of `model` with `id`."
   [model :- :keyword
    id    :- ms/PositiveInt]
-  (t2/select-one-fn :entity_id model :id id))
+  ;; select only the column: a full row runs the model's whole after-select (a Card normalizes its query)
+  (t2/select-one-fn :entity_id [model :entity_id] :id id))
 
 (mu/defn entity-ids-by-id
   "A map of ID to entity ID for the instances of `model` with `ids`."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :entity_id model :id [:in ids]))
-
-(mu/defn existing-entity-ids
-  "The subset of `entity-ids` that instances of `model` have."
-  [model      :- :keyword
-   entity-ids :- [:or [:set :string] [:sequential :string]]]
-  (t2/select-fn-set :entity_id model :entity_id [:in entity-ids]))
-
-(mu/defn ids-by-entity-ids
-  "The IDs of the instances of `model` with `entity-ids`."
-  [model      :- :keyword
-   entity-ids :- [:set :string]]
-  (t2/select-pks-vec model :entity_id [:in entity-ids]))
+  ;; select only the two columns: a full row runs the model's whole after-select (a Card normalizes its query)
+  (t2/select-pk->fn :entity_id [model :id :entity_id] :id [:in ids]))
 
 (defn- path-expr
   "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
@@ -466,6 +483,16 @@
    model-id   :- ModelId]
   (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
+(mu/defn tracked-ids-among :- [:set ModelId]
+  "The ids among `model-ids` of the entities of `model-type` that have a RemoteSyncObject. Callers bound the number of
+  `model-ids`."
+  [model-type :- :string
+   model-ids  :- [:sequential ModelId]]
+  (if (empty? model-ids)
+    #{}
+    (or (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids])
+        #{})))
+
 (mu/defn rso-of-type-exists?
   "Whether any entity of `model-type` has a RemoteSyncObject."
   [model-type :- :string]
@@ -480,6 +507,22 @@
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
   []
   (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+
+(mu/defn rso-content-hashes :- [:map-of [:tuple :string ModelId] :string]
+  "{[model_type model_id] content_hash} of every RemoteSyncObject that has a content hash."
+  []
+  (into {}
+        (map (juxt (juxt :model_type :model_id) :content_hash))
+        (t2/select [:model/RemoteSyncObject :model_type :model_id :content_hash] :content_hash [:not= nil])))
+
+(mu/defn synced-content-hashes-by-path :- [:map-of :string :string]
+  "{file_path content_hash} of every RemoteSyncObject with both: the hash of Metabase's serialization of each
+  entity as of its last sync, keyed by the repo file it was synced as."
+  []
+  (into {}
+        (map (juxt :file_path :content_hash))
+        (t2/select [:model/RemoteSyncObject :file_path :content_hash]
+                   :file_path [:not= nil] :content_hash [:not= nil])))
 
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
@@ -519,12 +562,6 @@
   "The model IDs of the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
   (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type))
-
-(mu/defn rsos-of-models
-  "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
-  [model-type :- :string
-   model-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn active-child-rsos
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."

@@ -683,3 +683,23 @@
   (testing "exportable-entity-count sums the ids across every model in the targets map"
     (is (= 0 (spec/exportable-entity-count {})))
     (is (= 5 (spec/exportable-entity-count {"Card" [1 2 3] "Collection" [4 5]})))))
+
+(deftest targets-for-paths-test
+  (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true}
+                 :model/Card {exported :id exported-eid :entity_id} {:name "Exported" :collection_id coll-id}
+                 :model/Card {other :id other-eid :entity_id} {:name "Not exported"}]
+    (let [targets {"Card" [exported 999999] "Collection" [coll-id]}
+          path    (fn [model eid] [{:model model :id eid}])]
+      (testing "a path that names an exported entity keeps just that entity"
+        (is (= {"Card" [exported]} (spec/targets-for-paths targets [(path "Card" exported-eid)]))))
+      (testing "a path that names a local entity which isn't exported needs nothing"
+        (is (= {} (spec/targets-for-paths targets [(path "Card" other-eid)]))))
+      (testing "a path for a model with no targets needs nothing"
+        (is (= {} (spec/targets-for-paths targets [(path "Dashboard" "no-such-entity-id000")]))))
+      (testing "an entity_id no local row has (a remote addition) needs nothing: nothing local serializes to it"
+        (is (= {"Card" [exported]}
+               (spec/targets-for-paths targets [(path "Card" "no-such-entity-id-000") (path "Card" exported-eid)]))))
+      (testing "any other path that resolves to no local row keeps every target of its model, so full extraction
+                decides"
+        (is (= {"Card" [exported 999999]}
+               (spec/targets-for-paths targets [(path "Card" "abcd1234") (path "Card" exported-eid)])))))))

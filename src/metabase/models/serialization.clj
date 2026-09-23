@@ -56,8 +56,10 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -85,7 +87,9 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.time Instant OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -503,6 +507,32 @@
 (defmethod descendants :default [_ _ _]
   nil)
 
+(def ^:dynamic *descendants-batch-size*
+  "The most ids one [[descendants-batch]] call receives, and the most ids its implementations put into one query. A
+  walk over a large instance can hold every Card at one level, far more than a database accepts as bind parameters in
+  one statement (65,535 on Postgres), so callers split the ids into chunks of this size. Dynamic so tests can shrink
+  it."
+  1000)
+
+(defmulti descendants-batch
+  "[[descendants]] of the entities of `model-name` with `db-ids`, all at once: the union of their descendants, as a map
+  of `{[model-name database-id] sources}`. When two of the entities share a descendant, its sources are merged,
+  which may lose the detail of which entity reached it; callers that need that detail should call [[descendants]].
+
+  A walk over a whole collection tree calls this once per model per level instead of [[descendants]] once per
+  entity, with at most [[*descendants-batch-size*]] ids per call. The default does exactly that per-entity call;
+  models whose [[descendants]] queries per entity override it to query for every entity at once, and must return the
+  same keys, putting no more than [[*descendants-batch-size*]] ids into any one query.
+
+  NOTE: This is called during **EXPORT**.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-ids opts])}
+  (fn [model-name _ _] model-name))
+
+(defmethod descendants-batch :default [model-name db-ids opts]
+  (transduce (map #(descendants model-name % opts)) (partial merge-with merge) {} db-ids))
+
 (defmulti required
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities that are necessary to load this
    entity back. Sort of reverse method for `dependencies`. This method will be called after determining all
@@ -648,13 +678,67 @@
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
+(declare ^:private collect-required-lib-uuids)
+
+(defn- comparable-mbql
+  "`query` without the parts an export drops and an import regenerates: `:lib/metadata`, and every `:lib/uuid` no
+  `:aggregation` ref points at (see [[export-mbql-map]]). Two queries equal in this form are the same query."
+  [query]
+  (let [required (collect-required-lib-uuids query)]
+    (walk/prewalk (fn [x]
+                    (if (map? x)
+                      (cond-> (dissoc x :lib/metadata)
+                        (and (contains? x :lib/uuid) (not (contains? required (:lib/uuid x))))
+                        (dissoc :lib/uuid))
+                      x))
+                  query)))
+
+(defn- ->instant
+  "The instant a zoned or offset timestamp denotes, or nil for anything else."
+  ^Instant [x]
+  (condp instance? x
+    OffsetDateTime (.toInstant ^OffsetDateTime x)
+    ZonedDateTime  (.toInstant ^ZonedDateTime x)
+    Instant        x
+    nil))
+
+(defn- same-stored-value?
+  "True when writing `incoming` over the stored value `local` would not change what the column means, even though
+  the two differ in form: an import yields ZonedDateTimes where the app DB returns OffsetDateTimes, strings where the
+  model's transform yields keywords, and MBQL queries with freshly generated `:lib/uuid`s."
+  [local incoming]
+  (boolean
+   (or (= local incoming)
+       (when-let [l (->instant local)]
+         (= l (->instant incoming)))
+       (and (keyword? local) (string? incoming)
+            (= (u/qualified-name local) incoming))
+       (and (map? local) (map? incoming)
+            (= :mbql/query (:lib/type local) (:lib/type incoming))
+            (= (comparable-mbql local) (comparable-mbql incoming))))))
+
+(defn- drop-unchanged-columns
+  "`row` without the columns whose value is the [[same-stored-value?]] as in `local`, so an import of unchanged
+  content issues no UPDATE and runs no before-update work (such as result-metadata inference) for them. Comparing
+  against the stored row, not a ledger, keeps a forced pull repairing local drift."
+  [local row]
+  (into (empty row)
+        (remove (fn [[k v]] (and (contains? local k) (same-stored-value? (get local k) v))))
+        row))
+
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
-        id       (get local pk)]
+        id       (get local pk)
+        entity   (lib/normalize :metabase.models.db/model-row {:model model :row ingested})
+        changes  (drop-unchanged-columns local (:row entity))]
     (log/tracef "Upserting %s %d" model-name id)
-    (models.db/update-entity! id (lib/normalize :metabase.models.db/model-row {:model model :row ingested}))
-    (models.db/entity-by-pk model pk id)))
+    ;; Nothing changed means `local` is still the stored row, so don't read it again: re-reading a row runs its
+    ;; after-select, which for a Card normalizes the whole query.
+    (if (seq changes)
+      (do (models.db/update-entity! id (assoc entity :row changes))
+          (models.db/entity-by-pk model pk id))
+      local)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
@@ -972,13 +1056,40 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+;;
+;; [[with-field-path-cache]] is that bounded, opt-in cache, for callers whose field refs are reuse-heavy (e.g. git
+;; sync re-serializing cards that reference the same few fields many times). It is deliberately not part of
+;; [[with-cache]].
+
+(def ^:private field-path-cache-size
+  "Most field hierarchies [[with-field-path-cache]] keeps. Each entry is a short list of names + a table id."
+  10000)
+
+(def ^:private ^:dynamic *cached-field-hierarchy*
+  "When bound (by [[with-field-path-cache]]), a bounded memoized [[field-hierarchy]]."
+  nil)
+
+(defn do-with-field-path-cache
+  "Impl for [[with-field-path-cache]]."
+  [thunk]
+  (if *cached-field-hierarchy*
+    (thunk)
+    (binding [*cached-field-hierarchy* (memoize/lru field-hierarchy :lru/threshold field-path-cache-size)]
+      (thunk))))
+
+(defmacro with-field-path-cache
+  "Runs body with [[*export-field-fk*]]'s field-hierarchy lookups memoized in a bounded LRU cache. Use it only where
+  field refs are reused heavily and fields are not written during `body` (a cached path could go stale)."
+  [& body]
+  `(do-with-field-path-cache (fn [] ~@body)))
+
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [fields                      (field-hierarchy field-id)
+    (let [fields                      ((or *cached-field-hierarchy* field-hierarchy) field-id)
           [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema table-name] (map :name fields)))))
 
@@ -1743,7 +1854,11 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
-        (update :column_settings import-column-settings))))
+        ;; the export writes `column_settings: null` for settings without any; importing that as an explicit nil
+        ;; would differ from the `{}` the app DB reads back, and rewrite every unchanged row on a pull
+        (as-> $ (if (some? (:column_settings $))
+                  (update $ :column_settings import-column-settings)
+                  (dissoc $ :column_settings))))))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]
@@ -1928,3 +2043,13 @@
   `(binding [resolve/*export-resolver* (resolve.default/cached-export-resolver)
              resolve/*import-resolver* (resolve.default/cached-import-resolver)]
      ~@body))
+
+(defn forget-cached-imports!
+  "Discards everything the memoized import resolver bound by [[with-cache]] on this thread has cached, by binding a
+  fresh one in its place; a no-op when none is bound. Call after rolling back writes made under it: it may have
+  memoized the ids of rows the rollback removed (entities it resolved, and users, tables and fields it created), and
+  handing those out afterwards would point new rows at ids that no longer exist."
+  []
+  (when (and (thread-bound? #'resolve/*import-resolver*)
+             (::resolve.default/cached (meta resolve/*import-resolver*)))
+    (set! resolve/*import-resolver* (resolve.default/cached-import-resolver))))

@@ -11,17 +11,16 @@
    To add a new syncable model, add a spec entry to `remote-sync-specs` and
    optionally implement custom multimethods if the default behavior doesn't fit."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -516,32 +515,6 @@
   (->> ingest-list
        (map (fn [path] (:model (last path))))
        (into #{})))
-
-(defn check-entity-id-conflicts
-  "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
-   Returns map of {model-type #{conflicting-entity-ids}}.
-
-   Excludes the Library collection entity_id since that's handled by the library-conflict check."
-  [imported-entity-ids-by-model]
-  (into {}
-        (for [[model-type entity-ids] imported-entity-ids-by-model
-              :when (seq entity-ids)
-              :let [spec (spec-for-model-type model-type)
-                    model-key (:model-key spec)]
-              :when (and spec model-key (#{:entity-id :hybrid} (:identity spec)))
-              :let [local-entity-ids (remote-sync.db/existing-entity-ids model-key entity-ids)
-                    tracked-entity-ids (when (seq local-entity-ids)
-                                         (let [pks (remote-sync.db/ids-by-entity-ids model-key local-entity-ids)]
-                                           (into #{}
-                                                 (map (fn [rso]
-                                                        (:entity_id (remote-sync.db/instance model-key (:model_id rso)))))
-                                                 (remote-sync.db/rsos-of-models model-type pks))))
-                    conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
-                    conflicting-entity-ids (if (= model-type "Collection")
-                                             (disj conflicting-entity-ids collection/library-entity-id)
-                                             conflicting-entity-ids)]
-              :when (seq conflicting-entity-ids)]
-          [model-type conflicting-entity-ids])))
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
@@ -1225,6 +1198,24 @@
   "Models git sync walks through but never writes."
   #{"Table" "Field"})
 
+(defn descendant-closure
+  "Every `[model-name id]` reachable from `roots` through `serdes/descendants`, `roots` included: the keys of
+  `(u/traverse roots #(serdes/descendants ...))`, found a level at a time with one `serdes/descendants-batch` call per
+  model per level (per chunk of `serdes/*descendants-batch-size*` ids), so its queries grow with the depth of the
+  content rather than its size, and no query gets more ids than a database accepts as bind parameters."
+  [roots opts]
+  (loop [frontier (set roots)
+         seen     #{}]
+    (if (empty? frontier)
+      seen
+      (let [seen  (into seen frontier)
+            found (into #{}
+                        (mapcat (fn [[model ids]]
+                                  (mapcat #(keys (serdes/descendants-batch model % opts))
+                                          (partition-all serdes/*descendants-batch-size* ids))))
+                        (u/group-by first second frontier))]
+        (recur (into #{} (remove seen) found) seen)))))
+
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
   `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
@@ -1233,7 +1224,7 @@
                            (mapcat query-export-roots)
                            (vals (enabled-specs)))
         targets (-> #{}
-                    (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
+                    (into (descendant-closure root-targets git-sync-extract-opts))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 
@@ -1242,6 +1233,47 @@
   [[extract-entities-for-export]] yields, suitable for progress reporting."
   [targets]
   (transduce (map count) + 0 (vals targets)))
+
+(defn targets-for-paths
+  "The part of `targets` (a map as returned by [[exportable-entities]]) whose extraction includes every exported
+  entity that serializes to one of `serdes-paths`, so a caller that needs only those entities doesn't extract the
+  rest.
+
+  Each path is resolved to its local row with `serdes/load-find-local`. A row that is not among `targets` isn't
+  exported, so it needs nothing. Neither does an entity_id that the default lookup (by `entity_id`) finds no row
+  for: a local entity serializes under its own entity_id, so none serializes to that path; this is what a remote
+  addition looks like. Any other path that resolves to no row (or whose lookup fails) keeps every target of its
+  model: the entity may be absent locally or keyed in a way the lookup doesn't see, and full extraction of that
+  model tells the two apart exactly as a full export would."
+  [targets serdes-paths]
+  (let [target-sets (update-vals targets set)
+        default-find (get-method serdes/load-find-local :default)
+        absent?     (fn [model path]
+                      ;; no local row can serialize to this path
+                      (and (identical? default-find (get-method serdes/load-find-local model))
+                           (serdes/entity-id? (:id (last path)))))
+        wanted      (reduce (fn [acc path]
+                              (let [model (:model (last path))
+                                    ids   (get target-sets model)]
+                                (if (or (empty? ids) (= ::all (get acc model)))
+                                  acc
+                                  (let [[found? local] (try
+                                                         [true (serdes/load-find-local path)]
+                                                         (catch Exception e
+                                                           (log/debugf e "Could not resolve %s locally; extracting all %s targets"
+                                                                       (pr-str path) model)
+                                                           [false nil]))
+                                        pk    (when local (get local (serdes/primary-key model)))]
+                                    (cond
+                                      (and (nil? local) found? (absent? model path)) acc
+                                      (nil? pk)          (assoc acc model ::all)
+                                      (contains? ids pk) (update acc model (fnil conj #{}) pk)
+                                      :else              acc)))))
+                            {}
+                            serdes-paths)]
+    (into {}
+          (map (fn [[model ids]] [model (if (= ::all ids) (get targets model) (vec ids))]))
+          wanted)))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
