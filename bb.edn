@@ -239,7 +239,7 @@
 
   clj-ts
   {:doc "Browse a PR, your local changes, or any Clojure file translated into TypeScript-ish code for easier reading"
-   :examples [["./bin/mage clj-ts" "view your local changes (vs. the merge-base with master) in the browser"]
+   :examples [["./bin/mage clj-ts" "start the viewer; its home page shows your local changes (vs. the merge-base with master)"]
               ["./bin/mage clj-ts --pr 82600" "view a GitHub PR (a PR URL works too)"]
               ["./bin/mage clj-ts --branch my-feature" "view a branch compared to the branch it was created from"]
               ["./bin/mage clj-ts src/metabase/collections/models/collection.clj" "view one file"]
@@ -250,8 +250,7 @@
              ["-b" "--base REF" "Base ref for local changes or --branch (default: origin/master / the parent branch)"]
              [nil "--port PORT" "Port for the local server" :default 7788 :parse-fn parse-long]
              [nil "--print FILE" "Print the translation of FILE instead of starting the server"]
-             [nil "--stats" "Translate files under the given directories and report coverage"]
-             [nil "--no-open" "Don't open a browser"]]
+             [nil "--stats" "Translate files under the given directories and report coverage"]]
    :arg-schema [:sequential [:string {:name "file-or-dir" :description "A file to open (or directories for --stats)"}]]
    :requires [[mage.clj-ts.cli :as clj-ts-cli]]
    :task (task! (clj-ts-cli/run parsed))}

@@ -2,7 +2,6 @@
   "A small local web server showing PRs, local changes or single files as TypeScript-ish diffs, with a
   toggle back to the raw Clojure diff."
   (:require
-   [babashka.process :as process]
    [clojure.string :as str]
    [hiccup.util :as hiccup.util]
    [hiccup2.core :as h]
@@ -333,7 +332,7 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
         [:button {:type "submit"} "Open"]]
        [:a.btn {:href "/local"} "Local changes"]
        [:a.btn {:href "/files"} "Browse files"]
-       [:button {:onclick "document.getElementById('legend').showModal()"} "Legend"]]
+       [:button {:onclick "document.getElementById('legend').showModal()"} "Help"]]
       body
       [:dialog#legend
        [:h3 "How to read the TypeScript view"]
@@ -411,11 +410,11 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
         file   (or (get (:files data) idx) (throw (ex-info "No such file on that page." {})))]
     (str (h/html (file-body idx file view (not (:single? data)))))))
 
-(defn- handler* [start-path {:keys [uri query-string]}]
+(defn- handler* [{:keys [uri query-string]}]
   (let [params (query-params query-string)
         view   (if (= "clj" (get params "view")) "clj" "ts")]
     (cond
-      (= uri "/")                   (redirect start-path)
+      (= uri "/")                   (redirect "/local")
       (= uri "/open")               (let [q (str/trim (get params "q" ""))]
                                       (cond
                                         (git/parse-pr q)       (redirect (str "/pr/" (git/parse-pr q)))
@@ -429,22 +428,17 @@ function filterFiles(q){ q=q.toLowerCase(); document.querySelectorAll('.picker a
       (= uri "/files")              (html-response (files-page))
       :else                         {:status 404 :body "not found"})))
 
-(defn- handler [start-path]
-  (fn [req]
-    (try
-      (with-big-stack #(handler* start-path req))
-      (catch Throwable e
-        {:status 500 :headers {"Content-Type" "text/html; charset=utf-8"}
-         :body (error-page (ex-info (str (.getName (class e)) ": " (ex-message e)) {}))}))))
+(defn- handler [req]
+  (try
+    (with-big-stack #(handler* req))
+    (catch Throwable e
+      {:status 500 :headers {"Content-Type" "text/html; charset=utf-8"}
+       :body (error-page (ex-info (str (.getName (class e)) ": " (ex-message e)) {}))})))
 
 (defn start!
-  "Start the server on `port`, open the browser at `start-path` unless `no-open?`, and block."
-  [{:keys [port start-path no-open?]}]
+  "Start the server on `port`, print its URL (plus `start-path`, if given), and block."
+  [{:keys [port start-path]}]
   ;; localhost only: the server can show any file in the repo
-  (http/run-server (handler start-path) {:ip "127.0.0.1" :port port})
-  (let [url (str "http://localhost:" port start-path)]
-    (println (str "clj-ts viewer running at " url "  (Ctrl-C to stop)"))
-    (when-not no-open?
-      (try (process/shell {:continue true} (if (str/includes? (System/getProperty "os.name") "Mac") "open" "xdg-open") url)
-           (catch Exception _ nil))))
+  (http/run-server handler {:ip "127.0.0.1" :port port})
+  (println (str "clj-ts viewer running at http://localhost:" port start-path "  (Ctrl-C to stop)"))
   @(promise))
