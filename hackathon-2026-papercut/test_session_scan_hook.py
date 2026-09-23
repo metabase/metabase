@@ -18,8 +18,7 @@ class SessionScanHookTest(unittest.TestCase):
         session_id = "12345678-1234-1234-1234-123456789abc"
         command = hook.scan_command("codex", session_id, "SessionEnd")
         self.assertEqual(command[1:], ["papercuts-scan-codex", "--session", session_id,
-                                        "--min-idle", "0", "--no-subagents", "--jobs", "1",
-                                        "--server", "http://10.193.193.227:8765"])
+                                        "--min-idle", "0", "--no-subagents", "--jobs", "1"])
         # A session can go on after Stop, so a short last stretch waits for the next turn.
         self.assertEqual(hook.scan_command("codex", session_id, "Stop"), command + ["--hold-short-tail"])
         with self.assertRaises(ValueError):
@@ -43,12 +42,14 @@ class SessionScanHookTest(unittest.TestCase):
                 mock.patch.object(hook.subprocess, "Popen") as popen:
             self.assertTrue(hook.launch("claude", payload))
             self.assertTrue(popen.call_args.kwargs["start_new_session"])
-            self.assertEqual(popen.call_args.args[0][-4:], ["claude", session_id, "Stop",
-                                                            "http://10.193.193.227:8765"])
+            # With no saved server, the worker leaves it to the scanner's PAPERCUTS_SERVER fallback.
+            self.assertEqual(popen.call_args.args[0][-4:], ["claude", session_id, "Stop", ""])
+            hook.launch("claude", payload, "http://127.0.0.1:8766")
+            self.assertEqual(popen.call_args.args[0][-1], "http://127.0.0.1:8766")
             self.assertFalse(hook.launch("claude", {**payload, "hook_event_name": "SessionStart"}))
             with mock.patch.dict(hook.os.environ, {"PAPERCUTS_SCAN_HOOK": "1"}):
                 self.assertFalse(hook.launch("claude", payload))
-            self.assertEqual(popen.call_count, 1)
+            self.assertEqual(popen.call_count, 2)
 
 
 if __name__ == "__main__":
