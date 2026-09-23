@@ -2,6 +2,7 @@
 *.sqlite3-shm
 *.sqlite3-wal
 __pycache__/
+dispatcher-state.json
 # Local-only papercut mining data: raw transcript paths and scores, and write-ups with security detail.
 slop/*/pipeline/output/
 slop/*/papercuts/*/*.jev-screen.jsonl
