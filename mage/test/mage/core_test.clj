@@ -22,6 +22,7 @@
    [mage.merge-yaml-migrations-test]
    [mage.modules-test]
    [mage.papercuts.git-test]
+   [mage.papercuts.hooks-test]
    [mage.papercuts.scan-test]
    [mage.papercuts.transcript-test]
    [mage.project-tests-test]

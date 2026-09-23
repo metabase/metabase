@@ -155,6 +155,18 @@ the claude CLI, and submits each papercut once."
              ["-v" "--verbose" "Print scores for clean chunks too"]]
    :task (task! (papercuts-scan/scan! :claude parsed))}
 
+  papercuts-install-hooks
+  {:doc "Install user-level Stop and SessionEnd hooks that scan only the triggering Claude/Codex session.
+This is opt-in: running this task enables future automatic scans. Transcript chunks go to TypeSafe Jev; flagged
+chunks go to a drill-down agent, and findings go to the configured papercuts server. Existing hooks are preserved."
+   :examples [["./bin/mage papercuts-install-hooks" "Install for every detected agent (claude and/or codex)"]
+              ["./bin/mage papercuts-install-hooks --agent claude" "Install only the Claude hook"]
+              ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]]
+   :requires [[mage.papercuts.hooks :as papercuts-hooks]]
+   :options [[nil "--agent AGENT" "Install for claude, codex, or both (default: every agent on PATH)"
+              :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]]
+   :task (task! (papercuts-hooks/install! parsed))}
+
   papercuts-scan-codex
   {:doc "Scan Codex transcripts for papercuts and submit them to a papercuts server.
 Reads ~/.codex/sessions and ~/.codex/archived_sessions, picking up each session where the previous run stopped
