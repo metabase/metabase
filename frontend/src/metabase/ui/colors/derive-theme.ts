@@ -4,7 +4,7 @@ import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api";
 
 import { deriveAllAccentColors, mapChartColorsToAccents } from "./accents";
-import { replaceBrandRampWithOcean } from "./constants/brand-ramp";
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
 import { getThemeFromColorScheme } from "./theme-from-color-scheme";
 import type {
@@ -33,8 +33,6 @@ export function deriveFullMetabaseTheme({
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
   forceDynamicBrandRamp?: boolean;
 }): MetabaseDerivedThemeV2 {
-  const baseTheme = getThemeFromColorScheme(colorScheme);
-
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
   const filteredEmbeddingColors = _.omit(
@@ -55,15 +53,16 @@ export function deriveFullMetabaseTheme({
       whitelabelColors?.brand,
     );
 
+  const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+  const baseTheme = getThemeFromColorScheme(
+    colorScheme,
+    shouldKeepBrandRampDynamic ? baseColors.brand : baseColors.ocean,
+  );
+
   // Unjustified type cast. FIXME
   const colors = {
-    ...(shouldKeepBrandRampDynamic
-      ? baseTheme.colors
-      : // baseTheme is created on module init, before we have an opportunity to check
-        // if instance has custom brand color set. Because of this we replace value of
-        // every semantic token matching one of default brand ramp stops with matching
-        // stop from ocean ramp (as opposed to modifying baseColors.brand directly)
-        replaceBrandRampWithOcean(baseTheme.colors)),
+    ...baseTheme.colors,
     ...mapChartColorsToAccents(baseTheme.chartColors),
     ...deriveAllAccentColors(whitelabelColors ?? {}),
     ...filteredEmbeddingColors,

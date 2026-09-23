@@ -1,17 +1,13 @@
 import { deriveChartShadeColor, deriveChartTintColor } from "./accents";
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
-import { BRAND_RAMP_TO_OCEAN } from "./constants/brand-ramp";
 import { PROTECTED_COLORS } from "./constants/protected-colors";
-import { METABASE_DARK_THEME } from "./constants/themes/dark";
-import { METABASE_LIGHT_THEME } from "./constants/themes/light";
+import { getDarkTheme } from "./constants/themes/dark";
+import { getLightTheme } from "./constants/themes/light";
 import { deriveFullMetabaseTheme } from "./derive-theme";
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 
-const dynamicBrandRampColors = (colors: Record<string, string>) =>
-  Object.entries(colors)
-    .filter(([, value]) => value in BRAND_RAMP_TO_OCEAN)
-    .map(([key]) => key);
+const lightTheme = getLightTheme();
 
 describe("deriveFullMetabaseTheme", () => {
   it("applies whitelabel colors over the base theme", () => {
@@ -25,7 +21,7 @@ describe("deriveFullMetabaseTheme", () => {
 
     // Other colors should remain from base theme
     expect(derived.colors["text-primary"]).toBe(
-      METABASE_LIGHT_THEME.colors["text-primary"],
+      lightTheme.colors["text-primary"],
     );
   });
 
@@ -114,14 +110,14 @@ describe("deriveFullMetabaseTheme", () => {
     expect(derived.colors["accent0-dark"]).toBe("#0000ff");
 
     //accent 1 should be default
-    expect(derived.colors["accent1"]).toBe(METABASE_LIGHT_THEME.chartColors[1]);
+    expect(derived.colors["accent1"]).toBe(lightTheme.chartColors[1]);
     expect(derived.colors["accent1-light"]).toBe(
       // Unjustified type cast. FIXME
-      deriveChartTintColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+      deriveChartTintColor(lightTheme.chartColors[1] as string),
     );
     expect(derived.colors["accent1-dark"]).toBe(
       // Unjustified type cast. FIXME
-      deriveChartShadeColor(METABASE_LIGHT_THEME.chartColors[1] as string),
+      deriveChartShadeColor(lightTheme.chartColors[1] as string),
     );
 
     //accent 2 should calculate light and dark from provided color
@@ -142,23 +138,24 @@ describe("deriveFullMetabaseTheme", () => {
 
   describe("brand ramp", () => {
     it.each([
-      ["light" as const, METABASE_LIGHT_THEME],
-      ["dark" as const, METABASE_DARK_THEME],
+      ["light" as const, getLightTheme],
+      ["dark" as const, getDarkTheme],
     ])(
       "replaces the %s brand ramp with Ocean when the brand color is not customized",
-      (colorScheme, theme) => {
+      (colorScheme, getTheme) => {
         const derived = deriveFullMetabaseTheme({ colorScheme });
 
-        // Every color the theme defined off the ramp must now be a literal Ocean stop
-        expect(dynamicBrandRampColors(derived.colors)).toEqual([]);
-        expect(dynamicBrandRampColors(theme.colors).length).toBeGreaterThan(0);
+        expect(derived.colors).toMatchObject(getTheme(baseColors.ocean).colors);
+        expect(derived.colors).not.toMatchObject(
+          getTheme(baseColors.brand).colors,
+        );
       },
     );
 
     it("replaces brand ramp stops with their matching Ocean stops", () => {
       const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
 
-      // METABASE_LIGHT_THEME defines these off brand[50], brand[60] and brand[10]
+      // The light theme defines these off brand[50], brand[60] and brand[10]
       expect(derived.colors["text-brand"]).toBe(baseColors.ocean[50]);
       expect(derived.colors["switch-checked"]).toBe(baseColors.ocean[60]);
       expect(derived.colors["background-brand"]).toBe(baseColors.ocean[10]);
@@ -171,7 +168,7 @@ describe("deriveFullMetabaseTheme", () => {
       });
 
       expect(derived.colors["text-brand"]).toBe(
-        METABASE_LIGHT_THEME.colors["text-brand"],
+        lightTheme.colors["text-brand"],
       );
     });
 
@@ -182,7 +179,7 @@ describe("deriveFullMetabaseTheme", () => {
       });
 
       expect(derived.colors["text-brand"]).toBe(
-        METABASE_LIGHT_THEME.colors["text-brand"],
+        lightTheme.colors["text-brand"],
       );
     });
 
@@ -193,7 +190,7 @@ describe("deriveFullMetabaseTheme", () => {
       });
 
       expect(derived.colors["text-brand"]).toBe(
-        METABASE_LIGHT_THEME.colors["text-brand"],
+        lightTheme.colors["text-brand"],
       );
     });
 
@@ -201,7 +198,7 @@ describe("deriveFullMetabaseTheme", () => {
       const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
 
       expect(derived.colors["text-filter"]).toBe(
-        METABASE_LIGHT_THEME.colors["text-filter"],
+        lightTheme.colors["text-filter"],
       );
     });
   });

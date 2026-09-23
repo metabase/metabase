@@ -9,13 +9,13 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
+import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
 import { getBaseColorsForThemeDefinitionOnly } from "metabase/ui/colors/constants/base-colors";
 
 const EXAMPLE_COLOR = "background_page-primary-inverse";
 
-const LIGHT_EXAMPLE_VALUE = METABASE_LIGHT_THEME.colors[EXAMPLE_COLOR];
-const DARK_EXAMPLE_VALUE = METABASE_DARK_THEME.colors[EXAMPLE_COLOR];
+const LIGHT_EXAMPLE_VALUE = getLightTheme().colors[EXAMPLE_COLOR];
+const DARK_EXAMPLE_VALUE = getDarkTheme().colors[EXAMPLE_COLOR];
 
 const THEME_CASES = [
   // V1 themes
