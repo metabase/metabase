@@ -16,10 +16,6 @@
   cursor: default;
 }
 
-.commentTagArrow {
-  transform: scaleY(-1);
-}
-
 /* User mentions (SmartLink user nodes) read as plain colored text here, not
  * bold — scoped so document comments keep their own styling. */
 .stream :global([data-type="smart-link"] > span) {
