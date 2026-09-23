@@ -482,6 +482,15 @@
         (map (juxt (juxt :model_type :model_id) :content_hash))
         (t2/select [:model/RemoteSyncObject :model_type :model_id :content_hash] :content_hash [:not= nil])))
 
+(mu/defn synced-content-hashes-by-path :- [:map-of :string :string]
+  "{file_path content_hash} of every RemoteSyncObject with both: the hash of Metabase's serialization of each
+  entity as of its last sync, keyed by the repo file it was synced as."
+  []
+  (into {}
+        (map (juxt :file_path :content_hash))
+        (t2/select [:model/RemoteSyncObject :file_path :content_hash]
+                   :file_path [:not= nil] :content_hash [:not= nil])))
+
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
   []

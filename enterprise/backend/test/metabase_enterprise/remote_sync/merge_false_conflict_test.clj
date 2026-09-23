@@ -36,8 +36,9 @@
 (defn- merge-pull-after-hand-edit!
   "Loads three cards at v0; pulls v1, whose only change is `hand-edit` applied to card 1's file (path unchanged);
   makes an unrelated local edit to card 2 (so the next pull must merge); then merge-pulls v2, which renames card 1
-  in its file again. Returns the merge-pull result and the card names afterwards."
-  [hand-edit]
+  in its file again. Returns the merge-pull result and the card names afterwards. With `:local-edit` naming a card,
+  that card gets the local edit instead of card 2."
+  [hand-edit & {:keys [local-edit] :or {local-edit "Cost card 002"}}]
   (search.tu/with-index-disabled
     (#'pull-cost-test/do-with-content!
      {:cards 3}
@@ -48,9 +49,9 @@
              src  (rs.test/versioned-source :trees {"v0" v0 "v1" v1 "v2" v2} :current "v0")]
          (is (= :success (:status (run-import! src "v0" :force? true))) "baseline load")
          (is (= :success (:status (run-import! src "v1"))) "pull of the hand-edited file")
-         (let [card-2 (t2/select-one-pk :model/Card :name "Cost card 002")]
-           (t2/update! :model/Card card-2 {:description "local edit 2"})
-           (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-2} {:status "update"}))
+         (let [card (t2/select-one-pk :model/Card :name local-edit)]
+           (t2/update! :model/Card card {:description "local edit"})
+           (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card} {:status "update"}))
          {:result (run-import! src "v2" :merge? true :base-snapshot (source.p/snapshot-at src "v1"))
           :cards  (into {} (map (juxt :name :description)) (t2/select [:model/Card :name :description]))})))))
 
@@ -60,11 +61,19 @@
                                   #(str/replace % #"(?m)^name: .*$" "name: Hand rename 001"))]
       (is (= :success (:status result)) (pr-str (:conflicts result)))
       (is (contains? cards "Remote rename 001") "the remote's second rename landed")
-      (is (= "local edit 2" (get cards "Cost card 002")) "the local change was kept"))))
+      (is (= "local edit" (get cards "Cost card 002")) "the local change was kept"))))
 
 (deftest merge-pull-after-hand-written-yaml-test
   (testing "A card whose file differs from Metabase's own serialization only in text is not a local change"
     (let [{:keys [result cards]} (merge-pull-after-hand-edit! #(str "# edited by hand\n" %))]
       (is (= :success (:status result)) (pr-str (:conflicts result)))
       (is (contains? cards "Remote rename 001") "the remote's rename landed")
-      (is (= "local edit 2" (get cards "Cost card 002")) "the local change was kept"))))
+      (is (= "local edit" (get cards "Cost card 002")) "the local change was kept"))))
+
+(deftest merge-pull-still-conflicts-on-a-real-local-edit-test
+  (testing "A hand-edited card that was also edited locally still conflicts with the remote's edit"
+    (let [{:keys [result]} (merge-pull-after-hand-edit!
+                            #(str/replace % #"(?m)^name: .*$" "name: Hand rename 001")
+                            :local-edit "Hand rename 001")]
+      (is (= :conflict (:status result)))
+      (is (= 1 (count (:conflicts result)))))))

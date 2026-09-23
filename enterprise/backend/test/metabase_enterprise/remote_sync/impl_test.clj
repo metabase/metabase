@@ -2059,7 +2059,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge-changes     (fn [_ _ _]
+                                source/preview-merge-changes     (fn [_ _ _ & _]
                                                                    {:clean? true :conflicts []
                                                                     :summary {:added 1 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? true :conflicts [] :summary {:added 1 :updated 0 :removed 0}}
@@ -2071,7 +2071,7 @@ serdes/meta:
                                 source/source-from-settings      (constantly (export-test-source))
                                 spec/exportable-entities         (constantly {"Card" [1]})
                                 spec/extract-entities-for-export (constantly [{:dummy true}])
-                                source/preview-merge-changes     (fn [_ _ _]
+                                source/preview-merge-changes     (fn [_ _ _ & _]
                                                                    {:clean? false :conflicts ["Card A (collections/a.yaml)"]
                                                                     :summary {:added 0 :updated 0 :removed 0}})]
       (is (= {:diverged? true :clean? false
@@ -2092,7 +2092,7 @@ serdes/meta:
                                                                      (reset! resolved [targets paths])
                                                                      {"Card" [2]})
                                   spec/extract-entities-for-export (fn [targets] (reset! extracted targets) stream)
-                                  source/preview-merge-changes     (fn [extract-for _ _]
+                                  source/preview-merge-changes     (fn [extract-for _ _ & _]
                                                                      (is (identical? stream (extract-for [[{:model "Card" :id "x"}]])))
                                                                      {:clean? true :conflicts []
                                                                       :summary {:added 0 :updated 0 :removed 0}})]

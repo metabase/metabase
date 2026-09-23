@@ -159,6 +159,19 @@
                     {:path path :content content}))))
         (source.p/list-files snapshot)))
 
+(defn- unchanged-since-sync-fn
+  "The `unchanged-locally?` predicate of [[remote-sync.merge/three-way-merge]] for a ledger `synced-hashes`
+  ({file_path content_hash}, the RemoteSyncObject rows): an entity is unchanged locally when the hash of its fresh
+  serialization equals the hash the ledger recorded for the repo file it was last synced as. That hash is of
+  Metabase's own serialization at the sync, so it matches however the repo file's text differs from it."
+  [synced-hashes]
+  (if (empty? synced-hashes)
+    (constantly false)
+    (fn [{base-path :path} {ours-content :content}]
+      (if-let [synced (get synced-hashes base-path)]
+        (= synced (content-hash ours-content))
+        false))))
+
 (defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
   the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
@@ -170,12 +183,15 @@
 
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
   remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
-  through to [[serialize-specs]]."
-  [stream snapshot base-snapshot task-id & {:keys [total]}]
+  through to [[serialize-specs]]. `:synced-hashes` ({file_path content_hash} from the ledger) lets an entity
+  unchanged since the last sync count as unchanged locally even when its repo file isn't byte-identical to a fresh
+  serialization (see [[unchanged-since-sync-fn]])."
+  [stream snapshot base-snapshot task-id & {:keys [total synced-hashes]}]
   (let [ours   (serialize-specs stream task-id :total total)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (remote-sync.merge/merge-with-casualties base ours theirs)))
+    (remote-sync.merge/merge-with-casualties base ours theirs
+                                             :unchanged-locally? (unchanged-since-sync-fn synced-hashes))))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
@@ -197,12 +213,13 @@
   force push (rather than a merge) would discard. `extract-for` is called once with the serdes paths of the remote-changed
   entities and returns a stream of extracted entities that includes every local entity serializing to one of those
   paths, or with `:all` when a remote-changed file has no serdes identity, in which case it returns every exported
-  entity (see [[remote-sync.merge/preview-with-casualties]])."
-  [extract-for snapshot base-snapshot]
+  entity (see [[remote-sync.merge/preview-with-casualties]]). `:synced-hashes` is as for [[compute-merge]]."
+  [extract-for snapshot base-snapshot & {:keys [synced-hashes]}]
   (let [{:keys [conflicts summary force-push-casualties]}
         (remote-sync.merge/preview-with-casualties (snapshot->specs base-snapshot)
                                                    (snapshot->specs snapshot)
-                                                   (fn [paths] (serialize-specs (extract-for paths) nil)))]
+                                                   (fn [paths] (serialize-specs (extract-for paths) nil))
+                                                   :unchanged-locally? (unchanged-since-sync-fn synced-hashes))]
     {:clean?                 (empty? conflicts)
      :conflicts             (mapv remote-sync.merge/conflict-label conflicts)
      :summary               summary
