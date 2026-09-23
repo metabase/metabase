@@ -13,6 +13,10 @@ const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
 // Per-range chunks written by the font-subset loader. The stylesheet that
 // declares them is that loader's output, not a file.
 const GENERATED_FONTS_PATH = ROOT_PATH + "/target/font-subsets";
+// Backs the bare `fonts.css` import. The file holds the @font-face declarations
+// and the loader replaces each one with its per-range chunks, so what a module
+// imports under that name is built, never read off disk.
+const FONT_FACES_PATH = ROOT_PATH + "/frontend/src/metabase/css/core/fonts.css";
 const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
@@ -50,6 +54,7 @@ const RESOLVE_ALIASES = {
   img: IMAGES_PATH,
   fonts: FONTS_PATH,
   "generated-fonts": GENERATED_FONTS_PATH,
+  "fonts.css$": FONT_FACES_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,
   "metabase-lib": LIB_SRC_PATH,
