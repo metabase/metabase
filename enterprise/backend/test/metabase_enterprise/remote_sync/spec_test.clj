@@ -696,6 +696,10 @@
         (is (= {} (spec/targets-for-paths targets [(path "Card" other-eid)]))))
       (testing "a path for a model with no targets needs nothing"
         (is (= {} (spec/targets-for-paths targets [(path "Dashboard" "no-such-entity-id000")]))))
-      (testing "a path that resolves to no local row keeps every target of its model, so full extraction decides"
+      (testing "an entity_id no local row has (a remote addition) needs nothing: nothing local serializes to it"
+        (is (= {"Card" [exported]}
+               (spec/targets-for-paths targets [(path "Card" "no-such-entity-id-000") (path "Card" exported-eid)]))))
+      (testing "any other path that resolves to no local row keeps every target of its model, so full extraction
+                decides"
         (is (= {"Card" [exported 999999]}
-               (spec/targets-for-paths targets [(path "Card" "no-such-entity-id000") (path "Card" exported-eid)])))))))
+               (spec/targets-for-paths targets [(path "Card" "abcd1234") (path "Card" exported-eid)])))))))

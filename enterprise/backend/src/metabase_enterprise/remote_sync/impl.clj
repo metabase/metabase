@@ -619,6 +619,15 @@
                                                   :file_path         file_path})
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
+(defn- remote-changed-extractor
+  "An `extract-for` fn for [[source/compute-merge-changes]] over the exportable `targets`: extracts just the targets
+  that serialize to the given serdes paths, or all of them for `:all`."
+  [targets]
+  (fn [changed-paths]
+    (spec/extract-entities-for-export (if (= :all changed-paths)
+                                        targets
+                                        (spec/targets-for-paths targets changed-paths)))))
+
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -629,11 +638,18 @@
     - Local changes stay dirty
     - Sets version to remote tip"
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
-  (let [{:keys [conflicts merged summary]} (serdes/with-cache
-                                             (let [targets (spec/exportable-entities)]
-                                               (source/compute-merge (spec/extract-entities-for-export targets)
-                                                                     snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets))))]
+  (let [;; When the remote changes are incrementally loadable the merged tree isn't needed (see the load below),
+        ;; and only the entities the remote changed decide the conflicts and summary, so only those local entities
+        ;; are serialized.
+        plan (incremental-import-plan snapshot (source.p/version base-snapshot))
+        {:keys [conflicts merged summary]}
+        (serdes/with-cache
+          (let [targets (spec/exportable-entities)]
+            (if (= :remote-sync/incremental-not-possible plan)
+              (source/compute-merge (spec/extract-entities-for-export targets)
+                                    snapshot base-snapshot task-id
+                                    :total (spec/exportable-entity-count targets))
+              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -652,8 +668,7 @@
       (let [dirty-objects (capture-dirty-objects)
             finalize-merge! (fn []
                               (restore-dirty-objects! dirty-objects sync-timestamp)
-                              (finalize!))
-            plan            (incremental-import-plan snapshot (source.p/version base-snapshot))]
+                              (finalize!))]
         (if (= :remote-sync/incremental-not-possible plan)
           (load-snapshot! (source/specs->snapshot merged) report sync-timestamp :finalize! finalize-merge!)
           (incremental-load-snapshot! plan (source.p/version snapshot) report sync-timestamp
@@ -1767,12 +1782,7 @@
           (let [targets (spec/exportable-entities)]
             (if (seq targets)
               ;; only the entities the remote changed decide the preview, so extract and serialize just those
-              (assoc (source/preview-merge-changes
-                      (fn [changed-paths]
-                        (spec/extract-entities-for-export (if (= :all changed-paths)
-                                                            targets
-                                                            (spec/targets-for-paths targets changed-paths))))
-                      snapshot base-snapshot)
+              (assoc (source/preview-merge-changes (remote-changed-extractor targets) snapshot base-snapshot)
                      :diverged? true)
               (assoc no-changes :diverged? true))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
