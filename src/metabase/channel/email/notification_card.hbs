@@ -41,6 +41,20 @@
                 </td>
               </tr>
             </table>
+            {{#if computed.ai_summary}}
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin: 20px 0 4px 0;">
+                <tr>
+                  <td style="background-color: #F9FBFC; border-radius: 12px; padding: 16px 20px;">
+                    <div style="color: {{payload.style.color_text_light}}; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding-bottom: 6px;">
+                      Metabot
+                    </div>
+                    <div style="color: {{payload.style.color_text_dark}}; font-size: 14px; line-height: 20px;">
+                      {{{computed.ai_summary}}}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            {{/if}}
             {{{computed.content}}}
             {{#if computed.goal_value}}
               <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">

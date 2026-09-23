@@ -18,6 +18,8 @@ type NotificationCardPayload = {
   card?: Card; // hydrated on the BE
   send_once: boolean;
   send_condition: NotificationCardSendCondition;
+  // instruction for Metabot to interpret the results; null means no summary is generated
+  prompt?: string | null;
 
   id?: number;
   created_at?: string;

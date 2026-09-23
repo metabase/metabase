@@ -31,7 +31,8 @@
    [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
    [:send_once       {:optional true} [:maybe :boolean]]
    [:send_condition  {:optional true} [:maybe [:or :keyword :string]]]
-   [:disable_links   {:optional true} [:maybe :boolean]]])
+   [:disable_links   {:optional true} [:maybe :boolean]]
+   [:prompt          {:optional true} [:maybe :string]]])
 
 (def ^:private NotificationHandlerRow
   "A whole NotificationHandler row for insert."

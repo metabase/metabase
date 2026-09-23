@@ -59,6 +59,7 @@ import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
 
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
+import { AlertMetabotPrompt } from "./components/AlertMetabotPrompt";
 import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
 import { NotificationOwner } from "./components/NotificationOwner/NotificationOwner";
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
@@ -374,6 +375,23 @@ export const CreateOrEditQuestionAlertModal = ({
             onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
+        <AlertMetabotPrompt
+          prompt={notification.payload?.prompt}
+          onChange={(prompt) => {
+            setNotification({
+              ...notification,
+              payload: {
+                ...notification.payload,
+                card_id: notification.payload?.card_id ?? questionId,
+                send_condition:
+                  notification.payload?.send_condition ??
+                  triggerOptions[0].value,
+                send_once: notification.payload?.send_once ?? false,
+                prompt,
+              },
+            });
+          }}
+        />
         {!isEmbeddingSdk() && (
           <AlertModalSettingsBlock
             title={t`Where do you want to send the results?`}

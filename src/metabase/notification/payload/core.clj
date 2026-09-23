@@ -127,6 +127,8 @@
                  [:card_part         [:maybe ::notification.payload.execute/Part]]
                  [:card              :map]
                  [:style             :map]
+                 ;; Metabot's interpretation of the results; nil unless the alert carries a prompt
+                 [:ai_summary {:optional true} [:maybe :string]]
                  [:notification_card ::models.notification/NotificationCard]
                  [:subscriptions     [:sequential ::models.notification/NotificationSubscription]]]]]]
     [:notification/testing   :map]]])

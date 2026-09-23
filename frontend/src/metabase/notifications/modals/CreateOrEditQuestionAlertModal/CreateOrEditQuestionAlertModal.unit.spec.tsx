@@ -56,6 +56,52 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(goalSelect).toHaveValue("When this question has results");
   });
 
+  describe("Metabot prompt", () => {
+    it("should not render when Metabot is disabled", async () => {
+      setup({ isAdmin: true, isMetabotEnabled: false });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("alert-metabot-prompt"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render an empty prompt box for a new alert", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-metabot-prompt")).toHaveValue("");
+    });
+
+    it("should preserve spaces while typing", async () => {
+      setup({ isAdmin: true });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      const promptBox = screen.getByTestId("alert-metabot-prompt");
+      await userEvent.type(promptBox, "flag big drops");
+
+      expect(promptBox).toHaveValue("flag big drops");
+    });
+
+    it("should show an existing prompt when editing an alert", async () => {
+      const editingNotification = createMockNotification({
+        payload: {
+          card_id: 1,
+          send_once: false,
+          send_condition: "has_result",
+          prompt: "Flag anything unusual",
+        },
+        subscriptions: [createMockNotificationCronSubscription()],
+      });
+      setup({ isAdmin: true, editingNotification });
+
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      expect(screen.getByTestId("alert-metabot-prompt")).toHaveValue(
+        "Flag anything unusual",
+      );
+    });
+  });
+
   it("should show 'When this metric has results' for metric cards", async () => {
     setup({ isAdmin: true, cardType: "metric" });
 
@@ -662,6 +708,7 @@ function setup({
   onAlertUpdatedMock = jest.fn(),
   cardType = "question",
   users = [],
+  isMetabotEnabled = true,
 }: {
   userCanAccessSettings?: boolean;
   isAdmin?: boolean;
@@ -674,11 +721,14 @@ function setup({
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
   users?: UserListResult[];
+  isMetabotEnabled?: boolean;
 }) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       advanced_permissions: true,
     }),
+    "metabot-enabled?": isMetabotEnabled,
+    "metabot-name": "Metabot",
   });
 
   setupEnterpriseOnlyPlugin("advanced_permissions");

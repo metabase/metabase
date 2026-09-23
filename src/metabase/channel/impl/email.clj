@@ -237,6 +237,7 @@
   (let [{:keys [card_part
                 notification_card
                 subscriptions
+                ai_summary
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
@@ -260,6 +261,9 @@
                                                                   :has_result (trs "Alert: {0} has results" (:name card)))
                                                :icon_cid        (:content-id icon-attachment)
                                                :content         html-content
+                                               ;; the model answers in markdown; nil renders nothing
+                                               :ai_summary      (some-> ai_summary
+                                                                        (markdown/process-markdown :html (system/site-url)))
                                                ;; UI only allow one subscription per card notification
                                                :alert_schedule  (some-> subscriptions first :cron_schedule channel.shared/friendly-cron-description)
                                                :goal_value      goal

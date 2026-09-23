@@ -1,0 +1,24 @@
+## Add notification_card.prompt: free text the alert's creator writes for Metabot, e.g. "flag anything
+## unusual vs the trailing 4 weeks". Null (the default, and the value on every pre-existing row) means the
+## alert sends exactly as it always has, with no LLM call on the send path.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:00
+      author: nvoxland
+      comment: Add notification_card.prompt, the optional Metabot instruction used to interpret an alert's results
+      changes:
+        - addColumn:
+            tableName: notification_card
+            columns:
+              - column:
+                  name: prompt
+                  type: ${text.type}
+                  remarks: Optional instruction for Metabot to interpret this alert's results. Null means no AI summary is generated.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: notification_card
+            columnName: prompt

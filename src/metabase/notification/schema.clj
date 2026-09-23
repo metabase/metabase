@@ -38,7 +38,8 @@
    [:send_condition {:optional true} [:maybe [:or :keyword :string]]]
    [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
-   [:disable_links  {:optional true} [:maybe :boolean]]])
+   [:disable_links  {:optional true} [:maybe :boolean]]
+   [:prompt         {:optional true} [:maybe :string]]])
 
 (mr/def ::notification-handler
   "A NotificationHandler as selected from the app DB: every column of `:notification_handler`."

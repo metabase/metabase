@@ -1395,3 +1395,33 @@
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 204 "notification/send"
                                        (assoc notification :handlers success-handlers)))))))))))
+
+(deftest card-notification-prompt-round-trip-test
+  (testing "the Metabot prompt survives create, read, and update"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id}]
+        (let [created (mt/user-http-request :crowberto :post 200 "notification"
+                                            {:payload      {:card_id card-id
+                                                            :prompt  "Flag anything unusual"}
+                                             :payload_type "notification/card"})]
+          (is (= "Flag anything unusual" (-> created :payload :prompt)))
+          (testing "and comes back on read"
+            (is (= "Flag anything unusual"
+                   (-> (mt/user-http-request :crowberto :get 200 (format "notification/%d" (:id created)))
+                       :payload :prompt))))
+          (testing "and can be rewritten"
+            (is (= "Only tell me about drops"
+                   (-> (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id created))
+                                             (assoc-in created [:payload :prompt] "Only tell me about drops"))
+                       :payload :prompt))))
+          (testing "and can be cleared, which turns the summary back off"
+            (is (nil? (-> (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id created))
+                                                (assoc-in created [:payload :prompt] nil))
+                          :payload :prompt))))))))
+  (testing "a card notification without a prompt reads back as nil"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id}]
+        (is (nil? (-> (mt/user-http-request :crowberto :post 200 "notification"
+                                            {:payload      {:card_id card-id}
+                                             :payload_type "notification/card"})
+                      :payload :prompt)))))))

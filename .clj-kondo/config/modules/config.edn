@@ -1777,6 +1777,7 @@
            embedding
            events
            lib.schema
+           metabot
            models
            parameters
            permissions

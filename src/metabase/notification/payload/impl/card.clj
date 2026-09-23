@@ -2,12 +2,14 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
+   [metabase.notification.ai-summary :as ai-summary]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
+   [metabase.request.core :as request]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
@@ -17,14 +19,22 @@
   (log/with-context {:card_id (:card_id payload)}
     (let [card-id     (:card_id payload)
           part        (notification.execute/execute-card creator_id card-id)
-          card-result (:result part)]
+          card-result (:result part)
+          card        (notification.db/card card-id)]
       (when (not= :completed (:status card-result))
         (throw (ex-info (format "Failed to execute card with error: %s" (:error card-result))
                         {:card_id card-id
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (notification.db/card card-id)
+       :card             card
+       ;; Generated as the alert's creator, so Metabot permissions and AI usage limits are
+       ;; charged to the same person whose permissions ran the query. nil whenever the alert has
+       ;; no prompt, Metabot is unavailable, or the call fails - see `ai-summary/summarize`.
+       :ai_summary       (request/with-current-user creator_id
+                           (ai-summary/summarize {:prompt    (:prompt payload)
+                                                  :card-name (:name card)
+                                                  :result    card-result}))
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}

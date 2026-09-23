@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.notification.ai-summary :as ai-summary]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -692,3 +693,72 @@
                                      :rows [["text" 120 100]]}}}]
       (is (true? (goal-met? notification-card card-part))
           "Should return true when first numeric column (120) >= Target (100)"))))
+
+(deftest ai-summary-email-test
+  (testing "an alert carrying a prompt renders Metabot's interpretation above the chart"
+    (notification.tu/with-notification-testing-setup!
+      (with-redefs [ai-summary/call-llm! (constantly {:summary "Widgets are up **20%** this week."})]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:prompt "Anything unusual?"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= (construct-email
+                      {:message [{notification.tu/default-card-name  true
+                                  "Metabot"                          true
+                                  "Widgets are up"                   true
+                                  ;; the model answers in markdown, so the email gets real bold
+                                  "<strong>20%</strong>"             true}
+                                 notification.tu/png-attachment
+                                 notification.tu/csv-attachment]})
+                     (mt/summarize-multipart-single-email
+                      email
+                      card-name-regex
+                      #"Metabot"
+                      #"Widgets are up"
+                      #"<strong>20%</strong>"))))})))))
+  (testing "an alert with no prompt makes no LLM call and renders no Metabot block"
+    (notification.tu/with-notification-testing-setup!
+      (let [calls (atom 0)]
+        (with-redefs [ai-summary/call-llm! (fn [_] (swap! calls inc) {:summary "should not appear"})]
+          (notification.tu/with-card-notification
+            [notification {:card     {:name          notification.tu/default-card-name
+                                      :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                           :handlers [@notification.tu/default-email-handler]}]
+            (notification.tu/test-send-notification!
+             notification
+             {:channel/email
+              (fn [[email]]
+                (is (= (construct-email
+                        {:message [{notification.tu/default-card-name true
+                                    "should not appear"               false}
+                                   notification.tu/png-attachment
+                                   notification.tu/csv-attachment]})
+                       (mt/summarize-multipart-single-email
+                        email
+                        card-name-regex
+                        #"should not appear")))
+                (is (zero? @calls)))})))))))
+
+(deftest ai-summary-failure-does-not-break-the-alert-test
+  (testing "a failing LLM call still sends the alert, just without a summary"
+    (notification.tu/with-notification-testing-setup!
+      (with-redefs [ai-summary/call-llm! (fn [_] (throw (ex-info "provider exploded" {})))]
+        (notification.tu/with-card-notification
+          [notification {:card              {:name          notification.tu/default-card-name
+                                             :dataset_query (mt/native-query {:query "SELECT 1 as n"})}
+                         :notification-card {:prompt "Anything unusual?"}
+                         :handlers          [@notification.tu/default-email-handler]}]
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [[email]]
+              (is (= (construct-email
+                      {:message [{notification.tu/default-card-name true}
+                                 notification.tu/png-attachment
+                                 notification.tu/csv-attachment]})
+                     (mt/summarize-multipart-single-email email card-name-regex))))}))))))
