@@ -599,30 +599,15 @@
   (swap! jgit dissoc (.getPath repo-path))
   (FileUtils/deleteDirectory repo-path))
 
-(defn- remove-other-clones!
-  "Closes and deletes every cached clone except the one at `keep-path`. Remote sync works against one repository at
-  a time, so once a different URL is opened the old clone is dead weight that would otherwise stay on disk (and
-  open in [[jgit]]) for the life of the process. Only clones this process opened are touched: the directory is
-  shared with any other Metabase process on the host."
-  [^File keep-path]
-  (let [keep-key  (.getPath keep-path)
-        [old _new] (swap-vals! jgit select-keys [keep-key])]
-    (doseq [[path ^Git git] old
-            :when (not= path keep-key)]
-      (log/info "Removing clone of previously configured repository" {:repo-path path})
-      (.close git)
-      (FileUtils/deleteDirectory (io/file path)))))
-
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
   (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
     obj
-    (u/prog1 (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                               :token      token})
-                                                       (when-not (has-data? (assoc args :git <>))
-                                                         (FileUtils/deleteDirectory path)
-                                                         (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
-                  (.getPath path))
-      (remove-other-clones! path))))
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
+                                                                     :token      token})
+                                             (when-not (has-data? (assoc args :git <>))
+                                               (FileUtils/deleteDirectory path)
+                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+         (.getPath path))))
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."

@@ -812,17 +812,3 @@
            (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
     (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
               (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))
-
-(deftest get-jgit-removes-clone-of-previous-url-test
-  (testing "HACKRDE-25: switching to a different repository URL deletes the clone of the old one"
-    (mt/with-temp-dir [old-dir nil]
-      (mt/with-temp-dir [new-dir nil]
-        (let [[old-source _] (init-source! "master" old-dir)
-              ^File old-path (#'git/repo-path {:remote-url (:remote-url old-source)})]
-          (is (.exists old-path) "Precondition: the old repository is cloned")
-          (let [[new-source _] (init-source! "master" new-dir)
-                ^File new-path (#'git/repo-path {:remote-url (:remote-url new-source)})]
-            (is (.exists new-path))
-            (is (not (.exists old-path)) "The clone of the previous URL is deleted")
-            (is (= #{(.getPath new-path)} (set (keys @@#'git/jgit)))
-                "Only the current repository's Git instance is kept open")))))))
