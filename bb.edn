@@ -162,10 +162,12 @@ This is opt-in: running this task enables future automatic scans. Transcript chu
 chunks go to a drill-down agent, and findings go to the configured papercuts server. Existing hooks are preserved."
    :examples [["./bin/mage papercuts-install-hooks" "Install for every detected agent (claude and/or codex)"]
               ["./bin/mage papercuts-install-hooks --agent claude" "Install only the Claude hook"]
-              ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]]
+              ["./bin/mage papercuts-install-hooks --agent codex" "Install only the Codex hook"]
+              ["./bin/mage papercuts-install-hooks --uninstall" "Remove the hooks again, keeping every other hook"]]
    :requires [[mage.papercuts.hooks :as papercuts-hooks]]
    :options [[nil "--agent AGENT" "Install for claude, codex, or both (default: every agent on PATH)"
-              :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]]
+              :validate [#{"claude" "codex" "both"} "must be claude, codex, or both"]]
+             [nil "--uninstall" "Remove this installer's hooks (for both agents unless --agent is given)"]]
    :task (task! (papercuts-hooks/install! parsed))}
 
   papercuts-scan-codex
