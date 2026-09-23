@@ -187,12 +187,20 @@ Test note: the write path resolves personal-collection owners from the app DB; t
 
 ## Acceptance (record numbers here)
 
-- [ ] Full index of the dev instance: doc count ____, time ____, embedding provider ____, file size ____.
-- [ ] `stats`: `search_doc` count = `search_vec` count.
-- [ ] 5 paraphrase queries → expected entity in top 3: __/5.
-- [ ] Query latency: embedding ____ ms, knn ____ ms.
-- [ ] Reopen after REPL restart → `:existing`, no re-index.
-- [ ] Switch embedding model → `:recreated`.
+- [x] Full index of the dev instance: 64 docs, 1.2–1.6 s, ai-service `Snowflake/snowflake-arctic-embed-l-v2.0`
+      (1024 dims), file ~0.6–1.2 MB. Re-index with nothing changed: ~45 ms.
+- [x] `stats`: `search_doc` count = `search_vec` count.
+- [x] Paraphrase queries with **no word in common** with the target (walkthrough step 18, `paraphrase-check`):
+      8 queries → **5/8 rank 1, 7/8 in top 2, 8/8 in top 10**. The misses are near neighbours, not noise:
+      "Checkout funnel" behind "Checkout funnel - Modified"; "Content with cobwebs" behind "Custom reports";
+      REVIEWS table (#6) behind "Customer survey responses".
+- [x] Query latency: embedding ~200–290 ms, knn 0.3–7 ms.
+- [x] Reopen after REPL restart → `:existing`, no re-index.
+- [x] Switch embedding model → `:recreated`.
+
+**Note for PLAN_002:** correct paraphrase hits land at distance 0.55–0.84. pgvector's `max-cosine-distance`
+cutoff of 0.7 (`index.clj`) would drop 3 of the 8 targets above, so check that cutoff against this model
+before reusing it.
 
 ## Effort
 

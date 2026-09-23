@@ -1,18 +1,20 @@
 (ns dev.vec1-store
   "REPL walkthrough for the SQLite vec1 store as of PLAN_001 phase D (`native/vec1/PLAN_001_store.md`):
-  connection, schema and embedding-model check (steps 1-9), indexing (steps 10-14), querying (steps 15-17).
+  connection, schema and embedding-model check (steps 1-9), indexing (steps 10-14), querying (steps 15-18).
   Evaluate the numbered forms in the `comment` one at a time.
 
   Needs the vec1 binary for this machine (`resources/vec1/<platform>/`, see `native/vec1/README.md`) and, for
-  steps 7 and 10-17, a configured embedding provider.
+  steps 7 and 10-18, a configured embedding provider.
 
   vec1 bugs crash the JVM rather than throwing (`native/vec1/LIMITATION_001_update_crash.md`). Never
   `UPDATE search_vec`, and never select `distance` outside a KNN call (`search_vec(?, '{k: N}')`)."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.sqlite :as sqlite]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.util :as u]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -78,6 +80,30 @@
   "The main columns of the `search_doc` row for `model`/`id` via [[sqlite/get-doc]], or nil."
   [model id]
   (some-> (sqlite/get-doc model id) (select-keys [:id :model :model_id :name :archived :has-vector?])))
+
+(def ^:private stopwords
+  #{"a" "an" "and" "are" "by" "do" "does" "for" "how" "in" "is" "it" "of" "on" "or" "per" "the" "to" "what" "which"
+    "who" "with"})
+
+(defn- words [text]
+  (into #{} (comp (map u/lower-case-en) (remove stopwords)) (re-seq #"[\p{L}\p{N}]+" (or text ""))))
+
+(defn paraphrase-check
+  "For each `[model id query]`, search `query` and report where that doc ranks among the top `k` (nil = not found),
+  its distance, the top hit, and the words the query shares with the doc's embedded text (`:shared` should be empty
+  for a purely semantic match)."
+  [cases & {:keys [k] :or {k 10}}]
+  (vec (for [[model id query] cases
+             :let [target (sqlite/get-doc model id)
+                   rows   (:rows (sqlite/search-text query {:k k :record-tokens? false}))
+                   rank   (first (keep-indexed (fn [i r] (when (= [model (str id)] [(:model r) (:model_id r)]) (inc i)))
+                                               rows))]]
+         {:query    query
+          :target   (:name target)
+          :rank     rank
+          :distance (some-> rank dec rows :distance)
+          :top-hit  (when (not= 1 rank) (:name (first rows)))
+          :shared   (sort (set/intersection (words query) (words (:content target))))})))
 
 (comment
   ;; 1. where the extension comes from, and a clean slate
@@ -188,6 +214,19 @@
      :close-only    (run {:k 50 :max-distance 0.7})
      :no-models     (run {:models []})})
 
-  ;; 18. clean up -> the file is gone
+  ;; 18. end to end: real docs, queries sharing no words with them (:shared empty) -> each target ranks near the top.
+  ;;     Measured 2026-09-23 (ai-service arctic-embed): 5/8 rank 1, 7/8 top 2, 8/8 top 10. Swap in docs of your
+  ;;     own instance: (q ["SELECT model, model_id, name, content FROM search_doc"]) lists them.
+  (paraphrase-check
+   [["card" 2 "income across american regions"]
+    ["card" 3 "how happy are shoppers with each kind of merchandise"]
+    ["card" 21 "top items people purchase frequently"]
+    ["card" 30 "count of distinct shoppers for every calendar period"]
+    ["card" 6 "where do buyers drop off before paying"]
+    ["card" 34 "price reductions granted every three months"]
+    ["table" 4 "written opinions and star scores from shoppers"]
+    ["dashboard" 8 "stale reports nobody opens anymore"]])
+
+  ;; 19. clean up -> the file is gone
   (do (sqlite/delete-store! db-file)
       (.exists (java.io.File. db-file))))
