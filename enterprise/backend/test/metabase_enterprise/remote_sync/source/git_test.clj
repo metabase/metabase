@@ -803,3 +803,12 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :missing-branch (:error-type (ex-data e))))
           (is (= "branch-1" (:branch (ex-data e)))))))))
+
+(deftest repo-path-ignores-token-test
+  (testing "HACKRDE-25: rotating the token reuses the existing clone instead of cloning into a new directory"
+    ;; Credentials are passed per remote command, so the clone does not depend on the token.
+    (is (= (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-a"})
+           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token "token-b"})
+           (#'git/repo-path {:remote-url "https://example.com/org/repo.git" :token nil})))
+    (is (not= (#'git/repo-path {:remote-url "https://example.com/org/repo.git"})
+              (#'git/repo-path {:remote-url "https://example.com/org/other.git"})))))

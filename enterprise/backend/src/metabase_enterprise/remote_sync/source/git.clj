@@ -102,8 +102,11 @@
                                   git-source)
       (log/info "Successfully fetched repository"))))
 
-(defn- repo-path [{:keys [^String remote-url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path
+  "The local bare clone directory for `remote-url`. Keyed on the URL alone: credentials are passed to each remote
+  command, so rotating the token reuses the existing clone instead of cloning into (and leaking) a new directory."
+  [{:keys [^String remote-url]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> remote-url buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
