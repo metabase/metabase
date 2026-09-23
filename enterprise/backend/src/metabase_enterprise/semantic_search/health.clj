@@ -61,7 +61,8 @@
   ;; Active, not merely available: an available-but-inactive engine (another engine selected) has no index
   ;; by design, and must not read as a standing "No active semantic search index" incident. Active folds in
   ;; the license and kill switch, so a disabled instance neither records runs nor probes the embedder.
-  (when (semantic.util/semantic-search-active?)
+  (when (and (not (semantic.util/lucene-backend?))
+             (semantic.util/semantic-search-active?))
     ;; Acquire the datasource inside the try, so a malformed MB_PGVECTOR_DB_URL reads as degraded instead of
     ;; throwing out of the check.
     (let [active (try
@@ -149,7 +150,8 @@
 (defn- active-index*
   "The active semantic index and pgvector datasource, or nil when there is nothing applicable to measure."
   []
-  (when (semantic.util/semantic-search-active?)
+  (when (and (not (semantic.util/lucene-backend?))
+             (semantic.util/semantic-search-active?))
     (try
       (let [pgvector (semantic.env/get-pgvector-datasource!)
             state    (semantic.index-metadata/get-active-index-state pgvector (semantic.env/get-index-metadata))]

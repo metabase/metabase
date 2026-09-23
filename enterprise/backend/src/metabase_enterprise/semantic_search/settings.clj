@@ -132,6 +132,18 @@
   :visibility :internal
   :doc false)
 
+(defsetting semantic-search-backend
+  (deferred-tru
+   (str "Where semantic search keeps its vectors: `lucene` (an app-DB table materialized into a per-node "
+        "Apache Lucene index, which works on every app-DB type) or `pgvector` (a Postgres store, either "
+        "MB_PGVECTOR_DB_URL or a `semantic_search` schema in a Postgres app DB)."))
+  :type :keyword
+  :default :lucene
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc false)
+
 (defsetting semantic-search-results-limit
   (deferred-tru "Maximum number of results to return from a single semantic search query.")
   :type :integer

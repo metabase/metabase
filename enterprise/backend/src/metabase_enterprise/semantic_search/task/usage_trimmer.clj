@@ -33,7 +33,8 @@
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
-  (when (semantic.u/semantic-search-configured?)
+  ;; Available, not configured: the token-tracking table is in the app DB, so trimming applies to both backends.
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
                (jobs/with-identity trimmer-job-key))

@@ -26,15 +26,19 @@
     (lib-be/with-metadata-provider-cache
       (let [{:keys [index-id orphans snapshot-at]}
             (semantic-search.core/repair-index! (search.ingestion/searchable-documents))]
-        (semantic.health/report-repair-metrics! index-id {:orphan-count orphans
-                                                          :snapshot-at  snapshot-at})))
+        ;; The repair metrics read pgvector's index metadata, which the Lucene backend has none of.
+        (when-not (semantic.u/lucene-backend?)
+          (semantic.health/report-repair-metrics! index-id {:orphan-count orphans
+                                                            :snapshot-at  snapshot-at}))))
     (log/info "Completed semantic search index repair")
     (catch InterruptedException e
-      (semantic.health/report-repair-metrics! nil)
+      (when-not (semantic.u/lucene-backend?)
+        (semantic.health/report-repair-metrics! nil))
       (throw e))
     (catch Exception e
       ;; Invalidate the shared snapshot when the producing job fails.
-      (semantic.health/report-repair-metrics! nil)
+      (when-not (semantic.u/lucene-backend?)
+        (semantic.health/report-repair-metrics! nil))
       (log/errorf "Failed to complete semantic search index repair: %s" (ex-message e)))))
 
 (task/defjob ^{DisallowConcurrentExecution true
@@ -45,7 +49,8 @@
       (repair-index!))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
-  (when (semantic.u/semantic-search-configured?)
+  ;; Available, not configured: repair is the backfill for both backends, so it must schedule under Lucene too.
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexRepair)
                (jobs/with-identity repair-job-key))

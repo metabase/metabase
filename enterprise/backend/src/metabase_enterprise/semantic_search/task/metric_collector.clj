@@ -70,7 +70,8 @@
   (try
     ;; Active, not merely available: on an available-but-inactive instance the index tables never exist,
     ;; and the collectors would warn about them on every run.
-    (when (semantic.u/semantic-search-active?)
+    (when (and (not (semantic.u/lucene-backend?))
+               (semantic.u/semantic-search-active?))
       (let [pgvector (semantic.env/get-pgvector-datasource!)
             index-metadata (semantic.env/get-index-metadata)]
         (collect-gate-size! pgvector)

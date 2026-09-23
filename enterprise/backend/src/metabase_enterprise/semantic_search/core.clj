@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.lucene.core :as lucene.core]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
@@ -61,7 +62,8 @@
   No-ops when semantic search isn't active or this process already has a build running. Database-level
   coordination in [[semantic.pgvector-api/ensure-active-hnsw-index!]] serializes builds across instances."
   []
-  (when (and (semantic.util/semantic-search-active?)
+  (when (and (not (semantic.util/lucene-backend?))
+             (semantic.util/semantic-search-active?)
              (compare-and-set! hnsw-index-build-running? false true))
     (future
       (try
@@ -146,28 +148,32 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/debug "update-index! called prior to init!")
-      (semantic.pgvector-api/gate-updates!
-       pgvector
-       index-metadata
-       document-reducible))))
+  (if (semantic.util/lucene-backend?)
+    (lucene.core/update! document-reducible)
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        (log/debug "update-index! called prior to init!")
+        (semantic.pgvector-api/gate-updates!
+         pgvector
+         index-metadata
+         document-reducible)))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (if-not (index-active? pgvector index-metadata)
-      (log/debug "delete-from-index! called prior to init!")
-      (semantic.pgvector-api/gate-deletes!
-       pgvector
-       index-metadata
-       model
-       ids))))
+  (if (semantic.util/lucene-backend?)
+    (lucene.core/delete! model ids)
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (if-not (index-active? pgvector index-metadata)
+        (log/debug "delete-from-index! called prior to init!")
+        (semantic.pgvector-api/gate-deletes!
+         pgvector
+         index-metadata
+         model
+         ids)))))
 
 (defenterprise diagnose
   "Enterprise implementation of the semantic search engine-owned diagnostic stages."
@@ -187,19 +193,17 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents opts]
-  (let [pgvector        (semantic.env/get-pgvector-datasource!)
-        index-metadata  (semantic.env/get-index-metadata)
-        embedding-model (semantic.env/get-configured-embedding-model)]
-    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
-    (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
-    nil))
+  (if (semantic.util/lucene-backend?)
+    (lucene.core/init! searchable-documents opts)
+    (let [pgvector        (semantic.env/get-pgvector-datasource!)
+          index-metadata  (semantic.env/get-index-metadata)
+          embedding-model (semantic.env/get-configured-embedding-model)]
+      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model opts)
+      (semantic.pgvector-api/gate-updates! pgvector index-metadata searchable-documents)
+      nil)))
 
-(defenterprise repair-index!
-  "Brings the semantic search index into consistency with the provided document set.
-  Does not fully reinitialize the index, but will add missing documents and remove stale ones.
-  Returns the repaired index ID, its stale-orphan count, and the pgvector timestamp captured before reading
-  the canonical stream."
-  :feature :semantic-search
+(defn- pgvector-repair-index!
+  "Repair the pgvector semantic index: backfill missing documents, count stale orphans, replay lost deletes."
   [searchable-documents]
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.env/get-index-metadata)
@@ -251,6 +255,17 @@
             {:index-id       (-> active-state :metadata-row :id)
              :orphans        orphans
              :snapshot-at    snapshot-at}))))))
+
+(defenterprise repair-index!
+  "Brings the semantic search index into consistency with the provided document set.
+  Does not fully reinitialize the index, but will add missing documents and remove stale ones.
+  Returns the repaired index ID, its stale-orphan count, and the pgvector timestamp captured before reading
+  the canonical stream."
+  :feature :semantic-search
+  [searchable-documents]
+  (if (semantic.util/lucene-backend?)
+    (lucene.core/repair! searchable-documents)
+    (pgvector-repair-index! searchable-documents)))
 
 (comment
   (update-index! [{:model "card"

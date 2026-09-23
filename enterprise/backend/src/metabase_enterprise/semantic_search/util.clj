@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.engine :as search.engine]
@@ -109,10 +110,17 @@
   [pgvector index-name]
   (contains? #{nil :invalid} (index-state pgvector index-name)))
 
+(defn lucene-backend?
+  "Whether semantic search stores its vectors in the app DB plus a per-node Lucene index, rather than pgvector.
+  Everything pgvector-only -- its Quartz jobs, health checks and store probes -- must stay off when this is true."
+  []
+  (= :lucene (semantic.settings/semantic-search-backend)))
+
 (defn semantic-search-configured?
-  "Whether to schedule the semantic-search Quartz jobs at startup.
-  True when the `:semantic-search` feature is present and a pgvector store might exist: a dedicated
-  MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-available?]] can probe to answer for sure.
+  "Whether to schedule the pgvector semantic-search Quartz jobs at startup.
+  True when the `:semantic-search` feature is present, the pgvector backend is selected, and a pgvector store
+  might exist: a dedicated MB_PGVECTOR_DB_URL, or a Postgres app DB that [[semantic-search-available?]] can
+  probe to answer for sure.
   Cheap and infallible by contract -- it runs at boot and never queries the DB."
   []
   ;; The license is in this boot gate, not only the per-execution gates, so an unlicensed instance's
@@ -120,17 +128,20 @@
   ;; the scheduled jobs no-op via semantic-search-active?, but adding it needs a restart before they
   ;; schedule. Engine activity stays per-execution so it never needs one.
   (and (premium-features/has-feature? :semantic-search)
+       (not (lucene-backend?))
        (or (semantic.db.datasource/dedicated-url-configured?)
            (= :postgres (mdb/db-type)))))
 
 (defn semantic-search-available?
-  "Does this instance have the infrastructure for semantic search: the premium feature and a pgvector DB.
+  "Does this instance have the infrastructure for semantic search: the premium feature and somewhere to keep
+  vectors -- the app DB under the Lucene backend, a pgvector DB otherwise.
   Engine selection and hygiene tasks key off this."
   []
   ;; Feature first: the pgvector check may probe the app DB, and instances that can't use the answer
   ;; must never probe.
   (and (premium-features/has-feature? :semantic-search)
-       (semantic.db.datasource/pgvector-configured?)))
+       (or (lucene-backend?)
+           (semantic.db.datasource/pgvector-configured?))))
 
 (defn semantic-search-active?
   "Is the semantic index being maintained on this instance?
