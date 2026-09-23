@@ -21,8 +21,9 @@ off the public internet.
 The schema and the reasons for it are in
 [`slop/chris/reports/schema.server.final.md`](slop/chris/reports/schema.server.final.md).
 Schema version 3 renames issues to papercuts and adds the merge, history and
-reporter fields described below. The server migrates an older database in place
-when it starts.
+reporter fields described below. Schema version 4 adds each report's git branch
+and commit. Schema version 5 adds owner, severity, readiness assessments and fix
+dispatches. The server migrates an older database in place when it starts.
 
 ## Reporting
 
@@ -57,6 +58,11 @@ curl -sS http://127.0.0.1:8765/api/reports \
   `flaky-test`, `tooling`, `documentation` or `other`. A papercut takes the first
   category a report sends and stays unclassified until then. Later guesses are
   shown as votes.
+- **Owner and severity:** `owner` says where the fix would go: `repo-code`,
+  `repo-tooling`, `personal-tooling`, `third-party`, `harness` or `agent-practice`.
+  `severity` is `low`, `medium` or `high`. Either may be sent top-level, or inside
+  the transcript scanner's `details`, where an unknown value is ignored. As with
+  category, the first report that sends one sets the papercut's value.
 - **Other fields** are kept in the report's stored request body, and named in the
   response's `extra_fields` so a reporter can spot a misspelled field.
 
@@ -85,7 +91,7 @@ curl -sS 'http://127.0.0.1:8765/api/papercuts/1?reports_limit=10'
   `merged_into`.
 
 A papercut's detail includes its fingerprints, category votes, the latest reports,
-related papercuts and its history. Asking for a merged papercut redirects to the one
+related papercuts, its history, its latest readiness assessment and its dispatches. Asking for a merged papercut redirects to the one
 it was merged into.
 
 `GET /api/issues` is the old list route, kept for the transcript scanner in
@@ -118,6 +124,44 @@ curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/comments -H 'Content-Type
   when a papercut is created, merged into, or has its title or description edited.
   A rejected pair is never suggested again.
 
+PATCH also accepts `owner` and `severity`, or null for either.
+
+## Assessment and dispatch
+
+A dispatcher assesses whether a papercut is ready to be fixed, and then runs a fix
+for it. See [`papercuts/plan.md`](../papercuts/plan.md).
+
+```sh
+# Record a readiness assessment: not_ready, ready or needs_human
+curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/assessments -H 'Content-Type: application/json' \
+  -d '{"verdict":"ready","evidence_score":0.8,"fixability_score":2.6,"fixability_confidence":0.9,
+       "inputs":{"reporter_count":3},"model":"jev-1.13.0","reason":"Three reporters; local change","actor":"dispatcher"}'
+# Claim an open papercut: 201, or 409 when it isn't open or a dispatch is in progress
+curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/dispatch -H 'Content-Type: application/json' \
+  -d '{"actor":"dispatcher","assessment_id":1}'
+# Move a dispatch forward and record links
+curl -sS -X PATCH http://127.0.0.1:8765/api/dispatches/1 -H 'Content-Type: application/json' \
+  -d '{"state":"linear_created","linear_issue_id":"HACK-12","linear_url":"https://linear.app/metabase/issue/HACK-12"}'
+curl -sS 'http://127.0.0.1:8765/api/dispatches?state=active'
+```
+
+- **Assessments** are all kept. Only a change of verdict is recorded as an event,
+  so re-assessing a papercut whose verdict holds does not put it back in the
+  `since` feed.
+- **A claim** moves the papercut to `investigating`. Each papercut has at most one
+  dispatch in progress, and concurrent claims start only one.
+- **Dispatch states** only move forward: `claimed` → `linear_created` → `running`
+  → one of `pr_opened`, `already_fixed`, `needs_human`, `not_reproducible` or
+  `failed`. An active dispatch can also go straight to `failed`. Resending the
+  current state does nothing. Links (`linear_issue_id`, `linear_url`, `branch`,
+  `pr_url`, `run_log`) and `cost_usd` can be updated at any time.
+- **A finished dispatch hands the papercut back:** `already_fixed` resolves it,
+  `pr_opened` leaves it `investigating` for a human to take over, and the other
+  outcomes reopen it. Nothing changes when someone has already moved the papercut
+  out of `investigating`.
+- **Merging** moves an active dispatch to the target. It is refused when both
+  papercuts have a dispatch in progress.
+
 Errors are JSON: 400 for bad input, 401 for a missing token, 404, 409 for conflicts
 such as editing a merged papercut, 503 when the database is busy, and 500 otherwise.
 
@@ -138,5 +182,6 @@ papercut was hit. The report's `reporter` and `agent` come from the file's
 file name, and `observed_at` is the occurrence date. Writeups marked `fixed` or
 `wontfix` are imported, then set to `resolved` or `wontfix`. Each slug in a writeup's
 `merged_from` becomes another fingerprint of its papercut; a papercut already created
-under that slug is merged in. Stable report IDs make repeat imports a no-op. The
+under that slug is merged in. A Claude writeup's `severity` is sent as the report's
+severity. Stable report IDs make repeat imports a no-op. The
 importer sends `PAPERCUTS_TOKEN` when it is set.

@@ -24,8 +24,24 @@ STATUSES = ("open", "investigating", "resolved", "wontfix")
 V2_RELATION_SOURCES = ("suggested", "manual")
 # A rejected relation is hidden, and stops the pair from being suggested again.
 RELATION_SOURCES = ("suggested", "manual", "rejected")
-EVENT_KINDS = ("status", "category", "title", "description", "path", "area", "reopened", "merged", "absorbed",
-               "related", "unrelated", "fingerprint", "comment")
+V3_EVENT_KINDS = ("status", "category", "title", "description", "path", "area", "reopened", "merged", "absorbed",
+                  "related", "unrelated", "fingerprint", "comment")
+EVENT_KINDS = (*V3_EVENT_KINDS, "owner", "severity", "assessed", "dispatched", "dispatch_updated")
+# Where a papercut's fix would go, and how bad it is: the transcript scanner's values (mage/src/mage/papercuts/drill.clj).
+OWNERS = ("repo-code", "repo-tooling", "personal-tooling", "third-party", "harness", "agent-practice")
+SEVERITIES = ("low", "medium", "high")
+VERDICTS = ("not_ready", "ready", "needs_human")
+ACTIVE_DISPATCH_STATES = ("claimed", "linear_created", "running")
+FINAL_DISPATCH_STATES = ("pr_opened", "already_fixed", "needs_human", "not_reproducible", "failed")
+DISPATCH_STATES = (*ACTIVE_DISPATCH_STATES, *FINAL_DISPATCH_STATES)
+DISPATCH_TRANSITIONS = {
+    "claimed": {"linear_created", "failed"},
+    "linear_created": {"running", "failed"},
+    "running": set(FINAL_DISPATCH_STATES),
+}
+# The papercut status a final dispatch state leaves behind, applied only while the papercut is still `investigating`.
+STATUS_AFTER_DISPATCH = {"already_fixed": "resolved", "needs_human": "open", "not_reproducible": "open", "failed": "open"}
+DISPATCH_FIELDS = ("linear_issue_id", "linear_url", "branch", "pr_url", "run_log")
 SORTS = {
     "recent": "p.last_seen DESC, p.id DESC",
     "oldest": "p.first_seen ASC, p.id ASC",
@@ -38,7 +54,7 @@ SORTS = {
 # so a reporter can spot a misspelled field.
 REPORT_FIELDS = {"repository", "reporter", "machine_id", "machine", "report_id", "fingerprint", "category", "title",
                  "description", "path", "area", "agent", "session", "cost_minutes", "observed_at", "source_type",
-                 "source_ref", "branch", "commit_sha", "commit_source", "repository_url"}
+                 "source_ref", "branch", "commit_sha", "commit_source", "repository_url", "owner", "severity"}
 # How a reporter knows the commit a papercut was hit on. Anything but `exact` is reconstructed after the fact:
 # from the branch reflog at the observed time, the last commit on the branch before it, or the commit the
 # session started on.
@@ -160,6 +176,32 @@ def int_param(params, key, default, low, high=None):
     if not re.fullmatch(r"\d+", str(value)) or int(value) < low or (high is not None and int(value) > high):
         raise ValueError(f"{key} must be an integer from {low}{f' to {high}' if high is not None else ' up'}")
     return int(value)
+
+
+def detail_field(payload, key, values):
+    """A report's `key`: top-level, where a bad value is an error, or else from the transcript scanner's free-form
+    `details`, where a bad value is ignored."""
+    if payload.get(key) is not None:
+        if payload[key] not in values:
+            raise ValueError(f"{key} must be one of: {', '.join(values)}")
+        return payload[key]
+    details = payload.get("details")
+    value = details.get(key) if isinstance(details, dict) else None
+    return value if value in values else None
+
+
+def number_field(payload, key, low=None, high=None):
+    value = payload.get(key)
+    if value is None:
+        return None
+    if type(value) not in (int, float) or (low is not None and value < low) or (high is not None and value > high):
+        raise ValueError(f"{key} must be a number" + (f" from {low}" if low is not None else "")
+                         + (f" to {high}" if high is not None else ""))
+    return value
+
+
+def assessment_json(row):
+    return dict(row) | {"inputs": json.loads(row["inputs"]) if row["inputs"] else None}
 
 
 def actor_of(payload):
@@ -389,7 +431,7 @@ SCHEMA_V3 = f"""
         papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
         at TEXT NOT NULL,
         actor TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ({one_of(EVENT_KINDS)})),
+        kind TEXT NOT NULL CHECK (kind IN ({one_of(V3_EVENT_KINDS)})),
         old_value TEXT,
         new_value TEXT,
         body TEXT
@@ -477,8 +519,79 @@ def migrate_to_v4(db):
                        (*git.values(), row["id"]))
 
 
+SCHEMA_V5 = f"""
+    ALTER TABLE papercuts ADD COLUMN owner TEXT CHECK (owner IN ({one_of(OWNERS)}));
+    ALTER TABLE papercuts ADD COLUMN severity TEXT CHECK (severity IN ({one_of(SEVERITIES)}));
+    CREATE TABLE events (
+        id INTEGER PRIMARY KEY,
+        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+        at TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ({one_of(EVENT_KINDS)})),
+        old_value TEXT,
+        new_value TEXT,
+        body TEXT
+    );
+    CREATE INDEX events_papercut ON events (papercut_id);
+    CREATE TABLE assessments (
+        id INTEGER PRIMARY KEY,
+        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+        at TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        verdict TEXT NOT NULL CHECK (verdict IN ({one_of(VERDICTS)})),
+        evidence_score REAL,
+        fixability_score REAL,
+        fixability_confidence REAL,
+        inputs TEXT,
+        model TEXT,
+        reason TEXT
+    );
+    CREATE INDEX assessments_papercut ON assessments (papercut_id);
+    CREATE TABLE dispatches (
+        id INTEGER PRIMARY KEY,
+        papercut_id INTEGER NOT NULL REFERENCES papercuts (id),
+        assessment_id INTEGER REFERENCES assessments (id),
+        state TEXT NOT NULL CHECK (state IN ({one_of(DISPATCH_STATES)})),
+        actor TEXT NOT NULL,
+        linear_issue_id TEXT,
+        linear_url TEXT,
+        branch TEXT,
+        pr_url TEXT,
+        run_log TEXT,
+        cost_usd REAL CHECK (cost_usd >= 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX dispatches_active ON dispatches (papercut_id) WHERE state IN ({one_of(ACTIVE_DISPATCH_STATES)});
+    CREATE INDEX dispatches_state ON dispatches (state)
+"""
+
+
+def first_detail(field, values):
+    """SQL for the earliest report's `field`, sent top-level or in the transcript scanner's `details`."""
+    return f"""(SELECT COALESCE(json_extract(r.payload, '$.{field}'), json_extract(r.payload, '$.details.{field}'))
+                FROM reports r WHERE r.papercut_id = p.id
+                AND COALESCE(json_extract(r.payload, '$.{field}'), json_extract(r.payload, '$.details.{field}'))
+                    IN ({one_of(values)})
+                ORDER BY COALESCE(r.observed_at, r.received_at), r.id LIMIT 1)"""
+
+
+def migrate_to_v5(db):
+    """Add owner and severity, assessments and dispatches, and the event kinds that record them.
+
+    Owner and severity are backfilled from the earliest report whose stored request body carries a valid value.
+    """
+    db.execute("DROP INDEX events_papercut")
+    db.execute("ALTER TABLE events RENAME TO v4_events")
+    run_script(db, SCHEMA_V5)
+    db.execute("INSERT INTO events SELECT * FROM v4_events")
+    db.execute("DROP TABLE v4_events")
+    db.execute(f"UPDATE papercuts AS p SET owner = {first_detail('owner', OWNERS)}, "
+               f"severity = {first_detail('severity', SEVERITIES)}")
+
+
 # Each entry upgrades the database by one `user_version`.
-MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4)
+MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COALESCE(SUM(cost_minutes), 0) AS cost_minutes
@@ -558,6 +671,7 @@ class Store:
         submitted_category = text_field(payload, "category") or None
         if submitted_category and submitted_category not in CATEGORIES:
             raise ValueError(f"category must be one of: {', '.join(CATEGORIES)}")
+        owner, severity = (detail_field(payload, key, values) for key, values in (("owner", OWNERS), ("severity", SEVERITIES)))
         cost = payload.get("cost_minutes")
         if cost is not None and (type(cost) not in (int, float) or not 0 <= cost <= 100_000):
             raise ValueError("cost_minutes must be a number from 0 to 100000")
@@ -586,10 +700,10 @@ class Store:
             created, reopened = routed is None, False
             if created:
                 papercut_id = db.execute(
-                    """INSERT INTO papercuts (repository, title, description, path, area, category,
+                    """INSERT INTO papercuts (repository, title, description, path, area, category, owner, severity,
                                               first_seen, last_seen, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (repository, title, description, path, area, submitted_category, seen, seen, stamp),
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (repository, title, description, path, area, submitted_category, owner, severity, seen, seen, stamp),
                 ).lastrowid
                 db.execute("INSERT INTO papercut_fingerprints (repository, fingerprint, papercut_id) VALUES (?, ?, ?)",
                            (repository, fingerprint, papercut_id))
@@ -601,8 +715,9 @@ class Store:
                 reopened = papercut["status"] == "resolved" and (observed_at or stamp) > (papercut["status_changed_at"] or "")
                 db.execute(
                     """UPDATE papercuts SET first_seen = MIN(first_seen, ?), last_seen = MAX(last_seen, ?),
-                              category = COALESCE(category, ?), updated_at = ? WHERE id = ?""",
-                    (seen, seen, submitted_category, stamp, papercut_id),
+                              category = COALESCE(category, ?), owner = COALESCE(owner, ?),
+                              severity = COALESCE(severity, ?), updated_at = ? WHERE id = ?""",
+                    (seen, seen, submitted_category, owner, severity, stamp, papercut_id),
                 )
             report_row = db.execute(
                 """INSERT INTO reports
@@ -738,6 +853,11 @@ class Store:
             )]
             papercut["events"] = [dict(r) for r in db.execute(
                 "SELECT * FROM events WHERE papercut_id = ? ORDER BY id", (papercut_id,))]
+            latest = db.execute("SELECT * FROM assessments WHERE papercut_id = ? ORDER BY id DESC LIMIT 1",
+                                (papercut_id,)).fetchone()
+            papercut["assessment"] = assessment_json(latest) if latest else None
+            papercut["dispatches"] = [dict(r) for r in db.execute(
+                "SELECT * FROM dispatches WHERE papercut_id = ? ORDER BY id DESC", (papercut_id,))]
             return papercut
 
     # --- triage ---
@@ -770,14 +890,15 @@ class Store:
         return True
 
     def update_papercut(self, papercut_id, changes):
-        editable = {"status", "category", "title", "description", "path", "area"}
+        editable = {"status", "category", "owner", "severity", "title", "description", "path", "area"}
         if not isinstance(changes, dict) or not set(changes) & editable or set(changes) - editable - {"actor", "reason"}:
             raise ValueError(f"Send at least one of: {', '.join(sorted(editable))}; optionally actor and reason")
         if "status" in changes and changes["status"] not in STATUSES:
             raise ValueError(f"status must be one of: {', '.join(STATUSES)}")
-        # A null category sends the papercut back to unclassified.
-        if "category" in changes and changes["category"] is not None and changes["category"] not in CATEGORIES:
-            raise ValueError(f"category must be null or one of: {', '.join(CATEGORIES)}")
+        # A null category, owner or severity sends the papercut back to unknown.
+        for key, values in (("category", CATEGORIES), ("owner", OWNERS), ("severity", SEVERITIES)):
+            if key in changes and changes[key] is not None and changes[key] not in values:
+                raise ValueError(f"{key} must be null or one of: {', '.join(values)}")
         for key in ("title", "description", "path", "area"):
             if key in changes:
                 text_field(changes, key, required=key == "title")
@@ -838,8 +959,13 @@ class Store:
             target = self._live(db, target_id)
             if source["repository"] != target["repository"]:
                 raise ValueError("Merged papercuts must be in the same repository")
+            if all(self._active_dispatch(db, papercut_id) for papercut_id in (source_id, target_id)):
+                raise ConflictError(f"Papercuts {source_id} and {target_id} both have a dispatch in progress")
             at = precise_now()
             db.execute("UPDATE reports SET papercut_id = ? WHERE papercut_id = ?", (target_id, source_id))
+            # An agent already working on the source is now working on the target.
+            db.execute(f"UPDATE dispatches SET papercut_id = ? WHERE papercut_id = ? AND state IN ({one_of(ACTIVE_DISPATCH_STATES)})",
+                       (target_id, source_id))
             db.execute("UPDATE papercut_fingerprints SET papercut_id = ? WHERE papercut_id = ?", (target_id, source_id))
             self._move_relations(db, source_id, target_id, at)
             if (source["status"], source["category"]) != (target["status"], target["category"]):
@@ -933,6 +1059,135 @@ class Store:
             for one, two in ((papercut_id, other_id), (other_id, papercut_id)):
                 self._event(db, one, kind, actor_of(payload), at, new=two)
         return self.get_papercut(papercut_id)
+
+    # --- assessment and dispatch ---
+
+    def assess(self, papercut_id, payload):
+        """Record a readiness assessment. Only a change of verdict is an event, so re-assessing a papercut whose
+        verdict holds does not put it back in the change feed."""
+        fields = {"verdict", "evidence_score", "fixability_score", "fixability_confidence", "inputs", "model",
+                  "reason", "actor"}
+        if not isinstance(payload, dict) or set(payload) - fields:
+            raise ValueError(f"Send verdict and optionally: {', '.join(sorted(fields - {'verdict'}))}")
+        if payload.get("verdict") not in VERDICTS:
+            raise ValueError(f"verdict must be one of: {', '.join(VERDICTS)}")
+        scores = {key: number_field(payload, key) for key in ("evidence_score", "fixability_score")}
+        confidence = number_field(payload, "fixability_confidence", 0, 1)
+        inputs = payload.get("inputs")
+        if inputs is not None and not isinstance(inputs, dict):
+            raise ValueError("inputs must be an object")
+        model, reason, actor = text_field(payload, "model"), text_field(payload, "reason"), actor_of(payload)
+        with self.connect(write=True) as db:
+            self._live(db, papercut_id)
+            previous = db.execute("SELECT verdict FROM assessments WHERE papercut_id = ? ORDER BY id DESC LIMIT 1",
+                                  (papercut_id,)).fetchone()
+            at = precise_now()
+            row_id = db.execute(
+                """INSERT INTO assessments (papercut_id, at, actor, verdict, evidence_score, fixability_score,
+                                            fixability_confidence, inputs, model, reason)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (papercut_id, at, actor, payload["verdict"], scores["evidence_score"], scores["fixability_score"],
+                 confidence, None if inputs is None else json.dumps(inputs), model, reason),
+            ).lastrowid
+            if previous is None or previous["verdict"] != payload["verdict"]:
+                self._event(db, papercut_id, "assessed", actor, at,
+                            old=previous["verdict"] if previous else None, new=payload["verdict"], body=reason)
+            return assessment_json(db.execute("SELECT * FROM assessments WHERE id = ?", (row_id,)).fetchone())
+
+    @staticmethod
+    def _active_dispatch(db, papercut_id):
+        return db.execute(f"SELECT * FROM dispatches WHERE papercut_id = ? AND state IN ({one_of(ACTIVE_DISPATCH_STATES)})",
+                          (papercut_id,)).fetchone()
+
+    def claim(self, papercut_id, payload):
+        """Start a dispatch on an open papercut, which moves it to `investigating`. At most one dispatch per papercut
+        is in progress."""
+        if not isinstance(payload, dict) or set(payload) - {"actor", "reason", "assessment_id"}:
+            raise ValueError("Send optionally actor, reason and assessment_id")
+        assessment_id = payload.get("assessment_id")
+        if assessment_id is not None and type(assessment_id) is not int:
+            raise ValueError("assessment_id must be an integer")
+        actor, reason = actor_of(payload), text_field(payload, "reason")
+        with self.connect(write=True) as db:
+            papercut = self._live(db, papercut_id)
+            if active := self._active_dispatch(db, papercut_id):
+                raise ConflictError(f"Papercut {papercut_id} already has dispatch {active['id']} in progress")
+            if papercut["status"] != "open":
+                raise ConflictError(f"Papercut {papercut_id} is {papercut['status']}; only open papercuts are dispatched")
+            if assessment_id is not None and not db.execute(
+                    "SELECT 1 FROM assessments WHERE id = ? AND papercut_id = ?", (assessment_id, papercut_id)).fetchone():
+                raise ValueError(f"Assessment {assessment_id} is not an assessment of papercut {papercut_id}")
+            at = precise_now()
+            dispatch_id = db.execute(
+                """INSERT INTO dispatches (papercut_id, assessment_id, state, actor, created_at, updated_at)
+                   VALUES (?, ?, 'claimed', ?, ?, ?)""",
+                (papercut_id, assessment_id, actor, at, at),
+            ).lastrowid
+            self._event(db, papercut_id, "dispatched", actor, at, new=dispatch_id, body=reason)
+            self._set(db, papercut_id, "status", "investigating", actor, at, body=f"Dispatch {dispatch_id}")
+            return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
+
+    def update_dispatch(self, dispatch_id, payload):
+        """Move a dispatch forward and record its links. A final state hands the papercut back: `already_fixed`
+        resolves it, and the other outcomes except `pr_opened` reopen it, unless someone has already changed its status."""
+        fields = {"state", *DISPATCH_FIELDS, "cost_usd", "actor", "reason"}
+        if not isinstance(payload, dict) or not set(payload) & (fields - {"actor", "reason"}) or set(payload) - fields:
+            raise ValueError(f"Send at least one of: {', '.join(sorted(fields - {'actor', 'reason'}))}; "
+                             "optionally actor and reason")
+        links = {key: text_field(payload, key) for key in DISPATCH_FIELDS if key in payload}
+        cost_usd = number_field(payload, "cost_usd", 0)
+        actor, reason, state = actor_of(payload), text_field(payload, "reason"), payload.get("state")
+        with self.connect(write=True) as db:
+            dispatch = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
+            if dispatch is None:
+                raise NotFound(f"Dispatch {dispatch_id} not found")
+            if state is not None and state != dispatch["state"]:
+                if state not in DISPATCH_STATES:
+                    raise ValueError(f"state must be one of: {', '.join(DISPATCH_STATES)}")
+                if state not in DISPATCH_TRANSITIONS.get(dispatch["state"], ()):
+                    raise ValueError(f"Dispatch {dispatch_id} cannot move from {dispatch['state']} to {state}")
+            else:
+                state = dispatch["state"]
+            changes = {**links, **({"cost_usd": cost_usd} if "cost_usd" in payload else {})}
+            changed = {key: value for key, value in changes.items() if dispatch[key] != value}
+            if state == dispatch["state"] and not changed:
+                return dict(dispatch)
+            at = precise_now()
+            assignments = ", ".join(f"{key} = ?" for key in ("state", *changed, "updated_at"))
+            db.execute(f"UPDATE dispatches SET {assignments} WHERE id = ?", (state, *changed.values(), at, dispatch_id))
+            papercut_id = dispatch["papercut_id"]
+            details = "; ".join(f"{key}: {value}" for key, value in changed.items())
+            self._event(db, papercut_id, "dispatch_updated", actor, at, old=dispatch["state"], new=state,
+                        body="\n".join(part for part in (reason, details) if part) or None)
+            status = db.execute("SELECT status FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()["status"]
+            if state != dispatch["state"] and state in STATUS_AFTER_DISPATCH and status == "investigating":
+                self._set(db, papercut_id, "status", STATUS_AFTER_DISPATCH[state], actor, at,
+                          body=f"Dispatch {dispatch_id}: {state}")
+            return dict(db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone())
+
+    def get_dispatch(self, dispatch_id):
+        with self.connect() as db:
+            row = db.execute("SELECT * FROM dispatches WHERE id = ?", (dispatch_id,)).fetchone()
+        if row is None:
+            raise NotFound(f"Dispatch {dispatch_id} not found")
+        return dict(row)
+
+    def list_dispatches(self, filters=None):
+        filters = filters or {}
+        clauses, params = [], []
+        if state := filters.get("state"):
+            if state == "active":
+                clauses.append(f"d.state IN ({one_of(ACTIVE_DISPATCH_STATES)})")
+            elif state in DISPATCH_STATES:
+                clauses.append("d.state = ?")
+                params.append(state)
+            else:
+                raise ValueError(f"state must be active or one of: {', '.join(DISPATCH_STATES)}")
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        with self.connect() as db:
+            return [dict(r) for r in db.execute(
+                f"""SELECT d.*, p.title, p.repository FROM dispatches d JOIN papercuts p ON p.id = d.papercut_id
+                    {where} ORDER BY d.id DESC""", params)]
 
 
 STYLE = """<style>
@@ -1120,14 +1375,34 @@ def papercut_html(papercut):
     ) or "<li>None yet</li>"
     history = "".join(
         f"<li><span class='muted'>{esc(e['at'][:19])} {esc(e['actor'])}</span> {esc(e['kind'])}"
-        f"{': ' + esc(e['old_value'] or '∅') + ' → ' + esc(e['new_value'] or '∅') if e['kind'] in ('status', 'category', 'reopened') else ''}"
-        f"{' #' + esc(e['new_value']) if e['kind'] in ('merged', 'absorbed', 'related', 'unrelated') else ''}"
+        f"{': ' + esc(e['old_value'] or '∅') + ' → ' + esc(e['new_value'] or '∅') if e['kind'] in ('status', 'category', 'owner', 'severity', 'reopened', 'assessed', 'dispatch_updated') else ''}"
+        f"{' #' + esc(e['new_value']) if e['kind'] in ('merged', 'absorbed', 'related', 'unrelated', 'dispatched') else ''}"
         f"{'<pre>' + esc(e['body']) + '</pre>' if e['body'] else ''}</li>"
         for e in papercut["events"]
     ) or "<li>No triage yet</li>"
     votes = ", ".join(f"{esc(category)} ×{count}" for category, count in papercut["category_votes"].items())
+    assessment = papercut["assessment"]
+    readiness = (f"<h3>Readiness</h3><p>{pill(assessment['verdict'])}"
+                 + "".join(f" {label} {assessment[key]:.2f}" for key, label in (
+                     ("evidence_score", "evidence"), ("fixability_score", "fixability"),
+                     ("fixability_confidence", "confidence")) if assessment[key] is not None)
+                 + f" <span class='muted'>{esc(assessment['at'][:19])} {esc(assessment['actor'])}"
+                 f"{' · ' + esc(assessment['model']) if assessment['model'] else ''}</span></p>"
+                 f"{'<pre>' + esc(assessment['reason']) + '</pre>' if assessment['reason'] else ''}") if assessment else ""
+    def link(url, text):
+        return f"<a href='{esc(url, quote=True)}'>{esc(text)}</a>" if url and url.startswith("https://") else esc(text or "")
+
+    dispatches = "".join(
+        f"<li>#{d['id']} {pill(d['state'])}<span class='muted'>{esc(d['updated_at'][:19])} {esc(d['actor'])}</span>"
+        f"{' · ' + link(d['linear_url'], d['linear_issue_id'] or 'Linear') if d['linear_url'] or d['linear_issue_id'] else ''}"
+        f"{' · ' + link(d['pr_url'], 'PR') if d['pr_url'] else ''}"
+        f"{' · ' + esc(d['branch']) if d['branch'] else ''}</li>"
+        for d in papercut["dispatches"]
+    )
     body = (f"<h2>#{papercut['id']} {esc(papercut['title'])}</h2>"
-            f"<p>{pill(papercut['category'] or 'unclassified')}{pill(papercut['status'])} "
+            f"<p>{pill(papercut['category'] or 'unclassified')}{pill(papercut['status'])}"
+            f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}"
+            f"{pill('severity: ' + papercut['severity']) if papercut['severity'] else ''} "
             f"{papercut['report_count']} reports from {papercut['reporter_count']} reporters"
             f"{cost(papercut['cost_minutes'])}</p>"
             f"{pr_control(papercut)}"
@@ -1136,6 +1411,7 @@ def papercut_html(papercut):
             f"First seen {esc(papercut['first_seen'])}; last seen {esc(papercut['last_seen'])}"
             f"{'<br>Reporters suggested: ' + votes if votes else ''}</p>"
             f"<div class='card'><pre>{linked(papercut['description'])}</pre></div>"
+            f"{readiness}{'<h3>Dispatches</h3><ul>' + dispatches + '</ul>' if dispatches else ''}"
             f"<h3>Related papercuts</h3><ul>{related}</ul><h3>History</h3><ul>{history}</ul>"
             f"<h3>Reports</h3>{reports}")
     return page(papercut["title"], body)
@@ -1190,7 +1466,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
-        papercut = re.fullmatch(r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints)(?:/(\d+))?)?", path)
+        papercut = re.fullmatch(
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch)(?:/(\d+))?)?", path)
+        dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
         command = self.command
 
@@ -1223,10 +1501,21 @@ class Handler(BaseHTTPRequestHandler):
                                                                          self.input_json(optional=True)),
                 ("POST", "fingerprints", False): lambda: self.store.add_fingerprint(papercut_id, self.input_json()),
             }
-            if command == "POST" and action == "comments" and not other:
-                return self.respond(201, self.store.comment(papercut_id, self.input_json()))
+            created = {
+                "comments": lambda: self.store.comment(papercut_id, self.input_json()),
+                "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
+                "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True)),
+            }
+            if command == "POST" and action in created and not other:
+                return self.respond(201, created[action]())
             if handler := handlers.get((command, action, bool(other))):
                 return self.respond(200, handler())
+        if command == "GET" and path == "/api/dispatches":
+            return self.respond(200, self.store.list_dispatches(params))
+        if dispatch and command == "GET":
+            return self.respond(200, self.store.get_dispatch(int(dispatch[1])))
+        if dispatch and command == "PATCH":
+            return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
             return self.respond(200, papercut_list_html(self.store.list_papercuts(params), params), "text/html")
         if command == "GET" and html_match:

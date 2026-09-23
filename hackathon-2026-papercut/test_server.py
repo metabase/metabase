@@ -127,6 +127,16 @@ class IngestTest(StoreCase):
         self.assertEqual((papercut["category"], papercut["category_votes"]),
                          ("tooling", {"documentation": 2, "tooling": 1}))
 
+    def test_owner_and_severity_come_from_the_first_report_that_sends_them(self):
+        papercut_id = self.store.ingest(self.sample)["papercut"]["id"]
+        self.report(details={"owner": "repo-tooling", "severity": "urgent"})
+        self.report(owner="third-party", severity="high")
+        papercut = self.store.get_papercut(papercut_id)
+        self.assertEqual((papercut["owner"], papercut["severity"]), ("repo-tooling", "high"))
+        for key in ("owner", "severity"):
+            with self.subTest(key), self.assertRaisesRegex(ValueError, f"{key} must be one of"):
+                self.report(**{key: "someone"})
+
     def test_replay_with_changed_fingerprint_conflicts(self):
         self.store.ingest(self.sample)
         self.assertTrue(self.store.ingest({**self.sample, "description": "Edited later"})["replay"])
@@ -333,6 +343,149 @@ class MergeTest(StoreCase):
         self.assertEqual(changed, {a: None, b: a})
 
 
+class AssessmentTest(StoreCase):
+    def test_only_a_changed_verdict_is_an_event(self):
+        papercut_id = self.papercut("Trap")
+        first = self.store.assess(papercut_id, {"verdict": "not_ready", "evidence_score": 0.2, "actor": "dispatcher",
+                                                "inputs": {"report_count": 1}, "model": "jev-1.13.0"})
+        self.assertEqual((first["verdict"], first["inputs"], first["model"]), ("not_ready", {"report_count": 1}, "jev-1.13.0"))
+        cursor = self.store.list_papercuts()["cursor"]
+        self.store.assess(papercut_id, {"verdict": "not_ready", "evidence_score": 0.3})
+        self.assertEqual(self.store.list_papercuts({"since": cursor})["papercuts"], [])
+        self.store.assess(papercut_id, {"verdict": "ready", "fixability_score": 2.4, "fixability_confidence": 0.8,
+                                        "reason": "Three reporters; small local change"})
+        self.assertEqual([p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]], [papercut_id])
+        papercut = self.store.get_papercut(papercut_id)
+        self.assertEqual((papercut["assessment"]["verdict"], papercut["assessment"]["fixability_confidence"]), ("ready", 0.8))
+        self.assertEqual([(e["kind"], e["old_value"], e["new_value"]) for e in papercut["events"]],
+                         [("assessed", None, "not_ready"), ("assessed", "not_ready", "ready")])
+
+    def test_rejects_malformed_assessments(self):
+        papercut_id = self.papercut("Trap")
+        for bad in ({}, {"verdict": "maybe"}, {"verdict": "ready", "fixability_confidence": 1.5},
+                    {"verdict": "ready", "evidence_score": "high"}, {"verdict": "ready", "inputs": [1]},
+                    {"verdict": "ready", "score": 1}):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                self.store.assess(papercut_id, bad)
+        with self.assertRaises(server.NotFound):
+            self.store.assess(999, {"verdict": "ready"})
+
+
+class DispatchTest(StoreCase):
+    def advance(self, dispatch_id, *states):
+        for state in states:
+            dispatch = self.store.update_dispatch(dispatch_id, {"state": state, "actor": "dispatcher"})
+        return dispatch
+
+    def test_claim_moves_papercut_to_investigating(self):
+        papercut_id = self.papercut("Trap")
+        assessment = self.store.assess(papercut_id, {"verdict": "ready"})
+        dispatch = self.store.claim(papercut_id, {"actor": "dispatcher", "assessment_id": assessment["id"]})
+        self.assertEqual((dispatch["state"], dispatch["assessment_id"]), ("claimed", assessment["id"]))
+        papercut = self.store.get_papercut(papercut_id)
+        self.assertEqual((papercut["status"], [d["id"] for d in papercut["dispatches"]]), ("investigating", [dispatch["id"]]))
+        self.assertEqual([(e["kind"], e["new_value"]) for e in papercut["events"]][-2:],
+                         [("dispatched", str(dispatch["id"])), ("status", "investigating")])
+
+    def test_claim_conflicts(self):
+        papercut_id = self.papercut("Trap")
+        self.store.claim(papercut_id, {})
+        with self.assertRaisesRegex(server.ConflictError, "in progress"):
+            self.store.claim(papercut_id, {})
+        for status in ("resolved", "wontfix"):
+            other = self.papercut(f"Trap {status}")
+            self.store.update_papercut(other, {"status": status})
+            with self.subTest(status), self.assertRaisesRegex(server.ConflictError, status):
+                self.store.claim(other, {})
+        source, target = self.papercut("Source"), self.papercut("Target")
+        self.store.merge(source, {"into": target})
+        with self.assertRaisesRegex(server.ConflictError, "merged into"):
+            self.store.claim(source, {})
+        with self.assertRaisesRegex(ValueError, "not an assessment"):
+            self.store.claim(target, {"assessment_id": 999})
+
+    def test_concurrent_claims_start_one_dispatch(self):
+        papercut_id = self.papercut("Trap")
+
+        def claim(_):
+            try:
+                return self.store.claim(papercut_id, {})["id"]
+            except server.ConflictError:
+                return None
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            claimed = [result for result in pool.map(claim, range(8)) if result is not None]
+        self.assertEqual(len(claimed), 1)
+
+    def test_states_only_move_forward(self):
+        dispatch_id = self.store.claim(self.papercut("Trap"), {})["id"]
+        for state in ("running", "pr_opened", "done"):
+            with self.subTest(state), self.assertRaises(ValueError):
+                self.store.update_dispatch(dispatch_id, {"state": state})
+        dispatch = self.store.update_dispatch(dispatch_id, {"state": "linear_created", "linear_issue_id": "HACK-1",
+                                                            "linear_url": "https://linear.app/metabase/issue/HACK-1"})
+        self.assertEqual((dispatch["state"], dispatch["linear_issue_id"]), ("linear_created", "HACK-1"))
+        # Resending the current state is a retry, not a move.
+        self.assertEqual(self.store.update_dispatch(dispatch_id, {"state": "linear_created"})["updated_at"],
+                         dispatch["updated_at"])
+        with self.assertRaises(ValueError):
+            self.store.update_dispatch(dispatch_id, {"state": "claimed"})
+        dispatch = self.advance(dispatch_id, "running", "pr_opened")
+        with self.assertRaises(ValueError):
+            self.store.update_dispatch(dispatch_id, {"state": "failed"})
+        # Links and cost can still be recorded on a finished dispatch.
+        dispatch = self.store.update_dispatch(dispatch_id, {"pr_url": "https://github.com/metabase/metabase/pull/1",
+                                                            "cost_usd": 1.25})
+        self.assertEqual((dispatch["state"], dispatch["cost_usd"]), ("pr_opened", 1.25))
+        for bad in ({}, {"actor": "x"}, {"cost_usd": -1}, {"pr_url": 3}, {"owner": "x"}):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                self.store.update_dispatch(dispatch_id, bad)
+        with self.assertRaises(server.NotFound):
+            self.store.update_dispatch(999, {"state": "failed"})
+
+    def test_final_state_hands_papercut_back(self):
+        expected = {"pr_opened": "investigating", "already_fixed": "resolved", "needs_human": "open",
+                    "not_reproducible": "open", "failed": "open"}
+        for state, status in expected.items():
+            with self.subTest(state):
+                papercut_id = self.papercut(f"Trap {state}")
+                dispatch_id = self.store.claim(papercut_id, {})["id"]
+                self.advance(dispatch_id, *(("failed",) if state == "failed" else ("linear_created", "running", state)))
+                self.assertEqual(self.store.get_papercut(papercut_id)["status"], status)
+        # A papercut can be dispatched again once its dispatch has finished.
+        papercut_id = self.papercut("Trap needs_human")
+        self.assertEqual(self.store.claim(papercut_id, {})["state"], "claimed")
+
+    def test_final_state_keeps_a_status_someone_else_set(self):
+        papercut_id = self.papercut("Trap")
+        dispatch_id = self.store.claim(papercut_id, {})["id"]
+        self.store.update_papercut(papercut_id, {"status": "wontfix", "actor": "chris"})
+        self.advance(dispatch_id, "failed")
+        self.assertEqual(self.store.get_papercut(papercut_id)["status"], "wontfix")
+
+    def test_merge_moves_an_active_dispatch(self):
+        source, target = self.papercut("Source"), self.papercut("Target")
+        dispatch_id = self.store.claim(source, {})["id"]
+        merged = self.store.merge(source, {"into": target})
+        self.assertEqual([d["id"] for d in merged["dispatches"]], [dispatch_id])
+        busy_a, busy_b = self.papercut("A"), self.papercut("B")
+        self.store.claim(busy_a, {})
+        self.store.claim(busy_b, {})
+        with self.assertRaisesRegex(server.ConflictError, "both have a dispatch"):
+            self.store.merge(busy_a, {"into": busy_b})
+
+    def test_list_filters_by_state(self):
+        first = self.store.claim(self.papercut("First"), {})["id"]
+        second = self.store.claim(self.papercut("Second"), {})["id"]
+        self.advance(second, "failed")
+        self.assertEqual([d["id"] for d in self.store.list_dispatches({"state": "active"})], [first])
+        self.assertEqual([(d["id"], d["title"]) for d in self.store.list_dispatches({"state": "failed"})],
+                         [(second, "Second")])
+        self.assertEqual(len(self.store.list_dispatches()), 2)
+        with self.assertRaises(ValueError):
+            self.store.list_dispatches({"state": "stuck"})
+
+
 class MigrationTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -436,6 +589,38 @@ class MigrationTest(unittest.TestCase):
                          {"r1": ("fix-x", "abcdef1", "session-start"), "r2": (None, None, None),
                           "r3": (None, None, None)})
 
+    def test_v4_owner_and_severity_are_backfilled_and_events_kept(self):
+        db = sqlite3.connect(self.path, isolation_level=None)
+        db.row_factory = sqlite3.Row
+        for number, step in enumerate(server.MIGRATIONS[:4], 1):
+            step(db)
+            db.execute(f"PRAGMA user_version = {number}")
+        db.execute("""INSERT INTO papercuts (id, repository, title, description, path, first_seen, last_seen, updated_at)
+                      VALUES (1, 'metabase', 'Scanned', '', '', '2026-09-01', '2026-09-02', '2026-09-23'),
+                             (2, 'metabase', 'Imported', '', '', '2026-09-01', '2026-09-01', '2026-09-23')""")
+        payloads = (
+            (1, 1, "2026-09-02", {"details": {"owner": "third-party", "severity": "low"}}),
+            (2, 1, "2026-09-01", {"details": {"owner": "not-an-owner", "severity": "high"}}),
+            (3, 1, "2026-09-03", {"details": {"owner": "repo-code"}}),
+            (4, 2, "2026-09-01", {"transcript": "/p/abc.jsonl"}),
+        )
+        for id_, papercut_id, observed_at, payload in payloads:
+            db.execute("""INSERT INTO reports (id, papercut_id, repository, reporter, report_id, fingerprint, title,
+                          description, path, payload, received_at, observed_at)
+                          VALUES (?, ?, 'metabase', 'chris', ?, ?, '', '', '', ?, '2026-09-23', ?)""",
+                       (id_, papercut_id, f"r{id_}", f"f{papercut_id}", json.dumps(payload), observed_at))
+        db.execute("""INSERT INTO events (papercut_id, at, actor, kind, new_value)
+                      VALUES (1, '2026-09-23', 'chris', 'status', 'investigating')""")
+        db.close()
+        store = server.Store(self.path)
+        scanned, imported = store.get_papercut(1), store.get_papercut(2)
+        # The earliest report with a valid value wins for each field on its own.
+        self.assertEqual((scanned["owner"], scanned["severity"]), ("third-party", "high"))
+        self.assertEqual((imported["owner"], imported["severity"]), (None, None))
+        self.assertEqual([(e["kind"], e["actor"]) for e in scanned["events"]], [("status", "chris")])
+        self.assertEqual((scanned["assessment"], scanned["dispatches"]), (None, []))
+        self.assertEqual(store.assess(1, {"verdict": "ready"})["verdict"], "ready")
+
     def test_migration_runs_once(self):
         self.build_v1()
         server.Store(self.path)
@@ -495,6 +680,24 @@ class HttpTest(unittest.TestCase):
                 status, body, _ = self.call("GET", f"/api/papercuts?since={since}")
                 self.assertEqual((status, [p["title"] for p in body["papercuts"]]), (200, ["Second"]))
         self.assertEqual(self.call("GET", "/api/papercuts?since=yesterday")[0], 400)
+
+    def test_assessment_and_dispatch_routes(self):
+        papercut_id = self.report("r1")[1]["papercut"]["id"]
+        status, assessment, _ = self.call("POST", f"/api/papercuts/{papercut_id}/assessments", {"verdict": "ready"})
+        self.assertEqual((status, assessment["verdict"]), (201, "ready"))
+        self.assertEqual(self.call("POST", f"/api/papercuts/{papercut_id}/assessments", {"verdict": "soon"})[0], 400)
+        status, dispatch, _ = self.call("POST", f"/api/papercuts/{papercut_id}/dispatch")
+        self.assertEqual((status, dispatch["state"]), (201, "claimed"))
+        self.assertEqual(self.call("POST", f"/api/papercuts/{papercut_id}/dispatch", {"actor": "other"})[0], 409)
+        path = f"/api/dispatches/{dispatch['id']}"
+        self.assertEqual(self.call("PATCH", path, {"state": "pr_opened"})[0], 400)
+        status, body, _ = self.call("PATCH", path, {"state": "linear_created", "linear_issue_id": "HACK-1"})
+        self.assertEqual((status, body["linear_issue_id"]), (200, "HACK-1"))
+        self.assertEqual(self.call("GET", path)[1]["state"], "linear_created")
+        self.assertEqual([d["id"] for d in self.call("GET", "/api/dispatches?state=active")[1]], [dispatch["id"]])
+        self.assertEqual(self.call("GET", "/api/dispatches/999")[0], 404)
+        self.assertEqual(self.call("PATCH", "/api/dispatches/999", {"state": "failed"})[0], 404)
+        self.assertEqual(self.call("GET", f"/papercuts/{papercut_id}")[0], 200)
 
     def test_legacy_issue_routes(self):
         self.report("r1")

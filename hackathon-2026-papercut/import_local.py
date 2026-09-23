@@ -34,6 +34,7 @@ CATEGORY_BY_CLASSIFICATION = (
     ("migration", "code-smell"),
 )
 STATUS_BY_SOURCE = {"fixed": "resolved", "wontfix": "wontfix"}
+SEVERITIES = ("low", "medium", "high")
 # Archive files that are not papercuts: an index of the Codex cases and known non-papercuts for a classifier.
 # Slugs starting with an underscore are pipeline notes.
 NOT_PAPERCUTS = {"index", "INDEX", "negative-controls"}
@@ -132,6 +133,7 @@ def parse_claude(path, content):
         # Writeups merged into this one; their slugs become extra fingerprints.
         "aliases": re.findall(r"[\w-]+", metadata.get("merged_from", "")),
         "category": CATEGORY_BY_KIND.get(metadata.get("kind"), "other"),
+        "severity": metadata.get("severity", "").split("#")[0].strip(),
         "status": source_status.split("#")[0].strip(),
         "occurrences": [
             {"transcript": o["transcript"], "lines": o.get("lines"), "observed_at": observed_date(o)}
@@ -156,6 +158,7 @@ def parse_codex(path, content):
         "area": "",
         "aliases": [],
         "category": category,
+        "severity": "",
         "status": "open",
         "occurrences": [{"transcript": t, "lines": None, "observed_at": transcript_start(t)} for t in transcripts],
     }
@@ -253,6 +256,8 @@ def main():
                 report["report_id"], report["fingerprint"] = earlier
             if writeup["category"]:
                 report["category"] = writeup["category"]
+            if writeup["severity"] in SEVERITIES:
+                report["severity"] = writeup["severity"]
             if occurrence["observed_at"]:
                 report["observed_at"] = occurrence["observed_at"]
             try:
