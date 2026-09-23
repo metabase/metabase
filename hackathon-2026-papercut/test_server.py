@@ -164,7 +164,9 @@ class IngestTest(StoreCase):
     def test_repository_url_credentials_are_dropped(self):
         result = self.report(repository_url="https://chris:ghp_secret@github.com/metabase/metabase.git?token=x")
         report = self.store.get_papercut(result["papercut"]["id"])["reports"][0]
-        self.assertEqual(report["repository_url"], "https://github.com/metabase/metabase.git")
+        self.assertEqual((report["repository_url"], report["payload"]["repository_url"]),
+                         ("https://github.com/metabase/metabase.git",) * 2)
+        self.assertNotIn("ghp_secret", json.dumps(report))
         # An @ in the query or fragment is not user info.
         self.assertEqual(server.public_url("https://host?token=user@secret"), "https://host")
         self.assertEqual(server.public_url("https://host/repo#user@secret"), "https://host/repo")

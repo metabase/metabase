@@ -708,6 +708,9 @@ class Store:
             raise ValueError("cost_minutes must be a number from 0 to 100000")
         observed_at = parse_observed_at(text_field(payload, "observed_at"))
         git = git_fields(payload)
+        # The stored request body is served too, so it keeps the cleaned URL, not the one sent.
+        if git["repository_url"]:
+            payload = {**payload, "repository_url": git["repository_url"]}
         fingerprint = submitted_fingerprint or computed_fingerprint(title, path)
 
         with self.connect(write=True) as db:
