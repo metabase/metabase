@@ -229,6 +229,7 @@
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
                   :archived      false
                   :database-id   :model.database_id
+                  :worktree-id   [:coalesce :model.worktree_id [:inline 0]]
                   :created-at    false
                   :updated-at    false}
    :search-terms [:name]
