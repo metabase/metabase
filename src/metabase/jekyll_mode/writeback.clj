@@ -1,11 +1,22 @@
 (ns metabase.jekyll-mode.writeback
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files :as v2.storage.files]
    [metabase.jekyll-mode.files :as files]
-   [metabase.jekyll-mode.writeback.serialize :as serialize]
+   [metabase.models.serialization :as serdes]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.yaml :as u.yaml]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.after]))
+   [toucan2.tools.after])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 ;;; TODO -- move model-related stuff into separate `.models.writeback` namespace
 
@@ -22,14 +33,49 @@
 
 (def ^:dynamic *suppress-file-updates* false)
 
+(defn- yaml-file? [^File f]
+  (and (.isFile f)
+       (str/ends-with? (.getName f) ".yaml")))
+
+(defn- file-entity-id
+  "Returns the `entity_id` of a serdes-exported yaml file, or nil if it doesn't have one (e.g. settings.yaml)."
+  [^File f]
+  (:entity_id (u.yaml/from-file f)))
+
+(defn- entity-id-files
+  "All yaml files under `root-dir` whose `entity_id` matches `entity-id`."
+  [root-dir entity-id]
+  (into []
+        (comp (filter yaml-file?)
+              (filter #(= entity-id (file-entity-id %))))
+        (file-seq (io/file root-dir))))
+
+(defn- prune-stale-exports!
+  "Deletes old exported files left behind when an entity's slug-derived filename changes (e.g. a Card is
+  renamed and gets a new filename). There should only ever be one file per `entity_id`; the most recently
+  written one is kept, since we just wrote it."
+  [root-dir entity-id]
+  (let [files (entity-id-files root-dir entity-id)]
+    (when (> (count files) 1)
+      (let [newest (apply max-key #(.lastModified ^File %) files)]
+        (doseq [^File f files
+                :when (not= f newest)]
+          (io/delete-file f true)
+          (log/infof "Deleted stale jekyll export file %s (entity_id %s)" (str f) entity-id))))))
+
 (mu/defn- update-file!
-  [{:keys [id], :as instance} :- [:map
-                                  [:id pos-int?]]]
+  [{:keys [id], entity-id :entity_id, :as instance} :- [:map
+                                                        [:id pos-int?]]]
   (when-not *suppress-file-updates*
-    (files/create-model-directory-if-not-exists! (t2/model instance))
-    (let [filename (files/instance-filename instance)]
-      (spit filename (serialize/serialize instance))
-      (printf "Wrote %s %d to %s.\n" (t2/model instance) id filename))))
+    (let [model    (t2/model instance)
+          root-dir (files/directory-prefix)]
+      (serdes/with-cache
+        (let [entity-stream (v2.extract/extract {:targets [[(name model) id]]})
+              writer        (v2.storage.files/file-writer root-dir)]
+          (v2.storage/store! entity-stream writer)))
+      (when entity-id
+        (prune-stale-exports! root-dir entity-id))
+      (printf "Wrote %s %d to %s.\n" (t2/model instance) id root-dir))))
 
 (t2/define-after-update ::writeback
   [instance]

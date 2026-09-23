@@ -1,50 +1,43 @@
 (ns metabase.jekyll-mode.load
   (:require
-   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.jekyll-mode.files :as files]
    [metabase.jekyll-mode.writeback :as writeback]
-   [metabase.lib.core :as lib]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema :as segments.schema]
+   [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
-   [metabase.util.yaml :as u.yaml]
-   [toucan2.core :as t2]))
+   [metabase.util.yaml :as u.yaml]))
 
-(defn- file->instance [model filename]
-  (let [instance (or (u.yaml/from-file filename)
-                     (throw (ex-info (format "Failed to read file %s" (pr-str filename))
-                                     {:model model, :filename filename})))
-        schema   (case model
-                   :model/Card          ::queries.schema/card
-                   :model/DashboardCard ::dashboards.schema/dashboard-card
-                   :model/Dashboard     ::dashboards.schema/dashboard
-                   :model/Metric        :any ; TODO
-                   :model/Segment       ::segments.schema/segment)]
-    (lib/normalize schema instance)))
+(defn- file->serdes-path
+  "Reads just enough of a serdes-exported YAML `file` to recover its `:serdes/meta` abstract path, without
+  ingesting the whole export tree."
+  [file]
+  (-> file
+      (u.yaml/from-file {:key-fn v2.ingest/parse-key})
+      v2.ingest/read-timestamps
+      serdes/path))
 
-(defn- load-instance! [model instance]
-  ;; avoid infinite loop
-  (binding [writeback/*suppress-file-updates* true]
-    (if (:id instance)
-      (do
-        (t2/update! model (:id instance) instance)
-        (printf "Updated %s %d.\n" model (:id instance)))
-      (let [id (t2/insert-returning-pk! model instance)]
-        (printf "Inserted new %s %d.\n" model id)))))
+(defn- single-entity-ingestion
+  "An [[v2.ingest/Ingestable]] whose `ingest-list` reports only `target-path`, so [[v2.load/load-metabase!]]
+  loads just that one entity. `ingest-one` still delegates to a real ingestion rooted at `root-dir`, so any
+  dependencies `target-path` needs (a Dashboard's Cards, its Collection, etc.) can still be read from disk."
+  [root-dir target-path]
+  (let [real (v2.ingest/ingest-yaml root-dir)]
+    (reify v2.ingest/Ingestable
+      (ingest-list [_] [target-path])
+      (ingest-one [_ path] (v2.ingest/ingest-one real path))
+      (ingest-errors [_] (v2.ingest/ingest-errors real)))))
 
 (mu/defn load-instance-from-file! [filename :- :string]
-  (let [model (files/filename->model filename)]
-    (load-instance! model (file->instance model filename))))
+  ;; avoid infinite loop: this load will trigger the after-update/insert writeback hooks, which would
+  ;; otherwise write the file we just read right back out to disk.
+  (binding [writeback/*suppress-file-updates* true]
+    (let [root-dir    (files/directory-prefix)
+          target-path (file->serdes-path filename)
+          ingestion   (single-entity-ingestion root-dir target-path)]
+      (v2.load/load-metabase! ingestion :reindex? false))))
 
 (comment
-  (load-instance-from-file! "/Users/camsaul/metabase/local/cards/144.yaml")
-
-  (load-instance-from-file! "/Users/camsaul/metabase/local/dashboards/2.yaml")
-
-  (load-instance! :model/Card (-> "/Users/camsaul/metabase/local/cards/144.yaml"
-                                  (->> (file->instance :model/Card))
-                                  (dissoc :id :entity_id)))
-
-  (load-instance! :model/Dashboard (-> "/Users/camsaul/metabase/local/dashboards/2.yaml"
-                                       (->> (file->instance :model/Card))
-                                       (dissoc :id :entity_id))))
+  ;; path is whatever v2.storage.files/file-writer wrote under (files/directory-prefix), e.g.
+  ;; "local/jekyll/collections/<slug>/dashboards/<slug>.yaml"
+  (load-instance-from-file! "local/jekyll/collections/analytics/dashboards/my-dashboard.yaml"))
