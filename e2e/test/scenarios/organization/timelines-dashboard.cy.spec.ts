@@ -2,13 +2,27 @@ const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type {
+  StructuredQuestionDetails,
+  TimelineEventDetails,
+} from "e2e/support/helpers";
+import type {
+  CollectionId,
+  CollectionPermission,
+  CollectionPermissions,
+  CreateTimelineRequest,
+  DashboardCard,
+  DashboardId,
+  TimelineId,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const questionDetails = {
+const questionDetails: StructuredQuestionDetails = {
   name: "Orders by month",
   display: "line",
   query: {
@@ -523,11 +537,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
           );
         });
       });
-      cy.updateCollectionGraph({
-        [ALL_USERS_GROUP]: { [id]: "none" },
-        [COLLECTION_GROUP]: { [id]: "none" },
-        [DATA_GROUP]: { [id]: "none" },
-      });
+      cy.updateCollectionGraph(denyCollection(id));
     });
 
     cy.signInAsNormalUser();
@@ -572,11 +582,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
           });
         });
       });
-      cy.updateCollectionGraph({
-        [ALL_USERS_GROUP]: { [id]: "none" },
-        [COLLECTION_GROUP]: { [id]: "none" },
-        [DATA_GROUP]: { [id]: "none" },
-      });
+      cy.updateCollectionGraph(denyCollection(id));
     });
 
     cy.signInAsNormalUser();
@@ -594,11 +600,53 @@ describe("scenarios > organization > timelines > dashboard", () => {
       "contain.text",
       "You don't have permissions to do that.",
     );
-    cy.get("@dashboardId").then((id) => {
+    cy.get<DashboardId>("@dashboardId").then((id) => {
       cy.signInAsAdmin();
       cy.request("GET", `/api/dashboard/${id}`)
         .its("body.dashcards")
         .should("have.length", 0);
+    });
+  });
+
+  describe("visualization type", () => {
+    it("should keep the events after the question switches to another time series display", () => {
+      visitQuestionWithReleaseEvents();
+
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar().icon("area").click();
+      H.saveSavedQuestion();
+
+      cy.get<DashboardId>("@dashboardId").then(H.visitDashboard);
+      eventChip(0, "RC1").should("be.visible");
+      openEventsSidebar();
+      eventsSidebar().findByText("Releases").should("be.visible");
+    });
+
+    it("should stop offering events once the question is no longer a time series", () => {
+      visitQuestionWithReleaseEvents();
+
+      H.openVizTypeSidebar();
+      H.vizTypeSidebar().icon("table2").click();
+      H.saveSavedQuestion();
+
+      cy.get<DashboardId>("@dashboardId").then(H.visitDashboard);
+      openEventsSidebar();
+      cy.findByTestId("dashboard-events-empty-state").should("be.visible");
+    });
+
+    it("should not show events on a card visualized another way", () => {
+      visitDashboardWithReleaseEvents();
+      eventChip(0, "RC1").should("be.visible");
+
+      H.editDashboard();
+      H.showDashcardVisualizerModal(0, { isVisualizerCard: false });
+      H.selectVisualization("area");
+      H.saveDashcardVisualizerModal();
+      H.saveDashboard();
+
+      eventChip(0, "RC1").should("not.exist");
+      openEventsSidebar();
+      cy.findByTestId("dashboard-events-empty-state").should("be.visible");
     });
   });
 
@@ -661,7 +709,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
       H.waitForDashcardsToLoad({ count: 2 });
       eventChip(0, "RC1").should("be.visible");
       eventChip(1, "RC1").should("be.visible");
-      cy.get("@dashboardId").then((dashboardId) => {
+      cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
         H.expectUnstructuredSnowplowEvent(
           { event: "dashboard_events_shown", target_id: dashboardId },
           2,
@@ -671,7 +719,9 @@ describe("scenarios > organization > timelines > dashboard", () => {
   });
 });
 
-function visitDashboardWithTimeSeries(visualizationSettings = {}) {
+function visitDashboardWithTimeSeries(
+  visualizationSettings: VisualizationSettings = {},
+) {
   H.createQuestionAndDashboard({
     questionDetails: {
       ...questionDetails,
@@ -723,7 +773,14 @@ function visitDashboardWithMetricAndModel() {
   );
 }
 
-function createTimelineQuestion({ timeline, events, ...questionOverrides }) {
+function createTimelineQuestion({
+  timeline,
+  events,
+  ...questionOverrides
+}: {
+  timeline: CreateTimelineRequest;
+  events: Omit<TimelineEventDetails, "timeline_id">[];
+} & Partial<StructuredQuestionDetails>) {
   return H.createTimelineWithEvents({ timeline, events }).then(({ timeline }) =>
     H.createQuestion({
       ...questionDetails,
@@ -765,6 +822,23 @@ function visitDashboardWithSeriesReachingTheEvent() {
   );
 }
 
+function visitQuestionWithReleaseEvents() {
+  return createReleaseTimeline().then(({ timeline }) =>
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        ...questionDetails,
+        visualization_settings: {
+          "timeline.selected_timeline_ids": [timeline.id],
+        },
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+      cy.wrap(card_id).as("questionId");
+      H.visitQuestion("@questionId");
+    }),
+  );
+}
+
 function createReleaseTimeline() {
   return H.createTimelineWithEvents({
     timeline: { name: "Releases" },
@@ -773,8 +847,11 @@ function createReleaseTimeline() {
 }
 
 function visitDashboardWithCopies(
-  timelineId,
-  { withTabs = false, extraDashcards = [] } = {},
+  timelineId: TimelineId,
+  {
+    withTabs = false,
+    extraDashcards = [],
+  }: { withTabs?: boolean; extraDashcards?: DashboardCard[] } = {},
 ) {
   H.createQuestion({
     ...questionDetails,
@@ -808,14 +885,23 @@ function visitDashboardWithCopies(
   });
 }
 
-function eventChip(cardIndex, eventName) {
+function denyCollection(id: CollectionId): CollectionPermissions {
+  const none: CollectionPermission = "none";
+  const denied = { [id]: none };
+  return {
+    [ALL_USERS_GROUP]: denied,
+    [COLLECTION_GROUP]: denied,
+    [DATA_GROUP]: denied,
+  };
+}
+
+function eventChip(cardIndex: number, eventName: string) {
   return H.getDashboardCard(cardIndex).findByRole("button", {
     name: eventName,
-    exact: true,
   });
 }
 
-function openDashCardMenu(cardIndex) {
+function openDashCardMenu(cardIndex: number) {
   H.getDashboardCard(cardIndex).realHover({ position: "topLeft" });
   H.getDashboardCardMenu(cardIndex).click();
 }
@@ -828,8 +914,11 @@ function expectEventsShownOnce() {
   expectDashboardEvent({ event: "dashboard_events_shown" }, 1);
 }
 
-function expectDashboardEvent(payload, count) {
-  cy.get("@dashboardId").then((dashboardId) => {
+function expectDashboardEvent(
+  payload: Record<string, unknown>,
+  count?: number,
+) {
+  cy.get<DashboardId>("@dashboardId").then((dashboardId) => {
     H.expectUnstructuredSnowplowEvent(
       { ...payload, target_id: dashboardId },
       count,
@@ -837,7 +926,7 @@ function expectDashboardEvent(payload, count) {
   });
 }
 
-function toggleEventVisibility(eventName) {
+function toggleEventVisibility(eventName: string) {
   eventsSidebar().within(() => H.toggleTimelineEventVisibility(eventName));
 }
 
@@ -850,7 +939,7 @@ function eventsSidebar() {
   return cy.findByTestId("dashboard-events-sidebar");
 }
 
-function createEvent(name, date) {
+function createEvent(name: string, date: string) {
   H.modal().within(() => {
     cy.findByLabelText("Event name").type(name);
     cy.findByLabelText("Date").clear().type(date);
