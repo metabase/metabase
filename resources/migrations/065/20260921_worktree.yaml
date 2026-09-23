@@ -2546,3 +2546,78 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_core_user_worktree_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v65.2026-09-23T16:00:00
+      author: ranquild
+      comment: Update v_content to show the main app's content only - a worktree's belongs to a branch rather than to this instance's analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v7/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v7/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v7/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/content/v6/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/content/v6/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/content/v6/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v65.2026-09-23T16:00:01
+      author: ranquild
+      comment: Update v_fields to overlay the main app's user settings, which a worktree's must not stand in for
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/fields/v4/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/fields/v4/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/fields/v4/h2-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/fields/v3/postgres-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/fields/v3/mysql-fields.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/fields/v3/h2-fields.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v65.2026-09-23T16:00:02
+      author: ranquild
+      comment: Update v_dashboardcard to show the main app's dashboard cards only
+      changes:
+        - sqlFile:
+            path: ../instance_analytics_views/dashboardcard/v2/dashboardcard.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: ../instance_analytics_views/dashboardcard/v1/dashboardcard.sql
+            relativeToChangelogFile: true

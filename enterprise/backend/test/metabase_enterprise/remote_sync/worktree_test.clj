@@ -54,6 +54,21 @@
           (remote-sync.db/set-user-worktree! (mt/user->id :crowberto) nil)
           (remote-sync.db/delete-worktree! worktree-id))))))
 
+(deftest a-root-listing-shows-the-worktree-own-collections-test
+  (let [{worktree-id :id} (remote-sync.db/insert-worktree! {:branch (str "listing-coll-" (random-uuid))})
+        user-id           (mt/user->id :crowberto)]
+    (try
+      (mdb.worktree/with-worktree worktree-id
+        (t2/insert-returning-pk! :model/Collection {:name "Branch collection" :location "/"}))
+      (testing "the main app lists its own"
+        (is (not (contains? (root-item-names) "Branch collection"))))
+      (testing "a worktree lists the collections it checked out"
+        (remote-sync.db/set-user-worktree! user-id worktree-id)
+        (is (contains? (root-item-names) "Branch collection")))
+      (finally
+        (remote-sync.db/set-user-worktree! user-id nil)
+        (remote-sync.db/delete-worktree! worktree-id)))))
+
 (deftest search-reads-one-worktree-test
   (search.tu/with-appdb-search-if-available-without-fallback
     (mt/with-temp [:model/Card _ {:name "Zzyzx main app card"}]

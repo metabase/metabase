@@ -33,6 +33,14 @@
   []
   *worktree-id*)
 
+(defn- worktree-value
+  "The worktree being worked in, as Honey SQL. Inlined rather than passed as a parameter: H2 binds a parameter that
+  sits in a common table expression to the wrong slot once the query also selects from a subquery, and this is an id
+  the instance holds rather than anything a caller passes."
+  []
+  (when *worktree-id*
+    [:inline *worktree-id*]))
+
 (defn do-with-worktree
   "Impl for [[with-worktree]]."
   [worktree-id thunk]
@@ -154,7 +162,7 @@
                (mapcat (fn [[source condition :as pair]]
                          (if-some [[table alias] (and (= (count pair) 2) (table-and-alias source))]
                            (if (contains? (checked-out-tables) (name table))
-                             [source [:and condition [:= (u/qualified-key alias :worktree_id) *worktree-id*]]]
+                             [source [:and condition [:= (u/qualified-key alias :worktree_id) (worktree-value)]]]
                              pair)
                            pair))))
          joins)
@@ -185,7 +193,7 @@
   [query]
   (as-> query query
     (if-let [column (worktree-column query)]
-      (let [clause [:= column *worktree-id*]]
+      (let [clause [:= column (worktree-value)]]
         (update query :where #(if % [:and % clause] clause)))
       query)
     (cond-> query
