@@ -6,6 +6,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -17,7 +18,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (java.net InetAddress)
+   (java.io IOException)
+   (java.net InetAddress URI)
    (java.util.concurrent ArrayBlockingQueue ExecutorService RejectedExecutionException ThreadPoolExecutor TimeUnit)))
 
 (set! *warn-on-reflection* true)
@@ -25,6 +27,10 @@
 (def ^:dynamic *run-synchronously?*
   "When true, [[review-turn!]] reviews on the calling thread instead of the background executor. Bound in tests."
   false)
+
+(def ^:dynamic *post-retry-delay-ms*
+  "How long a papercut post that failed on a connection error, a timeout or a 5xx waits before its one retry."
+  3000)
 
 (def ^:private failure-output-re
   "Tool output that reports a failure: it starts by saying so, or carries a schema validation error anywhere."
@@ -316,22 +322,40 @@
                      :profile     profile-id
                      :verdict     verdict}})))
 
+(defn- instance-name
+  []
+  (or (metabot.settings/metabot-papercuts-instance-name)
+      (some-> (system/site-url) URI. .getHost)
+      (not-empty (appearance/site-name))
+      (u/ignore-exceptions (.getHostName (InetAddress/getLocalHost)))))
+
+(defn- retryable?
+  [e]
+  (or (instance? IOException e)
+      (>= (:status (ex-data e) 0) 500)))
+
 (defn- post-papercut!
   [report]
-  (doseq [url   (some-> (metabot.settings/metabot-papercuts-server-url) (str/split #","))
-          :let  [url (str/trim url)]
-          :when (seq url)]
-    (try
-      (http/post (str url "/api/reports")
-                 {:body               (json/encode report)
-                  :content-type       :json
-                  :headers            (when-let [token (not-empty (metabot.settings/metabot-papercuts-token))]
-                                        {"Authorization" (str "Bearer " token)})
-                  :socket-timeout     5000
-                  :connection-timeout 5000})
-      (catch Exception e
-        (log/warnf "Posting Metabot papercut %s to %s failed: %s"
-                   (:report_id report) url (or (:body (ex-data e)) (ex-message e)))))))
+  (let [request {:body               (json/encode report)
+                 :content-type       :json
+                 :headers            (when-let [token (not-empty (metabot.settings/metabot-papercuts-token))]
+                                       {"Authorization" (str "Bearer " token)})
+                 :socket-timeout     5000
+                 :connection-timeout 5000}]
+    (doseq [url   (some-> (metabot.settings/metabot-papercuts-server-url) (str/split #","))
+            :let  [url (str/trim url)]
+            :when (seq url)]
+      (loop [retry? true]
+        (when-let [e (try
+                       (http/post (str url "/api/reports") request)
+                       nil
+                       (catch Exception e
+                         e))]
+          (if (and retry? (retryable? e))
+            (do (Thread/sleep (long *post-retry-delay-ms*))
+                (recur false))
+            (log/warnf "Posting Metabot papercut %s to %s failed: %s"
+                       (:report_id report) url (or (:body (ex-data e)) (ex-message e)))))))))
 
 (defn- review!
   [message-id parts {:keys [profile-id] :as opts}]
@@ -361,8 +385,7 @@
                                             :parts           parts
                                             :signals         signals
                                             :reporter        (metabot.settings/metabot-papercuts-reporter)
-                                            :machine         (u/ignore-exceptions
-                                                               (.getHostName (InetAddress/getLocalHost)))
+                                            :machine         (instance-name)
                                             :ui-url          (or (metabot.settings/metabot-papercuts-ui-url)
                                                                  (system/site-url))}
                                            verdict))]

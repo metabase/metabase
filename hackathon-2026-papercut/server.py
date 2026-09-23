@@ -1867,6 +1867,7 @@ UI_STYLE = """<style>
   .chip {flex: none; gap: .3rem; padding: 0 .55rem; font-size: .82rem; white-space: nowrap}
   .chips .link, .chips .muted {flex: none}
 }
+.chips[data-name] .eyebrow {display: inline; flex: none; min-width: 6rem}
 .issue-card.important {border-left: 4px solid var(--important)}
 .issue-card {position: relative}
 .issue-card h3 a::after {content: ""; position: absolute; inset: 0}
