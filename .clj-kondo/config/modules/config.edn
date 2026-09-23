@@ -522,6 +522,7 @@
            metabase.channel.render.core
            metabase.channel.schema
            metabase.channel.settings
+           metabase.channel.shared
            metabase.channel.slack
            metabase.channel.template.core
            metabase.channel.urls}
@@ -1423,6 +1424,7 @@
    :api     #{metabase.metabot.agent.core
               metabase.metabot.api
               metabase.metabot.config
+              metabase.metabot.context
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.metadata-perms
