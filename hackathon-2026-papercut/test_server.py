@@ -39,6 +39,49 @@ class StoreCase(unittest.TestCase):
         return self.report(title=title, fingerprint=title, **changes)["papercut"]["id"]
 
 
+class WebViewTest(StoreCase):
+    def test_list_has_structured_results_and_live_filters(self):
+        self.papercut("Bash tool runs zsh on macOS: unmatched globs abort commands",
+                      description="A shell trap.\n\nKind: env-friction\nImpact: both\nSeverity: medium")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("Bash tool runs zsh on macOS</a>", page)
+        self.assertIn("<dt>Severity</dt><dd>medium</dd>", page)
+        self.assertIn("<strong>Not estimated</strong><span>Time lost</span>", page)
+        self.assertNotIn("<select id='repository' name='repository'>", page)
+        self.papercut("Another repository trap", repository="elsewhere")
+        page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        self.assertIn("<select id='repository' name='repository'>", page)
+        self.assertIn("setTimeout(applyFilters, event.target.matches('input') ? 300 : 0)", page)
+        self.assertIn("setInterval(refreshPage, 15000)", page)
+
+    def test_description_fields_and_safe_markdown(self):
+        narrative, fix, facts = server.description_parts(
+            "Uses `zsh` and **fails**.\n\nSuggested fix: Check *flags*.\n\n"
+            "Kind: env-friction\nImpact: both\nSeverity: medium\nSource status: open\n"
+            "Area: shell\nSource: local-papercuts/example.md")
+        self.assertEqual(narrative, "Uses `zsh` and **fails**.")
+        self.assertEqual(fix, "Check *flags*.")
+        self.assertEqual(facts["Severity"], "medium")
+        rendered = server.markdown_html("**bold** and `code` [safe](https://example.com) "
+                                        "[bad](javascript:alert) <script>alert(1)</script>")
+        self.assertIn("<strong>bold</strong>", rendered)
+        self.assertIn("<code>code</code>", rendered)
+        self.assertIn("href='https://example.com'", rendered)
+        self.assertNotIn("href='javascript:", rendered)
+        self.assertNotIn("<script>", rendered)
+
+    def test_markdown_tables_render_from_new_and_older_imports(self):
+        table = "| Idiom | Behaviour |\n|---|---|\n| `echo ===` | **error** |"
+        flattened = "A summary: | Idiom | Behaviour | |---|---| | `echo ===` | **error** |"
+        for source in (table, flattened):
+            with self.subTest(source=source):
+                rendered = server.markdown_html(source)
+                self.assertIn("<table>", rendered)
+                self.assertIn("<th>Idiom</th>", rendered)
+                self.assertIn("<code>echo ===</code>", rendered)
+                self.assertIn("<strong>error</strong>", rendered)
+
+
 class IngestTest(StoreCase):
     def test_replay_and_cross_reporter_counts(self):
         first = self.store.ingest(self.sample)
@@ -792,10 +835,17 @@ class HttpTest(unittest.TestCase):
                                                "title": f"{report_id} report", "fingerprint": "trap", "session": "s1",
                                                "observed_at": observed_at})
         _, page, _ = self.call("GET", "/papercuts/1")
-        self.assertIn("<details class='card' open><summary><strong>laptop</strong> <span class='muted'>"
-                      "2026-09-02T00:00:00+00:00 · session s1</span> new report</summary>", page)
-        self.assertIn("<details class='card'><summary><strong>laptop</strong> <span class='muted'>"
-                      "2026-09-01T00:00:00+00:00 · session s1</span> old report</summary>", page)
+        self.assertIn("2026-09-02T00:00:00+00:00 · session s1</p><details open><summary>Report details</summary>"
+                      "<p>new report</p>", page)
+        self.assertIn("2026-09-01T00:00:00+00:00 · session s1</p><details><summary>Report details</summary>"
+                      "<p>old report</p>", page)
+
+    def test_urls_in_report_prose_are_links(self):
+        self.call("POST", "/api/reports", {"repository": "metabase", "reporter": "laptop", "report_id": "r1",
+                                           "title": "Trap", "description": "See https://github.com/metabase/metabase/pull/1."})
+        _, page, _ = self.call("GET", "/papercuts/1")
+        self.assertIn("<a href='https://github.com/metabase/metabase/pull/1'>https://github.com/metabase/metabase/pull/1</a>.",
+                      page)
 
 
 if __name__ == "__main__":

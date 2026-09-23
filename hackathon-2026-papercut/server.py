@@ -17,6 +17,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
 
+SOURCE_VERSION = Path(__file__).stat().st_mtime_ns
+
 
 CATEGORIES = ("agent-trap", "code-smell", "flaky-test", "tooling", "documentation", "other")
 STATUSES = ("open", "investigating", "resolved", "wontfix")
@@ -603,11 +605,13 @@ def migrate_to_v5(db):
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
-                  COUNT(DISTINCT agent) AS agent_count, COALESCE(SUM(cost_minutes), 0) AS cost_minutes
+                  COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
+                  COALESCE(SUM(cost_minutes), 0) AS cost_minutes
            FROM reports GROUP BY papercut_id"""
 # A papercut that was merged away has no reports left.
 COUNTS = """COALESCE(s.report_count, 0) AS report_count, COALESCE(s.reporter_count, 0) AS reporter_count,
-            COALESCE(s.agent_count, 0) AS agent_count, COALESCE(s.cost_minutes, 0) AS cost_minutes"""
+            COALESCE(s.agent_count, 0) AS agent_count, COALESCE(s.cost_reports, 0) AS cost_reports,
+            COALESCE(s.cost_minutes, 0) AS cost_minutes"""
 
 
 class Store:
@@ -807,6 +811,12 @@ class Store:
         papercuts = [dict(row) | {"fingerprints": sorted(json.loads(row["fingerprints"]))} for row in rows]
         return {"papercuts": papercuts, "total": total, "limit": limit, "offset": offset,
                 "next_offset": offset + limit if offset + limit < total else None, "cursor": cursor}
+
+    def repositories(self):
+        with self.connect() as db:
+            return [row[0] for row in db.execute(
+                "SELECT DISTINCT repository FROM papercuts WHERE merged_into IS NULL ORDER BY repository"
+            )]
 
     def resolve(self, papercut_id):
         """The live papercut that `papercut_id` was merged into, or `papercut_id` itself; None if it doesn't exist."""
@@ -1201,54 +1211,124 @@ class Store:
 STYLE = """<style>
 :root {
   color-scheme: light;
-  --background: #f7f8fa;
-  --surface: #fff;
-  --text: #263238;
-  --muted: #526170;
-  --link: #1453a6;
-  --border: #dce2e8;
-  --control-border: #a9b4be;
-  --pill: #e8eef5;
-  --hover: #e8eef5;
+  --background: #f5f6f8; --surface: #fff; --text: #202b36;
+  --muted: #607181; --link: #215ca4; --border: #dce3e9;
+  --control-border: #b8c5d0; --pill: #edf2f6; --hover: #f1f5f9;
+  --accent: #245fa8; --accent-text: #fff; --shadow: 0 8px 28px rgba(29, 48, 66, .045);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --background: #111820;
-    --surface: #1d2731;
-    --text: #e8edf2;
-    --muted: #aab7c4;
-    --link: #8bbcff;
-    --border: #354454;
-    --control-border: #64778a;
-    --pill: #2d3d4d;
-    --hover: #354454;
+    color-scheme: dark; --background: #101820; --surface: #1b2732;
+    --text: #e8edf2; --muted: #aab8c5; --link: #99c5ff;
+    --border: #354554; --control-border: #6a7e8f; --pill: #2b3c4b;
+    --hover: #263849; --accent: #9ac7ff; --accent-text: #10202e;
+    --shadow: none;
   }
 }
 :root[data-theme="dark"] {
-  color-scheme: dark;
-  --background: #111820;
-  --surface: #1d2731;
-  --text: #e8edf2;
-  --muted: #aab7c4;
-  --link: #8bbcff;
-  --border: #354454;
-  --control-border: #64778a;
-  --pill: #2d3d4d;
-  --hover: #354454;
+  color-scheme: dark; --background: #101820; --surface: #1b2732;
+  --text: #e8edf2; --muted: #aab8c5; --link: #99c5ff;
+  --border: #354554; --control-border: #6a7e8f; --pill: #2b3c4b;
+  --hover: #263849; --accent: #9ac7ff; --accent-text: #10202e;
+  --shadow: none;
 }
-body {font: 16px system-ui; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; color: var(--text); background: var(--background)}
-a {color: var(--link)}
-header {display: flex; justify-content: space-between; align-items: center; gap: 1rem}
-header .actions {display: flex; align-items: center; gap: .75rem}
-.card {background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: .7rem 0}
-.muted {color: var(--muted)}
-.pill {display: inline-block; background: var(--pill); border-radius: 1rem; padding: .15rem .6rem; margin-right: .3rem}
-input, select, button {font: inherit; padding: .35rem; margin: .2rem; color: var(--text); background: var(--surface); border: 1px solid var(--control-border); border-radius: 4px}
-button {cursor: pointer}
-button:hover {background: var(--hover)}
-pre {white-space: pre-wrap; overflow-wrap: anywhere}
-@media (max-width: 600px) {header {align-items: flex-start} header .actions {flex-wrap: wrap; justify-content: flex-end}}
+* {box-sizing: border-box}
+body {font: 15px/1.5 system-ui, sans-serif; max-width: 1180px; margin: 0 auto; padding: 0 1.5rem 4rem; color: var(--text); background: var(--background)}
+a {color: var(--link); text-decoration: none}
+a:hover {text-decoration: underline}
+button, input, select {font: inherit}
+button, select {cursor: pointer}
+button, input, select {color: var(--text); background: var(--surface); border: 1px solid var(--control-border); border-radius: 8px; min-height: 42px; padding: .55rem .7rem}
+button:hover, select:hover {background: var(--hover)}
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {outline: 3px solid var(--accent); outline-offset: 2px}
+.site-header {display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 76px; border-bottom: 1px solid var(--border)}
+.brand {font-weight: 760; font-size: 1.18rem; letter-spacing: -.025em; color: var(--text)}
+.brand:hover {text-decoration: none}
+.header-actions {display: flex; align-items: center; gap: .55rem; flex-wrap: wrap}
+.header-actions button {font-size: .86rem; min-height: 36px}
+.muted, .eyebrow {color: var(--muted)}
+.eyebrow {font-size: .73rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase}
+.intro {padding: 2.1rem 0 1.45rem}
+.intro h1 {font-size: clamp(1.8rem, 4vw, 2.65rem); letter-spacing: -.045em; line-height: 1.1; margin: .35rem 0}
+.intro p {margin: 0; color: var(--muted)}
+.toolbar {display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(105px, 1fr)) minmax(145px, 1.2fr) minmax(75px, .65fr) auto; align-items: end; gap: .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; box-shadow: var(--shadow)}
+.toolbar.single-repository {grid-template-columns: minmax(230px, 2.2fr) repeat(2, minmax(120px, 1fr)) minmax(155px, 1.25fr) minmax(75px, .65fr) auto}
+.filter-field {display: flex; flex-direction: column; gap: .3rem; min-width: 0}
+.filter-field label {font-size: .79rem; font-weight: 700; color: var(--muted)}
+.filter-field input, .filter-field select {width: 100%; margin: 0}
+.filter-actions {display: flex; align-items: center; justify-content: end; min-height: 42px; white-space: nowrap}
+.primary {background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 700}
+.primary:hover {filter: brightness(.94); background: var(--accent)}
+.results-heading {display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: 1.6rem 0 .7rem}
+.results-heading h2 {font-size: 1.15rem; margin: 0}
+.results-heading p {margin: 0; font-size: .85rem}
+.issue-list {list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem}
+.card {background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.15rem 1.3rem; box-shadow: var(--shadow)}
+.issue-card {display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem}
+.issue-card:hover {border-color: var(--control-border)}
+.issue-card h3 {font-size: 1.09rem; line-height: 1.35; letter-spacing: -.015em; margin: .15rem 0 .45rem}
+.issue-card .issue-number {font-size: .85rem; font-weight: 600; color: var(--muted); margin-right: .35rem}
+.issue-card .location {grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere}
+.issue-summary {grid-column: 1 / -1; color: var(--text); margin: 0; line-height: 1.48}
+.issue-facts {grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; margin: .35rem 0 0}
+.issue-facts div {display: flex; align-items: baseline; gap: .35rem; padding: .22rem .55rem; background: var(--pill); border-radius: 6px; font-size: .78rem}
+.issue-facts dt {color: var(--muted); font-weight: 650}
+.issue-facts dd {margin: 0; font-weight: 650}
+.issue-stats {grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; padding-top: .8rem; margin-top: .35rem; border-top: 1px solid var(--border)}
+.issue-stats div {display: flex; flex-direction: column; min-width: 0}
+.issue-stats strong {font-size: .92rem; font-weight: 700; color: var(--text)}
+.issue-stats span {font-size: .76rem; color: var(--muted)}
+.badges {display: flex; align-items: start; flex-wrap: wrap; justify-content: end; gap: .35rem}
+.pill {display: inline-block; background: var(--pill); border-radius: 1rem; padding: .16rem .65rem; font-size: .78rem; font-weight: 650; white-space: nowrap}
+.status-open {background: #e7f4ec; color: #175d32}
+.status-investigating {background: #fff0d7; color: #805100}
+.status-resolved {background: #e7edfa; color: #294d91}
+.status-wontfix {background: #f0eaf3; color: #6b467b}
+:root[data-theme="dark"] .status-open {background: #214a35; color: #baf0ca}
+:root[data-theme="dark"] .status-investigating {background: #5b431b; color: #ffe0a1}
+:root[data-theme="dark"] .status-resolved {background: #2b416a; color: #c9dcff}
+:root[data-theme="dark"] .status-wontfix {background: #493750; color: #e8c6f2}
+.empty {text-align: center; padding: 3rem 1rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; color: var(--muted)}
+.pagination {display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.2rem; color: var(--muted)}
+.pagination-links {display: flex; gap: .5rem}
+.pagination a {display: inline-block; padding: .45rem .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px}
+.detail-head {padding: 1.7rem 0 1.2rem}
+.detail-head h1 {font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.2; letter-spacing: -.035em; margin: .5rem 0}
+.detail-meta {display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem}
+.detail-layout {display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1rem; align-items: start}
+.detail-layout section {margin-bottom: 1rem}
+.detail-layout h2 {font-size: 1.02rem; margin: 0 0 .8rem}
+.detail-layout p, .detail-layout pre {margin: .45rem 0}
+.detail-layout pre {white-space: pre-wrap; overflow-wrap: anywhere; font: inherit}
+.markdown p:first-child {margin-top: 0}
+.markdown p:last-child {margin-bottom: 0}
+.markdown ul, .markdown ol {padding-left: 1.4rem}
+.markdown li {margin: .25rem 0}
+.markdown code {font: .88em ui-monospace, SFMono-Regular, monospace; padding: .1em .28em; background: var(--pill); border-radius: 4px}
+.markdown pre {padding: .8rem; overflow-x: auto; background: var(--pill); border-radius: 8px; white-space: pre}
+.markdown pre code {padding: 0; background: none}
+.markdown blockquote {border-left: 3px solid var(--border); padding-left: 1rem; margin: .8rem 0; color: var(--muted)}
+.markdown .table-wrap {overflow-x: auto; margin: 1rem 0}
+.markdown table {border-collapse: collapse; width: 100%; min-width: 560px; font-size: .88rem}
+.markdown th, .markdown td {border: 1px solid var(--border); padding: .5rem .65rem; vertical-align: top; text-align: left}
+.markdown th {background: var(--pill)}
+.markdown tr:nth-child(even) td {background: var(--hover)}
+.detail-sidebar dl {margin: 0; display: grid; gap: .7rem}
+.detail-sidebar dt {font-size: .77rem; font-weight: 700; color: var(--muted)}
+.detail-sidebar dd {margin: 0; overflow-wrap: anywhere}
+.fact-grid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: 0}
+.fact-grid dt {font-size: .78rem; font-weight: 700; color: var(--muted)}
+.fact-grid dd {margin: .1rem 0 0; overflow-wrap: anywhere}
+.suggested-fix {border-left: 4px solid var(--accent)}
+.plain-list {list-style: none; margin: 0; padding: 0}
+.plain-list li {padding: .55rem 0; border-top: 1px solid var(--border)}
+.plain-list li:first-child {border-top: 0}
+.report-card {margin: .65rem 0}
+.report-card h3 {font-size: .95rem; margin: 0}
+.report-card p {margin: .4rem 0}
+.report-card summary {cursor: pointer; font-weight: 650; margin-top: .4rem}
+@media (max-width: 930px) {.toolbar, .toolbar.single-repository {grid-template-columns: repeat(3, minmax(0, 1fr))} .detail-layout {grid-template-columns: 1fr}}
+@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: 1fr} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading, .pagination {align-items: flex-start; flex-direction: column}}
 </style>"""
 
 THEME_INIT = """<script>
@@ -1278,12 +1358,86 @@ systemTheme.addEventListener('change', updateThemeToggle);
 updateThemeToggle();
 </script>"""
 
+LIVE_REFRESH = """<script>
+const refreshButton = document.getElementById('refresh-now');
+const liveStatus = document.getElementById('live-status');
+const filterForm = document.getElementById('filters');
+let refreshSerial = 0;
+let filterTimer;
+async function refreshPage(url = window.location.href) {
+  if (document.hidden || filterTimer) return;
+  const serial = ++refreshSerial;
+  liveStatus.textContent = 'Checking for updates…';
+  try {
+    const response = await fetch(url, {cache: 'no-store'});
+    if (serial !== refreshSerial) return;
+    if (!response.ok) throw new Error('Refresh failed');
+    if (new URL(response.url).pathname !== window.location.pathname) {
+      window.location.assign(response.url);
+      return;
+    }
+    const next = new DOMParser().parseFromString(await response.text(), 'text/html');
+    if (serial !== refreshSerial) return;
+    if (next.body.dataset.build !== document.body.dataset.build) {
+      window.location.reload();
+      return;
+    }
+    const currentMain = document.querySelector('main');
+    const nextMain = next.querySelector('main');
+    if (!nextMain) throw new Error('Missing page content');
+    const currentResults = document.getElementById('results');
+    const nextResults = next.getElementById('results');
+    if (currentResults && nextResults) {
+      if (currentResults.innerHTML !== nextResults.innerHTML) currentResults.replaceWith(nextResults);
+    } else if (currentMain.innerHTML !== nextMain.innerHTML) {
+      currentMain.replaceWith(nextMain);
+    }
+    liveStatus.textContent = 'Live · just checked';
+  } catch (_) {
+    if (serial === refreshSerial) liveStatus.textContent = 'Connection lost · retrying';
+  }
+}
+if (filterForm) {
+  function applyFilters() {
+    filterTimer = undefined;
+    const params = new URLSearchParams(new FormData(filterForm));
+    for (const key of [...params.keys()]) if (!params.get(key)) params.delete(key);
+    const url = '/' + (params.size ? '?' + params.toString() : '');
+    history.replaceState(null, '', url);
+    refreshPage(url);
+  }
+  filterForm.addEventListener('input', event => {
+    clearTimeout(filterTimer);
+    ++refreshSerial;
+    filterTimer = setTimeout(applyFilters, event.target.matches('input') ? 300 : 0);
+  });
+  filterForm.addEventListener('change', () => {
+    clearTimeout(filterTimer);
+    ++refreshSerial;
+    applyFilters();
+  });
+  filterForm.addEventListener('submit', event => {
+    event.preventDefault();
+    clearTimeout(filterTimer);
+    ++refreshSerial;
+    applyFilters();
+  });
+}
+refreshButton.addEventListener('click', () => refreshPage());
+setInterval(refreshPage, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPage(); });
+</script>"""
+
 def page(title, body):
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
-            f"{THEME_INIT}{STYLE}</head><body><header><h1><a href='/'>Papercuts</a></h1>"
-            "<div class='actions'><span class='muted'>SQLite inbox</span>"
-            "<button id='theme-toggle' type='button' aria-label='Toggle color theme'>Dark mode</button></div>"
-            f"</header>{body}{THEME_CONTROL}</body></html>")
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            f"{THEME_INIT}{STYLE}</head><body data-build='{SOURCE_VERSION}'>"
+            "<header class='site-header'>"
+            "<a class='brand' href='/'>✳ Papercuts</a><div class='header-actions'>"
+            "<span id='live-status' class='muted' role='status' aria-live='polite'>Live · updates every 15s</span>"
+            "<button id='refresh-now' type='button'>Refresh now</button>"
+            "<button id='theme-toggle' type='button' aria-label='Toggle color theme'>Dark mode</button>"
+            f"</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}</body></html>")
 
 
 def cost(minutes):
@@ -1301,37 +1455,271 @@ def linked(text):
                    for i, part in enumerate(parts))
 
 
+def status_pill(value):
+    return f"<span class='pill status-{value}'>{html.escape(value)}</span>"
+
+
 def select(name, options, chosen, blank):
-    return (f"<select name='{name}'><option value=''>{blank}</option>" + "".join(
-        f"<option value='{value}' {'selected' if chosen == value else ''}>{value}</option>" for value in options
+    return (f"<select id='{name}' name='{name}'><option value=''>{html.escape(blank)}</option>" + "".join(
+        f"<option value='{html.escape(value, quote=True)}' {'selected' if chosen == value else ''}>"
+        f"{html.escape(value.replace('-', ' ').title())}</option>" for value in options
     ) + "</select>")
 
 
-def papercut_list_html(result, filters):
-    fields = "".join(
-        f"<input name='{key}' placeholder='{key}' value='{html.escape(filters.get(key, ''), quote=True)}'>"
-        for key in ("repository", "q")
+def filter_field(name, label, control):
+    return f"<div class='filter-field'><label for='{name}'>{label}</label>{control}</div>"
+
+
+def short_date(value):
+    return html.escape(value[:10]) if value else 'unknown'
+
+
+def cost_label(papercut):
+    return f"{papercut['cost_minutes']:g} min" if papercut["cost_reports"] else "Not estimated"
+
+
+DESCRIPTION_FIELDS = ("Kind", "Impact", "Severity", "Source status", "Area", "Source", "Classification")
+INLINE_MARKDOWN = re.compile(r"(`[^`\n]+`|\[[^\]\n]+\]\([^)\n]+\)|\*\*[^*\n]+\*\*|\*[^*\n]+\*)")
+
+
+def inline_markdown(value):
+    """Render a small, safe Markdown subset used by report prose."""
+    value = value.replace("\\|", "|")
+    rendered, previous = [], 0
+    for match in INLINE_MARKDOWN.finditer(value):
+        rendered.append(linked(value[previous:match.start()]))
+        token = match.group()
+        if token.startswith("`"):
+            rendered.append(f"<code>{html.escape(token[1:-1])}</code>")
+        elif token.startswith("["):
+            label, target = token[1:].split("](", 1)
+            target = target[:-1]
+            scheme = urlsplit(target).scheme.lower()
+            if scheme in ("http", "https", "mailto"):
+                rendered.append(f"<a href='{html.escape(target, quote=True)}' rel='noopener noreferrer'>{html.escape(label)}</a>")
+            else:
+                rendered.append(html.escape(label))
+        elif token.startswith("**"):
+            rendered.append(f"<strong>{html.escape(token[2:-2])}</strong>")
+        else:
+            rendered.append(f"<em>{html.escape(token[1:-1])}</em>")
+        previous = match.end()
+    rendered.append(linked(value[previous:]))
+    return "".join(rendered)
+
+
+def table_cells(line):
+    line = line.strip()
+    if not line.startswith("|") or not line.endswith("|"):
+        return None
+    return [cell.strip() for cell in re.split(r"(?<!\\)\|", line[1:-1])]
+
+
+def legacy_table_lines(paragraph):
+    """Restore rows flattened by older local imports, when column boundaries are unambiguous."""
+    if "|---|" not in paragraph or "\n" in paragraph:
+        return paragraph
+    pipes = [match.start() for match in re.finditer(r"(?<!\\)\|", paragraph)]
+    if len(pipes) < 6:
+        return paragraph
+    start, end = pipes[0], pipes[-1]
+    cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", paragraph[start:end + 1]) if cell.strip()]
+    columns = next((i for i, cell in enumerate(cells) if re.fullmatch(r":?-{3,}:?", cell)), 0)
+    if columns < 2 or len(cells) < columns * 3 or len(cells) % columns:
+        return paragraph
+    if not all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells[columns:columns * 2]):
+        return paragraph
+    rows = ["| " + " | ".join(cells[i:i + columns]) + " |"
+            for i in range(0, len(cells), columns)]
+    return paragraph[:start].rstrip() + "\n\n" + "\n".join(rows) + "\n\n" + paragraph[end + 1:].strip()
+
+
+def markdown_html(value):
+    """Render paragraphs, lists, headings, quotes and fenced code without accepting raw HTML."""
+    value = "\n\n".join(legacy_table_lines(paragraph) for paragraph in value.split("\n\n"))
+    blocks, paragraph, items, quote, code = [], [], [], [], []
+    list_kind = None
+    in_code = False
+
+    def flush_paragraph():
+        if paragraph:
+            blocks.append("<p>" + "<br>".join(inline_markdown(line) for line in paragraph) + "</p>")
+            paragraph.clear()
+
+    def flush_list():
+        nonlocal list_kind
+        if items:
+            blocks.append(f"<{list_kind}>" + "".join(f"<li>{inline_markdown(item)}</li>" for item in items)
+                          + f"</{list_kind}>")
+            items.clear()
+            list_kind = None
+
+    def flush_quote():
+        if quote:
+            blocks.append("<blockquote>" + markdown_html("\n".join(quote)) + "</blockquote>")
+            quote.clear()
+
+    lines = value.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        index += 1
+        if line.lstrip().startswith("```"):
+            flush_paragraph(); flush_list(); flush_quote()
+            if in_code:
+                blocks.append("<pre><code>" + html.escape("\n".join(code)) + "</code></pre>")
+                code.clear()
+            in_code = not in_code
+            continue
+        if in_code:
+            code.append(line)
+            continue
+        headers = table_cells(line)
+        separators = table_cells(lines[index]) if index < len(lines) else None
+        if (headers and separators and len(headers) == len(separators)
+                and all(re.fullmatch(r":?-{3,}:?", cell) for cell in separators)):
+            flush_paragraph(); flush_list(); flush_quote()
+            index += 1
+            rows = []
+            while index < len(lines):
+                cells = table_cells(lines[index])
+                if cells is None or len(cells) != len(headers):
+                    break
+                rows.append(cells)
+                index += 1
+            head = "".join(f"<th>{inline_markdown(cell)}</th>" for cell in headers)
+            body = "".join("<tr>" + "".join(f"<td>{inline_markdown(cell)}</td>" for cell in row) + "</tr>"
+                           for row in rows)
+            blocks.append(f"<div class='table-wrap'><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
+            continue
+        if not line.strip():
+            flush_paragraph(); flush_list(); flush_quote()
+            continue
+        if line.startswith("> "):
+            flush_paragraph(); flush_list()
+            quote.append(line[2:])
+            continue
+        flush_quote()
+        if heading := re.match(r"^(#{1,6})\s+(.+)$", line):
+            flush_paragraph(); flush_list()
+            level = len(heading[1])
+            blocks.append(f"<h{level}>{inline_markdown(heading[2])}</h{level}>")
+            continue
+        if item := re.match(r"^\s*(?:([-*+])|(\d+)\.)\s+(.+)$", line):
+            flush_paragraph()
+            kind = "ol" if item[2] else "ul"
+            if list_kind and list_kind != kind:
+                flush_list()
+            list_kind = kind
+            items.append(item[3])
+            continue
+        flush_list()
+        paragraph.append(line)
+    if in_code:
+        blocks.append("<pre><code>" + html.escape("\n".join(code)) + "</code></pre>")
+    flush_paragraph(); flush_list(); flush_quote()
+    return "<div class='markdown'>" + "".join(blocks) + "</div>"
+
+
+def description_parts(description):
+    """Recognize the trailing labels written by the local importer without changing stored reports."""
+    narrative, suggested_fix, facts = [], None, {}
+    for paragraph in description.strip().split("\n\n"):
+        lines = paragraph.splitlines()
+        labeled = [line.partition(": ") for line in lines]
+        if paragraph.startswith("Suggested fix:\n"):
+            suggested_fix = paragraph.removeprefix("Suggested fix:\n")
+        elif len(lines) == 1 and paragraph.startswith("Suggested fix: "):
+            suggested_fix = paragraph.removeprefix("Suggested fix: ")
+        elif lines and all(separator and label in DESCRIPTION_FIELDS for label, separator, _ in labeled):
+            facts.update({label: value for label, _, value in labeled})
+        else:
+            narrative.append(paragraph)
+    return "\n\n".join(narrative), suggested_fix, facts
+
+
+def facts_html(facts):
+    return "<dl class='fact-grid'>" + "".join(
+        f"<div><dt>{html.escape(label)}</dt><dd>{inline_markdown(value)}</dd></div>"
+        for label in DESCRIPTION_FIELDS if (value := facts.get(label))
+    ) + "</dl>"
+
+
+def excerpt(value, length=220):
+    value = " ".join(value.split())
+    if len(value) <= length:
+        return value
+    return value[:length].rsplit(" ", 1)[0] + "…"
+
+
+def short_title(title):
+    for separator in (": ", " — ", " -- ", "; "):
+        if separator in title:
+            lead = title.split(separator, 1)[0]
+            if 18 <= len(lead) <= 78:
+                return lead
+    return excerpt(title, 78)
+
+
+def list_card_html(p):
+    esc = html.escape
+    description, _, facts = description_parts(p["description"])
+    visible_facts = ("Kind", "Impact", "Severity", "Source status")
+    fact_chips = "".join(
+        f"<div title='{esc(facts[label], quote=True)}'><dt>{esc(label)}</dt><dd>{esc(excerpt(facts[label], 55))}</dd></div>"
+        for label in visible_facts if facts.get(label)
     )
-    fields += select("status", STATUSES, filters.get("status"), "all statuses")
-    fields += select("category", (*CATEGORIES, "unclassified"), filters.get("category"), "all categories")
-    fields += select("sort", SORTS, filters.get("sort"), "sort: recent")
-    cards = "".join(
-        f"<article class='card'><a href='/papercuts/{p['id']}'><strong>#{p['id']} {html.escape(p['title'])}</strong></a> "
-        f"{pill(p['category'] or 'unclassified')}{pill(p['status'])}"
-        f"<p class='muted'>{html.escape(p['repository'])} · {html.escape(p['path'] or p['area'] or 'no location')} · "
-        f"{p['report_count']} reports from {p['reporter_count']} reporters"
-        f"{cost(p['cost_minutes'])}"
-        f" · last seen {html.escape(p['last_seen'])}</p></article>"
-        for p in result["papercuts"]
-    ) or "<p>No papercuts match these filters.</p>"
+    return (f"<li><article class='card issue-card'>"
+            f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
+            f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
+            f"<div class='badges'>{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}</div>"
+            f"<p class='issue-summary'>{esc(excerpt(description))}</p>"
+            f"{'<dl class=\"issue-facts\">' + fact_chips + '</dl>' if fact_chips else ''}"
+            f"<p class='location' title='{esc(p['path'] or p['area'] or '', quote=True)}'>"
+            f"{esc(excerpt(p['path'] or p['area'] or 'No location recorded', 150))}</p>"
+            f"<div class='issue-stats'><div><strong>{p['report_count']}</strong><span>Reports</span></div>"
+            f"<div><strong>{p['reporter_count']}</strong><span>Reporters</span></div>"
+            f"<div><strong>{cost_label(p)}</strong><span>Time lost</span></div>"
+            f"<div><strong><time datetime='{esc(p['last_seen'], quote=True)}'>{short_date(p['last_seen'])}</time></strong><span>Last seen</span></div></div>"
+            f"</article></li>")
+
+
+def papercut_list_html(result, filters, repositories=()):
+    esc = html.escape
+    search = filter_field("q", "Search terms", f"<input id='q' type='search' name='q' placeholder='Search terms…' value='{esc(filters.get('q', ''), quote=True)}'>")
+    available_repositories = list(repositories)
+    if filters.get("repository") and filters["repository"] not in available_repositories:
+        available_repositories.append(filters["repository"])
+    show_repository = len(available_repositories) > 1
+    repository = (filter_field("repository", "Repository",
+                               select("repository", available_repositories, filters.get("repository"), "All repositories"))
+                  if show_repository else "")
+    status = filter_field("status", "Status", select("status", STATUSES, filters.get("status"), "All statuses"))
+    category = filter_field("category", "Category", select("category", (*CATEGORIES, "unclassified"), filters.get("category"), "All categories"))
+    sort = filter_field("sort", "Sort by", select("sort", SORTS, filters.get("sort"), "Most recently seen"))
+    limit = filter_field("limit", "Per page", select("limit", ("25", "50", "100"), filters.get("limit", "50"), "50"))
+    cards = "".join(list_card_html(p) for p in result["papercuts"])
+    if cards:
+        cards = f"<ol class='issue-list'>{cards}</ol>"
+    else:
+        cards = "<div class='empty'><strong>No papercuts found</strong><p>Try clearing a filter or changing the search.</p></div>"
+    paging_filters = {key: value for key, value in filters.items() if key != "offset"}
     pages = []
     if result["offset"]:
-        pages.append(f"<a href='/?{urlencode({**filters, 'offset': max(0, result['offset'] - result['limit'])})}'>Previous</a>")
+        pages.append(f"<a href='/?{urlencode({**paging_filters, 'offset': max(0, result['offset'] - result['limit'])})}'>← Previous</a>")
     if result["next_offset"] is not None:
-        pages.append(f"<a href='/?{urlencode({**filters, 'offset': result['next_offset']})}'>Next</a>")
-    shown = f"{result['offset'] + 1}–{result['offset'] + len(result['papercuts'])} of " if result["papercuts"] else ""
-    return page("Papercuts", f"<form method='get'>{fields}<button>Filter</button></form>"
-                             f"<p>{shown}{result['total']} papercuts</p>{cards}<p>{' · '.join(pages)}</p>")
+        pages.append(f"<a href='/?{urlencode({**paging_filters, 'offset': result['next_offset']})}'>Next →</a>")
+    start = result["offset"] + 1 if result["papercuts"] else 0
+    end = result["offset"] + len(result["papercuts"])
+    body = ("<div class='intro'><span class='eyebrow'>Issue tracker</span><h1>Papercuts</h1>"
+            "<p>Small friction, collected across reports and agents.</p></div>"
+            f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}{limit}"
+            "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
+            f"<div id='results'><div class='results-heading'><h2>{result['total']} papercuts</h2>"
+            f"<p class='muted'>Showing {start}–{end} of {result['total']}</p></div>{cards}"
+            f"<nav class='pagination' aria-label='Pages'><span>Page {result['offset'] // result['limit'] + 1}</span>"
+            f"<div class='pagination-links'>{''.join(pages)}</div></nav></div>")
+    return page("Papercuts", body)
 
 
 def git_label(report):
@@ -1363,40 +1751,53 @@ def pr_control(papercut):
             "Open PR</button></p>")
 
 
+def report_card_html(report, papercut_description, expanded=False):
+    esc = html.escape
+    same_description = report["description"] == papercut_description
+    description, suggested_fix, facts = description_parts(report["description"]) if not same_description else ("", None, {})
+    return (f"<article class='card report-card'><h3>{esc(report['reporter'])}"
+            f"{' via ' + esc(report['agent']) if report['agent'] else ''}"
+            f"{' on ' + esc(report['machine']) if report['machine'] else ''}</h3>"
+            f"<p class='muted'>{esc(report['observed_at'] or report['received_at'])}"
+            f"{' · ' + linked(report['source_ref']) if report['source_ref'] else ''}"
+            f"{' · session ' + esc(report['session']) if report['session'] else ''}"
+            f"{git_label(report)}{cost(report['cost_minutes'])}</p>"
+            f"<details{' open' if expanded else ''}><summary>Report details</summary><p>{esc(report['title'])}</p>"
+            f"{'<p class=\"muted\">Same description as above.</p>' if same_description else markdown_html(description)}"
+            f"{'<div class=\"suggested-fix\"><strong>Suggested fix</strong>' + markdown_html(suggested_fix) + '</div>' if suggested_fix else ''}"
+            f"{facts_html(facts) if facts else ''}</details></article>")
+
+
 def papercut_html(papercut):
     esc = html.escape
-    reports = "".join(
-        f"<details class='card'{' open' if i == 0 else ''}><summary><strong>{esc(r['reporter'])}</strong> "
-        f"<span class='muted'>{esc(r['observed_at'] or r['received_at'])}"
-        f"{' · ' + linked(r['source_ref']) if r['source_ref'] else ''}"
-        f"{' · session ' + esc(r['session']) if r['session'] else ''}</span> {esc(r['title'])}</summary>"
-        f"<p class='muted'>{'via ' + esc(r['agent']) if r['agent'] else ''}{' on ' + esc(r['machine']) if r['machine'] else ''}"
-        f"{git_label(r)}{cost(r['cost_minutes'])}</p><pre>{linked(r['description'])}</pre></details>"
-        for i, r in enumerate(papercut["reports"])
-    )
+    description, suggested_fix, facts = description_parts(papercut["description"])
+    # Only the latest report starts expanded.
+    reports = "".join(report_card_html(r, papercut["description"], expanded=i == 0)
+                      for i, r in enumerate(papercut["reports"]))
     if papercut["report_count"] > len(papercut["reports"]):
         reports += f"<p class='muted'>Showing the latest {len(papercut['reports'])} of {papercut['report_count']} reports.</p>"
     related = "".join(
         f"<li><a href='/papercuts/{r['id']}'>#{r['id']} {esc(r['title'])}</a> "
         f"<span class='muted'>({esc(r['source'])}{', %.0f%%' % (100 * r['score']) if r['score'] is not None else ''})</span></li>"
         for r in papercut["related"]
-    ) or "<li>None yet</li>"
+    ) or "<li class='muted'>None yet</li>"
     history = "".join(
         f"<li><span class='muted'>{esc(e['at'][:19])} {esc(e['actor'])}</span> {esc(e['kind'])}"
         f"{': ' + esc(e['old_value'] or '∅') + ' → ' + esc(e['new_value'] or '∅') if e['kind'] in ('status', 'category', 'owner', 'severity', 'reopened', 'assessed', 'dispatch_updated') else ''}"
         f"{' #' + esc(e['new_value']) if e['kind'] in ('merged', 'absorbed', 'related', 'unrelated', 'dispatched') else ''}"
-        f"{'<pre>' + esc(e['body']) + '</pre>' if e['body'] else ''}</li>"
+        f"{markdown_html(e['body']) if e['body'] else ''}</li>"
         for e in papercut["events"]
-    ) or "<li>No triage yet</li>"
+    ) or "<li class='muted'>No triage yet</li>"
     votes = ", ".join(f"{esc(category)} ×{count}" for category, count in papercut["category_votes"].items())
     assessment = papercut["assessment"]
-    readiness = (f"<h3>Readiness</h3><p>{pill(assessment['verdict'])}"
+    readiness = ("<section class='card'><h2>Readiness</h2>"
+                 f"<p>{pill(assessment['verdict'])}"
                  + "".join(f" {label} {assessment[key]:.2f}" for key, label in (
                      ("evidence_score", "evidence"), ("fixability_score", "fixability"),
                      ("fixability_confidence", "confidence")) if assessment[key] is not None)
                  + f" <span class='muted'>{esc(assessment['at'][:19])} {esc(assessment['actor'])}"
                  f"{' · ' + esc(assessment['model']) if assessment['model'] else ''}</span></p>"
-                 f"{'<pre>' + esc(assessment['reason']) + '</pre>' if assessment['reason'] else ''}") if assessment else ""
+                 f"{markdown_html(assessment['reason']) if assessment['reason'] else ''}</section>") if assessment else ""
     def link(url, text):
         return f"<a href='{esc(url, quote=True)}'>{esc(text)}</a>" if url and url.startswith("https://") else esc(text or "")
 
@@ -1407,21 +1808,30 @@ def papercut_html(papercut):
         f"{' · ' + esc(d['branch']) if d['branch'] else ''}</li>"
         for d in papercut["dispatches"]
     )
-    body = (f"<h2>#{papercut['id']} {esc(papercut['title'])}</h2>"
-            f"<p>{pill(papercut['category'] or 'unclassified')}{pill(papercut['status'])}"
+    body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
+            f"<h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
+            f"<div class='detail-meta'>{status_pill(papercut['status'])}{pill(papercut['category'] or 'unclassified')}"
             f"{pill('owner: ' + papercut['owner']) if papercut['owner'] else ''}"
-            f"{pill('severity: ' + papercut['severity']) if papercut['severity'] else ''} "
-            f"{papercut['report_count']} reports from {papercut['reporter_count']} reporters"
-            f"{cost(papercut['cost_minutes'])}</p>"
-            f"{pr_control(papercut)}"
-            f"<p class='muted'>{esc(papercut['repository'])} · {esc(papercut['path'] or 'no path')}"
-            f"{' · ' + esc(papercut['area']) if papercut['area'] else ''}<br>"
-            f"First seen {esc(papercut['first_seen'])}; last seen {esc(papercut['last_seen'])}"
-            f"{'<br>Reporters suggested: ' + votes if votes else ''}</p>"
-            f"<div class='card'><pre>{linked(papercut['description'])}</pre></div>"
-            f"{readiness}{'<h3>Dispatches</h3><ul>' + dispatches + '</ul>' if dispatches else ''}"
-            f"<h3>Related papercuts</h3><ul>{related}</ul><h3>History</h3><ul>{history}</ul>"
-            f"<h3>Reports</h3>{reports}")
+            f"{pill('severity: ' + papercut['severity']) if papercut['severity'] else ''}"
+            f"<span class='muted'>{papercut['report_count']} reports · {papercut['reporter_count']} reporters · "
+            f"Time lost: {cost_label(papercut)}</span></div>{pr_control(papercut)}</div>"
+            "<div class='detail-layout'><div class='detail-content'>"
+            f"<section class='card'><h2>Description</h2>{markdown_html(description) if description else '<p>No description recorded.</p>'}</section>"
+            f"{'<section class=\"card suggested-fix\"><h2>Suggested fix</h2>' + markdown_html(suggested_fix) + '</section>' if suggested_fix else ''}"
+            f"{'<section class=\"card\"><h2>Source details</h2>' + facts_html(facts) + '</section>' if facts else ''}"
+            f"{readiness}"
+            f"{'<section class=\"card\"><h2>Dispatches</h2><ul class=\"plain-list\">' + dispatches + '</ul></section>' if dispatches else ''}"
+            f"<section class='card'><h2>Related papercuts</h2><ul class='plain-list'>{related}</ul></section>"
+            f"<section class='card'><h2>History</h2><ul class='plain-list'>{history}</ul></section>"
+            f"<section><h2>Reports</h2>{reports or '<p class=\"muted\">No reports yet.</p>'}</section></div>"
+            "<aside class='detail-sidebar card'><h2>Details</h2><dl>"
+            f"<div><dt>Repository</dt><dd>{esc(papercut['repository'])}</dd></div>"
+            f"<div><dt>Path</dt><dd>{esc(papercut['path'] or 'Not recorded')}</dd></div>"
+            f"<div><dt>Area</dt><dd>{esc(papercut['area'] or 'Not recorded')}</dd></div>"
+            f"<div><dt>First seen</dt><dd><time datetime='{esc(papercut['first_seen'], quote=True)}'>{short_date(papercut['first_seen'])}</time></dd></div>"
+            f"<div><dt>Last seen</dt><dd><time datetime='{esc(papercut['last_seen'], quote=True)}'>{short_date(papercut['last_seen'])}</time></dd></div>"
+            f"{'<div><dt>Category votes</dt><dd>' + votes + '</dd></div>' if votes else ''}"
+            "</dl></aside></div>")
     return page(papercut["title"], body)
 
 
@@ -1525,7 +1935,8 @@ class Handler(BaseHTTPRequestHandler):
         if dispatch and command == "PATCH":
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
-            return self.respond(200, papercut_list_html(self.store.list_papercuts(params), params), "text/html")
+            return self.respond(200, papercut_list_html(self.store.list_papercuts(params), params,
+                                                        self.store.repositories()), "text/html")
         if command == "GET" and html_match:
             if self.redirect_if_merged(int(html_match[1]), "/papercuts", url.query):
                 return None
