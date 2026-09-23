@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { KonamiArrowSprite } from "./GameSprites";
 import { ShinyInvadersPage } from "./ShinyInvadersPage";
+import { UpdateMusic } from "./UpdateMusic";
 import S from "./UpdatePage.module.css";
 
 const KONAMI_CODE = [
@@ -81,7 +82,13 @@ export function UpdatePage() {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isUsingControl =
+        target instanceof HTMLElement &&
+        (target.closest("button, a, input, textarea, select") ||
+          target.isContentEditable);
       if (
+        !isUsingControl &&
         event.code === "Space" &&
         !event.repeat &&
         !event.altKey &&
@@ -98,6 +105,7 @@ export function UpdatePage() {
 
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
+      {screen !== "playing" && <UpdateMusic />}
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <h1>{t`Update in progress…`}</h1>

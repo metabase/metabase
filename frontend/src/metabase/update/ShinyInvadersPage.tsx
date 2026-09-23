@@ -45,11 +45,12 @@ interface HighScore {
 
 type GameStatus = "playing" | "won" | "lost" | "high-scores";
 const DEFAULT_HIGH_SCORES: readonly HighScore[] = [
-  { name: "ALEX P", score: 9000 },
-  { name: "SASHA", score: 8000 },
-  { name: "BRYAN", score: 7000 },
-  { name: "DAN", score: 6000 },
-  { name: "ARIK", score: 5000 },
+  { name: "SASHA", score: 9000 },
+  { name: "ALEX P", score: 8000 },
+  { name: "TIMOTHY", score: 7000 },
+  { name: "BRYAN", score: 6000 },
+  { name: "DAN", score: 5000 },
+  { name: "ARIK", score: 4000 },
   { name: "VAMSI", score: 100 },
 ];
 
