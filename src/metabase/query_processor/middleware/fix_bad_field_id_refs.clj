@@ -32,7 +32,8 @@
                                                           query path &match)]
                                        (lib/update-options (lib/ref resolved)
                                                            merge
-                                                           (select-keys opts [:lib/expression-name
+                                                           (select-keys opts [:lib/uuid
+                                                                              :lib/expression-name
                                                                               ::qp.add-remaps/original-field-dimension-id
                                                                               ::qp.add-remaps/new-field-dimension-id])))))
                                  &match)))
