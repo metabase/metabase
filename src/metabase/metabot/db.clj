@@ -474,9 +474,17 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-schema-rows
-  "The ID, name, schema, and Database ID of the Tables with `table-ids`."
+  "The ID, name, schema, and Database ID of the Tables with `table-ids`, permission-checkable without further queries.
+
+  `:is_published` and `:collection_id` are not surfaced to callers but must be selected: both `can-read?` and
+  `can-query?` on a `:model/Table` fall through to [[metabase.permissions.core/can-access-via-collection?]], whose EE
+  implementation reads `:is_published` and then resolves the parent collection. Omitting `:is_published` fails that
+  branch silently -- every published (Data Studio library) table reads as inaccessible -- and omitting
+  `:collection_id` makes `perms-objects-set-for-parent-collection` throw on its Malli schema, which requires the key
+  to be present even when nil."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -775,10 +783,42 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
-(mu/defn card-table-ids
-  "A map of Card ID to Table ID for `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :table_id :model/Card :id [:in card-ids]))
+(def ^:private card-source-info-columns
+  "Columns [[card-source-info]] selects.
+
+  Do NOT add `:type`. Selecting `:dataset_query` already puts these rows through the full
+  `upgrade-card-schema-to-latest` loop; it stays cheap only because `upgrade-card-schema-to 24` short-circuits on
+  `(= :metric (keyword (:type card)))`, which is nil while `:type` is unselected. Adding it arms that upgrade, which
+  runs `metrics/compute-full-dimension-set` over the query of every un-curated metric on the page -- a large cost
+  with no visible symptom. Named rather than inlined so a test can pin it."
+  [:model/Card :id :card_schema :table_id :dataset_query])
+
+(mu/defn card-source-info
+  "A map of Card ID to `{:table_id ... :dataset_query ...}` for `card-ids` -- what
+  [[metabase.metabot.tools.util/metric-required-source]] needs to say which source a metric can be consumed from.
+
+  Deliberately NOT `:source_card_id`: that column is `lib/primary-source-card-id`, i.e. stage 0, so it cannot tell a
+  single-stage card-based metric (consumed from that card) from a multi-stage one (consumed from its base table).
+  Only the stage structure in `:dataset_query` can. `:card_schema` is required alongside it --
+  `t2/define-after-select` refuses to run its schema upgrades without it once the column list includes
+  `:dataset_query`.
+
+  See [[card-source-info-columns]] for why the column list is pinned."
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (t2/select-pk->fn #(select-keys % [:table_id :dataset_query])
+                    card-source-info-columns
+                    :id [:in card-ids]))
+
+(mu/defn card-source-rows
+  "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries.
+
+  `:collection_id` and `:document_id` are not surfaced to callers but must be selected: both feed
+  [[metabase.models.interface/can-read?]] on a `:model/Card` instance, and a missing `:collection_id` makes a card in
+  a restricted collection look readable. `:card_schema` is carried for consistency with every other narrowed Card
+  select in this namespace; this particular column list does not trip `t2/define-after-select`'s schema upgrades,
+  which need `:id` plus one of `:type` / `:database_id` / `:dataset_query` / `:result_metadata`."
+  [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
+  (t2/select [:model/Card :id :card_schema :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."

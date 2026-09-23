@@ -25,7 +25,9 @@
     "metric"
     ;; `{0}` and `{1}` are both the entity id: `tru` rejects a repeated index, because
     ;; MessageFormat counts placeholder occurrences and distinct indices separately.
-    (str (tru "Metrics are aggregations, not sources. To use metric {0}, put its base table into `source-table:` — combine the `database_name` and `base_table_fully_qualified_name` attributes from its search result or `read_resource metabase://metric/{1}` — and reference the metric as:"
+    ;; Naming the base table unconditionally breaks metrics defined on a saved question: keep in step with
+    ;; construct_notebook_query.md and the construct-notebook-query-* skills.
+    (str (tru "Metrics are aggregations, not sources. To use metric {0}, build the stage on the metric''s own source — its `base_table_fully_qualified_name` (with `database_name`) in `source-table:`, or its `source_card_portable_entity_id` in `source-card:`, whichever its `<metric>` tag carries (see its search result or `read_resource metabase://metric/{1}`) — and reference the metric as:"
               (str entity-id) (str entity-id))
          " `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
 
@@ -38,9 +40,15 @@
 
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
+(defn- card-fields-uri
+  "The `read_resource` URI listing a source card's columns. There is no `metabase://card/...` -- the dispatcher
+  matches `model` / `question` only, and they take different handlers."
+  [card-type card-id]
+  (str "metabase://" card-type "/" card-id "/fields"))
+
 (defn recovery-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id source-card source-card-type]}]
   (case error
     :uri-in-source-table
     (uri-hint entity-type entity-id)
@@ -61,7 +69,15 @@
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
 
     :ambiguous-fk
-    (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
+    (if (and source-card source-card-type)
+      (tru "Call `read_resource` with `{0}` to list the available foreign-key columns."
+           (card-fields-uri source-card-type source-card))
+      (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."))
+
+    :column-not-returned
+    (when (and source-card source-card-type)
+      (tru "Call `read_resource` with `{0}` to list the columns it returns."
+           (card-fields-uri source-card-type source-card)))
 
     :no-fk-path
     (tru "If a metric relates to that table, read its dimensions resource `metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste and the columns it unlocks.")

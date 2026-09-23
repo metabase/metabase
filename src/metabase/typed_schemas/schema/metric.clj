@@ -199,7 +199,12 @@
       source-table)))
 
 (defn- source-card-id
-  "Returns the source card id for metrics that are based on saved questions."
+  "Returns the source card id for metrics that are based on saved questions.
+
+  This answers a *lineage* question -- what card does stage 0 read from -- and deliberately not \"what source must
+  this metric be consumed from?\", which is [[metabase.metabot.tools.util/metric-required-source]] and is NOT the
+  same for a multi-stage definition: one that starts from a card and then aggregates is lineage-wise card-based but
+  can only be consumed from its base table. Do not conflate the two."
   [card]
   (or (when-let [source-card (get-in card [:dataset_query :stages 0 :source-card])]
         (when (integer? source-card)

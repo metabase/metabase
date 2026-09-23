@@ -424,18 +424,33 @@
 
 (defn format-metric-dimensions-table
   "Render a metric's queryable dimensions as a markdown table that names the **source table**
-  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+  each dimension comes from and the exact reference to copy into a `field` clause.
 
   A metric's dimensions span its base table and every FK-reachable table, so a bare field list
   is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
   across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
-  `Source table` and `Reference` columns remove that ambiguity."
+  `Source table` and `Reference` columns remove that ambiguity.
+
+  The reference is the portable FK, which resolves on `source-card:` and `source-table:` stages
+  alike, so card-based metrics need no special form. A bare machine name is the fallback for a card
+  output column backed by an expression or aggregation, which has no FK. Bare names must not be
+  emitted otherwise: on a `source-card:` stage an FK-reachable column is rejected by name, and a
+  name duplicated across tables (`id`, `created_at`) resolves silently to the wrong column.
+
+  So the fallback keys off the field id -- a card-computed column gets the output alias from
+  [[metabase.metabot.tools.util/->result-column]], a real field always a number -- not off
+  `:portable_fk` being absent, which `->result-column` also leaves nil when its FK builder throws.
+  Those get no reference at all and the LLM must look them up: the safe failure."
   [dims]
   (te/markdown-table
    (map (fn [d]
           (assoc d
                  :source    (dimension-source-table d)
-                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+                 :reference (cond
+                              (vector? (:portable_fk d)) (json/encode (:portable_fk d))
+                              ;; `->result-column` sets `:field_id` to `(or (:id column) desired-alias source-alias)`
+                              ;; and `:name` to the same two aliases, so a string `:field_id` IS the machine name.
+                              (string? (:field_id d)) (json/encode (:field_id d)))))
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
@@ -485,13 +500,18 @@
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly, except we additionally surface
-   `database_name`, `base_table_fully_qualified_name`, and `portable_entity_id` as tag
-   attributes — the three pieces of information the LLM needs to correctly use the metric
-   in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
-   metric's base table)."
+   `database_name`, `portable_entity_id`, and the metric's source as tag attributes — the
+   information the LLM needs to correctly use the metric in `construct_notebook_query` (as
+   `aggregation: [[metric, {}, <eid>]]` on top of the metric's own source).
+
+   At most one source attribute is present: `base_table_fully_qualified_name` when the metric must be
+   consumed from a table, `source_card_portable_entity_id` when it must be consumed from a card. When
+   no source can be offered, neither is present and `source_unavailable` is, so the LLM skips the
+   metric rather than guessing. [[metabase.metabot.tools.util/metric-required-source]] decides which
+   applies."
   [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
-           default_time_dimension_field database_name base_table_portable_fk
-           portable_entity_id]}]
+           default_time_dimension_field_name database_name base_table_portable_fk
+           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
@@ -503,9 +523,14 @@
                                               (= 3 (count base_table_portable_fk)))
                                      (let [[_db schema table] base_table_portable_fk]
                                        (fully-qualified-name schema table)))
+    :metric_source_unavailable     (boolean source_unavailable)
+    :metric_source_card_entity_id  source_card_portable_entity_id
+    :metric_source_card_name       source_card_name
     :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
-    :metric_default_time_dimension (:name default_time_dimension_field)
+    ;; `metric-details` carries the name alongside the id. This used to read `:default_time_dimension_field`, a
+    ;; field map that nothing produces, so the line rendered empty on every metric.
+    :metric_default_time_dimension default_time_dimension_field_name
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-metric-dimensions-table queryable-dimensions))
     :metric_join_required_xml      (when (seq join-required-dimensions)
@@ -831,14 +856,16 @@
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
-   For metric results we additionally surface `base_table_fully_qualified_name` (the
-   `schema.table` of the table the metric aggregates). Combined with `database_name` this
-   gives the LLM the full portable FK `[database_name, schema, table]` it must put in
-   `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `read_resource` round-trip."
+   For metric results we additionally surface the metric's source, so the LLM can use
+   `[metric, {}, <portable_entity_id>]` as an aggregation without a separate `read_resource`
+   round-trip. A metric that must be consumed from a table carries `base_table_fully_qualified_name`
+   (the `schema.table` it aggregates), which combined with `database_name` gives the full portable FK
+   `[database_name, schema, table]` for `source-table:`; one that must be consumed from a card carries
+   `source_card_portable_entity_id` for `source-card:`. When no source can be offered it carries
+   `source_unavailable` instead, so the LLM skips it rather than guessing."
   [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
-           base_table_portable_fk]}]
+           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -881,7 +908,10 @@
       :search_base_table_fqn (when (and (vector? base_table_portable_fk)
                                         (= 3 (count base_table_portable_fk)))
                                (let [[_db schema table] base_table_portable_fk]
-                                 (fully-qualified-name schema table)))})))
+                                 (fully-qualified-name schema table)))
+      :search_source_unavailable (boolean source_unavailable)
+      :search_source_card_entity_id source_card_portable_entity_id
+      :search_source_card_name source_card_name})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
