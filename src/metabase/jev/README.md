@@ -23,6 +23,7 @@ jev/
     joins.clj         inferred join-edge suggestions between tables
     explorations.clj  ranking x-ray exploration candidates
     usage.clj         collective "what people do on this table" shape model (endpoints)
+    viz.clj           rank chart types for a query result (deterministic roles + Jev scoring)
     intent.clj        per-user + per-table intent model (event-bus taps + prediction)
     intent/
       store.clj         the trail + faceted preference counters (swappable backing)
@@ -84,6 +85,7 @@ token to the browser, so it goes through these.
 | `POST /api/jev/explorations/rank` | Rank a set of x-ray exploration candidates against a context. |
 | `GET  /api/jev/usage/table/:id/shapes` | Collective, value-free "what people typically filter/aggregate/group here" starter chips. |
 | `POST /api/jev/usage/observe` | Feed the usage shape-model an MBQL query the caller ran/built (value-free facets only). |
+| `POST /api/jev/viz/suggest` | Rank chart types for a query result (body: its `:cols` metadata). Roles derived deterministically; Jev scores each chart type against the structure. |
 
 ## What's implemented so far
 
@@ -97,6 +99,11 @@ token to the browser, so it goes through these.
   learning ("you like temporal filters → on this new table that's `ordered_at`").
 - **Join inference** (`apps/joins`) — suggests join edges between tables from column shape.
 - **Exploration ranking** (`apps/explorations`) — ranks x-ray next-steps.
+- **Visualization suggestions** (`apps/viz`) — when a question returns, ranks the ~12 chart types by
+  fit and highlights the good ones in the chart-type sidebar. Column roles (metric/dimension/temporal/
+  geo) are derived *deterministically* from the result `:cols`; Jev only scores each chart against the
+  compressed structure (score-each, not pick-one, run in parallel). Advisory: it rings/dims the picker,
+  never changes the chart. (FE `ChartTypeOption` ring + `use-jev-viz-suggestions`.)
 
 All of it is prototype scaffolding: no caching, no cost limits, uncalibrated confidence shown but not
 gated on. When a judgment settles into a real feature, promote it to a typed endpoint that assembles
@@ -115,6 +122,8 @@ Frontend:
 - `querying/notebook/components/DataStep` — renders `<TableUsageChips>` under the data step.
 - `dashboard/containers/AutomaticDashboardApp/SuggestionsSidebar` — renders `<JevExplorations>` in the
   x-ray suggestions sidebar.
+- `query_builder/.../ChartTypeSidebar` — fetches viz suggestions on result-load
+  (`use-jev-viz-suggestions`) and rings/dims the chart-type picker by fit.
 - `api/jev.ts` — the RTK Query slice all of the above call through.
 
 Setting:
