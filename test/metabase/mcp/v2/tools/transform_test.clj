@@ -154,6 +154,23 @@
             (finally
               (t2/delete! :model/Transform :id (:id result)))))))))
 
+(deftest transform-write-result-is-text-only-test
+  (testing "GHY-4554: a successful transform_write result has no structuredContent, and its text block opens
+            with a data boundary. Claude Code shows the model structuredContent in place of the text block,
+            so a structured copy of the payload would reach the model with no boundary around it."
+    (with-transforms
+      (with-target-db-support
+        (let [response (write! {:method     "create"
+                                :name       "Text-only transform"
+                                :definition (query-definition)
+                                :target     {:name "mcp_text_only" :schema (venues-schema)}})
+              result   (tool-result response)]
+          (try
+            (is (not (contains? response :structuredContent)))
+            (is (some? (v2.tu/data-parts (-> response :content first :text))))
+            (finally
+              (t2/delete! :model/Transform :id (:id result)))))))))
+
 (defn- native-definition
   "An inline definition carrying raw SQL — the shape an agent that can write content but may not
    author SQL must not be able to store."
