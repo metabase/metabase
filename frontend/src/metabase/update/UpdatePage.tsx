@@ -7,6 +7,7 @@ import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useUpgradeStatus } from "metabase/status/hooks/self-upgrade";
 
 import { KonamiArrowSprite } from "./GameSprites";
+import { GameUpgradeStatus } from "./GameUpgradeStatus";
 import { ShinyInvadersPage } from "./ShinyInvadersPage";
 import { UpdateMusic } from "./UpdateMusic";
 import S from "./UpdatePage.module.css";
@@ -112,7 +113,7 @@ export function UpdatePage() {
   return (
     <div className={S.page} data-game-revealed={isGameRevealed}>
       {screen !== "playing" && <UpdateMusic />}
-      {isGameRevealed && <UpgradeCompletion status={status} overlay />}
+      {isGameRevealed && <GameUpgradeStatus status={status} />}
       <main className={S.loading} aria-hidden={isGameRevealed}>
         <header className={S.message}>
           <LogoIcon height={56} />

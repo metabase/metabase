@@ -11,12 +11,12 @@ import { formatVersion } from "metabase/utils/version";
 
 interface UpgradeCompletionProps {
   status: ReturnType<typeof useUpgradeStatus>;
-  overlay?: boolean;
+  compact?: boolean;
 }
 
 export function UpgradeCompletion({
   status,
-  overlay = false,
+  compact = false,
 }: UpgradeCompletionProps) {
   const { hasStatus, phase, newVersion, errorMessage, reset } = status;
   if (!hasStatus || (phase !== "done" && phase !== "failed")) {
@@ -35,6 +35,30 @@ export function UpgradeCompletion({
     reload();
   };
 
+  const content = (
+    <Stack
+      align={compact ? "flex-start" : "center"}
+      gap="md"
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <Text
+        ta={compact ? "left" : "center"}
+        size={compact ? "sm" : "md"}
+        c="text-primary"
+      >
+        {message}
+      </Text>
+      <Button
+        size={compact ? "compact-sm" : "md"}
+        onClick={handleReload}
+      >{t`Reload the page`}</Button>
+    </Stack>
+  );
+
+  if (compact) {
+    return content;
+  }
+
   return (
     <Paper
       role="status"
@@ -43,16 +67,8 @@ export function UpgradeCompletion({
       withBorder
       shadow="md"
       p="lg"
-      pos={overlay ? "fixed" : undefined}
-      top={overlay ? "1rem" : undefined}
-      left={overlay ? "1rem" : undefined}
-      right={overlay ? "1rem" : undefined}
-      style={{ zIndex: 100 }}
     >
-      <Stack align="center" gap="md">
-        <Text ta="center">{message}</Text>
-        <Button onClick={handleReload}>{t`Reload the page`}</Button>
-      </Stack>
+      {content}
     </Paper>
   );
 }

@@ -6,7 +6,7 @@
   align-items: center;
   gap: 1rem;
   overflow: hidden;
-  color: var(--mb-color-text-primary-inverse);
+  color: var(--update-game-text);
   font-family: "Press Start 2P", monospace;
   line-height: 1.6;
 
@@ -27,7 +27,7 @@
 
   p {
     margin: 0;
-    color: var(--mb-color-text-secondary-inverse);
+    color: var(--update-game-text-secondary);
   }
 }
 
@@ -55,7 +55,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--mb-color-background_page-primary-inverse);
+  background: var(--update-game-background);
 }
 
 .gameHeader {
@@ -116,7 +116,7 @@
   min-height: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  background: var(--mb-color-background_page-primary-inverse);
+  background: var(--update-game-background);
 }
 
 .stars {
@@ -172,7 +172,7 @@
 .gameControls {
   flex: 0 0 auto;
   padding: 0.75rem 1rem;
-  color: var(--mb-color-text-secondary-inverse);
+  color: var(--update-game-text-secondary);
   border-top: 1px solid var(--mb-color-border-on_dark);
   font-size: 0.625rem;
   text-align: center;

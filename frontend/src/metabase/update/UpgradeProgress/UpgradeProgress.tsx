@@ -20,7 +20,7 @@ export function UpgradeProgress({
   const description = getDescription(phase, downloadProgress);
   return (
     <Stack w="100%" maw="24rem" gap="md">
-      <Text role="status" c="text-secondary-inverse">
+      <Text role="status" c="text-secondary">
         {description}
       </Text>
       <Progress
