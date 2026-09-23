@@ -442,7 +442,12 @@
                                     impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
                                                                     (swap! loaded conj :loaded)
                                                                     (when finalize! (finalize!))
-                                                                    nil)]
+                                                                    nil)
+                                    ;; a clean merge whose remote changes are incrementally loadable loads just those
+                                    impl/incremental-load-snapshot! (fn [_plan _ _ _ & {:keys [finalize!]}]
+                                                                      (swap! loaded conj :loaded)
+                                                                      (when finalize! (finalize!))
+                                                                      nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
