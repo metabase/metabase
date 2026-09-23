@@ -94,6 +94,14 @@
   (fn [query rff]
     ((swap-destination-db qp) query rff)))
 
+(defenterprise apply-workspace-remapping
+  "Pre-processing middleware. In workspace mode, redirects references to canonical tables to their workspace
+  locations: wraps the query's metadata provider so MBQL stages compile against the workspace tables, and rewrites
+  the SQL of native stages."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
 (defenterprise check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
   of the query, and aborts the query or limits the number of results if necessary.
