@@ -1,5 +1,4 @@
 import type {
-  CreateTimelineEventRequest,
   CreateTimelineRequest,
   Timeline,
   TimelineEvent,
@@ -8,14 +7,17 @@ import type {
 import { cypressWaitAll } from "../e2e-misc-helpers";
 
 import { createTimeline } from "./createTimeline";
-import { createTimelineEvent } from "./createTimelineEvent";
+import {
+  type TimelineEventDetails,
+  createTimelineEvent,
+} from "./createTimelineEvent";
 
 export const createTimelineWithEvents = ({
   timeline,
   events,
 }: {
   timeline: CreateTimelineRequest;
-  events: Partial<Omit<CreateTimelineEventRequest, "timeline_id">>[];
+  events: Omit<TimelineEventDetails, "timeline_id">[];
 }): Cypress.Chainable<{
   timeline: Timeline;
   events: TimelineEvent[];
