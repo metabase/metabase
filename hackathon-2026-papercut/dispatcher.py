@@ -721,7 +721,7 @@ def main():
     dispatch_command = commands.add_parser("dispatch", help="Claim papercuts by id and run the fixer for them")
     watch_command = commands.add_parser("watch", help="Run the fixer for each dispatch queued from the web view")
     for command in (assess_command, dispatch_command, watch_command):
-        command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://127.0.0.1:8765"))
+        command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://10.193.193.227:8765"))
     command = assess_command
     command.add_argument("--repository")
     command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
