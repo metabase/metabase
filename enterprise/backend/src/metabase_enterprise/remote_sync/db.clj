@@ -3,13 +3,13 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [metabase.worktree.core :as worktree]
    [toucan2.core :as t2]))
 
 (def ^:private ConditionKey
@@ -101,7 +101,7 @@
   synced collections, and a delete of every row when nothing restricts it.
 
   A pull into a worktree can never reconcile away the main app's content, nor another worktree's: the delete is
-  restricted to the world being imported into."
+  restricted to the worktree being imported into."
   [model-key    :- :keyword
    removal-opts :- RemovalOpts]
   (when-let [exprs (removal-exprs removal-opts)]
@@ -292,7 +292,7 @@
   (t2/select [:model/Card :id :type :display :card_schema] :id [:in card-ids]))
 
 (mu/defn user-settings-exist-for-table?
-  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row in the world being worked in."
+  "Whether the Table with `table-id`, or any of its Fields, has a user-settings row in the worktree being worked in."
   [table-id :- ::lib.schema.id/table]
   (or (t2/exists? :model/TableUserSettings :table_id table-id)
       (t2/exists? :model/FieldUserSettings
@@ -301,7 +301,7 @@
                            [:= :f.id :u.field_id]]
                    :where [:and
                            [:= :f.table_id table-id]
-                           [:= :u.worktree_id (worktree/worktree-id)]]})))
+                           [:= :u.worktree_id (mdb.worktree/worktree-id)]]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
@@ -551,12 +551,12 @@
                               (contents-rso-expr collection-ids)]}))
 
 (mu/defn insert-rso!
-  "Insert the RemoteSyncObject `row` into the world the running sync works in."
+  "Insert the RemoteSyncObject `row` into the worktree the running sync works in."
   [row :- ::remote-sync.schema/remote-sync-object.update]
   (t2/insert! :model/RemoteSyncObject row))
 
 (mu/defn insert-rsos!
-  "Insert the RemoteSyncObject `rows` into the world the running sync works in."
+  "Insert the RemoteSyncObject `rows` into the worktree the running sync works in."
   [rows :- [:sequential ::remote-sync.schema/remote-sync-object.update]]
   (t2/insert! :model/RemoteSyncObject rows))
 
@@ -699,7 +699,7 @@
                              [:id :desc]]}))
 
 (mu/defn insert-task!
-  "Insert `task` into the world the running sync works in, and return the new instance."
+  "Insert `task` into the worktree the running sync works in, and return the new instance."
   [task :- ::remote-sync.schema/remote-sync-task.update]
   (t2/insert-returning-instance! :model/RemoteSyncTask task))
 
@@ -761,3 +761,52 @@
   (t2/select [:model/User :id :first_name :last_name :email
               :date_joined :last_login :is_superuser :is_qbnewb :is_active]
              :id [:in user-ids]))
+
+(mu/defn worktrees
+  "Every Worktree, oldest first."
+  []
+  (t2/select :model/Worktree {:order-by [[:id :asc]]}))
+
+(mu/defn worktree
+  "The Worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/Worktree :id worktree-id))
+
+(mu/defn worktree-exists?
+  "Whether a Worktree with `worktree-id` exists."
+  [worktree-id :- ms/PositiveInt]
+  (t2/exists? :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch
+  "The branch the Worktree with `worktree-id` is checked out to, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/Worktree :id worktree-id))
+
+(mu/defn worktree-branch-taken?
+  "Whether a Worktree for `branch` already exists."
+  [branch :- :string]
+  (t2/exists? :model/Worktree :branch branch))
+
+(mu/defn insert-worktree!
+  "Insert the Worktree `row` and return the new instance."
+  [row :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/Worktree row))
+
+(mu/defn update-worktree-branch!
+  "Point the Worktree with `worktree-id` at `branch`, returning the number updated."
+  [worktree-id :- ms/PositiveInt
+   branch      :- :string]
+  (t2/update! :model/Worktree worktree-id {:branch branch}))
+
+(mu/defn set-user-worktree!
+  "Put the user with `user-id` in the worktree `worktree-id` names, or in the main app when it is nil, returning
+  the number updated."
+  [user-id     :- ms/PositiveInt
+   worktree-id :- [:maybe ms/PositiveInt]]
+  (t2/update! :model/User user-id {:worktree_id worktree-id}))
+
+(mu/defn delete-worktree!
+  "Delete the Worktree with `worktree-id`, which takes every piece of content it checked out with it: each
+  `worktree_id` foreign key cascades."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/Worktree :id worktree-id))
