@@ -528,7 +528,6 @@
       (t2/hydrate :dimensions)
       :dimensions
       first
-      ;; which world a dimension lives in is not what these tests are about
       (some-> (dissoc :worktree_id))))
 
 (defn- create-dimension-via-API!

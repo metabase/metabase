@@ -9,7 +9,6 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.api.common :as api]
-   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -46,8 +45,7 @@
   when the collection is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (some? (mdb.worktree/worktree-id))
-      (= (settings/remote-sync-type) :read-write)
+  (or (spec/session-editable?)
       (not (collections/remote-synced-collection? collection))))
 
 (defenterprise table-editable?
@@ -65,8 +63,7 @@
   If the table has a pre-hydrated :collection key, uses that to avoid an extra query."
   :feature :none
   [table]
-  (or (some? (mdb.worktree/worktree-id))
-      (= (settings/remote-sync-type) :read-write)
+  (or (spec/session-editable?)
       (not (:is_published table))
       ;; Use pre-hydrated :collection if available, otherwise fall back to :collection_id
       (not (collections/remote-synced-collection? (or (:collection table)
@@ -81,9 +78,8 @@
   Always returns true on OSS."
   :feature :none
   []
-  (or (some? (mdb.worktree/worktree-id))
-      (not (settings/remote-sync-enabled))
-      (= (settings/remote-sync-type) :read-write)))
+  (or (spec/session-editable?)
+      (not (settings/remote-sync-enabled))))
 
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration."

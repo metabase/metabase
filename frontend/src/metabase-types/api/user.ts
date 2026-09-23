@@ -4,6 +4,7 @@ import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { WorktreeId } from "./remote-sync";
 import type { ConcreteTableId, SchemaName } from "./table";
 
 export type UserId = number;
@@ -79,8 +80,7 @@ export interface User extends BaseUser {
     dashboard_id: DashboardId;
   } | null;
   permissions?: UserPermissions;
-  /** the worktree the user is working in; null is the main app */
-  worktree_id?: number | null;
+  worktree_id?: WorktreeId | null;
 }
 
 export interface UserListResult {

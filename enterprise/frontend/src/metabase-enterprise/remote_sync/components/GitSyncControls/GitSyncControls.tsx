@@ -112,7 +112,6 @@ export const GitSyncControls = () => {
         return;
       }
     } catch {
-      // fall through to the plain push modal on any preflight error
     } finally {
       setIsCheckingPreflight(false);
     }
@@ -188,7 +187,6 @@ export const GitSyncControls = () => {
     return null;
   }
 
-  // A worktree is where a read-only instance's content is authored, so it can push and pull even there.
   const hasSyncActions = isReadWrite || isInWorktree;
 
   return (

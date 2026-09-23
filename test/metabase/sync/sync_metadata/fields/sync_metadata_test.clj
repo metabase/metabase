@@ -21,8 +21,6 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       ;; a FieldUserSettings row is updated by the field it belongs to rather than by its own id, so the
-       ;; call carries that column; either shape is recorded as the id it names
        (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
                                                 (let [[id updates] (if (= (count args) 3)
                                                                      [(second args) (last args)]

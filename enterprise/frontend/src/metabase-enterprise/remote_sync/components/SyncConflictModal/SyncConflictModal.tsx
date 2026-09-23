@@ -193,7 +193,6 @@ const SyncConflictForm = (props: Omit<UnsyncedWarningModalProps, "opened">) => {
 
     if (optionValue === "discard") {
       // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
-      // and reload the current branch.
       await discardChangesAndImport(nextBranch || currentBranch, onClose);
     }
   };

@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
@@ -555,6 +556,9 @@
   if nothing was run (already running / no transforms), or a Throwable on a pre-start failure.
   Returns the run id, or nil if nothing was executed."
   [job-id {:keys [run-method start-promise] :as opts}]
+  (when (mdb.worktree/worktree-id)
+    (throw (ex-info "A transform job runs the main app's transforms, never a worktree's"
+                    {:status-code 400 :job-id job-id})))
   (try
     (if (transforms.job-run/running-run-for-job-id job-id)
       (do (log/info "Not executing transform job" (pr-str job-id) "because it is already running")

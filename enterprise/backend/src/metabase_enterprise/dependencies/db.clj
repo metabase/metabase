@@ -27,8 +27,7 @@
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]
-   [:include-archived-items {:optional true} [:enum :exclude :all :only]]
-   [:worktree-id {:optional true} [:maybe pos-int?]]])
+   [:include-archived-items {:optional true} [:enum :exclude :all :only]]])
 
 (def ^:private EntityType
   "A dependency-type keyword, or the equivalent string. Every column these entity types are filtered against uses
@@ -66,15 +65,12 @@
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
   - Transform: analysts can view any transform they have source view permission to."
-  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items
-                                             worktree-id]
+  [entity-type-field entity-id-field {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
                                       :or   {include-archived-items :exclude}}]
   (into [:or]
         (keep (fn [[entity-type model]]
-                (let [table-name     (t2/table-name model)
-                      id-column      (keyword (name table-name) "id")
-                      worktree-clause (when (isa? model :hook/worktree-id)
-                                        [:= (keyword (name table-name) "worktree_id") worktree-id])]
+                (let [table-name (t2/table-name model)
+                      id-column  (keyword (name table-name) "id")]
                   (case model
                     :model/Sandbox
                     (when is-superuser?
@@ -87,8 +83,7 @@
                       is-superuser?
                       [:and
                        [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery {:select [:id] :from [table-name] :where worktree-clause}]]
+                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
 
                       is-data-analyst?
                       [:and
@@ -97,14 +92,12 @@
                         ^:allow-subquery
                         {:select [:id]
                          :from   [table-name]
-                         :where  [:and
-                                  worktree-clause
-                                  [:in :source_database_id
-                                   (perms/visible-database-filter-select
-                                    {:user-id          user-id
-                                     :is-superuser?    is-superuser?
-                                     :is-data-analyst? is-data-analyst?}
-                                    {:perms/create-queries :query-builder})]]}]])
+                         :where  [:in :source_database_id
+                                  (perms/visible-database-filter-select
+                                   {:user-id          user-id
+                                    :is-superuser?    is-superuser?
+                                    :is-data-analyst? is-data-analyst?}
+                                   {:perms/create-queries :query-builder})]}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
                     (let [archived-column (keyword (name table-name) "archived")]
@@ -118,7 +111,6 @@
                           {:select [:id]
                            :from   [table-name]
                            :where  [:and
-                                    worktree-clause
                                     (collection/visible-collection-filter-clause
                                      (keyword (name table-name) "collection_id")
                                      {:include-archived-items include-archived-items}
@@ -152,7 +144,6 @@
                         {:select [:id]
                          :from   [table-name]
                          :where  [:and
-                                  worktree-clause
                                   [:in table-id-column
                                    ^:allow-subquery
                                    {:select [:metabase_table.id]
@@ -445,13 +436,12 @@
   and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
   `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`. Throws when `user-id` is missing,
   since the visibility restriction must always be applied."
-  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst? worktree-id] :as params}]
+  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst?] :as params}]
   (when-not user-id
     (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
                     {:query-type query-type :entity-type entity-type})))
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?
-                 :worktree-id worktree-id}
+        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
         default-visible-restriction {:visible visible}
         ;; The item's own visibility check includes archived items when listing what's breaking other entities,
         ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
@@ -486,8 +476,7 @@
    [:limit ms/PositiveInt]
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
-   [:is-data-analyst? {:optional true} [:maybe :boolean]]
-   [:worktree-id {:optional true} [:maybe pos-int?]]])
+   [:is-data-analyst? {:optional true} [:maybe :boolean]]])
 
 (mu/defn dependency-item-ids
   "A page of `[entity-type entity-id]` pairs for `query-type` (`:unreferenced` or `:breaking`), restricted to
@@ -518,10 +507,9 @@
 (mu/defn broken-entity-pairs
   "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
   `source-entity-type` `source-entity-id`, restricted to `dependent-types` and `dependent-card-types` (each nil
-  for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?` in the
-  world `worktree-id` names."
+  for no restriction), visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`."
   [{:keys [source-entity-type source-entity-id dependent-types dependent-card-types
-           user-id is-superuser? is-data-analyst? worktree-id]}
+           user-id is-superuser? is-data-analyst?]}
    :- [:map {:closed true}
        [:source-entity-type EntityType]
        [:source-entity-id ms/PositiveInt]
@@ -529,8 +517,7 @@
        [:dependent-card-types {:optional true} [:maybe [:sequential :string]]]
        [:user-id ::lib.schema.id/user]
        [:is-superuser? {:optional true} [:maybe :boolean]]
-       [:is-data-analyst? {:optional true} [:maybe :boolean]]
-       [:worktree-id {:optional true} [:maybe pos-int?]]]]
+       [:is-data-analyst? {:optional true} [:maybe :boolean]]]]
   (t2/query
    (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type] [:afe.analyzed_entity_id :entity_id]]
             :from [[:analysis_finding_error :afe]]
@@ -545,7 +532,6 @@
                             (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
                                                    {:user-id user-id :is-superuser? is-superuser?
                                                     :is-data-analyst? is-data-analyst?
-                                                    :worktree-id worktree-id
                                                     :include-archived-items :exclude})]
                      dependent-types      (conj [:in :afe.analyzed_entity_type dependent-types])
                      dependent-card-types (conj [:or

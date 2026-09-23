@@ -514,7 +514,6 @@
 
 (search.spec/define-spec "document"
   {:model :model/Document
-   :where [:= :this.worktree_id nil]
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id

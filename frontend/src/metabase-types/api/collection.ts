@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { WorktreeId } from "./remote-sync";
 import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -76,8 +77,7 @@ export interface Collection {
   is_sample?: boolean; // true if the collection part of the sample content
   is_library_root?: boolean;
 
-  /** the remote-sync branch this collection was checked out for; undefined is the main app */
-  worktree_id?: number | null;
+  worktree_id?: WorktreeId | null;
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
@@ -175,8 +175,6 @@ export type ListCollectionItemsSortColumn =
 // `/api/ee/stale/:id`, `/api/notification/admin`).
 export type ListCollectionItemsRequest = {
   id: CollectionId;
-  /** undefined is the main app */
-  "worktree-id"?: number;
   models?: (CollectionItemModel | "no_models")[];
   q?: string;
   "include-available-models"?: boolean;
@@ -232,8 +230,6 @@ export interface CreateCollectionRequest {
 
 export type ListCollectionsRequest = {
   archived?: boolean;
-  /** undefined is the main app */
-  "worktree-id"?: number;
   namespace?: CollectionNamespace;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
@@ -249,7 +245,6 @@ export type ListCollectionsTreeRequest = {
   "collection-id"?: RegularCollectionId | null;
   collection_type?: CollectionType;
   "include-tenant-collections"?: boolean;
-  "worktree-id"?: number;
 };
 
 export interface DeleteCollectionRequest {

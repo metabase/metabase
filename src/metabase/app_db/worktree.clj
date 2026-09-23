@@ -11,8 +11,9 @@
   is restricted to [[*worktree-id*]] here: the main app's rows by default, and a branch's while a request, an import
   or an export works inside one.
 
-  A query that joins several of those tables is restricted for the one it selects from, and one built out of other
-  queries -- a union, a subselect, a common table expression -- is restricted for each of them.
+  A query that joins one of those tables is restricted for it too, in the condition it is joined on, and a query
+  built out of other queries -- a union, a subselect, a common table expression, the select a condition compares
+  against -- is restricted for each of them.
   [[without-worktree-scoping]] lifts the restriction for the code that has to see every worktree at once, such as
   working out which one an entity is in."
   (:require
@@ -103,42 +104,84 @@
 
 (declare scope-query)
 
+(defn- keeping-meta
+  "`form` rebuilt as `rebuilt`, carrying the metadata Honey SQL and the app-DB guard read off it."
+  [rebuilt form]
+  (cond-> rebuilt
+    (meta form) (with-meta (meta form))))
+
 (defn- scope-queries
   "Restrict each query map of `queries`, leaving anything else alone."
   [queries]
-  (mapv #(cond-> % (map? %) scope-query) queries))
+  (keeping-meta (mapv #(cond-> % (map? %) scope-query) queries) queries))
 
 (defn- scope-ctes
   "Restrict each common table expression of `ctes` that reads a checked-out table."
   [ctes]
-  (mapv (fn [cte]
-          (if (and (vector? cte) (map? (second cte)))
-            (assoc cte 1 (scope-query (second cte)))
-            cte))
-        ctes))
+  (keeping-meta (mapv (fn [cte]
+                        (if (and (vector? cte) (map? (second cte)))
+                          (assoc cte 1 (scope-query (second cte)))
+                          cte))
+                      ctes)
+                ctes))
 
 (defn- scope-subqueries
   "Restrict each query `sources` selects from rather than names, such as the arms of a union a listing builds."
   [sources]
   (cond
     (map? sources)        (scope-query sources)
-    (sequential? sources) (mapv (fn [source]
-                                  (cond
-                                    (map? source)               (scope-query source)
-                                    (and (vector? source)
-                                         (map? (first source))) (assoc source 0 (scope-query (first source)))
-                                    :else                       source))
-                                sources)
+    (sequential? sources) (keeping-meta (mapv (fn [source]
+                                                (cond
+                                                  (map? source)               (scope-query source)
+                                                  (and (vector? source)
+                                                       (map? (first source))) (assoc source 0 (scope-query (first source)))
+                                                  :else                       source))
+                                              sources)
+                                        sources)
     :else                 sources))
+
+(def ^:private join-clauses
+  "The keys under which a query holds the tables it joins, each as a table and the condition it is joined on."
+  [:join :left-join :right-join :inner-join :full-join])
+
+(defn- scope-joins
+  "Restrict each checked-out table `joins` joins in, in the condition it is joined on -- a left join keeps the rows
+  that match nothing, which a condition in the `:where` would drop."
+  [joins]
+  (keeping-meta
+   (into []
+         (comp (partition-all 2)
+               (mapcat (fn [[source condition :as pair]]
+                         (if-some [[table alias] (and (= (count pair) 2) (table-and-alias source))]
+                           (if (contains? (checked-out-tables) (name table))
+                             [source [:and condition [:= (u/qualified-key alias :worktree_id) *worktree-id*]]]
+                             pair)
+                           pair))))
+         joins)
+   joins))
 
 (def ^:private set-operations
   "The keys under which a query holds the queries it combines."
   [:union :union-all :intersect :except])
 
+(defn- query-map?
+  "Whether `x` is a query in its own right rather than some other Honey SQL map."
+  [x]
+  (and (map? x)
+       (boolean (or (:select x) (:select-distinct x) (:union x) (:union-all x)))))
+
+(defn- scope-nested
+  "Restrict every query nested anywhere in `form`, such as the subselect a condition compares against."
+  [form]
+  (cond
+    (query-map? form) (scope-query form)
+    (vector? form)    (keeping-meta (mapv scope-nested form) form)
+    :else             form))
+
 (defn- scope-query
-  "Restrict `query` to the worktree being worked in, along with every query it is built out of: the ones it selects
-  from, the ones it combines, and the common table expressions it defines. A query that names no checked-out table
-  itself is left alone."
+  "Restrict `query` to the worktree being worked in: the table it reads, the tables it joins, and every query it is
+  built out of -- the ones it selects from, the ones it combines, the common table expressions it defines, and the
+  ones its conditions compare against."
   [query]
   (as-> query query
     (if-let [column (worktree-column query)]
@@ -148,19 +191,31 @@
     (cond-> query
       (sequential? (:with query))           (update :with scope-ctes)
       (sequential? (:with-recursive query)) (update :with-recursive scope-ctes)
-      (some? (:from query))                 (update :from scope-subqueries))
+      (some? (:from query))                 (update :from scope-subqueries)
+      (some? (:where query))                (update :where scope-nested)
+      (some? (:having query))               (update :having scope-nested))
+    (reduce (fn [query k]
+              (cond-> query
+                (sequential? (get query k)) (update k scope-joins)))
+            query
+            join-clauses)
     (reduce (fn [query k]
               (cond-> query
                 (sequential? (get query k)) (update k scope-queries)))
             query
             set-operations)))
 
+(defn scope
+  "Restrict `query` to the worktree being worked in, or return it as it is when it is not a query map or nothing is
+  being restricted."
+  [query]
+  (cond-> query
+    (and *worktree-scoping* (map? query)) scope-query))
+
 (methodical/defmethod t2.pipeline/build :after :default
   "Read and write only the worktree being worked in."
   [_query-type _model _parsed-args query]
-  (if (and *worktree-scoping* (map? query))
-    (scope-query query)
-    query))
+  (scope query))
 
 (def ^:private exists-subquery-path
   "Where an `exists` query holds the select it asks about."

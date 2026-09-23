@@ -240,7 +240,6 @@
 
 (search/define-spec "segment"
   {:model :model/Segment
-   :where [:= :this.worktree_id nil]
    :attrs {:archived true
            :collection-id false
            :creator-id false

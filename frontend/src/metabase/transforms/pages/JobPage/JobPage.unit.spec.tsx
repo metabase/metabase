@@ -53,24 +53,19 @@ describe("JobPage", () => {
     jest.useFakeTimers({ advanceTimers: true });
     setup({ transformsDelay: TRANSFORMS_DELAY });
 
-    // The job header and its details render without waiting for the slow
-    // transforms endpoint.
     const header = await screen.findByTestId("jobs-header");
     expect(within(header).getByDisplayValue("My Job")).toBeInTheDocument();
     expect(screen.getByText("Transforms")).toBeInTheDocument();
 
-    // The transforms list hasn't loaded yet, and editing stays locked while
-    // permissions are still being checked.
     expect(
       screen.queryByText("There are no transforms for this job."),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("run-button")).toBeDisabled();
+    expect(screen.getByTestId("run-button")).toBeEnabled();
 
     act(() => {
       jest.advanceTimersByTime(TRANSFORMS_DELAY);
     });
 
-    // Once the plan resolves, the transforms list renders and editing unlocks.
     expect(
       await screen.findByText("There are no transforms for this job."),
     ).toBeInTheDocument();

@@ -2,7 +2,6 @@
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
   in its user-settings table."
   (:require
-   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.premium-features.defenterprise :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -40,12 +39,9 @@
   "The `:left-join` entries joining `metabase_field_user_settings` as `settings-alias` to the Field table aliased
   `field-alias`; see [[field-user-settings-column]]."
   [field-alias    :- :keyword
-   settings-alias :- :keyword
-   worktree-id    :- [:maybe pos-int?]]
+   settings-alias :- :keyword]
   [[(t2/table-name :model/FieldUserSettings) settings-alias]
-   [:and
-    [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]
-    [:= (u/qualified-key settings-alias :worktree_id) worktree-id]]])
+   [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
 
 (mu/defn- field-user-set-condition
   "Honey SQL test for whether the user set `column`, or nil when a non-NULL value says so itself."
@@ -75,20 +71,18 @@
   ([]
    (field-query nil))
 
-  ([{:keys [alias user-settings? worktree-id]
+  ([{:keys [alias user-settings?]
      :or   {alias          (t2/table-name :model/Field)
-            user-settings? true
-            worktree-id    (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                    [:alias          {:optional true} :keyword]
-                                                                    [:user-settings? {:optional true} :boolean]
-                                                                    [:worktree-id    {:optional true} [:maybe pos-int?]]]]]
+            user-settings? true}} :- [:maybe [:map {:closed true}
+                                              [:alias          {:optional true} :keyword]
+                                              [:user-settings? {:optional true} :boolean]]]]
    [(if user-settings?
       ^:allow-subquery
       {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
                         (map (fn [column] [(field-user-settings-column column :f :u) column]))
                         (sort user-settable-field-columns))
        :from      [[(t2/table-name :model/Field) :f]]
-       :left-join (field-user-settings-join :f :u worktree-id)}
+       :left-join (field-user-settings-join :f :u)}
       (t2/table-name :model/Field))
     alias]))
 
@@ -141,12 +135,9 @@
   "The `:left-join` entries joining `metabase_table_user_settings` as `settings-alias` to the Table table aliased
   `table-alias`; see [[table-user-settings-column]]."
   [table-alias    :- :keyword
-   settings-alias :- :keyword
-   worktree-id    :- [:maybe pos-int?]]
+   settings-alias :- :keyword]
   [[(t2/table-name :model/TableUserSettings) settings-alias]
-   [:and
-    [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]
-    [:= (u/qualified-key settings-alias :worktree_id) worktree-id]]])
+   [:= (u/qualified-key settings-alias :table_id) (u/qualified-key table-alias :id)]])
 
 (mu/defn- table-user-set-condition
   "Honey SQL test for whether the user set `column`, or nil when a non-NULL value says so itself; `collection_id`
@@ -177,17 +168,12 @@
 
 (mu/defn- workspace-remapping-join
   "The `:left-join` entries joining `workspace_table_remapping` as `remapping-alias` to the Table aliased
-  `table-alias` on the workspace table it points at -- the row that is standing in for a canonical table.
-
-  Scoped to `worktree-id`, nil being the main app: the same canonical table is remapped once per worktree, so
-  without it the join matches whichever worktree's row the planner reaches first. Named here rather than left to
-  [[metabase.app-db.worktree]], which restricts the table a query selects from, not the ones it joins."
+  `table-alias` on the workspace table it points at -- the row that is standing in for a canonical table. Like
+  every read of that table, restricted to the worktree being worked in, the main app included."
   [table-alias     :- :keyword
-   remapping-alias :- :keyword
-   worktree-id     :- [:maybe pos-int?]]
+   remapping-alias :- :keyword]
   [[(t2/table-name :model/WorkspaceTableRemapping) remapping-alias]
    [:and
-    [:= (u/qualified-key remapping-alias :worktree_id) worktree-id]
     [:= (u/qualified-key remapping-alias :db_id) (u/qualified-key table-alias :db_id)]
     [:= (u/qualified-key remapping-alias :to_schema) (u/qualified-key table-alias :schema)]
     [:= (u/qualified-key remapping-alias :to_table) (u/qualified-key table-alias :name)]]])
@@ -221,14 +207,12 @@
   worktree, which come back in that table's place. Everything else in there belongs to another worktree, or another
   instance pointed at the same warehouse, and is nobody's here.
 
-  Hiding the canonical row a workspace table stands in for is scoped to `worktree-id`, so the table is shown once.
-  Only once that table is there to stand in, though: a remapping is recorded before the run writes, and sync gives
-  the table its row later still, and in between the canonical table is all there is. Another worktree's remapping
-  of the same table must not hide the canonical row from a reader with no replacement to show in its place."
+  Hiding the canonical row a workspace table stands in for is per-worktree, like every read of the remappings, so
+  the table is shown once. Only once that table is there to stand in, though: a remapping is recorded before the run
+  writes, and sync gives the table its row later still, and in between the canonical table is all there is."
   [table-alias     :- :keyword
    remapping-alias :- :keyword
-   schemas         :- [:sequential WorkspaceSchema]
-   worktree-id     :- [:maybe pos-int?]]
+   schemas         :- [:sequential WorkspaceSchema]]
   [:and
    [:not [:exists ^:allow-subquery
           {:select [[[:inline 1]]]
@@ -240,7 +224,6 @@
                      [:= :st.name :s.to_table]
                      [:= :st.active true]]]
            :where  [:and
-                    [:= :s.worktree_id worktree-id]
                     [:= :s.db_id (u/qualified-key table-alias :db_id)]
                     [:or
                      [:= :s.from_schema (u/qualified-key table-alias :schema)]
@@ -258,15 +241,13 @@
   ([]
    (table-query nil))
 
-  ([{:keys [alias user-settings? workspace-remapping? worktree-id]
+  ([{:keys [alias user-settings? workspace-remapping?]
      :or   {alias                (t2/table-name :model/Table)
             user-settings?       true
-            workspace-remapping? true
-            worktree-id          (mdb.worktree/worktree-id)}} :- [:maybe [:map {:closed true}
-                                                                          [:alias                {:optional true} :keyword]
-                                                                          [:user-settings?       {:optional true} :boolean]
-                                                                          [:workspace-remapping? {:optional true} :boolean]
-                                                                          [:worktree-id          {:optional true} [:maybe pos-int?]]]]]
+            workspace-remapping? true}} :- [:maybe [:map {:closed true}
+                                                    [:alias                {:optional true} :keyword]
+                                                    [:user-settings?       {:optional true} :boolean]
+                                                    [:workspace-remapping? {:optional true} :boolean]]]]
    (let [schemas (when workspace-remapping? (not-empty (workspace-schemas)))]
      [(if (or user-settings? schemas)
         (cond-> ^:allow-subquery
@@ -282,8 +263,8 @@
                             (u/qualified-key :t column)))
                         (sort table-columns))
           :from   [[(t2/table-name :model/Table) :t]]}
-          user-settings? (assoc :left-join (table-user-settings-join :t :u worktree-id))
-          schemas        (-> (update :left-join (fnil into []) (workspace-remapping-join :t :w worktree-id))
-                             (assoc :where (workspace-table-filter :t :w schemas worktree-id))))
+          user-settings? (assoc :left-join (table-user-settings-join :t :u))
+          schemas        (-> (update :left-join (fnil into []) (workspace-remapping-join :t :w))
+                             (assoc :where (workspace-table-filter :t :w schemas))))
         (t2/table-name :model/Table))
       alias])))

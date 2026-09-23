@@ -499,7 +499,7 @@
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
+              (is (= "Exports are only allowed when remote-sync-type is set to 'read-write' or from a worktree"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
 
 (deftest export-with-default-settings-test
