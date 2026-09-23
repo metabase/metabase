@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 from urllib.request import Request, urlopen
 
 
@@ -47,10 +48,13 @@ REPORTS = [
 
 
 def post(server, route, payload):
+    headers = {"Content-Type": "application/json"}
+    if token := os.environ.get("PAPERCUTS_TOKEN"):
+        headers["Authorization"] = f"Bearer {token}"
     request = Request(
         f"{server.rstrip('/')}{route}",
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urlopen(request, timeout=10) as response:
