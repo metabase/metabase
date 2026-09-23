@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
-   [metabase.config.core :as config]
+   [metabase.api.common :as api]
    [metabase.util.log :as log])
   (:import
    (java.io InputStream OutputStream)
@@ -24,17 +24,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- current-jar-path [cli]
-  (or (second (re-find #"-jar +([^ ]+)" cli))
-      (throw (ex-info "Could not determine current jar path" {:status-code 400}))))
+(defn- current-jar-path []
+  (let [cli (-> (ProcessHandle/current) .info .commandLine .get)]
+    (or (second (re-find #"-jar +([^ ]+)" cli))
+        (throw (ex-info "Could not determine current jar path" {:status-code 400})))))
 
-(defn- new-jar-path-for [jar-path]
+(defn- jar-path-for [jar-path suffix]
   (let [[_ base] (re-find #"(.*)\.jar" jar-path)]
-    (str base "-" (:tag config/mb-version-info) ".jar")))
-
-(defn- temp-jar-path-for [jar-path]
-  (let [[_ base] (re-find #"(.*)\.jar" jar-path)]
-    (str base "-temp.jar")))
+    (str base "-" suffix ".jar")))
 
 (defn- instructions-path [jar-path]
   (let [[_ base] (re-find #"(.*)\.jar" jar-path)]
@@ -69,8 +66,6 @@ by moving %s to %s and restarting." new-jar-path jar-path))
           (do (.write output buffer 0 size)
               (recur)))))))
 
-;; TODO: admins only
-
 (def ^:private headers {"Content-type" "application/json"})
 
 (defn handler
@@ -81,11 +76,13 @@ by moving %s to %s and restarting." new-jar-path jar-path))
   * Exit (and hope the supervisor handles restarting)."
   [_request respond _raise]
   (docker-check) ; later we'll support cloud deploys using a different method
-  (let [cli (-> (ProcessHandle/current) .info .commandLine .get)
-        jar-path (current-jar-path cli)
-        new-jar-path (new-jar-path-for jar-path)
-        temp-jar-path (temp-jar-path-for jar-path)
-        instructions (instructions-for jar-path new-jar-path)]
+  (comment
+    ;; leave this out for now to make it easier to test with curl
+    (api/check-superuser))
+  (let [jar-path (current-jar-path)
+        prev-jar-path (jar-path-for jar-path "prev")
+        temp-jar-path (jar-path-for jar-path "temp")
+        instructions (instructions-for jar-path prev-jar-path)]
     (log/info "Initiating automatic upgrade...")
     (swap! progress assoc :status :upgrading)
     (let [response (http/get latest-jar-url {:as :stream})
@@ -97,7 +94,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
     (log/info "Download complete.")
     (log/info (prn-str @progress))
     (spit (io/file (instructions-path jar-path)) instructions)
-    (.renameTo (io/file jar-path) (io/file new-jar-path))
+    (.renameTo (io/file jar-path) (io/file prev-jar-path))
     (.renameTo (io/file temp-jar-path) (io/file jar-path))
     (exit-soon)
     (respond {:status-code 200 :headers headers
@@ -109,7 +106,23 @@ by moving %s to %s and restarting." new-jar-path jar-path))
   [_request respond _raise]
   (respond {:status 200 :body @progress :headers headers}))
 
-;; manual test steps:
+(defn rollback
+  "Roll back to the previous version."
+  [_request respond _raise]
+  (log/info "Rolling back...")
+  (let [jar-path (current-jar-path)
+        rollback-jar-path (jar-path-for jar-path "rollback")
+        prev-jar-path (jar-path-for jar-path "old")]
+    (.renameTo (io/file jar-path) (io/file rollback-jar-path))
+    (.renameTo (io/file prev-jar-path) (io/file jar-path))
+    (log/info "Moving jars" {:jar-path jar-path
+                             :rollback-jar-path rollback-jar-path
+                             :prev-jar-path prev-jar-path})
+    (exit-soon)
+    (respond {:status-code 200 :headers headers
+              :body {:status "Rolled back; restarting"}})))
+
+;;; manual test steps:
 
 ;; * cd target/uberjar && python3 -m http.server 3000 # in a separate tab
 ;; * bin/build.sh '{:version "0.63.0"}'
@@ -122,7 +135,14 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 ;; * [wait for it to restart...]
 ;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
 
-;; supervisor.sh:
+;;; testing rollback
+
+;; * ls -l target/uberjar
+;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
+;; * curl -XPOST http://localhost:8088/api/upgrade/rollback
+;; * curl http://localhost:8088/api/docs/openapi.json | jq .info
+
+;;; supervisor.sh:
 
 ;; #!/bin/bash
 ;; export MB_UPGRADE_SLOW=y
