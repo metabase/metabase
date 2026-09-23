@@ -9,7 +9,7 @@
 // --match limits automatic fixes to papercut titles matching the regex. --full-tests also runs the new test's whole
 // namespace, which the demo skips for time. Other flags: --model (default opus) and --timeout <minutes> for the agent
 // run (default 25). PAPERCUTS_SERVER and PAPERCUTS_TOKEN come from the
-// environment or .env, as for send.ts. Each papercut's prompt, agent log, result and PR body go to fixer/<id>/.
+// environment or .env. Each papercut's prompt, agent log, result and PR body go to fixer/<id>/.
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { existsSync, mkdirSync, readdirSync, renameSync, createWriteStream } from "node:fs";
