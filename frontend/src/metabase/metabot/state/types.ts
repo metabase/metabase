@@ -155,6 +155,7 @@ export type MetabotChainStep =
       webResults?: MetabotWebResults;
       status: "started" | "ended";
       startedAtMs?: number;
+      endedAtMs?: number;
     };
 
 export type MetabotReactionsState = {

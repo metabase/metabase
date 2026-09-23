@@ -270,6 +270,7 @@ export const endChainTool = (
     return;
   }
   found.step.status = "ended";
+  found.step.endedAtMs = nowMs;
   if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }

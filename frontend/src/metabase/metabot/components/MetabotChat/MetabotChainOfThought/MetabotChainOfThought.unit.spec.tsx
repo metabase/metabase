@@ -236,6 +236,78 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
   });
 
+  it("shows how long a warehouse query took once it has ended", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "run_warehouse_query",
+            status: "ended",
+            startedAtMs: 1000,
+            endedAtMs: 75400,
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 76000,
+      }),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("Queried the warehouse")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-tool-elapsed")).toHaveTextContent(
+      "1m 14s",
+    );
+  });
+
+  it("counts up while a warehouse query is still running", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(21000);
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "run_warehouse_query",
+            status: "started",
+            startedAtMs: 9000,
+          },
+        ],
+        startedAtMs: 9000,
+      }),
+      true,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByTestId("metabot-tool-elapsed")).toHaveTextContent("12s");
+    jest.useRealTimers();
+  });
+
+  it("shows no runtime for tools that are not warehouse queries", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "analyze_data",
+            status: "ended",
+            startedAtMs: 1000,
+            endedAtMs: 9000,
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 9000,
+      }),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(
+      screen.queryByTestId("metabot-tool-elapsed"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
     setup(
       chain({

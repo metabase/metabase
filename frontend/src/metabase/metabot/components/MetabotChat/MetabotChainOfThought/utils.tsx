@@ -20,6 +20,7 @@ import {
   RESOURCE_TOOL_NAME,
   SAVE_ENTITY_TOOL_NAME,
   SEARCH_TOOL_NAME,
+  TIMED_TOOL_NAMES,
   WEB_SEARCH_TOOL_NAME,
 } from "./constants";
 
@@ -128,6 +129,32 @@ export const titledToolLabel = (
 
 export const isWebTool = (name: string) =>
   name === WEB_SEARCH_TOOL_NAME || name === READ_WEB_PAGE_TOOL_NAME;
+
+export const isTimedTool = (name: string) => TIMED_TOOL_NAMES.has(name);
+
+export const toolElapsedMs = (
+  step: ToolChainStep,
+  nowMs: number,
+  live: boolean,
+): number | undefined => {
+  if (step.startedAtMs == null) {
+    return undefined;
+  }
+  if (step.endedAtMs != null) {
+    return step.endedAtMs - step.startedAtMs;
+  }
+  return live ? nowMs - step.startedAtMs : undefined;
+};
+
+export const formatElapsed = (durationMs: number): string => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  if (totalSeconds < 60) {
+    return t`${totalSeconds}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return t`${minutes}m ${seconds}s`;
+};
 
 export const cleanDomain = (url: string) =>
   url
