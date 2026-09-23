@@ -143,6 +143,16 @@ class SignInTest(HttpCase):
                 self.assertEqual(self.call("POST", "/api/papercuts/1/comments", {"body": "/pr"},
                                            {**headers, **origin})[0], expected)
 
+    def test_writes_are_attributed_to_the_signed_in_account(self):
+        self.report("r1")
+        self.report("r2", "Other trap")
+        headers = {**PROXIED, "Cookie": self.session(), "Origin": "https://metaouch.dev"}
+        self.call("POST", "/api/papercuts/1/comments", {"author": "web", "body": "Seen it"}, headers)
+        self.call("POST", "/api/papercuts/2/merge", {"into": 1, "actor": "web"}, headers)
+        events = self.handler.store.get_papercut(1)["events"]
+        self.assertEqual([(e["kind"], e["actor"]) for e in events if e["kind"] in ("comment", "absorbed")],
+                         [("comment", "ada@metabase.com"), ("absorbed", "ada@metabase.com")])
+
 
 if __name__ == "__main__":
     unittest.main()

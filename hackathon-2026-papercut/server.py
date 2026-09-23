@@ -26,6 +26,8 @@ import github_sync
 import sso
 
 SOURCE_VERSION = Path(__file__).stat().st_mtime_ns
+# How the project works, for people new to it: a static page linked from every page's header.
+ABOUT_PAGE = Path(__file__).with_name("about.html")
 
 
 CATEGORIES = ("agent-trap", "code-smell", "flaky-test", "tooling", "documentation", "other")
@@ -34,6 +36,8 @@ STATUSES = ("open", "investigating", "resolved", "wontfix")
 V2_RELATION_SOURCES = ("suggested", "manual")
 # A rejected relation is hidden, and stops the pair from being suggested again.
 RELATION_SOURCES = ("suggested", "manual", "rejected")
+# What an AI suggestion says about a pair: the same papercut, or a different one worth reading alongside.
+RELATION_VERDICTS = ("duplicate", "related")
 V3_EVENT_KINDS = ("status", "category", "title", "description", "path", "area", "reopened", "merged", "absorbed",
                   "related", "unrelated", "fingerprint", "comment")
 EVENT_KINDS = (*V3_EVENT_KINDS, "owner", "severity", "assessed", "dispatched", "dispatch_updated")
@@ -85,9 +89,10 @@ MAX_BODY = 64 * 1024
 MAX_FIELD = 10_000
 # A reporter's clock may run a little ahead of the server's.
 CLOCK_SKEW = timedelta(hours=1)
-# Word overlap of title and description. On the local archive, known duplicates scored 0.49 or more and
-# the closest distinct pair 0.27.
-SUGGEST_THRESHOLD = 0.35
+# Candidates for an AI to judge as duplicates, picked by word overlap of title and description. On the local archive,
+# known duplicates scored 0.49 or more and the closest distinct pair 0.27, but reworded duplicates score lower, so the
+# AI sees the top few whatever their score.
+CANDIDATE_LIMIT = 15
 STOP_WORDS = set("""a an and are as at be but by does for from has have in into is it its not of on only or same so
                     that the their then this to was were when which while with without agent agents user""".split())
 # Version 1 imports recorded their source writeup only as this last line of the description.
@@ -692,9 +697,18 @@ def migrate_to_v9(db):
                   WHERE json_type(payload, '$.repository_url') = 'text'""")
 
 
+def migrate_to_v10(db):
+    """Let AI suggest relations: a suggestion carries a verdict, the model that made it and its reason. The word-overlap
+    suggestions are dropped; `dispatcher.py relate` suggests again."""
+    db.execute(f"ALTER TABLE relations ADD COLUMN verdict TEXT CHECK (verdict IN ({one_of(RELATION_VERDICTS)}))")
+    db.execute("ALTER TABLE relations ADD COLUMN model TEXT")
+    db.execute("ALTER TABLE relations ADD COLUMN reason TEXT")
+    db.execute("DELETE FROM relations WHERE source = 'suggested'")
+
+
 # Each entry upgrades the database by one `user_version`.
 MIGRATIONS = (create_v1, migrate_to_v2, migrate_to_v3, migrate_to_v4, migrate_to_v5, migrate_to_v6, migrate_to_v7,
-              migrate_to_v8, migrate_to_v9)
+              migrate_to_v8, migrate_to_v9, migrate_to_v10)
 
 STATS = """SELECT papercut_id, COUNT(*) AS report_count, COUNT(DISTINCT reporter) AS reporter_count,
                   COUNT(DISTINCT agent) AS agent_count, COUNT(cost_minutes) AS cost_reports,
@@ -838,8 +852,6 @@ class Store:
                  source_type, source_ref, json.dumps(payload, ensure_ascii=False), received_at, observed_at,
                  *git.values()),
             ).lastrowid
-            if created:
-                self._suggest_relations(db, papercut_id, stamp)
             if reopened:
                 self._set(db, papercut_id, "status", "open", "server", stamp, kind="reopened",
                           body=f"New report {report_id} from {reporter}, seen {seen}")
@@ -975,11 +987,14 @@ class Store:
                 report = dict(report)
                 report["payload"] = json.loads(report["payload"]) if report["payload"] else None
                 papercut["reports"].append(report)
+            # People's decisions first, then the AI's likely duplicates, then what it thinks is only related.
             papercut["related"] = [dict(r) for r in db.execute(
-                """SELECT p.id, p.title, p.status, rel.source, rel.score FROM relations rel
+                """SELECT p.id, p.title, p.status, p.category, rel.source, rel.score, rel.verdict, rel.model,
+                          rel.reason, (SELECT COUNT(*) FROM reports WHERE papercut_id = p.id) AS report_count
+                   FROM relations rel
                    JOIN papercuts p ON p.id = CASE WHEN rel.papercut_a = ? THEN rel.papercut_b ELSE rel.papercut_a END
                    WHERE (rel.papercut_a = ? OR rel.papercut_b = ?) AND rel.source != 'rejected'
-                   ORDER BY rel.source = 'suggested', rel.score DESC""",
+                   ORDER BY rel.source = 'suggested', rel.verdict = 'related', rel.score DESC""",
                 (papercut_id, papercut_id, papercut_id),
             )]
             papercut["events"] = [dict(r) for r in db.execute(
@@ -1051,12 +1066,9 @@ class Store:
         with self.connect(write=True) as db:
             self._live(db, papercut_id)
             at = precise_now()
-            changed = [key for key in sorted(set(changes) & editable)
-                       if self._set(db, papercut_id, key,
-                                    changes[key].strip() if isinstance(changes[key], str) else changes[key],
-                                    actor, at, body=reason)]
-            if {"title", "description"} & set(changed):
-                self._suggest_relations(db, papercut_id, at)
+            for key in sorted(set(changes) & editable):
+                self._set(db, papercut_id, key, changes[key].strip() if isinstance(changes[key], str) else changes[key],
+                          actor, at, body=reason)
         return self.get_papercut(papercut_id)
 
     def comment(self, papercut_id, payload):
@@ -1158,7 +1170,6 @@ class Store:
             db.execute("UPDATE papercuts SET merged_into = ? WHERE id = ?", (target_id, source_id))
             self._event(db, source_id, "merged", actor, at, new=target_id, body=reason)
             self._event(db, target_id, "absorbed", actor, at, new=source_id, body=reason)
-            self._suggest_relations(db, target_id, at)
         return self.get_papercut(target_id)
 
     @staticmethod
@@ -1178,42 +1189,93 @@ class Store:
             if existing and (existing["source"] != "suggested" or row["source"] == "suggested"):
                 continue
             db.execute(
-                """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?)
+                """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, verdict, model, reason,
+                                         updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT (papercut_a, papercut_b) DO UPDATE
-                   SET source = excluded.source, score = excluded.score, updated_at = excluded.updated_at""",
-                (row["repository"], *pair, row["source"], row["score"], at),
+                   SET source = excluded.source, score = excluded.score, verdict = excluded.verdict,
+                       model = excluded.model, reason = excluded.reason, updated_at = excluded.updated_at""",
+                (row["repository"], *pair, row["source"], row["score"], row["verdict"], row["model"], row["reason"], at),
             )
 
-    def _suggest_relations(self, db, papercut_id, at):
-        """Recompute suggested relations for one papercut. Manual and rejected relations are kept."""
-        papercut = db.execute("SELECT * FROM papercuts WHERE id = ?", (papercut_id,)).fetchone()
-        dropped = db.execute(
-            """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END FROM relations
-               WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)""",
-            (papercut_id, papercut_id, papercut_id)).fetchall()
-        db.execute("DELETE FROM relations WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)",
-                   (papercut_id, papercut_id))
-        # The other side lists this relation too, so polling clients must refetch it.
-        db.executemany("UPDATE papercuts SET updated_at = ? WHERE id = ?", [(at, row[0]) for row in dropped])
-        decided = {r["other"] for r in db.execute(
-            """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END AS other FROM relations
-               WHERE papercut_a = ? OR papercut_b = ?""", (papercut_id, papercut_id, papercut_id))}
-        text = f"{papercut['title']} {papercut['description']}"
-        for row in db.execute(
-            "SELECT id, title, description FROM papercuts WHERE repository = ? AND id != ? AND merged_into IS NULL",
-            (papercut["repository"], papercut_id),
-        ).fetchall():
-            if row["id"] in decided:
-                continue
-            score = similarity(text, f"{row['title']} {row['description']}")
-            if score >= SUGGEST_THRESHOLD:
+    @staticmethod
+    def _others(db, papercut_id, where):
+        return {row[0] for row in db.execute(
+            f"""SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END FROM relations
+                WHERE (papercut_a = ? OR papercut_b = ?) AND {where}""", (papercut_id, papercut_id, papercut_id))}
+
+    def candidates(self, papercut_id, limit=CANDIDATE_LIMIT):
+        """Live papercuts in the same repository that might be the same as `papercut_id`, for an AI to judge. Those
+        at the same path come first, then the closest wording. Pairs a person already decided are left out."""
+        with self.connect() as db:
+            papercut = self._live(db, papercut_id)
+            decided = self._others(db, papercut_id, "source != 'suggested'")
+            text = f"{papercut['title']} {papercut['description']}"
+            rows = db.execute(
+                f"""SELECT p.id, p.title, p.description, p.path, p.area, p.status, p.category, {COUNTS}
+                    FROM papercuts p LEFT JOIN ({STATS}) s ON s.papercut_id = p.id
+                    WHERE p.repository = ? AND p.id != ? AND p.merged_into IS NULL""",
+                (papercut["repository"], papercut_id)).fetchall()
+        ranked = sorted(
+            ((bool(papercut["path"]) and row["path"] == papercut["path"],
+              similarity(text, f"{row['title']} {row['description']}"), row) for row in rows if row["id"] not in decided),
+            key=lambda item: (item[0], item[1], item[2]["id"]), reverse=True)
+        return {"papercut_id": papercut_id,
+                "candidates": [dict(row) | {"similarity": round(score, 3)} for _, score, row in ranked[:limit]]}
+
+    def suggest(self, papercut_id, payload):
+        """Replace the AI's suggestions for `papercut_id` with `suggestions`. Pairs a person decided keep that decision.
+        Only a new, dropped or changed verdict marks papercuts changed, so judging a papercut again with the same
+        outcome keeps it out of the change feed."""
+        if (not isinstance(payload, dict) or not isinstance(payload.get("suggestions"), list)
+                or set(payload) - {"suggestions", "model", "actor"}):
+            raise ValueError("Send suggestions (a list) and optionally model and actor")
+        model = text_field(payload, "model")
+        suggestions = {}
+        for suggestion in payload["suggestions"]:
+            if (not isinstance(suggestion, dict) or type(suggestion.get("papercut_id")) is not int
+                    or suggestion.get("verdict") not in RELATION_VERDICTS
+                    or set(suggestion) - {"papercut_id", "verdict", "score", "reason"}):
+                raise ValueError("Each suggestion needs papercut_id (an integer) and verdict "
+                                 f"({', '.join(RELATION_VERDICTS)}), and may have score and reason")
+            suggestions[suggestion["papercut_id"]] = (suggestion["verdict"], number_field(suggestion, "score", 0, 1),
+                                                      text_field(suggestion, "reason"))
+        if papercut_id in suggestions:
+            raise ValueError("A papercut cannot be related to itself")
+        with self.connect(write=True) as db:
+            this = self._live(db, papercut_id)
+            for other_id in list(suggestions):
+                other = db.execute("SELECT * FROM papercuts WHERE id = ?", (other_id,)).fetchone()
+                if other is None:
+                    raise NotFound(f"Papercut {other_id} not found")
+                if other["repository"] != this["repository"]:
+                    raise ValueError("Related papercuts must be in the same repository")
+                # Merged since the AI read it; its papercut is judged in its own right.
+                if other["merged_into"] is not None:
+                    del suggestions[other_id]
+            decided = self._others(db, papercut_id, "source != 'suggested'")
+            suggestions = {other: value for other, value in suggestions.items() if other not in decided}
+            before = {row["other"]: row["verdict"] for row in db.execute(
+                """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END AS other, verdict FROM relations
+                   WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)""",
+                (papercut_id, papercut_id, papercut_id))}
+            at = precise_now()
+            db.execute("DELETE FROM relations WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)",
+                       (papercut_id, papercut_id))
+            for other_id, (verdict, score, reason) in suggestions.items():
                 db.execute(
-                    """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, updated_at)
-                       VALUES (?, ?, ?, 'suggested', ?, ?)""",
-                    (papercut["repository"], min(papercut_id, row["id"]), max(papercut_id, row["id"]), score, at),
-                )
-                db.execute("UPDATE papercuts SET updated_at = ? WHERE id = ?", (at, row["id"]))
+                    """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, verdict, model, reason,
+                                             updated_at)
+                       VALUES (?, ?, ?, 'suggested', ?, ?, ?, ?, ?)""",
+                    (this["repository"], min(papercut_id, other_id), max(papercut_id, other_id), score, verdict, model,
+                     reason, at))
+            changed = [other for other in before.keys() | suggestions.keys()
+                       if before.get(other) != (suggestions[other][0] if other in suggestions else None)]
+            if changed:
+                # Both sides list the pair, so polling clients must refetch both.
+                db.executemany("UPDATE papercuts SET updated_at = ? WHERE id = ?",
+                               [(at, other) for other in (papercut_id, *changed)])
+        return self.get_papercut(papercut_id)
 
     def relate(self, papercut_id, payload):
         return self._decide_relation(papercut_id, payload, "manual")
@@ -1236,7 +1298,8 @@ class Store:
                 """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, updated_at)
                    VALUES (?, ?, ?, ?, NULL, ?)
                    ON CONFLICT (papercut_a, papercut_b) DO UPDATE
-                   SET source = excluded.source, score = NULL, updated_at = excluded.updated_at""",
+                   SET source = excluded.source, score = NULL, verdict = NULL, model = NULL, reason = NULL,
+                       updated_at = excluded.updated_at""",
                 (this["repository"], min(papercut_id, other_id), max(papercut_id, other_id), source, at),
             )
             kind = "related" if source == "manual" else "unrelated"
@@ -1432,6 +1495,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .brand:hover {text-decoration: none}
 .header-actions {display: flex; align-items: center; gap: .55rem; flex-wrap: wrap}
 .header-actions button {font-size: .86rem; min-height: 36px}
+.about-link {display: inline-flex; align-items: center; min-height: 32px; padding: 0 .7rem; border: 1px solid var(--border);
+             border-radius: 999px; font-size: .86rem; font-weight: 600; white-space: nowrap}
 .muted, .eyebrow {color: var(--muted)}
 .eyebrow {font-size: .73rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase}
 .intro {padding: 2.1rem 0 1.45rem}
@@ -1448,11 +1513,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .results-heading {display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: 1.6rem 0 .7rem}
 .results-heading h2 {font-size: 1.15rem; margin: 0}
 .results-heading p {margin: 0; font-size: .85rem}
-.issue-list {list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem}
+.issue-list {list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem}
 .card {background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.15rem 1.3rem; box-shadow: var(--shadow)}
 .issue-card {display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem}
 .issue-card:hover {border-color: var(--control-border)}
-.issue-card h3 {font-size: 1.09rem; line-height: 1.35; letter-spacing: -.015em; margin: .15rem 0 .45rem}
+.issue-card h3 {font-size: 1.09rem; line-height: 1.35; letter-spacing: -.015em; margin: .15rem 0 .45rem; overflow-wrap: anywhere}
 .issue-card .issue-number {font-size: .85rem; font-weight: 600; color: var(--muted); margin-right: .35rem}
 .issue-card .location {grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere}
 .issue-summary {grid-column: 1 / -1; color: var(--text); margin: 0; line-height: 1.48}
@@ -1496,6 +1561,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .markdown th, .markdown td {border: 1px solid var(--border); padding: .5rem .65rem; vertical-align: top; text-align: left}
 .markdown th {background: var(--pill)}
 .markdown tr:nth-child(even) td {background: var(--hover)}
+h1 code, h3 code, .related-item a code {font: .88em ui-monospace, SFMono-Regular, monospace; padding: .08em .22em;
+                                    background: var(--pill); border-radius: 4px}
 .detail-sidebar dl {margin: 0; display: grid; gap: .7rem}
 .detail-sidebar dt {font-size: .77rem; font-weight: 700; color: var(--muted)}
 .detail-sidebar dd {margin: 0; overflow-wrap: anywhere}
@@ -1511,7 +1578,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .report-card p {margin: .4rem 0}
 .report-card summary {cursor: pointer; font-weight: 650; margin-top: .4rem}
 @media (max-width: 930px) {.toolbar, .toolbar.single-repository {grid-template-columns: repeat(3, minmax(0, 1fr))} .detail-layout {grid-template-columns: 1fr}}
-@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: 1fr} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading {align-items: flex-start; flex-direction: column}}
+@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: minmax(0, 1fr)} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading {align-items: flex-start; flex-direction: column}}
 </style>"""
 
 THEME_INIT = """<script>
@@ -1604,7 +1671,8 @@ const filterForm = document.getElementById('filters');
 let refreshSerial = 0;
 let filterTimer;
 async function refreshPage(url = window.location.href) {
-  if (document.hidden || filterTimer) return;
+  // Swapping the page would close a merge someone is confirming.
+  if (document.hidden || filterTimer || document.querySelector('[data-merge-panel]:not([hidden])')) return;
   const serial = ++refreshSerial;
   try {
     const response = await fetch(url, {cache: 'no-store'});
@@ -1824,6 +1892,18 @@ UI_STYLE = """<style>
 .dispatch-control .claim-button:focus-visible {outline: 3px solid #93c5fd; outline-offset: 2px}
 .dispatch-control .claim-button:disabled {opacity: .7; transform: none}
 .dispatch-link a {font-weight: 600; white-space: nowrap}
+.related-item .related-actions {display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem}
+.related-item .related-actions button {min-height: 28px; padding: 0 .65rem; font-size: .85rem}
+.related-item .related-reason {margin: .25rem 0 0; font-size: .88rem}
+.pill.duplicate {background: var(--warning-bg); color: var(--warning-text)}
+.merge-panel {margin-top: .6rem; padding: .75rem; border: 1px solid var(--border); border-radius: 8px}
+.merge-panel fieldset {border: 0; margin: 0 0 .5rem; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem 1rem}
+.merge-panel legend {font-weight: 700; padding: 0; margin-bottom: .3rem}
+.merge-panel label {display: inline-flex; align-items: center; gap: .35rem}
+.merge-panel input[type=radio] {width: auto; margin: 0}
+.merge-panel ul {margin: 0 0 .6rem; padding-left: 1.1rem}
+.merge-panel ul li {border-top: 0; padding: .15rem 0}
+.merge-panel input[type=text] {width: 100%; margin-bottom: .6rem}
 </style>"""
 
 UI_SCRIPT = """<script>
@@ -1891,8 +1971,8 @@ UI_SCRIPT = """<script>
 })();
 </script>""".replace("CHEVRON", icon("chevron"))
 
-# Writes from the page send the token the viewer stored under "API token". Dispatches from the page are recorded as
-# actor `web`; naming the person who clicked is still to do.
+# Writes from the page send the token the viewer stored under "API token". They name the actor `web`, which the server
+# replaces with the signed-in account when Google sign-in is on.
 DISPATCH_SCRIPT = """<script>
 (() => {
   async function write(method, url, body) {
@@ -1903,7 +1983,39 @@ DISPATCH_SCRIPT = """<script>
       throw new Error(response.status === 401 ? 'sign in first' : error || 'HTTP ' + response.status);
     }
   }
+  document.addEventListener('change', (event) => {
+    const panel = event.target.closest('[data-merge-panel]');
+    if (!panel || event.target.type !== 'radio') return;
+    for (const preview of panel.querySelectorAll('[data-merge-preview]')) preview.hidden = preview.dataset.mergePreview !== event.target.value;
+  });
   document.addEventListener('click', async (event) => {
+    const related = event.target.closest('button[data-merge-open], button[data-merge-cancel], button[data-merge-confirm], button[data-relate], button[data-unrelate]');
+    if (related) {
+      event.preventDefault();
+      const panel = related.closest('.related-item').querySelector('[data-merge-panel]');
+      if (related.dataset.mergeOpen !== undefined) { panel.hidden = !panel.hidden; return; }
+      if (related.dataset.mergeCancel !== undefined) { panel.hidden = true; return; }
+      related.disabled = true;
+      try {
+        if (related.dataset.mergeConfirm !== undefined) {
+          const [source, target] = panel.querySelector('input[type=radio]:checked').value.split('>');
+          const reason = panel.querySelector('[data-merge-reason]').value.trim();
+          await write('POST', `/api/papercuts/${source}/merge`, {into: Number(target), actor: 'web', ...(reason && {reason})});
+          window.location.assign(`/papercuts/${target}`);
+          return;
+        }
+        if (related.dataset.relate) {
+          await write('POST', `/api/papercuts/${related.dataset.papercut}/related`, {papercut_id: Number(related.dataset.relate), actor: 'web'});
+        } else {
+          await write('DELETE', `/api/papercuts/${related.dataset.papercut}/related/${related.dataset.unrelate}`, {actor: 'web'});
+        }
+        refreshPage();
+      } catch (error) {
+        related.disabled = false;
+        related.textContent = 'Failed: ' + error.message;
+      }
+      return;
+    }
     const button = event.target.closest('button[data-claim], button[data-release], button[data-copy-prompt]');
     if (!button) return;
     event.preventDefault();
@@ -1974,7 +2086,8 @@ def page(title, body):
             f"{THEME_INIT}{STYLE}{UI_STYLE}</head><body data-build='{SOURCE_VERSION}'>"
             "<header class='site-header'>"
             f"<a class='brand' href='/'>{BRAND_MARK}Papercuts</a><div class='header-actions'>"
-            f"{account_link()}<span id='live-status' class='led' role='status' tabindex='0' data-tip='Connected' aria-label='Connected'></span>"
+            f"<a class='about-link' href='/about'>What? How?</a>{account_link()}"
+            "<span id='live-status' class='led' role='status' tabindex='0' data-tip='Connected' aria-label='Connected'></span>"
             f"{THEME_SWITCH}</div></header><main>{body}</main>{THEME_CONTROL}{LIVE_REFRESH}{UI_SCRIPT}{DISPATCH_SCRIPT}</body></html>")
 
 
@@ -2027,12 +2140,13 @@ DESCRIPTION_FIELDS = ("Kind", "Impact", "Severity", "Source status", "Area", "So
 INLINE_MARKDOWN = re.compile(r"(`[^`\n]+`|\[[^\]\n]+\]\([^)\n]+\)|\*\*[^*\n]+\*\*|\*[^*\n]+\*)")
 
 
-def inline_markdown(value):
+def inline_markdown(value, links=True):
     """Render a small, safe Markdown subset used by report prose."""
     value = value.replace("\\|", "|")
     rendered, previous = [], 0
     for match in INLINE_MARKDOWN.finditer(value):
-        rendered.append(linked(value[previous:match.start()]))
+        text = value[previous:match.start()]
+        rendered.append(linked(text) if links else html.escape(text))
         token = match.group()
         if token.startswith("`"):
             rendered.append(f"<code>{html.escape(token[1:-1])}</code>")
@@ -2044,7 +2158,7 @@ def inline_markdown(value):
             except ValueError:
                 # A malformed URL, like http://[, renders as its label instead of failing the whole page.
                 scheme = None
-            if scheme in ("http", "https", "mailto"):
+            if links and scheme in ("http", "https", "mailto"):
                 rendered.append(f"<a href='{html.escape(target, quote=True)}' rel='noopener noreferrer'>{html.escape(label)}</a>")
             else:
                 rendered.append(html.escape(label))
@@ -2053,8 +2167,14 @@ def inline_markdown(value):
         else:
             rendered.append(f"<em>{html.escape(token[1:-1])}</em>")
         previous = match.end()
-    rendered.append(linked(value[previous:]))
+    text = value[previous:]
+    rendered.append(linked(text) if links else html.escape(text))
     return "".join(rendered)
+
+
+def title_html(value):
+    """Format a title inside its own link or heading, without adding another link."""
+    return inline_markdown(value, links=False)
 
 
 def table_cells(line):
@@ -2209,12 +2329,20 @@ def plain_text(markdown):
 
 
 def short_title(title):
+    tokens = list(INLINE_MARKDOWN.finditer(title))
     for separator in (": ", " — ", " -- ", "; "):
-        if separator in title:
-            lead = title.split(separator, 1)[0]
+        start = title.find(separator)
+        if start >= 0 and not any(token.start() <= start < token.end() for token in tokens):
+            lead = title[:start]
             if 18 <= len(lead) <= 78:
                 return lead
-    return excerpt(title, 78)
+    preview = excerpt(title, 78)
+    if preview.endswith("…"):
+        cutoff = len(preview) - 1
+        for token in tokens:
+            if token.start() < cutoff < token.end():
+                return title[:token.start()].rstrip() + "…"
+    return preview
 
 
 def list_card_html(p):
@@ -2228,7 +2356,7 @@ def list_card_html(p):
     pr_link = "" if p["pr_url"] == (p["dispatch"] or {}).get("pr_url") else dispatch_links({"pr_url": p["pr_url"]})
     return (f"<li><article class='card issue-card{' important' if p['important'] else ''}'>"
             f"<div><span class='eyebrow'>{esc(p['repository'])}</span>"
-            f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{esc(short_title(p['title']))}</a></h3></div>"
+            f"<h3><span class='issue-number'>#{p['id']}</span><a href='/papercuts/{p['id']}' title='{esc(p['title'], quote=True)}'>{title_html(short_title(p['title']))}</a></h3></div>"
             f"<div class='badges'>{important_pill(p)}{status_pill(p['status'])}{pill(p['category'] or 'unclassified')}"
             f"{severity_pill(p['severity'])}{'' if p['dispatch'] else fix_pill(p['fix_state'])}{pr_link}</div>"
             f"<p class='issue-summary'>{esc(excerpt(plain_text(description)))}</p>"
@@ -2378,6 +2506,63 @@ def fix_prompt(papercut):
     return "\n".join(lines) + "\n"
 
 
+def merge_preview(source, target):
+    """What merging `source` into `target` does, in the server's own terms: see `Store.merge`."""
+    reports = f"{source['report_count']} report{'' if source['report_count'] == 1 else 's'}"
+    lines = [f"{reports} and every fingerprint of #{source['id']} move to #{target['id']}, "
+             f"and #{source['id']} redirects there."]
+    if (source["status"], source["category"]) != (target["status"], target["category"]):
+        lines.append(f"They disagree on status or category, so #{target['id']} "
+                     + ("stays open to be triaged again." if target["status"] == "open" else "goes back to open."))
+    else:
+        lines.append(f"#{target['id']} keeps its status ({target['status']}).")
+    if target["category"] is None and source["category"] is not None:
+        lines.append(f"#{target['id']} takes the category {source['category']}.")
+    lines.append("A merge can't be undone yet.")
+    return "".join(f"<li>{html.escape(line)}</li>" for line in lines)
+
+
+def related_item_html(papercut, related):
+    """One related papercut, with what the AI or a person said about it and the controls to decide the pair."""
+    esc = html.escape
+    this, other = papercut["id"], related["id"]
+    if related["source"] == "suggested":
+        confidence = f" {100 * related['score']:.0f}%" if related["score"] is not None else ""
+        label = (f"<span class='pill duplicate'>possible duplicate{confidence}</span>" if related["verdict"] == "duplicate"
+                 else f"<span class='pill'>may be related{confidence}</span>")
+    else:
+        label = "<span class='pill'>related</span>"
+    reason = (f"<p class='muted related-reason'>{esc(related['reason'])}"
+              f"{' · ' + esc(related['model']) if related['model'] else ''}</p>") if related["reason"] else ""
+    # The one with more reports survives by default, and the older one on a tie.
+    default_target = other if (related["report_count"], -other) > (papercut["report_count"], -this) else this
+    directions = ((this, other), (other, this))
+    choices = "".join(
+        f"<label><input type='radio' name='merge-{this}-{other}' value='{source}>{target}'"
+        f"{' checked' if target == default_target else ''}> #{source} into #{target}</label>"
+        for source, target in directions)
+    rows = {this: papercut, other: related}
+    previews = "".join(
+        f"<ul data-merge-preview='{source}>{target}'{'' if target == default_target else ' hidden'}>"
+        f"{merge_preview(rows[source], rows[target])}</ul>"
+        for source, target in directions)
+    decide = "" if related["source"] == "manual" else (
+        f"<button type='button' data-relate='{other}' data-papercut='{this}'>Related</button>")
+    # TODO (Chris 2026-09-23) -- Support undoing a merge. The server moves reports without recording where they came
+    # from, so an unmerge needs each report's original papercut kept first.
+    return (f"<li class='related-item'><a href='/papercuts/{other}'>#{other} {title_html(related['title'])}</a> {label} "
+            f"<span class='muted'>{related['report_count']} report{'' if related['report_count'] == 1 else 's'} · "
+            f"{esc(related['status'])}</span>{reason}"
+            "<div class='related-actions'>"
+            f"<button type='button' data-merge-open>Merge…</button>{decide}"
+            f"<button type='button' data-unrelate='{other}' data-papercut='{this}'>Not related</button></div>"
+            f"<div class='merge-panel' data-merge-panel hidden><fieldset><legend>Which one stays?</legend>{choices}</fieldset>"
+            f"{previews}<input type='text' id='merge-reason-{this}-{other}' placeholder='Why (optional)' "
+            "aria-label='Reason for the merge' data-merge-reason>"
+            "<div class='related-actions'><button type='button' class='primary' data-merge-confirm>Merge</button>"
+            "<button type='button' data-merge-cancel>Cancel</button></div></div></li>")
+
+
 def report_card_html(report, papercut_description, expanded=False):
     esc = html.escape
     same_description = report["description"] == papercut_description
@@ -2389,7 +2574,7 @@ def report_card_html(report, papercut_description, expanded=False):
             f"{' · ' + linked(report['source_ref']) if report['source_ref'] else ''}"
             f"{' · session ' + esc(report['session']) if report['session'] else ''}"
             f"{git_label(report)}{cost(report['cost_minutes'])}</p>"
-            f"<details{' open' if expanded else ''}><summary>Report details</summary><p>{esc(report['title'])}</p>"
+            f"<details{' open' if expanded else ''}><summary>Report details</summary><p>{title_html(report['title'])}</p>"
             f"{'<p class=\"muted\">Same description as above.</p>' if same_description else markdown_html(description)}"
             f"{'<div class=\"suggested-fix\"><strong>Suggested fix</strong>' + markdown_html(suggested_fix) + '</div>' if suggested_fix else ''}"
             f"{facts_html(facts) if facts else ''}</details></article>")
@@ -2403,11 +2588,7 @@ def papercut_html(papercut):
                       for i, r in enumerate(papercut["reports"]))
     if papercut["report_count"] > len(papercut["reports"]):
         reports += f"<p class='muted'>Showing the latest {len(papercut['reports'])} of {papercut['report_count']} reports.</p>"
-    related = "".join(
-        f"<li><a href='/papercuts/{r['id']}'>#{r['id']} {esc(r['title'])}</a> "
-        f"<span class='muted'>({esc(r['source'])}{', %.0f%%' % (100 * r['score']) if r['score'] is not None else ''})</span></li>"
-        for r in papercut["related"]
-    ) or "<li class='muted'>None yet</li>"
+    related = "".join(related_item_html(papercut, r) for r in papercut["related"]) or "<li class='muted'>None yet</li>"
     history = "".join(
         f"<li><span class='muted'>{esc(e['at'][:19])} {esc(e['actor'])}</span> {esc(e['kind'])}"
         f"{': ' + esc(e['old_value'] or '∅') + ' → ' + esc(e['new_value'] or '∅') if e['kind'] in ('status', 'category', 'owner', 'severity', 'reopened', 'assessed', 'dispatch_updated') else ''}"
@@ -2437,7 +2618,7 @@ def papercut_html(papercut):
     )
     latest = papercut["dispatches"][0] if papercut["dispatches"] else None
     body = (f"<div class='detail-head'><a href='/'>← All papercuts</a>"
-            f"<div class='detail-title'><h1><span class='muted'>#{papercut['id']}</span> {esc(papercut['title'])}</h1>"
+            f"<div class='detail-title'><h1><span class='muted'>#{papercut['id']}</span> {title_html(papercut['title'])}</h1>"
             f"<div class='detail-actions'>{claim_actions(papercut, latest, 'Claim this papercut')}</div></div>"
             f"<div class='detail-meta'>{status_pill(papercut['status'])}{claim_tag(latest)}{important_pill(papercut)}"
             f"{pill(papercut['category'] or 'unclassified')}"
@@ -2493,9 +2674,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get_content_type() != "application/json":
             raise UnsupportedMediaType("Send the body as Content-Type: application/json")
         try:
-            return json.loads(self.rfile.read(length))
+            payload = json.loads(self.rfile.read(length))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError("Invalid JSON") from error
+        # A signed-in person is who they signed in as, whatever name the request sends.
+        if (email := getattr(sso.signed_in, "email", None)) and isinstance(payload, dict):
+            payload |= {key: email for key in ("actor", "author") if key in payload}
+        return payload
 
     def authorized(self):
         if self.token is None or self.command == "GET":
@@ -2534,7 +2719,8 @@ class Handler(BaseHTTPRequestHandler):
         path, query = url.path, parse_qs(url.query)
         params = {key: values[0] for key, values in query.items()}
         papercut = re.fullmatch(
-            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt)(?:/(\d+))?)?", path)
+            r"/api/papercuts/(\d+)(?:/(related|merge|comments|fingerprints|assessments|dispatch|claim|prompt|candidates|suggestions)"
+            r"(?:/(\d+))?)?", path)
         dispatch = re.fullmatch(r"/api/dispatches/(\d+)", path)
         html_match = re.fullmatch(r"/papercuts/(\d+)", path)
         command = self.command
@@ -2544,8 +2730,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200 if result["replay"] else 201, result)
         if command == "GET" and path == "/api/papercuts":
             return self.respond(200, self.store.list_papercuts(params))
-        # Deprecated: the schema version 2 list, a plain array of every live papercut. The transcript scanner
-        # in mage/src/mage/papercuts/scan.clj still reads it.
+        # Deprecated: the schema version 2 list, a plain array of every live papercut. Nothing in this repository
+        # calls it any more; it stays for older clients.
         if command == "GET" and path == "/api/issues":
             filters = {key: params[key] for key in ("repository", "status", "category", "q") if key in params}
             everything = self.store.list_papercuts({**filters, "limit": sys.maxsize}, max_limit=sys.maxsize)
@@ -2567,6 +2753,9 @@ class Handler(BaseHTTPRequestHandler):
                 ("DELETE", "related", True): lambda: self.store.unrelate(papercut_id, int(other or 0),
                                                                          self.input_json(optional=True)),
                 ("POST", "fingerprints", False): lambda: self.store.add_fingerprint(papercut_id, self.input_json()),
+                ("GET", "candidates", False): lambda: self.store.candidates(
+                    papercut_id, int_param(params, "limit", CANDIDATE_LIMIT, 1, 50)),
+                ("POST", "suggestions", False): lambda: self.store.suggest(papercut_id, self.input_json()),
             }
             if command == "GET" and action == "prompt" and not other:
                 if (papercut := self.store.get_papercut(papercut_id)) is None:
@@ -2591,6 +2780,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, self.store.release(int(dispatch[1]), payload))
         if dispatch and command == "PATCH":
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
+        if command == "GET" and path == "/about":
+            # Read on each request, so an edited page shows without a restart.
+            return self.respond(200, ABOUT_PAGE.read_text(), "text/html")
         if command == "GET" and path == "/":
             # The page lists live papercuts; a change feed is for API clients.
             filters = {key: params[key] for key in ("repository", "status", "category", "q", "sort") if key in params}

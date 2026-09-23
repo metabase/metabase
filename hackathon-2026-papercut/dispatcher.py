@@ -8,6 +8,7 @@ Dispatch is manual: someone presses Dispatch in the web view, which claims the p
 opens a draft PR from its result and records the outcome."""
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -48,6 +49,9 @@ THRESHOLDS = {
     "actionable": 0.7,
     "still_plausible": 0.5,
     "owner_confidence": 0.7,
+    # Probability of the verdict an AI suggestion needs before a person is shown it.
+    "duplicate": 0.5,
+    "related": 0.5,
 }
 # Weights of the normalized evidence inputs in evidence_score, for ranking only.
 EVIDENCE_WEIGHTS = {"reporters": 0.35, "reports": 0.3, "cost": 0.2, "severity": 0.15}
@@ -219,6 +223,58 @@ def decide(papercut, thresholds, jev=None):
                             f"(confidence {fixability['confidence']:.2f}); actionable {actionable:.2f}")
 
 
+RELATIONS = {
+    "duplicate": "The same papercut: the same trap or mechanism, even if worded differently or seen from another "
+                 "angle. One fix would remove both, so merging them loses nothing.",
+    "related": "A different papercut worth reading alongside: the same tool, file or family of cause, but it needs its "
+               "own fix.",
+    "unrelated": "Different problems that only share words or a broad area.",
+}
+CANDIDATES = 12
+
+
+def relation_state(papercut, candidates):
+    """The papercut in full, as for assessment, and each candidate by its title, description and location."""
+    def brief(candidate):
+        location = ", ".join(value for value in (candidate.get("area"), candidate.get("path")) if value)
+        return ({"title": candidate["title"], "description": candidate["description"][:MAX_EXCERPT]}
+                | ({"location": location} if location else {}))
+
+    subject = {key: value for key, value in jev_state(papercut).items() if key != "context"}
+    return {"context": CONTEXT + " `papercut` is one papercut; each entry of `candidates` is another from the same "
+                                 "repository, picked because it shares a path or words with it.",
+            "papercut": subject, "candidates": {f"c{c['id']}": brief(c) for c in candidates}}
+
+
+def relation_questions(candidates):
+    return {f"c{c['id']}": {"type": "choice", "criteria": RELATIONS,
+                            "instructions": f"How does `candidates.c{c['id']}` relate to `papercut`?"}
+            for c in candidates}
+
+
+def judge_relations(papercut, candidates, thresholds, jev):
+    """The model and the suggestions to record for `papercut`. Jev only weighs each pair; which ones a person sees is
+    decided here, by threshold."""
+    if not candidates:
+        return None, []
+    response = jev(relation_state(papercut, candidates), relation_questions(candidates))
+    suggestions = []
+    for candidate in candidates:
+        probabilities = response["answers"][f"c{candidate['id']}"]["probabilities"]
+        for verdict in ("duplicate", "related"):
+            if probabilities.get(verdict, 0) >= thresholds[verdict]:
+                suggestions.append({"papercut_id": candidate["id"], "verdict": verdict,
+                                    "score": round(probabilities[verdict], 3)})
+                break
+    return response.get("model"), suggestions
+
+
+def text_digest(papercut):
+    """What a relation judgment depends on. New reports don't change it, so they don't cost another Jev call."""
+    text = "\0".join(papercut.get(key) or "" for key in ("title", "description", "path", "area"))
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 class Server:
     def __init__(self, url, token=None):
         self.url, self.token = url.rstrip("/"), token
@@ -301,6 +357,51 @@ def assess(server, jev, thresholds, since=None, repository=None, ids=None, dry_r
             server.request("POST", f"/api/papercuts/{papercut['id']}/assessments", assessment)
     print("verdicts: " + (json.dumps(verdicts) if verdicts else "none"), file=out)
     return None if failed else cursor
+
+
+def relate(server, jev, thresholds, since=None, repository=None, ids=None, judged=None, dry_run=False, full=False,
+           limit=CANDIDATES, out=sys.stdout):
+    """Suggest duplicates and related papercuts for each changed papercut whose text changed since it was last judged.
+    Returns the new cursor, or None when some papercut failed and the same window must be polled again, and the
+    updated map of papercut id to the digest of the text judged."""
+    judged = dict(judged or {})
+    if ids:
+        changed, cursor = [{"id": papercut_id} for papercut_id in ids], None
+    else:
+        changed, cursor = server.changed(since, repository)
+    work = []
+    for item in changed:
+        if item.get("merged_into") is not None:
+            continue
+        papercut = server.request("GET", f"/api/papercuts/{item['id']}?reports_limit=20")
+        digest = text_digest(papercut)
+        if papercut.get("merged_into") is not None or (judged.get(str(papercut["id"])) == digest and not (full or ids)):
+            continue
+        candidates = server.request("GET", f"/api/papercuts/{papercut['id']}/candidates?limit={limit}")["candidates"]
+        work.append((papercut, candidates, digest))
+
+    def attempt(item):
+        try:
+            return judge_relations(item[0], item[1], thresholds, jev)
+        except (JevError, KeyError) as error:
+            return error
+
+    with ThreadPoolExecutor(max_workers=JEV_WORKERS) as pool:
+        results = list(pool.map(attempt, work))
+    failed = False
+    for (papercut, candidates, digest), result in zip(work, results):
+        if isinstance(result, Exception):
+            print(f"#{papercut['id']} jev failed: {result!r}", file=out, flush=True)
+            failed = True
+            continue
+        model, suggestions = result
+        found = ", ".join(f"#{s['papercut_id']} {s['verdict']} {s['score']:.2f}" for s in suggestions) or "nothing"
+        print(f"#{papercut['id']} {papercut['title'][:70]} | {len(candidates)} candidates: {found}", file=out, flush=True)
+        if not dry_run:
+            server.request("POST", f"/api/papercuts/{papercut['id']}/suggestions",
+                           {"model": model, "actor": ACTOR, "suggestions": suggestions})
+            judged[str(papercut["id"])] = digest
+    return None if failed else cursor, judged
 
 
 class DispatchError(RuntimeError):
@@ -723,23 +824,42 @@ def add_fixer_arguments(command):
     command.add_argument("--timeout-minutes", type=int, default=40)
 
 
+def relate_main(server, args, thresholds, jev, state):
+    # Kept apart from the assess cursor, since each command follows the change feed at its own pace.
+    name = f"relate {server.url}"
+    saved = state.get(name, {})
+    cursor, judged = relate(server, jev, thresholds, since=None if args.full else saved.get("cursor"),
+                            repository=args.repository, ids=args.ids, judged=saved.get("judged"),
+                            dry_run=args.dry_run, full=args.full, limit=args.candidates)
+    if args.dry_run:
+        return
+    if cursor is None and not args.ids:
+        print("Some papercuts failed; the cursor was not advanced", file=sys.stderr)
+    Path(args.state).write_text(json.dumps(
+        state | {name: {"cursor": cursor if cursor and not args.ids else saved.get("cursor"), "judged": judged}},
+        indent=2) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     assess_command = commands.add_parser("assess", help="Assess papercuts that changed since the last run")
     dispatch_command = commands.add_parser("dispatch", help="Claim papercuts by id and run the fixer for them")
     watch_command = commands.add_parser("watch", help="Run the fixer for each dispatch queued from the web view")
-    for command in (assess_command, dispatch_command, watch_command):
+    relate_command = commands.add_parser("relate", help="Suggest duplicates and related papercuts for changed ones")
+    for command in (assess_command, dispatch_command, watch_command, relate_command):
         command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://10.193.193.227:8765"))
-    command = assess_command
-    command.add_argument("--repository")
-    command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
-                         help="Where the change cursor is kept between runs")
-    command.add_argument("--full", action="store_true", help="Ignore the cursor and reassess every open papercut")
-    command.add_argument("--dry-run", action="store_true", help="Print verdicts without recording them or the cursor")
-    command.add_argument("--id", type=int, action="append", dest="ids", help="Assess only this papercut")
-    command.add_argument("--model", default="jev-latest")
-    command.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="Override a threshold")
+    for command in (assess_command, relate_command):
+        command.add_argument("--repository")
+        command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
+                             help="Where the change cursor is kept between runs")
+        command.add_argument("--full", action="store_true", help="Ignore the cursor and judge every live papercut")
+        command.add_argument("--dry-run", action="store_true", help="Print verdicts without recording them or the cursor")
+        command.add_argument("--id", type=int, action="append", dest="ids", help="Judge only this papercut")
+        command.add_argument("--model", default="jev-latest")
+        command.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="Override a threshold")
+    relate_command.add_argument("--candidates", type=int, default=CANDIDATES,
+                                help="How many similar papercuts Jev compares each one with")
     dispatch_command.add_argument("--live", action="store_true",
                                   help="Claim, create Linear issues, run the fixer and open draft PRs; otherwise only print")
     dispatch_command.add_argument("--id", type=int, action="append", dest="ids", required=True,
@@ -755,6 +875,8 @@ def main():
     thresholds = parse_overrides(args.set)
     key = jev_key()
     state = load_state(args.state)
+    if args.command == "relate":
+        return relate_main(server, args, thresholds, lambda s, q: ask_jev(s, q, key, args.model), state)
     since = None if args.full else state.get(server.url)
     cursor = assess(server, lambda s, q: ask_jev(s, q, key, args.model), thresholds, since=since,
                     repository=args.repository, ids=args.ids, dry_run=args.dry_run, full=args.full)

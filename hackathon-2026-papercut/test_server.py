@@ -59,6 +59,22 @@ class WebViewTest(StoreCase):
         page = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
         self.assertIn("<p class='issue-summary'>Intro code and bold. Conversation here</p>", page)
 
+    def test_titles_render_inline_markdown_without_nested_links(self):
+        title = "**Bold** `code` [label](https://example.com) <script>"
+        papercut_id = self.papercut(title)
+        listing = server.papercut_list_html(self.store.list_papercuts(), {}, self.store.repositories())
+        detail = server.papercut_html(self.store.get_papercut(papercut_id))
+        rendered = "<strong>Bold</strong> <code>code</code> label &lt;script&gt;"
+        self.assertIn(f"<a href='/papercuts/{papercut_id}' title=", listing)
+        self.assertIn(f">{rendered}</a>", listing)
+        self.assertIn(rendered, detail)
+        self.assertNotIn("href='https://example.com'", listing)
+        self.assertEqual(server.title_html(title), rendered)
+        long_title = "The local tool fails after a long setup that ends with `git checkout -- file`"
+        self.assertEqual(server.short_title(long_title), long_title)
+        self.assertEqual(server.short_title(long_title.replace("ends with", "ends with the command") + " and a warning"),
+                         "The local tool fails after a long setup that ends with the command…")
+
     def test_description_fields_and_safe_markdown(self):
         narrative, fix, facts = server.description_parts(
             "Uses `zsh` and **fails**.\n\nSuggested fix: Check *flags*.\n\n"
@@ -346,32 +362,75 @@ class TriageTest(StoreCase):
 
 
 class RelationTest(StoreCase):
-    def test_similar_papercuts_are_suggested_and_can_be_rejected(self):
-        first = self.papercut("Git replay leaves worktree index stale", description="Moving the branch ref")
-        second = self.papercut("Git replay leaves the worktree index stale", description="Moving a branch ref")
-        unrelated = self.papercut("Kondo cache hides lint warnings in CI", description="Cold cache")
-        related = self.store.get_papercut(second)["related"]
-        self.assertEqual([(r["id"], r["source"]) for r in related], [(first, "suggested")])
+    def test_candidates_put_the_same_path_then_the_closest_wording_first(self):
+        this = self.papercut("Git replay leaves worktree index stale", description="Moving the branch ref")
+        close = self.papercut("Git replay leaves the worktree index stale", description="Moving a branch ref")
+        far = self.papercut("Kondo cache hides lint warnings in CI", description="Cold cache")
+        same_path = self.papercut("Unrelated wording", path="src/replay.clj")
+        self.store.update_papercut(this, {"path": "src/replay.clj"})
+        self.assertEqual([c["id"] for c in self.store.candidates(this)["candidates"]], [same_path, close, far])
+        # A pair a person decided is not judged again.
+        self.store.unrelate(this, far, {})
+        self.assertEqual([c["id"] for c in self.store.candidates(this, limit=1)["candidates"]], [same_path])
+        self.assertNotIn(far, [c["id"] for c in self.store.candidates(this)["candidates"]])
 
-        self.store.unrelate(second, first, {"actor": "chris"})
-        self.assertEqual(self.store.get_papercut(second)["related"], [])
-        # Editing the text recomputes suggestions, but a rejected pair stays rejected.
-        self.store.update_papercut(second, {"description": "Moving the branch ref"})
-        self.assertEqual(self.store.get_papercut(second)["related"], [])
+    def test_suggestions_replace_the_ai_view_but_keep_decisions(self):
+        this, duplicate, related, rejected, manual = (self.papercut(title) for title in "ABCDE")
+        self.store.unrelate(this, rejected, {"actor": "chris"})
+        self.store.relate(this, {"papercut_id": manual, "actor": "chris"})
+        papercut = self.store.suggest(this, {"model": "jev-1", "suggestions": [
+            {"papercut_id": related, "verdict": "related", "score": 0.7},
+            {"papercut_id": duplicate, "verdict": "duplicate", "score": 0.9, "reason": "Same trap"},
+            {"papercut_id": rejected, "verdict": "duplicate", "score": 0.99},
+            {"papercut_id": manual, "verdict": "duplicate", "score": 0.99}]})
+        self.assertEqual([(r["id"], r["source"], r["verdict"]) for r in papercut["related"]],
+                         [(manual, "manual", None), (duplicate, "suggested", "duplicate"),
+                          (related, "suggested", "related")])
+        self.assertEqual((papercut["related"][1]["reason"], papercut["related"][1]["model"]), ("Same trap", "jev-1"))
+        # The other side lists the suggestion, and judging it again replaces the pair.
+        self.assertEqual([r["id"] for r in self.store.get_papercut(duplicate)["related"]], [this])
+        self.store.suggest(duplicate, {"suggestions": []})
+        self.assertEqual([r["id"] for r in self.store.get_papercut(this)["related"]], [manual, related])
+        # Accepting a suggestion makes it a person's decision.
+        self.store.relate(this, {"papercut_id": related})
+        self.assertEqual([(r["source"], r["verdict"]) for r in self.store.get_papercut(this)["related"]],
+                         [("manual", None), ("manual", None)])
 
-        papercut = self.store.relate(second, {"papercut_id": unrelated, "actor": "chris"})
-        self.assertEqual([(r["id"], r["source"]) for r in papercut["related"]], [(unrelated, "manual")])
-        self.assertEqual([e["kind"] for e in papercut["events"]][-3:], ["unrelated", "description", "related"])
+    def test_suggestions_are_validated(self):
+        this, other = self.papercut("A"), self.papercut("B")
+        elsewhere = self.papercut("C", repository="another")
+        for payload in ({}, {"suggestions": [{"papercut_id": other}]},
+                        {"suggestions": [{"papercut_id": other, "verdict": "same"}]},
+                        {"suggestions": [{"papercut_id": other, "verdict": "related", "score": 2}]},
+                        {"suggestions": [{"papercut_id": this, "verdict": "related"}]},
+                        {"suggestions": [{"papercut_id": elsewhere, "verdict": "related"}]}):
+            with self.subTest(payload), self.assertRaises(ValueError):
+                self.store.suggest(this, payload)
+        with self.assertRaises(server.NotFound):
+            self.store.suggest(this, {"suggestions": [{"papercut_id": 99, "verdict": "related"}]})
 
-    def test_relation_changes_mark_both_sides_changed(self):
-        first = self.papercut("Git replay leaves worktree index stale", description="Moving the branch ref")
-        second = self.papercut("Git replay leaves the worktree index stale", description="Moving a branch ref")
+    def test_a_papercut_merged_since_it_was_judged_is_skipped(self):
+        this, merged, target = self.papercut("A"), self.papercut("B"), self.papercut("C")
+        self.store.merge(merged, {"into": target})
+        papercut = self.store.suggest(this, {"suggestions": [{"papercut_id": merged, "verdict": "duplicate"}]})
+        self.assertEqual(papercut["related"], [])
+
+    def test_only_changed_verdicts_mark_papercuts_changed(self):
+        first, second, third = self.papercut("First"), self.papercut("Second"), self.papercut("Third")
         cursor = self.store.list_papercuts()["cursor"]
-        # Editing one side drops the suggestion; the other side lists it too.
-        self.store.update_papercut(second, {"title": "Kondo cache hides lint warnings", "description": "Cold cache"})
-        self.assertIn(first, [p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]])
+        self.store.suggest(first, {"suggestions": [{"papercut_id": second, "verdict": "duplicate", "score": 0.8}]})
+        self.assertEqual({p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]}, {first, second})
+        # The same verdict with a new score is not news.
+        cursor = self.store.list_papercuts()["cursor"]
+        self.store.suggest(first, {"suggestions": [{"papercut_id": second, "verdict": "duplicate", "score": 0.7}]})
+        self.assertEqual(self.store.list_papercuts({"since": cursor})["papercuts"], [])
+        cursor = self.store.list_papercuts()["cursor"]
+        self.store.suggest(first, {"suggestions": [{"papercut_id": third, "verdict": "related"}]})
+        self.assertEqual({p["id"] for p in self.store.list_papercuts({"since": cursor})["papercuts"]},
+                         {first, second, third})
 
-        target, neighbour = self.papercut("Target"), self.papercut("Neighbour")
+    def test_merge_marks_related_papercuts_changed(self):
+        first, target, neighbour = self.papercut("First"), self.papercut("Target"), self.papercut("Neighbour")
         self.store.relate(first, {"papercut_id": neighbour})
         cursor = self.store.list_papercuts()["cursor"]
         self.store.merge(first, {"into": target})
@@ -717,6 +776,23 @@ class MigrationTest(unittest.TestCase):
                          ("https://github.com/metabase/metabase.git",
                           {"repository_url": "https://github.com/metabase/metabase.git", "title": "T"}))
 
+    def test_v9_word_overlap_suggestions_are_dropped_and_decisions_kept(self):
+        db = sqlite3.connect(self.path, isolation_level=None)
+        db.row_factory = sqlite3.Row
+        for number, step in enumerate(server.MIGRATIONS[:9], 1):
+            step(db)
+            db.execute(f"PRAGMA user_version = {number}")
+        db.execute("""INSERT INTO papercuts (id, repository, title, description, path, first_seen, last_seen, updated_at)
+                      VALUES (1, 'metabase', 'A', '', '', '2026-09-01', '2026-09-01', '2026-09-01'),
+                             (2, 'metabase', 'B', '', '', '2026-09-01', '2026-09-01', '2026-09-01'),
+                             (3, 'metabase', 'C', '', '', '2026-09-01', '2026-09-01', '2026-09-01')""")
+        db.execute("""INSERT INTO relations (repository, papercut_a, papercut_b, source, score, updated_at)
+                      VALUES ('metabase', 1, 2, 'suggested', 0.5, '2026-09-01'),
+                             ('metabase', 1, 3, 'manual', NULL, '2026-09-01')""")
+        db.close()
+        self.assertEqual([(r["id"], r["source"], r["verdict"]) for r in server.Store(self.path).get_papercut(1)["related"]],
+                         [(3, "manual", None)])
+
     def test_v4_owner_and_severity_are_backfilled_and_events_kept(self):
         db = sqlite3.connect(self.path, isolation_level=None)
         db.row_factory = sqlite3.Row
@@ -848,10 +924,21 @@ class HttpTest(HttpCase):
             self.assertEqual((status, response.getheader("Location")), (301, location))
         self.assertEqual(self.call("PATCH", f"/api/papercuts/{source}", {"status": "open"})[0], 409)
 
+    def test_about_page_is_served_and_linked_from_every_page(self):
+        status, body, response = self.call("GET", "/about")
+        self.assertEqual((status, response.getheader("Content-Type")), (200, "text/html; charset=utf-8"))
+        self.assertIn("How a sighting becomes a papercut", body)
+        self.assertIn("<a class='about-link' href='/about'>What? How?</a>", self.call("GET", "/")[1])
+
     def test_relation_delete_rejects_pair(self):
         a = self.report("r1", "Git replay leaves worktree index stale")[1]["papercut"]["id"]
         b = self.report("r2", "Git replay leaves the worktree index stale")[1]["papercut"]["id"]
-        self.assertEqual(len(self.call("GET", f"/api/papercuts/{b}")[1]["related"]), 1)
+        status, body, _ = self.call("GET", f"/api/papercuts/{b}/candidates?limit=5")
+        self.assertEqual((status, [c["id"] for c in body["candidates"]]), (200, [a]))
+        status, body, _ = self.call("POST", f"/api/papercuts/{b}/suggestions",
+                                    {"model": "jev-1", "suggestions": [{"papercut_id": a, "verdict": "duplicate"}]})
+        self.assertEqual((status, len(body["related"])), (200, 1))
+        self.assertIn("possible duplicate", self.call("GET", f"/papercuts/{b}")[1])
         status, body, _ = self.call("DELETE", f"/api/papercuts/{b}/related/{a}")
         self.assertEqual((status, body["related"]), (200, []))
 

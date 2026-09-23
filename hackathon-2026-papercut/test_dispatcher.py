@@ -182,6 +182,94 @@ class AssessAgainstServerTest(ServerCase):
         self.assertIsNone(self.assess(failing))
 
 
+class RelationJev:
+    """Answers each candidate question from `probabilities`, keyed by candidate id; unlisted ones are unrelated."""
+    def __init__(self, probabilities=None):
+        self.probabilities, self.calls = probabilities or {}, []
+
+    def __call__(self, state, questions):
+        self.calls.append((state, questions))
+        answers = {key: {"type": "choice", "probabilities": self.probabilities.get(int(key[1:]), {"unrelated": 1.0})}
+                   for key in questions}
+        return {"model": "jev-test", "answers": answers}
+
+
+class JudgeRelationsTest(unittest.TestCase):
+    def test_each_candidate_is_a_choice_and_thresholds_pick_what_is_shown(self):
+        candidates = [{"id": id_, "title": f"T{id_}", "description": "d" * 5000, "path": "a.clj" if id_ == 2 else "",
+                       "area": ""} for id_ in (2, 3, 4, 5)]
+        jev = RelationJev({2: {"duplicate": 0.8, "related": 0.15}, 3: {"duplicate": 0.3, "related": 0.6},
+                           4: {"duplicate": 0.45, "related": 0.45}})
+        model, suggestions = dispatcher.judge_relations(papercut(), candidates, T, jev)
+        self.assertEqual((model, suggestions), ("jev-test", [
+            {"papercut_id": 2, "verdict": "duplicate", "score": 0.8},
+            {"papercut_id": 3, "verdict": "related", "score": 0.6}]))
+        state, questions = jev.calls[0]
+        self.assertEqual(state["papercut"]["title"], "Trap")
+        self.assertEqual((state["candidates"]["c2"]["location"], len(state["candidates"]["c3"]["description"])),
+                         ("a.clj", dispatcher.MAX_EXCERPT))
+        self.assertEqual((sorted(questions), questions["c2"]["type"], sorted(questions["c2"]["criteria"])),
+                         (["c2", "c3", "c4", "c5"], "choice", ["duplicate", "related", "unrelated"]))
+
+    def test_no_candidates_needs_no_jev_call(self):
+        jev = RelationJev()
+        self.assertEqual(dispatcher.judge_relations(papercut(), [], T, jev), (None, []))
+        self.assertEqual(jev.calls, [])
+
+
+class RelateAgainstServerTest(ServerCase):
+    def relate(self, jev, **options):
+        return dispatcher.relate(self.client, jev, T, out=io.StringIO(), **options)
+
+    def test_records_suggestions_and_judges_only_changed_text(self):
+        first = self.report("Git replay leaves the worktree index stale")["papercut"]["id"]
+        second = self.report("Git replay leaves worktree index stale")["papercut"]["id"]
+        third = self.report("Kondo cache hides lint warnings")["papercut"]["id"]
+        jev = RelationJev({first: {"duplicate": 0.9}, second: {"duplicate": 0.9}})
+
+        cursor, judged = self.relate(jev)
+        self.assertEqual(len(jev.calls), 3)
+        self.assertEqual(set(judged), {str(first), str(second), str(third)})
+        related = self.store.get_papercut(first)["related"]
+        self.assertEqual([(r["id"], r["verdict"], r["score"], r["model"]) for r in related],
+                         [(second, "duplicate", 0.9, "jev-test")])
+
+        # Suggestions moved papercuts in the change feed, but their text didn't change, so nothing is judged again.
+        cursor, judged = self.relate(jev, since=cursor, judged=judged)
+        self.assertEqual(len(jev.calls), 3)
+        # New reports don't change the text either.
+        self.report("Kondo cache hides lint warnings")
+        cursor, judged = self.relate(jev, since=cursor, judged=judged)
+        self.assertEqual(len(jev.calls), 3)
+        self.store.update_papercut(third, {"description": "The cold cache in CI"})
+        self.relate(jev, since=cursor, judged=judged)
+        self.assertEqual(len(jev.calls), 4)
+        self.assertEqual(jev.calls[-1][0]["papercut"]["title"], "Kondo cache hides lint warnings")
+
+    def test_a_rejected_pair_is_not_offered_again(self):
+        first = self.report("Git replay leaves the worktree index stale")["papercut"]["id"]
+        second = self.report("Git replay leaves worktree index stale")["papercut"]["id"]
+        self.store.unrelate(first, second, {})
+        jev = RelationJev()
+        self.relate(jev, ids=[first])
+        self.assertEqual(jev.calls, [])
+
+    def test_dry_run_records_nothing(self):
+        first = self.report("Git replay leaves the worktree index stale")["papercut"]["id"]
+        self.report("Git replay leaves worktree index stale")
+        _, judged = self.relate(RelationJev({first: {"duplicate": 0.9}}), dry_run=True)
+        self.assertEqual((judged, self.store.get_papercut(first)["related"]), ({}, []))
+
+    def test_jev_failure_keeps_the_cursor_and_the_papercut_unjudged(self):
+        self.report("Git replay leaves the worktree index stale")
+        self.report("Git replay leaves worktree index stale")
+
+        def failing(state, questions):
+            raise dispatcher.JevError("403 blocked")
+
+        self.assertEqual(self.relate(failing), (None, {}))
+
+
 def fixed(**changes):
     return {"outcome": "fixed", "title": "Copy kondo configs before linting", "problem": "`mage kondo` skips it.",
             "solution": "It copies them first.", "how_to_verify": "Run `./bin/mage kondo`.",

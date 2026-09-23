@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try { const t = localStorage.getItem('papercuts-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (_) {}</script>
+<title>How Papercuts works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<style>
+  :root {
+    --ground: #f4f6f8;
+    --paper: #ffffff;
+    --ink: #17202c;
+    --muted: #5a6677;
+    --line: #c9d1db;
+    --edge: #3d4b5e;
+    --capture: #2f6fb3;
+    --capture-bg: #eaf2fb;
+    --group: #b86b12;
+    --group-bg: #fdf3e6;
+    --review: #6b4fb0;
+    --review-bg: #f1edfa;
+    --fix: #b0385f;
+    --fix-bg: #fbeef2;
+    --rule: #4b5a6d;
+    --rule-bg: #eceff3;
+    --model: #0f8a7a;
+    --model-bg: #e3f4f1;
+    --warn: #a15c00;
+    --warn-bg: #fff4dc;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #11161d;
+      --paper: #19202a;
+      --ink: #e4e9ef;
+      --muted: #97a3b3;
+      --line: #334050;
+      --edge: #aab6c6;
+      --capture: #6fa8e6;
+      --capture-bg: #16263a;
+      --group: #e9a650;
+      --group-bg: #2b2215;
+      --review: #a791e6;
+      --review-bg: #221d33;
+      --fix: #ec86a6;
+      --fix-bg: #2c1820;
+      --rule: #aab6c6;
+      --rule-bg: #232c38;
+      --model: #4cc7b4;
+      --model-bg: #122b28;
+      --warn: #f0b04f;
+      --warn-bg: #2d2413;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #11161d;
+    --paper: #19202a;
+    --ink: #e4e9ef;
+    --muted: #97a3b3;
+    --line: #334050;
+    --edge: #aab6c6;
+    --capture: #6fa8e6;
+    --capture-bg: #16263a;
+    --group: #e9a650;
+    --group-bg: #2b2215;
+    --review: #a791e6;
+    --review-bg: #221d33;
+    --fix: #ec86a6;
+    --fix-bg: #2c1820;
+    --rule: #aab6c6;
+    --rule-bg: #232c38;
+    --model: #4cc7b4;
+    --model-bg: #122b28;
+    --warn: #f0b04f;
+    --warn-bg: #2d2413;
+  }
+
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15.5px; line-height: 1.6; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-family: var(--cond); font-weight: 600; font-size: clamp(32px, 5vw, 48px); line-height: 1.05; margin: 6px 0 12px; text-wrap: balance; }
+  h2 { font-family: var(--cond); font-weight: 600; font-size: 26px; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 16px; margin: 0 0 4px; }
+  p { margin: 0; }
+  .lede { max-width: 68ch; font-size: 17px; color: var(--ink); }
+  .lede + .lede { margin-top: 10px; color: var(--muted); font-size: 15.5px; }
+  .sub { max-width: 68ch; color: var(--muted); margin-bottom: 18px; }
+  code { font-family: var(--mono); font-size: .86em; }
+  section { margin-top: 52px; }
+
+  /* Overview diagram */
+  .diagram { overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; margin-top: 26px; }
+  .diagram svg { display: block; min-width: 900px; width: 100%; height: auto; }
+  .col { stroke: none; }
+  .col.c { fill: var(--capture-bg); } .col.g { fill: var(--group-bg); } .col.r { fill: var(--review-bg); } .col.f { fill: var(--fix-bg); }
+  .stage { font-family: var(--cond); font-weight: 600; font-size: 15px; letter-spacing: .08em; }
+  .stage.c { fill: var(--capture); } .stage.g { fill: var(--group); } .stage.r { fill: var(--review); } .stage.f { fill: var(--fix); }
+  .node { fill: var(--paper); stroke-width: 1.3; }
+  .node.c { stroke: var(--capture); } .node.g { stroke: var(--group); } .node.r { stroke: var(--review); } .node.f { stroke: var(--fix); }
+  .t { font-family: var(--sans); font-weight: 600; font-size: 14px; fill: var(--ink); }
+  .d { font-family: var(--sans); font-size: 12.5px; fill: var(--muted); }
+  .tag { font-family: var(--mono); font-size: 10.5px; }
+  .tagbox { stroke: none; }
+  .tagbox.m { fill: var(--model-bg); } .tag.m { fill: var(--model); }
+  .tagbox.x { fill: var(--rule-bg); } .tag.x { fill: var(--rule); }
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+  .edge.back { stroke-dasharray: 5 4; }
+  .arrow { fill: var(--edge); }
+  .el { font-family: var(--mono); font-size: 11px; fill: var(--muted); paint-order: stroke; stroke-width: 4px; stroke-linejoin: round; }
+  .el.on-c { stroke: var(--capture-bg); } .el.on-g { stroke: var(--group-bg); } .el.on-r { stroke: var(--review-bg); } .el.on-p { stroke: var(--paper); }
+
+  /* Funnel */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: step; }
+  .step { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1.25fr); gap: 4px 20px; align-items: start;
+          background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; counter-increment: step; }
+  .step::before { content: counter(step); grid-row: span 2; font-family: var(--cond); font-weight: 600; font-size: 22px; color: var(--muted); line-height: 1.2; }
+  .step.key { border-color: var(--warn); box-shadow: inset 3px 0 0 var(--warn); }
+  .step .who { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 2px; }
+  .step .what { color: var(--ink); }
+  .step .detail { color: var(--muted); font-size: 14.5px; }
+  .step .src { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 4px; display: block; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.rule { background: var(--rule-bg); color: var(--rule); }
+  .pill.model { background: var(--model-bg); color: var(--model); }
+  .pill.human { background: var(--review-bg); color: var(--review); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  @media (max-width: 760px) {
+    .step { grid-template-columns: 28px minmax(0, 1fr); }
+    .step .detail { grid-column: 2; }
+  }
+
+  .callout { margin-top: 14px; background: var(--warn-bg); border-radius: 10px; padding: 14px 18px; max-width: 86ch; }
+  .callout b { color: var(--warn); }
+
+  /* Classification table */
+  .tablewrap { overflow-x: auto; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--ground); }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  td .vals { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Two-up */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; }
+  ul.plain { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  pre { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 10px 0 0; font-family: var(--mono); font-size: 13px; line-height: 1.5; }
+
+  /* Under the hood */
+  details { margin-top: 52px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+  summary { cursor: pointer; padding: 14px 18px; font-family: var(--cond); font-weight: 600; font-size: 19px; }
+  summary:focus-visible { outline: 2px solid var(--capture); outline-offset: 2px; border-radius: 10px; }
+  .hood { padding: 0 18px 18px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px 32px; font-size: 14.5px; }
+  .hood h3 { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .hood dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; }
+  .hood dt { font-family: var(--mono); font-size: 12.5px; }
+  .hood dd { margin: 0; color: var(--muted); }
+  body { margin: 0; }
+  a { color: var(--capture); }
+  .back { display: inline-block; margin-bottom: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a class="back" href="/">← All papercuts</a>
+  <header>
+    <div class="eyebrow">Hackathon 2026 · hackathon-2026-papercut</div>
+    <h1>Papercuts</h1>
+    <p class="lede">Coding agents keep tripping on the same small things in our repo: a misleading test helper, a mage task with a hidden step, a zsh quirk. Papercuts spots them in finished agent sessions, groups repeat sightings, and lets anyone send one to a headless Claude Code fixer that opens a draft PR.</p>
+    <p class="lede">Importing past sessions alone gave 137 papercuts from about 290 reports. The most common one, zsh quirks in the Bash tool, was hit 36 times.</p>
+  </header>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1200 470" role="img" aria-labelledby="dtitle">
+      <title id="dtitle">Four stages: capture from agent sessions, Metabot and past writeups; group on the papercuts server; review in the web view; fix with the dispatcher, Linear, a Claude Code fixer and a draft PR</title>
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+
+      <!-- stage columns -->
+      <rect class="col c" x="12" y="12" width="330" height="398" rx="12"/>
+      <rect class="col g" x="372" y="12" width="250" height="398" rx="12"/>
+      <rect class="col r" x="652" y="12" width="230" height="398" rx="12"/>
+      <rect class="col f" x="912" y="12" width="276" height="398" rx="12"/>
+      <text class="stage c" x="32" y="42">1 · CAPTURE</text>
+      <text class="stage g" x="392" y="42">2 · GROUP</text>
+      <text class="stage r" x="672" y="42">3 · REVIEW</text>
+      <text class="stage f" x="932" y="42">4 · FIX</text>
+
+      <!-- capture -->
+      <rect class="node c" x="32" y="62" width="290" height="132" rx="8"/>
+      <text class="t" x="46" y="86">Your Claude Code / Codex sessions</text>
+      <text class="d" x="46" y="106">A hook scans each session when it ends.</text>
+      <text class="d" x="46" y="124">Jev screens the new stretch; an agent</text>
+      <text class="d" x="46" y="142">drills into flagged parts and writes</text>
+      <text class="d" x="46" y="160">up any papercut it finds.</text>
+      <rect class="tagbox m" x="46" y="170" width="34" height="17" rx="8"/><text class="tag m" x="53" y="182">Jev</text>
+      <rect class="tagbox m" x="86" y="170" width="112" height="17" rx="8"/><text class="tag m" x="93" y="182">claude / codex CLI</text>
+
+      <rect class="node c" x="32" y="210" width="290" height="80" rx="8"/>
+      <text class="t" x="46" y="234">Metabot</text>
+      <text class="d" x="46" y="254">Reviews each of its own turns and</text>
+      <text class="d" x="46" y="272">reports tool failures it hit.</text>
+
+      <rect class="node c" x="32" y="306" width="290" height="84" rx="8"/>
+      <text class="t" x="46" y="330">Past sessions</text>
+      <text class="d" x="46" y="350">Papercuts already mined from old</text>
+      <text class="d" x="46" y="368">transcripts, imported in one go.</text>
+
+      <!-- group -->
+      <rect class="node g" x="392" y="62" width="210" height="328" rx="8"/>
+      <text class="t" x="406" y="86">Papercuts server</text>
+      <text class="d" x="406" y="104">metaouch.dev</text>
+      <text class="d" x="406" y="134">Files each report under a</text>
+      <text class="d" x="406" y="152">papercut by its fingerprint.</text>
+      <text class="d" x="406" y="182">Counts reports, reporters</text>
+      <text class="d" x="406" y="200">and time lost.</text>
+      <text class="d" x="406" y="230">Jev flags likely duplicates;</text>
+      <text class="d" x="406" y="248">people decide merges.</text>
+      <text class="d" x="406" y="278">Keeps every report and every</text>
+      <text class="d" x="406" y="296">triage decision.</text>
+      <rect class="tagbox x" x="406" y="360" width="118" height="17" rx="8"/><text class="tag x" x="413" y="372">Python + SQLite</text>
+
+      <!-- review -->
+      <rect class="node r" x="672" y="62" width="190" height="328" rx="8"/>
+      <text class="t" x="686" y="86">Web view</text>
+      <text class="d" x="686" y="104">Google sign-in</text>
+      <text class="d" x="686" y="134">Sort by reports or</text>
+      <text class="d" x="686" y="152">time lost to see what</text>
+      <text class="d" x="686" y="170">hurts most.</text>
+      <text class="d" x="686" y="200">Merge a flagged duplicate</text>
+      <text class="d" x="686" y="218">after previewing what</text>
+      <text class="d" x="686" y="236">moves and what resets.</text>
+      <text class="t" x="686" y="272" style="font-size:13px">Dispatch button</text>
+      <text class="d" x="686" y="290">Highlighted when Jev</text>
+      <text class="d" x="686" y="308">thinks it's ready to fix.</text>
+      <rect class="tagbox m" x="686" y="360" width="34" height="17" rx="8"/><text class="tag m" x="693" y="372">Jev</text>
+
+      <!-- fix -->
+      <rect class="node f" x="932" y="62" width="236" height="62" rx="8"/>
+      <text class="t" x="946" y="86">Dispatcher</text>
+      <text class="d" x="946" y="106">picks up each dispatched papercut</text>
+
+      <rect class="node f" x="932" y="146" width="236" height="62" rx="8"/>
+      <text class="t" x="946" y="170">Linear issue</text>
+      <text class="d" x="946" y="190">filed for tracking</text>
+
+      <rect class="node f" x="932" y="230" width="236" height="76" rx="8"/>
+      <text class="t" x="946" y="254">Claude Code fixer</text>
+      <text class="d" x="946" y="274">fresh worktree off master,</text>
+      <text class="d" x="946" y="292">limited commands, $10 cap</text>
+
+      <rect class="node f" x="932" y="328" width="236" height="62" rx="8"/>
+      <text class="t" x="946" y="352">Draft PR</text>
+      <text class="d" x="946" y="372">only when its tests pass</text>
+
+      <path class="edge" d="M1050,124 L1050,146" marker-end="url(#a)"/>
+      <path class="edge" d="M1050,208 L1050,230" marker-end="url(#a)"/>
+      <path class="edge" d="M1050,306 L1050,328" marker-end="url(#a)"/>
+
+      <!-- flow edges -->
+      <path class="edge" d="M322,128 L392,128" marker-end="url(#a)"/>
+      <path class="edge" d="M322,250 L392,250" marker-end="url(#a)"/>
+      <path class="edge" d="M322,348 L392,348" marker-end="url(#a)"/>
+      <text class="el on-c" x="330" y="120">report</text>
+      <path class="edge" d="M602,128 L672,128" marker-end="url(#a)"/>
+      <path class="edge" d="M862,93 L932,93" marker-end="url(#a)"/>
+      <text class="el on-r" x="868" y="85">Dispatch</text>
+      <path class="edge back" d="M1050,390 L1050,440 L497,440 L497,390" marker-end="url(#a)"/>
+      <text class="el on-p" x="773" y="434" text-anchor="middle">outcome: PR opened · already fixed · needs a human</text>
+    </svg>
+  </div>
+
+  <section id="dedup">
+    <h2>How a sighting becomes a papercut</h2>
+    <p class="sub">Deduplication and classification happen in six steps. Two use AI judgement: the drill-down agent in step 3 when a sighting arrives, and Jev in step 5, which checks again for duplicates the agent missed. Only people merge.</p>
+    <ol class="steps">
+      <li class="step">
+        <div><div class="who"><span class="pill rule">rule</span></div><h3>Read only what's new</h3></div>
+        <div class="detail">The scanner remembers where it stopped in each session and which papercuts the session already reported, so a session is never counted twice.<span class="src">scan.clj · local scan state</span></div>
+      </li>
+      <li class="step">
+        <div><div class="who"><span class="pill model">Jev</span></div><h3>Screen cheaply</h3></div>
+        <div class="detail">Jev answers a few yes/no questions about each stretch, such as "did a tool give misleading output?". It only picks which stretches deserve a closer look. It never decides what is a papercut.<span class="src">jev.clj</span></div>
+      </li>
+      <li class="step key">
+        <div><div class="who"><span class="pill model">claude / codex</span><span class="pill warn">the judgement</span></div><h3>Decide, classify, match</h3></div>
+        <div class="detail">An agent reads the flagged stretch and decides whether it holds a real papercut. It classifies each one (kind, owner, severity) and cites the transcript lines that prove it. It also sees the list of open papercuts. If one is the same trap, the new sighting joins it. Otherwise the agent starts a new one.<span class="src">drill.clj · structured JSON answer</span></div>
+      </li>
+      <li class="step">
+        <div><div class="who"><span class="pill rule">server</span></div><h3>Group and count</h3></div>
+        <div class="detail">Reports with the same fingerprint land on the same papercut. A report the server has already seen is ignored. The first category a report sends sticks, and later ones show as votes.<span class="src">server.py · ingest</span></div>
+      </li>
+      <li class="step key">
+        <div><div class="who"><span class="pill model">Jev</span><span class="pill warn">second look</span></div><h3>Flag likely duplicates</h3></div>
+        <div class="detail">When a papercut's text changes, the server picks up to 12 others that share its path or wording. Jev judges each one: duplicate, related or unrelated. Verdicts it's at least 50% sure of appear on the papercut's page with that probability. Pairs a person has already decided are never judged again.<span class="src">dispatcher.py relate</span></div>
+      </li>
+      <li class="step">
+        <div><div class="who"><span class="pill human">people</span><span class="pill model">Jev</span></div><h3>Merge and judge readiness</h3></div>
+        <div class="detail">On a flagged pair, people choose <b>Merge</b>, <b>Related</b> or <b>Not related</b>. Before a merge, the page shows which papercut stays, how many reports move, and whether triage resets. A merge can't be undone yet. Every decision is recorded under the person's Google account. Optionally, the dispatcher marks a papercut <code>ready</code> when it has enough evidence and Jev thinks it's fixable repo code. Enough evidence means two reporters, three reports, an hour lost, or high severity.<span class="src">web view · dispatcher.py assess</span></div>
+      </li>
+    </ol>
+    <p class="callout"><b>Why two AI steps.</b> The agent in step 3 matches a sighting against every open papercut's title, and it sometimes misses a reworded duplicate. Step 5 reads full descriptions of a shortlist and costs one Jev call per changed papercut, so it catches most of what step 3 misses. A person still makes every merge.</p>
+  </section>
+
+  <section id="fields">
+    <h2>What gets classified</h2>
+    <p class="sub">The agent fills in the fields below. On the server, the first report to send a value sets it, and people can change it later.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Field</th><th>Means</th><th>Set by</th></tr></thead>
+        <tbody>
+          <tr><td>category</td><td>What kind of problem it is<span class="vals">agent-trap · code-smell · flaky-test · tooling · documentation · other</span></td><td>The agent names a <i>kind</i>, and the scanner maps it to a category. Later reports that disagree count as votes.</td></tr>
+          <tr><td>owner</td><td>Where the fix would go<span class="vals">repo-code · repo-tooling · personal-tooling · third-party · harness · agent-practice</span></td><td>The agent. Only <code>repo-code</code> and <code>repo-tooling</code> can be <code>ready</code> for the fixer.</td></tr>
+          <tr><td>severity</td><td>How much it hurt<span class="vals">low · medium · high</span></td><td>The agent</td></tr>
+          <tr><td>readiness</td><td>Can a headless fixer take it?<span class="vals">not_ready · ready · needs_human</span></td><td>The dispatcher: evidence counts plus Jev</td></tr>
+          <tr><td>status</td><td>Where it is in its life<span class="vals">open · investigating · resolved · wontfix</span></td><td>People, and the dispatcher when a fix finishes. A new report reopens a resolved papercut.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="two">
+    <div>
+      <h2>What leaves your laptop</h2>
+      <ul class="plain">
+        <li>Secrets are redacted before anything is sent: API keys, tokens, passwords, private keys and connection strings.</li>
+        <li>Redacted chunks of new transcript go to TypeSafe Jev for screening.</li>
+        <li>Only flagged chunks go to the <code>claude</code> or <code>codex</code> CLI. That agent gets no tools, and its own session isn't saved.</li>
+        <li>Sessions that did embargoed security work are skipped whole.</li>
+        <li>The server receives the agent's write-up, with the transcript's path and the numbers of the lines it cites. It never receives the transcript text.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Try it</h2>
+      <p>Opt in to automatic scanning from the repository root. The hooks run in the background when a session ends.</p>
+      <pre>./bin/mage papercuts-install-hooks
+./bin/mage papercuts-install-hooks --uninstall</pre>
+      <p style="margin-top:12px">Then browse <b>metaouch.dev</b> with your metabase.com account. Sort by reports, open a papercut, and press Dispatch on one you'd like fixed.</p>
+    </div>
+  </section>
+
+  <details>
+    <summary>Under the hood</summary>
+    <div class="hood">
+      <div>
+        <h3>Pieces</h3>
+        <dl>
+          <dt>mage/…/papercuts/</dt><dd>Hook installer, transcript scanner, Jev screening, drill-down, git context</dd>
+          <dt>session_scan_hook.py</dt><dd>Stop/SessionEnd hook; starts the scan in the background</dd>
+          <dt>server.py, sso.py</dt><dd>API, web view and Google sign-in, stdlib Python only</dd>
+          <dt>dispatcher.py</dt><dd><code>relate</code>, <code>assess</code>, <code>watch</code>, and <code>dispatch --id</code></dd>
+          <dt>fixer/</dt><dd>The fixer's prompt and result schema</dd>
+          <dt>import_local.py</dt><dd>Imports mined writeups from <code>slop/</code></dd>
+          <dt>metabot/</dt><dd>Demo scripts and a Metabot-only fixer, <code>fixer.ts</code></dd>
+        </dl>
+      </div>
+      <div>
+        <h3>API</h3>
+        <dl>
+          <dt>POST /api/reports</dt><dd>Report a sighting; idempotent on <code>report_id</code></dd>
+          <dt>GET /api/papercuts</dt><dd>List and filter; <code>since</code> gives a change feed</dd>
+          <dt>PATCH /api/papercuts/:id</dt><dd>Triage, recorded with actor and reason</dd>
+          <dt>POST …/:id/merge</dt><dd>Also <code>related</code>, <code>fingerprints</code>, <code>comments</code></dd>
+          <dt>…/:id/candidates</dt><dd>Shortlist for Jev; <code>POST …/suggestions</code> records its verdicts</dd>
+          <dt>POST …/:id/dispatch</dt><dd>Claim for the fixer; also <code>assessments</code></dd>
+          <dt>/api/dispatches</dt><dd>What the watcher reads and moves forward</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>Running it</h3>
+        <dl>
+          <dt>Hosting</dt><dd>metaouch.dev behind nginx with Google sign-in. Agents on the tailnet call port 8765 directly.</dd>
+          <dt>Storage</dt><dd>One SQLite file in WAL mode; migrates itself on start</dd>
+          <dt>Local server</dt><dd><code>python3 server.py --reload</code>, port 8765</dd>
+          <dt>Fix runs</dt><dd>Needs <code>claude</code>, <code>gh</code> and <code>LINEAR_API_KEY</code>. Logs go to <code>runs/&lt;id&gt;/</code></dd>
+        </dl>
+      </div>
+    </div>
+  </details>
+</div>
+</body>
+</html>

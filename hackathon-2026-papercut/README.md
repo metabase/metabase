@@ -2,9 +2,10 @@
 
 A small inbox for reports from developer machines or agents. It keeps every report,
 groups reports with the same fingerprint into a papercut, and counts reports,
-reporters and time lost. It suggests related papercuts, supports merging duplicates,
-and records every triage decision. The browser view is read-only; the JSON API
-handles triage.
+reporters and time lost. Jev suggests which papercuts are duplicates or related,
+people merge duplicates, and every triage decision is recorded. Triage runs through
+the JSON API. In the browser, people can also merge or relate papercuts, dispatch a
+fix, and, on Metabot papercuts, ask for a PR.
 
 Python 3 and SQLite are the only requirements. Run from this directory:
 
@@ -27,7 +28,11 @@ The schema and the reasons for it are in
 Schema version 3 renames issues to papercuts and adds the merge, history and
 reporter fields described below. Schema version 4 adds each report's git branch
 and commit. Schema version 5 adds owner, severity, readiness assessments and fix
-dispatches. The server migrates an older database in place when it starts.
+dispatches. Schema versions 6, 7 and 9 remove credentials from repository URLs stored
+before the server cleaned them. Schema version 8 links pull requests to papercuts.
+Schema version 10 gives relations the AI's verdict,
+model and reason, and drops the old word-overlap suggestions. The server migrates an older database in place when
+it starts.
 
 ## Reporting
 
@@ -106,8 +111,12 @@ a manual refresh button. Report prose, suggested fixes and source fields are sho
 separately; Markdown tables, lists, code and links are rendered as safe HTML. Time
 lost shows "Not estimated" until a report includes `cost_minutes`.
 
-`GET /api/issues` is the old list route, kept for the transcript scanner in
-`mage/src/mage/papercuts/`: a plain array of every live papercut, with fingerprints.
+Every page's header links to `/about`, a static explainer of how the project works for people new
+to it. It is `about.html` in this directory, served as is.
+
+`GET /api/issues` is the schema version 2 list route: a plain array of every live
+papercut, with fingerprints. Nothing in this repository calls it any more. It stays
+for older clients.
 
 ## Triage
 
@@ -120,7 +129,7 @@ curl -sS -X PATCH http://127.0.0.1:8765/api/papercuts/1 -H 'Content-Type: applic
 # Merge papercut 2 into 1
 curl -sS -X POST http://127.0.0.1:8765/api/papercuts/2/merge -H 'Content-Type: application/json' \
   -d '{"into":1,"actor":"chris","reason":"Same trap"}'
-# Link, or reject a suggested link
+# Link, or reject a suggested link. Both are a person's decision, which suggestions never override.
 curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/related -H 'Content-Type: application/json' -d '{"papercut_id":3}'
 curl -sS -X DELETE http://127.0.0.1:8765/api/papercuts/1/related/3
 # Route another fingerprint here, or comment
@@ -132,16 +141,22 @@ curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/comments -H 'Content-Type
   with the old fingerprint land there too. Status and category carry over only when
   both papercuts agree; otherwise the target goes back to `open`. A target with no
   category takes the source's.
-- **Suggestions** compare the words in titles and descriptions. They are recomputed
-  when a papercut is created, merged into, or has its title or description edited.
-  A rejected pair is never suggested again.
+- **Suggestions** come from `dispatcher.py relate`, below. The server never merges
+  on its own. A rejected pair is never suggested again.
+- **In the browser**, each entry under Related papercuts has **Merge…**,
+  **Related** and **Not related**. Merge first shows what will happen: which
+  papercut stays, how many reports move, and whether triage resets. By default the
+  one with more reports stays. A merge can't be undone yet.
+- **Who did it:** with Google sign-in on, the server records the signed-in account
+  as the `actor` or `author` of every write, whatever name the request sends. Without
+  it, writes from the page are recorded as `web`.
 
 PATCH also accepts `owner` and `severity`, or null for either.
 
 ## Assessment and dispatch
 
 A dispatcher assesses whether a papercut is ready to be fixed, and then runs a fix
-for it. See [`papercuts/plan.md`](../papercuts/plan.md).
+for it.
 
 Dispatch is manual. Every open papercut with no dispatch in progress has a
 **Dispatch** button, highlighted when its latest assessment is `ready`. The button
@@ -226,6 +241,26 @@ tail -f runs/<id>/agent.jsonl | jq -r 'select(.type=="assistant") | .message.con
 Ctrl-C stops the watcher and the fixer it is running. A dispatch interrupted
 before the fixer started is resumed by the next `watch`. One interrupted while
 `running` has to be cancelled by hand: PATCH it to `failed`.
+
+**Suggesting duplicates:** `python3 dispatcher.py relate --server <server>` finds
+papercuts whose title, description, path or area changed since it last judged them.
+For each one, the server picks up to 12 candidates from the same repository: those
+at the same path first, then the closest wording. Jev then judges each candidate as
+duplicate, related or unrelated. A verdict with a probability of 0.5 or more is
+shown on the page, and `--set duplicate=0.7` or `--set related=0.7` changes the bar.
+New reports don't trigger another judgment. Like `assess`, it takes `--dry-run`,
+`--full` and `--id`, and keeps its own cursor in `dispatcher-state.json`.
+
+```sh
+# The candidates, and recording what an AI said about them
+curl -sS 'http://127.0.0.1:8765/api/papercuts/1/candidates?limit=12'
+curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/suggestions -H 'Content-Type: application/json' \
+  -d '{"model":"jev-1.13.0","suggestions":[{"papercut_id":2,"verdict":"duplicate","score":0.93}]}'
+```
+
+Posting suggestions replaces the earlier ones for that papercut. It changes the
+papercuts' place in the `since` feed only when a verdict appears, disappears or
+changes.
 
 **Assessing readiness** (optional, for the `ready` highlight):
 `python3 dispatcher.py assess --server <server>` asks Jev about papercuts that
