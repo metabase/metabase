@@ -248,7 +248,7 @@ const config = {
       },
       {
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/](?:frontend[\\/]fonts|target[\\/]font-subsets)[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
           filename: (pathData) => fontAssetName(pathData, "fonts"),
@@ -267,7 +267,7 @@ const config = {
               "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
             options: {
               fontsDir: __dirname + "/frontend/fonts",
-              outputDir: __dirname + "/target/font-subsets",
+              outputDir: __dirname + "/node_modules/.cache/font-subsets",
             },
           },
         ],
