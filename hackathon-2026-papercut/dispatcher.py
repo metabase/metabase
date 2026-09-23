@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Assess which papercuts are ready for an automated fix, and dispatch a fixer for the ready ones. See
+"""Assess which papercuts are ready for an automated fix, and run a fixer for the papercuts people dispatch. See
 papercuts/plan.md, phases 2 and 3.
 
 `assess` polls the papercuts server for papercuts that changed, decides a verdict for each open one and records it.
-`dispatch` claims ready papercuts, creates a Linear issue for each, runs a headless Claude Code fixer in its own
-worktree, opens a draft PR from its result and records the outcome. Without --live it only prints what it would do."""
+Dispatch is manual: someone presses Dispatch in the web view, which claims the papercut, or runs `dispatch --id`.
+`watch` picks up each claimed papercut, creates a Linear issue, runs a headless Claude Code fixer in its own worktree,
+opens a draft PR from its result and records the outcome."""
 
 import argparse
 import json
@@ -474,6 +475,10 @@ class Fixer:
             except subprocess.TimeoutExpired:
                 os.killpg(child.pid, signal.SIGTERM)
                 child.wait()
+            except KeyboardInterrupt:
+                # The fixer runs in its own session, so Ctrl-C doesn't reach it.
+                os.killpg(child.pid, signal.SIGTERM)
+                raise
         result = None
         for line in Path(log_path).read_text().splitlines():
             try:
@@ -502,24 +507,6 @@ class Fixer:
 
     def remove(self, worktree):
         run(["git", "worktree", "remove", "--force", str(worktree)], self.repo)
-
-
-def ready_papercuts(server, repository=None):
-    """Open papercuts whose latest assessment is `ready`, strongest evidence first."""
-    query = {"status": "open", "limit": 500}
-    if repository:
-        query["repository"] = repository
-    summaries, offset = [], 0
-    while offset is not None:
-        page = server.request("GET", "/api/papercuts?" + urlencode(query | {"offset": offset}))
-        summaries.extend(page["papercuts"])
-        offset = page["next_offset"]
-    ready = []
-    for summary in summaries:
-        papercut = server.request("GET", f"/api/papercuts/{summary['id']}?reports_limit=20")
-        if (papercut.get("assessment") or {}).get("verdict") == "ready":
-            ready.append(papercut)
-    return sorted(ready, key=lambda p: -(p["assessment"]["evidence_score"] or 0))
 
 
 def claim(server, papercut):
@@ -613,40 +600,46 @@ class Dispatcher:
         except DispatchError as error:
             self.log(f"Linear comment on {dispatch['linear_issue_id']} failed: {error}")
 
-    def dispatch(self, repository=None, ids=None, limit=1, live=False):
-        """Resume this dispatcher's interrupted dispatches, then dispatch up to `limit` ready papercuts. With `ids`,
-        those papercuts are dispatched whatever their verdict, for trying the fixer by hand."""
-        resumable = [d for d in self.server.request("GET", "/api/dispatches?state=active")
-                     if d["actor"] == ACTOR and d["state"] in ("claimed", "linear_created")]
-        if ids:
-            candidates = [self.server.request("GET", f"/api/papercuts/{i}?reports_limit=20") for i in ids]
-        else:
-            candidates = ready_papercuts(self.server, repository)
+    def pending(self):
+        """Dispatches waiting for a dispatcher, oldest first: queued claims, and ones interrupted before the fixer
+        started. Claims come from the web view or `dispatch --id`, whoever made them."""
+        active = self.server.request("GET", "/api/dispatches?state=active")
+        return sorted((d for d in active if d["state"] in ("claimed", "linear_created")), key=lambda d: d["id"])
+
+    def process_pending(self):
+        done = []
+        for dispatch in self.pending():
+            papercut = self.server.request("GET", f"/api/papercuts/{dispatch['papercut_id']}?reports_limit=20")
+            self.log(f"#{papercut['id']} dispatch {dispatch['id']} ({dispatch['state']}, from {dispatch['actor']}): "
+                     f"{papercut['title'][:90]}")
+            done.append(self.run(papercut, dispatch))
+        return done
+
+    def watch(self, interval=5):
+        """Work through dispatches as they are queued, one at a time, until interrupted. Run one watcher per server:
+        two would both pick up the same claim."""
+        self.log(f"Watching {self.server.url} for dispatches")
+        while True:
+            self.process_pending()
+            time.sleep(interval)
+
+    def dispatch(self, ids, live=False):
+        """Claim these papercuts whatever their verdict and work through them, or with `live` off, only write the
+        messages the fixer would get."""
+        papercuts = [self.server.request("GET", f"/api/papercuts/{i}?reports_limit=20") for i in ids]
         if not live:
-            for dispatch in resumable:
-                self.log(f"would resume dispatch {dispatch['id']} ({dispatch['state']}) on #{dispatch['papercut_id']}")
             self.runs_dir.mkdir(parents=True, exist_ok=True)
-            for papercut in candidates[:limit]:
+            for papercut in papercuts:
                 path = self.runs_dir / f"dry-run-{papercut['id']}.md"
                 path.write_text(fixer_message(papercut))
-                evidence_score = (papercut.get("assessment") or {}).get("evidence_score")
-                self.log(f"would dispatch #{papercut['id']} (evidence {evidence_score}) {papercut['title'][:90]}; "
-                         f"fixer message in {path}")
-            self.log(f"{len(candidates)} candidates; pass --live to dispatch")
+                self.log(f"would dispatch #{papercut['id']} {papercut['title'][:90]}; fixer message in {path}")
             return []
-        done = []
-        for dispatch in resumable:
-            papercut = self.server.request("GET", f"/api/papercuts/{dispatch['papercut_id']}?reports_limit=20")
-            done.append(self.run(papercut, dispatch))
-        started = 0
-        for papercut in candidates:
-            if started == limit:
-                break
+        for papercut in papercuts:
             if dispatch := claim(self.server, papercut):
-                started += 1
-                self.log(f"#{papercut['id']} claimed as dispatch {dispatch['id']}: {papercut['title'][:90]}")
-                done.append(self.run(papercut, dispatch))
-        return done
+                self.log(f"#{papercut['id']} claimed as dispatch {dispatch['id']}")
+            else:
+                self.log(f"#{papercut['id']} was not claimed: it is not open, or a dispatch is already in progress")
+        return self.process_pending()
 
 
 def jev_key():
@@ -667,41 +660,28 @@ def parse_overrides(pairs):
 
 
 def dispatch_main(server, args):
+    live = args.command == "watch" or args.live
     repo = Path(args.repo)
     fixer = Fixer(repo, args.worktrees or repo.parent / "papercut-worktrees", model=args.model,
                   budget_usd=args.budget_usd, timeout_minutes=args.timeout_minutes, base=args.base)
     linear = None
-    if args.live:
+    if live:
         if not os.environ.get("LINEAR_API_KEY"):
             sys.exit("Set LINEAR_API_KEY")
         linear = Linear(os.environ["LINEAR_API_KEY"]).connect()
         if not linear.label_id:
             print(f"No Linear label named {LINEAR_LABEL}; issues are created without it", file=sys.stderr)
-    Dispatcher(server, linear, fixer).dispatch(args.repository, args.ids, args.limit, args.live)
+    dispatcher = Dispatcher(server, linear, fixer)
+    try:
+        if args.command == "watch":
+            dispatcher.watch(args.interval)
+        else:
+            dispatcher.dispatch(args.ids, args.live)
+    except KeyboardInterrupt:
+        print("Stopped", file=sys.stderr)
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    assess_command = commands.add_parser("assess", help="Assess papercuts that changed since the last run")
-    dispatch_command = commands.add_parser("dispatch", help="Dispatch the fixer for ready papercuts")
-    for command in (assess_command, dispatch_command):
-        command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://127.0.0.1:8765"))
-        command.add_argument("--repository")
-    command = assess_command
-    command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
-                         help="Where the change cursor is kept between runs")
-    command.add_argument("--full", action="store_true", help="Ignore the cursor and reassess every open papercut")
-    command.add_argument("--dry-run", action="store_true", help="Print verdicts without recording them or the cursor")
-    command.add_argument("--id", type=int, action="append", dest="ids", help="Assess only this papercut")
-    command.add_argument("--model", default="jev-latest")
-    command.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="Override a threshold")
-    command = dispatch_command
-    command.add_argument("--live", action="store_true",
-                         help="Claim, create Linear issues, run the fixer and open draft PRs; otherwise only print")
-    command.add_argument("--id", type=int, action="append", dest="ids",
-                         help="Dispatch this papercut whatever its verdict")
-    command.add_argument("--limit", type=int, default=1, help="Papercuts to dispatch in this run")
+def add_fixer_arguments(command):
     command.add_argument("--repo", default=Path(__file__).resolve().parent.parent,
                          help="The Metabase checkout that worktrees are made from")
     command.add_argument("--worktrees", help="Where fixer worktrees go (default: papercut-worktrees next to --repo)")
@@ -709,10 +689,36 @@ def main():
     command.add_argument("--model", default="opus")
     command.add_argument("--budget-usd", type=float, default=10.0, help="Spending cap for each fixer run")
     command.add_argument("--timeout-minutes", type=int, default=40)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    assess_command = commands.add_parser("assess", help="Assess papercuts that changed since the last run")
+    dispatch_command = commands.add_parser("dispatch", help="Claim papercuts by id and run the fixer for them")
+    watch_command = commands.add_parser("watch", help="Run the fixer for each dispatch queued from the web view")
+    for command in (assess_command, dispatch_command, watch_command):
+        command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://127.0.0.1:8765"))
+    command = assess_command
+    command.add_argument("--repository")
+    command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
+                         help="Where the change cursor is kept between runs")
+    command.add_argument("--full", action="store_true", help="Ignore the cursor and reassess every open papercut")
+    command.add_argument("--dry-run", action="store_true", help="Print verdicts without recording them or the cursor")
+    command.add_argument("--id", type=int, action="append", dest="ids", help="Assess only this papercut")
+    command.add_argument("--model", default="jev-latest")
+    command.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="Override a threshold")
+    dispatch_command.add_argument("--live", action="store_true",
+                                  help="Claim, create Linear issues, run the fixer and open draft PRs; otherwise only print")
+    dispatch_command.add_argument("--id", type=int, action="append", dest="ids", required=True,
+                                  help="Dispatch this papercut whatever its verdict")
+    watch_command.add_argument("--interval", type=int, default=5, help="Seconds between checks for new dispatches")
+    for command in (dispatch_command, watch_command):
+        add_fixer_arguments(command)
     args = parser.parse_args()
 
     server = Server(args.server, os.environ.get("PAPERCUTS_TOKEN"))
-    if args.command == "dispatch":
+    if args.command in ("dispatch", "watch"):
         return dispatch_main(server, args)
     thresholds = parse_overrides(args.set)
     key = jev_key()

@@ -143,6 +143,21 @@ PATCH also accepts `owner` and `severity`, or null for either.
 A dispatcher assesses whether a papercut is ready to be fixed, and then runs a fix
 for it. See [`papercuts/plan.md`](../papercuts/plan.md).
 
+Dispatch is manual. Every open papercut with no dispatch in progress has a
+**Dispatch** button, highlighted when its latest assessment is `ready`. The button
+only claims the papercut. The work is done by a watcher, which files the Linear
+issue, runs the fixer and opens the draft PR:
+
+```sh
+set -a && . ../.env && set +a   # LINEAR_API_KEY, PAPERCUTS_TOKEN
+python3 dispatcher.py watch --server http://127.0.0.1:8765
+```
+
+Run one watcher per server. Until one runs, a dispatch shows as `queued` and can
+be cancelled. Its Linear issue and draft PR links show on the papercut's card and
+page. When the server has a token, enter it under **API token** in the header. The
+page keeps it in the browser's local storage.
+
 ```sh
 # Record a readiness assessment: not_ready, ready or needs_human
 curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/assessments -H 'Content-Type: application/json' \

@@ -246,15 +246,17 @@ class DispatchTest(ServerCase):
         self.store.assess(papercut_id, {"verdict": "ready", "evidence_score": evidence_score, "reason": "Local change"})
         return papercut_id
 
-    def dispatch(self, result=None, linear=None, edit=True, **options):
+    def runner(self, result=None, linear=None, edit=True):
         self.linear = linear or FakeLinear()
         self.fixer = FakeFixer(self.repo, self.worktrees, result, edit)
-        runner = dispatcher.Dispatcher(self.client, self.linear, self.fixer, Path(self.temp.name) / "runs", io.StringIO())
-        return runner.dispatch(live=True, **options)
+        return dispatcher.Dispatcher(self.client, self.linear, self.fixer, Path(self.temp.name) / "runs", io.StringIO())
+
+    def dispatch(self, papercut_id, result=None, linear=None, edit=True):
+        return self.runner(result, linear, edit).dispatch([papercut_id], live=True)
 
     def test_fixed_papercut_gets_an_issue_a_pushed_branch_and_a_draft_pr(self):
         papercut_id = self.ready()
-        [dispatch] = self.dispatch(fixed())
+        [dispatch] = self.dispatch(papercut_id, fixed())
         branch = "bot-1-papercut-kondo-skips-config-copy"
         self.assertEqual((dispatch["state"], dispatch["pr_url"], dispatch["branch"], dispatch["linear_issue_id"],
                           dispatch["cost_usd"]),
@@ -278,7 +280,7 @@ class DispatchTest(ServerCase):
         for index, (state, (result, edit, status, kept)) in enumerate(cases.items()):
             with self.subTest(state):
                 papercut_id = self.ready(f"Trap {index}")
-                [dispatch] = self.dispatch(result, edit=edit)
+                [dispatch] = self.dispatch(papercut_id, result, edit=edit)
                 self.assertEqual(dispatch["state"], state)
                 self.assertEqual(self.store.get_papercut(papercut_id)["status"], status)
                 self.assertEqual(any(self.worktrees.iterdir()), kept)
@@ -288,7 +290,7 @@ class DispatchTest(ServerCase):
 
     def test_linear_failure_fails_the_dispatch_before_any_worktree(self):
         papercut_id = self.ready()
-        [dispatch] = self.dispatch(fixed(), linear=FakeLinear(fail=True))
+        [dispatch] = self.dispatch(papercut_id, fixed(), linear=FakeLinear(fail=True))
         self.assertEqual((dispatch["state"], dispatch["linear_issue_id"]), ("failed", None))
         self.assertEqual(self.store.get_papercut(papercut_id)["status"], "open")
         self.assertFalse(self.worktrees.exists())
@@ -298,22 +300,35 @@ class DispatchTest(ServerCase):
         claimed = self.store.claim(papercut_id, {"actor": dispatcher.ACTOR})
         self.store.update_dispatch(claimed["id"], {"state": "linear_created", "linear_issue_id": "BOT-9",
                                                    "linear_url": "https://linear.app/BOT-9"})
-        [dispatch] = self.dispatch(fixed(), limit=0)
+        [dispatch] = self.runner(fixed()).process_pending()
         self.assertEqual((dispatch["id"], dispatch["state"], dispatch["branch"]),
                          (claimed["id"], "pr_opened", "bot-9-papercut-kondo-skips-config-copy"))
         self.assertEqual(self.linear.issues, [])
 
-    def test_limit_takes_the_strongest_evidence_first(self):
-        self.ready("Weaker trap", evidence_score=0.3)
-        strong_id = self.ready("Stronger trap", evidence_score=0.9)
-        [dispatch] = self.dispatch(fixed(), limit=1)
-        self.assertEqual(dispatch["papercut_id"], strong_id)
+    def test_watch_works_through_web_claims_oldest_first(self):
+        first_id = self.report("First trap")["papercut"]["id"]
+        second_id = self.report("Second trap")["papercut"]["id"]
+        for papercut_id in (second_id, first_id):
+            self.store.claim(papercut_id, {"actor": "web", "reason": "Dispatched from the web view"})
+        done = self.runner(fixed(outcome="already_fixed", reason="Fixed on master"), edit=False).process_pending()
+        self.assertEqual([(d["papercut_id"], d["actor"], d["state"]) for d in done],
+                         [(second_id, "web", "already_fixed"), (first_id, "web", "already_fixed")])
+        self.assertEqual(self.runner().process_pending(), [])
+
+    def test_dispatching_a_papercut_already_in_progress_claims_nothing_new(self):
+        papercut_id = self.ready()
+        self.store.claim(papercut_id, {"actor": "web"})
+        runner = self.runner(fixed())
+        with unittest.mock.patch.object(runner, "process_pending", return_value=[]):
+            runner.dispatch([papercut_id], live=True)
+        self.assertEqual(len(self.store.get_papercut(papercut_id)["dispatches"]), 1)
+        self.assertIn("was not claimed", runner.out.getvalue())
 
     def test_dry_run_claims_nothing(self):
         papercut_id = self.ready()
         out = io.StringIO()
         runner = dispatcher.Dispatcher(self.client, None, None, Path(self.temp.name) / "runs", out)
-        self.assertEqual(runner.dispatch(), [])
+        self.assertEqual(runner.dispatch([papercut_id]), [])
         self.assertEqual(self.store.get_papercut(papercut_id)["dispatches"], [])
         self.assertIn(f"would dispatch #{papercut_id}", out.getvalue())
         self.assertTrue((Path(self.temp.name) / "runs" / f"dry-run-{papercut_id}.md").exists())
