@@ -568,11 +568,17 @@
         deletion-rank (into {} (map-indexed (fn [i [model-key _]] [model-key i])) (spec/specs-for-deletion))
         deletes-by-key (sort-by (fn [[model-key _]] (deletion-rank model-key Long/MAX_VALUE))
                                 (group-by model-key-of deletes))
-        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
+        sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)
+        cascaded-search-ids (atom {})]
     (report 0.7 {:force? true})
     ;; Before the transaction for the same reason as in [[load-snapshot!]].
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
+      ;; Deleting a model Card cascades (by foreign key) to its Actions and model-index values, which the ledger
+      ;; doesn't track; note their search ids before they go, so they can leave search below.
+      (when-let [card-ids (seq (keep (fn [[model-key ds]] (when (= :model/Card model-key) (mapv :model_id ds)))
+                                     deletes-by-key))]
+        (reset! cascaded-search-ids (remote-sync.db/card-cascaded-search-ids (into [] cat card-ids))))
       (doseq [[model-key ds] deletes-by-key]
         (remote-sync.db/delete-instances! model-key (mapv :model_id ds)))
       (when (seq deletes)
@@ -585,9 +591,12 @@
     (report 0.9 {:force? true})
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
-    ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
+    ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly, along with the
+    ;; searchable rows they cascaded to.
     (doseq [[model-key ds] deletes-by-key]
       (search/delete! model-key (mapv :model_id ds)))
+    (doseq [[model-key ids] @cascaded-search-ids]
+      (search/delete! model-key ids))
     (report 0.95 {:force? true})
     (log/info "Successfully reloaded entities from git repository")
     {:status :success

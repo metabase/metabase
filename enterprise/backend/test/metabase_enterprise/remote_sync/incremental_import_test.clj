@@ -356,6 +356,44 @@
                    (is (not (t2/exists? :model/Action action-id)) "deleting Sub cascaded to its model's action")
                    (is (not (indexed?)) "the cascaded action is gone from the search index")))))))))))
 
+(deftest model-delete-removes-cascaded-actions-and-indexed-entities-from-search-test
+  (testing "HACKRDE-31: a pull that deletes a model card also deletes (by FK cascade) its actions and model-index
+            values, which the ledger doesn't track; like the full import, it must drop them from search"
+    (search.tu/with-appdb-search-if-available*
+      (do-with-bench!
+       (fn [_f0]
+         (let [bench (bench-collection)]
+           (mt/with-temp [:model/Card {model-id :id} {:name "Bench Model" :type :model :collection_id (:id bench)}
+                          :model/Action {action-id :id} {:name "Zebra action" :type :http :model_id model-id}
+                          :model/ModelIndex {mi-id :id} {:model_id   model-id
+                                                         :pk_ref     [:field 1 nil]
+                                                         :value_ref  [:field 2 nil]
+                                                         :schedule   "0 0 0 * * ? *"
+                                                         :state      "indexed"
+                                                         :creator_id (mt/user->id :rasta)}]
+             ;; Inserted directly: ModelIndexValue has no id column, so with-temp can't clean it up. The model
+             ;; delete cascades it away; the index row comes from the baseline import's full reindex.
+             (t2/insert! :model/ModelIndexValue {:model_index_id mi-id :model_pk 42 :name "Quokka value"})
+             (mt/with-model-cleanup [:model/Action]
+               (let [g0         (synced-tree)
+                     model-path (path-with g0 "bench_model")
+                     g1         (dissoc g0 model-path)
+                     src        (rs.test/versioned-source :trees {"v0" g0 "v1" g1} :current "v0")
+                     action?    #(t2/exists? (search.index/active-table) :model "action" :model_id (str action-id))
+                     value?     #(t2/exists? (search.index/active-table) :model "indexed-entity"
+                                             :model_id (str mi-id ":" 42))]
+                 (is (some? model-path) "precondition: the model card is in the synced tree")
+                 (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+                 (is (t2/exists? :model/Action action-id) "the action survives the baseline import")
+                 (is (action?) "precondition: the action is in the search index")
+                 (is (value?) "precondition: the model-index value is in the search index")
+                 (let [[result path] (import-v1-under-test! src)]
+                   (is (= :success (:status result)) "the pull deleting the model succeeds")
+                   (is (= :incremental path) "a model delete stays on the incremental path")
+                   (is (not (t2/exists? :model/Action action-id)) "deleting the model cascaded to its action")
+                   (is (not (action?)) "the cascaded action is gone from the search index")
+                   (is (not (value?)) "the cascaded model-index value is gone from the search index")))))))))))
+
 (deftest namespaced-collection-change-falls-back-test
   (testing "HACKRDE-21: adding a transforms-namespace collection still takes the full import (the collection's
             presence drives the remote-sync-transforms setting), and reconciles to the full oracle"

@@ -181,6 +181,21 @@
    entity-ids :- [:set :string]]
   (t2/select (into [model] columns) :entity_id [:in entity-ids]))
 
+(mu/defn card-cascaded-search-ids :- [:map-of :keyword [:sequential [:or ms/PositiveInt :string]]]
+  "The search-index ids of the searchable rows that deleting the Cards `card-ids` removes by foreign-key cascade: the
+  models' Actions, and their ModelIndexValues (indexed entities, keyed `<model_index_id>:<model_pk>` in the search
+  index). Keyed by search model; a model with no such rows is absent."
+  [card-ids :- [:sequential ms/PositiveInt]]
+  (let [action-ids (t2/select-pks-vec :model/Action :model_id [:in card-ids])
+        index-ids  (t2/select-pks-vec :model/ModelIndex :model_id [:in card-ids])
+        value-ids  (when (seq index-ids)
+                     (mapv (fn [{:keys [model_index_id model_pk]}] (str model_index_id ":" model_pk))
+                           (t2/select [:model/ModelIndexValue :model_index_id :model_pk]
+                                      :model_index_id [:in index-ids])))]
+    (cond-> {}
+      (seq action-ids) (assoc :model/Action action-ids)
+      (seq value-ids)  (assoc :model/ModelIndexValue value-ids))))
+
 (mu/defn delete-instances!
   "Delete the instances of `model` with `ids`."
   [model :- :keyword
