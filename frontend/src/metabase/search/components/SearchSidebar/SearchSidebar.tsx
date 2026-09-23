@@ -20,6 +20,7 @@ import { PersonalCollectionsFilter } from "metabase/search/components/filters/Pe
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_SEARCH_FILTERS } from "metabase/search/plugins";
+import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {
@@ -28,6 +29,8 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  const vibesEnabled = useSetting("vibes-enabled");
+  const tokenFeatures = useSetting("token-features");
   const [openFilterKey, setOpenFilterKey] = useState<FilterTypeKeys | null>(
     null,
   );
@@ -112,7 +115,9 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
-      {getFilter(SearchFilterKeys.Vibes)}
+      {vibesEnabled &&
+        tokenFeatures?.semantic_search &&
+        getFilter(SearchFilterKeys.Vibes)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
       {showOtherUsersCollections &&
         getFilter(SearchFilterKeys.PersonalCollections)}

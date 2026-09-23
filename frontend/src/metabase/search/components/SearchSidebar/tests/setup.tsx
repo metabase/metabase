@@ -45,7 +45,10 @@ export const setup = ({
     });
   }
 
-  renderWithProviders(<SearchSidebar value={value} onChange={onChange} />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <SearchSidebar value={value} onChange={onChange} />,
+    {
+      storeInitialState: state,
+    },
+  );
 };

@@ -1,22 +1,45 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import { act, screen } from "__support__/ui";
 import type { SearchSidebarSetupOptions } from "metabase/search/components/SearchSidebar/tests/setup";
 import { setup } from "metabase/search/components/SearchSidebar/tests/setup";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { refetchSiteSettings } from "metabase/settings";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
-// The plugin registers the filter once per module, so the cases where it must stay hidden live in
-// vibes-disabled.unit.spec.tsx.
 const setupVibes = (opts?: SearchSidebarSetupOptions) => {
-  setup({
-    ...opts,
+  return setup({
     tokenFeatures: createMockTokenFeatures({ semantic_search: true }),
     settings: { "vibes-enabled": true },
     enterprisePlugins: ["semantic_search"],
+    ...opts,
   });
 };
 
 describe("SearchFilterSidebar vibes toggle (enabled)", () => {
+  it("shows the toggle when authenticated settings arrive after plugin initialization", async () => {
+    const { store } = setupVibes({ settings: { "vibes-enabled": undefined } });
+
+    expect(screen.queryByTestId("vibes-search-filter")).not.toBeInTheDocument();
+
+    setupPropertiesEndpoints(
+      createMockSettings({
+        "token-features": createMockTokenFeatures({ semantic_search: true }),
+        "vibes-enabled": true,
+      }),
+    );
+    await act(async () => {
+      await store.dispatch(refetchSiteSettings()).unwrap();
+    });
+
+    expect(
+      await screen.findByRole("switch", { name: "Order by vibes" }),
+    ).not.toBeChecked();
+  });
+
   it("renders `Order by vibes` when the instance has vibes enabled", () => {
     setupVibes();
 
