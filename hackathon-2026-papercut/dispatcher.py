@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
-"""Assess which papercuts are ready for an automated fix. See papercuts/plan.md, phase 2.
+"""Assess which papercuts are ready for an automated fix, and dispatch a fixer for the ready ones. See
+papercuts/plan.md, phases 2 and 3.
 
 `assess` polls the papercuts server for papercuts that changed, decides a verdict for each open one and records it.
-It never claims a papercut or launches a fixer."""
+`dispatch` claims ready papercuts, creates a Linear issue for each, runs a headless Claude Code fixer in its own
+worktree, opens a draft PR from its result and records the outcome. Without --live it only prints what it would do."""
 
 import argparse
 import json
 import os
+import re
+import shutil
+import signal
+import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -51,6 +58,21 @@ CONTEXT = ("A papercut reported against the Metabase monorepo (Clojure backend, 
 MAX_DESCRIPTION = 4000
 MAX_EXCERPT = 1200
 MAX_EXCERPTS = 3
+JEV_WORKERS = 8
+LINEAR_URL = "https://api.linear.app/graphql"
+# Project "Hackathon 2026: Papercut Tracker".
+LINEAR_PROJECT = "9abf9cc60925"
+LINEAR_LABEL = "papercut-dispatch"
+FIXER_DIR = Path(__file__).with_name("fixer")
+RUNS_DIR = Path(__file__).with_name("runs")
+# A stale ControlMaster socket can hang git over SSH, and some connections to GitHub stall for a minute.
+GIT_SSH = {"GIT_SSH_COMMAND": "ssh -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=10"}
+# The only commands the fixer may run; anything else is denied, since nobody answers its permission prompts.
+FIXER_BASH = ["Bash(./bin/test-agent:*)", "Bash(bun install --frozen-lockfile)", "Bash(bun run test-unit-keep-cljs:*)",
+              "Bash(git diff:*)", "Bash(git status:*)", "Bash(git log:*)", "Bash(git show:*)"]
+# A parent Claude Code session's variables, the dispatcher's own credentials, and Metabase settings that would
+# reach the fixer's test JVM.
+SCRUBBED_ENV = re.compile(r"^(CLAUDE|ANTHROPIC|MB_|PAPERCUTS_|LINEAR_|JEV_|TYPESAFE_)")
 
 
 class JevError(RuntimeError):
@@ -245,17 +267,27 @@ def assess(server, jev, thresholds, since=None, repository=None, ids=None, dry_r
         candidates, cursor = [{"id": papercut_id} for papercut_id in ids], None
     else:
         candidates, cursor = server.changed(since, repository)
-    failed, verdicts = False, {}
+    papercuts = []
     for candidate in candidates:
         if candidate.get("merged_into") is not None:
             continue
         papercut = server.request("GET", f"/api/papercuts/{candidate['id']}?reports_limit=20")
-        if papercut.get("merged_into") is not None or (not full and not ids and up_to_date(papercut)):
-            continue
+        if papercut.get("merged_into") is None and (full or ids or not up_to_date(papercut)):
+            papercuts.append(papercut)
+
+    def attempt(papercut):
         try:
-            assessment = decide(papercut, thresholds, jev)
+            return decide(papercut, thresholds, jev)
         except (JevError, KeyError) as error:
-            print(f"#{papercut['id']} jev failed: {error}", file=out)
+            return error
+
+    # Connecting to Jev can stall for half a minute, so its requests run in parallel.
+    with ThreadPoolExecutor(max_workers=JEV_WORKERS) as pool:
+        results = list(pool.map(attempt, papercuts))
+    failed, verdicts = False, {}
+    for papercut, assessment in zip(papercuts, results):
+        if isinstance(assessment, Exception):
+            print(f"#{papercut['id']} jev failed: {assessment!r}", file=out, flush=True)
             failed = True
             continue
         if assessment is None:
@@ -263,11 +295,358 @@ def assess(server, jev, thresholds, since=None, repository=None, ids=None, dry_r
         verdicts[assessment["verdict"]] = verdicts.get(assessment["verdict"], 0) + 1
         print(f"#{papercut['id']} {assessment['verdict']} evidence={assessment['evidence_score']} "
               f"fixability={assessment.get('fixability_score')} {papercut['title'][:80]} | {assessment['reason']}",
-              file=out)
+              file=out, flush=True)
         if not dry_run:
             server.request("POST", f"/api/papercuts/{papercut['id']}/assessments", assessment)
     print("verdicts: " + (json.dumps(verdicts) if verdicts else "none"), file=out)
     return None if failed else cursor
+
+
+class DispatchError(RuntimeError):
+    pass
+
+
+class Linear:
+    def __init__(self, api_key, project_slug=LINEAR_PROJECT, label=LINEAR_LABEL):
+        self.api_key, self.project_slug, self.label = api_key, project_slug, label
+        self.project_id = self.team_id = self.label_id = None
+
+    def graphql(self, query, variables=None):
+        request = Request(LINEAR_URL, json.dumps({"query": query, "variables": variables or {}}).encode(),
+                          {"Authorization": self.api_key, "Content-Type": "application/json"})
+        try:
+            with urlopen(request, timeout=30) as response:
+                body = json.load(response)
+        except HTTPError as error:
+            raise DispatchError(f"Linear: {error.code} {error.read()[:300].decode(errors='replace')}") from error
+        if body.get("errors"):
+            raise DispatchError(f"Linear: {body['errors']}")
+        return body["data"]
+
+    def connect(self):
+        """Resolve the project, its team and the optional label once."""
+        data = self.graphql("""query($id: String!, $label: String!) {
+                                 project(id: $id) { id teams { nodes { id } } }
+                                 issueLabels(filter: {name: {eq: $label}}) { nodes { id } } }""",
+                            {"id": self.project_slug, "label": self.label})
+        self.project_id = data["project"]["id"]
+        self.team_id = data["project"]["teams"]["nodes"][0]["id"]
+        labels = data["issueLabels"]["nodes"]
+        self.label_id = labels[0]["id"] if labels else None
+        return self
+
+    def find_issue(self, marker):
+        data = self.graphql("""query($project: ID!, $marker: String!) {
+                                 issues(filter: {project: {id: {eq: $project}}, description: {contains: $marker}}) {
+                                   nodes { id identifier url } } }""",
+                            {"project": self.project_id, "marker": marker})
+        nodes = data["issues"]["nodes"]
+        return nodes[0] if nodes else None
+
+    def create_issue(self, title, description, marker):
+        """Create the issue, or return the one an interrupted earlier attempt created."""
+        if existing := self.find_issue(marker):
+            return existing
+        issue = {"teamId": self.team_id, "projectId": self.project_id, "title": title,
+                 "description": f"{description}\n\n`{marker}`"}
+        if self.label_id:
+            issue["labelIds"] = [self.label_id]
+        data = self.graphql("""mutation($input: IssueCreateInput!) {
+                                 issueCreate(input: $input) { issue { id identifier url } } }""", {"input": issue})
+        return data["issueCreate"]["issue"]
+
+    def comment(self, issue_id, body):
+        self.graphql("mutation($input: CommentCreateInput!) { commentCreate(input: $input) { success } }",
+                     {"input": {"issueId": issue_id, "body": body}})
+
+
+def run(args, cwd, env=None, timeout=600):
+    result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
+    if result.returncode:
+        raise DispatchError(f"{' '.join(args[:3])}: {(result.stderr or result.stdout).strip()[-400:]}")
+    return result.stdout.strip()
+
+
+def with_retries(job, tries=3):
+    for attempt in range(tries):
+        try:
+            return job()
+        except (DispatchError, subprocess.TimeoutExpired):
+            if attempt == tries - 1:
+                raise
+            time.sleep(5)
+
+
+def slug(text, length=40):
+    result = ""
+    for word in re.findall(r"[a-z0-9]+", text.lower()):
+        if len(result) + len(word) + 1 > length:
+            break
+        result = f"{result}-{word}" if result else word
+    return result or "fix"
+
+
+def fixer_message(papercut):
+    """The papercut as the fixer sees it: its text, distinct reports, related papercuts and the assessment."""
+    lines = [f"# Papercut #{papercut['id']}: {papercut['title']}", "", papercut["description"], ""]
+    for label, key in (("Area", "area"), ("Path", "path"), ("Owner", "owner"), ("Severity", "severity")):
+        if papercut.get(key):
+            lines.append(f"{label}: {papercut[key]}")
+    seen, reports = {papercut["description"]}, []
+    for report in papercut.get("reports", []):
+        if report["description"] and report["description"] not in seen:
+            seen.add(report["description"])
+            where = "".join((f" by {report['agent']}" if report.get("agent") else "",
+                             f" on {report['branch']}" if report.get("branch") else ""))
+            reports.append(f"- Seen {report.get('observed_at') or report['received_at']}{where}:\n  "
+                           + report["description"][:MAX_EXCERPT].replace("\n", "\n  "))
+    if reports:
+        lines += ["", "## Other reports", *reports[:5]]
+    if papercut.get("related"):
+        lines += ["", "## Related papercuts", *(f"- #{r['id']} [{r['status']}] {r['title']}" for r in papercut["related"])]
+    if (papercut.get("assessment") or {}).get("reason"):
+        lines += ["", "## Why it was judged fixable", papercut["assessment"]["reason"]]
+    return "\n".join(lines) + "\n"
+
+
+def issue_description(papercut, server_url):
+    assessment = papercut.get("assessment") or {}
+    return "\n".join([
+        papercut["description"],
+        "",
+        f"- Papercut: {server_url}/papercuts/{papercut['id']}",
+        f"- Evidence: {papercut['report_count']} reports from {papercut['reporter_count']} reporters, "
+        f"{papercut['cost_minutes'] or 0} minutes lost",
+        f"- Owner: {papercut.get('owner') or 'unknown'}; severity: {papercut.get('severity') or 'unknown'}",
+        f"- Assessment: {assessment.get('reason') or 'none'}",
+        "",
+        "A headless Claude Code fixer is working on this papercut. It opens a draft PR or explains here why not.",
+    ])
+
+
+def pr_body(result):
+    checked = "x" if result["tests"] else " "
+    return (f"### Description\n\n{result['problem']}\n\n{result['solution']}\n\n"
+            f"### How to verify\n\n{result['how_to_verify']}\n\n"
+            f"### Checklist\n\n- [{checked}] Tests have been added/updated to cover changes in this PR\n")
+
+
+def fixer_env():
+    return {key: value for key, value in os.environ.items() if not SCRUBBED_ENV.match(key)}
+
+
+class Fixer:
+    """Runs the headless Claude Code fixer in a worktree, and turns its result into a commit and a draft PR."""
+
+    def __init__(self, repo, worktrees, model="opus", budget_usd=10.0, timeout_minutes=40, base="master"):
+        self.repo, self.worktrees = Path(repo), Path(worktrees)
+        self.model, self.budget_usd, self.timeout_minutes, self.base = model, budget_usd, timeout_minutes, base
+        self.claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude")
+
+    def prepare(self, branch, name):
+        worktree = self.worktrees / name
+        with_retries(lambda: run(["git", "fetch", "-q", "origin", self.base], self.repo, os.environ | GIT_SSH))
+        if worktree.exists():
+            run(["git", "worktree", "remove", "--force", str(worktree)], self.repo)
+        self.worktrees.mkdir(parents=True, exist_ok=True)
+        run(["git", "worktree", "add", "-q", "-B", branch, str(worktree), f"origin/{self.base}"], self.repo)
+        (worktree / "target").mkdir(exist_ok=True)
+        return worktree
+
+    def launch(self, worktree, message, log_path):
+        """Run the agent until it finishes or times out. Returns its final `result` message, or None."""
+        if not self.claude:
+            raise DispatchError("claude is not on PATH; set CLAUDE_BIN")
+        args = [self.claude, "-p", message,
+                "--append-system-prompt-file", str(FIXER_DIR / "prompt.md"),
+                "--json-schema", (FIXER_DIR / "result.schema.json").read_text(),
+                "--output-format", "stream-json", "--verbose",
+                "--model", self.model, "--max-budget-usd", str(self.budget_usd),
+                "--tools", "Read,Edit,Write,Grep,Glob,Bash",
+                "--allowedTools", *FIXER_BASH,
+                "--permission-mode", "acceptEdits", "--permission-prompts", "none",
+                "--strict-mcp-config", "--setting-sources", "project,local", "--no-session-persistence"]
+        with open(log_path, "w") as log:
+            child = subprocess.Popen(args, cwd=worktree, env=fixer_env(), stdin=subprocess.DEVNULL, stdout=log,
+                                     stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                child.wait(timeout=self.timeout_minutes * 60)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGTERM)
+                child.wait()
+        result = None
+        for line in Path(log_path).read_text().splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(event, dict) and event.get("type") == "result":
+                result = event
+        return result
+
+    def changed(self, worktree):
+        return bool(run(["git", "status", "--porcelain"], worktree))
+
+    def commit(self, worktree, title):
+        run(["git", "add", "-A"], worktree)
+        run(["git", "rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", ".claude", ".bot"], worktree)
+        if not run(["git", "diff", "--cached", "--name-only"], worktree):
+            raise DispatchError("The fixer changed only local state (.claude or .bot)")
+        # Signing can need a passphrase prompt that nobody answers.
+        run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", title], worktree)
+
+    def open_pr(self, worktree, branch, title, body):
+        with_retries(lambda: run(["git", "push", "-q", "-u", "origin", branch], worktree, os.environ | GIT_SSH))
+        return run(["gh", "pr", "create", "--draft", "--base", self.base, "--head", branch, "--title", title,
+                    "--body", body], worktree)
+
+    def remove(self, worktree):
+        run(["git", "worktree", "remove", "--force", str(worktree)], self.repo)
+
+
+def ready_papercuts(server, repository=None):
+    """Open papercuts whose latest assessment is `ready`, strongest evidence first."""
+    query = {"status": "open", "limit": 500}
+    if repository:
+        query["repository"] = repository
+    summaries, offset = [], 0
+    while offset is not None:
+        page = server.request("GET", "/api/papercuts?" + urlencode(query | {"offset": offset}))
+        summaries.extend(page["papercuts"])
+        offset = page["next_offset"]
+    ready = []
+    for summary in summaries:
+        papercut = server.request("GET", f"/api/papercuts/{summary['id']}?reports_limit=20")
+        if (papercut.get("assessment") or {}).get("verdict") == "ready":
+            ready.append(papercut)
+    return sorted(ready, key=lambda p: -(p["assessment"]["evidence_score"] or 0))
+
+
+def claim(server, papercut):
+    """Claim a papercut, or None when another dispatcher got there first or it is no longer open."""
+    payload = {"actor": ACTOR}
+    if assessment := papercut.get("assessment"):
+        payload["assessment_id"] = assessment["id"]
+    try:
+        return server.request("POST", f"/api/papercuts/{papercut['id']}/dispatch", payload)
+    except HTTPError as error:
+        if error.code == 409:
+            return None
+        raise
+
+
+class Dispatcher:
+    def __init__(self, server, linear, fixer, runs_dir=RUNS_DIR, out=sys.stdout):
+        self.server, self.linear, self.fixer, self.runs_dir, self.out = server, linear, fixer, Path(runs_dir), out
+
+    def log(self, message):
+        print(message, file=self.out, flush=True)
+
+    def update(self, dispatch, **changes):
+        return self.server.request("PATCH", f"/api/dispatches/{dispatch['id']}", {"actor": ACTOR, **changes})
+
+    def run(self, papercut, dispatch):
+        """Take one claimed dispatch to a final state. A step an earlier attempt finished is skipped, and any
+        failure ends the dispatch as `failed`."""
+        run_dir = self.runs_dir / str(dispatch["id"])
+        run_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            if dispatch["state"] == "claimed":
+                issue = self.linear.create_issue(papercut["title"], issue_description(papercut, self.server.url),
+                                                 f"papercut-dispatch:{papercut['id']}:{dispatch['id']}")
+                dispatch = self.update(dispatch, state="linear_created", linear_issue_id=issue["identifier"],
+                                       linear_url=issue["url"])
+                self.log(f"#{papercut['id']} Linear issue {issue['url']}")
+            return self.fix(papercut, dispatch, run_dir)
+        except Exception as error:
+            self.log(f"#{papercut['id']} dispatch {dispatch['id']} failed: {error!r}")
+            dispatch = self.update(dispatch, state="failed", reason=f"{type(error).__name__}: {error}"[:2000])
+            self.notify(dispatch, f"Fixer outcome: **failed**\n\n{error}")
+            return dispatch
+
+    def fix(self, papercut, dispatch, run_dir):
+        branch = f"{dispatch['linear_issue_id'].lower()}-papercut-{slug(papercut['title'])}"
+        worktree = self.fixer.prepare(branch, f"papercut-{papercut['id']}-{dispatch['id']}")
+        message = fixer_message(papercut)
+        (run_dir / "message.md").write_text(message)
+        log_path = run_dir / "agent.jsonl"
+        dispatch = self.update(dispatch, state="running", branch=branch, run_log=str(log_path))
+        self.log(f"#{papercut['id']} fixer running on {branch} in {worktree}")
+        final = self.fixer.launch(worktree, message, log_path) or {}
+        (run_dir / "result.json").write_text(json.dumps(final, indent=2) + "\n")
+        costs = {"cost_usd": round(final["total_cost_usd"], 4)} if final.get("total_cost_usd") is not None else {}
+        result = final.get("structured_output")
+        if not result:
+            why = f"The fixer stopped without a result ({final.get('subtype', 'timed out or crashed')})"
+            return self.finish(dispatch, worktree, "failed", why, costs, keep=True)
+        if result["outcome"] != "fixed":
+            return self.finish(dispatch, worktree, result["outcome"], result["reason"] or result["outcome"], costs,
+                               keep=self.fixer.changed(worktree))
+        if not self.fixer.changed(worktree):
+            return self.finish(dispatch, worktree, "failed", "The fixer reported a fix but changed nothing", costs)
+        title = result["title"].splitlines()[0][:70]
+        self.fixer.commit(worktree, title)
+        if not result["tests_passed"]:
+            return self.finish(dispatch, worktree, "needs_human",
+                               f"The fix is committed on local branch {branch}, but its tests did not pass: "
+                               f"{', '.join(result['tests'])}", costs, keep=True)
+        pr_url = self.fixer.open_pr(worktree, branch, title, pr_body(result))
+        return self.finish(dispatch, worktree, "pr_opened", f"{title}\n\n{result['solution']}",
+                           costs | {"pr_url": pr_url})
+
+    def finish(self, dispatch, worktree, state, reason, changes, keep=False):
+        """Record the final state, tell Linear, and remove the worktree unless someone needs to look at it."""
+        dispatch = self.update(dispatch, state=state, reason=reason[:2000], **changes)
+        self.log(f"#{dispatch['papercut_id']} dispatch {dispatch['id']} {state}: {reason.splitlines()[0][:160]}")
+        link = f"\n\nDraft PR: {dispatch['pr_url']}" if dispatch.get("pr_url") else ""
+        where = f"\n\nWork kept in {worktree}" if keep else ""
+        self.notify(dispatch, f"Fixer outcome: **{state}**\n\n{reason}{link}{where}")
+        if not keep:
+            self.fixer.remove(worktree)
+        return dispatch
+
+    def notify(self, dispatch, body):
+        if not dispatch.get("linear_issue_id"):
+            return
+        try:
+            self.linear.comment(dispatch["linear_issue_id"], body)
+        except DispatchError as error:
+            self.log(f"Linear comment on {dispatch['linear_issue_id']} failed: {error}")
+
+    def dispatch(self, repository=None, ids=None, limit=1, live=False):
+        """Resume this dispatcher's interrupted dispatches, then dispatch up to `limit` ready papercuts. With `ids`,
+        those papercuts are dispatched whatever their verdict, for trying the fixer by hand."""
+        resumable = [d for d in self.server.request("GET", "/api/dispatches?state=active")
+                     if d["actor"] == ACTOR and d["state"] in ("claimed", "linear_created")]
+        if ids:
+            candidates = [self.server.request("GET", f"/api/papercuts/{i}?reports_limit=20") for i in ids]
+        else:
+            candidates = ready_papercuts(self.server, repository)
+        if not live:
+            for dispatch in resumable:
+                self.log(f"would resume dispatch {dispatch['id']} ({dispatch['state']}) on #{dispatch['papercut_id']}")
+            self.runs_dir.mkdir(parents=True, exist_ok=True)
+            for papercut in candidates[:limit]:
+                path = self.runs_dir / f"dry-run-{papercut['id']}.md"
+                path.write_text(fixer_message(papercut))
+                evidence_score = (papercut.get("assessment") or {}).get("evidence_score")
+                self.log(f"would dispatch #{papercut['id']} (evidence {evidence_score}) {papercut['title'][:90]}; "
+                         f"fixer message in {path}")
+            self.log(f"{len(candidates)} candidates; pass --live to dispatch")
+            return []
+        done = []
+        for dispatch in resumable:
+            papercut = self.server.request("GET", f"/api/papercuts/{dispatch['papercut_id']}?reports_limit=20")
+            done.append(self.run(papercut, dispatch))
+        started = 0
+        for papercut in candidates:
+            if started == limit:
+                break
+            if dispatch := claim(self.server, papercut):
+                started += 1
+                self.log(f"#{papercut['id']} claimed as dispatch {dispatch['id']}: {papercut['title'][:90]}")
+                done.append(self.run(papercut, dispatch))
+        return done
 
 
 def jev_key():
@@ -287,12 +666,29 @@ def parse_overrides(pairs):
     return thresholds
 
 
+def dispatch_main(server, args):
+    repo = Path(args.repo)
+    fixer = Fixer(repo, args.worktrees or repo.parent / "papercut-worktrees", model=args.model,
+                  budget_usd=args.budget_usd, timeout_minutes=args.timeout_minutes, base=args.base)
+    linear = None
+    if args.live:
+        if not os.environ.get("LINEAR_API_KEY"):
+            sys.exit("Set LINEAR_API_KEY")
+        linear = Linear(os.environ["LINEAR_API_KEY"]).connect()
+        if not linear.label_id:
+            print(f"No Linear label named {LINEAR_LABEL}; issues are created without it", file=sys.stderr)
+    Dispatcher(server, linear, fixer).dispatch(args.repository, args.ids, args.limit, args.live)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    command = commands.add_parser("assess", help="Assess papercuts that changed since the last run")
-    command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://127.0.0.1:8765"))
-    command.add_argument("--repository")
+    assess_command = commands.add_parser("assess", help="Assess papercuts that changed since the last run")
+    dispatch_command = commands.add_parser("dispatch", help="Dispatch the fixer for ready papercuts")
+    for command in (assess_command, dispatch_command):
+        command.add_argument("--server", default=os.environ.get("PAPERCUTS_SERVER", "http://127.0.0.1:8765"))
+        command.add_argument("--repository")
+    command = assess_command
     command.add_argument("--state", default=Path(__file__).with_name("dispatcher-state.json"),
                          help="Where the change cursor is kept between runs")
     command.add_argument("--full", action="store_true", help="Ignore the cursor and reassess every open papercut")
@@ -300,9 +696,24 @@ def main():
     command.add_argument("--id", type=int, action="append", dest="ids", help="Assess only this papercut")
     command.add_argument("--model", default="jev-latest")
     command.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="Override a threshold")
+    command = dispatch_command
+    command.add_argument("--live", action="store_true",
+                         help="Claim, create Linear issues, run the fixer and open draft PRs; otherwise only print")
+    command.add_argument("--id", type=int, action="append", dest="ids",
+                         help="Dispatch this papercut whatever its verdict")
+    command.add_argument("--limit", type=int, default=1, help="Papercuts to dispatch in this run")
+    command.add_argument("--repo", default=Path(__file__).resolve().parent.parent,
+                         help="The Metabase checkout that worktrees are made from")
+    command.add_argument("--worktrees", help="Where fixer worktrees go (default: papercut-worktrees next to --repo)")
+    command.add_argument("--base", default="master")
+    command.add_argument("--model", default="opus")
+    command.add_argument("--budget-usd", type=float, default=10.0, help="Spending cap for each fixer run")
+    command.add_argument("--timeout-minutes", type=int, default=40)
     args = parser.parse_args()
 
     server = Server(args.server, os.environ.get("PAPERCUTS_TOKEN"))
+    if args.command == "dispatch":
+        return dispatch_main(server, args)
     thresholds = parse_overrides(args.set)
     key = jev_key()
     state = load_state(args.state)

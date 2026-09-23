@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "outcome": {"type": "string", "enum": ["fixed", "already_fixed", "needs_human", "not_reproducible"]},
+    "title": {"type": "string"},
+    "problem": {"type": "string"},
+    "solution": {"type": "string"},
+    "how_to_verify": {"type": "string"},
+    "tests": {"type": "array", "items": {"type": "string"}},
+    "tests_passed": {"type": "boolean"},
+    "reason": {"type": "string"}
+  },
+  "required": ["outcome", "title", "problem", "solution", "how_to_verify", "tests", "tests_passed", "reason"]
+}

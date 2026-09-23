@@ -1,8 +1,10 @@
 import importlib.util
 import io
+import subprocess
 import tempfile
 import threading
 import unittest
+import unittest.mock
 from pathlib import Path
 
 
@@ -115,7 +117,7 @@ class DecideTest(unittest.TestCase):
         self.assertEqual((state["reports"], state["location"]), (["seen again", "third", "fourth"], "mage"))
 
 
-class AssessAgainstServerTest(unittest.TestCase):
+class ServerCase(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.store = server.Store(Path(self.temp.name) / "papercuts.sqlite3")
@@ -136,6 +138,8 @@ class AssessAgainstServerTest(unittest.TestCase):
         return self.store.ingest({"repository": "metabase", "reporter": "laptop", "report_id": f"r{self.counter}",
                                   "title": title, "fingerprint": title, "owner": "repo-code", **changes})
 
+
+class AssessAgainstServerTest(ServerCase):
     def assess(self, jev, **options):
         return dispatcher.assess(self.client, jev, T, out=io.StringIO(), **options)
 
@@ -176,6 +180,154 @@ class AssessAgainstServerTest(unittest.TestCase):
             raise dispatcher.JevError("403 blocked")
 
         self.assertIsNone(self.assess(failing))
+
+
+def fixed(**changes):
+    return {"outcome": "fixed", "title": "Copy kondo configs before linting", "problem": "`mage kondo` skips it.",
+            "solution": "It copies them first.", "how_to_verify": "Run `./bin/mage kondo`.",
+            "tests": ["mage.kondo-test/copies-configs"], "tests_passed": True, "reason": ""} | changes
+
+
+class FakeLinear:
+    def __init__(self, fail=False):
+        self.fail, self.issues, self.comments = fail, [], []
+
+    def create_issue(self, title, description, marker):
+        if self.fail:
+            raise dispatcher.DispatchError("Linear: 500")
+        self.issues.append((title, marker))
+        return {"id": "uuid", "identifier": f"BOT-{len(self.issues)}", "url": f"https://linear.app/BOT-{len(self.issues)}"}
+
+    def comment(self, issue_id, body):
+        self.comments.append((issue_id, body))
+
+
+class FakeFixer(dispatcher.Fixer):
+    """The real git steps against a local bare origin; the agent and `gh` are stand-ins."""
+
+    def __init__(self, repo, worktrees, result=None, edit=True):
+        super().__init__(repo, worktrees)
+        self.result, self.edit, self.messages = result, edit, []
+
+    def launch(self, worktree, message, log_path):
+        self.messages.append(message)
+        if self.edit:
+            (Path(worktree) / "fix.txt").write_text("fixed\n")
+            (Path(worktree) / ".claude").mkdir(exist_ok=True)
+            (Path(worktree) / ".claude" / "local.json").write_text("{}\n")
+        return None if self.result is None else {"type": "result", "total_cost_usd": 1.25, "structured_output": self.result}
+
+    def open_pr(self, worktree, branch, title, body):
+        dispatcher.run(["git", "push", "-q", "-u", "origin", branch], worktree)
+        self.pr_body = body
+        return "https://github.com/metabase/metabase/pull/1"
+
+
+def git(*args, cwd):
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+
+
+class DispatchTest(ServerCase):
+    def setUp(self):
+        super().setUp()
+        root = Path(self.temp.name)
+        self.origin, self.repo, self.worktrees = root / "origin.git", root / "repo", root / "worktrees"
+        git("init", "-q", "--bare", "-b", "master", str(self.origin), cwd=root)
+        git("clone", "-q", str(self.origin), str(self.repo), cwd=root)
+        for key, value in (("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")):
+            git("config", key, value, cwd=self.repo)
+        (self.repo / "README.md").write_text("repo\n")
+        git("add", "README.md", cwd=self.repo)
+        git("commit", "-q", "-m", "initial", cwd=self.repo)
+        git("push", "-q", "origin", "master", cwd=self.repo)
+
+    def ready(self, title="Kondo skips config copy", evidence_score=0.5):
+        papercut_id = self.report(title, severity="high", description=f"{title} in mage/src/mage/kondo.clj")["papercut"]["id"]
+        self.store.assess(papercut_id, {"verdict": "ready", "evidence_score": evidence_score, "reason": "Local change"})
+        return papercut_id
+
+    def dispatch(self, result=None, linear=None, edit=True, **options):
+        self.linear = linear or FakeLinear()
+        self.fixer = FakeFixer(self.repo, self.worktrees, result, edit)
+        runner = dispatcher.Dispatcher(self.client, self.linear, self.fixer, Path(self.temp.name) / "runs", io.StringIO())
+        return runner.dispatch(live=True, **options)
+
+    def test_fixed_papercut_gets_an_issue_a_pushed_branch_and_a_draft_pr(self):
+        papercut_id = self.ready()
+        [dispatch] = self.dispatch(fixed())
+        branch = "bot-1-papercut-kondo-skips-config-copy"
+        self.assertEqual((dispatch["state"], dispatch["pr_url"], dispatch["branch"], dispatch["linear_issue_id"],
+                          dispatch["cost_usd"]),
+                         ("pr_opened", "https://github.com/metabase/metabase/pull/1", branch, "BOT-1", 1.25))
+        self.assertEqual(self.store.get_papercut(papercut_id)["status"], "investigating")
+        self.assertEqual(git("log", "--format=%s", f"master..{branch}", cwd=self.origin), "Copy kondo configs before linting")
+        self.assertEqual(git("show", "--name-only", "--format=", branch, cwd=self.origin), "fix.txt")
+        self.assertFalse(any(self.worktrees.iterdir()))
+        self.assertIn("### How to verify\n\nRun `./bin/mage kondo`.", self.fixer.pr_body)
+        self.assertNotIn("BOT-1", self.fixer.pr_body)
+        self.assertIn("kondo.clj", self.fixer.messages[0])
+        self.assertIn("pull/1", self.linear.comments[-1][1])
+
+    def test_outcomes_hand_the_papercut_back(self):
+        cases = {
+            "already_fixed": (fixed(outcome="already_fixed", reason="Fixed in abc123"), False, "resolved", False),
+            "not_reproducible": (fixed(outcome="not_reproducible", reason="Not found"), False, "open", False),
+            "needs_human": (fixed(tests_passed=False), True, "open", True),
+            "failed": (None, True, "open", True),
+        }
+        for index, (state, (result, edit, status, kept)) in enumerate(cases.items()):
+            with self.subTest(state):
+                papercut_id = self.ready(f"Trap {index}")
+                [dispatch] = self.dispatch(result, edit=edit)
+                self.assertEqual(dispatch["state"], state)
+                self.assertEqual(self.store.get_papercut(papercut_id)["status"], status)
+                self.assertEqual(any(self.worktrees.iterdir()), kept)
+                self.assertEqual(git("branch", "--list", "bot-*", cwd=self.origin), "")
+                for worktree in self.worktrees.iterdir():
+                    dispatcher.run(["git", "worktree", "remove", "--force", str(worktree)], self.repo)
+
+    def test_linear_failure_fails_the_dispatch_before_any_worktree(self):
+        papercut_id = self.ready()
+        [dispatch] = self.dispatch(fixed(), linear=FakeLinear(fail=True))
+        self.assertEqual((dispatch["state"], dispatch["linear_issue_id"]), ("failed", None))
+        self.assertEqual(self.store.get_papercut(papercut_id)["status"], "open")
+        self.assertFalse(self.worktrees.exists())
+
+    def test_interrupted_dispatch_resumes_without_a_second_issue(self):
+        papercut_id = self.ready()
+        claimed = self.store.claim(papercut_id, {"actor": dispatcher.ACTOR})
+        self.store.update_dispatch(claimed["id"], {"state": "linear_created", "linear_issue_id": "BOT-9",
+                                                   "linear_url": "https://linear.app/BOT-9"})
+        [dispatch] = self.dispatch(fixed(), limit=0)
+        self.assertEqual((dispatch["id"], dispatch["state"], dispatch["branch"]),
+                         (claimed["id"], "pr_opened", "bot-9-papercut-kondo-skips-config-copy"))
+        self.assertEqual(self.linear.issues, [])
+
+    def test_limit_takes_the_strongest_evidence_first(self):
+        self.ready("Weaker trap", evidence_score=0.3)
+        strong_id = self.ready("Stronger trap", evidence_score=0.9)
+        [dispatch] = self.dispatch(fixed(), limit=1)
+        self.assertEqual(dispatch["papercut_id"], strong_id)
+
+    def test_dry_run_claims_nothing(self):
+        papercut_id = self.ready()
+        out = io.StringIO()
+        runner = dispatcher.Dispatcher(self.client, None, None, Path(self.temp.name) / "runs", out)
+        self.assertEqual(runner.dispatch(), [])
+        self.assertEqual(self.store.get_papercut(papercut_id)["dispatches"], [])
+        self.assertIn(f"would dispatch #{papercut_id}", out.getvalue())
+        self.assertTrue((Path(self.temp.name) / "runs" / f"dry-run-{papercut_id}.md").exists())
+
+
+class HelpersTest(unittest.TestCase):
+    def test_fixer_env_drops_session_credentials_and_settings(self):
+        env = {"PATH": "/bin", "CLAUDECODE": "1", "ANTHROPIC_BASE_URL": "x", "LINEAR_API_KEY": "k",
+               "TYPESAFE_API_KEY": "k", "MB_DB_TYPE": "postgres", "PAPERCUTS_TOKEN": "t", "HOME": "/h"}
+        with unittest.mock.patch.dict(dispatcher.os.environ, env, clear=True):
+            self.assertEqual(dispatcher.fixer_env(), {"PATH": "/bin", "HOME": "/h"})
+
+    def test_slug_keeps_whole_words(self):
+        self.assertEqual(dispatcher.slug("`mage kondo` skips the cache copy, sometimes!", 20), "mage-kondo-skips-the")
 
 
 if __name__ == "__main__":
