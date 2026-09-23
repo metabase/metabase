@@ -702,9 +702,12 @@
         entity   (lib/normalize :metabase.models.db/model-row {:model model :row ingested})
         changes  (drop-unchanged-columns local (:row entity))]
     (log/tracef "Upserting %s %d" model-name id)
-    (when (seq changes)
-      (models.db/update-entity! id (assoc entity :row changes)))
-    (models.db/entity-by-pk model pk id)))
+    ;; Nothing changed means `local` is still the stored row, so don't read it again: re-reading a row runs its
+    ;; after-select, which for a Card normalizes the whole query.
+    (if (seq changes)
+      (do (models.db/update-entity! id (assoc entity :row changes))
+          (models.db/entity-by-pk model pk id))
+      local)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
