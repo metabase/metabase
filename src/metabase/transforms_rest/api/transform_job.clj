@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -141,6 +142,8 @@
    _query-params
    {:keys [active]} :- [:map {:closed true} [:active :boolean]]]
   (api/check-superuser)
+  (api/check (nil? (mdb.worktree/worktree-id))
+             [400 "Transform jobs live only in the main app, so they can only be activated or deactivated there."])
   (log/info "Setting active =" active "on all transform jobs")
   (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
         verb       (if active "activate" "deactivate")

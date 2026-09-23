@@ -35,39 +35,40 @@
 
 (defmethod mi/can-write? :model/TransformJob
   ([instance]
-   (or api/*is-superuser?*
-       (and api/*is-data-analyst?*
-            (let [transforms (or (:transforms instance)
-                                 (when-let [tag-ids (seq (:tag_ids instance))]
-                                   (transform/transforms-with-tags tag-ids)))]
-              (if (seq transforms)
-                (every? mi/can-write? transforms)
-                true)))))
+   ;; A job lives only in the main app: its schedule fires outside any worktree, so a worktree changes none.
+   (and (nil? (mdb.worktree/worktree-id))
+        (or api/*is-superuser?*
+            (and api/*is-data-analyst?*
+                 (let [transforms (or (:transforms instance)
+                                      (when-let [tag-ids (seq (:tag_ids instance))]
+                                        (transform/transforms-with-tags tag-ids)))]
+                   (if (seq transforms)
+                     (every? mi/can-write? transforms)
+                     true))))))
   ([_model pk]
    (when-let [job (transforms.db/job pk)]
      (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
   [_model instance]
-  (or api/*is-superuser?*
-      (and api/*is-data-analyst?*
-           ;; Support batch hydration: check pre-hydrated :transforms first,
-           ;; then fall back to looking up transforms from :tag_ids
-           (let [transforms (or (:transforms instance)
-                                (when-let [tag-ids (seq (:tag_ids instance))]
-                                  (transform/transforms-with-tags tag-ids)))]
-             (if (seq transforms)
-               (every? mi/can-write? transforms)
-               true)))))
+  (and (nil? (mdb.worktree/worktree-id))
+       (or api/*is-superuser?*
+           (and api/*is-data-analyst?*
+                ;; Support batch hydration: check pre-hydrated :transforms first,
+                ;; then fall back to looking up transforms from :tag_ids
+                (let [transforms (or (:transforms instance)
+                                     (when-let [tag-ids (seq (:tag_ids instance))]
+                                       (transform/transforms-with-tags tag-ids)))]
+                  (if (seq transforms)
+                    (every? mi/can-write? transforms)
+                    true))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_execute]
-  "Add can_execute to jobs. Running a job requires write permission, and the main app: a job runs the transforms
-  the main app shares, so a worktree runs none for now."
+  "Add can_execute to jobs. Running a job requires write permission, which only the main app has."
   [_model k jobs]
   (mi/instances-with-hydrated-data
    jobs k
-   #(let [executable? (nil? (mdb.worktree/worktree-id))]
-      (into {} (map (fn [job] [(:id job) (and executable? (boolean (mi/can-write? job)))])) jobs))
+   #(into {} (map (fn [job] [(:id job) (boolean (mi/can-write? job))])) jobs)
    :id))
 
 (mi/define-batched-hydration-method tag-ids
