@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -428,10 +429,19 @@ width: fixed
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
+(defn clean-imported-content
+  "Test fixture that deletes the Dashboards, Cards and Collections a test created, e.g. by importing a mock
+  source's content into the main app (imports commit, so `with-temp`'s rollback does not undo them). Test users'
+  personal collections are kept."
+  [f]
+  (mt/with-model-cleanup [:model/Dashboard :model/Card :model/Collection]
+    (f)))
+
 (def clean-remote-sync-state
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
-  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  model tables (Transform, TransformTag, PythonLibrary) are clean, and that content the test imported
+  (Dashboards, Cards, Collections) does not outlive it."
+  (t/join-fixtures [clean-imported-content clean-object clean-task-table clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
