@@ -170,8 +170,8 @@ python3 dispatcher.py watch --server http://127.0.0.1:8765
 
 Run one watcher per server. Until one runs, a dispatch shows as `queued` and can
 be cancelled. Its Linear issue and draft PR links show on the papercut's card and
-page. When the server has a token, enter it under **API token** in the header. The
-page keeps it in the browser's local storage.
+page. With Google sign-in on, the page's writes count as the signed-in person and need
+no token; a bearer token is for scripts.
 
 ### Running the dispatcher
 

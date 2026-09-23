@@ -453,6 +453,18 @@ class RelationTest(StoreCase):
         self.assertEqual([(r["source"], r["verdict"]) for r in self.store.get_papercut(this)["related"]],
                          [("manual", None), ("manual", None)])
 
+    def test_suggestions_replace_only_the_pairs_judged(self):
+        a, b, c = (self.papercut(title) for title in "ABC")
+        self.store.suggest(a, {"judged": [b], "suggestions": [{"papercut_id": b, "verdict": "related"}]})
+        # B's own run didn't look at A, so the pair A's run found stays.
+        self.store.suggest(b, {"judged": [c], "suggestions": []})
+        self.assertEqual([r["id"] for r in self.store.get_papercut(b)["related"]], [a])
+        # Judging A again, and not finding the pair, drops it.
+        self.store.suggest(b, {"judged": [a, c], "suggestions": []})
+        self.assertEqual(self.store.get_papercut(b)["related"], [])
+        with self.assertRaises(ValueError):
+            self.store.suggest(a, {"judged": ["b"], "suggestions": []})
+
     def test_suggestions_are_validated(self):
         this, other = self.papercut("A"), self.papercut("B")
         elsewhere = self.papercut("C", repository="another")

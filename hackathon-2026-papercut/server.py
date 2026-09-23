@@ -1273,11 +1273,14 @@ class Store:
 
     def suggest(self, papercut_id, payload):
         """Replace the AI's suggestions for `papercut_id` with `suggestions`. Pairs a person decided keep that decision.
-        Only a new, dropped or changed verdict marks papercuts changed, so judging a papercut again with the same
-        outcome keeps it out of the change feed."""
+        With `judged`, the candidate ids the AI looked at, only suggestions between `papercut_id` and those are
+        replaced, so a pair found while judging another papercut survives. Only a new, dropped or changed verdict marks
+        papercuts changed, so judging a papercut again with the same outcome keeps it out of the change feed."""
         if (not isinstance(payload, dict) or not isinstance(payload.get("suggestions"), list)
-                or set(payload) - {"suggestions", "model", "actor"}):
-            raise ValueError("Send suggestions (a list) and optionally model and actor")
+                or set(payload) - {"suggestions", "judged", "model", "actor"}
+                or ("judged" in payload and not (isinstance(payload["judged"], list)
+                                                 and all(type(i) is int for i in payload["judged"])))):
+            raise ValueError("Send suggestions (a list) and optionally judged (candidate ids), model and actor")
         model = text_field(payload, "model")
         suggestions = {}
         for suggestion in payload["suggestions"]:
@@ -1307,9 +1310,12 @@ class Store:
                 """SELECT CASE WHEN papercut_a = ? THEN papercut_b ELSE papercut_a END AS other, verdict FROM relations
                    WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)""",
                 (papercut_id, papercut_id, papercut_id))}
+            if "judged" in payload:
+                replaced = set(payload["judged"]) | set(suggestions)
+                before = {other: verdict for other, verdict in before.items() if other in replaced}
             at = precise_now()
-            db.execute("DELETE FROM relations WHERE source = 'suggested' AND (papercut_a = ? OR papercut_b = ?)",
-                       (papercut_id, papercut_id))
+            db.executemany("DELETE FROM relations WHERE source = 'suggested' AND papercut_a = ? AND papercut_b = ?",
+                           [(min(papercut_id, other), max(papercut_id, other)) for other in before])
             for other_id, (verdict, score, reason) in suggestions.items():
                 db.execute(
                     """INSERT INTO relations (repository, papercut_a, papercut_b, source, score, verdict, model, reason,
@@ -2046,8 +2052,8 @@ UI_SCRIPT = """<script>
 })();
 </script>""".replace("CHEVRON", icon("chevron"))
 
-# Writes from the page send the token the viewer stored under "API token". They name the actor `web`, which the server
-# replaces with the signed-in account when Google sign-in is on.
+# Writes from the page carry the sign-in cookie, which authorizes them without a token. They name the actor `web`, which
+# the server replaces with the signed-in account.
 DISPATCH_SCRIPT = """<script>
 (() => {
   async function write(method, url, body) {
@@ -2765,10 +2771,19 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def input_json(self, optional=False):
+    def input_json(self, optional=False, identity=None):
+        """The request body. For a signed-in person, `identity` names the field the route records them under, and it is
+        set to their email even when the request leaves it out."""
         length = int(self.headers.get("Content-Length") or "0")
-        if optional and length == 0:
-            return {}
+        payload = {} if optional and length == 0 else self._read_json(length)
+        # A signed-in person is who they signed in as, whatever name the request sends.
+        if (email := getattr(sso.signed_in, "email", None)) and isinstance(payload, dict):
+            payload |= {key: email for key in ("actor", "author") if key in payload}
+            if identity:
+                payload[identity] = email
+        return payload
+
+    def _read_json(self, length):
         if not 0 < length <= MAX_BODY:
             raise ValueError(f"Body must be between 1 and {MAX_BODY} bytes")
         # Another site's page can send text/plain or form bodies without a CORS preflight, but not JSON.
@@ -2776,16 +2791,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get_content_type() != "application/json":
             raise UnsupportedMediaType("Send the body as Content-Type: application/json")
         try:
-            payload = json.loads(self.rfile.read(length))
+            return json.loads(self.rfile.read(length))
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ValueError("Invalid JSON") from error
-        # A signed-in person is who they signed in as, whatever name the request sends.
-        if (email := getattr(sso.signed_in, "email", None)) and isinstance(payload, dict):
-            payload |= {key: email for key in ("actor", "author") if key in payload}
-        return payload
 
     def authorized(self):
-        if self.token is None or self.command == "GET":
+        # A signed-in person needs no token: sign-in already checked the session cookie and the write's Origin.
+        if self.token is None or self.command == "GET" or getattr(sso.signed_in, "email", None):
             return True
         given = self.headers.get("Authorization", "")
         return hmac.compare_digest(given.encode(), f"Bearer {self.token}".encode())
@@ -2849,12 +2861,15 @@ class Handler(BaseHTTPRequestHandler):
                 limit = int_param(params, "reports_limit", 50, 0, 1000)
                 return self.respond(200, self.store.get_papercut(papercut_id, reports_limit=limit))
             handlers = {
-                ("PATCH", None, False): lambda: self.store.update_papercut(papercut_id, self.input_json()),
-                ("POST", "merge", False): lambda: self.store.merge(papercut_id, self.input_json()),
-                ("POST", "related", False): lambda: self.store.relate(papercut_id, self.input_json()),
-                ("DELETE", "related", True): lambda: self.store.unrelate(papercut_id, int(other or 0),
-                                                                         self.input_json(optional=True)),
-                ("POST", "fingerprints", False): lambda: self.store.add_fingerprint(papercut_id, self.input_json()),
+                ("PATCH", None, False):
+                    lambda: self.store.update_papercut(papercut_id, self.input_json(identity="actor")),
+                ("POST", "merge", False): lambda: self.store.merge(papercut_id, self.input_json(identity="actor")),
+                ("POST", "related", False): lambda: self.store.relate(papercut_id, self.input_json(identity="actor")),
+                ("DELETE", "related", True):
+                    lambda: self.store.unrelate(papercut_id, int(other or 0),
+                                                self.input_json(optional=True, identity="actor")),
+                ("POST", "fingerprints", False):
+                    lambda: self.store.add_fingerprint(papercut_id, self.input_json(identity="actor")),
                 ("GET", "candidates", False): lambda: self.store.candidates(
                     papercut_id, int_param(params, "limit", CANDIDATE_LIMIT, 1, 50)),
                 ("POST", "suggestions", False): lambda: self.store.suggest(papercut_id, self.input_json()),
@@ -2864,7 +2879,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise NotFound(f"Papercut {papercut_id} not found")
                 return self.respond(200, fix_prompt(papercut), "text/plain")
             created = {
-                "comments": lambda: self.store.comment(papercut_id, self.input_json()),
+                "comments": lambda: self.store.comment(papercut_id, self.input_json(identity="author")),
                 "assessments": lambda: self.store.assess(papercut_id, self.input_json()),
                 "dispatch": lambda: self.store.claim(papercut_id, self.input_json(optional=True), signed_in_email()),
                 "claim": lambda: self.claim(papercut_id),
