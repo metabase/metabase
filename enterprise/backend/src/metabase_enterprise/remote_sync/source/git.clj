@@ -11,6 +11,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (java.lang.ref WeakReference)
    (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
@@ -600,7 +601,57 @@
   (changed-files* [this from-version]
     (changed-files this from-version)))
 
-(def ^:private jgit (atom {}))
+(def ^:private jgit
+  "Open Git instances of the clones in use, keyed by clone directory path."
+  (atom {}))
+
+(def ^:private retired
+  "Clones this process opened whose URL is no longer the one most recently opened, as clone directory path ->
+  `{:git WeakReference :repo WeakReference}`. A retired clone is deleted only once its Git instance and Repository
+  have both been garbage collected: every source, snapshot and task that uses a clone holds its Git instance (or its
+  Repository), so once neither is reachable nothing in this process can still be using the directory. Clones this
+  process did not open are never touched, because the directory is shared with every Metabase process on the host."
+  (atom {}))
+
+(def ^:private clone-lock
+  "Serializes opening, retiring and deleting clones, so a clone is never deleted while it is being re-opened."
+  (Object.))
+
+(defn- retire-other-clones!
+  "Moves every cached clone except the one at `keep-key` from [[jgit]] to [[retired]]. Nothing is closed or
+  deleted here: a sync that started on the old URL may still be using its clone."
+  [keep-key]
+  (let [[old _new] (swap-vals! jgit select-keys [keep-key])]
+    (doseq [[path ^Git git] old
+            :when (not= path keep-key)]
+      (log/info "Retiring clone of previously opened repository" {:repo-path path})
+      (swap! retired assoc path {:git  (WeakReference. git)
+                                 :repo (WeakReference. (.getRepository git))}))))
+
+(defn- unreachable? [{:keys [^WeakReference git ^WeakReference repo]}]
+  (and (nil? (.get git)) (nil? (.get repo))))
+
+(defn- remove-unused-retired-clones!
+  "Deletes the directory of every retired clone that nothing in this process can reach any more."
+  []
+  (doseq [[path refs] @retired
+          :when (unreachable? refs)]
+    (log/info "Removing unused clone of previously opened repository" {:repo-path path})
+    (try
+      (FileUtils/deleteDirectory (io/file path))
+      (swap! retired dissoc path)
+      (catch Exception e
+        (log/warn e "Failed to remove unused clone; will retry" {:repo-path path})))))
+
+(defn- revive-retired!
+  "If the clone at `path` was retired, takes it back out of [[retired]] (so it is not deleted) and returns its Git
+  instance when that is still alive, so switching back to a URL reuses the instance a running sync may hold."
+  ^Git [^File path]
+  (let [k (.getPath path)]
+    (when-let [refs (get @retired k)]
+      (swap! retired dissoc k)
+      (when (.exists path)
+        (.get ^WeakReference (:git refs))))))
 
 (defn- stale-cache-error?
   "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
@@ -611,18 +662,37 @@
   "Clears a cached git repository from memory and disk."
   [^File repo-path]
   (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
-  (swap! jgit dissoc (.getPath repo-path))
-  (FileUtils/deleteDirectory repo-path))
+  (locking clone-lock
+    (swap! jgit dissoc (.getPath repo-path))
+    (swap! retired dissoc (.getPath repo-path))
+    (FileUtils/deleteDirectory repo-path)))
 
-(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
-    obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                     :token      token})
-                                             (when-not (has-data? (assoc args :git <>))
-                                               (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
-         (.getPath path))))
+(defn- cached-jgit [^File path]
+  (when (.exists path)
+    (get @jgit (.getPath path))))
+
+(defn- open-checked-jgit [^File path {:keys [remote-url token] :as args}]
+  (u/prog1 (open-jgit path {:remote-url remote-url
+                            :token      token})
+    (when-not (has-data? (assoc args :git <>))
+      (FileUtils/deleteDirectory path)
+      (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+
+(defn- get-jgit [^File path args]
+  (if-let [obj (cached-jgit path)]
+    (do (when (seq @retired)
+          (locking clone-lock
+            (remove-unused-retired-clones!)))
+        obj)
+    (locking clone-lock
+      (or (cached-jgit path)
+          (let [k   (.getPath path)
+                git (or (revive-retired! path)
+                        (open-checked-jgit path args))]
+            (swap! jgit assoc k git)
+            (retire-other-clones! k)
+            (remove-unused-retired-clones!)
+            git)))))
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
