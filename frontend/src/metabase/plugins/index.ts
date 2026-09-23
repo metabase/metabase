@@ -186,8 +186,6 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-import { reinitializeRequestHandlers } from "metabase/api/client";
-
 import { resetPluginSlots } from "./slot";
 
 /**
@@ -197,7 +195,4 @@ import { resetPluginSlots } from "./slot";
  */
 export function reinitialize() {
   resetPluginSlots();
-  // metabase/api can't import metabase/plugins under the module rules, so its slot is reset by hand.
-  // This is temporary: once plugins can sit below api, the slot uses definePluginSlot and this goes.
-  reinitializeRequestHandlers();
 }
