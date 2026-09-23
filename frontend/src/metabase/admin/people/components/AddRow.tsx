@@ -52,11 +52,11 @@ export const AddRow = ({
       onChange={onChange}
     />
     <Flex flex="0 0 auto" gap="sm">
-      <Button variant="subtle" bg="transparent" onClick={onCancel}>
+      <Button variant="subtle" color="neutral" onClick={onCancel}>
         {t`Cancel`}
       </Button>
       <Button
-        variant={isValid ? "filled" : "outline"}
+        variant={isValid ? "filled" : "default"}
         disabled={!isValid}
         onClick={onDone}
       >

@@ -131,13 +131,50 @@ const getActualColors = (brand: BrandRamp) => ({
   "border-filter": baseColors.filter[20],
   "border-highlight": brand[60],
   "border-neutral": baseColors.orion[20],
+  "border-neutral-inverse-strong": baseColors.orionAlphaInverse[30],
   "border-neutral-strong": baseColors.orionAlpha[30],
   "border-neutral-strongest": baseColors.orionAlpha[50],
   "border-neutral-subtle": baseColors.orionAlpha[10],
   "border-on_dark": baseColors.orionAlphaInverse[20],
-  "button-label-on_dark-disabled": baseColors.orionAlphaInverse[40],
-  "button-label-on_dark-primary": baseColors.orionAlpha[80],
-  "button-label-on_dark-secondary": baseColors.white,
+  "button-default-neutral-default": baseColors.white, // Matches background_surface-primary
+  "button-default-neutral-hover": baseColors.orionAlpha[10], // Matches background_surface-primary-hover
+  "button-default-neutral-pressed": baseColors.orionAlpha[20], // Matches background_surface-primary-pressed
+  "button-filled-brand-default": brand[60],
+  "button-filled-brand-hover": brand[70],
+  "button-filled-brand-pressed": brand[80],
+  "button-filled-filter-default": baseColors.filter[60],
+  "button-filled-filter-hover": baseColors.filter[70],
+  "button-filled-filter-pressed": baseColors.filter[80],
+  "button-filled-negative-default": baseColors.lobster[60],
+  "button-filled-negative-hover": baseColors.lobster[70],
+  "button-filled-negative-pressed": baseColors.lobster[80],
+  "button-filled-positive-default": baseColors.palm[60],
+  "button-filled-positive-hover": baseColors.palm[70],
+  "button-filled-positive-pressed": baseColors.palm[80],
+  "button-filled-warning-default": baseColors.dubloon[20],
+  "button-filled-warning-hover": baseColors.dubloon[30],
+  "button-filled-warning-pressed": baseColors.dubloon[40],
+  "button-light-brand-default":
+    "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
+  "button-light-brand-hover":
+    "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
+  "button-light-brand-pressed":
+    "color-mix(in srgb, var(--mb-color-core-brand) 45%, transparent)",
+  "button-light-filter-default":
+    "color-mix(in srgb, var(--mb-color-core-filter) 15%, transparent)",
+  "button-light-filter-hover":
+    "color-mix(in srgb, var(--mb-color-core-filter) 30%, transparent)",
+  "button-light-filter-pressed":
+    "color-mix(in srgb, var(--mb-color-core-filter) 60%, transparent)",
+  "button-light-negative-default": baseColors.lobsterAlpha[10],
+  "button-light-negative-hover": baseColors.lobsterAlpha[20],
+  "button-light-negative-pressed": baseColors.lobsterAlpha[30],
+  "button-light-neutral-default": baseColors.orionAlpha[10], // Matches background_surface-secondary
+  "button-light-neutral-hover": baseColors.orionAlpha[20], // Matches background_surface-secondary-hover
+  "button-light-neutral-pressed": baseColors.orionAlpha[30], // Matches background_surface-secondary-pressed
+  "button-light-positive-default": baseColors.palmAlpha[10],
+  "button-light-positive-hover": baseColors.palmAlpha[20],
+  "button-light-positive-pressed": baseColors.palmAlpha[30],
   "button-on_dark-disabled": baseColors.orionAlphaInverse[10],
   "button-on_dark-primary-default": baseColors.white,
   "button-on_dark-primary-hover": baseColors.orion[20],
@@ -145,8 +182,48 @@ const getActualColors = (brand: BrandRamp) => ({
   "button-on_dark-secondary-default": baseColors.orionAlphaInverse[10],
   "button-on_dark-secondary-hover": baseColors.orionAlphaInverse[20],
   "button-on_dark-secondary-pressed": baseColors.orionAlphaInverse[10],
+  "button-subtle-brand-default": baseColors.transparent,
+  "button-subtle-brand-hover":
+    "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
+  "button-subtle-brand-pressed":
+    "color-mix(in srgb, var(--mb-color-core-brand) 45%, transparent)",
+  "button-subtle-negative-default": baseColors.transparent,
+  "button-subtle-negative-hover": baseColors.lobsterAlpha[20],
+  "button-subtle-negative-pressed": baseColors.lobsterAlpha[30],
+  "button-subtle-neutral-default": baseColors.transparent,
+  "button-subtle-neutral-hover": baseColors.orionAlpha[10], // Matches background_surface-primary-hover
+  "button-subtle-neutral-pressed": baseColors.orionAlpha[20], // Matches background_surface-primary-pressed
+  "button-subtle-positive-default": baseColors.transparent,
+  "button-subtle-positive-hover": baseColors.palmAlpha[20],
+  "button-subtle-positive-pressed": baseColors.palmAlpha[30],
+  "button_label-default-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
+  "button_label-filled-brand-default": baseColors.white,
+  "button_label-filled-filter-default": baseColors.white,
+  "button_label-filled-negative-default": baseColors.white,
+  "button_label-filled-positive-default": baseColors.white,
+  "button_label-filled-warning-default": baseColors.lobster[80],
+  "button_label-light-brand-default": brand[60],
+  "button_label-light-brand-hover": brand[70],
+  "button_label-light-filter-default": baseColors.filter[70],
+  "button_label-light-filter-hover": baseColors.filter[80],
+  "button_label-light-negative-default": baseColors.lobster[70],
+  "button_label-light-negative-hover": baseColors.lobster[80],
+  "button_label-light-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
+  "button_label-light-positive-default": baseColors.palm[70],
+  "button_label-light-positive-hover": baseColors.palm[80],
+  "button_label-on_dark-disabled": baseColors.orionAlphaInverse[40],
+  "button_label-on_dark-primary": baseColors.orionAlpha[80],
+  "button_label-on_dark-secondary": baseColors.white,
+  "button_label-subtle-brand-default": brand[60],
+  "button_label-subtle-brand-hover": brand[70],
+  "button_label-subtle-negative-default": baseColors.lobster[70],
+  "button_label-subtle-negative-hover": baseColors.lobster[80],
+  "button_label-subtle-neutral-default": baseColors.orionAlpha[80], // Matches text-primary
+  "button_label-subtle-positive-default": baseColors.palm[70],
+  "button_label-subtle-positive-hover": baseColors.palm[80],
   "core-blue-saturated": baseColors.ocean[60],
   "core-brand-hover": brand[50],
+  "core-filter-strong": baseColors.filter[50],
   "core-gold": baseColors.gold,
   "core-green-saturated": baseColors.palm[60],
   "core-info": baseColors.orion[40],

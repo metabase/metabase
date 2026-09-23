@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
+   [metabase.login-history.db :as login-history.db]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
@@ -251,6 +252,41 @@
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
                       (t2/select-one :model/LoginHistory :id login-history-id))))))))
+
+(deftest login-survives-concurrent-session-delete-test
+  (testing (str "POST /api/session - SEC-1208: deleting the user's sessions (as a password change does) between the"
+                " session insert and the login_history insert must not fail the login with an"
+                " fk_login_history_session_id violation. Each such failure was a 401 that the throttle counted, so"
+                " enough of them locked out a user with correct credentials.")
+    ;; not `mt/with-temp`: it binds a transaction that the test client conveys into the request, so the login's
+    ;; uncommitted rows would stay invisible to the delete below whether or not the login uses its own transaction
+    (mt/with-model-cleanup [:model/User]
+      (let [email                 (mt/random-email)
+            user-id               (t2/insert-returning-pk! :model/User {:email      email
+                                                                        :first_name "Login"
+                                                                        :last_name  "Race"})
+            _                     (auth-identity/set-password! user-id "Correct-Horse-12!")
+            creds                 {:username email, :password "Correct-Horse-12!"}
+            insert-login-history! (mt/original-fn #'login-history.db/insert-login-history!)
+            ;; more logins than the username throttler allows failures, so a counted failure would lock the user out
+            attempts              11]
+        (mt/with-dynamic-fn-redefs [login-history.db/insert-login-history!
+                                    (fn [row]
+                                      ;; a plain Thread, not a future: a future conveys the login transaction's
+                                      ;; connection binding, and the delete must run on its own connection, as a
+                                      ;; concurrent request would. The join has a timeout because the delete may
+                                      ;; block on the login transaction's uncommitted session row.
+                                      (doto (Thread. ^Runnable (fn [] (t2/delete! :model/Session :user_id user-id)))
+                                        (.start)
+                                        (.join 1000))
+                                      (insert-login-history! row))]
+          (dotimes [_ attempts]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" creds)))))
+        (testing "the user can still log in, and every login is in their login history"
+          (let [session-key (:id (mt/client :post 200 "session" creds))]
+            (is (= (inc attempts)
+                   (count (mt/client session-key :get 200 "login-history/current"))))))))))
 
 (deftest forgot-password-initiate-reset-test
   (testing "POST /api/session/forgot_password - initiate password reset"
