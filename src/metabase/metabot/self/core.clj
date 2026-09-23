@@ -543,6 +543,33 @@
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
        done-sse-line "\n"))
 
+(defn- ->aisdk-usage-by-model
+  "Translate accumulated `{\"provider/model\" {:promptTokens N :completionTokens N …}}` usage into the wire shape,
+  keyed the same way: `{:inputTokens N :outputTokens N :totalTokens N :cacheCreationTokens N :cacheReadTokens N
+  :cachedInputTokens N}`. The cache counts are a subset of :inputTokens (`:cachedInputTokens` mirrors cache-read),
+  0 without provider caching."
+  [usage-by-model]
+  (update-vals usage-by-model
+               (fn [{:keys [promptTokens completionTokens
+                            cacheCreationTokens cacheReadTokens]
+                     :or   {promptTokens 0 completionTokens 0
+                            cacheCreationTokens 0 cacheReadTokens 0}}]
+                 {:inputTokens         promptTokens
+                  :outputTokens        completionTokens
+                  :totalTokens         (+ promptTokens completionTokens)
+                  :cacheCreationTokens cacheCreationTokens
+                  :cacheReadTokens     cacheReadTokens
+                  :cachedInputTokens   cacheReadTokens})))
+
+(defn- total-usage
+  "Sum the per-model wire usage from [[->aisdk-usage-by-model]] into one total."
+  [aisdk-usage-by-model]
+  (reduce (partial merge-with +)
+          {:inputTokens 0 :outputTokens 0 :totalTokens 0
+           :cacheCreationTokens 0 :cacheReadTokens 0
+           :cachedInputTokens 0}
+          (vals aisdk-usage-by-model)))
+
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
@@ -555,38 +582,30 @@
                     :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
             :usageByModel {\"provider/model\" {…}}
             :contextWindowTokens N
-            :contextTokens N}`
+            :contextTokens N
+            :provider \"anthropic\"}`
 
   `:contextTokens` is the final call's prompt + completion — how much of the window the
   conversation now occupies, measured against the same model `:contextWindowTokens`
-  describes. Both context keys are omitted when unknown.
+  describes. Both context keys, and `:provider`, are omitted when unknown.
 
-  Returns nil if no usage was observed. The cache counts are a subset of
-  :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
-  [usage-by-model last-call context-window-tokens]
+  Returns nil if no usage was observed."
+  [usage-by-model last-call context-window-tokens provider]
   (when (seq usage-by-model)
-    (let [by-model (update-vals
-                    usage-by-model
-                    (fn [{:keys [promptTokens completionTokens
-                                 cacheCreationTokens cacheReadTokens]
-                          :or   {promptTokens 0 completionTokens 0
-                                 cacheCreationTokens 0 cacheReadTokens 0}}]
-                      {:inputTokens         promptTokens
-                       :outputTokens        completionTokens
-                       :totalTokens         (+ promptTokens completionTokens)
-                       :cacheCreationTokens cacheCreationTokens
-                       :cacheReadTokens     cacheReadTokens
-                       :cachedInputTokens   cacheReadTokens}))
-          totals   (reduce (partial merge-with +)
-                           {:inputTokens 0 :outputTokens 0 :totalTokens 0
-                            :cacheCreationTokens 0 :cacheReadTokens 0
-                            :cachedInputTokens 0}
-                           (vals by-model))
+    (let [by-model (->aisdk-usage-by-model usage-by-model)
           {:keys [promptTokens completionTokens]} last-call]
-      (cond-> {:usage        totals
+      (cond-> {:usage        (total-usage by-model)
                :usageByModel by-model}
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
-        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
+        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))
+        provider              (assoc :provider provider)))))
+
+(defn- ->running-usage-metadata
+  "The `message-metadata` event's payload after each LLM call of a turn: the turn's usage so far, in the `finish`
+  metadata's `:usage` shape, plus `:provider` when known."
+  [usage-by-model provider]
+  (cond-> {:usage (total-usage (->aisdk-usage-by-model usage-by-model))}
+    provider (assoc :provider provider)))
 
 (defn- completion-finish-reason
   "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
@@ -630,6 +649,10 @@
                              sees the same id we persist as `metabot_message.external_id`.
     :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
     :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
+    :provider              - The provider type serving the turn (e.g. \"anthropic\"), echoed as
+                             `messageMetadata.provider` wherever usage is reported.
+    :stream-usage?         - When true, each `:usage` part also emits a `message-metadata` event
+                             carrying the turn's usage so far, so a client can show it mid-turn.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -641,11 +664,11 @@
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
     :error            -> [start + start-step]? error
-    :usage            -> (accumulated; emitted as finish.message_metadata)
+    :usage            -> [message-metadata]? (accumulated; emitted as finish.message_metadata)
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id message-metadata context-window-tokens]}]
+  ([{:keys [message-id message-metadata context-window-tokens provider stream-usage?]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -689,7 +712,7 @@
        (fn
          ([] (rf))
          ([result]
-          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
+          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens provider)
                                 (when @finish-error-code {:errorCode @finish-error-code}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
@@ -797,7 +820,10 @@
                 (vswap! usage-by-model assoc model usage)
                 (when-let [fr (:finish-reason part)]
                   (vreset! finish-reason fr))
-                result)
+                (cond-> result
+                  stream-usage? (rf (format-sse-event
+                                     {:type            "message-metadata"
+                                      :messageMetadata (->running-usage-metadata @usage-by-model provider)}))))
 
               ;; Unknown types: emit as data parts
               (rf result (format-sse-event {:type (str "data-" (name (:type part)))

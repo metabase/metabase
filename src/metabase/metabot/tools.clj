@@ -35,6 +35,7 @@
    [metabase.metabot.tools.timelines :as tools.timelines]
    [metabase.metabot.tools.todo :as tools.todo]
    [metabase.metabot.tools.transforms :as tools.transforms]
+   [metabase.metabot.tools.web :as tools.web]
    [metabase.util.log :as log]
    [potemkin :as p]))
 
@@ -113,7 +114,7 @@
   describe-app-db-tool
   show-result-tool
   save-result-tool
-  navigate-tool]
+  show-page-link-tool]
  [tools.api-call
   call-api-tool
   list-api-endpoints-tool
@@ -121,7 +122,10 @@
  [tools.memory
   write-note-tool
   read-note-tool
-  delete-note-tool])
+  delete-note-tool]
+ [tools.web
+  web-search-tool
+  read-web-page-tool])
 
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app
@@ -142,8 +146,8 @@
     "create_alert" "create_dashboard_subscription" "static_viz"
     "read_resource"
     ;; megabot: the run tools register their query in memory; show_result reads it back and stores
-    ;; the chart that save_result saves; navigate resolves query/chart links against it
-    "run_warehouse_sql" "run_warehouse_query" "show_result" "save_result" "navigate"})
+    ;; the chart that save_result saves; show_page_link resolves query/chart links against it
+    "run_warehouse_sql" "run_warehouse_query" "show_result" "save_result" "show_page_link"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks

@@ -511,6 +511,7 @@ interface AdminSettings {
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
+  "metabot-web-search-api-key"?: string | null;
   "premium-embedding-token": string | null;
   "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name

@@ -177,3 +177,34 @@
   margin: 0 0.25rem;
   color: var(--mb-color-text-secondary);
 }
+
+.favicon {
+  flex-shrink: 0;
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.faviconStack {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.375rem;
+  vertical-align: middle;
+}
+
+.stackedFavicon {
+  position: relative;
+  border-radius: 50%;
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 0 0 1.5px var(--mb-color-bg-white);
+}
+
+.stackedFavicon + .stackedFavicon {
+  margin-left: -0.25rem;
+}
+
+.faviconOverflow {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--mb-color-text-tertiary);
+}

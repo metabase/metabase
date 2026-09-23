@@ -175,7 +175,7 @@
                                   :has_app_db_access        (contains? tool-names "query_app_db")
                                   :has_api_calls            (contains? tool-names "call_api")
                                   :has_notes                (contains? tool-names "write_note")
-                                  :has_navigate             (contains? tool-names "navigate")
+                                  :has_show_page_link       (contains? tool-names "show_page_link")
                                   :metabot_name             (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))

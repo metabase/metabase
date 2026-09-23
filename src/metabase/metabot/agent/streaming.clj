@@ -18,18 +18,24 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
+(def page-link-type "AI-SDK data type for a link card to a page in the app." "page_link")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
+(def web-results-type "AI-SDK data type for a web tool's list of sites found or pages read." "web_search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
 (def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
+(def debug-log-type "AI-SDK data type for the end-of-stream LLM debug log." "debug_log")
+(def eval-session-type "AI-SDK data type for the end-of-stream eval trace pointer." "eval_session")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
   ;; state is diffed separately into the row's state column
-  ;; search_results and tool_title render under the client-only chain of
-  ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  ;; search_results, web_search_results and tool_title render under the
+  ;; client-only chain of thought, never rehydrated
+  ;; debug_log and eval_session are for the stream consumer (eval harness) only;
+  ;; the client has no renderer for them, so persisting them breaks history
+  #{state-type search-results-type web-results-type tool-title-type debug-log-type eval-session-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -147,6 +153,15 @@
    :data-type search-results-type
    :data value})
 
+(defn web-results-part
+  "Data part carrying a web tool's hit list (`:total_count` + `:results` of
+  `{:title :url :domain :snippet?}`), rendered with favicons under the step in
+  the chain of thought."
+  [value]
+  {:type :data
+   :data-type web-results-type
+   :data value})
+
 (defn research-plan-update-part
   "Data part carrying the picker hydration for a Research plan edit — the metrics and
   dimension groups the FE needs to turn the agent's chosen groups into picker blocks.
@@ -189,6 +204,16 @@
   (generated-entity-part
    (cond-> {:type "dashboard" :url url :title title}
      id (assoc :id id))))
+
+(defn page-link-part
+  "Data part for a link card to a page in the app, which the FE renders in the conversation and never navigates to on
+  its own. `url` is the in-app path, `title` the page's name, and `model` (optional) the kind of item the page shows
+  (`dashboard`, `question`, `table`, …), which picks the card's icon."
+  [{:keys [url title model]}]
+  {:type      :data
+   :data-type page-link-type
+   :data      (cond-> {:url url :title title}
+                model (assoc :model model))})
 
 ;;; Stream Processing Transducers
 

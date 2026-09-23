@@ -1,5 +1,6 @@
 (ns metabase.util.http-test
   (:require
+   [clj-http.client]
    [clojure.test :refer :all]
    [metabase.util.http :as http])
   (:import
@@ -354,6 +355,30 @@
                  "https://localhost/x.png"
                  "https://metadata.google.internal/x.png"]]
       (is (nil? (http/fetch-bytes url)) (str "should not fetch: " url)))))
+
+(deftest fetch-bytes-redirects-are-revalidated-test
+  (testing "a redirect to a blocked host is dropped at the validation gate, never fetched"
+    (let [requested (atom [])]
+      (with-redefs [clj-http.client/get (fn [url _opts]
+                                          (swap! requested conj url)
+                                          {:status 302 :headers {:location "https://169.254.169.254/latest/"} :body nil})]
+        (is (nil? (http/fetch-bytes "https://example.com/start" {:max-redirects 3})))
+        (is (= ["https://example.com/start"] @requested)))))
+  (testing "redirects are not followed unless the caller opts in"
+    (let [requested (atom [])]
+      (with-redefs [clj-http.client/get (fn [url _opts]
+                                          (swap! requested conj url)
+                                          {:status 301 :headers {:location "https://www.example.com/start"} :body nil})]
+        (is (nil? (http/fetch-bytes "https://example.com/start")))
+        (is (= ["https://example.com/start"] @requested)))))
+  (testing "safe redirects are followed, relative Locations resolved, and the hop limit honoured"
+    (let [requested (atom [])]
+      (with-redefs [clj-http.client/get (fn [url _opts]
+                                          (swap! requested conj url)
+                                          {:status 302 :headers {:location "/next"} :body nil})]
+        (is (nil? (http/fetch-bytes "https://example.com/start" {:max-redirects 2})))
+        (is (= ["https://example.com/start" "https://example.com/next" "https://example.com/next"]
+               @requested))))))
 
 (deftest ^:parallel fetchable-url?-test
   (let [fetchable-url? #'http/fetchable-url?]

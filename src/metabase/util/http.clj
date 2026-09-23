@@ -42,7 +42,8 @@
 ;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
 ;;    any-local, multicast, IPv6 ULA (fc00::/7), IPv4 CGNAT (100.64/10), non-global IANA
 ;;    special-purpose ranges, and IPv6 space IANA has not allocated.
-;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
+;;  - No redirects by default (a 3xx would be a bypass vector). A caller may opt in with `:max-redirects`;
+;;    each hop's `Location` is then re-validated exactly like the original URL before it is fetched.
 ;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
 ;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
 ;; --------------------------------------------------------------------------------------------
@@ -368,6 +369,44 @@
   (some-> (get-in resp [:headers :content-type])
           (str/split #";") first str/trim lower-case-en))
 
+(def ^:private redirect-statuses #{301 302 303 307 308})
+
+(defn- redirect-target
+  "Absolute URL named by a 3xx response's `Location`, resolved against the requested `url`; nil when
+  absent or unparseable."
+  [^String url resp]
+  (when-let [location (get-in resp [:headers :location])]
+    (try
+      (str (.resolve (URI. url) ^String location))
+      (catch Throwable _ nil))))
+
+(defn- fetch-once
+  "One GET of `url`. Returns `{:result {:bytes .. :content-type ..}}` for an acceptable 200,
+  `{:redirect <url>}` for a 3xx with a usable `Location`, or nil for anything else."
+  [url {:keys [allowed-content-types max-bytes network-policy timeout-ms user-agent]}]
+  (try
+    (let [resp              (http/get url (m/assoc-some
+                                           {:as                 :stream
+                                            :redirect-strategy  :none
+                                            :socket-timeout     timeout-ms
+                                            :connection-timeout timeout-ms
+                                            :throw-exceptions   false
+                                            :headers            {"User-Agent" user-agent}}
+                                           :dns-resolver (network-policy-dns-resolver network-policy)))
+          ctype             (response-content-type resp)
+          ^InputStream body (:body resp)]
+      (try
+        (cond
+          (contains? redirect-statuses (:status resp))
+          (some->> (redirect-target url resp) (hash-map :redirect))
+
+          (and (= 200 (:status resp))
+               (or (empty? allowed-content-types) (contains? allowed-content-types ctype)))
+          (when-let [bytes (read-bounded body max-bytes)]
+            {:result {:bytes bytes :content-type ctype}}))
+        (finally (some-> body .close))))
+    (catch Throwable _ nil)))
+
 (defn fetch-bytes
   "SSRF-hardened GET of `url`. Returns `{:bytes <byte[]> :content-type <lower-cased string>}` on a
   200 response whose (parameter-stripped, lower-cased) content-type is allowed and whose body is
@@ -379,32 +418,25 @@
    :max-bytes              download cap in bytes (default 20 MB)
    :timeout-ms             socket + connection timeout (default 8000)
    :user-agent             `User-Agent` header (default a descriptive Metabase UA)
+   :max-redirects          how many 3xx hops to follow (default 0). Every hop's target must pass the
+                           same URL pre-check and network policy as the original URL.
    :network-policy         which networks may be reached, per [[address-allowed-for-network-policy?]]
                            (default `:external-only`). Anything looser also relaxes the URL pre-check to
                            allow `http` and IP-literal hosts, since those are the shape an internal host
                            an admin has deliberately allowed usually takes."
   ([url] (fetch-bytes url nil))
-  ([url {:keys [allowed-content-types max-bytes network-policy timeout-ms user-agent]
-         :or   {max-bytes      fetch-default-max-bytes
-                network-policy :external-only
-                timeout-ms     fetch-default-timeout-ms
-                user-agent     fetch-default-user-agent}}]
-   (when (fetchable-url? url network-policy)
-     (try
-       (let [resp              (http/get url (m/assoc-some
-                                              {:as                 :stream
-                                               :redirect-strategy  :none
-                                               :socket-timeout     timeout-ms
-                                               :connection-timeout timeout-ms
-                                               :throw-exceptions   false
-                                               :headers            {"User-Agent" user-agent}}
-                                              :dns-resolver (network-policy-dns-resolver network-policy)))
-             ctype             (response-content-type resp)
-             ^InputStream body (:body resp)]
-         (try
-           (when (and (= 200 (:status resp))
-                      (or (empty? allowed-content-types) (contains? allowed-content-types ctype)))
-             (when-let [bytes (read-bounded body max-bytes)]
-               {:bytes bytes :content-type ctype}))
-           (finally (some-> body .close))))
-       (catch Throwable _ nil)))))
+  ([url {:keys [max-redirects network-policy]
+         :or   {max-redirects 0
+                network-policy :external-only}
+         :as   opts}]
+   (let [opts (merge {:max-bytes      fetch-default-max-bytes
+                      :network-policy network-policy
+                      :timeout-ms     fetch-default-timeout-ms
+                      :user-agent     fetch-default-user-agent}
+                     opts)]
+     (loop [url url, hops 0]
+       (when (fetchable-url? url network-policy)
+         (let [{:keys [redirect result]} (fetch-once url opts)]
+           (if (and redirect (< hops max-redirects))
+             (recur redirect (inc hops))
+             result)))))))

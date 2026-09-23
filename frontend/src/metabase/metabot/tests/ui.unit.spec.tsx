@@ -31,6 +31,7 @@ import {
   chat,
   closeChatButton,
   conversationTitle,
+  convoForAgent,
   createMockSSEStream,
   createPauses,
   createTestMetabotState,
@@ -494,6 +495,111 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(2);
       });
+    });
+  });
+
+  describe("token usage counter", () => {
+    const usageMetadata = (
+      inputTokens: number,
+      outputTokens: number,
+      provider = "anthropic",
+    ) => ({
+      usage: {
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        cacheCreationTokens: 1000,
+        cacheReadTokens: 20000,
+      },
+      provider,
+    });
+
+    const answer: SSEEvent[] = [
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "answer" },
+      { type: "text-end", id: "t1" },
+    ];
+
+    const finishedTurn = (...usage: Parameters<typeof usageMetadata>) => [
+      ...answer,
+      {
+        type: "finish" as const,
+        finishReason: "stop" as const,
+        messageMetadata: usageMetadata(...usage),
+      },
+    ];
+
+    const megabotState = () =>
+      assocIn(
+        createTestMetabotState({ visibleAgentIds: ["omnibot"] }),
+        ["conversations", testConversationId("omnibot"), "profileOverride"],
+        "megabot",
+      );
+
+    const chatUntilSettled = async (
+      store: ReturnType<typeof setup>["store"],
+      message: string,
+    ) => {
+      await enterChatMessage(message);
+      await waitFor(() =>
+        expect(convoForAgent(store).isProcessing).toBe(false),
+      );
+    };
+
+    it("sums every turn of a megabot conversation above the input", async () => {
+      const { store } = setup({ metabotInitialState: megabotState() });
+      mockAgentEndpoint({ events: finishedTurn(24100, 1500) });
+      expect(
+        screen.queryByTestId("metabot-token-usage"),
+      ).not.toBeInTheDocument();
+
+      await chatUntilSettled(store, "first");
+      expect(screen.getByTestId("metabot-token-usage")).toHaveTextContent(
+        "24.1k in · 1.5k out",
+      );
+
+      await chatUntilSettled(store, "second");
+      expect(screen.getByTestId("metabot-token-usage")).toHaveTextContent(
+        "48.2k in · 3k out",
+      );
+    });
+
+    it("counts usage streamed mid-turn, before any finish event", async () => {
+      const { store } = setup({ metabotInitialState: megabotState() });
+      mockAgentEndpoint({
+        events: [
+          {
+            type: "message-metadata",
+            messageMetadata: usageMetadata(5000, 200),
+          },
+          ...answer,
+        ],
+      });
+
+      await chatUntilSettled(store, "hi");
+      expect(screen.getByTestId("metabot-token-usage")).toHaveTextContent(
+        "5k in · 200 out",
+      );
+    });
+
+    it("hides the counter when the turn isn't served by Anthropic", async () => {
+      const { store } = setup({ metabotInitialState: megabotState() });
+      mockAgentEndpoint({ events: finishedTurn(24100, 1500, "openai") });
+
+      await chatUntilSettled(store, "hi");
+      expect(
+        screen.queryByTestId("metabot-token-usage"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides the counter outside the megabot profile", async () => {
+      const { store } = setup();
+      mockAgentEndpoint({ events: finishedTurn(24100, 1500) });
+
+      await chatUntilSettled(store, "hi");
+      expect(
+        screen.queryByTestId("metabot-token-usage"),
+      ).not.toBeInTheDocument();
     });
   });
 

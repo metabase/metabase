@@ -39,6 +39,7 @@ import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
+import { MetabotInlinePageLink } from "./MetabotInlinePageLink";
 
 type AgentDataPartProps = {
   dataPart: MetabotAgentDataPartMessage;
@@ -123,6 +124,12 @@ export const AgentDataPart = ({
       <Stack gap="lg">
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
+    .with({ part: { type: "data-page_link" } }, ({ part }) => (
+      <Stack gap="lg">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <MetabotInlinePageLink value={part.data} />
       </Stack>
     ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>

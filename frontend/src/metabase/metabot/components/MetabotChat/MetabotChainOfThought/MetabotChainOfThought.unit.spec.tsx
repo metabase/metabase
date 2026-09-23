@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
 import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
@@ -445,6 +445,88 @@ describe("MetabotChainOfThought", () => {
     await expandChain();
     expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
     expect(screen.getByText("No results")).toBeInTheDocument();
+  });
+
+  it("shows a web search with stacked favicons and external result links", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "web_search",
+            title: "metabase release",
+            status: "ended",
+            webResults: {
+              totalCount: 5,
+              results: [
+                {
+                  title: "Metabase 0.60 release notes",
+                  url: "https://www.metabase.com/releases/0.60",
+                  domain: "metabase.com",
+                  snippet: "What's new",
+                },
+                {
+                  title: "Metabase on GitHub",
+                  url: "https://github.com/metabase/metabase",
+                  domain: "github.com",
+                },
+                { title: "Docs", url: "https://docs.example.com/a" },
+                { title: "News", url: "https://news.example.org/b" },
+                { title: "Blog", url: "https://blog.example.net/c" },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(
+      screen.getByText(/Searched the web for metabase release/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("5 results")).toBeInTheDocument();
+    // three stacked favicons plus an overflow badge for the other two domains
+    expect(screen.getByText("+2")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("5 results"));
+    // under jsdom, role queries treat the expanded Collapse body as hidden
+    const link = screen.getByRole("link", {
+      name: /Metabase 0.60 release notes/,
+      hidden: true,
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/releases/0.60",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveTextContent("metabase.com");
+    expect(
+      within(link).getByRole("img", { name: "metabase.com", hidden: true }),
+    ).toHaveAttribute(
+      "src",
+      "https://www.google.com/s2/favicons?domain=metabase.com&sz=32",
+    );
+  });
+
+  it("labels a read_web_page step with the sites read", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "read_web_page",
+            title: "metabase.com",
+            status: "started",
+          },
+        ],
+      }),
+      true,
+    );
+    await expandChain();
+    expect(screen.getByText("Reading metabase.com")).toBeInTheDocument();
   });
 
   it("gives read_resource a real label and hides load_skill entirely", async () => {

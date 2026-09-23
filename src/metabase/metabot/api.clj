@@ -204,7 +204,8 @@
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
-        messages         (concat history [message])]
+        messages         (concat history [message])
+        model-ref        (metabot.settings/llm-metabot-provider)]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom  (atom [])
             memory-atom (atom nil)
@@ -217,11 +218,14 @@
             thrown     (volatile! nil)
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
-                              (cond-> {:message-id external-id
-                                       :context-window-tokens
-                                       (metabot.self/context-window-tokens
-                                        (metabot.settings/llm-metabot-provider))}
-                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
+                              (cond-> {:message-id            external-id
+                                       :context-window-tokens (metabot.self/context-window-tokens model-ref)}
+                                user-external-id (assoc :message-metadata {:userMessageId user-external-id})
+                                ;; the provider is only for the client's usage counter, so every other profile's
+                                ;; stream stays as it was
+                                (profiles/stream-usage? (keyword profile-id))
+                                (assoc :stream-usage? true
+                                       :provider      (metabot.self/provider-type model-ref))))
                              (inject-title-events-xf title-job conversation-id))]
         (try
           (transduce xf

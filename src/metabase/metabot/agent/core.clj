@@ -297,14 +297,40 @@
   rather than on every step."
   5)
 
+(def ^:private compact-history-lead-max-chars
+  "An elided output keeps its lead (see [[output-lead]]) when the lead is at most this many chars."
+  500)
+
+(defn- output-lead
+  "The text of `output` before its first blank line, or nil when it has no blank line or that text is blank or longer
+  than `compact-history-lead-max-chars`. A tool puts what its call did there (e.g. `call_api`'s status and \"Created …\"
+  line, a warehouse run's Query ID), so eliding the details never loses it."
+  [output]
+  (let [[lead more] (str/split output #"\n[ \t]*\n" 2)]
+    (when (and more
+               (not (str/blank? lead))
+               (<= (count lead) compact-history-lead-max-chars))
+      lead)))
+
+(defn- elided-output
+  "What replaces the old `output` of a `tool-name` call: its lead, when it has one, and a note on what's gone."
+  [tool-name output]
+  (let [n      (count output)
+        advice (str "If you need it, run a read again; never repeat a call that created or changed something — "
+                    "read the item back instead.")]
+    (if-let [lead (output-lead output)]
+      (format "%s\n[The rest of this %s result was elided to save context (%d chars in all). %s]"
+              lead tool-name n advice)
+      (format "[This %s result was elided to save context (%d chars). %s]" tool-name n advice))))
+
 (defn- compact-tool-outputs
   "Shrink the replayed message array for long loops: replace the `:output` of OLD, large
-  `:tool-output` parts with a one-line stub, keeping the most recent `compact-history-keep-recent`
-  tool outputs and any output under `compact-history-output-threshold` chars verbatim. Old, large outputs
-  are elided oldest first, `compact-history-batch` at a time, so the replayed prefix stays stable
-  between batches. The tool name lives on the paired `:tool-input` part, so id->function is indexed
-  first. Replay-only: persisted rows keep the full output, and the agent can always re-run the tool to
-  fetch the data again.
+  `:tool-output` parts with a stub that keeps only the output's lead (see [[output-lead]]), keeping the
+  most recent `compact-history-keep-recent` tool outputs and any output under
+  `compact-history-output-threshold` chars verbatim. Old, large outputs are elided oldest first,
+  `compact-history-batch` at a time, so the replayed prefix stays stable between batches. The tool name
+  lives on the paired `:tool-input` part, so id->function is indexed first. Replay-only: persisted rows
+  keep the full output.
 
   `:keep-recent`, `:threshold`, and `:batch` override the `compact-history-*` defaults (used by tests to
   pin behavior)."
@@ -318,21 +344,16 @@
                            (keep (fn [p] (when (= :tool-input (:type p)) [(:id p) (:function p)])))
                            parts)
          output-idxs (into [] (keep-indexed (fn [i p] (when (= :tool-output (:type p)) i))) parts)
-         ;; [index chars] of the OLD tool outputs over the threshold, oldest first
+         ;; indexes of the OLD tool outputs over the threshold, oldest first
          candidates  (into []
-                           (keep (fn [i]
-                                   (let [n (count (some-> (get-in parts [i :result :output]) str))]
-                                     (when (> n threshold) [i n]))))
+                           (filter #(> (count (some-> (get-in parts [% :result :output]) str)) threshold))
                            (drop-last keep-recent output-idxs))
-         idx->chars  (into {} (take (* batch (quot (count candidates) batch))) candidates)]
+         elided-idxs (into #{} (take (* batch (quot (count candidates) batch))) candidates)]
      (into []
            (map-indexed
             (fn [i part]
-              (if-let [n (idx->chars i)]
-                (assoc-in part [:result :output]
-                          (format "[%s result elided to save context — %d chars. Re-run the tool if you need this data again.]"
-                                  (or (id->fn (:id part)) "tool")
-                                  n))
+              (if (elided-idxs i)
+                (update-in part [:result :output] #(elided-output (or (id->fn (:id part)) "tool") (str %)))
                 part)))
            parts))))
 
@@ -746,7 +767,7 @@
   [debug-log]
   (write-debug-log-file! debug-log)
   {:type      :data
-   :data-type "debug_log"
+   :data-type streaming/debug-log-type
    :version   1
    :data      debug-log})
 
@@ -756,7 +777,7 @@
   `<session-id>.jsonl` trace file written by `metabase.ai-tracing.log`."
   [session-id]
   {:type      :data
-   :data-type "eval_session"
+   :data-type streaming/eval-session-type
    :version   1
    :data      {:session-id session-id}})
 

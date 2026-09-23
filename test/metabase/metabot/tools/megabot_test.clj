@@ -403,44 +403,60 @@
       (is (str/includes? output "No app-db table or view has this name"))
       (is (str/includes? output "report_card")))))
 
-(defn- navigate
+(defn- show-page-link
   [args]
   (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" stub-query}}})]
-    (megabot/navigate-tool args)))
+    (megabot/show-page-link-tool args)))
 
-(defn- navigated-url
-  "The url of the single dashboard-type `generated_entity` part the frontend navigates to."
+(defn- page-link
+  "The data of the single `page_link` part a result shows the user."
   [{:keys [data-parts]}]
   (is (= 1 (count data-parts)))
   (let [{:keys [data-type data]} (first data-parts)]
-    (is (= "generated_entity" data-type))
-    (is (= "dashboard" (:type data)))
-    (:url data)))
+    (is (= "page_link" data-type))
+    data))
 
-(deftest navigate-entity-link-test
-  (testing "a metabase://<type>/<id> link navigates to the entity's page"
-    (let [result (navigate {:target "metabase://dashboard/42" :title "Sales"})]
-      (is (= "/dashboard/42" (navigated-url result)))
-      (is (= "Sales" (-> result :data-parts first :data :title)))
-      (is (= {:result-type :navigation :url "/dashboard/42"} (:structured-output result)))))
-  (testing "collections resolve too"
-    (is (= "/collection/7" (navigated-url (navigate {:target "metabase://collection/7"}))))))
+(deftest show-page-link-saved-item-test
+  (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
+    (testing "a saved item's card carries its url, its own name, and its kind"
+      (let [url    (str "/dashboard/" dash-id)
+            result (show-page-link {:target (str "metabase://dashboard/" dash-id) :title "the sales dash"})]
+        (is (= {:url url :title "Sales" :model "dashboard"} (page-link result)))
+        (is (= {:result-type :page-link :url url} (:structured-output result)))
+        (testing "and the model hears that it showed a link, not that it moved the user"
+          (is (str/includes? (:output result) "Showed the user a link to \"Sales\""))
+          (is (str/includes? (:output result) "still in this chat")))))
+    (testing "a link to an id with no saved item keeps the given title"
+      (is (= {:url "/collection/999999" :title "Ops" :model "collection"}
+             (page-link (show-page-link {:target "metabase://collection/999999" :title "Ops"})))))))
 
-(deftest navigate-query-link-test
-  (testing "a query from this conversation opens as an ad-hoc question; the title defaults to the url"
-    (let [result (navigate {:target "metabase://query/q-1"})
-          url    (navigated-url result)]
+(deftest show-page-link-query-and-table-test
+  (testing "a query from this conversation opens as an ad-hoc question"
+    (let [{:keys [url title model]} (page-link (show-page-link {:target "metabase://query/q-1"
+                                                                :title  "Orders by month"}))]
       (is (str/starts-with? url "/question#"))
-      (is (= url (-> result :data-parts first :data :title))))))
+      (is (= "Orders by month" title))
+      (is (= "question" model))))
+  (testing "a table opens its rows"
+    (is (= "table" (:model (page-link (show-page-link {:target (str "metabase://table/" (mt/id :orders))
+                                                       :title  "Orders"})))))))
 
-(deftest navigate-app-path-test
-  (testing "an in-app path passes through as-is"
-    (is (= "/admin/settings/email" (navigated-url (navigate {:target " /admin/settings/email "}))))))
+(deftest show-page-link-app-path-test
+  (testing "an in-app path passes through as-is, with no kind of item"
+    (is (= {:url "/admin/settings/email" :title "Email settings"}
+           (page-link (show-page-link {:target " /admin/settings/email " :title " Email settings "}))))))
 
-(deftest navigate-unresolvable-test
+(deftest show-page-link-needs-a-title-test
+  (testing "a page that isn't a saved item is never labeled with its raw path"
+    (let [{:keys [output data-parts]} (show-page-link {:target "/admin/people" :title " "})]
+      (is (nil? data-parts))
+      (is (str/includes? output "Pass a `title`"))
+      (is (str/includes? output "To recover:")))))
+
+(deftest show-page-link-unresolvable-test
   (doseq [target ["metabase://query/nope" "metabase://bogus/1" "https://example.com" "//example.com" "admin"]]
     (testing target
-      (let [{:keys [output data-parts]} (navigate {:target target})]
+      (let [{:keys [output data-parts]} (show-page-link {:target target :title "Somewhere"})]
         (is (nil? data-parts))
-        (is (str/includes? output "Can't navigate"))
+        (is (str/includes? output "Can't link to"))
         (is (str/includes? output "To recover:"))))))

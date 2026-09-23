@@ -104,6 +104,9 @@ const HISTORY_ENABLED_PROFILES: ReadonlySet<string | undefined> = new Set([
 export const isHistoryEnabledProfile = (profile: string | undefined) =>
   HISTORY_ENABLED_PROFILES.has(profile);
 
+// the only provider whose usage the token counter reports (see `MessageMetadata.provider`)
+export const TOKEN_USAGE_PROVIDER = "anthropic";
+
 export const resolveMetabotProfileId = (
   profile: MetabotProfileId | undefined,
 ): MetabotProfileId =>
@@ -199,6 +202,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Deleting a note`,
     done: () => t`Deleted a note`,
   },
+  read_web_page: {
+    active: () => t`Reading web page`,
+    done: () => t`Read web page`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -223,10 +230,8 @@ export const TOOL_MESSAGES = {
     active: () => t`Saving the result`,
     done: () => t`Saved the result`,
   },
-  navigate: {
-    active: () => t`Navigating`,
-    done: () => t`Navigated`,
-  },
+  // the link card it shows is the step's visible result
+  show_page_link: { active: () => undefined, done: () => undefined },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {
     active: () => t`Checking available data sources`,
@@ -246,6 +251,10 @@ export const TOOL_MESSAGES = {
   },
   todo_read: { active: () => t`Planning`, done: () => t`Planned` },
   todo_write: { active: () => t`Planning`, done: () => t`Planned` },
+  web_search: {
+    active: () => t`Searching the web`,
+    done: () => t`Searched the web`,
+  },
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,

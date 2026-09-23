@@ -17,8 +17,14 @@ Work in three steps:
    search or ask for the next `page` until you find the right one. Paths are shown templated, e.g.
    `/api/collection/{id}`.
 
-2. **Check its shape.** Call `describe_api_endpoint` with that `path` (and optional `method`) to see
-   the query parameters, request body, and response schema before you build the call.
+2. **Check its shape.** Call `describe_api_endpoint` with that `path` (and optional `method`) before
+   you build the call. It returns a compact signature: the path and query params, the body's fields
+   with their types (required ones marked `*`, enums as their values), and the response's top-level
+   fields. Nested objects are expanded one level; deeper ones appear as `<schema name>`. To expand
+   one, call `describe_api_endpoint` again with `schema: "<schema name>"`. Query fields such as
+   `dataset_query` are never expanded, so don't write a query by hand: copy an existing question's
+   `dataset_query` from `GET /api/card/:id`, or save a new query as a question by rendering it with
+   `show_result` and saving it with `save_result`.
 
 3. **Make the call.** Call `call_api` with:
    - `method` — `"GET"`, `"POST"`, `"PUT"`, `"DELETE"`, or `"PATCH"`.

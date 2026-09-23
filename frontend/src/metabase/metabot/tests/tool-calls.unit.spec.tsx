@@ -251,3 +251,35 @@ describe("metabot > tool calls", () => {
     });
   });
 });
+
+describe("metabot > page links", () => {
+  it("shows a streamed page link as a card and never navigates, even in the sidebar", async () => {
+    const { router } = setup({
+      withRouter: true,
+      initialRoute: "/question/123",
+    });
+    mockAgentEndpoint({
+      events: [
+        { type: "start", messageId: "msg_page_link" },
+        {
+          type: "data-page_link",
+          data: { url: "/admin/settings/email", title: "Email settings" },
+        },
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "Here are the email settings." },
+        { type: "text-end", id: "t1" },
+        { type: "data-state", data: { queries: {} } },
+      ],
+    });
+
+    await enterChatMessage("Where do I set up email?");
+
+    expect(
+      await screen.findByText("Here are the email settings."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Email settings" }),
+    ).toHaveAttribute("href", "/admin/settings/email");
+    expect(router?.location.pathname).toBe("/question/123");
+  });
+});

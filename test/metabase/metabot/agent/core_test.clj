@@ -1304,3 +1304,30 @@
         (is (= [true true false] (elided 3)))
         (is (= [true true false false] (elided 4)) "the prefix doesn't change until the next batch fills")
         (is (= [true true true true false] (elided 5)))))))
+
+(deftest compact-tool-outputs-lead-test
+  (let [big  (apply str (repeat 3000 "x"))
+        stub (fn [output]
+               (->> (#'agent/compact-tool-outputs
+                     (vec (mapcat (fn [id]
+                                    [{:type :tool-input  :id id :function "call_api" :arguments {}}
+                                     {:type :tool-output :id id :result {:output output}}])
+                                  ["c0" "c1"]))
+                     {:keep-recent 1 :threshold 2000 :batch 1})
+                    (filter #(= :tool-output (:type %)))
+                    first
+                    :result
+                    :output))]
+    (testing "an elided output keeps its lead, the text before its first blank line"
+      (let [lead "HTTP 200\nCreated dashboard 42 \"Sales\". Link it as [Sales](metabase://dashboard/42)."
+            out  (stub (str lead "\n\n" big))]
+        (is (str/starts-with? out (str lead "\n[The rest of this call_api result was elided to save context")))
+        (is (not (str/includes? out big)))))
+    (testing "a lead too long to be a summary is dropped with the rest"
+      (is (str/starts-with? (stub (str (apply str (repeat 600 "y")) "\n\n" big))
+                            "[This call_api result was elided to save context")))
+    (testing "the stub never tells the model to repeat a call, which would repeat a change"
+      (doseq [output [big (str "HTTP 200\n\n" big)]]
+        (let [out (stub output)]
+          (is (not (re-find #"(?i)re-run" out)))
+          (is (str/includes? out "never repeat a call that created or changed something")))))))

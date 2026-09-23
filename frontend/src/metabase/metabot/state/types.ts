@@ -1,6 +1,7 @@
 import type {
   KnownDataPart,
   SearchResultItem,
+  WebSearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
 import type { FinishReason } from "metabase/api/ai-streaming/sse-types";
 import type { MetabotProfileId } from "metabase/metabot/constants";
@@ -15,12 +16,18 @@ export type MetabotDataPart = Exclude<
   | { type: "data-state" }
   | { type: "data-conversation-title" }
   | { type: "data-search_results" }
+  | { type: "data-web_search_results" }
   | { type: "data-tool_title" }
 >;
 
 export type MetabotSearchResults = {
   totalCount: number;
   results: SearchResultItem[];
+};
+
+export type MetabotWebResults = {
+  totalCount: number;
+  results: WebSearchResultItem[];
 };
 
 export type MetabotDataPartMetadata = {
@@ -121,6 +128,14 @@ export type MetabotContextUsage = {
   contextWindowTokens: number;
 };
 
+export type MetabotTokenUsage = {
+  // includes the cache counts, which are a breakdown of it
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+};
+
 export type MetabotMessage = {
   id: string;
   externalId?: string;
@@ -145,6 +160,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
+      webResults?: MetabotWebResults;
       status: "started" | "ended";
       startedAtMs?: number;
     };
@@ -167,6 +183,10 @@ export interface MetabotConversationState {
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   contextWindowTokens?: number;
+  // this session's token usage: finished turns, plus the latest cumulative
+  // snapshot of the turn in flight (folded into the former when the next starts)
+  completedTokenUsage?: MetabotTokenUsage;
+  turnTokenUsage?: MetabotTokenUsage;
   profileOverride: MetabotProfileId | undefined;
   experimental: {
     developerMessage: string;

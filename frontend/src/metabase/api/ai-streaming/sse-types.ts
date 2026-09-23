@@ -3,13 +3,18 @@
 // are camelCase (spec-faithful); `data-*` payloads keep Metabase snake_case.
 
 export type TokenUsage = {
+  // includes the cache counts below, which are a breakdown of it
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
 };
 
 export type MessageMetadata = {
   usage?: TokenUsage;
+  // the provider type serving the turn, e.g. "anthropic"
+  provider?: string;
   usageByModel?: Record<string, TokenUsage>;
   contextWindowTokens?: number;
   // the turn's final LLM call (prompt + completion) — the conversation's
