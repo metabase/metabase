@@ -123,7 +123,6 @@ export const BranchSwitcher = ({
         >
           <Combobox.Target>
             <Button
-              variant="default"
               disabled={disabled || isLoading}
               loading={isLoading}
               onClick={() => combobox.toggleDropdown()}

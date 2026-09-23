@@ -261,11 +261,11 @@ export const DocumentHeader = ({
                             component={Link}
                             to="/admin/settings/public-sharing"
                             target="_blank"
-                            variant="subtle"
+                            variant="transparent"
+                            size="compact-md"
                             h="auto"
                             lh="inherit"
                             ml="sm"
-                            p={0}
                             bd={0}
                             className={CS.floatRight}
                           >

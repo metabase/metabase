@@ -199,9 +199,8 @@ export const GitSyncControls = () => {
       >
         <Menu.Target>
           <Button
-            p="sm"
-            size="compact-sm"
-            bd="none"
+            variant="subtle"
+            color="neutral"
             mr="xl"
             disabled={isLoading}
             onClick={toggleMenu}
