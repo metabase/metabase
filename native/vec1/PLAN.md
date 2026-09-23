@@ -22,9 +22,14 @@ Two iterations:
 
 ---
 
-## Iteration 0 — vec1 semantics spike (1–2 h, REPL only, `dev/vec1.clj`)
+## Iteration 0 — vec1 semantics spike ✅ answered in PLAN_001 Phase A
 
-Everything below depends on these answers. Record them here.
+Answers are in [PLAN_001_store.md](PLAN_001_store.md) Phase A: delete + re-insert works, inserts after
+`rebuild` are searchable, meta-column filters run inside the KNN (not `!=`, not joined columns), `cos`
+distance matches pgvector `<=>`, **`UPDATE` crashes** ([LIMITATION_001](LIMITATION_001_update_crash.md)).
+Still open for iteration 2: the HoneySQL rendering of the vec1 table-valued function, and FTS5 availability.
+
+Original questions:
 
 - [ ] `DELETE FROM search_vec WHERE rowid = ?` works; re-insert with the same rowid works.
 - [ ] Inserts after `rebuild '{index:"flat", distance:"cos"}'` are searchable without another rebuild.
