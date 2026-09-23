@@ -421,6 +421,11 @@ describe("shortcuts", () => {
   );
 
   it("should support dashboard shortcuts", () => {
+    cy.intercept("POST", "/api/bookmark/dashboard/*").as("bookmarkDashboard");
+    cy.intercept("DELETE", "/api/bookmark/dashboard/*").as(
+      "unbookmarkDashboard",
+    );
+
     H.createDashboardWithTabs({
       tabs: [TAB_1, TAB_2, TAB_3, TAB_4],
       dashcards: [
@@ -447,12 +452,18 @@ describe("shortcuts", () => {
       ],
     }).then((dashboard) => H.visitDashboard(dashboard.id));
 
+    // The second press reads whether the dashboard is bookmarked from the
+    // refetched bookmark list, so each toggle waits for its write to land and
+    // for the sidebar to catch up before the next press.
     cy.realPress("o");
+    cy.wait("@bookmarkDashboard");
     H.openNavigationSidebar();
     H.navigationSidebar()
       .findByRole("section", { name: "Bookmarks" })
       .should("contain.text", "Test Dashboard");
+
     cy.realPress("o");
+    cy.wait("@unbookmarkDashboard");
     H.navigationSidebar()
       .findByRole("section", { name: "Bookmarks" })
       .should("not.exist");
