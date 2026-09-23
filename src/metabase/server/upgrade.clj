@@ -51,15 +51,20 @@ by moving %s to %s and restarting." new-jar-path jar-path))
     (Thread/sleep 100)
     (System/exit 0)))
 
-(def ^:private progress (atom {:status :not-upgrading}))
+(def ^:private progress (atom {:status :not-upgrading :current 0}))
 
-;; based on clojure.java.io/copy but with status reporting
-(defn- copy [^InputStream input ^OutputStream output]
-  (let [buffer-size 1024
+;; based on clojure.java.io/copy but with status reporting and slowdown
+(defn- copy [^InputStream input ^OutputStream output slowly?]
+  (let [buffer-size (* 1024 1024) ; 1 megabyte buffer
         buffer (make-array Byte/TYPE buffer-size)]
     (loop []
       (let [size (.read input buffer)]
-        (swap! progress :current + size)
+        (swap! progress update :current + size)
+        ;; If we do a download from the live jar, it will take too long during
+        ;; the demo. If we point it at a local URL, it will be too fast for
+        ;; anyone to see the progress bar. Let's shoot for making it take 10s.
+        (when slowly?
+          (Thread/sleep 16))
         (when (pos? size)
           (do (.write output buffer 0 size)
               (recur)))))))
@@ -87,7 +92,7 @@ by moving %s to %s and restarting." new-jar-path jar-path))
           total (parse-long (-> response :headers (get "Content-Length")))]
       (swap! progress assoc :total total :current 0)
       (with-open [out (io/output-stream temp-jar-path)]
-        (io/copy (:body response) out)))
+        (io/copy (:body response) out (System/getenv "MB_UPGRADE_SLOW"))))
     (swap! progress assoc :status :downloaded)
     (log/info "Download complete.")
     (log/info (prn-str @progress))
@@ -115,6 +120,6 @@ by moving %s to %s and restarting." new-jar-path jar-path))
 ;; supervisor.sh:
 
 ;; #!/bin/bash
-;; MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar MB_JETTY_PORT=8088 java -jar target/uberjar/metabase.jar
+;; MB_UPGRADE_SLOW=y MB_UPGRADE_JAR_URL=http://localhost:3000/metabase.jar MB_JETTY_PORT=8088 java -jar target/uberjar/metabase.jar
 ;; sleep 2 # give the user a chance to ctrl-c out of it
 ;; exec $0
