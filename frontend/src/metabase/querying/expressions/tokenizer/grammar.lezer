@@ -69,7 +69,11 @@ ArgList {
 }
 
 Arg {
-  expression
+  expression | NamedArg
+}
+
+NamedArg {
+  Identifier "=>" expression
 }
 
 @skip {} {
@@ -214,5 +218,6 @@ False {
   "<="
   ">"
   ">="
+  "=>"
   ","
 }

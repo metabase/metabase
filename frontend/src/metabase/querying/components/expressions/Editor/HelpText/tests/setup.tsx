@@ -5,8 +5,11 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getHelpText } from "metabase/querying/expressions";
 import { checkNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
-import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { DatabaseFeature, TokenFeatures } from "metabase-types/api";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { HelpText, type HelpTextProps } from "../HelpText";
@@ -19,6 +22,8 @@ export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   expressionMode?: Lib.ExpressionMode;
+  allowTransformOnlyFunctions?: boolean;
+  features?: DatabaseFeature[];
 }
 
 export async function setup({
@@ -28,6 +33,8 @@ export async function setup({
   enterprisePlugins,
   tokenFeatures = {},
   expressionMode = "expression",
+  allowTransformOnlyFunctions,
+  features,
 }: SetupOpts) {
   const state = createMockState({
     settings: mockSettings({
@@ -36,7 +43,11 @@ export async function setup({
     }),
   });
 
-  const database = createSampleDatabase();
+  const database = createSampleDatabase(
+    features
+      ? { features: [...COMMON_DATABASE_FEATURES, ...features] }
+      : undefined,
+  );
 
   const props: HelpTextProps = {
     enclosingFunction: {
@@ -47,6 +58,7 @@ export async function setup({
     database,
     reportTimezone,
     expressionMode,
+    allowTransformOnlyFunctions,
   };
 
   if (enterprisePlugins) {

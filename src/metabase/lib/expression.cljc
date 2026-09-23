@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.prompt :as lib.prompt]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -773,7 +774,12 @@
     (references-prompt-expression? query stage-number expr)
     {:message (i18n/tru
                "Columns created with prompt() can''t be used in other expressions or filters")
-     :friendly true}))
+     :friendly true}
+
+    (lib.schema.common/is-clause? :prompt expr)
+    (when-let [message (:error (lib.prompt/prompt-output (lib.options/options expr)))]
+      {:message  message
+       :friendly true})))
 
 (mr/def ::diagnosable-expression
   "An expression, aggregation, or filter that may be invalid; [[diagnose-expression]] reports what is wrong with it."

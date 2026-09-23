@@ -12,7 +12,7 @@ import {
   formatSegmentName,
 } from "../identifier";
 import { parsePunctuator } from "../punctuator";
-import { formatStringLiteral } from "../string";
+import { type StartDelimiter, formatStringLiteral } from "../string";
 
 import type { ExpressionNode, FormatOptions } from "./types";
 import {
@@ -195,6 +195,8 @@ function formatFunctionCall(
     args.push(expressionOptions);
   }
 
+  args.push(...formatNamedArguments(node.operator, node.options));
+
   // render a call expression as
   //
   //   callee(arg1, arg2, ...)
@@ -217,6 +219,37 @@ function formatFunctionCall(
     softline,
     ")",
   ]);
+}
+
+function quoteNamedArgValue(value: string): StartDelimiter {
+  if (value.includes('"') && !value.includes("'")) {
+    return "'";
+  }
+  return '"';
+}
+
+function formatNamedArguments(
+  operator: Lib.ExpressionOperator,
+  options: Lib.ExpressionOptions,
+): Doc[] {
+  const clause = getClauseDefinition(operator);
+  if (!clause) {
+    return [];
+  }
+
+  const docs: Doc[] = [];
+  for (const namedArg of clause.namedArgs) {
+    const value = options[namedArg.option];
+    if (value != null) {
+      const text = String(value);
+      docs.push([
+        namedArg.name,
+        " => ",
+        formatStringLiteral(text, quoteNamedArgValue(text)),
+      ]);
+    }
+  }
+  return docs;
 }
 
 function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {

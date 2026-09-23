@@ -213,7 +213,20 @@
     (testing "a last-stage prompt column writing to a table is allowed"
       (is (transforms-base.u/prompt-query? (-> valid-xform :source :query)))
       (is (nil? (transforms-base.u/prompt-usage-error valid-xform)))
-      (is (= #{"Sentiment"} (transforms-base.u/last-stage-prompt-names (-> valid-xform :source :query)))))
+      (is (= #{"Sentiment"} (transforms-base.u/last-stage-prompt-names (-> valid-xform :source :query))))
+      (is (contains? (transforms-base.u/last-stage-prompt-options (-> valid-xform :source :query))
+                     "Sentiment")))
+    (testing "prompt-output errors are reported at save time"
+      (let [bad (lib/expression base "Score"
+                                (lib/expression-clause :prompt [field] {:return-type  :integer
+                                                                        :json-schema "{\"type\": \"integer\"}"}))]
+        (is (= "Use returnType or jsonSchema, not both"
+               (transforms-base.u/prompt-usage-error (prompt-transform bad))))))
+    (testing "last-stage-prompt-options includes return-type"
+      (let [query (lib/expression base "Score"
+                                  (lib/expression-clause :prompt [field] {:return-type :integer}))]
+        (is (= :integer
+               (:return-type (get (transforms-base.u/last-stage-prompt-options query) "Score"))))))
     (testing "queries without prompt() are ignored"
       (is (not (transforms-base.u/prompt-query? base)))
       (is (nil? (transforms-base.u/prompt-usage-error (prompt-transform base)))))

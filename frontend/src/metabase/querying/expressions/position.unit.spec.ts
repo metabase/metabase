@@ -166,4 +166,58 @@ describe("enclosingFunction", () => {
       },
     });
   });
+
+  describe("named arguments", () => {
+    it("should report the named-argument identifier", () => {
+      expect(
+        setup('prompt("x", [Review], |returnType => "integer")')?.arg,
+      ).toMatchObject({
+        index: 2,
+        named: "returnType",
+      });
+      expect(
+        setup('prompt("x", [Review], returnType| => "integer")')?.arg?.named,
+      ).toBe("returnType");
+      expect(
+        setup('prompt("x", [Review], returnType => |"integer")')?.arg?.named,
+      ).toBe("returnType");
+      expect(
+        setup('prompt("x", [Review], returnType => "integer|")')?.arg?.named,
+      ).toBe("returnType");
+    });
+
+    it("should not mark a positional argument as named", () => {
+      expect(setup('prompt("|x", returnType => "integer")')?.arg).toMatchObject(
+        {
+          index: 0,
+        },
+      );
+      expect(
+        setup('prompt("|x", returnType => "integer")')?.arg?.named,
+      ).toBeUndefined();
+      expect(
+        setup('prompt("x", [Review]|, returnType => "integer")')?.arg?.named,
+      ).toBeUndefined();
+    });
+
+    it("should not treat a bare identifier as a named argument", () => {
+      expect(setup("concat(First, Middle, Last|")?.arg?.named).toBeUndefined();
+      expect(setup('prompt("x", returnType|)')?.arg?.named).toBeUndefined();
+    });
+
+    it("should keep the named-argument index after extra positional arguments", () => {
+      expect(
+        setup('prompt("x", [Review], [Body], returnType| => "integer")')?.arg,
+      ).toMatchObject({
+        index: 3,
+        named: "returnType",
+      });
+    });
+
+    it("should report jsonSchema as a named argument", () => {
+      expect(
+        setup(`prompt("x", jsonSchema| => '{"type": "integer"}')`)?.arg?.named,
+      ).toBe("jsonSchema");
+    });
+  });
 });

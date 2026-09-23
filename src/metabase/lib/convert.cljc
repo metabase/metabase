@@ -590,7 +590,8 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
-             :concat :prompt :substring :replace :regex-match-first :split-part :collate
+             ;; :prompt is omitted: it uses ::options-style.mbql5 like :offset, so options stay on the clause.
+             :concat :substring :replace :regex-match-first :split-part :collate
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 

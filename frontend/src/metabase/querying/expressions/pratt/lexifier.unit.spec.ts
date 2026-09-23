@@ -8,6 +8,7 @@ import {
   COMMA,
   COMPARISON,
   END_OF_INPUT,
+  EQUALITY,
   FIELD,
   GROUP,
   GROUP_CLOSE,
@@ -16,6 +17,7 @@ import {
   LOGICAL_NOT,
   LOGICAL_OR,
   MULDIV_OP,
+  NAMED_ARG,
   NUMBER,
   STRING,
   SUB,
@@ -79,6 +81,32 @@ describe("lexify", () => {
             { type: COMPARISON, start: 7, text: ">=" },
             { type: NUMBER, start: 10, text: "0" },
             { type: END_OF_INPUT, start: 11, text: "\n" },
+          ].map(asToken),
+        );
+      }
+
+      {
+        const expression = "a => b";
+        const tokens = lexify(expression);
+        expect(tokens).toEqual(
+          [
+            { type: IDENTIFIER, start: 0, text: "a", value: "a" },
+            { type: NAMED_ARG, start: 2, text: "=>" },
+            { type: IDENTIFIER, start: 5, text: "b", value: "b" },
+            { type: END_OF_INPUT, start: 6, text: "\n" },
+          ].map(asToken),
+        );
+      }
+
+      {
+        const expression = "a = b";
+        const tokens = lexify(expression);
+        expect(tokens).toEqual(
+          [
+            { type: IDENTIFIER, start: 0, text: "a", value: "a" },
+            { type: EQUALITY, start: 2, text: "=" },
+            { type: IDENTIFIER, start: 4, text: "b", value: "b" },
+            { type: END_OF_INPUT, start: 5, text: "\n" },
           ].map(asToken),
         );
       }

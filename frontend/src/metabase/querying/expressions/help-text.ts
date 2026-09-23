@@ -8,6 +8,7 @@ export type HelpText = {
   name: string;
   category: Lib.MBQLClauseCategory;
   args: Lib.ClauseArgDefinition[];
+  namedArgs: Lib.NamedArgConfig[];
   description: string;
   example: Lib.ExpressionParts;
   displayName: string;
@@ -24,7 +25,8 @@ export function getHelpText(
     return null;
   }
 
-  const { displayName, args, description, category, docsPage } = clause;
+  const { displayName, args, namedArgs, description, category, docsPage } =
+    clause;
 
   if (!description || !category) {
     return null;
@@ -35,7 +37,8 @@ export function getHelpText(
     displayName,
     category,
     args,
-    example: getExample(name, args),
+    namedArgs,
+    example: getExample(name, args, namedArgs),
     description: description(database, reportTimezone),
     docsUrl: docsPage
       ? `questions/query-builder/expressions/${docsPage}`
@@ -50,11 +53,27 @@ export function getHelpText(
 function getExample(
   name: string,
   args: Lib.ClauseArgDefinition[],
+  namedArgs: Lib.NamedArgConfig[],
 ): Lib.ExpressionParts {
   return {
     // Unjustified type cast. FIXME
     operator: name as Lib.ExpressionOperator,
-    options: {},
+    options: namedArgExampleOptions(namedArgs),
     args: args.flatMap((arg) => arg.example).filter(isNotNull),
   };
+}
+
+function namedArgExampleOptions(
+  namedArgs: readonly Lib.NamedArgConfig[],
+): Lib.ExpressionOptions {
+  const options: Record<string, string> = {};
+
+  for (const namedArg of namedArgs) {
+    if (namedArg.example != null) {
+      options[namedArg.option] = namedArg.example;
+    }
+  }
+
+  // Each named arg's example is a valid value for its option key.
+  return options as Lib.ExpressionOptions;
 }

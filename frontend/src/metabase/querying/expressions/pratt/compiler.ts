@@ -24,6 +24,7 @@ import {
   LOGICAL_NOT,
   LOGICAL_OR,
   MULDIV_OP,
+  NAMED_ARG,
   NEGATIVE,
   NUMBER,
   ROOT,
@@ -241,10 +242,13 @@ function compileFunctionCall(node: Node, ctx: Context): Lib.ExpressionParts {
 
   check(isDefinedClause(operator), t`Unknown function ${operator}`, node);
 
-  const args = compileArgList(node.children[0], operator, ctx);
+  const argList = node.children[0];
+  const { positional, named } = splitNamedArgs(argList.children);
+  const args = compileArgList(argList, operator, ctx, positional);
   const options: Lib.ExpressionOptions = {};
   const clause = getClauseDefinition(operator);
   const hasOptions = clause?.hasOptions ?? false;
+  Object.assign(options, compileNamedArgs(named, clause));
 
   if (hasOptions) {
     const last = args.at(-1);
@@ -294,23 +298,117 @@ function compileDatetimeMode(
   return DATETIME_MODE_MAP[mode.toLowerCase().replaceAll("-", "")];
 }
 
+function splitNamedArgs(children: Node[]): {
+  positional: Node[];
+  named: Node[];
+} {
+  const positional: Node[] = [];
+  const named: Node[] = [];
+  let seenNamed = false;
+
+  for (const child of children) {
+    if (child.type === NAMED_ARG) {
+      seenNamed = true;
+      named.push(child);
+    } else if (seenNamed) {
+      throw new CompileError(
+        t`Named arguments must come after the other arguments`,
+        child,
+      );
+    } else {
+      positional.push(child);
+    }
+  }
+
+  return { positional, named };
+}
+
+function compileNamedArgs(
+  named: Node[],
+  clause: ReturnType<typeof getClauseDefinition>,
+): Lib.ExpressionOptions {
+  if (named.length === 0) {
+    return {};
+  }
+
+  check(clause != null, t`Unknown function`, named[0]);
+
+  if (clause.namedArgs.length === 0) {
+    throw new CompileError(
+      t`prompt is the only function with named arguments`,
+      named[0],
+    );
+  }
+
+  const options: Lib.ExpressionOptions = {};
+  const seen = new Set<string>();
+
+  for (const node of named) {
+    const nameNode = node.children[0];
+    const valueNode = node.children[1];
+    const name = nameNode?.token?.value ?? "";
+    const def = clause.namedArgs.find((arg) => arg.name === name);
+
+    if (!def) {
+      const suggestion = clause.namedArgs.find(
+        (arg) => arg.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (suggestion) {
+        throw new CompileError(t`Did you mean ${suggestion.name}?`, node);
+      }
+      throw new CompileError(t`Unknown named argument ${name}`, node);
+    }
+
+    if (seen.has(def.name)) {
+      throw new CompileError(t`${def.name} is specified more than once`, node);
+    }
+    seen.add(def.name);
+
+    check(
+      valueNode?.type === STRING,
+      t`${def.name} must be text in quotes, like ${def.name} => "${def.example}"`,
+      valueNode ?? node,
+    );
+
+    const value = compileString(valueNode);
+    if (def.values && !def.values.includes(value)) {
+      throw new CompileError(
+        t`${def.name} must be one of: ${def.values.join(", ")}`,
+        valueNode,
+      );
+    }
+
+    Object.assign(options, { [def.option]: value });
+  }
+
+  return options;
+}
+
+function compileNamedArg(node: Node): never {
+  throw new CompileError(
+    t`Named arguments can only be used as function arguments`,
+    node,
+  );
+}
+
 function compileArgList(
   node: Node,
   operator: Lib.ExpressionOperator,
   ctx: Context,
+  children: Node[] = node.children,
 ): (Lib.ExpressionParts | Lib.ExpressionArg)[] {
   assert(node.type === ARG_LIST, t`Invalid node type`);
 
   const defn = getClauseDefinition(operator);
   assert(defn, t`Unknown operator ${operator}`);
 
-  return node.children.map((child, index) => {
+  return children.map((child, index) => {
     if (index >= defn.args.length && !defn.multiple) {
       // as-is, optional object for e.g. ends-with, time-interval, etc
       return withNode(child, compileNode(child, ctx));
     }
 
-    const type = defn.argType(index, node.children, ctx.type);
+    const type = defn.argType(index, children, ctx.type);
     return withNode(child, compileNode(child, { ...ctx, type }));
   });
 }
@@ -486,4 +584,5 @@ const COMPILE = new Map<NodeType, CompileFn>([
   [STRING, compileString],
   [SUB, compileSubtractionOp],
   [IDENTIFIER, compileIdentifier],
+  [NAMED_ARG, compileNamedArg],
 ]);

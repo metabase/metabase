@@ -8,6 +8,7 @@ import {
   type MBQLClauseDefinition,
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
+  NAMED_ARGS,
   TRANSFORM_ONLY,
 } from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -31,6 +32,11 @@ export function getClauseDefinition(
 
   const defn: MBQLClauseDefinition = MBQL_CLAUSES[name];
   const args = defn.args();
+  const namedArgs = (defn.namedArgs?.() ?? []).map((entry) => ({
+    ...NAMED_ARGS[entry.name],
+    ...entry,
+    example: entry.example,
+  }));
 
   return {
     name,
@@ -41,6 +47,7 @@ export function getClauseDefinition(
     hasOptions: Boolean(defn.hasOptions),
     multiple: Boolean(defn.multiple),
     args,
+    namedArgs,
   };
 }
 

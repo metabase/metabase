@@ -104,6 +104,90 @@ describe("HelpText (OSS)", () => {
     });
   });
 
+  describe("named arguments", () => {
+    const promptSetup = {
+      enclosingFunction: { name: "prompt" as const },
+      allowTransformOnlyFunctions: true,
+      features: ["transforms/python" as const],
+    };
+
+    it("should list named arguments in the signature and descriptions", async () => {
+      const { helpText } = await setup(promptSetup);
+
+      expect(
+        screen.getByText(
+          getBrokenUpTextMatcher("prompt(text, …, returnType, jsonSchema)"),
+        ),
+      ).toBeInTheDocument();
+
+      const argumentsBlock = screen.getByTestId(
+        "expression-helper-popover-arguments",
+      );
+
+      helpText?.namedArgs.forEach(({ name, description }) => {
+        expect(
+          within(argumentsBlock).getByTestId(`arg-${name}-name`),
+        ).toHaveTextContent(name);
+        expect(
+          within(argumentsBlock).getByTestId(`arg-${name}-description`),
+        ).toHaveTextContent(description);
+      });
+    });
+
+    it("should show a named argument in the example", async () => {
+      await setup(promptSetup);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("helptext-example")).toHaveTextContent(
+          'returnType => "integer"',
+        );
+      });
+    });
+
+    it("should highlight the named argument instead of the rest argument", async () => {
+      await setup({
+        ...promptSetup,
+        enclosingFunction: {
+          name: "prompt",
+          arg: { index: 3, named: "returnType" },
+        },
+      });
+
+      const structure = screen.getByTestId(
+        "expression-helper-popover-structure",
+      );
+
+      expect(within(structure).getByText("returnType")).toHaveAttribute(
+        "data-active",
+      );
+      expect(within(structure).getByText("…")).not.toHaveAttribute(
+        "data-active",
+      );
+      expect(within(structure).getByText("jsonSchema")).not.toHaveAttribute(
+        "data-active",
+      );
+    });
+
+    it("should still highlight the rest argument for extra positional arguments", async () => {
+      await setup({
+        ...promptSetup,
+        enclosingFunction: {
+          name: "prompt",
+          arg: { index: 3 },
+        },
+      });
+
+      const structure = screen.getByTestId(
+        "expression-helper-popover-structure",
+      );
+
+      expect(within(structure).getByText("…")).toHaveAttribute("data-active");
+      expect(within(structure).getByText("returnType")).not.toHaveAttribute(
+        "data-active",
+      );
+    });
+  });
+
   describe("Metabase links", () => {
     it("should show a help link when `show-metabase-links: true`", async () => {
       await setup({

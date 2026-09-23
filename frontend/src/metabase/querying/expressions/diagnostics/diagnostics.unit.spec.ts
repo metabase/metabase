@@ -82,6 +82,39 @@ describe("diagnostics", () => {
       );
     });
 
+    describe("prompt named arguments", () => {
+      function promptErr(expression: string) {
+        return diagnose({
+          source: expression,
+          expressionMode: "expression",
+          query,
+          stageIndex,
+          availableColumns: Lib.expressionableColumns(query, stageIndex),
+          allowTransformOnlyFunctions: true,
+        })?.message;
+      }
+
+      it("rejects returnType and jsonSchema together", () => {
+        expect(
+          promptErr(
+            `prompt("x", returnType => "integer", jsonSchema => '{"type": "integer"}')`,
+          ),
+        ).toBe("Use returnType or jsonSchema, not both");
+      });
+
+      it("rejects invalid jsonSchema JSON", () => {
+        expect(promptErr(`prompt("x", jsonSchema => "not-json")`)).toBe(
+          "jsonSchema must be valid JSON",
+        );
+      });
+
+      it("rejects a jsonSchema that is not an object", () => {
+        expect(promptErr(`prompt("x", jsonSchema => '"hello"')`)).toBe(
+          'jsonSchema must be a JSON object, like {"type": "integer"}',
+        );
+      });
+    });
+
     describe("sibling tokens validation", () => {
       const left = ["[Total]", '"string"', "42", "(10 + 5)", "true"];
       const right = [

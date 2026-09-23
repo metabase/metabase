@@ -98,6 +98,7 @@
    [metabase.lib.parameters.parse]
    [metabase.lib.parameters.parse.types]
    [metabase.lib.parse :as lib.parse]
+   [metabase.lib.prompt :as lib.prompt]
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
@@ -350,7 +351,10 @@
 (shared.ns/import-fns
  [lib.expression
   resolve-expression
-  value])
+  value]
+ [lib.prompt
+  named-arg-keys
+  prompt-output])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of

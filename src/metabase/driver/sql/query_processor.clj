@@ -1383,8 +1383,11 @@
   [driver [_tag opts & args]]
   ;; Compile as concat so ad-hoc queries never reach the LLM. Pad a single arg so
   ;; drivers that require at least two concat operands still accept prompt(x).
-  (->honeysql driver (into [:concat opts] (cond-> args
-                                            (= 1 (count args)) (concat [""])))))
+  ;; Drop prompt named-arg keys so they don't leak into :concat; keep shared keys
+  ;; such as ::add-cast that the SQL compiler reads from clause options.
+  (->honeysql driver (into [:concat (apply dissoc opts lib/named-arg-keys)]
+                           (cond-> args
+                             (= 1 (count args)) (concat [""])))))
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ _opts arg start length]]

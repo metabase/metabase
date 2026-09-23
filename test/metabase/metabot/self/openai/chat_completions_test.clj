@@ -212,6 +212,26 @@
                                             :tools       [(metabot.tu/get-time-tool)]
                                             :tool_choice "required"})))))
 
+(def ^:private wrapped-user-schema
+  {:type                 "object"
+   :properties           {"value" {"type"       "object"
+                                   "$defs"      {"item" {"type"       "object"
+                                                         "properties" {"name" {"type" "string"}}}}
+                                   "properties" {"label" {"type" "string"
+                                                          "enum" ["positive" "neutral" "negative"]}
+                                                 "items" {"type"  "array"
+                                                          "items" {"$ref" "#/$defs/item"}}}
+                                   "required"   ["label"]}}
+   :required             ["value"]
+   :additionalProperties false})
+
+(deftest ^:parallel request-body-accepts-wrapped-user-schema-test
+  (testing "a wrapper that nests a user schema (enum, nested object, $defs) is accepted"
+    (is (=? {:tools [{:function {:parameters wrapped-user-schema}}]}
+            (chat-completions/request-body {:model  "some/model"
+                                            :input  [{:role :user :content "hi"}]
+                                            :schema wrapped-user-schema})))))
+
 (deftest ^:parallel request-body-schema-forces-structured-output-test
   (testing "a schema forces a structured_output tool call"
     (is (=? {:tools       [{:type     "function"

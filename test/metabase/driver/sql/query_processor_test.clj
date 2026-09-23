@@ -6,6 +6,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [malli.generator :as mg]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -15,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.expression.string :as lib.schema.expression.string]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -844,7 +847,14 @@
            (sql.qp/->honeysql :h2 [:prompt {} "a" "b"])))
     (testing "a single argument is padded so drivers that require two concat operands still accept it"
       (is (= (sql.qp/->honeysql :h2 [:concat {} "only" ""])
-             (sql.qp/->honeysql :h2 [:prompt {} "only"]))))))
+             (sql.qp/->honeysql :h2 [:prompt {} "only"]))))
+    (testing "every prompt named-arg key is stripped and does not change the SQL"
+      (let [named (mg/generate (mut/required-keys
+                                (mr/resolve-schema ::lib.schema.expression.string/prompt.named-args))
+                               {:size 5})
+            opts  (merge {:lib/uuid (str (random-uuid))} named)]
+        (is (= (sql.qp/->honeysql :h2 [:concat {} "a" "b"])
+               (sql.qp/->honeysql :h2 [:prompt opts "a" "b"])))))))
 
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"

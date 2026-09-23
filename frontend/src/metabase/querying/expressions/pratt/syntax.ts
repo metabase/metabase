@@ -59,6 +59,8 @@ export const STRING = {} as NodeType;
 export const SUB = {} as NodeType;
 // Unjustified type cast. FIXME
 export const IDENTIFIER = {} as NodeType;
+// Unjustified type cast. FIXME
+export const NAMED_ARG = {} as NodeType;
 
 function operand(leftOperands: number, rightOperands: number) {
   return {
@@ -99,6 +101,7 @@ export const NODE_TYPE = {
   SUB,
   FIELD,
   IDENTIFIER,
+  NAMED_ARG,
 };
 
 // Set default values for AST node attributes
@@ -126,7 +129,16 @@ setAttributes(
   // Infix Operators
   [
     operand(1, 1),
-    [MULDIV_OP, ADD, SUB, COMPARISON, EQUALITY, LOGICAL_AND, LOGICAL_OR],
+    [
+      MULDIV_OP,
+      ADD,
+      SUB,
+      COMPARISON,
+      EQUALITY,
+      LOGICAL_AND,
+      LOGICAL_OR,
+      NAMED_ARG,
+    ],
   ],
 
   // Open Expressions (various paren types, blocks, etc.) and their terminators
@@ -201,6 +213,8 @@ NEGATIVE.checkChildConstraints = childConstraintByPosition([
 ]);
 CALL.checkChildConstraints = childConstraintByPosition([ARG_LIST]);
 
+NAMED_ARG.checkChildConstraints = childConstraintByPosition([IDENTIFIER]);
+
 function anyChildConstraint(...acceptableTypes: NodeType[]) {
   return (node: Node) => {
     for (const child of node.children) {
@@ -246,6 +260,7 @@ ROOT.checkChildConstraints = anyChildConstraint(
   [LOGICAL_NOT],
   [LOGICAL_AND],
   [LOGICAL_OR],
+  [NAMED_ARG],
   [BOOLEAN, IDENTIFIER],
 ].forEach((tier, precedence, tiers) => {
   for (const type of tier) {

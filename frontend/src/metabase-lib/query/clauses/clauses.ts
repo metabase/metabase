@@ -1893,13 +1893,13 @@ export const TRANSFORM_ONLY = defineClauses(
       multiple: true,
       requiresFeature: "transforms/python",
       description: () =>
-        t`Sends the concatenated arguments to your configured AI model and returns the response.`,
+        t`Sends the concatenated arguments to your configured AI model and returns the response. Use returnType to pick the column type.`,
       args: () => [
         {
           name: t`text`,
           type: "expression",
           description: t`The column or text to begin the prompt with.`,
-          example: t`Classify the sentiment as positive, neutral, or negative: `,
+          example: t`Rate this review from 1 to 5: `,
         },
         {
           name: "…",
@@ -1907,6 +1907,17 @@ export const TRANSFORM_ONLY = defineClauses(
           description: t`Additional columns or text to concatenate into the prompt.`,
           example: dimension(t`Review`),
           optional: true,
+        },
+      ],
+      namedArgs: () => [
+        {
+          name: "returnType",
+          description: t`The type of the output column: text, integer, float, boolean, date, or datetime.`,
+          example: "integer",
+        },
+        {
+          name: "jsonSchema",
+          description: t`A JSON Schema for the model's answer, as a quoted string.`,
         },
       ],
     },

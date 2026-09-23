@@ -600,11 +600,49 @@
                 (lib.expression/diagnose-expression
                  query 0 :filter
                  (lib/= (lib/expression-ref query "Sentiment") "good")
-                 nil)))))))
+                 nil)))))
+    (testing "named-argument errors from prompt-output"
+      (is (=? {:message "Use returnType or jsonSchema, not both"}
+              (lib.expression/diagnose-expression
+               base 0 :expression
+               (lib/expression-clause :prompt [field] {:return-type  :integer
+                                                       :json-schema "{\"type\": \"integer\"}"})
+               nil)))
+      (is (=? {:message "jsonSchema must be valid JSON"}
+              (lib.expression/diagnose-expression
+               base 0 :expression
+               (lib/expression-clause :prompt [field] {:json-schema "not-json"})
+               nil)))
+      (is (=? {:message "jsonSchema must be a JSON object, like {\"type\": \"integer\"}"}
+              (lib.expression/diagnose-expression
+               base 0 :expression
+               (lib/expression-clause :prompt [field] {:json-schema "\"hello\""})
+               nil))))))
 
 (deftest ^:parallel prompt-clause-schema-test
   (is (mr/validate :mbql.clause/prompt (lib/prompt "hello")))
-  (is (mr/validate :mbql.clause/prompt (lib/prompt (meta/field-metadata :orders :subtotal) " please"))))
+  (is (mr/validate :mbql.clause/prompt (lib/prompt (meta/field-metadata :orders :subtotal) " please")))
+  (testing "named-argument options validate and normalize"
+    (is (mr/validate :mbql.clause/prompt
+                     (lib/expression-clause :prompt ["hello"] {:return-type :integer})))
+    (is (mr/validate :mbql.clause/prompt
+                     (lib/normalize [:prompt {"return-type" "integer"} "hello"])))
+    (is (= :integer
+           (:return-type (lib.options/options
+                          (lib/normalize [:prompt {"return-type" "integer"} "hello"])))))
+    (is (not (mr/validate :mbql.clause/prompt
+                          [:prompt {:lib/uuid "00000000-0000-0000-0000-000000000000"
+                                    :return-type :number}
+                           "hello"]))))
+  (testing "expression-clause and expression-parts round-trip the options"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          clause (lib/expression-clause :prompt ["hello"] {:return-type :integer})
+          parts  (lib/expression-parts query -1 clause)]
+      (is (= :integer (get-in parts [:options :return-type])))))
+  (testing "converting to legacy MBQL and back keeps the options"
+    (let [clause (lib/expression-clause :prompt ["hello"] {:return-type :integer})
+          back   (-> clause lib.convert/->legacy-MBQL lib.convert/->mbql5)]
+      (is (= :integer (:return-type (lib.options/options back)))))))
 
 (deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
   (testing "adding/editing a filter using offset is not allowed"

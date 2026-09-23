@@ -321,6 +321,25 @@
              [{:type :reasoning :id "r1" :text "unsigned"}
               {:type :tool-input :id "call-1" :function "search" :arguments {}}])))))
 
+(def ^:private wrapped-user-schema
+  {:type                 "object"
+   :properties           {"value" {"type"       "object"
+                                   "$defs"      {"item" {"type"       "object"
+                                                         "properties" {"name" {"type" "string"}}}}
+                                   "properties" {"label" {"type" "string"
+                                                          "enum" ["positive" "neutral" "negative"]}
+                                                 "items" {"type"  "array"
+                                                          "items" {"$ref" "#/$defs/item"}}}
+                                   "required"   ["label"]}}
+   :required             ["value"]
+   :additionalProperties false})
+
+(deftest ^:parallel claude-request-body-accepts-wrapped-user-schema-test
+  (testing "a wrapper that nests a user schema (enum, nested object, $defs) is accepted"
+    (let [body (claude/claude-request-body {:input  [{:role :user :content "hi"}]
+                                            :schema wrapped-user-schema})]
+      (is (= wrapped-user-schema (-> body :tools first :input_schema))))))
+
 (deftest ^:parallel claude-request-body-fast-mode-test
   (let [input [{:role :user :content "hi"}]
         speed #(:speed (claude/claude-request-body (merge {:input input} %)))]

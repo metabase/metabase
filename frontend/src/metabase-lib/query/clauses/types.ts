@@ -3,6 +3,7 @@ import type { Database, DatabaseFeature } from "metabase-types/api";
 import type { ExpressionArg, ExpressionParts } from "../types";
 
 import type { DefinedClauseName } from "./clauses";
+import type { NamedArgConfig, NamedArgName } from "./named-args";
 
 export enum MBQLClauseCategory {
   Logical = "logical",
@@ -53,6 +54,11 @@ export type MBQLClauseDefinition = {
   validator?: (...args: any) => string | undefined;
   description?(database: Database, reportTimezone?: string): string;
   docsPage?: string;
+  namedArgs?(): {
+    name: NamedArgName;
+    description: string;
+    example?: string;
+  }[];
 };
 
 type DatabaseOptions = {
@@ -73,4 +79,5 @@ export type MBQLClauseFunctionConfig = {
   validator?: (...args: any) => string | undefined;
   description?(database: DatabaseOptions, reportTimezone?: string): string;
   docsPage?: string;
+  namedArgs: NamedArgConfig[];
 };

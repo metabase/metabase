@@ -589,6 +589,28 @@
   [query]
   (prompt-expression-names (lib.util/query-stage query -1)))
 
+(defn- prompt-expression-options
+  "Map of expression name -> options for top-level `:prompt` clauses in `stage`."
+  [stage]
+  (into {}
+        (concat
+         (when (map? (:expressions stage))
+           (keep (fn [[k v]]
+                   (when (and (vector? v) (= :prompt (first v)))
+                     [(u/qualified-name k) (second v)]))
+                 (:expressions stage)))
+         (keep (fn [expr]
+                 (when (and (vector? expr) (= :prompt (first expr)))
+                   (when-let [name (or (get-in expr [1 :lib/expression-name])
+                                       (get-in expr [1 :name]))]
+                     [name (second expr)])))
+               (expression-forms stage)))))
+
+(defn last-stage-prompt-options
+  "Map of last-stage top-level `:prompt` expression name -> options."
+  [query]
+  (prompt-expression-options (lib.util/query-stage query -1)))
+
 (defn prompt-usage-error
   "Error message when `transform` uses `:prompt` in a way that cannot be evaluated, otherwise nil.
 
@@ -598,7 +620,10 @@
   (when (prompt-query? (-> transform :source :query))
     (or (when-not (table-target? transform)
           (i18n/tru "prompt() transforms can only write to a table"))
-        (prompt-stages-error (:stages (lib.util/pipeline (-> transform :source :query))) true))))
+        (prompt-stages-error (:stages (lib.util/pipeline (-> transform :source :query))) true)
+        (some (fn [[_name opts]]
+                (:error (lib/prompt-output opts)))
+              (last-stage-prompt-options (-> transform :source :query))))))
 
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."

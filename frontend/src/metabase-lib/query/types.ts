@@ -31,6 +31,7 @@ import type {
 } from "../common";
 
 import type { DefinedClauseName } from "./clauses";
+import type { NamedArgOptions } from "./clauses/named-args";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -320,7 +321,7 @@ export type ExpressionOptions = {
   "base-type"?: string;
   "effective-type"?: string;
   mode?: DatetimeMode;
-};
+} & NamedArgOptions;
 
 export type { FilterOperator };
 

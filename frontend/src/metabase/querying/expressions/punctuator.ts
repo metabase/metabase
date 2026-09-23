@@ -17,6 +17,7 @@ const PUNCTUATOR_TO_TYPE = {
   ">": t.COMPARISON,
   "<=": t.COMPARISON,
   ">=": t.COMPARISON,
+  "=>": t.NAMED_ARG,
   not: t.LOGICAL_NOT,
   and: t.LOGICAL_AND,
   or: t.LOGICAL_OR,

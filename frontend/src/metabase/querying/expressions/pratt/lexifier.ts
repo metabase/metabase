@@ -12,10 +12,39 @@ import {
   END_OF_INPUT,
   FIELD,
   IDENTIFIER,
+  NAMED_ARG,
   NUMBER,
   STRING,
 } from "./syntax";
 import { Token } from "./token";
+
+function mergeAdjacentEqualsGreater(tokens: Token[]): Token[] {
+  const merged: Token[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const current = tokens[i];
+    const next = tokens[i + 1];
+    // Lezer only produces a `=>` node inside a function Arg. Elsewhere the
+    // tree is `=` then `>`, so join adjacent tokens into NAMED_ARG.
+    if (
+      current.text === "=" &&
+      next?.text === ">" &&
+      current.end === next.start
+    ) {
+      merged.push(
+        new Token({
+          type: NAMED_ARG,
+          start: current.start,
+          end: next.end,
+          text: "=>",
+        }),
+      );
+      i += 1;
+    } else {
+      merged.push(current);
+    }
+  }
+  return merged;
+}
 
 export function lexify(source: string) {
   const lexs: Token[] = [];
@@ -109,5 +138,5 @@ export function lexify(source: string) {
     }),
   );
 
-  return lexs.sort((a, b) => a.start - b.start);
+  return mergeAdjacentEqualsGreater(lexs.sort((a, b) => a.start - b.start));
 }

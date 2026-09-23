@@ -19,6 +19,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.expression.string :as lib.schema.expression.string]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -49,11 +50,13 @@
 
 (def ^:private ExpressionOptions
   "Like `:metabase.lib.schema.common/options`, but `:lib/uuid` need not be set yet;
-  see [[metabase.lib.options/ensure-uuid]]."
+  see [[metabase.lib.options/ensure-uuid]]. Named-argument keys from [[::lib.schema.expression.string/prompt.named-args]]
+  are included so `expression-clause` keeps `returnType` / `jsonSchema`."
   [:merge
    ::lib.schema.common/options
    [:map {:closed true}
-    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]
+   ::lib.schema.expression.string/prompt.named-args])
 
 (def ^:private ExpressionParts
   [:schema

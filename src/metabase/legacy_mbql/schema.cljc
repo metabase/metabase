@@ -24,6 +24,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.constraints :as lib.schema.constraints]
+   [metabase.lib.schema.expression.string :as lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -695,8 +696,11 @@
   more (rest [:ref ::ExpressionArg]))
 
 (defclause prompt
+  opts [:ref ::lib.schema.expression.string/prompt.options]
   a    [:ref ::ExpressionArg]
   more (rest [:ref ::ExpressionArg]))
+
+(defmethod options-style-method :prompt [_tag] ::options-style.mbql5)
 
 (defclause regex-match-first
   s       [:ref ::StringExpressionArg]

@@ -159,6 +159,25 @@ describe("getHelpText", () => {
       expect(() => formatExpressionParts(helpText.example)).not.toThrow();
     }
   });
+
+  it("prompt lists named arguments and shows those with an example", async () => {
+    const { database } = setup();
+    const helpText = getHelpText("prompt", database, reportTimezone);
+
+    expect(helpText?.namedArgs.map((arg) => arg.name)).toEqual([
+      "returnType",
+      "jsonSchema",
+    ]);
+    expect(helpText?.namedArgs[0]?.example).toBe("integer");
+    expect(helpText?.namedArgs[1]?.example).toBeUndefined();
+    expect(helpText?.example.options).toEqual({ "return-type": "integer" });
+    expect(
+      await formatExpressionParts(checkNotNull(helpText).example),
+    ).toContain('returnType => "integer"');
+    expect(
+      await formatExpressionParts(checkNotNull(helpText).example),
+    ).not.toContain("jsonSchema");
+  });
 });
 
 function setup(dbOpts?: Partial<Database>) {

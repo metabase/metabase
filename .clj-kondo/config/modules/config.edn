@@ -1252,6 +1252,7 @@
           metabase.lib.schema.drill-thru
           metabase.lib.schema.expression
           metabase.lib.schema.expression.conditional
+          metabase.lib.schema.expression.string
           metabase.lib.schema.expression.temporal
           metabase.lib.schema.expression.window
           metabase.lib.schema.extraction

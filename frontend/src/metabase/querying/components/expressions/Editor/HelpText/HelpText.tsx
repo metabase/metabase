@@ -13,7 +13,7 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
 import { hasRequiredFeature } from "metabase/databases";
 import {
-  type HelpText,
+  type EnclosingFunctionArg,
   expressionModeSupportsClause,
   getClauseDefinition,
   getHelpText,
@@ -37,14 +37,35 @@ function wrapPlaceholder(name: string) {
   return name;
 }
 
+function isPositionalArgActive(
+  name: string,
+  index: number,
+  argCount: number,
+  enclosingArg:
+    | Pick<EnclosingFunctionArg, "index" | "named">
+    | null
+    | undefined,
+) {
+  if (enclosingArg == null || enclosingArg.named != null) {
+    return false;
+  }
+
+  return (
+    enclosingArg.index === index ||
+    (name === "…" && enclosingArg.index > argCount - 1)
+  );
+}
+
+function isNamedArgActive(name: string, named: string | undefined) {
+  return named != null && name.toLowerCase() === named.toLowerCase();
+}
+
 export type HelpTextProps = {
   open?: boolean;
   onToggle?: () => void;
   enclosingFunction?: {
     name: string;
-    arg: {
-      index: number;
-    } | null;
+    arg: Pick<EnclosingFunctionArg, "index" | "named"> | null;
   } | null;
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
@@ -115,8 +136,26 @@ export function HelpText({
     return null;
   }
 
-  const { description, displayName: structure, args, example } = helpText;
-  const argIndex = enclosingFunction?.arg?.index ?? -1;
+  const {
+    description,
+    displayName: structure,
+    args,
+    namedArgs,
+    example,
+  } = helpText;
+  const enclosingArg = enclosingFunction?.arg;
+  const signatureItems = [
+    ...args.map((arg, index) => ({
+      key: `arg-${index}`,
+      name: arg.name,
+      active: isPositionalArgActive(arg.name, index, args.length, enclosingArg),
+    })),
+    ...namedArgs.map((arg) => ({
+      key: `named-${arg.name}`,
+      name: arg.name,
+      active: isNamedArgActive(arg.name, enclosingArg?.named),
+    })),
+  ];
 
   return (
     <>
@@ -131,18 +170,15 @@ export function HelpText({
           {
             <>
               (
-              {args?.map(({ name }, index) => (
-                <span key={index}>
+              {signatureItems.map(({ key, name, active }, index) => (
+                <span key={key}>
                   <span
-                    className={cx(S.arg, {
-                      [S.active]:
-                        argIndex === index ||
-                        (name === "…" && argIndex > args.length - 1),
-                    })}
+                    className={cx(S.arg, { [S.active]: active })}
+                    data-active={active || undefined}
                   >
                     {wrapPlaceholder(name)}
                   </span>
-                  {index < args.length - 1 && ", "}
+                  {index < signatureItems.length - 1 && ", "}
                 </span>
               ))}
               )
@@ -168,13 +204,13 @@ export function HelpText({
             <Markdown components={components}>{description}</Markdown>
           </Box>
 
-          {args != null && (
+          {(args.length > 0 || namedArgs.length > 0) && (
             <Box
               className={S.arguments}
               data-testid="expression-helper-popover-arguments"
             >
-              {args.map(({ name, description }, index) => (
-                <Fragment key={index}>
+              {[...args, ...namedArgs].map(({ name, description }) => (
+                <Fragment key={name}>
                   <Box className={S.arg} data-testid={`arg-${name}-name`}>
                     {wrapPlaceholder(name)}
                   </Box>

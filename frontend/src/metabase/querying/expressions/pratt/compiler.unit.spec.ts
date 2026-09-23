@@ -794,6 +794,83 @@ describe("pratt/compiler", () => {
         "Unknown function unknown_fn",
       );
     });
+
+    describe("named arguments", () => {
+      it("compiles returnType and jsonSchema onto options", () => {
+        expect(expr('prompt("x", returnType => "integer")')).toEqual({
+          operator: "prompt",
+          options: { "return-type": "integer" },
+          args: ["x"],
+        });
+        expect(
+          expr(`prompt("x", jsonSchema => '{"type": "integer"}')`),
+        ).toEqual({
+          operator: "prompt",
+          options: { "json-schema": '{"type": "integer"}' },
+          args: ["x"],
+        });
+      });
+
+      it("rejects named arguments on functions that do not declare them", () => {
+        expect(() => expr('concat("a", returnType => "integer")')).toThrow(
+          "prompt is the only function with named arguments",
+        );
+      });
+
+      it("rejects named arguments before positional arguments", () => {
+        expect(() => expr('prompt(returnType => "integer", "x")')).toThrow(
+          "Named arguments must come after the other arguments",
+        );
+      });
+
+      it("rejects an unknown name and suggests the right spelling", () => {
+        expect(() => expr('prompt("x", returntype => "integer")')).toThrow(
+          "Did you mean returnType?",
+        );
+        expect(() => expr('prompt("x", schema => "integer")')).toThrow(
+          "Unknown named argument schema",
+        );
+      });
+
+      it("rejects a duplicate named argument", () => {
+        expect(() =>
+          expr('prompt("x", returnType => "integer", returnType => "text")'),
+        ).toThrow("returnType is specified more than once");
+      });
+
+      it("rejects a non-string value", () => {
+        expect(() => expr('prompt("x", returnType => integer)')).toThrow(
+          'returnType must be text in quotes, like returnType => "integer"',
+        );
+      });
+
+      it("rejects a returnType that is not allowed", () => {
+        expect(() => expr('prompt("x", returnType => "number")')).toThrow(
+          "returnType must be one of: text, integer, float, boolean, date, datetime",
+        );
+      });
+
+      it("rejects a named argument outside a function argument list", () => {
+        expect(() => expr('(returnType => "integer")')).toThrow(
+          "Named arguments can only be used as function arguments",
+        );
+      });
+
+      it.each([
+        'concat("a", returnType => "integer")',
+        'prompt(returnType => "integer", "x")',
+        'prompt("x", returntype => "integer")',
+        'prompt("x", returnType => "integer", returnType => "text")',
+        'prompt("x", returnType => integer)',
+        'prompt("x", returnType => "number")',
+      ])("reports a position for %s", (source) => {
+        expect(() => expr(source)).toThrow(
+          expect.objectContaining({
+            pos: expect.any(Number),
+          }),
+        );
+      });
+    });
   });
 });
 

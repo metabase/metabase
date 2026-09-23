@@ -6,6 +6,7 @@
   table."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -16,6 +17,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-prompt.llm :as llm]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.math BigDecimal)
@@ -62,14 +64,22 @@
                       {:status :failed :max-rows max-rows})))
     {:rows rows :cols cols}))
 
-(defn- prompt-column-indexes
+(defn- prompt-columns
+  "Prompt columns in `cols`, each `{:index i :output spec}` from [[lib/prompt-output]]."
   [query cols]
-  (let [names (transforms-base.u/last-stage-prompt-names query)]
+  (let [opts-by-name (transforms-base.u/last-stage-prompt-options query)]
     (into []
           (keep-indexed (fn [i col]
-                          (when (contains? names (:name col))
-                            i)))
+                          (when-let [opts (get opts-by-name (:name col))]
+                            (let [output (lib/prompt-output opts)]
+                              (when-let [message (:error output)]
+                                (throw (ex-info message {:status :failed})))
+                              {:index i :output output}))))
           cols)))
+
+(defn- cache-key
+  [output text]
+  [(:json-schema output) text])
 
 (defn- fatal-llm-error?
   [^Throwable e]
@@ -86,64 +96,158 @@
     e))
 
 (defn- record-failure!
-  [cache consecutive text e]
+  [cache consecutive output text e]
   (log/warnf "prompt() failed for a row: %s" (ex-message e))
-  (swap! cache assoc text nil)
+  (swap! cache assoc (cache-key output text) nil)
   (let [n (swap! consecutive inc)]
     (when (>= n max-consecutive-failures)
       (throw (ex-info (format "prompt() failed %d times in a row" max-consecutive-failures)
                       {:status :failed}
                       e)))))
 
+(defn- integral-number?
+  [v]
+  (and (number? v)
+       (or (integer? v)
+           (== (double v) (Math/rint (double v))))))
+
+(defn- parse-long-string
+  [s]
+  (when (re-matches #"-?\d+" s)
+    (try
+      (parse-long s)
+      (catch Exception _
+        nil))))
+
+(defn- parse-double-string
+  [s]
+  (when (re-matches #"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?" s)
+    (try
+      (parse-double s)
+      (catch Exception _
+        nil))))
+
+(defn- parse-datetime
+  [s]
+  (try
+    (t/local-date-time s)
+    (catch Exception _
+      (try
+        (t/local-date-time (t/instant s) (t/zone-id "UTC"))
+        (catch Exception _
+          nil)))))
+
+(defn- coerce-answer
+  "Coerce an LLM answer to the column type in `output`. Returns nil on mismatch
+  except for Text, which falls back to `str`."
+  [output v]
+  (let [base-type (:base-type output)]
+    (cond
+      (nil? v) nil
+
+      (= base-type :type/Text)
+      (cond
+        (:json-text? output) (if (string? v) v (json/encode v))
+        (string? v)          v
+        :else                (str v))
+
+      (= base-type :type/BigInteger)
+      (cond
+        (integer? v)         v
+        (integral-number? v) (long v)
+        (string? v)          (parse-long-string v)
+        :else                nil)
+
+      (= base-type :type/Float)
+      (cond
+        (number? v) (double v)
+        (string? v) (parse-double-string v)
+        :else       nil)
+
+      (= base-type :type/Boolean)
+      (cond
+        (boolean? v) v
+        (string? v)  ({"true" true "false" false} (str/lower-case v))
+        :else        nil)
+
+      (= base-type :type/Date)
+      (when (string? v)
+        (try
+          (t/local-date v)
+          (catch Exception _
+            nil)))
+
+      (= base-type :type/DateTime)
+      (when (string? v)
+        (parse-datetime v))
+
+      :else (when (some? v) (str v)))))
+
+(defn- coerce-answer!
+  [output v mismatches]
+  (let [coerced (coerce-answer output v)]
+    (when (and (some? v) (nil? coerced))
+      (swap! mismatches inc))
+    coerced))
+
 (defn- evaluate-pending!
-  [texts cache consecutive]
-  (let [futures (mapv (fn [text]
+  [pending cache consecutive mismatches]
+  (let [futures (mapv (fn [{:keys [text output]}]
                         (future
                           (try
-                            [:ok text (llm/evaluate-prompt text)]
+                            [:ok text output (llm/evaluate-prompt text output)]
                             (catch Throwable e
                               (let [e (unwrap-future e)]
                                 (if (fatal-llm-error? e)
                                   (throw e)
-                                  [:fail text e]))))))
-                      texts)]
+                                  [:fail text output e]))))))
+                      pending)]
     (doseq [result (map deref futures)]
       (case (first result)
-        :ok (let [[_ text value] result]
+        :ok (let [[_ text output value] result]
               (reset! consecutive 0)
-              (swap! cache assoc text value))
-        :fail (let [[_ text e] result]
-                (record-failure! cache consecutive text e))))))
+              (swap! cache assoc (cache-key output text) (coerce-answer! output value mismatches)))
+        :fail (let [[_ text output e] result]
+                (record-failure! cache consecutive output text e))))))
 
 (defn- fill-chunk
-  [rows indexes cache consecutive]
+  [rows columns cache consecutive mismatches]
   (let [pending (into []
-                      (comp (mapcat (fn [row] (map #(nth row %) indexes)))
-                            (remove nil?)
-                            (distinct)
-                            (remove #(contains? @cache %)))
+                      (comp (mapcat (fn [row]
+                                      (keep (fn [{:keys [index output]}]
+                                              (let [text (nth row index)]
+                                                (when (and (some? text)
+                                                           (not (contains? @cache (cache-key output text))))
+                                                  {:text text :output output})))
+                                            columns)))
+                            (distinct))
                       rows)]
-    (evaluate-pending! pending cache consecutive)
+    (evaluate-pending! pending cache consecutive mismatches)
     (mapv (fn [row]
-            (reduce (fn [row idx]
-                      (let [text (nth row idx)]
-                        (assoc row idx (when (some? text) (get @cache text)))))
+            (reduce (fn [row {:keys [index output]}]
+                      (let [text (nth row index)]
+                        (assoc row index (when (some? text)
+                                           (get @cache (cache-key output text))))))
                     (vec row)
-                    indexes))
+                    columns))
           rows)))
 
 (defn- fill-prompt-columns
-  [rows indexes cancelled?]
-  (if (empty? indexes)
+  [rows columns cancelled?]
+  (if (empty? columns)
     (vec rows)
-    (let [cache        (atom {})
-          consecutive  (atom 0)]
-      (into []
-            (mapcat (fn [chunk]
-                      (when (and cancelled? (cancelled?))
-                        (throw (ex-info "Transform cancelled" {:status :cancelled})))
-                      (fill-chunk chunk indexes cache consecutive)))
-            (partition-all parallelism rows)))))
+    (let [cache       (atom {})
+          consecutive (atom 0)
+          mismatches  (atom 0)
+          filled      (into []
+                            (mapcat (fn [chunk]
+                                      (when (and cancelled? (cancelled?))
+                                        (throw (ex-info "Transform cancelled" {:status :cancelled})))
+                                      (fill-chunk chunk columns cache consecutive mismatches)))
+                            (partition-all parallelism rows))]
+      (when (pos? @mismatches)
+        (log/warnf "prompt() wrote NULL for %d values that did not match the requested type" @mismatches))
+      filled)))
 
 (defn- root-type
   [base-type]
@@ -153,17 +257,17 @@
            :type/DateTimeWithTZ :type/Text :type/Boolean])))
 
 (defn- insert-type
-  [base-type prompt?]
+  [base-type output]
   (cond
-    prompt?                    :type/Text
-    (root-type base-type)      base-type
-    :else                      :type/Text))
+    output                (:base-type output)
+    (root-type base-type) base-type
+    :else                 :type/Text))
 
 (defn- fixup-value
   [original-type prompt? v]
   (cond
     (nil? v) nil
-    prompt? (str v)
+    prompt? v
     (nil? (root-type original-type)) (str v)
     (and (isa? original-type :type/Integer)
          (or (instance? BigDecimal v) (float? v)))
@@ -171,18 +275,18 @@
     :else v))
 
 (defn- column-definitions
-  [cols prompt-indexes]
-  (let [prompt? (set prompt-indexes)]
+  [cols prompt-cols]
+  (let [output-by-index (into {} (map (juxt :index :output) prompt-cols))]
     (mapv (fn [i {:keys [name base_type]}]
             {:name      name
-             :type      (insert-type base_type (contains? prompt? i))
+             :type      (insert-type base_type (get output-by-index i))
              :nullable? true})
           (range)
           cols)))
 
 (defn- prepare-rows
-  [rows cols prompt-indexes]
-  (let [prompt? (set prompt-indexes)]
+  [rows cols prompt-cols]
+  (let [prompt? (set (map :index prompt-cols))]
     (mapv (fn [row]
             (mapv (fn [i col v]
                     (fixup-value (:base_type col) (contains? prompt? i) v))
@@ -291,11 +395,11 @@
       (ensure-schema! driver db-id database target)
       (let [source-query (:query source)
             {:keys [rows cols]} (read-source-rows (capped-source-query source-query) id)
-            indexes  (prompt-column-indexes source-query cols)
-            filled   (fill-prompt-columns rows indexes cancelled?)
-            prepared (prepare-rows filled cols indexes)]
+            prompt-cols (prompt-columns source-query cols)
+            filled      (fill-prompt-columns rows prompt-cols cancelled?)
+            prepared    (prepare-rows filled cols prompt-cols)]
         (transfer-table! driver database transform
-                         (column-definitions cols indexes)
+                         (column-definitions cols prompt-cols)
                          prepared)
         {:status :succeeded
          :result {:rows-affected (count prepared)}}))))

@@ -10,7 +10,9 @@ import {
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { SAMPLE_DB_ID } from "../../../../../../e2e/support/cypress_data";
+import { getClauseDefinition } from "../clause";
 import { compileExpression } from "../compile-expression";
+import { formatStringLiteral } from "../string";
 import {
   expressions,
   fields,
@@ -762,4 +764,34 @@ it.skip("should format joined columns properly (metabase#58371)", async () => {
   });
 
   expect(formatted).toBe("[Fieldname That Has A Non Removable Dash]");
+});
+
+describe("named arguments", () => {
+  const { assertFormatted } = setup(80);
+
+  function quoteNamedArgValue(value: string) {
+    const delimiter = value.includes('"') && !value.includes("'") ? "'" : '"';
+    return formatStringLiteral(value, delimiter);
+  }
+
+  for (const name of Object.keys(Lib.MBQL_CLAUSES)) {
+    const clause = getClauseDefinition(name);
+    if (!clause || clause.namedArgs.length === 0) {
+      continue;
+    }
+
+    for (const namedArg of clause.namedArgs) {
+      const values = namedArg.values ?? [Lib.NAMED_ARGS[namedArg.name].example];
+      for (const value of values) {
+        const source = `${clause.displayName}("x", ${namedArg.name} => ${quoteNamedArgValue(value)})`;
+        it(`round-trips ${source}`, async () => {
+          await assertFormatted(source);
+        });
+      }
+    }
+  }
+
+  it("prints a jsonSchema value with single quotes when it contains double quotes", async () => {
+    await assertFormatted(`prompt("x", jsonSchema => '{"type": "integer"}')`);
+  });
 });

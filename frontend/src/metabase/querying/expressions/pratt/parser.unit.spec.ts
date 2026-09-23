@@ -1,3 +1,6 @@
+import type { Node } from "./node";
+import { ARG_LIST, IDENTIFIER, NAMED_ARG, STRING } from "./syntax";
+
 import { lexify, parse } from ".";
 
 describe("pratt/parser", () => {
@@ -249,6 +252,36 @@ describe("pratt/parser", () => {
 
     it("should accept a function", () => {
       expect(() => parseExpression("between([Subtotal], 1, 2)")).not.toThrow();
+    });
+  });
+
+  describe("named arguments", () => {
+    function findNode(node: Node, type: Node["type"]): Node | undefined {
+      if (node.type === type) {
+        return node;
+      }
+      for (const child of node.children) {
+        const found = findNode(child, type);
+        if (found) {
+          return found;
+        }
+      }
+      return undefined;
+    }
+
+    it("parses a NAMED_ARG inside an ARG_LIST", () => {
+      const root = parseExpression('prompt("x", returnType => "integer")');
+      const named = findNode(root, NAMED_ARG);
+      expect(named).toBeDefined();
+      expect(named?.children[0]?.type).toBe(IDENTIFIER);
+      expect(named?.children[1]?.type).toBe(STRING);
+      expect(named?.parent?.type).toBe(ARG_LIST);
+    });
+
+    it("rejects => at the top level", () => {
+      expect(() => parseExpression('returnType => "integer"')).toThrow(
+        "Unexpected token",
+      );
     });
   });
 });

@@ -190,13 +190,21 @@
                                    [:type        {:optional true} [:maybe :string]]
                                    [:description {:optional true} [:maybe :string]]]]
    [:minimum     {:optional true} number?]
-   [:maximum     {:optional true} number?]])
+   [:maximum     {:optional true} number?]
+   [:format      {:optional true} [:maybe :string]]
+   [:enum        {:optional true} [:sequential :any]]])
+
+(def ^:private JSONSchemaOpen
+  "A caller-supplied JSON Schema map. Deliberately open so a wrapped `value` property can hold
+  an arbitrary user schema (enums, nested objects, `$defs`)."
+  [:map {::mr/deliberately-open true, :description "caller-supplied JSON Schema"}])
 
 (def ^:private JSONSchemaProperties
   "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
-  string keys off the wire, keyword keys when built in Clojure."
+  string keys off the wire, keyword keys when built in Clojure. Values may be a closed leaf or an
+  arbitrary caller-supplied schema (used when wrapping a user `jsonSchema` under `value`)."
   [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
+   [:or :string :keyword] [:or JSONSchemaLeaf JSONSchemaOpen]])
 
 (def ^:private JSONSchemaNode
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
