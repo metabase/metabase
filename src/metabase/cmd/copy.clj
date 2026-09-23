@@ -415,8 +415,6 @@
     :model/Session
     :model/ImplicitAction
     :model/HTTPAction
-    :model/FieldUserSettings
-    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue

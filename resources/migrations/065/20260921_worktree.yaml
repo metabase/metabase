@@ -2127,6 +2127,8 @@ databaseChangeLog:
                   AND tc.CONSTRAINT_TYPE = 'UNIQUE'
                   AND kcu.COLUMN_NAME = 'ENTITY_ID'
               );
+      # glossary and python_library were given a name of their own when their constraint was created, and the
+      # migrations that created them drop them by that name, so the rollback has to hand it back.
       rollback:
         - sql:
             dbms: postgresql
@@ -2190,7 +2192,7 @@ databaseChangeLog:
               ALTER TABLE transform_tag ADD CONSTRAINT uq_transform_tag_entity_id UNIQUE (entity_id);
               ALTER TABLE transform_transform_tag ADD CONSTRAINT uq_transform_transform_tag_entity_id UNIQUE (entity_id);
               ALTER TABLE transform_test ADD CONSTRAINT uq_transform_test_entity_id UNIQUE (entity_id);
-              ALTER TABLE python_library ADD CONSTRAINT uq_python_library_entity_id UNIQUE (entity_id);
+              ALTER TABLE python_library ADD CONSTRAINT unique_python_library_entity_id UNIQUE (entity_id);
 
   - changeSet:
       id: v65.2026-09-22T10:27:00

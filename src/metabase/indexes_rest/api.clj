@@ -30,6 +30,8 @@
    [:status [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed]]
    [:error_message [:maybe :string]]
    [:created_by [:maybe ms/PositiveInt]]
+   ;; only present when the row itself is handed back; the merged list rebuilds the request from a few keys
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
    [:created_at :any]
    [:updated_at :any]
    [:last_executed_at [:maybe :any]]])
