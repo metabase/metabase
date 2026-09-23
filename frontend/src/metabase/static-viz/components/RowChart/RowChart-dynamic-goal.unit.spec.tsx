@@ -1,5 +1,10 @@
 import ReactDOMServer from "react-dom/server";
 
+import {
+  getExpectedRowChartGoalX,
+  getRowChartGoalLineX,
+  getRowChartSymbols,
+} from "__support__/row-chart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
   DatasetData,
@@ -57,64 +62,54 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
   ];
 
   const root = document.createElement("div");
+
   root.innerHTML = ReactDOMServer.renderToStaticMarkup(
     <StaticVisualization
       rawSeries={rawSeries}
       renderingContext={createStaticRenderingContext()}
     />,
   );
+
   return root;
-}
-
-function getGoalLine(root: HTMLElement) {
-  return root.querySelector('[aria-roledescription="goal line"]');
-}
-
-function getGoalLineX(root: HTMLElement) {
-  return Number(getGoalLine(root)?.querySelector("line")?.getAttribute("x1"));
-}
-
-// bars start at x = 0 on a linear scale, so a bar's width is its value's scaled length
-function getExpectedGoalX(root: HTMLElement, goalValue: number) {
-  const bars = Array.from(
-    root.querySelectorAll('[aria-roledescription="bar"]'),
-  );
-  const widestBar = bars.reduce((widest, bar) =>
-    Number(bar.getAttribute("width")) > Number(widest.getAttribute("width"))
-      ? bar
-      : widest,
-  );
-  const x = Number(widestBar.getAttribute("x"));
-  const width = Number(widestBar.getAttribute("width"));
-  return x + (width * goalValue) / MAX_COUNT;
 }
 
 describe("static row chart with a dynamic goal", () => {
   it("draws the goal line at a static goal value", () => {
     const root = setup({ settings: { ...SETTINGS, "graph.goal_value": GOAL } });
+    const [goalLine] = getRowChartSymbols(root, "goal line");
 
-    expect(getGoalLine(root)).toHaveTextContent(GOAL_LABEL);
-    expect(getGoalLineX(root)).toBeCloseTo(getExpectedGoalX(root, GOAL), 0);
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(root, GOAL, MAX_COUNT),
+      0,
+    );
   });
 
   it("draws the goal line at the value answered by the dataset", () => {
-    const root = setup({ referencedEntities: answeredGoal(GOAL) });
+    const root = setup({
+      referencedEntities: createReferencedEntitiesResults(GOAL),
+    });
+    const [goalLine] = getRowChartSymbols(root, "goal line");
 
-    expect(getGoalLine(root)).toHaveTextContent(GOAL_LABEL);
-    expect(getGoalLineX(root)).toBeCloseTo(getExpectedGoalX(root, GOAL), 0);
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(root, GOAL, MAX_COUNT),
+      0,
+    );
   });
 
   it("reads an answered goal as a percentage of a normalized stack", () => {
     const root = setup({
       settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
-      referencedEntities: answeredGoal(50),
+      referencedEntities: createReferencedEntitiesResults(50),
     });
-    const bar = root.querySelector('[aria-roledescription="bar"]');
-    const barX = Number(bar?.getAttribute("x"));
-    const barWidth = Number(bar?.getAttribute("width"));
+    const [goalLine] = getRowChartSymbols(root, "goal line");
+    const [bar] = getRowChartSymbols(root, "bar");
+    const barX = Number(bar.getAttribute("x"));
+    const barWidth = Number(bar.getAttribute("width"));
 
     // every normalized bar spans the whole [0, 1] domain, so 50% sits at its middle
-    expect(getGoalLineX(root)).toBeCloseTo(barX + barWidth / 2, 0);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
   });
 
   it("throws for a reference the dataset has not answered", () => {
@@ -132,7 +127,9 @@ describe("static row chart with a dynamic goal", () => {
   });
 });
 
-function answeredGoal(value: number): ReferencedEntitiesResults {
+function createReferencedEntitiesResults(
+  value: number,
+): ReferencedEntitiesResults {
   return {
     card: {
       9: {

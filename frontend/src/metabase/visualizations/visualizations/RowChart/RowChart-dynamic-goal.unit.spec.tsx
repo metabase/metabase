@@ -1,5 +1,11 @@
 import fetchMock from "fetch-mock";
 
+import {
+  type RowChartSymbol,
+  getExpectedRowChartGoalX,
+  getRowChartGoalLineX,
+  getRowChartSymbols,
+} from "__support__/row-chart";
 import { setupCardDataset } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -92,7 +98,10 @@ describe("row chart dynamic goal", () => {
     const goalLine = await findGoalLine();
 
     expect(goalLine).toHaveTextContent(GOAL_LABEL);
-    expect(getGoalLineX(goalLine)).toBeCloseTo(getExpectedGoalX(GOAL), 0);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
   });
 
   it("draws the goal line at the value answered by the dataset", async () => {
@@ -101,7 +110,10 @@ describe("row chart dynamic goal", () => {
     const goalLine = await findGoalLine();
 
     expect(goalLine).toHaveTextContent(GOAL_LABEL);
-    expect(getGoalLineX(goalLine)).toBeCloseTo(getExpectedGoalX(GOAL), 0);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
@@ -117,7 +129,7 @@ describe("row chart dynamic goal", () => {
     const barWidth = Number(bar.getAttribute("width"));
 
     // every normalized bar spans the whole [0, 1] domain, so 50% sits at its middle
-    expect(getGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
   });
 
   it("re-runs the query with the referenced entity when the dataset has no answer", async () => {
@@ -134,7 +146,10 @@ describe("row chart dynamic goal", () => {
 
     const goalLine = await findGoalLine();
 
-    expect(getGoalLineX(goalLine)).toBeCloseTo(getExpectedGoalX(GOAL), 0);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
     const [call] = fetchMock.callHistory.calls("path:/api/dataset");
     expect(await call.request?.json()).toEqual(
       expect.objectContaining({
@@ -169,36 +184,14 @@ describe("row chart dynamic goal", () => {
   });
 });
 
-function getGraphicsSymbols(roleDescription: string) {
-  return screen
-    .queryAllByRole("graphics-symbol")
-    .filter(
-      (element) =>
-        element.getAttribute("aria-roledescription") === roleDescription,
-    );
-}
-
 async function findGoalLine() {
   await waitFor(() => expect(getGraphicsSymbols("goal line")).toHaveLength(1));
   const [goalLine] = getGraphicsSymbols("goal line");
   return goalLine;
 }
 
-function getGoalLineX(goalLine: HTMLElement) {
-  return Number(goalLine.querySelector("line")?.getAttribute("x1"));
-}
-
-// bars start at x = 0 on a linear scale, so a bar's width is its value's scaled length
-function getExpectedGoalX(goalValue: number) {
-  const bars = getGraphicsSymbols("bar");
-  const widestBar = bars.reduce((widest, bar) =>
-    Number(bar.getAttribute("width")) > Number(widest.getAttribute("width"))
-      ? bar
-      : widest,
-  );
-  const x = Number(widestBar.getAttribute("x"));
-  const width = Number(widestBar.getAttribute("width"));
-  return x + (width * goalValue) / MAX_COUNT;
+function getGraphicsSymbols(roleDescription: RowChartSymbol) {
+  return getRowChartSymbols(document.body, roleDescription);
 }
 
 function createReferencedEntitiesResults(
