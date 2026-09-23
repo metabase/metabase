@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.engine :as search.engine]
@@ -120,6 +121,8 @@
   ;; the scheduled jobs no-op via semantic-search-active?, but adding it needs a restart before they
   ;; schedule. Engine activity stays per-execution so it never needs one.
   (and (premium-features/has-feature? :semantic-search)
+       ;; hackathon: the SQLite store needs none of the pgvector jobs
+       (not (sqlite-config/enabled?))
        (or (semantic.db.datasource/dedicated-url-configured?)
            (= :postgres (mdb/db-type)))))
 
@@ -130,6 +133,8 @@
   ;; Feature first: the pgvector check may probe the app DB, and instances that can't use the answer
   ;; must never probe.
   (and (premium-features/has-feature? :semantic-search)
+       ;; hackathon: with the SQLite store, nothing may touch (or probe for) a pgvector DB
+       (not (sqlite-config/enabled?))
        (semantic.db.datasource/pgvector-configured?)))
 
 (defn semantic-search-active?

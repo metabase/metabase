@@ -14,6 +14,7 @@
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -29,14 +30,14 @@
 ;;; ------------------------------------------------ Configuration -------------------------------------------------
 
 (defn db-path
-  "The configured SQLite file path (`MB_SEMANTIC_SEARCH_SQLITE_PATH`), or nil when unset or blank."
+  "The configured SQLite file path, or nil. See [[sqlite-config/db-path]]."
   []
-  (not-empty (str/trim (or (env :mb-semantic-search-sqlite-path) ""))))
+  (sqlite-config/db-path))
 
 (defn enabled?
-  "Is the SQLite semantic search store configured?"
+  "Is the SQLite semantic search store configured? See [[sqlite-config/enabled?]]."
   []
-  (some? (db-path)))
+  (sqlite-config/enabled?))
 
 (defn platform
   "The `<os>-<arch>` directory name for this JVM's vec1 binary, e.g. `darwin-aarch64` or `linux-x86_64`."

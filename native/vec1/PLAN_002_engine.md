@@ -55,22 +55,25 @@ One switch: `sqlite/enabled?` (`MB_SEMANTIC_SEARCH_SQLITE_PATH` set). When on:
 
 ---
 
-## Phase A — gating (1 h)
+## Phase A — gating ✅ done 2026-09-23
 
 `semantic_search/util.clj`, `core.clj`:
 
-- [ ] `semantic-search-configured?` → `false` when `(sqlite/enabled?)` (no pgvector task gets scheduled).
-- [ ] `semantic-search-available?` → `false` when `(sqlite/enabled?)` (cleanup, usage trimmer, status API,
+- [x] `semantic-search-configured?` → `false` when `(sqlite/enabled?)` (no pgvector task gets scheduled).
+- [x] `semantic-search-available?` → `false` when `(sqlite/enabled?)` (cleanup, usage trimmer, status API,
       entity retrieval stay off the pgvector datasource).
-- [ ] **Namespace cycle** (verified): `index` requires `util` and `sqlite` requires `index`, so `util` can't
+- [x] **Namespace cycle** (verified): `index` requires `util` and `sqlite` requires `index`, so `util` can't
       require `sqlite`. Move `db-path` / `enabled?` into a new dependency-free
       `metabase-enterprise.semantic-search.sqlite-config`, required by `util`, `core` and `sqlite`
       (`sqlite` keeps thin aliases so existing callers and tests don't change). Run `./bin/mage fix-modules-config`.
-- [ ] `supported?` → `(if (sqlite/enabled?) (embedding-supported? …) (and (available?) (embedding-supported? …)))`.
+- [x] `supported?` → `(if (sqlite/enabled?) (embedding-supported? …) (and (available?) (embedding-supported? …)))`.
       The `:semantic-search` feature check stays (it's the `defenterprise :feature`).
-- [ ] `build-hnsw-index-async!` → no-op when `(sqlite/enabled?)` (reachable via the vector-strategy setting event).
-- [ ] REPL check: with the env var set, `(search.engine/supported-engines)` starts with `:search.engine/semantic`,
+- [x] `build-hnsw-index-async!` → no-op when `(sqlite/enabled?)` (reachable via the vector-strategy setting event).
+- [x] REPL check: with the env var set, `(search.engine/supported-engines)` starts with `:search.engine/semantic`,
       `(search.engine/active-engines)` = `[semantic appdb]`, and `(semantic.util/semantic-search-configured?)` is false.
+      Verified in the dev REPL (Postgres app DB with pgvector): without the env var semantic runs on pgvector as
+      before; with it, semantic is still supported / default / active and both pgvector gates are false.
+- [x] Test: `sqlite_engine_test.clj` `gating-test` (test app DB initialised; the store unit tests don't need one).
 
 ## Phase B — write hooks (1–2 h)
 

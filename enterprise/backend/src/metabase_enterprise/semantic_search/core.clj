@@ -11,6 +11,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.sqlite-config :as sqlite-config]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -50,7 +51,8 @@
   ;; store, so without this the engine auto-activates with no embedder configured and every index and
   ;; query embed fails. available?/capable? skip the gate on purpose: an existing index still needs
   ;; maintenance while the embedder is temporarily unconfigured.
-  (and (semantic.util/semantic-search-available?)
+  (and (or (sqlite-config/enabled?)
+           (semantic.util/semantic-search-available?))
        (semantic.embedding/embedding-supported? (semantic.embedding/get-configured-model))))
 
 (defonce ^:private hnsw-index-build-running? (atom false))
@@ -61,7 +63,8 @@
   No-ops when semantic search isn't active or this process already has a build running. Database-level
   coordination in [[semantic.pgvector-api/ensure-active-hnsw-index!]] serializes builds across instances."
   []
-  (when (and (semantic.util/semantic-search-active?)
+  (when (and (not (sqlite-config/enabled?))
+             (semantic.util/semantic-search-active?)
              (compare-and-set! hnsw-index-build-running? false true))
     (future
       (try
