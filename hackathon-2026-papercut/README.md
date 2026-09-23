@@ -158,6 +158,81 @@ be cancelled. Its Linear issue and draft PR links show on the papercut's card an
 page. When the server has a token, enter it under **API token** in the header. The
 page keeps it in the browser's local storage.
 
+### Running the dispatcher
+
+Prerequisites on the machine that runs `watch`:
+
+- `claude` on the `PATH`, or its path in `CLAUDE_BIN`.
+- `gh` signed in as an account that can push branches to `metabase/metabase`.
+- `LINEAR_API_KEY` in the repository root's `.env`. Issues go to the Hackathon
+  2026: Papercut Tracker project.
+- `PAPERCUTS_TOKEN` in `.env` when the server has a token.
+- A Metabase checkout to make worktrees from. The default is the one this directory
+  is in. For frontend fixes, `bun` too, because the fixer runs
+  `bun install --frozen-lockfile` in its worktree.
+
+`--server` must be the server whose page has the Dispatch button you pressed. The
+default is `$PAPERCUTS_SERVER`, or `http://127.0.0.1:8765`.
+
+For each queued dispatch, `watch` does four things:
+
+1. Files the Linear issue.
+2. Makes a worktree of `origin/master` in `../papercut-worktrees/`, on branch
+   `<linear-id>-papercut-<slug>`.
+3. Runs `claude -p` with `fixer/prompt.md`. The fixer can edit files, run
+   `./bin/test-agent`, run `bun install --frozen-lockfile` and
+   `bun run test-unit-keep-cljs`, and use read-only git. It cannot commit or push.
+4. Commits and pushes the fix, and opens a draft PR, but only when the fixer
+   reports that its tests pass.
+
+| Option | Default | |
+|---|---|---|
+| `--budget-usd` | 10 | Spending cap for each fixer run |
+| `--timeout-minutes` | 40 | The fixer is stopped after this |
+| `--model` | `opus` | |
+| `--repo`, `--worktrees`, `--base` | this checkout, `../papercut-worktrees`, `master` | |
+| `--interval` | 5 | Seconds between checks for queued dispatches |
+
+`python3 dispatcher.py dispatch --id N --live` does the same work for one papercut
+from the command line. Without `--live`, it only writes the message the fixer would
+get to `runs/dry-run-N.md`.
+
+**Following a run:** the watcher's terminal prints each step: the claim it picked
+up, the Linear issue, the branch, and the outcome. Everything else for dispatch
+`<id>` is in `runs/<id>/`:
+
+- `message.md`: what the fixer was given.
+- `agent.jsonl`: the fixer's session, written as it runs.
+- `result.json`: its final result and cost.
+
+To follow the fixer live:
+
+```sh
+tail -f runs/<id>/agent.jsonl | jq -r 'select(.type=="assistant") | .message.content[]
+  | if .type=="tool_use" then "→ \(.name) \(.input.command // .input.file_path // .input.pattern // "")"
+    elif .type=="text" then "  \(.text[0:200])" else empty end'
+```
+
+**Outcomes:**
+
+| Outcome | What it leaves behind |
+|---|---|
+| `pr_opened` | A draft PR. The worktree is removed. The papercut stays `investigating` |
+| `already_fixed` | The papercut is resolved, with the fixer's evidence as the reason |
+| `not_reproducible`, `needs_human` | The papercut reopens. A worktree with changes is kept |
+| `needs_human` because tests failed | The fix is committed on a local branch, and the worktree is kept |
+| `failed` | Timeout, crash or error. The worktree is kept for a look |
+
+Ctrl-C stops the watcher and the fixer it is running. A dispatch interrupted
+before the fixer started is resumed by the next `watch`. One interrupted while
+`running` has to be cancelled by hand: PATCH it to `failed`.
+
+**Assessing readiness** (optional, for the `ready` highlight):
+`python3 dispatcher.py assess --server <server>` asks Jev about papercuts that
+changed since its last run. It needs `TYPESAFE_API_KEY` or `JEV_API_KEY`. Add
+`--dry-run` to print verdicts without recording them, or `--full` to reassess every
+open papercut.
+
 ```sh
 # Record a readiness assessment: not_ready, ready or needs_human
 curl -sS -X POST http://127.0.0.1:8765/api/papercuts/1/assessments -H 'Content-Type: application/json' \
