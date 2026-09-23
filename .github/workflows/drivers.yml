@@ -3,13 +3,21 @@ name: Driver Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `drivers`
+          workflow in it decides whether `determine-driver-skips` is asked at
+          all, and `mage driver-decisions` decides which drivers it names.
+          `{}` means there is no plan, and everything runs.
+        type: string
+        default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.drivers-tests-result.outputs.ok }}
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
@@ -49,6 +57,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -73,6 +86,13 @@ jobs:
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
+    # The plan only decides whether the question gets asked. Which drivers
+    # actually run is `mage driver-decisions`, from the module graph -- a
+    # narrowing the plan cannot see, which is why this workflow has no
+    # `verify` step.
+    if: >-
+      ${{ inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.drivers.jobs.determine-driver-skips.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -116,7 +136,9 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --skip="${{ inputs.skip }}"
+            # The plan already held this job back when there was nothing to
+            # do, so reaching here means there is.
+            --skip="false"
             --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
@@ -131,7 +153,12 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ inputs.force-run }}
+          # Run every driver, not just the affected ones. True when an
+          # override settled the run -- a protected branch, ci:run-all --
+          # which is the same thing `force-run` used to say.
+          FORCE_RUN: >-
+            ${{ inputs.plan != '{}' &&
+            fromJSON(inputs.plan).override != null }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
@@ -1269,8 +1296,10 @@ jobs:
 
   drivers-tests-result:
     needs:
+      # Every job the `drivers` plan names, so the roll-up below can see each
+      # one's result. If you add a driver job, add it here too.
       - determine-driver-skips
-      # if you add a driver job, you must add it to this list for it to be a required check
+      - login-to-ecr
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-bigquery-transforms-python-ee
@@ -1297,60 +1326,55 @@ jobs:
     timeout-minutes: 5
     name: drivers-tests-result
     if: always() && !cancelled()
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      # `fail: false` so the verdict is a value the two steps below can read,
+      # and failing on it is the second of them.
+      - name: Roll the driver results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: drivers
+          fail: 'false'
+      - name: Cam is very proud of you
+        if: ${{ steps.aggregate.outputs.ok == 'true' }}
+        shell: bash
+        run: | # sh
+          cat <<'ART'
 
-            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
-            // job whose result gates this check.
-            const jobs = Object.entries(needs)
-              .filter(([jobName]) => jobName !== 'determine-driver-skips')
-              .map(([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
+                  _------.
+                 /  ,     \_
+               /   /  /{}\ |o\_
+              /    \  `--' /-' \
+             |      \      \    |
+            |              |`-, |
+            /              /__/)/
+           |              |
 
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-                console.log("");
-                console.log("        _------.        ");
-                console.log("       /  ,     \_      ");
-                console.log("     /   /  /{}\ |o\_   ");
-                console.log("    /    \  `--' /-' \  ");
-                console.log("   |      \      \    | ");
-                console.log("  |              |`-, | ");
-                console.log("  /              /__/)/ ");
-                console.log(" |              |       ");
-                console.log("");
-                console.log("All driver tests have passed (or have been skipped). Cam is very proud of you.");
-              process.exit(0);
-            }
+          All driver tests have passed (or have been skipped). Cam is very proud of you.
+          ART
+      - name: MetaJail
+        if: ${{ steps.aggregate.outputs.ok != 'true' }}
+        shell: bash
+        run: | # sh
+          cat <<'ART'
 
-            // otherwise, something failed
-            console.log("");
-            console.log("       .::::::::::.                          .::::::::::.       ");
-            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
-            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
-            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
-            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
-            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
-            console.log("  :::               |::-o::|        |::o-::|               :::  ");
-            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
-            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
-            console.log("     `::::......::::'                      `::::......::::'     ");
-            console.log("       `::::::::::'                          `::::::::::'       ");
-            console.log("");
-            console.log("Driver tests have failed. You have been sentenced to MetaJail.");
+                 .::::::::::.                          .::::::::::.
+               .::::''''''::::.                      .::::''''''::::.
+             .:::'          `::::....          ....::::'          `:::.
+            .::'             `:::::::|        |:::::::'             `::.
+           .::|               |::::::|_ ___ __|::::::|               |::.
+           `--'               |::::::|_()__()_|::::::|               `--'
+            :::               |::-o::|        |::o-::|               :::
+            `::.             .|::::::|        |::::::|.             .::'
+             `:::.          .::\-----'        `-----/::.          .:::'
+               `::::......::::'                      `::::......::::'
+                 `::::::::::'                          `::::::::::'
 
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-
-            process.exit(1);
+          Driver tests have failed. You have been sentenced to MetaJail.
+          ART
+          exit 1

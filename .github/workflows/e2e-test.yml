@@ -4,6 +4,13 @@ run-name: E2E Test - ${{ inputs.name }}
 on:
   workflow_call:
     inputs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `e2e-test`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
       name:
         required: true
         type: string
@@ -54,6 +61,7 @@ env:
 
 jobs:
   e2e-tests:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-test.jobs.e2e-tests.run }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 40
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}

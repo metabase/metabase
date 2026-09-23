@@ -3,6 +3,13 @@ name: E2E Matrix Builder
 on:
   workflow_call:
     inputs:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `e2e-matrix-builder`
+          workflow in it decides the jobs below. `{}` means there is no
+          plan, and everything runs.
+        type: string
+        default: '{}'
       chunks:
         required: false
         type: number
@@ -21,6 +28,7 @@ on:
 
 jobs:
   build-matrix:
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.e2e-matrix-builder.jobs.build-matrix.run }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:

@@ -3,25 +3,28 @@ name: Backend
 on:
   workflow_call:
     inputs:
-      skip:
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `backend`
+          workflow in it decides the jobs below. `{}` means there is no plan,
+          and everything runs.
+        type: string
+        default: '{}'
+      static-viz:
+        description: >-
+          Whether the static-viz bundle's sources changed. The backend renders
+          static viz through GraalJS, so a change there has to run the backend
+          jobs even on a diff the plan sees no backend files in — the static-viz
+          sources are front-end paths and match no `backend_all` glob.
         type: boolean
         default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
-      run-project-backend-checks:
-        description: Run project-level backend checks.
-        type: boolean
-        default: false
-      run-project-migration-checks:
-        description: Run project-level migration checks.
-        type: boolean
-        default: false
-      run-project-ratchet-checks:
-        description: Run the ratchet check for a diff that touches nothing but the ratchets file.
-        type: boolean
-        default: false
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.be-tests-result.outputs.ok }}
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -38,6 +41,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
@@ -60,15 +68,17 @@ env:
 jobs:
   project-checks:
     name: 'Project tests: Suites'
-    if: >-
-      ${{ inputs.force-run ||
-      inputs.run-project-backend-checks ||
-      inputs.run-project-migration-checks ||
-      inputs.run-project-ratchet-checks }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.project-checks.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       # Bootstrap the shared Mage runtime before concurrent commands try to install it themselves.
@@ -76,21 +86,26 @@ jobs:
         run: ./bin/mage
       - parallel:
         - name: Run backend checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks }}
+          if: ${{ steps.changes.outputs.project_backend_checks == 'true' }}
           run: ./bin/mage project-tests backend
         - name: Run migration checks
-          if: ${{ inputs.force-run || inputs.run-project-migration-checks }}
+          if: ${{ steps.changes.outputs.project_migration_checks == 'true' }}
           run: ./bin/mage project-tests migrations
         # Babashka, not a JVM test run, so it is cheap enough to run alongside the backend checks.
         # It still needs the JDK prepare-backend installs, to resolve clj-kondo on a cold cache.
+        # A backend change can shift a budget, so the backend group pulls this in too.
         - name: Run ratchet checks
-          if: ${{ inputs.force-run || inputs.run-project-backend-checks || inputs.run-project-ratchet-checks }}
+          if: >-
+            ${{ steps.changes.outputs.project_backend_checks == 'true' ||
+            steps.changes.outputs.project_ratchet_checks == 'true' }}
           run: ./bin/mage kondo-ratchets
 
   project-tests:
     name: Project tests
     needs: project-checks
-    if: ${{ always() && !cancelled() }}
+    if: >-
+      ${{ always() && !cancelled() &&
+      (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.backend.jobs.project-tests.run) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -148,7 +163,9 @@ jobs:
             process.exit(1);
 
   be-linter-clj-kondo:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-clj-kondo.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -160,7 +177,9 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -173,7 +192,9 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && inputs.force-run }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -186,7 +207,9 @@ jobs:
 
   be-linter-eastwood-test-changed:
     # Lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-linter-eastwood-test-changed.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -251,7 +274,9 @@ jobs:
         run: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-tests.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -448,7 +473,9 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-check.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -464,7 +491,9 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ !inputs.skip }}
+    if: >-
+      ${{ inputs.static-viz || inputs.plan == '{}' ||
+      fromJSON(inputs.plan).workflows.backend.jobs.be-cljfmt.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
@@ -477,6 +506,9 @@ jobs:
 
   be-tests-result:
     needs:
+      # Every job the `backend` plan names, so the roll-up below can see each
+      # one's result.
+      - project-checks
       - project-tests
       - be-linter-eastwood
       - be-linter-eastwood-test
@@ -488,33 +520,14 @@ jobs:
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
-    env:
-      needs: ${{ toJson(needs) }}
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check backend job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      - name: Roll the backend results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log('Some backend jobs failed');
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-            process.exit(1);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: backend

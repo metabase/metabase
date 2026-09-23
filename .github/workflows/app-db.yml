@@ -3,13 +3,20 @@ name: App DB Tests
 on:
   workflow_call:
     inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
+      plan:
+        description: >-
+          The CI test plan, as JSON. The caller builds it; the `app-db` workflow in
+          it decides the jobs below. `{}` means there is no plan, and everything
+          runs.
+        type: string
+        default: '{}'
+    outputs:
+      ok:
+        description: >-
+          Whether everything the plan asked of this workflow ran and passed.
+          Empty when the roll-up job did not get to publish a verdict, so read
+          it alongside this workflow's own result rather than instead of it.
+        value: ${{ jobs.app-db-tests-result.outputs.ok }}
 
   # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
@@ -34,6 +41,11 @@ on:
         type: boolean
         required: false
         default: false
+      plan:
+        description: 'The CI test plan, as JSON. Leave it alone: `{}` runs everything.'
+        type: string
+        required: false
+        default: '{}'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-app-db
@@ -56,7 +68,7 @@ env:
 
 jobs:
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    if: ${{ inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.app-db-matrix.run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -70,7 +82,12 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ inputs.force-run }}
+          # Every app DB version, not just the latest. True when an override
+          # settled the run -- a protected branch, ci:run-all -- which is the
+          # same thing `force-run` used to say.
+          RUN_ALL: >-
+            ${{ inputs.plan != '{}' &&
+            fromJSON(inputs.plan).override != null }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -162,7 +179,9 @@ jobs:
 
   be-tests-mariadb:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-mariadb.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -223,7 +242,9 @@ jobs:
 
   be-tests-mysql:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-mysql.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -282,7 +303,9 @@ jobs:
 
   be-tests-postgres:
     needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    if: >-
+      ${{ (inputs.plan == '{}' || fromJSON(inputs.plan).workflows.app-db.jobs.be-tests-postgres.run) &&
+      (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -324,6 +347,8 @@ jobs:
 
   app-db-tests-result:
     needs:
+      # Every job the `app-db` plan names, so the roll-up below can see each
+      # one's result.
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
@@ -332,57 +357,14 @@ jobs:
     timeout-minutes: 5
     name: app-db-tests-result
     if: always() && !cancelled()
+    outputs:
+      ok: ${{ steps.aggregate.outputs.ok }}
     steps:
-      - name: Check job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
+      - uses: actions/checkout@v6
+      - name: Roll the app-DB results up
+        id: aggregate
+        uses: ./.github/actions/aggregate-results
         with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-                console.log("");
-                console.log("        _------.        ");
-                console.log("       /  ,     \_      ");
-                console.log("     /   /  /{}\ |o\_   ");
-                console.log("    /    \  `--' /-' \  ");
-                console.log("   |      \      \    | ");
-                console.log("  |              |`-, | ");
-                console.log("  /              /__/)/ ");
-                console.log(" |              |       ");
-                console.log("");
-                console.log("All app db tests have passed (or have been skipped). Cam is very proud of you.");
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log("");
-            console.log("       .::::::::::.                          .::::::::::.       ");
-            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
-            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
-            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
-            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
-            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
-            console.log("  :::               |::-o::|        |::o-::|               :::  ");
-            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
-            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
-            console.log("     `::::......::::'                      `::::......::::'     ");
-            console.log("       `::::::::::'                          `::::::::::'       ");
-            console.log("");
-            console.log("App db tests have failed. You have been sentenced to MetaJail.");
-
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-
-            process.exit(1);
+          needs: ${{ toJSON(needs) }}
+          plan: ${{ inputs.plan }}
+          workflow: app-db
