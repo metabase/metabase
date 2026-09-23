@@ -1297,8 +1297,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .intro {padding: 2.1rem 0 1.45rem}
 .intro h1 {font-size: clamp(1.8rem, 4vw, 2.65rem); letter-spacing: -.045em; line-height: 1.1; margin: .35rem 0}
 .intro p {margin: 0; color: var(--muted)}
-.toolbar {display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(105px, 1fr)) minmax(145px, 1.2fr) minmax(75px, .65fr) auto; align-items: end; gap: .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; box-shadow: var(--shadow)}
-.toolbar.single-repository {grid-template-columns: minmax(230px, 2.2fr) repeat(2, minmax(120px, 1fr)) minmax(155px, 1.25fr) minmax(75px, .65fr) auto}
+.toolbar {display: grid; grid-template-columns: minmax(180px, 1.8fr) repeat(3, minmax(105px, 1fr)) minmax(190px, 1.4fr) auto; align-items: end; gap: .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; box-shadow: var(--shadow)}
+.toolbar.single-repository {grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(120px, 1fr)) minmax(190px, 1.4fr) auto}
 .filter-field {display: flex; flex-direction: column; gap: .3rem; min-width: 0}
 .filter-field label {font-size: .79rem; font-weight: 700; color: var(--muted)}
 .filter-field input, .filter-field select {width: 100%; margin: 0}
@@ -1335,9 +1335,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 :root[data-theme="dark"] .status-resolved {background: #2b416a; color: #c9dcff}
 :root[data-theme="dark"] .status-wontfix {background: #493750; color: #e8c6f2}
 .empty {text-align: center; padding: 3rem 1rem; background: var(--surface); border: 1px dashed var(--border); border-radius: 12px; color: var(--muted)}
-.pagination {display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.2rem; color: var(--muted)}
-.pagination-links {display: flex; gap: .5rem}
-.pagination a {display: inline-block; padding: .45rem .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px}
 .detail-head {padding: 1.7rem 0 1.2rem}
 .detail-head h1 {font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.2; letter-spacing: -.035em; margin: .5rem 0}
 .detail-meta {display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem}
@@ -1374,7 +1371,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .report-card p {margin: .4rem 0}
 .report-card summary {cursor: pointer; font-weight: 650; margin-top: .4rem}
 @media (max-width: 930px) {.toolbar, .toolbar.single-repository {grid-template-columns: repeat(3, minmax(0, 1fr))} .detail-layout {grid-template-columns: 1fr}}
-@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: 1fr} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading, .pagination {align-items: flex-start; flex-direction: column}}
+@media (max-width: 600px) {body {padding: 0 .85rem 2rem} .site-header {align-items: flex-start; padding: 1rem 0} .header-actions {justify-content: end} .toolbar, .toolbar.single-repository {grid-template-columns: repeat(2, minmax(0, 1fr))} .toolbar .filter-field:first-child {grid-column: 1 / -1} .fact-grid {grid-template-columns: 1fr} .issue-card {grid-template-columns: 1fr} .issue-stats {grid-template-columns: repeat(2, minmax(0, 1fr))} .badges {justify-content: start} .results-heading {align-items: flex-start; flex-direction: column}}
 </style>"""
 
 THEME_INIT = """<script>
@@ -1922,28 +1919,17 @@ def papercut_list_html(result, filters, repositories=(), category_counts=None):
     counts = category_counts or Counter(p["category"] or "unclassified" for p in result["papercuts"])
     sort = filter_field("sort", "Sort by", select("sort", [key for key in SORTS if key != "important"], filters.get("sort"),
                                                   "Important first"))
-    limit = filter_field("limit", "Per page", select("limit", ("25", "50", "100"), filters.get("limit", "50"), "50"))
     cards = "".join(list_card_html(p) for p in result["papercuts"])
     if cards:
         cards = f"<ol class='issue-list'>{cards}</ol>"
     else:
         cards = "<div class='empty'><strong>No papercuts found</strong><p>Try clearing a filter or changing the search.</p></div>"
-    paging_filters = {key: value for key, value in filters.items() if key != "offset"}
-    pages = []
-    if result["offset"]:
-        pages.append(f"<a href='/?{urlencode({**paging_filters, 'offset': max(0, result['offset'] - result['limit'])})}'>← Previous</a>")
-    if result["next_offset"] is not None:
-        pages.append(f"<a href='/?{urlencode({**paging_filters, 'offset': result['next_offset']})}'>Next →</a>")
-    start = result["offset"] + 1 if result["papercuts"] else 0
-    end = result["offset"] + len(result["papercuts"])
     body = ("<div class='intro'><span class='eyebrow'>Issue tracker</span><h1>Papercuts</h1>"
             "<p>Small friction, collected across reports and agents.</p></div>"
-            f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}{limit}"
+            f"<form id='filters' class='toolbar{' single-repository' if not show_repository else ''}' method='get' action='/'>{search}{repository}{status}{category}{sort}"
             "<div class='filter-actions'><a href='/'>Clear filters</a></div></form>"
-            f"<div id='results'>{category_chips(filters.get('category', ''), counts)}<div class='results-heading'><h2>{result['total']} papercuts</h2>"
-            f"<p class='muted'>Showing {start}–{end} of {result['total']}</p></div>{cards}"
-            f"<nav class='pagination' aria-label='Pages'><span>Page {result['offset'] // result['limit'] + 1}</span>"
-            f"<div class='pagination-links'>{''.join(pages)}</div></nav></div>")
+            f"<div id='results'>{category_chips(filters.get('category', ''), counts)}"
+            f"<div class='results-heading'><h2>{result['total']} papercuts</h2></div>{cards}</div>")
     return page("Papercuts", body)
 
 
@@ -2166,12 +2152,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond(200, self.store.update_dispatch(int(dispatch[1]), self.input_json()))
         if command == "GET" and path == "/":
             # The page lists live papercuts; a change feed is for API clients.
-            params.pop("since", None)
-            others = {key: params[key] for key in ("q", "status", "repository") if params.get(key)}
+            filters = {key: params[key] for key in ("repository", "status", "category", "q", "sort") if key in params}
+            others = {key: filters[key] for key in ("q", "status", "repository") if filters.get(key)}
             counted = self.store.list_papercuts({**others, "limit": sys.maxsize}, max_limit=sys.maxsize)["papercuts"]
             counts = Counter(p["category"] or "unclassified" for p in counted)
-            return self.respond(200, papercut_list_html(self.store.list_papercuts({"sort": "important", **params}), params,
-                                                        self.store.repositories(), counts), "text/html")
+            everything = self.store.list_papercuts({"sort": "important", **filters, "limit": sys.maxsize}, max_limit=sys.maxsize)
+            return self.respond(200, papercut_list_html(everything, filters, self.store.repositories(), counts), "text/html")
         if command == "GET" and html_match:
             if self.redirect_if_merged(int(html_match[1]), "/papercuts", url.query):
                 return None
