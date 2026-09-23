@@ -163,7 +163,7 @@
           (update :human_readable_field #(select-keys % param-field-columns))
           ;; these aren't exactly secret but you the frontend doesn't need them either so while we're at it let's go
           ;; ahead and strip them out
-          (dissoc :created_at :updated_at)))
+          (dissoc :created_at :updated_at :worktree_id)))
 
 (defn- remove-dimensions-nonpublic-columns
   "Strip nonpublic columns from the hydrated human-readable Field in the hydrated Dimensions in `fields`."
