@@ -23,8 +23,12 @@
 
 (deftest screen-or-refused-test
   (testing "a firewall refusal skips the chunk instead of failing the session on every run"
-    (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 403" {:status 403})))]
+    (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 403"
+                                                        {:status 403 :body "<!DOCTYPE html><title>Blocked</title>"})))]
       (is (= {:refused true} (scan/screen-or-refused "key" {:text "sleep 30 && cat log"})))))
+  (testing "a 403 from the API itself, such as a bad key, fails the session instead of marking it scanned"
+    (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 403" {:status 403 :body "{\"error\":\"forbidden\"}"})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"403" (scan/screen-or-refused "key" {:text "x"})))))
   (testing "other errors still fail it, so the session is retried"
     (with-redefs [jev/screen! (fn [_ _] (throw (ex-info "Jev returned HTTP 401" {:status 401})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"401" (scan/screen-or-refused "key" {:text "x"})))))

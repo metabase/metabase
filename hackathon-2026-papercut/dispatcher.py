@@ -81,15 +81,16 @@ SCRUBBED_ENV = re.compile(r"^(CLAUDE|ANTHROPIC|MB_|PAPERCUTS_|LINEAR_|JEV_|TYPES
 
 
 class JevError(RuntimeError):
-    def __init__(self, message, status=None):
+    def __init__(self, message, status=None, body=""):
         super().__init__(message)
-        self.status = status
+        self.status, self.body = status, body
 
 
 def refused(error):
     """Whether TypeSafe's firewall refused the request. It answers some text, such as certain shell snippets, with an
-    HTML 403 every time, so sending the same text again is refused again."""
-    return isinstance(error, JevError) and error.status == 403
+    HTML 403 every time, so sending the same text again is refused again. A 403 from the API itself, such as a bad key,
+    comes as JSON and is a real failure."""
+    return isinstance(error, JevError) and error.status == 403 and error.body.lstrip().startswith("<")
 
 
 def evidence(papercut, thresholds):
@@ -162,6 +163,7 @@ def ask_jev(state, questions, api_key, model="jev-latest", tries=4, timeout=45):
     fail at once."""
     body = json.dumps({"model": model, "state": state, "questions": questions}).encode()
     error = status = None
+    body_text = ""
     for attempt in range(tries):
         if attempt:
             time.sleep(2 ** attempt)
@@ -171,12 +173,13 @@ def ask_jev(state, questions, api_key, model="jev-latest", tries=4, timeout=45):
                 return json.load(response)
         except HTTPError as http_error:
             status = http_error.code
-            error = f"{http_error.code} {http_error.read()[:300].decode(errors='replace')}"
+            body_text = http_error.read()[:300].decode(errors="replace")
+            error = f"{http_error.code} {body_text}"
             if http_error.code != 429 and http_error.code < 500:
                 break
         except (URLError, TimeoutError) as network_error:
-            error, status = repr(network_error), None
-    raise JevError(error, status)
+            error, status, body_text = repr(network_error), None, ""
+    raise JevError(error, status, body_text)
 
 
 def decide(papercut, thresholds, jev=None):
@@ -369,9 +372,11 @@ def assess(server, jev, thresholds, since=None, repository=None, ids=None, dry_r
     failed, verdicts = False, {}
     for papercut, assessment in zip(papercuts, results):
         if refused(assessment):
-            # Asking again would be refused again, so the cursor moves on; an edit to the papercut brings it back.
-            print(f"#{papercut['id']} jev refused its text; skipped", file=out, flush=True)
-            continue
+            # Asking again would be refused again, so the cursor moves on; an edit to the papercut brings it back. The
+            # refusal is recorded, so a ready verdict about the text before an edit doesn't stand.
+            print(f"#{papercut['id']} jev refused its text; a person has to judge it", file=out, flush=True)
+            assessment = {"verdict": "needs_human", "actor": ACTOR, "evidence_score": evidence(papercut, thresholds)[1],
+                          "reason": "Jev's firewall refused this papercut's text, so it wasn't assessed."}
         if isinstance(assessment, Exception):
             print(f"#{papercut['id']} jev failed: {assessment!r}", file=out, flush=True)
             failed = True

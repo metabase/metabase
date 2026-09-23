@@ -186,10 +186,20 @@ class AssessAgainstServerTest(ServerCase):
         papercut_id = self.report("Trap", severity="high")["papercut"]["id"]
 
         def refusing(state, questions):
-            raise dispatcher.JevError("403 <!DOCTYPE html>", 403)
+            raise dispatcher.JevError("403 <!DOCTYPE html>", 403, "<!DOCTYPE html>")
 
         self.assertIsNotNone(self.assess(refusing))
-        self.assertIsNone(self.store.get_papercut(papercut_id)["assessment"])
+        # The refusal is recorded, so an earlier verdict about other text doesn't stand.
+        self.assertEqual(self.store.get_papercut(papercut_id)["assessment"]["verdict"], "needs_human")
+
+    def test_a_403_from_the_api_itself_is_a_failure(self):
+        self.report("Trap", severity="high")
+
+        def forbidden(state, questions):
+            raise dispatcher.JevError('403 {"error": "forbidden"}', 403, '{"error": "forbidden"}')
+
+        # A failure holds the cursor, so nothing is skipped.
+        self.assertIsNone(self.assess(forbidden))
 
 
 class RelationJev:
@@ -212,7 +222,7 @@ class RefusingJev(RelationJev):
 
     def __call__(self, state, questions):
         if self.marker in json.dumps(state):
-            raise dispatcher.JevError("403 <!DOCTYPE html>", 403)
+            raise dispatcher.JevError("403 <!DOCTYPE html>", 403, "<!DOCTYPE html>")
         return super().__call__(state, questions)
 
 

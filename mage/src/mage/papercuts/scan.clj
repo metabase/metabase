@@ -403,7 +403,8 @@
   (try
     (jev/screen! api-key chunk)
     (catch clojure.lang.ExceptionInfo e
-      (if (= 403 (:status (ex-data e)))
+      ;; The firewall's refusal is an HTML page. A 403 from the API itself, such as a bad key, is JSON and a failure.
+      (if (and (= 403 (:status (ex-data e))) (str/starts-with? (str/triml (str (:body (ex-data e)))) "<"))
         {:refused true}
         (throw e)))))
 
