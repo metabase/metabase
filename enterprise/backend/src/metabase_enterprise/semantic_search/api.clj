@@ -23,25 +23,25 @@
    [next.jdbc.result-set :as jdbc.rs]
    [ring.util.response :as response]))
 
-(def ^:private duplicate-question
+(def ^:private related-question
   [:map {:closed true}
    [:id pos-int?]
    [:name string?]
    [:display_type {:optional true} [:maybe string?]]])
 
-(def ^:private duplicates-response
+(def ^:private related-questions-response
   [:map {:closed true}
    [:data [:sequential
            [:map {:closed true}
-            [:question duplicate-question]
-            [:duplicates [:sequential duplicate-question]]]]]
+            [:question related-question]
+            [:related_questions [:sequential related-question]]]]]
    [:total nat-int?]
    [:offset nat-int?]
    [:limit pos-int?]
    [:pair_count nat-int?]
    [:snapshot_revision [:maybe string?]]])
 
-(def ^:private duplicates-status-response
+(def ^:private related-questions-status-response
   [:map {:closed true}
    [:available boolean?]
    [:state string?]
@@ -61,11 +61,12 @@
   (when-let [table-name (-> index-metadata :index :table-name)]
     (semantic.index/index-size pgvector table-name)))
 
-(defn- semantic-search-available-for-duplicates?
-  "Whether the duplicate checker has a licensed, configured semantic-search backend and embedder.
+(defn- semantic-search-available-for-related-questions?
+  "Whether the related-questions checker has a licensed, configured semantic-search backend and embedder.
 
   `semantic.u/semantic-search-available?` intentionally describes pgvector availability and returns false for
-  SQLite-backed semantic search, so the duplicates status endpoint must account for the SQLite store explicitly."
+  SQLite-backed semantic search, so the related-questions status endpoint must account for the SQLite store
+  explicitly."
   []
   (and (premium-features/has-feature? :semantic-search)
        (or (sqlite-config/enabled?)
@@ -101,8 +102,8 @@
         (catch Exception e
           (throw (ex-info "Error fetching semantic search index status" {} e)))))))
 
-(api.macros/defendpoint :get "/duplicates" :- duplicates-response
-  "Return a bounded page of visible semantic duplicate pairs, expanded bidirectionally in memory.
+(api.macros/defendpoint :get "/related-questions" :- related-questions-response
+  "Return a bounded page of visible semantically related question pairs, expanded bidirectionally in memory.
 
   Pagination is over stored pairs, not expanded question rows. A question can therefore occur on more than one page."
   [_route-params _query-params]
@@ -117,21 +118,21 @@
      {:limit limit :offset offset}
      {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?*})))
 
-(api.macros/defendpoint :get "/duplicates/status" :- duplicates-status-response
-  "Return semantic duplicate backfill status without running a backfill."
+(api.macros/defendpoint :get "/related-questions/status" :- related-questions-status-response
+  "Return related-questions backfill status without running a backfill."
   [_route-params]
   (api/check-data-analyst)
   (let [status (semantic.duplicates/backfill-status)]
-    (cond-> (merge {:available (semantic-search-available-for-duplicates?)}
+    (cond-> (merge {:available (semantic-search-available-for-related-questions?)}
                    status)
       ;; Raw provider errors can contain deployment details. Only administrators need the diagnostic text.
       (not api/*is-superuser?*) (assoc :last_error nil))))
 
-(api.macros/defendpoint :post "/duplicates/backfill"
+(api.macros/defendpoint :post "/related-questions/backfill"
   :- [:map
       [:status [:= 202]]
       [:body [:map {:closed true} [:state [:= "queued"]]]]]
-  "Queue an asynchronous semantic duplicate rebuild. Administrators only."
+  "Queue an asynchronous related-questions rebuild. Administrators only."
   [_route-params _query-params]
   (api/check-superuser)
   (duplicates-backfill/trigger-backfill!)

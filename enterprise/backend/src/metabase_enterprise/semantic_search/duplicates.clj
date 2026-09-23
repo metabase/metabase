@@ -221,13 +221,13 @@
           questions   (hydrate-questions (keys adjacency) visibility)
           data        (->> adjacency
                            (sort-by key)
-                           (keep (fn [[question-id duplicate-ids]]
+                           (keep (fn [[question-id related-ids]]
                                    (when-let [question (get questions question-id)]
-                                     {:question   question
-                                      :duplicates (->> duplicate-ids
-                                                       sort
-                                                       (keep questions)
-                                                       vec)})))
+                                     {:question          question
+                                      :related_questions (->> related-ids
+                                                              sort
+                                                              (keep questions)
+                                                              vec)})))
                            vec)]
       (merge page
              {:data              data

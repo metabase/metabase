@@ -22,7 +22,7 @@ export * from "./oidc";
 export * from "./replacement";
 export * from "./saml";
 export * from "./scim";
-export * from "./semantic-duplicates";
+export * from "./related-questions";
 export * from "./support-access-grants";
 export * from "./table";
 export * from "./tags";

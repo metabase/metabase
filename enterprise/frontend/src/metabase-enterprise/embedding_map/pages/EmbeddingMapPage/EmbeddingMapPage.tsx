@@ -6,11 +6,13 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Box,
   Center,
+  Flex,
   Icon,
   Loader,
   Stack,
@@ -18,10 +20,13 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import type { EChartsEventHandler } from "metabase/viz-core";
 import { useGetEmbeddingProjectionQuery } from "metabase-enterprise/api";
 import type { EmbeddingProjectionPoint } from "metabase-types/api";
+
+import S from "./EmbeddingMapPage.module.css";
 
 const RANDOM_SEED = 42;
 // Neighborhood size drives how much UMAP separates clusters: too many
@@ -136,7 +141,87 @@ function useProjection(points: EmbeddingProjectionPoint[] | undefined) {
   return { projection, projectionError };
 }
 
+// DBSCAN over the 2D projection, so colors always agree with the clusters the
+// user can see. eps scales off the median nearest-neighbor distance because
+// UMAP output has no fixed scale. Returns a cluster id per point; -1 is noise.
+const DBSCAN_EPS_MULTIPLIER = 4;
+const DBSCAN_MIN_POINTS = 3;
+const NOISE_CLUSTER = -1;
+const UNVISITED = -2;
+
+function clusterProjection(projection: ProjectedPoint[]): number[] {
+  const n = projection.length;
+  const distance = (i: number, j: number) =>
+    Math.hypot(
+      projection[i].x - projection[j].x,
+      projection[i].y - projection[j].y,
+    );
+
+  const nearestDistances = projection.map((_point, i) => {
+    let best = Infinity;
+    for (let j = 0; j < n; j++) {
+      if (j !== i) {
+        best = Math.min(best, distance(i, j));
+      }
+    }
+    return best;
+  });
+  const medianNearest = [...nearestDistances].sort((a, b) => a - b)[
+    Math.floor(n / 2)
+  ];
+  const eps = medianNearest * DBSCAN_EPS_MULTIPLIER;
+
+  const neighborsOf = (i: number) => {
+    const neighbors: number[] = [];
+    for (let j = 0; j < n; j++) {
+      if (j !== i && distance(i, j) <= eps) {
+        neighbors.push(j);
+      }
+    }
+    return neighbors;
+  };
+
+  const labels: number[] = new Array(n).fill(UNVISITED);
+  let cluster = -1;
+  for (let i = 0; i < n; i++) {
+    if (labels[i] !== UNVISITED) {
+      continue;
+    }
+    const neighbors = neighborsOf(i);
+    if (neighbors.length + 1 < DBSCAN_MIN_POINTS) {
+      labels[i] = NOISE_CLUSTER;
+      continue;
+    }
+    cluster++;
+    labels[i] = cluster;
+    const queue = [...neighbors];
+    for (let j = queue.pop(); j != null; j = queue.pop()) {
+      if (labels[j] === NOISE_CLUSTER) {
+        labels[j] = cluster;
+      }
+      if (labels[j] !== UNVISITED) {
+        continue;
+      }
+      labels[j] = cluster;
+      const jNeighbors = neighborsOf(j);
+      if (jNeighbors.length + 1 >= DBSCAN_MIN_POINTS) {
+        queue.push(...jNeighbors);
+      }
+    }
+  }
+  return labels;
+}
+
 function getChartOption(projection: ProjectedPoint[]): EChartsCoreOption {
+  const clusters = clusterProjection(projection);
+  const pointsByCluster = _.groupBy(
+    projection.map((point, i) => ({ point, cluster: clusters[i] })),
+    ({ cluster }) => cluster,
+  );
+  const clusterIds = Object.keys(pointsByCluster)
+    .map(Number)
+    .sort((a, b) => a - b);
+
   return {
     animation: false,
     grid: { left: 16, right: 44, top: 16, bottom: 44 },
@@ -169,19 +254,19 @@ function getChartOption(projection: ProjectedPoint[]): EChartsCoreOption {
         brushSelect: false,
       },
     ],
-    series: [
-      {
-        type: "scatter",
-        symbolSize: 7,
-        data: projection.map(
-          (point): ScatterDatum => ({
-            value: [point.x, point.y],
-            name: point.name,
-            modelId: point.model_id,
-          }),
-        ),
-      },
-    ],
+    series: clusterIds.map((clusterId) => ({
+      type: "scatter",
+      symbolSize: 7,
+      cursor: "default",
+      ...(clusterId === NOISE_CLUSTER && { color: color("text-tertiary") }),
+      data: pointsByCluster[clusterId].map(
+        ({ point }): ScatterDatum => ({
+          value: [point.x, point.y],
+          name: point.name,
+          modelId: point.model_id,
+        }),
+      ),
+    })),
   };
 }
 
@@ -279,7 +364,10 @@ export function EmbeddingMapPage() {
 
   return (
     <Stack h="100%" p="lg" gap="md">
-      <Title order={2}>{t`Embedding map`}</Title>
+      <Flex align="center" justify="space-between">
+        <Title order={2}>{t`Embedding map`}</Title>
+        <AppSwitcher />
+      </Flex>
       <LoadingAndErrorWrapper
         loading={isLoading}
         error={error ?? projectionError}
@@ -300,11 +388,13 @@ export function EmbeddingMapPage() {
           </Center>
         ) : option != null ? (
           <Box w="100%" h="100%" pos="relative">
-            <ResponsiveEChartsRenderer
-              option={option}
-              eventHandlers={eventHandlers}
-              onInit={handleChartInit}
-            />
+            <Box w="100%" h="100%" className={S.chart}>
+              <ResponsiveEChartsRenderer
+                option={option}
+                eventHandlers={eventHandlers}
+                onInit={handleChartInit}
+              />
+            </Box>
             <Stack pos="absolute" top={16} left={12} gap="xs">
               <Tooltip label={t`Zoom in`} position="right">
                 <ActionIcon

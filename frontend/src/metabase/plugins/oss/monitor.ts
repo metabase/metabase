@@ -5,15 +5,15 @@ import { definePluginSlot } from "../slot";
 type MonitorPlugin = {
   isDependencyDiagnosticsEnabled: boolean;
   getDependencyDiagnosticsRoutes: () => ReactNode;
-  isSemanticDuplicatesEnabled: boolean;
-  getSemanticDuplicatesRoutes: () => ReactNode;
+  isRelatedQuestionsEnabled: boolean;
+  getRelatedQuestionsRoutes: () => ReactNode;
 };
 
 const getDefaultPluginMonitor = (): MonitorPlugin => ({
   isDependencyDiagnosticsEnabled: false,
   getDependencyDiagnosticsRoutes: () => null,
-  isSemanticDuplicatesEnabled: false,
-  getSemanticDuplicatesRoutes: () => null,
+  isRelatedQuestionsEnabled: false,
+  getRelatedQuestionsRoutes: () => null,
 });
 
 export const PLUGIN_MONITOR = definePluginSlot(getDefaultPluginMonitor);

@@ -62,7 +62,7 @@ export * from "./schema";
 export * from "./search";
 export * from "./security-center";
 export * from "./segment";
-export * from "./semantic-duplicates";
+export * from "./related-questions";
 export * from "./session";
 export * from "./settings";
 export * from "./setup";

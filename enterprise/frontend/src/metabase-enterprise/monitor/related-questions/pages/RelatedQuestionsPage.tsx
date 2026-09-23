@@ -7,73 +7,73 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useSelector } from "metabase/redux";
 import { Button, Center, Flex, Loader, Stack, Text } from "metabase/ui";
 import {
-  useGetSemanticDuplicatesQuery,
-  useGetSemanticDuplicatesStatusQuery,
-  useLazyGetSemanticDuplicatesQuery,
-  useTriggerSemanticDuplicatesBackfillMutation,
+  useGetRelatedQuestionsQuery,
+  useGetRelatedQuestionsStatusQuery,
+  useLazyGetRelatedQuestionsQuery,
+  useTriggerRelatedQuestionsBackfillMutation,
 } from "metabase-enterprise/api";
 import type {
-  SemanticDuplicateQuestion,
-  SemanticDuplicateRow,
-  SemanticDuplicatesResponse,
+  RelatedQuestion,
+  RelatedQuestionsResponse,
+  RelatedQuestionsRow,
 } from "metabase-types/api";
 
-import { SemanticDuplicatesTable } from "./SemanticDuplicatesTable";
+import { RelatedQuestionsTable } from "./RelatedQuestionsTable";
 
 const PAGE_SIZE = 50;
 
 type MergedRow = {
-  question: SemanticDuplicateQuestion;
-  duplicates: Map<number, SemanticDuplicateQuestion>;
+  question: RelatedQuestion;
+  related: Map<number, RelatedQuestion>;
 };
 
-function mergePages(pages: Record<number, SemanticDuplicatesResponse>) {
+function mergePages(pages: Record<number, RelatedQuestionsResponse>) {
   const rows = new Map<number, MergedRow>();
 
   Object.values(pages)
     .sort((a, b) => a.offset - b.offset)
     .flatMap((page) => page.data)
-    .forEach((row: SemanticDuplicateRow) => {
+    .forEach((row: RelatedQuestionsRow) => {
       const current = rows.get(row.question.id) ?? {
         question: row.question,
-        duplicates: new Map(),
+        related: new Map(),
       };
-      row.duplicates.forEach((duplicate) =>
-        current.duplicates.set(duplicate.id, duplicate),
+      row.related_questions.forEach((relatedQuestion) =>
+        current.related.set(relatedQuestion.id, relatedQuestion),
       );
       rows.set(row.question.id, current);
     });
 
   return [...rows.values()]
     .sort((a, b) => a.question.id - b.question.id)
-    .map(({ question, duplicates }) => ({
+    .map(({ question, related }) => ({
       question,
-      duplicates: [...duplicates.values()].sort((a, b) => a.id - b.id),
+      related_questions: [...related.values()].sort((a, b) => a.id - b.id),
     }));
 }
 
-export function SemanticDuplicatesPage() {
+export function RelatedQuestionsPage() {
   const isAdmin = useSelector(getUserIsAdmin);
   const [offset, setOffset] = useState(0);
   const [snapshotRevision, setSnapshotRevision] = useState<string | null>(null);
-  const [pages, setPages] = useState<
-    Record<number, SemanticDuplicatesResponse>
-  >({});
+  const [pages, setPages] = useState<Record<number, RelatedQuestionsResponse>>(
+    {},
+  );
   const {
     currentData: pageData,
     error: pageError,
     isFetching: isFetchingPage,
     isLoading: isLoadingPage,
     refetch: refetchPage,
-  } = useGetSemanticDuplicatesQuery({ limit: PAGE_SIZE, offset });
-  const [loadPage] = useLazyGetSemanticDuplicatesQuery();
+  } = useGetRelatedQuestionsQuery({ limit: PAGE_SIZE, offset });
+  const [loadPage] = useLazyGetRelatedQuestionsQuery();
   const {
     data: status,
     isLoading: isLoadingStatus,
     refetch: refetchStatus,
-  } = useGetSemanticDuplicatesStatusQuery();
+  } = useGetRelatedQuestionsStatusQuery();
   const [triggerBackfill, { isLoading: isTriggering }] =
-    useTriggerSemanticDuplicatesBackfillMutation();
+    useTriggerRelatedQuestionsBackfillMutation();
 
   useEffect(() => {
     if (status?.state !== "pending" && status?.state !== "running") {
@@ -142,14 +142,14 @@ export function SemanticDuplicatesPage() {
   return (
     <MonitorMain>
       <Flex align="center" justify="space-between" pr="4rem">
-        <MonitorHeaderTitle>{t`Potential duplicates`}</MonitorHeaderTitle>
+        <MonitorHeaderTitle>{t`Related questions`}</MonitorHeaderTitle>
         {isAdmin && (
           <Button
-            variant="outline"
+            variant="default"
             loading={isTriggering}
             onClick={handleRecheck}
           >
-            {t`Recheck duplicates`}
+            {t`Recheck related questions`}
           </Button>
         )}
       </Flex>
@@ -161,17 +161,17 @@ export function SemanticDuplicatesPage() {
         </Text>
       )}
       {status?.state === "pending" && (
-        <Text c="text-secondary">{t`The duplicate check is queued.`}</Text>
+        <Text c="text-secondary">{t`The related questions check is queued.`}</Text>
       )}
       {status?.state === "failed" && (
-        <Text c="error">{t`The duplicate check could not be completed.`}</Text>
+        <Text c="error">{t`The related questions check could not be completed.`}</Text>
       )}
 
       {pageError ? (
         <Center flex={1}>
           <Stack align="center">
-            <Text>{t`Unable to load potential duplicates.`}</Text>
-            <Button variant="outline" onClick={handleRetry}>
+            <Text>{t`Unable to load related questions.`}</Text>
+            <Button variant="default" onClick={handleRetry}>
               {t`Retry`}
             </Button>
           </Stack>
@@ -183,23 +183,23 @@ export function SemanticDuplicatesPage() {
       ) : !status?.available && !hasRows ? (
         <Center flex={1}>
           <Text c="text-secondary">
-            {t`Semantic search is unavailable. Configure semantic search to check for potential duplicates.`}
+            {t`Semantic search is unavailable. Configure semantic search to check for related questions.`}
           </Text>
         </Center>
       ) : !hasRows ? (
         <Center flex={1}>
-          <Text c="text-secondary">{t`No potential duplicates found.`}</Text>
+          <Text c="text-secondary">{t`No related questions found.`}</Text>
         </Center>
       ) : (
         <>
-          <SemanticDuplicatesTable rows={mergedRows} />
+          <RelatedQuestionsTable rows={mergedRows} />
           <Flex align="center" justify="space-between">
             <Text c="text-secondary" size="sm">
-              {t`Loaded ${loadedPairs} of ${totalPairs} duplicate pairs`}
+              {t`Loaded ${loadedPairs} of ${totalPairs} related question pairs`}
             </Text>
             {canLoadMore && (
               <Button
-                variant="outline"
+                variant="default"
                 loading={isFetchingPage}
                 disabled={isFetchingPage}
                 onClick={() => setOffset(offset + (pageData?.pair_count ?? 0))}

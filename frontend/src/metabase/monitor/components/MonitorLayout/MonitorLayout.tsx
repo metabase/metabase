@@ -34,7 +34,7 @@ function getActiveSection(pathname: string): MonitorSection | null {
       () => "diagnostics",
     )
     .with(
-      P.string.startsWith(Urls.monitorSemanticDuplicates()),
+      P.string.startsWith(Urls.monitorRelatedQuestions()),
       () => "semantic-duplicates",
     )
     .with(
@@ -114,20 +114,17 @@ export function MonitorLayout() {
               onClick={() => trackMonitorSectionClicked("diagnostics")}
             />
           )}
-          {canAccessDiagnostics &&
-            PLUGIN_MONITOR.isSemanticDuplicatesEnabled && (
-              <AreaTab
-                label={t`Potential duplicates`}
-                icon="search"
-                to={Urls.monitorSemanticDuplicates()}
-                isSelected={activeSection === "semantic-duplicates"}
-                showLabel={isNavbarOpened}
-                isGated={!hasSemanticSearchFeature}
-                onClick={() =>
-                  trackMonitorSectionClicked("semantic-duplicates")
-                }
-              />
-            )}
+          {canAccessDiagnostics && PLUGIN_MONITOR.isRelatedQuestionsEnabled && (
+            <AreaTab
+              label={t`Related questions`}
+              icon="search"
+              to={Urls.monitorRelatedQuestions()}
+              isSelected={activeSection === "semantic-duplicates"}
+              showLabel={isNavbarOpened}
+              isGated={!hasSemanticSearchFeature}
+              onClick={() => trackMonitorSectionClicked("semantic-duplicates")}
+            />
+          )}
           {canAccessTools && (
             <AreaTab
               label={t`Erroring questions`}

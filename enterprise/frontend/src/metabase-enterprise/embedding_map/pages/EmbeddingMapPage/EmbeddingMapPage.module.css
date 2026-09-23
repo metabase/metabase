@@ -1,0 +1,6 @@
+/* zrender continuously sets inline cursor styles (pointer over points, grab on
+   the dataZoom sliders), so the arrow cursor has to win with !important. */
+.chart,
+.chart * {
+  cursor: default !important;
+}

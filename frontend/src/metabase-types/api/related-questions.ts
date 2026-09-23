@@ -1,16 +1,16 @@
-export type SemanticDuplicateQuestion = {
+export type RelatedQuestion = {
   id: number;
   name: string;
   display_type?: string | null;
 };
 
-export type SemanticDuplicateRow = {
-  question: SemanticDuplicateQuestion;
-  duplicates: SemanticDuplicateQuestion[];
+export type RelatedQuestionsRow = {
+  question: RelatedQuestion;
+  related_questions: RelatedQuestion[];
 };
 
-export type SemanticDuplicatesResponse = {
-  data: SemanticDuplicateRow[];
+export type RelatedQuestionsResponse = {
+  data: RelatedQuestionsRow[];
   total: number;
   offset: number;
   limit: number;
@@ -18,7 +18,7 @@ export type SemanticDuplicatesResponse = {
   snapshot_revision: string | null;
 };
 
-export type SemanticDuplicatesStatus = {
+export type RelatedQuestionsStatus = {
   available: boolean;
   state: string;
   processed_questions: number;

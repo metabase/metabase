@@ -49,16 +49,16 @@ export function QuestionDuplicates({ question }: { question: Question }) {
     (currentData && currentData.engine !== "search.engine/semantic")
   ) {
     return (
-      <SidesheetCard title={t`Duplicates`}>
-        <Text c="text-secondary">{t`Unable to check for duplicates right now.`}</Text>
+      <SidesheetCard title={t`Related questions`}>
+        <Text c="text-secondary">{t`Unable to check for related questions right now.`}</Text>
       </SidesheetCard>
     );
   }
 
   if (!currentData) {
     return (
-      <SidesheetCard title={t`Duplicates`}>
-        <Text c="text-secondary">{t`Checking for duplicates…`}</Text>
+      <SidesheetCard title={t`Related questions`}>
+        <Text c="text-secondary">{t`Checking for related questions`}</Text>
       </SidesheetCard>
     );
   }
@@ -81,12 +81,12 @@ export function QuestionDuplicates({ question }: { question: Question }) {
     .slice(0, 3);
 
   return (
-    <SidesheetCard title={t`Duplicates`}>
+    <SidesheetCard title={t`Related questions`}>
       <Stack gap="xs">
         <Text c="text-secondary">
           {duplicates.length > 0
-            ? t`These questions have similar titles or descriptions and may be duplicates.`
-            : t`No likely duplicates found.`}
+            ? t`These questions have similar titles or descriptions and may be related.`
+            : t`No related questions found.`}
         </Text>
         {duplicates.map(({ result }) => (
           <Anchor

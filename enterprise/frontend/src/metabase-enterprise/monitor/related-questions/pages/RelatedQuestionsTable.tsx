@@ -7,14 +7,11 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { Box, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  SemanticDuplicateQuestion,
-  SemanticDuplicateRow,
-} from "metabase-types/api";
+import type { RelatedQuestion, RelatedQuestionsRow } from "metabase-types/api";
 
-import S from "./SemanticDuplicatesTable.module.css";
+import S from "./RelatedQuestionsTable.module.css";
 
-function QuestionLink({ question }: { question: SemanticDuplicateQuestion }) {
+function QuestionLink({ question }: { question: RelatedQuestion }) {
   return (
     <Link
       to={Urls.card({ id: question.id, name: question.name })}
@@ -33,12 +30,12 @@ function QuestionLink({ question }: { question: SemanticDuplicateQuestion }) {
   );
 }
 
-export function SemanticDuplicatesTable({
+export function RelatedQuestionsTable({
   rows,
 }: {
-  rows: SemanticDuplicateRow[];
+  rows: RelatedQuestionsRow[];
 }) {
-  const columns: AdminDataTableColumn<SemanticDuplicateRow>[] = [
+  const columns: AdminDataTableColumn<RelatedQuestionsRow>[] = [
     {
       key: "question",
       title: t`Question`,
@@ -46,12 +43,12 @@ export function SemanticDuplicatesTable({
       render: (row) => <QuestionLink question={row.question} />,
     },
     {
-      key: "duplicates",
-      title: t`Potential duplicates`,
+      key: "related_questions",
+      title: t`Related questions`,
       render: (row) => (
         <Stack gap="sm">
-          {row.duplicates.map((duplicate) => (
-            <QuestionLink key={duplicate.id} question={duplicate} />
+          {row.related_questions.map((relatedQuestion) => (
+            <QuestionLink key={relatedQuestion.id} question={relatedQuestion} />
           ))}
         </Stack>
       ),
@@ -60,7 +57,7 @@ export function SemanticDuplicatesTable({
 
   return (
     <Box
-      data-testid="semantic-duplicates-table"
+      data-testid="related-questions-table"
       mih={0}
       style={{ overflow: "auto" }}
     >

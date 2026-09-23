@@ -74,8 +74,8 @@ export function monitorErroringQuestions() {
   return `${ROOT_URL}/errors`;
 }
 
-export function monitorSemanticDuplicates() {
-  return `${ROOT_URL}/semantic-duplicates`;
+export function monitorRelatedQuestions() {
+  return `${ROOT_URL}/related-questions`;
 }
 
 export function monitorModelPersistenceLog() {
