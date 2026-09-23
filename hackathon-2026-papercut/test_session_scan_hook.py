@@ -79,5 +79,21 @@ class SessionScanHookTest(unittest.TestCase):
             self.assertNotIn("--hold-short-tail", call.call_args_list[0].args[0])
             self.assertEqual(hook.pending_path("claude").read_text(), "")
 
+    def test_each_queued_session_settles_and_scans_with_its_own_environment(self):
+        a = "12345678-1234-1234-1234-123456789abc"
+        with TemporaryDirectory() as directory, mock.patch.object(hook, "LOG_DIR", Path(directory)), \
+                mock.patch.object(hook.time, "time", return_value=1000.0), \
+                mock.patch.object(hook.time, "sleep") as sleep, \
+                mock.patch.object(hook.subprocess, "call") as call, redirect_stdout(io.StringIO()):
+            with mock.patch.dict(hook.os.environ, {"CODEX_HOME": "/custom/codex"}):
+                hook.enqueue("codex", a, "SessionEnd", None)
+            self.assertEqual(oct(hook.pending_path("codex").stat().st_mode & 0o777), "0o600")
+            # A worker started by another session, with its own CODEX_HOME, and a second after this one queued.
+            with mock.patch.dict(hook.os.environ, {"CODEX_HOME": "/other/codex"}):
+                hook.time.time.return_value = 1001.0
+                hook.work("codex")
+            sleep.assert_called_once_with(2.0)
+            self.assertEqual(call.call_args.kwargs["env"]["CODEX_HOME"], "/custom/codex")
+
 if __name__ == "__main__":
     unittest.main()
