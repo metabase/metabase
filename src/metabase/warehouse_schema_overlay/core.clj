@@ -164,7 +164,7 @@
 
 (def ^:private workspace-remapped-table-columns
   "The Table columns a workspace table borrows from the canonical table it stands in for."
-  #{:schema :name})
+  #{:schema :name :display_name})
 
 (mu/defn- workspace-remapping-join
   "The `:left-join` entries joining `workspace_table_remapping` as `remapping-alias` to the Table aliased
@@ -184,9 +184,14 @@
   [column          :- (into [:enum] workspace-remapped-table-columns)
    table-alias     :- :keyword
    remapping-alias :- :keyword]
-  [:case [:not= (u/qualified-key remapping-alias :id) nil]
-   (u/qualified-key remapping-alias (if (= column :name) :from_table :from_schema))
-   :else (u/qualified-key table-alias column)])
+  (let [remapped (case column
+                   :name         (u/qualified-key remapping-alias :from_table)
+                   :schema       (u/qualified-key remapping-alias :from_schema)
+                   :display_name [:coalesce (u/qualified-key remapping-alias :display_name)
+                                  (u/qualified-key table-alias :display_name)])]
+    [:case [:not= (u/qualified-key remapping-alias :id) nil]
+     remapped
+     :else (u/qualified-key table-alias column)]))
 
 (mu/defn- in-workspace-schema
   "Honey SQL predicate matching the Table rows aliased `table-alias` that live in a schema transforms write into."
@@ -253,6 +258,11 @@
         (cond-> ^:allow-subquery
          {:select (mapv (fn [column]
                           (cond
+                            (and schemas user-settings? (= column :display_name))
+                            [[:coalesce (u/qualified-key :u :display_name)
+                              (workspace-remapped-column column :t :w)]
+                             column]
+
                             (and user-settings? (user-settable-table-columns column))
                             [(table-user-settings-column column :t :u) column]
 

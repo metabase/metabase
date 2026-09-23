@@ -23,4 +23,5 @@
    [:from_table   ::lib.schema.common/non-blank-string]
    [:to_schema    [:maybe :string]]
    [:to_table     ::lib.schema.common/non-blank-string]
+   [:display_name [:maybe :string]]
    [:created_at   ms/TemporalInstant]])

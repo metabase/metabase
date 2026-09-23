@@ -11,6 +11,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.workspaces.schema :as ws.schema]
    [toucan2.core :as t2]))
 
@@ -62,6 +63,16 @@
   (app-db/update-or-insert! :model/WorkspaceTableRemapping
                             {:db_id db-id, :from_schema schema, :from_table table-name}
                             update-fn))
+
+(mu/defn table-display-name :- [:maybe :string]
+  "The display name of the Table of the Database with `db-id` named `table-name` in `schema`, or nil when sync has
+  no row for it."
+  [db-id      :- ::lib.schema.id/database
+   schema     :- [:maybe :string]
+   table-name :- ::lib.schema.common/non-blank-string]
+  (t2/select-one-fn :display_name :model/Table
+                    :db_id db-id :schema schema :name table-name
+                    {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn delete-remapping-for-source! :- :int
   "Delete the remapping of the Database with `db-id` whose canonical table is `table-name` in `schema`. Returns the

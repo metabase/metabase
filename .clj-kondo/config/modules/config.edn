@@ -3366,8 +3366,10 @@
            settings
            sql-tools
            util
+           warehouse-schema-overlay
+           warehouses.schema
            workspaces}
-   :model-imports #{:model/Database}
+   :model-imports #{:model/Database :model/Table}
    :model-exports #{:model/WorkspaceTableRemapping}}
 
   xrays

@@ -17,6 +17,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as humanization]
    [metabase.workspaces.schema :as ws.schema]))
 
 (set! *warn-on-reflection* true)
@@ -95,6 +96,16 @@
   []
   (str/replace (str (random-uuid)) "-" ""))
 
+(mu/defn- canonical-display-name :- ::lib.schema.common/non-blank-string
+  "The display name the workspace table has to answer to: that of the canonical table when it has a row of its own,
+  else the name humanized the way sync would have. Read here rather than where the overlay puts the workspace table
+  in its place, which is SQL and cannot humanize anything."
+  [db-id       :- ::lib.schema.id/database
+   from-schema :- [:maybe :string]
+   from-table  :- ::lib.schema.common/non-blank-string]
+  (or (ws.db/table-display-name db-id from-schema from-table)
+      (humanization/name->human-readable-name from-table)))
+
 (mu/defn- get-or-create-remapping! :- ::ws.schema/workspace-table-remapping
   "The remapping of the canonical table, moved to `to-schema` if the workspace schema changed since it was created,
   or a new one. Safe against a concurrent first run of the same target."
@@ -106,7 +117,9 @@
             db-id from-schema from-table
             (fn [existing]
               (cond
-                (nil? existing)                        {:to_schema to-schema, :to_table (random-table-name)}
+                (nil? existing)                        {:to_schema    to-schema
+                                                        :to_table     (random-table-name)
+                                                        :display_name (canonical-display-name db-id from-schema from-table)}
                 (not= (:to_schema existing) to-schema) {:to_schema to-schema})))]
     (clear-remappings-cache!)
     (ws.db/remapping id)))
