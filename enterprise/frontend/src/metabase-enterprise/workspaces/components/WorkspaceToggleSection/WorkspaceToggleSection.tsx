@@ -1,26 +1,26 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import { Switch } from "metabase/ui";
 
-import { RemoteSyncSettingsSection } from "./RemoteSyncSettingsSection";
-
-const WORKSPACES_KEY = "workspaces-enabled";
+import { WORKSPACES_ENABLED_SETTING } from "../../constants";
 
 /**
- * Saves on toggle rather than with the surrounding form. The form posts one closed payload to
- * `PUT /api/ee/remote-sync/settings`, which takes remote-sync settings only; this is a workspaces setting, so it
- * goes through the generic setting API instead.
+ * Saves on toggle rather than with the surrounding form, which posts one closed payload of remote-sync settings
+ * only.
  */
-export const WorkspacesSection = () => {
-  const { value, updateSetting, settingDetails, isLoading } =
-    useAdminSetting(WORKSPACES_KEY);
+export const WorkspaceToggleSection = () => {
+  const { value, updateSetting, settingDetails, isLoading } = useAdminSetting(
+    WORKSPACES_ENABLED_SETTING,
+  );
 
   const isSetByEnv = !!settingDetails?.is_env_setting;
 
   return (
-    <RemoteSyncSettingsSection
+    <SettingsSection
       title={t`Workspaces`}
+      titleProps={{ order: 2 }}
       description={
         isSetByEnv ? t`Using ${settingDetails?.env_name}` : undefined
       }
@@ -32,11 +32,11 @@ export const WorkspacesSection = () => {
         description={t`Transform runs write their output tables into each database's workspace schema instead of the target the transform names, so a run can be reviewed before it replaces what people read. Set the schema per database.`}
         onChange={(event) =>
           updateSetting({
-            key: WORKSPACES_KEY,
+            key: WORKSPACES_ENABLED_SETTING,
             value: event.currentTarget.checked,
           })
         }
       />
-    </RemoteSyncSettingsSection>
+    </SettingsSection>
   );
 };

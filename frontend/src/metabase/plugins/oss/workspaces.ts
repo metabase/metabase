@@ -9,6 +9,7 @@ export type WorkspaceSchemaSectionProps = {
 
 const getDefaultWorkspaces = () => ({
   WorkspaceSchemaSection: PluginPlaceholder<WorkspaceSchemaSectionProps>,
+  WorkspaceToggleSection: PluginPlaceholder,
 });
 
 export const PLUGIN_WORKSPACES = definePluginSlot(getDefaultWorkspaces);

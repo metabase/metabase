@@ -8,6 +8,7 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
+import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -39,7 +40,6 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
-import { WorkspacesSection } from "./WorkspacesSection";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -115,7 +115,9 @@ export const RemoteSyncSettingsForm = ({
                   </RemoteSyncSettingsSection>
                 )}
                 {/* An instance-wide setting, so it stays on the admin page rather than the per-user modal. */}
-                {!isModalVariant && <WorkspacesSection />}
+                {!isModalVariant && (
+                  <PLUGIN_WORKSPACES.WorkspaceToggleSection />
+                )}
 
                 <Flex justify="space-between" align="center">
                   <Box>

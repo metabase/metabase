@@ -298,6 +298,10 @@
   "Should we allow users to publish and run data apps?"
   :data-apps-preview)
 
+(define-premium-feature ^{:added "0.65.0"} enable-workspaces?
+  "Should we allow transforms to run in workspace mode?"
+  :workspaces)
+
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
   :transforms-basic)
@@ -444,6 +448,7 @@
    :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 
