@@ -827,11 +827,20 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/api/reports", body,
                                    {"Content-Type": "application/json; charset=utf-8"})[0], 201)
 
+    def test_malformed_link_in_a_comment_keeps_the_page(self):
+        papercut_id = self.report("r1")[1]["papercut"]["id"]
+        self.call("POST", f"/api/papercuts/{papercut_id}/comments", {"body": "See [x](http://[)"})
+        status, page, _ = self.call("GET", f"/papercuts/{papercut_id}")
+        self.assertEqual(status, 200)
+        self.assertIn("See x", page)
+
     def test_patch_rejects_null_text(self):
         papercut_id = self.report("r1")[1]["papercut"]["id"]
         for key in ("description", "path", "area"):
             with self.subTest(key):
                 self.assertEqual(self.call("PATCH", f"/api/papercuts/{papercut_id}", {key: None})[0], 400)
+        status, body, _ = self.call("PATCH", f"/api/papercuts/{papercut_id}", {"title": None})
+        self.assertEqual((status, body["error"]), (400, "title must be a nonempty string"))
 
     def test_token_guards_writes(self):
         self.handler.token = "secret"

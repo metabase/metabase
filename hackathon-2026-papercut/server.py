@@ -956,7 +956,8 @@ class Store:
         for key in ("title", "description", "path", "area"):
             if key in changes:
                 if changes[key] is None:
-                    raise ValueError(f"{key} must be a string; send an empty string to clear it")
+                    raise ValueError("title must be a nonempty string" if key == "title"
+                                     else f"{key} must be a string; send an empty string to clear it")
                 text_field(changes, key, required=key == "title")
         actor, reason = actor_of(changes), text_field(changes, "reason")
         with self.connect(write=True) as db:
@@ -1445,6 +1446,12 @@ async function refreshPage(url = window.location.href) {
     const currentMain = document.querySelector('main');
     const nextMain = next.querySelector('main');
     if (!nextMain) throw new Error('Missing page content');
+    // The filter form isn't swapped, to keep focus and typing; a new repository in its selector needs a reload.
+    const repositoryOptions = page => [...(page.getElementById('repository')?.options ?? [])].map(o => o.value).join('|');
+    if (repositoryOptions(document) !== repositoryOptions(next)) {
+      window.location.reload();
+      return;
+    }
     const currentResults = document.getElementById('results');
     const nextResults = next.getElementById('results');
     if (currentResults && nextResults) {
@@ -1713,7 +1720,11 @@ def inline_markdown(value):
         elif token.startswith("["):
             label, target = token[1:].split("](", 1)
             target = target[:-1]
-            scheme = urlsplit(target).scheme.lower()
+            try:
+                scheme = urlsplit(target).scheme.lower()
+            except ValueError:
+                # A malformed URL, like http://[, renders as its label instead of failing the whole page.
+                scheme = None
             if scheme in ("http", "https", "mailto"):
                 rendered.append(f"<a href='{html.escape(target, quote=True)}' rel='noopener noreferrer'>{html.escape(label)}</a>")
             else:
