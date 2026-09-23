@@ -118,21 +118,30 @@
 ;;; ---------------------------------------------------------------------------------------------------
 
 (def ^:private table-roles
-  "The fixed taxonomy Jev picks from. Metabase-native, not domain-specific."
-  {:fact      "a fact/event table: many rows, points OUT to dimensions via foreign keys, holds measures"
-   :dimension "a dimension/entity table: describes things (customers, products), referenced BY many tables"
-   :lookup    "a small lookup/reference table: few rows, mostly categories or codes"
-   :junk      "a backup, staging, temp, or derived scratch table — not a primary modeling target"})
+  "The fixed taxonomy Jev picks from. Metabase-native, not domain-specific, and read from a table's SHAPE
+  (row count, measures, a time column, descriptive columns) rather than requiring foreign keys — many
+  warehouses (dbt marts, denormalized sources) have none. `derived` is normal here, not a demerit; only
+  `junk` is a demerit, and it's a usage/naming signal (unused, a dated backup) not a structural one."
+  {:fact      "a fact/event table: many rows, holds numeric measures and usually a timestamp — the thing you aggregate"
+   :dimension "a dimension/entity table: describes things (customers, products), mostly descriptive columns, fewer rows"
+   :aggregate "a pre-summarized rollup/mart: few rows, mostly measures already grouped by a period or category — good to chart directly"
+   :raw       "a raw/staging source table: wide, many columns, unmodeled — the input to other tables, not usually queried directly"
+   :junk      "an abandoned or backup table: rarely or never used, or a dated/duplicate copy — not a modeling target"})
 
 (defn- describe-facts
-  "A compact, value-free English summary of a table's Layer-1 facts for Jev to read as state."
+  "A compact, value-free English summary of a table's Layer-1 facts for Jev to read as state. Includes the
+  name (so staging/mart/backup naming can inform the judgment) and whether the table has a time column."
   [{:keys [name row_count view_count field_count join_in_degree fk_out_count fields]}]
-  (let [roles (frequencies (map :role fields))]
+  (let [roles     (frequencies (map :role fields))
+        has-time? (pos? (get roles :temporal 0))]
     (str "Table \"" name "\": "
          (or row_count "unknown") " rows, "
          field_count " columns"
-         " (" (get roles :numeric 0) " numeric, " (get roles :temporal 0) " temporal, "
+         " (" (get roles :numeric 0) " numeric measures, "
+         (get roles :text 0) " descriptive, "
+         (get roles :temporal 0) " time, "
          (get roles :key 0) " keys), "
+         (if has-time? "has a time column, " "no time column, ")
          "referenced by " join_in_degree " foreign keys, "
          "points out to " fk_out_count " tables, "
          "viewed " (or view_count 0) " times.")))
