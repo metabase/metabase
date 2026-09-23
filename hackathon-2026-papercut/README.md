@@ -47,3 +47,14 @@ The issue list also accepts `category` and `q` filters. A Mage task can submit t
 same JSON over HTTP; it need not share the server's implementation language.
 
 Run tests with `python3 -m unittest discover -s . -p 'test_*.py'`.
+
+For a populated demo, start the server and run `python3 seed_demo.py`. It records
+four papercuts under `demo/metabase`, including a duplicate report and related
+issues. The seed is safe to run again: stable report IDs prevent double counting.
+
+To view real, source-backed papercuts from a local archive, pass selected writeups
+to `python3 import_local.py /path/to/local-papercuts/example.md`. The importer
+skips writeups marked `fixed` or `wontfix`, stores their
+summary and metadata, and uses stable IDs so repeats do not inflate counts. The
+imported reports are labeled `local-papercuts-archive` because the original
+machine IDs are not available.
