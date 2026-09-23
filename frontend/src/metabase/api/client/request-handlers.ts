@@ -72,6 +72,9 @@ const getDefaultPluginApi = () => ({
     // Send the host page URL as the embed referrer header. Installed by the
     // iframe SDK's embed route, which receives the URL via postMessage.
     embedReferrer: noop,
+    // Emit the remote-sync worktree header (`X-Metabase-Worktree-Id`), naming the
+    // worktree the user is working in. Installed by the remote-sync plugin.
+    setWorktreeHeader: noop,
   },
 });
 

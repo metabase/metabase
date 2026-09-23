@@ -36,6 +36,7 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
     PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer,
     PLUGIN_API.onBeforeRequestHandlers.embedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.setWorktreeHeader,
   ];
 }
 

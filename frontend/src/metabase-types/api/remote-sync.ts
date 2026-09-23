@@ -266,10 +266,6 @@ export type CreateWorktreeRequest = {
   branch: string;
 };
 
-export type UpdateUserWorktreeRequest = {
-  worktree_id: WorktreeId | null;
-};
-
 export type WorktreeId = number;
 
 export type Worktree = {

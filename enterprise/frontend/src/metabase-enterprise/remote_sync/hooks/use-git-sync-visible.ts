@@ -1,11 +1,12 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 
-import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useAdminSetting } from "metabase/settings";
 import { useGetWorktreeQuery } from "metabase-enterprise/api";
 
 import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
+import { getWorktreeId } from "../selectors";
 
 export interface GitSyncVisibleState {
   isVisible: boolean;
@@ -21,7 +22,7 @@ export interface GitSyncVisibleState {
  */
 export const useGitSyncVisible = (): GitSyncVisibleState => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const worktreeId = useSelector(getUser)?.worktree_id ?? null;
+  const worktreeId = useSelector(getWorktreeId);
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
   const { value: instanceBranch, settingDetails: branchDetails } =
     useAdminSetting(BRANCH_KEY);

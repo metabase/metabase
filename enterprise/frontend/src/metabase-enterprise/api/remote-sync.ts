@@ -15,13 +15,12 @@ import type {
   TestRemoteSyncConnectionRequest,
   TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
-  UpdateUserWorktreeRequest,
   Worktree,
   WorktreeId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { ENTERPRISE_TAG_TYPES, idTag, listTag, tag } from "./tags";
+import { idTag, listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -143,14 +142,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: () => [listTag("worktree")],
     }),
-    updateUserWorktree: builder.mutation<void, UpdateUserWorktreeRequest>({
-      query: (body) => ({
-        method: "PUT",
-        url: `/api/ee/remote-sync/worktree/current`,
-        body,
-      }),
-      invalidatesTags: () => ENTERPRISE_TAG_TYPES.map((type) => ({ type })),
-    }),
     getBranches: builder.query<GetBranchesResponse, void>({
       query: () => ({
         method: "GET",
@@ -215,5 +206,4 @@ export const {
   useCreateWorktreeMutation,
   useGetWorktreeQuery,
   useListWorktreesQuery,
-  useUpdateUserWorktreeMutation,
 } = remoteSyncApi;

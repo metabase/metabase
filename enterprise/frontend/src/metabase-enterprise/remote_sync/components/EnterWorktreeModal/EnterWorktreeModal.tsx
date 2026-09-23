@@ -9,14 +9,16 @@ import {
   FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
+import { useDispatch } from "metabase/redux";
 import { Button, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorktreeMutation,
   useGetBranchesQuery,
   useListWorktreesQuery,
-  useUpdateUserWorktreeMutation,
 } from "metabase-enterprise/api";
+
+import { worktreeChanged } from "../../sync-task-slice";
 
 type EnterWorktreeModalProps = {
   opened: boolean;
@@ -40,18 +42,16 @@ function EnterWorktreeForm({ onClose }: { onClose: VoidFunction }) {
   const { data: branchesData } = useGetBranchesQuery();
   const { data: worktrees = [] } = useListWorktreesQuery();
   const [createWorktree] = useCreateWorktreeMutation();
-  const [updateUserWorktree] = useUpdateUserWorktreeMutation();
+  const dispatch = useDispatch();
   const schema = useMemo(getSchema, []);
   const branches = branchesData?.items ?? [];
 
   const handleSubmit = async ({ branch }: EnterWorktreeValues) => {
-    const worktree = worktrees.find((worktree) => worktree.branch === branch);
-    if (worktree) {
-      await updateUserWorktree({ worktree_id: worktree.id }).unwrap();
-    } else {
-      const newWorktree = await createWorktree({ branch }).unwrap();
-      await updateUserWorktree({ worktree_id: newWorktree.id }).unwrap();
-    }
+    const worktree =
+      worktrees.find((worktree) => worktree.branch === branch) ??
+      (await createWorktree({ branch }).unwrap());
+
+    dispatch(worktreeChanged(worktree.id));
     onClose();
   };
 

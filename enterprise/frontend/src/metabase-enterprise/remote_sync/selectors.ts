@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getUser } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { remoteSyncApi } from "metabase-enterprise/api";
@@ -97,9 +96,14 @@ export const getIsRemoteSyncReadOnly = (state: State): boolean => {
   return (
     (getSetting(state, "remote-sync-enabled") ?? false) &&
     getSetting(state, "remote-sync-type") === "read-only" &&
-    getUser(state)?.worktree_id == null
+    getRemoteSyncState(state).worktreeId == null
   );
 };
+
+export const getWorktreeId = createSelector(
+  getRemoteSyncState,
+  (state) => state.worktreeId,
+);
 
 export const getSyncConflictVariant = createSelector(
   getRemoteSyncState,

@@ -10,7 +10,6 @@ import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
   useLazyGetExportPreflightQuery,
-  useUpdateUserWorktreeMutation,
 } from "metabase-enterprise/api";
 import {
   getCurrentTask,
@@ -19,6 +18,7 @@ import {
 import {
   syncConflictVariantUpdated,
   taskCleared,
+  worktreeChanged,
 } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type { ExportPreflightResponse } from "metabase-types/api";
 
@@ -44,7 +44,6 @@ export const GitSyncControls = () => {
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
-  const [updateUserWorktree] = useUpdateUserWorktreeMutation();
   const [runExportPreflight] = useLazyGetExportPreflightQuery();
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
@@ -246,7 +245,7 @@ export const GitSyncControls = () => {
           }}
           onLeaveWorktreeClick={() => {
             closeMenu();
-            updateUserWorktree({ worktree_id: null });
+            dispatch(worktreeChanged(null));
           }}
         />
       </Menu>

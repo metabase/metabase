@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -11,8 +12,11 @@ import type { Worktree } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { worktreeChanged } from "../sync-task-slice";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 
@@ -51,20 +55,27 @@ const setup = ({
   ]);
 
   const storeInitialState = createMockState({
-    currentUser: createMockUser({
-      is_superuser: isAdmin,
-      worktree_id: worktree?.id ?? null,
-    }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
+      "token-features": createMockTokenFeatures({ remote_sync: true }),
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-branch": currentBranch,
       "remote-sync-type": syncType,
     }),
   });
 
-  return renderHookWithProviders(() => useGitSyncVisible(), {
+  // The worktree lives in the plugin's own slice, whose reducer only exists once the plugin is registered.
+  setupEnterprisePlugins();
+
+  const utils = renderHookWithProviders(() => useGitSyncVisible(), {
     storeInitialState,
   });
+
+  if (worktree) {
+    utils.store.dispatch(worktreeChanged(worktree.id));
+  }
+
+  return utils;
 };
 
 describe("useGitSyncVisible", () => {
