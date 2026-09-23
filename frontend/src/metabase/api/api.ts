@@ -64,15 +64,19 @@ type BaseQueryArgs =
       url: ApiRequestArgs["url"] | null;
     });
 
+/** Per-endpoint `extraOptions` that override the request defaults below. */
+type BaseQueryExtraOptions = Partial<Pick<ApiRequestArgs, "retry" | "noEvent">>;
+
 // Adapts our legacy API client to RTK Query's `BaseQueryFn` contract: pull the
 // abort signal off the query lifecycle context and turn the client's
 // resolve/throw into RTK's `{ data } | { error }` shape. All request-shaping and
 // validation lives in the client itself.
-export const baseQuery: BaseQueryFn<BaseQueryArgs, unknown, unknown> = async (
-  args,
-  ctx,
-  extraOptions,
-) => {
+export const baseQuery: BaseQueryFn<
+  BaseQueryArgs,
+  unknown,
+  unknown,
+  BaseQueryExtraOptions
+> = async (args, ctx, extraOptions) => {
   const requestArgs = stripRtkCacheKey(
     typeof args === "string" ? { url: args } : args,
   );

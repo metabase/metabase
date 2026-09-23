@@ -15,6 +15,7 @@ import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-c
 import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
+import { UpgradeStatus } from "../UpgradeStatus";
 
 import { StatusListingRoot } from "./StatusListing.styled";
 
@@ -35,6 +36,7 @@ export const StatusListing = () => {
     <>
       <StatusListingRoot data-testid="status-root-container">
         {isAdmin && <DatabaseStatus />}
+        {isAdmin && <UpgradeStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
         <PLUGIN_AUDIT.AnalyticsExportStatus />
