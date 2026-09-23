@@ -24,7 +24,8 @@ const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
 const VAR_LESS_ERRORS_FILE = "mb_hawk_var_less_errors.xml";
 const selectHawkJunit = (entries: string[]): string[] =>
   entries.filter(
-    (entry) => entry.endsWith("_test.xml") || entry.endsWith(VAR_LESS_ERRORS_FILE),
+    (entry) =>
+      entry.endsWith("_test.xml") || entry.endsWith(VAR_LESS_ERRORS_FILE),
   );
 
 /**
@@ -49,7 +50,9 @@ export function normalizeBackendJunit(
     `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} ${ignorePassingTests ? "failing " : ""}test(s)`,
   );
   for (const test of failures) {
-    log(`  ${test.status ?? 'failure'}: ${test.path || "(no namespace)"} / ${test.name}`);
+    log(
+      `  ${test.status ?? "failure"}: ${test.path || "(no namespace)"} / ${test.name}`,
+    );
   }
   return failures;
 }

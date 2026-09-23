@@ -1,19 +1,14 @@
 // changelog preview only, doesn't publish anything
 import { Octokit } from "@octokit/rest";
 
-import {
-  getChangelog,
-  isValidVersionString,
-} from "./src";
+import { getChangelog, isValidVersionString } from "./src";
 
-const {
-  GITHUB_TOKEN,
-  GITHUB_OWNER,
-  GITHUB_REPO,
-} = process.env as any;
+const { GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO } = process.env as any;
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-  console.error("You must provide GITHUB_* environment variables in .env-template");
+  console.error(
+    "You must provide GITHUB_* environment variables in .env-template",
+  );
 }
 
 const github = new Octokit({ auth: GITHUB_TOKEN });
@@ -34,4 +29,3 @@ const notes = await getChangelog({
 });
 
 console.log(notes);
-
