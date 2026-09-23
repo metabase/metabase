@@ -24,7 +24,10 @@ import {
   getCardsReferencedColumns,
   getChartSeriesModels,
 } from "../../echarts/cartesian/model";
-import { getYAxisSplit } from "../../echarts/cartesian/model/axis";
+import {
+  getYAxisSplit,
+  supportsAutoYAxisSplit,
+} from "../../echarts/cartesian/model/axis";
 import {
   getDatasetExtents,
   getJoinedCardsDataset,
@@ -335,16 +338,12 @@ export function getYAxisSides(
     dataset,
   );
 
-  // `getScatterPlotModel` passes `false`, so a scatter plot only splits through
-  // an explicit per-series axis assignment.
-  const isAutoSplitSupported = display !== "scatter";
-
   const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
     seriesModels,
     stackModels,
     seriesExtents,
     settings,
-    isAutoSplitSupported,
+    supportsAutoYAxisSplit(display),
   );
 
   return {
