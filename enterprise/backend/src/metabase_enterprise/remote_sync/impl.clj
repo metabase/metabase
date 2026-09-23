@@ -651,14 +651,16 @@
         ;; and only the entities the remote changed decide the conflicts and summary, so only those local entities
         ;; are serialized.
         plan (incremental-import-plan snapshot (source.p/version base-snapshot))
+        ;; Computing the merge only serializes (no Field is written), so field paths can be cached.
         {:keys [conflicts merged summary]}
         (serdes/with-cache
-          (let [targets (spec/exportable-entities)]
-            (if (= :remote-sync/incremental-not-possible plan)
-              (source/compute-merge (spec/extract-entities-for-export targets)
-                                    snapshot base-snapshot task-id
-                                    :total (spec/exportable-entity-count targets))
-              (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot))))]
+          (serdes/with-field-path-cache
+            (let [targets (spec/exportable-entities)]
+              (if (= :remote-sync/incremental-not-possible plan)
+                (source/compute-merge (spec/extract-entities-for-export targets)
+                                      snapshot base-snapshot task-id
+                                      :total (spec/exportable-entity-count targets))
+                (source/compute-merge-changes (remote-changed-extractor targets) snapshot base-snapshot)))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -894,7 +896,9 @@
   Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
+        ;; Field paths are cached only while merging: the fold-in load below may write Fields.
+        {:keys [merged conflicts summary]} (serdes/with-field-path-cache
+                                             (source/compute-merge models snapshot base-snapshot task-id :total total))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1158,26 +1162,28 @@
    - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
    - :remote-sync/incremental-not-possible when any row can't go incrementally"
   [snapshot rows]
-  (let [opts          (source/storage-context)
-        ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
-        ;; (removed/delete, non-entity-id, bad status) is decided with no entity
-        {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
-                                                                 (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
-                                                  rows)
-        ;; the no-extraction rows first (cheap)
-        plan          (->> other-rows
-                           (map #(row->incremental-export-plan % nil))
-                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
-        plan          (->> cu-rows
-                           (->sized-chunks)
-                           (map #(chunk->incremental-export-plan snapshot opts %))
-                           (reduce merge-incremental-export-plans-reducer plan))
-        plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
-                           (dependencies->incremental-export-plan snapshot opts)
-                           (merge-incremental-export-plans plan))]
-    (if (= plan :remote-sync/incremental-not-possible)
-      :remote-sync/incremental-not-possible
-      (dissoc plan :pull))))
+  ;; Planning only reads and serializes (no Field is written), so field paths can be cached.
+  (serdes/with-field-path-cache
+    (let [opts          (source/storage-context)
+          ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
+          ;; (removed/delete, non-entity-id, bad status) is decided with no entity
+          {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
+                                                                   (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
+                                                    rows)
+          ;; the no-extraction rows first (cheap)
+          plan          (->> other-rows
+                             (map #(row->incremental-export-plan % nil))
+                             (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
+          plan          (->> cu-rows
+                             (->sized-chunks)
+                             (map #(chunk->incremental-export-plan snapshot opts %))
+                             (reduce merge-incremental-export-plans-reducer plan))
+          plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
+                             (dependencies->incremental-export-plan snapshot opts)
+                             (merge-incremental-export-plans plan))]
+      (if (= plan :remote-sync/incremental-not-possible)
+        :remote-sync/incremental-not-possible
+        (dissoc plan :pull)))))
 
 (defn- path-top-level-dir [^String path]
   (let [i (str/index-of path "/")]
@@ -1215,15 +1221,17 @@
    - [{:id :file_path :content_hash}]"
   ([commit opts rows] (stage-writes commit opts rows nil))
   ([commit opts rows on-chunk]
-   (let [staged (volatile! 0)]
-     (->> rows
-          (->sized-chunks)
-          (mapcat (fn [chunk]
-                    (let [res (chunk-stage-writes commit opts chunk)]
-                      (vswap! staged + (count (:rows chunk)))
-                      (when on-chunk (on-chunk @staged))
-                      res)))
-          (doall)))))
+   ;; Staging only serializes (no Field is written), so field paths can be cached.
+   (serdes/with-field-path-cache
+     (let [staged (volatile! 0)]
+       (->> rows
+            (->sized-chunks)
+            (mapcat (fn [chunk]
+                      (let [res (chunk-stage-writes commit opts chunk)]
+                        (vswap! staged + (count (:rows chunk)))
+                        (when on-chunk (on-chunk @staged))
+                        res)))
+            (doall))))))
 
 (defn- stage-deletes [commit delete-paths]
   (doseq [delete-path delete-paths]
@@ -1787,23 +1795,26 @@
     (if (or (nil? base-version) (= base-version remote-version))
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
+        ;; a preview writes nothing, so field paths can be cached
         (serdes/with-cache
-          (let [targets (spec/exportable-entities)]
-            (if (seq targets)
-              ;; only the entities the remote changed decide the preview, so extract and serialize just those
-              (assoc (source/preview-merge-changes (remote-changed-extractor targets) snapshot base-snapshot)
-                     :diverged? true)
-              (assoc no-changes :diverged? true))))
+          (serdes/with-field-path-cache
+            (let [targets (spec/exportable-entities)]
+              (if (seq targets)
+                ;; only the entities the remote changed decide the preview, so extract and serialize just those
+                (assoc (source/preview-merge-changes (remote-changed-extractor targets) snapshot base-snapshot)
+                       :diverged? true)
+                (assoc no-changes :diverged? true)))))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
         ;; still offered, so surface what it would discard (every remote entity not identical to ours).
         {:diverged? true :clean? false :reason :history-rewritten
          :conflicts [] :summary {:added 0 :updated 0 :removed 0}
          :force-push-casualties (serdes/with-cache
-                                  (let [targets (spec/exportable-entities)]
-                                    (if (seq targets)
-                                      (source/force-push-casualties-no-base
-                                       (spec/extract-entities-for-export targets) snapshot)
-                                      {:deleted [] :overwritten []})))}))))
+                                  (serdes/with-field-path-cache
+                                    (let [targets (spec/exportable-entities)]
+                                      (if (seq targets)
+                                        (source/force-push-casualties-no-base
+                                         (spec/extract-entities-for-export targets) snapshot)
+                                        {:deleted [] :overwritten []}))))}))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
