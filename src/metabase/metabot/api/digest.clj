@@ -6,6 +6,7 @@
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.metabot.agent.core :as metabot.agent]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -23,7 +24,10 @@
    [:card_type [:maybe :string]]
    ;; nil when the model left this item out of its `render_digest` call: the item still renders
    [:reason [:maybe :string]]
-   [:signals [:sequential :string]]])
+   [:signals [:sequential :string]]
+   ;; present only when the entity's own page would not show the movement — the client opens it ad hoc
+   [:anomaly_query {:optional true} ::lib-be.schema/maybe-legacy-query]
+   [:anomaly_display {:optional true} [:maybe :string]]])
 
 (def ^:private digest-response-schema
   [:map

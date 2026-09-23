@@ -45,12 +45,18 @@
                :buckets-ago buckets-from-end}))
 
 (defn- reason->xml
-  [{:keys [signal viewed-at bookmarked-at condition mine? interestingness outliers]} now]
+  [{:keys [signal viewed-at bookmarked-at condition mine? interestingness outliers via]} now]
   (case signal
     :data-anomaly
     (str/join "\n"
-              (concat [(format "<reason signal=\"data-anomaly\" interestingness=\"%.2f\">"
-                               (double (or interestingness 0.0)))]
+              (concat [(->> [(attr :signal "data-anomaly")
+                             (attr :interestingness (format "%.2f" (double (or interestingness 0.0))))
+                             ;; present when the movement was found in the metric this item is built on rather
+                             ;; than in the item itself — the narration must not claim the item shows it
+                             (attr :via-metric (:metric-name via))]
+                            (keep identity)
+                            (str/join " ")
+                            (format "<reason %s>"))]
                       (map #(str "  " (outlier->xml %)) outliers)
                       ["</reason>"]))
     :bookmark     (tag :reason {:signal "bookmark"

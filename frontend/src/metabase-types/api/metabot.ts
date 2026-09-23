@@ -18,6 +18,7 @@ import type {
   UnsavedCard,
   User,
   UserPermissions,
+  VisualizationDisplay,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -383,6 +384,13 @@ export interface MetabotDigestItem {
   reason: string | null;
   /** Which interest signals this entity carried, e.g. "bookmark", "alert". */
   signals: string[];
+  /**
+   * The query the anomaly was actually found in. Present only when the entity's own page would not show the
+   * movement — a card sliced by category, or one scoped to a single period — so the digest can link to an
+   * ad-hoc question that does.
+   */
+  anomaly_query?: DatasetQuery | null;
+  anomaly_display?: VisualizationDisplay | null;
 }
 
 export interface MetabotDigestResponse {

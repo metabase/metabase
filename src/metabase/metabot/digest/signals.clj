@@ -272,12 +272,10 @@
 
 ;;; --------------------------------------------------- API -----------------------------------------------------
 
-(defn digest-candidates
-  "Ranked digest candidates for `user-id`, best first, truncated to
-  [[metabase.metabot.settings/metabot-digest-candidate-limit]].
-
-  Each candidate carries `:reasons` — why it is here — which is what the model reads. `:score` is
-  returned for debugging and tests; [[metabase.metabot.digest.shape]] drops it before the prompt."
+(defn- scored-candidates
+  "Every entity the user has any relationship with, merged and scored on relevance, best first. Untruncated: news
+  is applied downstream and has to be able to reach past the relevance cut-off, or something the user barely
+  touches can never be promoted no matter what its numbers did."
   [user-id]
   (let [now (Instant/now)]
     (->> (concat (guarded "bookmarks"     bookmark-candidates     user-id)
@@ -289,39 +287,83 @@
          attach-view-counts
          (map (fn [candidate] (assoc candidate :score (score candidate now))))
          (sort-by :score >)
-         (take (metabot.settings/metabot-digest-candidate-limit)))))
+         vec)))
+
+(defn digest-candidates
+  "Ranked digest candidates for `user-id`, best first, truncated to
+  [[metabase.metabot.settings/metabot-digest-candidate-limit]].
+
+  Each candidate carries `:reasons` — why it is here — which is what the model reads. `:score` is
+  returned for debugging and tests; [[metabase.metabot.digest.shape]] drops it before the prompt."
+  [user-id]
+  (vec (take (metabot.settings/metabot-digest-candidate-limit)
+             (scored-candidates user-id))))
 
 ;;; ---------------------------------------------------- News -------------------------------------------------------
 
-(def ^:private news-weight
-  "How much a fully-interesting data anomaly is worth, relative to the relevance weights above. Set above every
-  individual relevance signal so something genuinely happening outranks something merely familiar — but below a
-  stack of them, so a dashboard you built, bookmarked and alerted on is not displaced by a mild wobble."
-  5.0)
+(defn- direct-news
+  "News found by analysing each candidate card's own query, as `{card-id news}`."
+  [candidates]
+  (let [card-ids (into [] (comp (filter #(= :card (:model %))) (map :id)) candidates)]
+    (into {}
+          (keep (fn [card]
+                  (when-let [news (try
+                                    (news/news-for card)
+                                    (catch Exception e
+                                      (log/warnf "Digest news failed for card %s: %s" (:id card) (ex-message e))
+                                      nil))]
+                    [(:id card) news])))
+          (when (seq card-ids) (metabot.db/cards-by-ids card-ids)))))
+
+(defn- metric-sourced-news
+  "News obtainable from one scan of the metric library, as `{[model id] {:news .. :via ..}}` — covering both the
+  anomalous metrics themselves and everything built on them.
+
+  This is the inversion that makes the expensive half affordable. Scanning the library is O(metrics) for the whole
+  instance rather than O(candidates) per user, and it reaches entities the per-card path cannot analyse at all: a
+  card broken out only by category has no time axis of its own, but the metric it is built on does. The claim
+  stays honest because the metric *is* the card's definition, not an approximation of it.
+
+  A metric carries no `:via` — the movement is in its own numbers. Its dependents do, so narration can attribute
+  the movement to the metric rather than implying the dependent displays it."
+  []
+  (let [metrics   (filterv mi/can-read? (metabot.db/metric-cards))
+        by-metric (news/news-by-metric metrics)
+        names     (into {} (map (juxt :id :name)) metrics)]
+    (when (seq by-metric)
+      (reduce (fn [acc {:keys [from_entity_type from_entity_id to_entity_id]}]
+                (let [k [(keyword from_entity_type) from_entity_id]]
+                  ;; first metric wins: an entity built on two anomalous metrics is reported once, not twice
+                  (cond-> acc
+                    (not (contains? acc k))
+                    (assoc k {:news (get by-metric to_entity_id)
+                              :via  {:metric-id to_entity_id :metric-name (names to_entity_id)}}))))
+              ;; seed with the metrics themselves. The scan already ran, so this is free — and without it a metric
+              ;; the user barely touches is culled by the relevance cut-off before its own news is ever consulted.
+              (into {} (map (fn [[metric-id news]] [[:card metric-id] {:news news}])) by-metric)
+              (metabot.db/dependents-of-cards (vec (keys by-metric)))))))
 
 (defn- with-news
-  "Attach data-anomaly news to `candidates` and re-score.
+  "Attach data-anomaly news to `candidates` and re-score, given a precomputed `inherited` map.
 
-  Runs only over cards — dashboards and tables have no single query to analyse — and
-  [[metabase.metabot.digest.news/news-for]] declines cheaply for anything without a temporal breakout, so the
-  number of warehouse queries is bounded by eligibility rather than by candidate count."
-  [candidates]
-  (let [card-ids (into [] (comp (filter #(= :card (:model %))) (map :id)) candidates)
-        cards    (when (seq card-ids)
-                   (into {} (map (juxt :id identity)) (metabot.db/cards-by-ids card-ids)))]
+  Two sources, in precedence order. Analysing a candidate's own query is the stronger claim, so it wins; news
+  inherited through a metric fills in for everything that has no analysable query of its own. An entity never
+  carries both, because they would be describing the same movement twice."
+  [candidates inherited]
+  (let [direct (direct-news candidates)]
     (for [candidate candidates
-          :let [news (when-let [card (get cards (:id candidate))]
-                       (try
-                         (news/news-for card)
-                         (catch Exception e
-                           (log/warnf "Digest news failed for card %s: %s" (:id candidate) (ex-message e))
-                           nil)))]]
+          :let [own      (get direct (:id candidate))
+                borrowed (when-not own (get inherited [(:model candidate) (:id candidate)]))
+                news     (or own (:news borrowed))]]
+      ;; `:score` is deliberately left alone. Having news decides which *tier* an item lands in, and the tier does
+      ;; all the promoting; within a tier the user's own relationship decides the order. Folding an interestingness
+      ;; number into the score as well would let anomaly strength quietly drive ordering again.
       (cond-> candidate
         news (-> (assoc :news news)
-                 (update :reasons conj {:signal          :data-anomaly
-                                        :interestingness (:interestingness news)
-                                        :outliers        (:recent-outliers news)})
-                 (update :score + (* news-weight (or (:interestingness news) 0.0))))))))
+                 (update :reasons conj (cond-> {:signal          :data-anomaly
+                                                :interestingness (:interestingness news)
+                                                :outliers        (:recent-outliers news)}
+                                         borrowed (assoc :via (:via borrowed)))))))))
 
 (defn digest-selection
   "The items the digest actually renders: the top [[metabase.metabot.settings/metabot-digest-surface-target]]
@@ -330,17 +372,25 @@
   News is applied across the whole candidate pool rather than to an already-chosen handful, so something newsworthy
   can be promoted past something merely relevant — which is the entire point of computing it.
 
-  Ordering is in two tiers: everything with a data anomaly, then everything without, each tier by score. A blended
-  score alone let a heavily-bookmarked item with flat numbers outrank one whose numbers actually moved, which
-  inverts what a digest is for. Score still orders *within* each tier, so the most interesting anomaly leads and
-  relevance decides the rest.
+  Ordering is in two tiers: everything with a data anomaly, then everything without. Within each tier, items are
+  ordered by relevance alone — how much this user actually engages with the thing — never by how large the anomaly
+  is. Statistical size is a poor proxy for what someone wants to read first: of two things that both moved, the
+  one they bookmarked matters more than the one with the bigger z-score.
 
   Selection is deterministic and server-owned. The model annotates this list — it does not choose it, and cannot
   add to or drop from it. Both the prompt and `render_digest` read the selection from here so they cannot disagree
   about which items are in play."
   [user-id]
-  (->> (digest-candidates user-id)
-       with-news
-       (sort-by (fn [{:keys [news score]}] [(if news 0 1) (- score)]))
-       (take (metabot.settings/metabot-digest-surface-target))
-       vec))
+  (let [all       (scored-candidates user-id)
+        limit     (metabot.settings/metabot-digest-candidate-limit)
+        inherited (metric-sourced-news)
+        ;; The relevance cut-off bounds how many queries the per-card path runs. Inherited news costs nothing
+        ;; extra per candidate — the metric scan already happened — so anything below the cut-off that a metric
+        ;; reaches is pulled back in. Without this, something you rarely open can never be promoted by news,
+        ;; which is exactly the case metric propagation exists to serve.
+        rescued   (filterv #(contains? inherited [(:model %) (:id %)]) (drop limit all))]
+    (->> (concat (take limit all) rescued)
+         (#(with-news % inherited))
+         (sort-by (fn [{:keys [news score]}] [(if news 0 1) (- score)]))
+         (take (metabot.settings/metabot-digest-surface-target))
+         vec)))

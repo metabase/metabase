@@ -21,6 +21,7 @@ The reasons:
 - `recent-view` — `viewed-days-ago` is how recently they opened it. This is recency, not frequency: it does not tell you how often they look.
 - `instance-popularity` — how much the **whole instance** views this, not this user. Use it to judge whether something is a real shared artifact or somebody's scratch work. Never describe it as the user's own engagement.
 - `data-anomaly` — **the only signal about the data itself rather than the user's habits.** The numbers did something statistically unusual. Each `<point>` gives the bucket, its value, and `buckets-ago`: `0` is the most recent bucket, so it just happened. This is the one signal that is genuinely *news*, and when an item has it, it is almost always what the item is about — lead with it.
+  - If the reason carries `via-metric`, the movement was found in **that metric**, which this item is built on — not in the item's own numbers. Attribute it accordingly: "the Revenue metric behind this jumped in the week of the 13th", never "this shows a jump". The item may well not display the movement at all, because it is sliced differently or scoped to a different period.
 
 # How to read them together
 

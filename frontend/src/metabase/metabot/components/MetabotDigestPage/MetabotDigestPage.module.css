@@ -1,0 +1,25 @@
+.card {
+  display: block;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: var(--mb-color-brand);
+  box-shadow: 0 1px 6px var(--mb-color-shadow);
+}
+
+.card:hover .name {
+  color: var(--mb-color-brand);
+}
+
+.name {
+  transition: color 0.15s ease;
+}
+
+/* Marks the items where something actually moved, so the eye finds them before the words do. */
+.hasNews {
+  border-left: 3px solid var(--mb-color-brand);
+}

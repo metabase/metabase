@@ -1,0 +1,88 @@
+/*
+ * Metabot "thinking" loader. The digest runs a warehouse query per eligible item, so this is on screen for
+ * seconds rather than milliseconds — long enough that a spinner feels like a stall and a character doesn't.
+ */
+
+.bot {
+  animation: bob 1.6s ease-in-out infinite;
+  color: var(--mb-color-brand);
+}
+
+.orbit {
+  position: absolute;
+  inset: 0;
+  animation: spin 3.2s linear infinite;
+}
+
+.spark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-left: -0.1875rem;
+  border-radius: 50%;
+  background: var(--mb-color-brand);
+  opacity: 0.55;
+}
+
+.spark:nth-child(2) {
+  top: auto;
+  bottom: 0;
+  opacity: 0.3;
+}
+
+.dot {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  background: var(--mb-color-brand);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Respect a reduced-motion preference: keep the character, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .bot,
+  .orbit,
+  .dot {
+    animation: none;
+  }
+}

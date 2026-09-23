@@ -36,14 +36,18 @@
         reasons))
 
 (defn- render-item
-  [reasons {:keys [model id name description card-type] :as item}]
-  {:model       (clojure.core/name model)
-   :id          id
-   :name        name
-   :description description
-   :card_type   card-type
-   :reason      (get reasons [model id])
-   :signals     (into [] (comp (map (comp clojure.core/name :signal)) (distinct)) (:reasons item))})
+  [reasons {:keys [model id name description card-type news] :as item}]
+  (cond-> {:model       (clojure.core/name model)
+           :id          id
+           :name        name
+           :description description
+           :card_type   card-type
+           :reason      (get reasons [model id])
+           :signals     (into [] (comp (map (comp clojure.core/name :signal)) (distinct)) (:reasons item))}
+    ;; The query the anomaly was found in, when the entity's own page would not show it — the client opens this
+    ;; as an ad-hoc question so "something moved" is one click from seeing the movement.
+    (:query news) (assoc :anomaly_query   (:query news)
+                         :anomaly_display (or (:display news) "line"))))
 
 (mu/defn ^{:tool-name "render_digest"
            :scope     scope/agent-content-read}

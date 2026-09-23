@@ -1068,3 +1068,20 @@
   `:database_id` and `:display`, and a partial Card select is rejected without `:card_schema`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Card :id [:in ids]))
+
+(mu/defn metric-cards
+  "Every unarchived metric Card, as whole rows. Not scoped to a user: a metric's numbers are the same whoever
+  asks, so callers scan once and filter the *results* by readability."
+  []
+  (t2/select :model/Card :type "metric" :archived false))
+
+(mu/defn dependents-of-cards
+  "Rows of the `dependency` table pointing at the Cards with `card-ids` — i.e. what is built on them.
+
+  Reads the table directly rather than through the enterprise dependencies API, whose public surface is shaped
+  for soundness checking rather than a plain reverse lookup. The table is OSS schema and only its population is
+  enterprise, so on OSS this returns nothing rather than failing."
+  [card-ids :- [:sequential ms/PositiveInt]]
+  (t2/query {:select [:from_entity_type :from_entity_id :to_entity_id]
+             :from   [:dependency]
+             :where  [:and [:= :to_entity_type "card"] [:in :to_entity_id card-ids]]}))
