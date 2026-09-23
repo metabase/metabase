@@ -56,6 +56,7 @@
   - If your data is coming in watered down by YAML (like strings instead of keywords), take a look at `:coerce`"
   (:refer-clojure :exclude [descendants])
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -1021,13 +1022,40 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+;;
+;; [[with-field-path-cache]] is that bounded, opt-in cache, for callers whose field refs are reuse-heavy (e.g. git
+;; sync re-serializing cards that reference the same few fields many times). It is deliberately not part of
+;; [[with-cache]].
+
+(def ^:private field-path-cache-size
+  "Most field hierarchies [[with-field-path-cache]] keeps. Each entry is a short list of names + a table id."
+  10000)
+
+(def ^:private ^:dynamic *cached-field-hierarchy*
+  "When bound (by [[with-field-path-cache]]), a bounded memoized [[field-hierarchy]]."
+  nil)
+
+(defn do-with-field-path-cache
+  "Impl for [[with-field-path-cache]]."
+  [thunk]
+  (if *cached-field-hierarchy*
+    (thunk)
+    (binding [*cached-field-hierarchy* (memoize/lru field-hierarchy :lru/threshold field-path-cache-size)]
+      (thunk))))
+
+(defmacro with-field-path-cache
+  "Runs body with [[*export-field-fk*]]'s field-hierarchy lookups memoized in a bounded LRU cache. Use it only where
+  field refs are reused heavily and fields are not written during `body` (a cached path could go stale)."
+  [& body]
+  `(do-with-field-path-cache (fn [] ~@body)))
+
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[*import-field-fk*]] is the inverse."
   [field-id :- [:maybe ::lib.schema.id/field]]
   (when field-id
-    (let [fields                      (field-hierarchy field-id)
+    (let [fields                      ((or *cached-field-hierarchy* field-hierarchy) field-id)
           [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema table-name] (map :name fields)))))
 
