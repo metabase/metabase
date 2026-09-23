@@ -3,17 +3,7 @@ import { useMemo } from "react";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import type { Database, Transform } from "metabase-types/api";
-
-import { sourceDatabaseId } from "../utils";
-
-export const canEditTransform = (
-  transform: Transform,
-  transformsDatabases: Database[],
-): boolean => {
-  const dbId = sourceDatabaseId(transform.source);
-  return transformsDatabases.some((db) => db.id === dbId);
-};
+import type { Transform } from "metabase-types/api";
 
 export const useTransformPermissions = ({
   transform,
@@ -34,12 +24,9 @@ export const useTransformPermissions = ({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  const permissionsReadOnly = useMemo(() => {
-    if (!transformsDatabases || !transform) {
-      return;
-    }
-    return !canEditTransform(transform, transformsDatabases);
-  }, [transformsDatabases, transform]);
+  const permissionsReadOnly = transform
+    ? transform.can_execute === false
+    : undefined;
 
   return {
     readOnly: remoteSyncReadOnly || permissionsReadOnly,

@@ -230,9 +230,9 @@ describe("GitSyncControls", () => {
         expect(getBranchButton(/main/)).toBeInTheDocument();
       });
       await userEvent.click(getBranchButton(/main/));
-      // Wait until the dirty state has settled (push enabled) so the pull takes the dirty/merge path.
       await waitFor(async () => {
         expect(await findMenuItem(/Push changes/)).toBeEnabled();
+        expect(await findMenuItem(/Pull changes/)).toBeEnabled();
       });
       await userEvent.click(await findMenuItem(/Pull changes/));
 

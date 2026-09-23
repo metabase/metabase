@@ -9,26 +9,18 @@ import {
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { TransformJobId } from "metabase-types/api";
 
-import {
-  canEditTransform,
-  useTransformPermissions,
-} from "./use-transform-permissions";
-
 export function useJobHeaderState(jobId: TransformJobId | undefined) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const { transformsDatabases } = useTransformPermissions();
   const { data: transforms, isLoading: isCheckingPermissions } =
     useListTransformJobTransformsQuery(jobId ?? skipToken);
 
   const readOnly = useMemo(() => {
-    if (!transformsDatabases || !transforms) {
+    if (!transforms) {
       return true;
     }
-    return !transforms.every((transform) =>
-      canEditTransform(transform, transformsDatabases),
-    );
-  }, [transforms, transformsDatabases]);
+    return transforms.some((transform) => transform.can_execute === false);
+  }, [transforms]);
 
   const handleNameChange = async (name: string) => {
     if (jobId === undefined) {

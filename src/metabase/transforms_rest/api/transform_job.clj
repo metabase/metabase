@@ -86,6 +86,7 @@
    [:run_trigger {:optional true} [:maybe :keyword]]
    [:dependency {:optional true} :boolean]
    [:scheduled {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
@@ -264,7 +265,7 @@
   (api/check-404 (transforms-rest.db/job-pk job-id))
   (-> (transforms.core/job-transforms job-id)
       (#(do (api/check-403 (every? mi/can-read? %)) %))
-      (t2/hydrate :creator)
+      (t2/hydrate :creator :can_execute)
       transforms.u/add-source-readable))
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
