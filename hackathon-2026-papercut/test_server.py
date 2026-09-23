@@ -156,9 +156,23 @@ class IngestTest(StoreCase):
 
     def test_rejects_malformed_git_context(self):
         for changes in ({"commit_sha": "not-a-sha"}, {"commit_sha": "abc"},
-                        {"commit_sha": "70a3d8cb4a7", "commit_source": "guess"}, {"commit_source": "reflog"}):
+                        {"commit_sha": "70a3d8cb4a7", "commit_source": "guess"}, {"commit_source": "reflog"},
+                        {"commit_sha": "70a3d8cb4a7"}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 self.report(**changes)
+
+    def test_repository_url_credentials_are_dropped(self):
+        result = self.report(repository_url="https://chris:ghp_secret@github.com/metabase/metabase.git?token=x")
+        report = self.store.get_papercut(result["papercut"]["id"])["reports"][0]
+        self.assertEqual(report["repository_url"], "https://github.com/metabase/metabase.git")
+
+    def test_non_ascii_titles_keep_their_own_fingerprints(self):
+        first = self.store.ingest({**self.sample, "report_id": "a", "title": "Ошибка сборки", "path": ""})
+        second = self.store.ingest({**self.sample, "report_id": "b", "title": "Сбой тестов", "path": ""})
+        emoji = self.store.ingest({**self.sample, "report_id": "c", "title": "🔥", "path": ""})
+        self.assertEqual(len({r["papercut"]["id"] for r in (first, second, emoji)}), 3)
+        # ASCII titles group as before: case and punctuation don't matter.
+        self.assertEqual(server.normalized("Agent-Misses the_build!"), "agent misses the build")
 
     def test_category_is_unclassified_until_a_report_or_triage_sets_it(self):
         papercut_id = self.store.ingest(self.sample)["papercut"]["id"]

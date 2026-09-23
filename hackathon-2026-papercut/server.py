@@ -92,7 +92,9 @@ def precise_now():
 
 
 def normalized(value):
-    return " ".join(re.findall(r"[a-z0-9]+", value.lower()))
+    # Letters and digits in any script; on ASCII this matches the original [a-z0-9]. Text with none of them keeps
+    # its own case-folded form, so distinct titles in symbols or emoji don't share a fingerprint.
+    return " ".join(re.findall(r"[^\W_]+", value.casefold())) or value.strip().casefold()
 
 
 def parse_observed_at(value):
@@ -131,9 +133,15 @@ def parse_since(value):
     return cursor
 
 
+
+def public_url(url):
+    """`url` without the user info and query an HTTPS remote can carry credentials in. Other forms pass through."""
+    match = re.fullmatch(r"(?i)([a-z][a-z0-9+.-]*://)(?:[^/@]*@)?([^?#]*).*", url)
+    return match[1] + match[2] if match else url
+
 def words(text):
     found = set()
-    for word in re.findall(r"[a-z0-9]+", text.lower()):
+    for word in re.findall(r"[^\W_]+", text.casefold()):
         if len(word) < 3 or word in STOP_WORDS:
             continue
         found.add(word[:-1] if word.endswith("s") and len(word) > 4 else word)
@@ -174,10 +182,11 @@ def git_fields(payload):
             raise ValueError("commit_sha must be 7 to 40 hex characters")
     if commit_source and commit_source not in COMMIT_SOURCES:
         raise ValueError(f"commit_source must be one of: {', '.join(COMMIT_SOURCES)}")
-    if commit_source and not commit_sha:
-        raise ValueError("commit_source needs a commit_sha")
+    # A commit without its source would read as exact.
+    if bool(commit_source) != bool(commit_sha):
+        raise ValueError("commit_sha and commit_source must be sent together")
     return {"branch": branch, "commit_sha": commit_sha, "commit_source": commit_source,
-            "repository_url": repository_url}
+            "repository_url": repository_url and public_url(repository_url)}
 
 
 def int_param(params, key, default, low, high=None):
