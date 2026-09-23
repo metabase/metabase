@@ -1,7 +1,7 @@
 (ns metabase.jekyll-mode.files
   (:require
+   [clojure.set :as set]
    [metabase.jekyll-mode.files]
-   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -19,12 +19,22 @@
     {:error/message "Valid Toucan model"}
     #(= (namespace %) "model")]])
 
+(def model->directory
+  (sorted-map
+   :model/Card          "cards"
+   :model/Dashboard     "dashboards"
+   :model/DashboardCard "dashboard_cards"
+   :model/Metric        "metrics"
+   :model/Segment       "segments"))
+
+(def directory->model
+  (into (sorted-map) (set/map-invert model->directory)))
+
 (mu/defn- model-directory :- :string
   [model :- ::model]
   (str (directory-prefix)
        "/"
-       ;; HACK !!!!!
-       (str (u/lower-case-en (name model)) "s")))
+       (model->directory model)))
 
 (mu/defn instance-filename :- :string
   [instance :- [:map
