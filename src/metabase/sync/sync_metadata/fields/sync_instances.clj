@@ -8,7 +8,6 @@
   namespace should ignore nested fields entirely; the will be invoked with those Fields as appropriate."
   (:require
    [medley.core :as m]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
@@ -18,19 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
-
-(events/derive! :event/table-fields-added :metabase/event)
-
-(mr/def :event/table-fields-added
-  [:map {:closed true}
-   [:table-id ::lib.schema.id/table]])
-
-(def ^:private ^:dynamic *fields-added?*
-  "Bound by [[sync-instances!]] to a volatile that is set to true when a Field of the Table is created or reactivated."
-  nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -140,7 +128,6 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (some-> *fields-added?* (vreset! true))
         (sync.db/fields new-and-updated-fields)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -253,11 +240,7 @@
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
-   (binding [*fields-added?* (volatile! false)]
-     (u/prog1 (sync-instances! table db-metadata our-metadata nil)
-       ;; publish once per Table, after retiring, so a renamed column's old Field is already inactive
-       (when @*fields-added?*
-         (events/publish-event! :event/table-fields-added {:table-id (u/the-id table)})))))
+   (sync-instances! table db-metadata our-metadata nil))
 
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
