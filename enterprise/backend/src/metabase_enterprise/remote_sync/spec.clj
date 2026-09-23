@@ -1218,6 +1218,24 @@
   "Models git sync walks through but never writes."
   #{"Table" "Field"})
 
+(defn- descendant-closure
+  "Every `[model-name id]` reachable from `roots` through `serdes/descendants`, `roots` included: the keys of
+  `(u/traverse roots #(serdes/descendants ...))`, found a level at a time with one `serdes/descendants-batch` call per
+  model per level (per chunk of `serdes/*descendants-batch-size*` ids), so its queries grow with the depth of the
+  content rather than its size, and no query gets more ids than a database accepts as bind parameters."
+  [roots opts]
+  (loop [frontier (set roots)
+         seen     #{}]
+    (if (empty? frontier)
+      seen
+      (let [seen  (into seen frontier)
+            found (into #{}
+                        (mapcat (fn [[model ids]]
+                                  (mapcat #(keys (serdes/descendants-batch model % opts))
+                                          (partition-all serdes/*descendants-batch-size* ids))))
+                        (u/group-by first second frontier))]
+        (recur (into #{} (remove seen) found) seen)))))
+
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
   `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
@@ -1226,7 +1244,7 @@
                            (mapcat query-export-roots)
                            (vals (enabled-specs)))
         targets (-> #{}
-                    (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
+                    (into (descendant-closure root-targets git-sync-extract-opts))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
 

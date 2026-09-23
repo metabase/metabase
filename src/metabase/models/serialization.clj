@@ -502,6 +502,32 @@
 (defmethod descendants :default [_ _ _]
   nil)
 
+(def ^:dynamic *descendants-batch-size*
+  "The most ids one [[descendants-batch]] call receives, and the most ids its implementations put into one query. A
+  walk over a large instance can hold every Card at one level, far more than a database accepts as bind parameters in
+  one statement (65,535 on Postgres), so callers split the ids into chunks of this size. Dynamic so tests can shrink
+  it."
+  1000)
+
+(defmulti descendants-batch
+  "[[descendants]] of the entities of `model-name` with `db-ids`, all at once: the union of their descendants, as a map
+  of `{[model-name database-id] sources}`. When two of the entities share a descendant, its sources are merged,
+  which may lose the detail of which entity reached it; callers that need that detail should call [[descendants]].
+
+  A walk over a whole collection tree calls this once per model per level instead of [[descendants]] once per
+  entity, with at most [[*descendants-batch-size*]] ids per call. The default does exactly that per-entity call;
+  models whose [[descendants]] queries per entity override it to query for every entity at once, and must return the
+  same keys, putting no more than [[*descendants-batch-size*]] ids into any one query.
+
+  NOTE: This is called during **EXPORT**.
+
+  Dispatched on model-name."
+  {:arglists '([model-name db-ids opts])}
+  (fn [model-name _ _] model-name))
+
+(defmethod descendants-batch :default [model-name db-ids opts]
+  (transduce (map #(descendants model-name % opts)) (partial merge-with merge) {} db-ids))
+
 (defmulti required
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities that are necessary to load this
    entity back. Sort of reverse method for `dependencies`. This method will be called after determining all
