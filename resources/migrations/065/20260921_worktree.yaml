@@ -2652,7 +2652,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:04:00
       author: ranquild
-      comment: FK timeline(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world
+      comment: FK timeline(worktree_id_helper, collection_id) -> collection(worktree_id_helper, id) - content and the collection it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline
@@ -2660,6 +2660,7 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_timeline_collection_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:05:00
@@ -2730,7 +2731,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:10:00
       author: ranquild
-      comment: FK report_dashboardcard(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world
+      comment: FK report_dashboardcard(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_dashboardcard
@@ -2738,6 +2739,7 @@ databaseChangeLog:
             referencedTableName: report_dashboard
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_dashcard_dashboard_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:11:00
@@ -2756,7 +2758,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:12:00
       author: ranquild
-      comment: FK dashboard_tab(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world
+      comment: FK dashboard_tab(worktree_id_helper, dashboard_id) -> report_dashboard(worktree_id_helper, id) - content and the report_dashboard it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboard_tab
@@ -2764,6 +2766,7 @@ databaseChangeLog:
             referencedTableName: report_dashboard
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_dashtab_dashboard_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:13:00
@@ -2782,7 +2785,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:14:00
       author: ranquild
-      comment: FK dashboardcard_series(worktree_id_helper, dashboardcard_id) -> report_dashboardcard(worktree_id_helper, id) - content and the report_dashboardcard it hangs off always belong to the same world
+      comment: FK dashboardcard_series(worktree_id_helper, dashboardcard_id) -> report_dashboardcard(worktree_id_helper, id) - content and the report_dashboardcard it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: dashboardcard_series
@@ -2790,6 +2793,7 @@ databaseChangeLog:
             referencedTableName: report_dashboardcard
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_series_dashcard_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:15:00
@@ -2808,7 +2812,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:16:00
       author: ranquild
-      comment: FK timeline_event(worktree_id_helper, timeline_id) -> timeline(worktree_id_helper, id) - content and the timeline it hangs off always belong to the same world
+      comment: FK timeline_event(worktree_id_helper, timeline_id) -> timeline(worktree_id_helper, id) - content and the timeline it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: timeline_event
@@ -2816,6 +2820,7 @@ databaseChangeLog:
             referencedTableName: timeline
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_event_timeline_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:17:00
@@ -2834,7 +2839,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:18:00
       author: ranquild
-      comment: FK transform_transform_tag(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world
+      comment: FK transform_transform_tag(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_transform_tag
@@ -2842,6 +2847,7 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_transform_tag_transform_worktree
+            onDelete: CASCADE
 
   - changeSet:
       id: v65.2026-09-22T11:19:00
@@ -2860,7 +2866,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-22T11:20:00
       author: ranquild
-      comment: FK transform_test(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world
+      comment: FK transform_test(worktree_id_helper, transform_id) -> transform(worktree_id_helper, id) - content and the transform it hangs off always belong to the same world. It repeats the cascade of the plain foreign key beside it, which a database that checks this one first would otherwise refuse the parent's delete over
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform_test
@@ -2868,3 +2874,4 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: worktree_id_helper, id
             constraintName: fk_transform_test_transform_worktree
+            onDelete: CASCADE
