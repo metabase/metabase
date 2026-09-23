@@ -81,6 +81,23 @@
               (get-in (schema.model/model-schema model)
                       [:actions "updateBird" :parameters]))))))
 
+(deftest action-detail-schema-resolves-template-tag-types-test
+  (let [parameter {:id     "p1"
+                   :slug   "store"
+                   :name   "Store"
+                   :target [:variable [:template-tag "store"]]}
+        tag       {:name "store", :type :text}]
+    (doseq [[shape template-tags] {"map"    {"store" tag}
+                                   "vector" [tag]}]
+      (testing (str "template tags stored as a " shape)
+        (is (=? {:parameters [{:slug "store", :jsType "string"}]}
+                (#'schema.model/action-detail-schema
+                 {:id            7
+                  :name          "Fire"
+                  :type          :query
+                  :parameters    [parameter]
+                  :dataset_query {:stages [{:template-tags template-tags}]}})))))))
+
 (deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
                 (constantly [{:id 42 :name "Model 42"}
