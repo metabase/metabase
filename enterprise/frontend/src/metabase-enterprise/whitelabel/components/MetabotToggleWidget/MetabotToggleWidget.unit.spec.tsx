@@ -12,7 +12,7 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
-const TOGGLE_LABEL = "Display welcome message on the homepage";
+const TOGGLE_LABEL = "Display Metabot on the homepage";
 
 const setup = (value = true) => {
   const settings = { "show-metabot": !!value };
