@@ -75,7 +75,7 @@
                                            "source-table" {:type        "array"
                                                            :minItems    3
                                                            :maxItems    3
-                                                           :items       {:type "string"}
+                                                           :items       {}
                                                            :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
