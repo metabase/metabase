@@ -302,14 +302,16 @@
       (is (nil? (:connection-uri spec))))))
 
 (deftest ^:parallel normalize-details-auth-mode-backfill-test
-  (testing ":auth-mode is backfilled for legacy details maps that lack it"
+  (testing ":auth-mode is backfilled when auth-related keys imply a mode"
     (are [in expected] (= expected (:auth-mode (#'driver.snowflake/normalize-details in)))
       {:password "abc"}                          "password"
       {:private-key-path  "/tmp/k"}              "key-pair"
       {:private-key-value "xxx"}                 "key-pair"
       {:private-key-id    1}                     "key-pair"
-      {:password "abc" :private-key-path "/x"}   "key-pair"
-      {}                                         "key-pair"))
+      {:password "abc" :private-key-path "/x"}   "key-pair"))
+  (testing "no auth signals leaves :auth-mode absent (matters for overlay maps)"
+    (is (not (contains? (#'driver.snowflake/normalize-details {}) :auth-mode)))
+    (is (not (contains? (#'driver.snowflake/normalize-details {:account "acct"}) :auth-mode))))
   (testing "an explicit :auth-mode is preserved"
     (are [in] (= (:auth-mode in) (:auth-mode (#'driver.snowflake/normalize-details in)))
       {:auth-mode "wif"      :wif-token "jwt"}
@@ -336,24 +338,30 @@
 (deftest ^:synchronized snowflake-wif-live-test
   ;; End-to-end test against a real Snowflake WIF-configured service user.
   ;; Skips silently unless MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT
-  ;; on disk. In CI, .github/workflows/snowflake-wif.yml mints a GitHub
-  ;; Actions OIDC token into that file before invoking this test.
+  ;; on disk. In CI, the snowflake driver job in .github/workflows/drivers.yml
+  ;; mints a GitHub Actions OIDC token into that file before invoking this test.
   (mt/test-driver
     :snowflake
     (when-let [token-file (tx/db-test-env-var :snowflake :wif-token-file)]
-      (let [details {:account             (tx/db-test-env-var-or-throw :snowflake :wif-account)
-                     :user                (tx/db-test-env-var-or-throw :snowflake :wif-user)
-                     :warehouse           (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
-                     :db                  (tx/db-test-env-var-or-throw :snowflake :wif-db)
-                     :role                (tx/db-test-env-var :snowflake :wif-role)
-                     :auth-mode           "wif"
-                     :wif-provider        "OIDC"
-                     :wif-token-file-path token-file}]
+      (let [wif-user (tx/db-test-env-var-or-throw :snowflake :wif-user)
+            details  {:account             (tx/db-test-env-var-or-throw :snowflake :wif-account)
+                      :user                wif-user
+                      :warehouse           (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
+                      :db                  (tx/db-test-env-var-or-throw :snowflake :wif-db)
+                      :role                (tx/db-test-env-var :snowflake :wif-role)
+                      :auth-mode           "wif"
+                      :wif-provider        "OIDC"
+                      :wif-token-file-path token-file}]
         (testing "can-connect? via WIF"
           (is (true? (driver/can-connect? :snowflake details))))
-        (testing "session executes a trivial query"
-          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
-            (is (= [{:one 1}] (jdbc/query spec ["SELECT 1 AS \"one\""])))))))))
+        (testing "session identifies as the WIF service user (proves auth flowed through WIF, not a fallback)"
+          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)
+                rows (jdbc/query spec ["SELECT CURRENT_USER() AS \"user\""])]
+            (is (= [{:user wif-user}] rows))))
+        ;; TEMPORARY marker — deliberate failure so we can confirm the test body actually ran
+        ;; end-to-end (a passing test with no visible failure is indistinguishable from a silent
+        ;; skip). Remove once we've seen this fire on a CI run.
+        (is false "WIF live test reached the end of the body")))))
 
 (defn- pem->private-key
   [pem]
@@ -1389,9 +1397,11 @@
                                           :engine  :snowflake,
                                           :details {:use-password false
                                                     :password "abc"}}]
-        (is (= {:password "abc" :use-password true} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present} (:details db2)))
-        (is (= {:password "abc" :use-password false} (:details db3)))))))
+        (is (= {:password "abc" :use-password true :auth-mode "password"} (:details db1)))
+        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present
+                 :auth-mode "key-pair"}
+                (:details db2)))
+        (is (= {:password "abc" :use-password false :auth-mode "key-pair"} (:details db3)))))))
 
 (deftest ^:parallel normalize-write-data-details-test
   (mt/test-driver :snowflake
@@ -1409,7 +1419,7 @@
                                            :engine :snowflake
                                            :details {:account "my-instance"}
                                            :write_data_details {:password "secret"}}]
-          (is (= {:password "secret" :use-password true}
+          (is (= {:password "secret" :use-password true :auth-mode "password"}
                  (:write_data_details db))))))))
 
 (deftest ^:parallel set-role-statement-test

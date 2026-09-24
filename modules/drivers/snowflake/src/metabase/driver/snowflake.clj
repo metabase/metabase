@@ -1108,13 +1108,14 @@
            true))))
 
 (defn- infer-auth-mode
+  "Returns \"password\" or \"key-pair\" implied by the auth-related keys in `details`,
+  or nil when none are present."
   [{:keys [password use-password private-key-id private-key-path private-key-value]}]
   (cond
     (true? use-password)                                   "password"
     (false? use-password)                                  "key-pair"
     (or private-key-id private-key-path private-key-value) "key-pair"
-    password                                               "password"
-    :else                                                  "key-pair"))
+    password                                               "password"))
 
 (defn- normalize-details
   "Normalize a Snowflake details map: merge regionid into account, infer use-password and auth-mode.
@@ -1132,7 +1133,11 @@
          (nil? (:private-key-value details)))
     (assoc :use-password true)
 
-    (not (contains? details :auth-mode))
+    ;; Skip when nothing implies a mode — overlay maps (:write_data_details / :admin_details)
+    ;; that only tweak account/warehouse must not gain an :auth-mode, which would override
+    ;; :details' :auth-mode during the merge in effective-details.
+    (and (not (contains? details :auth-mode))
+         (some? (infer-auth-mode details)))
     (as-> d (assoc d :auth-mode (infer-auth-mode d)))))
 
 (defmethod driver/normalize-db-details :snowflake
