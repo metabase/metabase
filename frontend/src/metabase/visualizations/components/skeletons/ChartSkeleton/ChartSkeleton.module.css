@@ -1,0 +1,18 @@
+@keyframes fading {
+  0% {
+    opacity: 0.0625;
+  }
+
+  50% {
+    opacity: 0.125;
+  }
+
+  100% {
+    opacity: 0.0625;
+  }
+}
+
+.animated {
+  opacity: 0.1;
+  animation: fading 1.5s infinite;
+}

@@ -1,14 +1,18 @@
-import { SkeletonImage } from "./MapSkeleton.styled";
+import { Box } from "metabase/ui";
+import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
 
 const MapSkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
+    <Box
+      component="svg"
+      className={ChartSkeletonS.animated}
+      flex="1 1 0"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 242 157"
       preserveAspectRatio="xMidYMid"
     >
       <use xlinkHref="/app/assets/img/map.svg" />
-    </SkeletonImage>
+    </Box>
   );
 };
 

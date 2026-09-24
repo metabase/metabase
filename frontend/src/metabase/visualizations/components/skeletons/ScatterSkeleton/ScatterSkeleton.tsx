@@ -1,8 +1,19 @@
-import { SkeletonImage } from "./ScatterSkeleton.styled";
+import cx from "classnames";
+
+import { Box } from "metabase/ui";
+import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
+
+import S from "./ScatterSkeleton.module.css";
 
 const ScatterSkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
+    <Box
+      component="svg"
+      className={cx(ChartSkeletonS.animated, S.root)}
+      flex="1 1 0"
+      mt="lg"
+      pl="sm"
+      pb="sm"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 340 119"
       preserveAspectRatio="xMidYMid"
@@ -16,7 +27,7 @@ const ScatterSkeleton = (): JSX.Element => {
       <circle cx="298" cy="4" r="4" fill="currentColor" />
       <circle cx="141" cy="15" r="11" fill="currentColor" />
       <circle cx="141" cy="87" r="16" fill="currentColor" />
-    </SkeletonImage>
+    </Box>
   );
 };
 

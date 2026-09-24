@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
-import { VisualizationSkeletonCaption } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton.styled";
+import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 
 export type VisualizationSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   name?: string | null;
@@ -18,7 +18,7 @@ export const VisualizationSkeleton = ({
 }: VisualizationSkeletonProps) => {
   return (
     <VisualizationRoot className={className}>
-      <VisualizationSkeletonCaption
+      <SkeletonCaption
         name={name}
         description={description}
         actionMenu={actionMenu}

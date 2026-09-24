@@ -1,8 +1,13 @@
-import { SkeletonImage } from "./SankeySkeleton.styled";
+import { Box } from "metabase/ui";
+import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
 
 const SankeySkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
+    <Box
+      component="svg"
+      className={ChartSkeletonS.animated}
+      flex="1 1 0"
+      m="lg"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 320 200"
       preserveAspectRatio="none"
@@ -25,7 +30,7 @@ const SankeySkeleton = (): JSX.Element => {
         fill="currentColor"
         d="m199.856 108.978-.133-.184-.057-.081.19.265Z"
       />
-    </SkeletonImage>
+    </Box>
   );
 };
 
