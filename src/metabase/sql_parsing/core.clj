@@ -39,6 +39,57 @@
     (boolean (and (:sql-parsing/error data)
                   (= "ParseError" (:sql-parsing/python-error-type data))))))
 
+(def ^:private ansi-escape
+  "A terminal escape sequence. sqlglot underlines the token it stopped at with one, which reads as an underline in
+  a terminal and as raw bytes everywhere else a diagnostic goes."
+  #"\u001b\[[0-9;]*[A-Za-z]")
+
+(def ^:private underline-start "\u001b[4m")
+(def ^:private underline-end "\u001b[0m")
+
+(defn- caret-line
+  "A line of carets under the token `snippet` underlines, or nil when it underlines none.
+
+  The offsets are into the text with the escapes taken out, which is the `snippet` its reader will see."
+  [snippet]
+  (when-let [start (str/index-of snippet underline-start)]
+    (let [plain (fn [s] (str/replace s ansi-escape ""))
+          after (subs snippet (+ start (count underline-start)))
+          token (plain (if-let [end (str/index-of after underline-end)]
+                         (subs after 0 end)
+                         after))]
+      (when (seq token)
+        (str (apply str (repeat (count (plain (subs snippet 0 start))) \space))
+             (apply str (repeat (count token) \^)))))))
+
+(defn- without-parser-internals
+  "`detail` with what the parser says about its own workings replaced by what it was reading."
+  [detail]
+  (-> detail
+      (str/replace-first #"^sqlglot call failed: " "")
+      (str/replace #" for <class '[^']*'>" "")
+      (str/replace #"<Token [^>]*?text: ([^,>]*),[^>]*>" "'$1'")
+      (str/replace #"but got None\b" "but got the end of the query")))
+
+(defn parse-error-message
+  "The parse failure `e` reports, as a diagnostic its reader can act on: what the parser could not read, where
+  (`Line`/`Col`), and the offending SQL with a caret under the token it stopped at.
+
+  What the parser says about its own workings comes out — the Python class it was building, the token object it
+  was holding, the escape codes it underlines with, the wrapper the transport adds — and the underline it drew
+  becomes the caret line, an underline being what an escape code is only in a terminal.
+
+  For handing a parse failure to whoever wrote the SQL, or to a model writing it. Returns nil when `e` carries no
+  message of its own."
+  [e]
+  (when-let [reported (or (some-> (ex-cause e) ex-message) (ex-message e))]
+    (let [[detail snippet] (str/split reported #"\n" 2)]
+      (->> [(without-parser-internals detail)
+            (some-> snippet (str/replace ansi-escape ""))
+            (some-> snippet caret-line)]
+           (remove nil?)
+           (str/join "\n")))))
+
 ;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
 ;; Large literal lists — VALUES clauses, IN lists (flat or tuple), and ARRAY literals with

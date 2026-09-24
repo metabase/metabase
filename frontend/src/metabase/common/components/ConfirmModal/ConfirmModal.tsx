@@ -67,7 +67,7 @@ export const ConfirmModal = ({
               </Button>
             )}
             <Button
-              color="feedback-negative"
+              color="negative"
               variant="filled"
               data-autofocus
               {...confirmButtonProps}

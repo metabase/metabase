@@ -551,6 +551,7 @@
            query-processor.pivot
            request
            settings
+           startup
            system
            task
            tiles
@@ -909,7 +910,6 @@
            metabase.driver.settings
            metabase.driver.sql
            metabase.driver.sql-jdbc
-           metabase.driver.sql-jdbc.connection.pool-lock
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
@@ -935,6 +935,7 @@
            query-processor.driver-api
            settings
            sql-tools
+           startup
            system
            tracing
            util
@@ -1084,7 +1085,7 @@
 
   glossary
   {:team "Gadget"
-   :api  #{metabase.glossary.api}
+   :api  #{metabase.glossary.api metabase.glossary.core}
    :uses #{api
            events
            lib.schema
@@ -1109,6 +1110,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -1323,6 +1325,7 @@
            comments
            dashboards
            documents
+           glossary
            lib
            lib.be
            lib.metadata
@@ -1567,6 +1570,7 @@
            settings
            setup
            sql-tools
+           startup
            sync
            util
            util.config
@@ -2324,7 +2328,8 @@
   {:team "UX West"
    :api  #{metabase.revisions.api
            metabase.revisions.core
-           metabase.revisions.init}
+           metabase.revisions.init
+           metabase.revisions.models.revision}
    :uses #{api
            collections
            dashboards
@@ -2354,7 +2359,8 @@
                     :model/Measure
                     :model/ParameterCard
                     :model/Segment
-                    :model/Transform}}
+                    :model/Transform
+                    :model/TransformTest}}
 
   run-tracking
   {:team "Gadget"
@@ -2636,6 +2642,7 @@
               server
               settings
               sso.auth-identity
+              startup
               system
               util
               util.config}
@@ -2811,6 +2818,7 @@
            premium-features
            query-processor
            settings
+           startup
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
@@ -3341,6 +3349,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            lib
            lib.be
            lib.legacy-mbql
@@ -3365,7 +3374,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment
@@ -4112,6 +4120,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTest
                     :model/User}}
 
   enterprise/search
@@ -4345,6 +4354,31 @@
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
+
+  enterprise/transform-testing
+  {:team "Graphy"
+   :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
+   :uses #{api
+           audit-app
+           driver
+           events
+           lib
+           lib.schema
+           models
+           premium-features
+           revisions
+           run-tracking
+           sql-tools
+           sql-tools.parsing
+           task
+           transforms.base
+           util
+           warehouses}
+   :model-exports #{:model/TransformTest}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Transform
+                    :model/User}}
 
   enterprise/transforms
   {:team "Graphy"
