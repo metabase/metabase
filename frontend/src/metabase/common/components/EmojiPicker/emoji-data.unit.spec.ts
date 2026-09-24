@@ -2,8 +2,8 @@ import {
   detectEmojiSupport,
   filterSupportedEmojis,
   resolveEmojiData,
-  toEmojiData,
 } from "./emoji-data";
+import { toEmojiData } from "./emojibase/transform";
 
 const messages = {
   groups: [
@@ -53,48 +53,6 @@ const emojis = [
   },
   { emoji: "🏻", label: "light skin tone", version: 1 },
 ];
-
-describe("toEmojiData", () => {
-  const data = toEmojiData(emojis, messages, "en");
-
-  it("drops the component group and capitalizes labels", () => {
-    expect(data.categories).toEqual([
-      { index: 0, label: "Smileys & emotion" },
-      { index: 9, label: "Flags" },
-    ]);
-    expect(data.skinTones).toEqual({
-      light: "Light skin tone",
-      dark: "Dark skin tone",
-    });
-  });
-
-  it("keeps only emojis that belong to a group", () => {
-    expect(data.emojis.map((emoji) => emoji.emoji)).toEqual([
-      "👋",
-      "🇪🇺",
-      "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-      "🫩",
-    ]);
-  });
-
-  it("splits skins into tone variations and multi-person aliases", () => {
-    expect(data.emojis[0]).toEqual({
-      emoji: "👋",
-      category: 0,
-      version: 0.6,
-      label: "Waving hand",
-      tags: ["hello"],
-      countryFlag: undefined,
-      skins: { light: "👋🏻", dark: "👋🏿" },
-      aliases: ["🧑🏻‍🤝‍🧑🏿"],
-    });
-  });
-
-  it("marks country flags but not subdivision flags", () => {
-    expect(data.emojis[1].countryFlag).toBe(true);
-    expect(data.emojis[2].countryFlag).toBeUndefined();
-  });
-});
 
 describe("detectEmojiSupport", () => {
   const data = toEmojiData(emojis, messages, "en");
