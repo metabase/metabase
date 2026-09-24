@@ -171,8 +171,8 @@
                  (get-in result [:data-parts 0 :data :description]))))))))
 
 (defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
-  the `:output` the LLM would see."
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
+  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
   [e]
   (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
