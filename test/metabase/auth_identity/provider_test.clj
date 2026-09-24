@@ -5,7 +5,8 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;; Set up test providers for testing the hierarchy
 (auth-identity/derive! :provider/test-password ::provider/provider)
@@ -106,6 +107,53 @@
                                                       :sso_source :jwt
                                                       :tenant_id  1}
                                                      :jwt))))))
+
+;;; Two providers that differ only in whether their `:after` method redirects session attribution.
+(auth-identity/derive! :provider/test-session-attribution ::provider/provider)
+(auth-identity/derive! :provider/test-plain-attribution ::provider/provider)
+
+(methodical/defmethod provider/authenticate :provider/test-session-attribution
+  [_provider {:keys [user-id]}]
+  {:success? true :user-id user-id})
+
+(methodical/defmethod provider/login! :after :provider/test-session-attribution
+  [_provider result]
+  (assoc result :session/provider :provider/password))
+
+(methodical/defmethod provider/authenticate :provider/test-plain-attribution
+  [_provider {:keys [user-id]}]
+  {:success? true :user-id user-id})
+
+(deftest login!-honours-session-provider-test
+  (testing "a login! :after method can attribute the session it triggers to another provider's AuthIdentity"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
+      (let [password-identity-id (t2/select-one-pk :model/AuthIdentity :user_id (:id user) :provider "password")
+            result               (provider/login! :provider/test-session-attribution
+                                                  {:user-id     (:id user)
+                                                   :device-info {:device_id          "test"
+                                                                 :embedded           false
+                                                                 :token_exchange     false
+                                                                 :device_description "Test"
+                                                                 :ip_address         "127.0.0.1"}})]
+        (is (true? (:success? result)))
+        (is (= password-identity-id (get-in result [:session :auth_identity_id])))))))
+
+(deftest login!-ignores-caller-supplied-session-provider-test
+  (testing "a caller cannot choose the session's AuthIdentity by putting :session/provider in the login request"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
+      (let [result (provider/login! :provider/test-plain-attribution
+                                    {:user-id          (:id user)
+                                     :session/provider :provider/password
+                                     :device-info      {:device_id          "test"
+                                                        :embedded           false
+                                                        :token_exchange     false
+                                                        :device_description "Test"
+                                                        :ip_address         "127.0.0.1"}})]
+        (is (true? (:success? result)))
+        (is (nil? (get-in result [:session :auth_identity_id]))
+            "the session is attributed to the provider that actually authenticated, which has no AuthIdentity")))))
 
 (deftest ^:parallel ^:parallel three-valued-success-state-test
   (testing "Success states work correctly"

@@ -3526,6 +3526,56 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.BackfillMfaConfirmedAt"
 
+  - changeSet:
+      id: v59.2026-09-17T12:54:19
+      author: johnswanson
+      comment: Add ended_at, end_reason and ended_by_user_id to core_session, so an ended session is kept on record instead of deleted
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: When the session ended (revoked, expired, timed out, or its user or tenant deactivated); null while live
+                  constraints:
+                    nullable: true
+              - column:
+                  name: end_reason
+                  type: varchar(32)
+                  remarks: Why the session ended, e.g. admin, logout, password-change, expired; null while live
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ended_by_user_id
+                  type: int
+                  remarks: The user who ended the session, when a person did
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-09-17T12:54:20
+      author: johnswanson
+      comment: FK core_session.ended_by_user_id -> core_user.id, cleared when that user is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_session
+            baseColumnNames: ended_by_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_core_session_ended_by_user_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-09-17T12:54:21
+      author: johnswanson
+      comment: Make core_session.key_hashed nullable, since ending a session clears its key
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_session
+            columnName: key_hashed
+            columnDataType: varchar(254)
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
