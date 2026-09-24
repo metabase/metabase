@@ -7,6 +7,7 @@ import { renderWithProviders } from "__support__/ui";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
@@ -72,7 +73,7 @@ const SdkCssVariablesTester = ({
 };
 
 const renderSdkThemeProvider = (
-  theme: React.ComponentProps<typeof SdkThemeProvider>["theme"],
+  theme: MetabaseEmbeddingTheme | undefined,
   onCssVariablesChange: (cssVariables: string) => void,
   whitelabelColors?: Record<string, string>,
 ) =>
@@ -88,7 +89,7 @@ const renderSdkThemeProvider = (
     },
   );
 
-// Emmited styles can contain redefinition of same variable with different value, so we can't rely on simple
+// Emitted styles can contain redefinition of same variable with different value, so we can't rely on simple
 // `.toContain` checks, instead we need to extract last definition which is what would be actually applied by browser
 const getLastCssVariableValue = (cssVariables: string, variable: string) =>
   [...cssVariables.matchAll(new RegExp(`${variable}:\\s*([^;]+);`, "g"))]
@@ -139,7 +140,7 @@ describe("SdkThemeProvider", () => {
         .join("\n");
 
     const setup = async (
-      theme: React.ComponentProps<typeof SdkThemeProvider>["theme"],
+      theme: MetabaseEmbeddingTheme | undefined,
       whitelabelColors?: Record<string, string>,
     ) => {
       renderSdkThemeProvider(theme, jest.fn(), whitelabelColors);
@@ -148,8 +149,10 @@ describe("SdkThemeProvider", () => {
         expect(emittedStyles()).toContain("--mb-color-text-brand:"),
       );
 
-      return (variable: string) =>
-        getLastCssVariableValue(emittedStyles(), variable);
+      return {
+        getCssVariable: (variable: string) =>
+          getLastCssVariableValue(emittedStyles(), variable),
+      };
     };
 
     it.each([
@@ -160,16 +163,16 @@ describe("SdkThemeProvider", () => {
         { preset: "dark" as const, colors: { brand: "#DF75E9" } },
       ],
     ])("tracks a brand color from %s", async (_name, theme) => {
-      const cssVariable = await setup(theme);
+      const { getCssVariable } = await setup(theme);
 
-      expect(cssVariable("--mb-color-core-brand")).toBe("#DF75E9");
-      expect(cssVariable("--mb-color-text-hover")).toContain(
+      expect(getCssVariable("--mb-color-core-brand")).toBe("#DF75E9");
+      expect(getCssVariable("--mb-color-text-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
-      expect(cssVariable("--mb-color-text-brand-hover")).toContain(
+      expect(getCssVariable("--mb-color-text-brand-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
-      expect(cssVariable("--mb-color-text-brand")).toContain(
+      expect(getCssVariable("--mb-color-text-brand")).toContain(
         "var(--mb-color-core-brand)",
       );
     });
@@ -181,26 +184,26 @@ describe("SdkThemeProvider", () => {
         { colors: { border: "#3B3F3F" } },
       ],
     ])("tracks a whitelabel brand color given %s", async (_name, theme) => {
-      const cssVariable = await setup(theme, { brand: "#DF75E9" });
+      const { getCssVariable } = await setup(theme, { brand: "#DF75E9" });
 
-      expect(cssVariable("--mb-color-text-hover")).toContain(
+      expect(getCssVariable("--mb-color-text-hover")).toContain(
         "var(--mb-color-core-brand)",
       );
-      expect(cssVariable("--mb-color-text-brand")).toContain(
+      expect(getCssVariable("--mb-color-text-brand")).toContain(
         "var(--mb-color-core-brand)",
       );
     });
 
     it("keeps the SDK theme brand when whitelabel also sets one", async () => {
-      const cssVariable = await setup(
+      const { getCssVariable } = await setup(
         { colors: { brand: "#DF75E9" } },
         {
           brand: "#00FF00",
         },
       );
 
-      expect(cssVariable("--mb-color-core-brand")).toBe("#DF75E9");
-      expect(cssVariable("--mb-color-text-brand")).toContain(
+      expect(getCssVariable("--mb-color-core-brand")).toBe("#DF75E9");
+      expect(getCssVariable("--mb-color-text-brand")).toContain(
         "var(--mb-color-core-brand)",
       );
     });
@@ -221,10 +224,14 @@ describe("SdkThemeProvider", () => {
     ])(
       "replaces the brand ramp with Ocean given %s",
       async (_name, theme, expected) => {
-        const cssVariable = await setup(theme);
+        const { getCssVariable } = await setup(theme);
 
-        expect(cssVariable("--mb-color-text-hover")).toBe(expected.textHover);
-        expect(cssVariable("--mb-color-text-brand")).toBe(expected.textBrand);
+        expect(getCssVariable("--mb-color-text-hover")).toBe(
+          expected.textHover,
+        );
+        expect(getCssVariable("--mb-color-text-brand")).toBe(
+          expected.textBrand,
+        );
       },
     );
   });

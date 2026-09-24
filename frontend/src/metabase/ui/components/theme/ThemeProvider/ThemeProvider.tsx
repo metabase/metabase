@@ -70,11 +70,11 @@ export const ThemeProvider = ({
   const theme = useMemo(() => {
     // Unjustified type cast. FIXME
     const baseTheme = merge(
-      getThemeOverrides(
-        resolvedColorScheme,
+      getThemeOverrides({
+        colorScheme: resolvedColorScheme,
         whitelabelColors,
         forceDynamicBrandRamp,
-      ),
+      }),
       themeOverride,
     ) as MantineTheme;
 

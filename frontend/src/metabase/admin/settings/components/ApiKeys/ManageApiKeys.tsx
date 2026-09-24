@@ -125,7 +125,7 @@ function useApiKeyColumns({
         enableSorting: false,
         accessorFn: (apiKey) => apiKey.masked_key,
         cell: ({ row }) => (
-          <Text ff={"var(--mb-default-monospace-font-family)"}>
+          <Text ff="var(--mb-default-monospace-font-family)">
             {formatMaskedKey(row.original.masked_key)}
           </Text>
         ),
