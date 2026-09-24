@@ -15,6 +15,7 @@ import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
+import { DatabaseTestConnectionButton } from "./DatabaseTestConnectionButton";
 import { useHasConnectionError, useIsFormDirty } from "./utils";
 
 interface DatabaseFormFooterProps {
@@ -62,6 +63,7 @@ export const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
+            <DatabaseTestConnectionButton isAdvanced={isAdvanced} />
             <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               disabled={!isDirty}

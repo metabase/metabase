@@ -2108,6 +2108,41 @@
                 :valid   false}
                (api-validate-database! {:details {:engine :h2, :details {:db "ABC"}}})))))))
 
+(def ^:private redacted-secret-db-details
+  {:host "db.example.com", :port 5432, :dbname "x", :user "u", :password "hunter2"})
+
+(deftest validate-database-resolves-redacted-secrets-test
+  (testing "POST /api/database/validate"
+    (testing "with an `id`, sensitive values the client left redacted come from the stored Database"
+      (mt/with-temp [:model/Database db {:engine :postgres, :details redacted-secret-db-details}]
+        (let [tested-details (atom nil)]
+          (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (fn [_engine details & _]
+                                                                                 (reset! tested-details details)
+                                                                                 nil)]
+            (api-validate-database! {:details {:engine  :postgres
+                                               :id      (u/the-id db)
+                                               :details (assoc redacted-secret-db-details
+                                                               :host     "new.example.com"
+                                                               :password secret/protected-password)}})
+            (testing "the stored password reaches the driver, not the placeholder"
+              (is (= "hunter2" (:password @tested-details))))
+            (testing "the edited host is still the one tested"
+              (is (= "new.example.com" (:host @tested-details))))))))))
+
+(deftest validate-database-does-not-echo-secrets-test
+  (testing "POST /api/database/validate"
+    (testing "secrets resolved from the stored Database are not echoed back to the client"
+      (mt/with-temp [:model/Database db {:engine :postgres, :details redacted-secret-db-details}]
+        (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (constantly nil)]
+          (let [response (api-validate-database! {:details {:engine  :postgres
+                                                            :id      (u/the-id db)
+                                                            :details (assoc redacted-secret-db-details
+                                                                            :password secret/protected-password)}})]
+            (is (true? (:valid response)))
+            (is (= secret/protected-password (:password response)))
+            (testing "no value anywhere in the response is the real secret"
+              (is (not-any? (partial = "hunter2") (vals response))))))))))
+
 (deftest validate-database-test-2
   (testing "POST /api/database/validate"
     (let [call-count (atom 0)
