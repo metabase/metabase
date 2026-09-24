@@ -212,7 +212,8 @@
 
   `(t2/update! :model/X {:key k} {:v 1})` filters on `k`, so it is a where-clause value -- but it
   reaches the query as a plain map entry rather than a `:where` clause, so neither the query-map
-  walker nor the kv-arg walker sees it. The rubric recommends this shape, so it has to be checked."
+  walker nor the kv-arg walker sees it. It is a shape the sweep leaves in place, so it has to be
+  checked here."
   '#{update! update-or-insert! delete!})
 
 (defn- conditions-map-value-nodes
@@ -224,11 +225,12 @@
                                                   (= "model" (namespace (hooks/sexpr %))))))
                            rest)]
       ;; Only the map immediately after the model is conditions. A later map is the changes map,
-      ;; whose values are written rather than filtered on (rubric rule 1).
+      ;; whose values are written rather than filtered on, and a written value is never marked: a
+      ;; column's `:in` transform runs on the marker itself and stores it as data.
       ;; `update!`'s arglist ENDS in the changes map, so its first map is conditions only when
       ;; another argument follows: `(t2/update! model {:v written})` is the two-arity call whose
-      ;; single map is CHANGES, and flagging it would violate rubric rule 1. `delete!` has no
-      ;; changes map, so its map is always conditions.
+      ;; single map is CHANGES, so flagging it would ask for a marker that corrupts the write.
+      ;; `delete!` has no changes map, so its map is always conditions.
       (when-let [m (when (or (not (contains? changes-map-fns (some-> f name symbol)))
                              (next after-model))
                      (first after-model))]

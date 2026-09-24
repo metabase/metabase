@@ -120,7 +120,7 @@
             (lint-query-call '(t2/select :model/X :locale locale) 'metabase.foo.db)))))
 
 (deftest ^:parallel conditions-map-values-are-linted-test
-  (testing "a conditions map -- the shape the rubric recommends -- is checked"
+  (testing "a conditions map -- a shape the sweep leaves in place -- is checked"
     ;; `(t2/update! model {:col v} changes)` filters on v, but it is not a `:where` clause, so
     ;; neither the query-map walker nor the kv-arg walker used to see it. A namespace written this
     ;; way passed the lint vacuously.
@@ -255,7 +255,8 @@
 (deftest ^:parallel two-arity-update-changes-map-test
   (testing "update!'s lone trailing map is CHANGES, not conditions, so its values are not flagged"
     ;; Toucan's arglist ends in the changes map. remote_sync/db.clj's mark-all-rsos-synced! is this
-    ;; shape; flagging `written` would contradict rubric rule 1.
+    ;; shape; flagging `written` would ask for a marker on a written value, which the column's
+    ;; `:in` transform stores as data.
     (is (empty? (lint-query-call '(t2/update! :model/X {:v written}) 'metabase.foo.db))))
   (testing "delete! has no changes map, so its lone map is always conditions"
     (is (=? [{:message #"`k`.*"}]
