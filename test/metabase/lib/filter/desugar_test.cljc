@@ -437,17 +437,22 @@
 
 (deftest ^:parallel desugar-other-filter-clauses-test-12
   (testing "desugaring :not-empty of emptyable base-type :type/Text"
+    ;; `not (is-empty)` rather than `!= nil AND != ""` (metabase#55252) -- the latter compiles to SQL with
+    ;; a redundant, self-contradictory `OR col IS NULL` on the `!= ""` half (added by the SQL QP's `!=`
+    ;; null-behaviour correction) once ANDed with the sibling `!= nil` check. `simplify-compound-filter`
+    ;; (which runs as part of this same desugaring pass) pushes the `not` down via De Morgan's, so the
+    ;; final shape is `(not (= _ nil)) AND (not (= _ ""))`, not a literal `not (or ...)`.
     (is (=? [:and {}
-             [:!= {} [:field {:base-type :type/Text} 1] nil]
-             [:!= {} [:field {:base-type :type/Text} 1] ""]]
+             [:not {} [:= {} [:field {:base-type :type/Text} 1] nil]]
+             [:not {} [:= {} [:field {:base-type :type/Text} 1] ""]]]
             (lib.filter.desugar/desugar-filter-clause
              [:not-empty (opts) [:field (opts :base-type :type/Text) 1]])))))
 
 (deftest ^:parallel desugar-other-filter-clauses-test-13
   (testing "desugaring :not-empty of string expression #41265"
     (is (=? [:and {}
-             [:!= {} [:regex-match-first {} "foo" "bar"] nil]
-             [:!= {} [:regex-match-first {} "foo" "bar"] ""]]
+             [:not {} [:= {} [:regex-match-first {} "foo" "bar"] nil]]
+             [:not {} [:= {} [:regex-match-first {} "foo" "bar"] ""]]]
             (lib.filter.desugar/desugar-filter-clause
              [:not-empty (opts) [:regex-match-first (opts) "foo" "bar"]])))))
 
