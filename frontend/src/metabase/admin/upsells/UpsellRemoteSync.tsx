@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import upsellRemoteSyncImage from "assets/img/upsell-remote-sync.png?url";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { UpsellBigCard } from "metabase/common/components/upsells/components";
 import S from "metabase/common/components/upsells/components/Upsells.module.css";
@@ -33,7 +34,7 @@ export const UpsellRemoteSync = ({ source }: { source: string }) => {
       buttonLink={UPGRADE_URL}
       source={source}
       onClick={triggerUpsellFlow}
-      illustrationSrc="app/assets/img/upsell-remote-sync.png"
+      illustrationSrc={upsellRemoteSyncImage}
     >
       {t`Keep your most important datasets, metrics, and SQL logic under version control. Sync content to a Git repository to review changes, collaborate, and maintain a production-ready source of truth.`}
       <ExternalLink

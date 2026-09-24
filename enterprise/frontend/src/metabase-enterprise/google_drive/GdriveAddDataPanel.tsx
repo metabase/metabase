@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import googleSheetImage from "assets/img/empty-states/google-sheet.svg?url";
 import { skipToken } from "metabase/api";
 import {
   StoragePurchaseButton,
@@ -36,7 +37,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {
   DriveConnectionDisplay,
@@ -58,13 +58,9 @@ const PanelWrapper = ({
   isModalOpen?: boolean;
   onModalClose?: () => void;
 }>) => {
-  const illustration = getSubpathSafeUrl(
-    "app/assets/img/empty-states/google-sheet.svg",
-  );
-
   return (
     <Stack gap="lg" align="center" justify="center" pt="2.5rem">
-      <Center component="img" src={illustration} w="3rem" />
+      <Center component="img" src={googleSheetImage} w="3rem" />
       <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
         <Title order={2} size="h4" mb="sm">
           {title}

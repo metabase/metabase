@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import upsellThemesImage from "assets/img/upsell-themes.png?url";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
@@ -33,7 +34,7 @@ export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
             description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
-            image="app/assets/img/upsell-themes.png"
+            image={upsellThemesImage}
           />
         </LineDecorator>
       </Stack>
