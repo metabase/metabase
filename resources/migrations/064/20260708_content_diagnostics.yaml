@@ -39,7 +39,7 @@ databaseChangeLog:
               - column:
                   name: finding_type
                   type: varchar(32)
-                  remarks: stale/duplicate_name/empty/crowded/sparse/slow/trash-not-emptied
+                  remarks: stale/duplicated/empty/crowded/sparse/slow/trash-not-emptied
                   constraints:
                     nullable: false
               - column:
