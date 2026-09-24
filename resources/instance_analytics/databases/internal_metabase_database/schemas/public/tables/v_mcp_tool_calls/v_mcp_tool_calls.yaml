@@ -1,6 +1,6 @@
-name: v_metabot_conversations
-display_name: V Metabot Conversations
-created_at: '2026-04-24T19:39:27.35056Z'
+name: v_mcp_tool_calls
+display_name: V Mcp Tool Calls
+created_at: '2026-07-23T14:27:48.031885Z'
 db_id: Internal Metabase Database
 schema: public
 entity_type: entity/GenericTable
@@ -10,6 +10,6 @@ initial_sync_status: complete
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}
 - {id: public, model: Schema}
-- {id: v_metabot_conversations, model: Table}
+- {id: v_mcp_tool_calls, model: Table}
 data_authority: unconfigured
 data_layer: internal
