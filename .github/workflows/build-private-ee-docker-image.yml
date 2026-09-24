@@ -72,7 +72,7 @@ jobs:
       # would run that commit's copy of the action instead of this one. Nothing else in this job
       # reads the tree.
       - name: Checkout source code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:

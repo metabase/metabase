@@ -33,7 +33,7 @@ jobs:
       MB_EDITION: ${{ inputs.edition || 'ee' }}
       INSTRUMENT_COVERAGE: "true"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -104,7 +104,7 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       # merge-multiple unions every shard's per-spec dir into one tree; the

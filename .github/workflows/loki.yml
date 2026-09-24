@@ -26,7 +26,7 @@ jobs:
       test-plan-artifact-id: ${{ steps.loki-selection.outputs.paths-file && inputs.test-plan-artifact-id || '' }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: |
             .github
@@ -66,7 +66,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
