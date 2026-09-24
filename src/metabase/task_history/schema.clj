@@ -76,6 +76,7 @@
   [:map {:closed true}
    [:version                {:optional true} [:maybe :string]]
    [:timezone-id            {:optional true} [:maybe :string]]
+   [:default-schema         {:optional true} [:maybe :string]]
    [:total-tables           {:optional true} :int]
    [:updated-tables         {:optional true} :int]
    [:tables-classified      {:optional true} :int]

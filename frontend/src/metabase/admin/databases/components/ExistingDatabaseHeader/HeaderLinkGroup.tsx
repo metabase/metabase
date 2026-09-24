@@ -17,7 +17,6 @@ export const HeaderLinkGroup = ({ database }: Props) => {
     <Flex gap="0.5rem">
       <Button
         component={Link}
-        fw="bold"
         to={`/admin/permissions/data/database/${database.id}`}
         variant="subtle"
       >
@@ -26,7 +25,6 @@ export const HeaderLinkGroup = ({ database }: Props) => {
       <Button
         component={isSyncing ? undefined : Link}
         disabled={isSyncing}
-        fw="bold"
         rightSection={<Icon name="external" />}
         target="_blank"
         title={isSyncing ? t`Sync in progress` : undefined}

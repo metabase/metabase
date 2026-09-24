@@ -1,34 +1,7 @@
-.FilterButton {
-  &[data-variant="default"] {
-    transition:
-      background 300ms linear,
-      border 300ms linear;
-
-    &:hover {
-      color: var(--mb-color-core-filter);
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-core-filter) 10%,
-        var(--mb-color-core-white)
-      );
-      border-color: color-mix(
-        in srgb,
-        var(--mb-color-core-filter) 40%,
-        var(--mb-color-core-white)
-      );
-    }
-
-    /* this prevents the divider between the button group from changing color */
-    &:hover&.FiltersActive {
-      border-right-color: var(--mb-color-border-neutral);
-    }
-  }
-}
-
 @container query-builder (max-width: 50em) {
   .ActionButtonRoot[data-variant="default"] {
     flex-shrink: 0;
-    padding: 11px;
+    padding-inline: 8px;
   }
 
   .ActionButtonLabel {
@@ -40,87 +13,10 @@
   }
 }
 
-.FilterButtonAttachment {
-  &[data-variant="default"] {
-    padding: 0.5rem;
-    transition:
-      background 300ms linear,
-      border 300ms linear;
-
-    &:hover {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-core-filter) 10%,
-        var(--mb-color-core-white)
-      );
-      border-color: color-mix(
-        in srgb,
-        var(--mb-color-core-filter) 40%,
-        var(--mb-color-core-white)
-      );
-    }
-
-    &:hover,
-    &[data-expanded="true"] {
-      .FilterCountChip {
-        color: var(--mb-color-text-primary-inverse);
-        background-color: var(--mb-color-core-filter);
-      }
-    }
-  }
-}
-
-.FilterCountChip {
-  font-size: 0.6875rem;
-  border-radius: 10px;
-  line-height: 1rem;
-  padding-inline: 0.5rem;
-  color: var(--mb-color-text-primary);
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-filter) 15%,
-    var(--mb-color-core-white)
-  );
-}
-
 .SummarizeButton {
   transition:
     background 300ms linear,
     border 300ms linear;
-
-  &:hover:not([data-active="true"]) {
-    color: var(--mb-color-core-summarize);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-core-summarize) 40%,
-      var(--mb-color-core-white)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-core-summarize) 15%,
-      var(--mb-color-core-white)
-    );
-  }
-}
-
-.NotebookButton {
-  transition:
-    background 300ms linear,
-    border 300ms linear;
-
-  &:hover:not([data-active="true"]) {
-    color: var(--mb-color-core-brand);
-    border-color: color-mix(
-      in srgb,
-      var(--mb-color-core-brand) 40%,
-      var(--mb-color-core-white)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-core-brand) 15%,
-      var(--mb-color-core-white)
-    );
-  }
 }
 
 .BackButton {
@@ -161,6 +57,7 @@
 
 .ViewHeaderActionPanel {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   margin-left: auto;
   gap: 0.5rem;

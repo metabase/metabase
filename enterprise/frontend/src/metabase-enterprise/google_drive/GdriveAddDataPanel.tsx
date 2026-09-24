@@ -24,6 +24,7 @@ import {
   getStorageNotProvisionedSubtitle,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { useSelector } from "metabase/redux";
+import type { ButtonProps } from "metabase/ui";
 import {
   Alert,
   Anchor,
@@ -95,19 +96,14 @@ const ConnectionDetails = ({
       <Stack gap="sm" mt="sm">
         <Button
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           loading={isDeleteInProgress}
           onClick={onDelete}
           w={INNER_WIDTH}
         >
           {disconnectButtonText}
         </Button>
-        <Button
-          variant="outline"
-          onClick={onClose}
-          disabled={isDeleteInProgress}
-          w={INNER_WIDTH}
-        >
+        <Button onClick={onClose} disabled={isDeleteInProgress} w={INNER_WIDTH}>
           {connectButtonText}
         </Button>
       </Stack>
@@ -293,7 +289,7 @@ const ConnectionDetailsButton = ({
 }: {
   label: string;
   onClick: () => void;
-  variant?: string;
+  variant?: ButtonProps["variant"];
   w?: string | number;
 }) => (
   <Button

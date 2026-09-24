@@ -205,21 +205,18 @@ export const QuestionDownloadWidget = ({
                 {t`Read the docs`}
               </Link>
             </Text>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             <Button
               aria-label={t`Close hint`}
-              pl={8}
-              pr={0}
               variant="subtle"
-              size="compact-md"
+              color="neutral"
+              size="sm"
               style={{ flexShrink: 0 }}
-            >
-              <Icon
-                name="close"
-                c="text-secondary"
-                tooltip={t`Don't show me this again.`}
-                onClick={() => setDismissedExcelPivotExportsBanner(true)}
-              />
-            </Button>
+              leftSection={
+                <Icon name="close" tooltip={t`Don't show me this again.`} />
+              }
+              onClick={() => setDismissedExcelPivotExportsBanner(true)}
+            />
           </Flex>
         )}
         {hasTruncatedResults && (

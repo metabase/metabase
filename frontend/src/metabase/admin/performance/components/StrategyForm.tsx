@@ -28,7 +28,6 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
   Select,
   Stack,
   Text,
@@ -356,7 +355,6 @@ const FormButtons = ({
         <Group gap="lg" wrap="nowrap">
           <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
           <FormSubmitButton
-            h="2.5rem"
             label={buttonLabels.save}
             variant="filled"
             data-testid="strategy-form-submit-button"
@@ -492,15 +490,12 @@ const SaveAndDiscardButtons = ({
         </Button>
       )}
       <FormSubmitButton
-        miw={layout === "sidebar" ? undefined : "10rem"}
-        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
           <Group gap="xxs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />

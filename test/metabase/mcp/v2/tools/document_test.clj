@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -25,6 +26,7 @@
   [args]
   (-> (v2.document/document-write-tool args {:token-scopes nil})
       (get-in [:content 0 :text])
+      v2.tu/strip-data-boundary
       json/decode+kw))
 
 (defn- orders-query
