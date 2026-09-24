@@ -93,7 +93,7 @@ databaseChangeLog:
                   name: occurred_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the request happened, captured on the request thread. The default is a fallback only — the recorder always sets this explicitly, since the row itself may not land in the table until a Grouper batch flushes later.
+                  remarks: When the request happened, captured on the request thread. The default is a fallback only — the recorder always sets this explicitly, since the row itself may not land in the table until a scheduled flush later.
                   constraints:
                     nullable: false
               - column:
