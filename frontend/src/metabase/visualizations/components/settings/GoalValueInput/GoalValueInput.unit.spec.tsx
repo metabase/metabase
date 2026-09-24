@@ -17,7 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { api } from "metabase/api/client";
+import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetData,
@@ -752,39 +752,79 @@ describe("GoalValueInput", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not trigger the global permission error for a source the user can't access", async () => {
-    const on403 = jest.fn();
-    api.on(403, on403);
-    fetchMock.get("path:/api/card/9", 403);
-    setup({
-      data: createMockDatasetData({
-        ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
+  describe("permission errors", () => {
+    const forbiddenUrls: string[] = [];
+    const recordForbiddenUrl = (url: string) => forbiddenUrls.push(url);
+
+    beforeEach(() => {
+      forbiddenUrls.length = 0;
+      api.on(403, recordForbiddenUrl);
+    });
+
+    afterEach(() => {
+      api.off(403, recordForbiddenUrl);
+    });
+
+    it("does not show the not-authorized page for a question the user can't access (GDGT-3252)", async () => {
+      const cardResponse = Promise.withResolvers<number>();
+      fetchMock.get("path:/api/card/9", () => cardResponse.promise);
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
               },
             },
           },
-        },
-      }),
-      value: { type: "card", id: 9, column: "total" },
+        }),
+        value: { type: "card", id: 9, column: "total" },
+      });
+
+      // opened while loading, the pill lands on the source's column list
+      await userEvent.click(
+        screen.getByRole("button", { name: "Change value source" }),
+      );
+      cardResponse.resolve(403);
+
+      expect(
+        await screen.findByRole("menuitem", {
+          name: "Couldn't load this source",
+        }),
+      ).toBeInTheDocument();
+      expect(forbiddenUrls.filter(shouldShowNotAuthorizedPage)).toEqual([]);
     });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Change value source" }),
-    );
+    it("does not show the not-authorized page for a measure the user can't access", async () => {
+      fetchMock.get("path:/api/measure/4", 403);
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            measure: {
+              4: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "revenue" })],
+                  rows: [[999]],
+                },
+              },
+            },
+          },
+        }),
+        value: { type: "measure", id: 4, column: "revenue" },
+      });
 
-    expect(
-      await screen.findByRole("menuitem", {
-        name: "Couldn't load this source",
-      }),
-    ).toBeInTheDocument();
-    api.off(403, on403);
-    expect(on403).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(forbiddenUrls).toContain("/api/measure/4");
+      });
+      expect(forbiddenUrls.filter(shouldShowNotAuthorizedPage)).toEqual([]);
+    });
   });
 
   it("says so when the picked source has no numeric columns", async () => {
