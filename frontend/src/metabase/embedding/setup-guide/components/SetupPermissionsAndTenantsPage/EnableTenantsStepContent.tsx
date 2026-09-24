@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import multiTenantUserStrategyImage from "assets/img/embedding-onboarding/multi-tenant-user-strategy.svg";
 import {
   useCreateCollectionMutation,
   useListCollectionsTreeQuery,
@@ -65,7 +66,7 @@ export const EnableTenantsStepContent = ({
   return (
     <Stack gap="xl">
       <img
-        src="app/assets/img/embedding-onboarding/multi-tenant-user-strategy.svg"
+        src={multiTenantUserStrategyImage}
         alt=""
         className={S.illustration}
       />

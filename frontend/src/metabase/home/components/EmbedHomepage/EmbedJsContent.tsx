@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import embedJsExampleImage from "assets/img/embed-js-example.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Group, Text } from "metabase/ui";
@@ -48,7 +49,7 @@ export const EmbedJsContent = ({
       </Text>
       {showImage && (
         <EmbedJsImage
-          src="/app/assets/img/embed-js-example.png"
+          src={embedJsExampleImage}
           alt="Modular embedding example"
         />
       )}
