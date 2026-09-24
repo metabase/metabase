@@ -11,8 +11,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
-import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -275,28 +273,17 @@ export const MetabotComponent = memo(
           direction="column"
           mb="lg"
         >
-          <Box
-            pos="absolute"
-            top={0}
-            right={0}
-            opacity="0.5"
-            className={S.closeButton}
-          >
-            {editor.options.editable ? (
+          <Box pos="absolute" top={0} right={0} className={S.closeButton}>
+            {/* TODO: replace with ActionIcon (GDGT-2457) */}
+            {editor.options.editable && (
               <Button
                 variant="subtle"
-                p="sm"
-                m="sm"
+                color="neutral"
                 size="sm"
+                m="xxs"
+                leftSection={<Icon name="close" data-hide-on-print />}
                 onClick={() => deleteNode()}
-              >
-                <Icon name="close" data-hide-on-print />
-                <MetabotIcon data-show-on-print />
-              </Button>
-            ) : (
-              <Box p="lg">
-                <MetabotIcon />
-              </Box>
+              />
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
@@ -334,17 +321,14 @@ export const MetabotComponent = memo(
                 position="bottom"
               >
                 <Button
-                  size="sm"
                   disabled={!isMetabotEnabled}
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()
                   }
-                  classNames={{
-                    label: CS.flex, // ensures icon is vertically centered
-                  }}
+                  leftSection={isLoading ? <Icon name="close" /> : undefined}
                   data-hide-on-print
                 >
-                  {isLoading ? <Icon name="close" /> : t`Run`}
+                  {isLoading ? null : t`Run`}
                 </Button>
               </Tooltip>
             )}

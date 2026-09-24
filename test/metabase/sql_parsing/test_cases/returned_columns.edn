@@ -1,0 +1,48 @@
+{:cases
+ [{:name           "a select's own columns"
+   :dialect        "postgres"
+   :sql            "SELECT id, name FROM a"
+   :default-schema "public"
+   :columns        ["id" "name"]}
+
+  {:name           "a union returns the columns both arms agree on"
+   :dialect        "postgres"
+   :sql            "SELECT id, name FROM a UNION SELECT id, name FROM b"
+   :default-schema "public"
+   :columns        ["id" "name"]}
+
+  {:name           "union all, likewise"
+   :dialect        "snowflake"
+   :sql            "SELECT id, name FROM a UNION ALL SELECT id, name FROM b"
+   :default-schema "public"
+   :columns        ["id" "name"]}
+
+  {:name           "intersect returns the one column it selects"
+   :dialect        "postgres"
+   :sql            "SELECT id FROM a INTERSECT SELECT id FROM b"
+   :default-schema "public"
+   :columns        ["id"]}
+
+  {:name           "except, likewise"
+   :dialect        "postgres"
+   :sql            "SELECT id FROM a EXCEPT SELECT id FROM b"
+   :default-schema "public"
+   :columns        ["id"]}
+
+  {:name           "a union nested in a derived table"
+   :dialect        "postgres"
+   :sql            "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+   :default-schema "public"
+   :columns        ["id"]}
+
+  {:name           "a union inside a CTE"
+   :dialect        "postgres"
+   :sql            "WITH u AS (SELECT id FROM a UNION SELECT id FROM b) SELECT * FROM u"
+   :default-schema "public"
+   :columns        ["id"]}
+
+  {:name           "an aliased expression is returned under its alias"
+   :dialect        "postgres"
+   :sql            "SELECT count(*) AS n, max(total) AS biggest FROM orders"
+   :default-schema "public"
+   :columns        ["biggest" "n"]}]}

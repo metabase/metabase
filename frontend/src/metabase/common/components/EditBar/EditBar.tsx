@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import { Group } from "metabase/ui";
+import { Flex, Group } from "metabase/ui";
 
-import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
+import { EditIcon, Root, Title } from "./EditBar.styled";
 
 type Props = {
   title: string;
@@ -32,7 +32,7 @@ export function EditBar({
         <Title>{title}</Title>
       </Group>
       {center && <div>{center}</div>}
-      <ButtonsContainer admin={admin}>{buttons}</ButtonsContainer>
+      <Flex gap="md">{buttons}</Flex>
     </Root>
   );
 }

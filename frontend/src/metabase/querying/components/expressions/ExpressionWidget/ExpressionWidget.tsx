@@ -225,15 +225,10 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               <Button
                 onClick={onClose}
                 variant="subtle"
-                size="xs"
+                color="neutral"
               >{t`Cancel`}</Button>
             )}
-            <Button
-              variant="filled"
-              disabled={!isValid}
-              onClick={handleSubmit}
-              size="xs"
-            >
+            <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
               {(initialName || initialClause) && !readOnly
                 ? t`Update`
                 : t`Done`}

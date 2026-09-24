@@ -42,7 +42,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -351,7 +350,7 @@
         line     (steering-line {:returned (count page) :total total :more? (boolean has_more_values)
                                  :offset offset :limit limit :query query})]
     (common/success-content (if line
-                              (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
+                              (message/msg ["%s" "%s"] (message/data payload) line)
                               payload))))
 
 (defn- ->day
@@ -379,7 +378,7 @@
                   (message/raw (str "No dates available for this parameter — its column "
                                     "may be empty, or filtered to nothing for you.")))]
     (common/success-content (if line
-                              (message/msg ["%s" "%s"] (message/raw (json/encode payload)) line)
+                              (message/msg ["%s" "%s"] (message/data payload) line)
                               payload))))
 
 ;;; --------------------------------------------------- The tool ---------------------------------------------------

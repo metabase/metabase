@@ -48,9 +48,13 @@ export function DateFilterPicker({
         readOnly={readOnly}
         renderSubmitButton={() => {
           return (
-            <Flex justify="space-between" w="100%">
+            <Flex justify="space-between" align="center" w="100%">
               {onClear ? (
-                <Button variant="subtle" c="text-secondary" onClick={onClear}>
+                <Button
+                  variant="transparent"
+                  size="compact-md"
+                  onClick={onClear}
+                >
                   {t`Clear`}
                 </Button>
               ) : (
@@ -63,7 +67,9 @@ export function DateFilterPicker({
         renderBackButton={() =>
           onBack ? (
             <PopoverBackButton
-              p="sm"
+              px="sm"
+              py="md"
+              h="auto"
               onClick={onBack}
               disabled={readOnly}
               withArrow={!readOnly}
